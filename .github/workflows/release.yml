@@ -175,7 +175,7 @@ jobs:
           - debian:12         # GLIBC 2.36 - supported
           - fedora:39         # GLIBC 2.38 - supported
           - centos:stream9    # GLIBC 2.34 - below minimum (should fail without force)
-          - alpine:3.19       # musl libc - different C library (should fail gracefully)
+          - alpine:3.19       # musl libc with gcompat compatibility layer
 
     steps:
       - name: Checkout
@@ -193,14 +193,11 @@ jobs:
 
           # Define expected results based on GLIBC versions
           case "${{ matrix.distro }}" in
-            "ubuntu:22.04"|"debian:12"|"fedora:39")
-              SHOULD_SUCCEED="true"
+            "ubuntu:22.04"|"debian:12"|"fedora:39"|"alpine:3.19")
+              SHOULD_SUCCEED="true"  # Alpine now works with gcompat compatibility layer
               ;;
             "ubuntu:20.04"|"centos:stream9")
               SHOULD_SUCCEED="false"  # GLIBC too old
-              ;;
-            "alpine:3.19")
-              SHOULD_SUCCEED="false"  # musl instead of GLIBC
               ;;
             *)
               SHOULD_SUCCEED="true"  # default assumption
