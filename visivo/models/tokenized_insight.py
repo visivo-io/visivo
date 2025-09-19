@@ -1,19 +1,5 @@
-from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-
-from visivo.models.props.insight_props import InsightProps
-
-
-class InteractionType(str, Enum):
-    FILTER = "filter"
-    SPLIT = "split"
-    SORT = "sort"
-
-
-class Interaction(BaseModel):
-    type: InteractionType
-    expression: str
 
 
 class TokenizedInsight(BaseModel):
