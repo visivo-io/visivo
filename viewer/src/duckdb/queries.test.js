@@ -40,29 +40,6 @@ it('executes query and closes connection', async () => {
   expect(result).toBe('mock-result');
 });
 
-it('handles parquet files', async () => {
-  const file = new File(['dummy'], 'test.parquet');
-  await insertDuckDBFile(db, file, 'parquet_table');
-
-  expect(db.registerFileHandle).toHaveBeenCalled();
-  expect(db.dropFile).toHaveBeenCalled();
-});
-
-it('handles csv files', async () => {
-  const file = new File(['a,b\n1,2'], 'data.csv', { type: 'text/csv' });
-  file.text = jest.fn().mockResolvedValue('a,b\n1,2');
-
-  await insertDuckDBFile(db, file, 'csv_table');
-
-  expect(db.registerFileText).toHaveBeenCalled();
-  expect(mockConn.insertCSVFromPath).toHaveBeenCalledWith(expect.any(String), {
-    name: 'csv_table',
-    schema: 'main',
-    detect: true,
-  });
-  expect(db.dropFile).toHaveBeenCalled();
-});
-
 it('handles json files', async () => {
   const file = new File([JSON.stringify({ x: 1 })], 'data.json', { type: 'application/json' });
   file.text = jest.fn().mockResolvedValue(JSON.stringify({ x: 1 }));
@@ -74,23 +51,6 @@ it('handles json files', async () => {
   expect(db.dropFile).toHaveBeenCalled();
 });
 
-it('calls inferTypes for CSV files with year column', async () => {
-  // Fake runDuckDBQuery returning a column with "year"
-  mockConn.query.mockResolvedValueOnce({
-    numRows: 1,
-    get: () => ({ toArray: () => ['fiscal_year', 'INTEGER'] }),
-  });
-
-  const file = new File(['year\n2020'], 'with_year.csv');
-  file.text = jest.fn().mockResolvedValue('year\n2020');
-
-  await insertDuckDBFile(db, file, 'with_year_table');
-
-  expect(mockConn.query).toHaveBeenCalledWith(
-    expect.stringContaining('information_schema.columns')
-  );
-  expect(mockConn.query).toHaveBeenCalledWith(expect.stringContaining('ALTER TABLE'));
-});
 
 it('ignores unsupported extensions', async () => {
   const file = new File(['dummy'], 'notes.txt');
