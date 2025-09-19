@@ -9,11 +9,13 @@ This module provides functionality to:
 """
 
 from typing import Dict, List, Optional, Set, Tuple
-from collections import deque
+from collections import deque, defaultdict
 from visivo.models.relation import Relation
 from visivo.models.models.model import Model
+from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
-from visivo.query.resolvers.field_resolver import FieldResolver
+from visivo.logger.logger import Logger
+from visivo.query.relation_resolver import RelationResolver
 import networkx as nx
 
 
@@ -39,7 +41,7 @@ class RelationGraph:
     - Weights can represent relation preferences
     """
 
-    def __init__(self, dag: ProjectDag, field_resolver: FieldResolver):
+    def __init__(self, project: Project, model_alias_map: Optional[Dict[str, str]] = None):
         """
         Initialize the RelationGraph with a project.
 
@@ -47,10 +49,10 @@ class RelationGraph:
             project: The project containing models and relations
             model_alias_map: Optional mapping of model names to their SQL aliases
         """
-
-        self.dag = dag
+        self.project = project
+        self.dag: ProjectDag = project.dag()
         self.graph = nx.Graph()
-        self.field_resolver = field_resolver
+        self.relation_resolver = RelationResolver(model_alias_map)
         self._resolved_conditions = {}  # Cache for resolved conditions
         self._build_relation_graph()
 
@@ -76,7 +78,7 @@ class RelationGraph:
                 # Convert set to list to access models
                 model_list = list(models)
                 # Resolve the condition immediately and cache it
-                resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
+                resolved_condition = self.relation_resolver.resolve_condition(relation.condition)
                 self._resolved_conditions[relation.condition] = resolved_condition
 
                 # Add edge with relation details (undirected, so order doesn't matter)
@@ -303,77 +305,6 @@ class RelationGraph:
             warnings.append(f"Warning: Models with no relations: {', '.join(isolated)}")
 
         return warnings
-
-    def get_join_plan(self, models: List[str]) -> Dict:
-        """
-        Get a structured join plan for connecting multiple models.
-
-        This method determines:
-        1. Which model should be in the FROM clause
-        2. The order and details of JOIN clauses
-
-        Args:
-            models: List of model names to connect
-
-        Returns:
-            Dictionary with:
-            - from_model: Model name to use in FROM clause
-            - joins: List of tuples (from_model, to_model, condition, join_type)
-
-        Raises:
-            NoJoinPathError: If models cannot be connected
-            AmbiguousJoinError: If multiple equally valid paths exist
-        """
-        if len(models) == 0:
-            raise NoJoinPathError("No models provided for join plan")
-
-        if len(models) == 1:
-            return {"from_model": models[0], "joins": []}
-
-        # Get all required joins using minimum spanning tree
-        all_joins = self._find_minimum_spanning_tree(models)
-
-        if not all_joins:
-            raise NoJoinPathError(f"Cannot create join plan for models: {', '.join(models)}")
-
-        # Build a graph from the joins to determine optimal FROM model
-        join_graph = nx.Graph()
-        for from_model, to_model, condition in all_joins:
-            join_graph.add_edge(from_model, to_model, condition=condition)
-
-        # Select the FROM model as the most central node (highest degree centrality)
-        # This minimizes the depth of the join tree
-        centrality = nx.degree_centrality(join_graph)
-        from_model = max(centrality, key=centrality.get)
-
-        # Perform breadth-first traversal from the FROM model to determine join order
-        ordered_joins = []
-        visited = {from_model}
-        queue = deque([from_model])
-
-        while queue:
-            current = queue.popleft()
-
-            # Get all neighbors of current model
-            for neighbor in join_graph.neighbors(current):
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append(neighbor)
-
-                    # Get the edge data (condition)
-                    edge_data = join_graph.get_edge_data(current, neighbor)
-                    condition = edge_data.get("condition")
-
-                    # Get join type from the original relation graph
-                    relation_edge = self.graph.get_edge_data(current, neighbor)
-                    join_type = (
-                        relation_edge.get("join_type", "INNER") if relation_edge else "INNER"
-                    )
-
-                    # Add to ordered joins (from current to neighbor)
-                    ordered_joins.append((current, neighbor, condition, join_type))
-
-        return {"from_model": from_model, "joins": ordered_joins}
 
     def suggest_relation(self, model1: str, model2: str) -> Optional[str]:
         """

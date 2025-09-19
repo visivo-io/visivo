@@ -20,37 +20,18 @@ SCHEMA_FILE = resources.files("visivo") / "src" / "visivo_project_schema.json"
 
 PROJECT_CHILDREN = [
     "alerts",
+    "selectors",
+    "sources",
+    "models",
+    "traces",
+    "tables",
     "charts",
     "dashboards",
     "destinations",
-    "dimensions",
-    "inputs",
-    "insights",
     "metrics",
-    "models",
     "relations",
-    "selectors",
-    "sources",
-    "tables",
-    "traces",
+    "dimensions",
 ]
-"""Valid child entity types within a project DAG.
-
-Contents:
-- alerts
-- charts
-- dashboards
-- destinations
-- dimensions
-- inputs
-- insights
-- metrics
-- models
-- selectors
-- sources
-- tables
-- traces
-"""
 
 
 def get_utc_now():

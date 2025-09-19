@@ -14,9 +14,38 @@ class MetricValidator:
 
     @staticmethod
     def _get_sqlglot_dialect(source_type: Optional[str] = None) -> str:
-        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+        """
+        Maps source types to SQLGlot dialect names.
 
-        return get_sqlglot_dialect(source_type)
+        Args:
+            source_type: The source type (e.g., 'postgresql', 'mysql', 'snowflake')
+
+        Returns:
+            SQLGlot dialect name
+        """
+        if not source_type:
+            return "postgres"  # Default to postgres
+
+        dialect_map = {
+            "postgresql": "postgres",
+            "postgres": "postgres",
+            "mysql": "mysql",
+            "snowflake": "snowflake",
+            "bigquery": "bigquery",
+            "sqlite": "sqlite",
+            "duckdb": "duckdb",
+            "redshift": "redshift",
+            "presto": "presto",
+            "trino": "trino",
+            "spark": "spark",
+            "hive": "hive",
+            "oracle": "oracle",
+            "tsql": "tsql",
+            "mssql": "tsql",
+            "sqlserver": "tsql",
+        }
+
+        return dialect_map.get(source_type.lower(), "postgres")
 
     @staticmethod
     def validate_aggregate_expression(
@@ -105,17 +134,17 @@ class MetricValidator:
 
         # First, replace ${ref(model).field} with sanitized_model.field for SQLGlot parsing
         import re
-        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
+        from visivo.models.base.context_string import METRIC_REF_PATTERN
 
         # Replace ${ref(model).field} patterns with sanitized_model.field for SQLGlot
-        # Note: CONTEXT_STRING_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
+        # Note: METRIC_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
         def replace_for_sql(match):
-            ref_content = get_model_name_from_match(match)
-            field_raw = match.group("property_path")
-            # Strip leading dot if present
-            field = field_raw.lstrip(".") if field_raw and field_raw.startswith(".") else field_raw
-            # Convert empty string to None
-            field = field if field else None
+            ref_content = match.group(1)
+            field = match.group(2) if match.lastindex >= 2 else None
+
+            # Remove quotes if present
+            if ref_content.startswith(("'", '"')) and ref_content.endswith(("'", '"')):
+                ref_content = ref_content[1:-1]
 
             # Sanitize the model name for SQL
             sanitized_ref = sanitizer.sanitize(ref_content)
@@ -126,7 +155,7 @@ class MetricValidator:
                 # For ${ref(metric)} without field, keep sanitized name
                 return sanitized_ref
 
-        sql_condition = re.sub(CONTEXT_STRING_REF_PATTERN, replace_for_sql, condition)
+        sql_condition = re.sub(METRIC_REF_PATTERN, replace_for_sql, condition)
 
         try:
             # Parse the condition as a WHERE clause expression
