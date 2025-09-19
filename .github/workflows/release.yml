@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-14
+          - os: macos-latest
             artifact_name: darwin-arm64
             version_file: visivo/version.py
           - os: macos-13
@@ -30,7 +30,7 @@ jobs:
             artifact_name: windows-x86
             version_file: visivo\\version.py
             shell: bash
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             artifact_name: linux-x86
             version_file: visivo/version.py
 
@@ -43,10 +43,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.12.10
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
@@ -161,123 +157,3 @@ jobs:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
           repository: visivo-io/core
           event-type: visivo-release
-
-  test-linux-installers:
-    name: "Test Linux Installers"
-    runs-on: ubuntu-latest
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        distro:
-          - ubuntu:22.04      # GLIBC 2.35 - minimum supported version
-          - ubuntu:20.04      # GLIBC 2.31 - below minimum (should fail without force)
-          - debian:12         # GLIBC 2.36 - supported
-          - fedora:39         # GLIBC 2.38 - supported
-          - centos:stream9    # GLIBC 2.34 - below minimum (should fail without force)
-          - alpine:3.19       # musl libc - different C library (should fail gracefully)
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Linux Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: visivo-linux-x86
-          path: ./linux-artifact
-
-      - name: Test GLIBC compatibility and installation on ${{ matrix.distro }}
-        run: |
-          echo "Testing Visivo GLIBC compatibility and installation on ${{ matrix.distro }}"
-
-          # Define expected results based on GLIBC versions
-          case "${{ matrix.distro }}" in
-            "ubuntu:22.04"|"debian:12"|"fedora:39")
-              SHOULD_SUCCEED="true"
-              ;;
-            "ubuntu:20.04"|"centos:stream9")
-              SHOULD_SUCCEED="false"  # GLIBC too old
-              ;;
-            "alpine:3.19")
-              SHOULD_SUCCEED="false"  # musl instead of GLIBC
-              ;;
-            *)
-              SHOULD_SUCCEED="true"  # default assumption
-              ;;
-          esac
-
-          echo "Expected result for ${{ matrix.distro }}: SHOULD_SUCCEED=$SHOULD_SUCCEED"
-
-          # Run the installation test in the specified distro container
-          docker run --rm -v "$PWD:/workspace" -w /workspace ${{ matrix.distro }} /bin/bash -c "
-            set +e  # Don't exit on error, we want to test both success and failure cases
-
-            # Update package manager and install required tools
-            if command -v apt-get >/dev/null 2>&1; then
-              apt-get update
-              apt-get install -y unzip curl
-            elif command -v yum >/dev/null 2>&1; then
-              yum update -y
-              yum install -y unzip curl
-            elif command -v dnf >/dev/null 2>&1; then
-              dnf update -y
-              dnf install -y unzip curl
-            elif command -v apk >/dev/null 2>&1; then
-              apk update
-              apk add unzip bash curl
-            fi
-
-            # Set up environment
-            export HOME=/tmp/test-home
-            mkdir -p \$HOME
-
-            # Test the install script with GLIBC validation
-            echo 'Testing install script with GLIBC validation...'
-            cp /workspace/install.sh .
-            chmod +x install.sh
-
-            # Run the installer (this should respect GLIBC requirements)
-            ./install.sh --version ${{ inputs.version }}
-            INSTALL_RESULT=\$?
-
-            if [ \"$SHOULD_SUCCEED\" = \"true\" ]; then
-              if [ \$INSTALL_RESULT -eq 0 ]; then
-                echo '✅ Installation succeeded as expected for ${{ matrix.distro }}'
-
-                # Test that visivo actually works
-                export PATH=\"\$HOME/.visivo/bin:\$PATH\"
-                visivo --version
-                visivo --help
-                echo '✅ Visivo functionality test passed'
-              else
-                echo '❌ Installation unexpectedly failed for ${{ matrix.distro }}'
-                exit 1
-              fi
-            else
-              if [ \$INSTALL_RESULT -ne 0 ]; then
-                echo '✅ Installation correctly failed for ${{ matrix.distro }} (as expected due to GLIBC)'
-
-                # Test force install works
-                echo 'Testing force installation...'
-                export VISIVO_FORCE_INSTALL=1
-                ./install.sh --version ${{ inputs.version }}
-                FORCE_RESULT=\$?
-
-                if [ \$FORCE_RESULT -eq 0 ]; then
-                  echo '✅ Force installation succeeded'
-                  # Test basic functionality might fail, but install should work
-                  export PATH=\"\$HOME/.visivo/bin:\$PATH\"
-                  visivo --version || echo '⚠️  Binary execution failed (expected on incompatible systems)'
-                else
-                  echo '❌ Force installation failed'
-                  exit 1
-                fi
-              else
-                echo '❌ Installation unexpectedly succeeded for ${{ matrix.distro }} (should have failed due to GLIBC)'
-                exit 1
-              fi
-            fi
-
-            echo '✅ GLIBC compatibility test completed for ${{ matrix.distro }}'
-          "

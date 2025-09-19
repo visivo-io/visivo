@@ -9,9 +9,6 @@ PROFILE_UPDATED=0
 PROFILE_FILE=""
 VERSION="" # Version to install (empty means latest)
 
-# Minimum required GLIBC version for Visivo
-MIN_GLIBC_VERSION="2.35"
-
 # Clean up on exit
 cleanup() {
   if [ -f "$VISIVO_DIR/visivo.zip" ]; then
@@ -53,21 +50,10 @@ Options:
                          If not specified, installs the latest version
   -h, --help             Show this help message
 
-Environment Variables:
-  VISIVO_FORCE_INSTALL   Set to '1' to bypass GLIBC version check
-                         Use this only if you're confident about compatibility
-
 Examples:
-  $0                                    # Install latest version
-  $0 -v v1.0.64                        # Install specific version v1.0.64
-  $0 --version 1.0.64                  # Install specific version 1.0.64 (v prefix optional)
-  VISIVO_FORCE_INSTALL=1 $0            # Force install bypassing GLIBC check
-
-Requirements:
-  - Linux x86_64 architecture
-  - GLIBC version $MIN_GLIBC_VERSION or higher
-
-Report issues at: https://github.com/$REPO/issues
+  $0                     # Install latest version
+  $0 -v v1.0.64         # Install specific version v1.0.64
+  $0 --version 1.0.64   # Install specific version 1.0.64 (v prefix optional)
 
 EOF
 }
@@ -75,10 +61,10 @@ EOF
 # Validate version format
 validate_version() {
   local version="$1"
-
+  
   # Remove 'v' prefix if present for validation
   local clean_version="${version#v}"
-
+  
   # Check if version follows semantic versioning pattern (X.Y.Z)
   if [[ ! "$clean_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Error: Invalid version format '$version'. Expected format: X.Y.Z (e.g., 1.0.64 or v1.0.64)" >&2
@@ -87,65 +73,9 @@ validate_version() {
   fi
 }
 
-# Check GLIBC version compatibility
-check_glibc_version() {
-  echo "Checking GLIBC compatibility..."
-
-  # Try to get GLIBC version using ldd
-  local glibc_version=""
-  if command -v ldd >/dev/null 2>&1; then
-    glibc_version=$(ldd --version 2>&1 | head -n1 | grep -o '[0-9]\+\.[0-9]\+' | head -1)
-  fi
-
-  # Alternative method: check libc.so.6 directly
-  if [ -z "$glibc_version" ] && [ -f /lib/x86_64-linux-gnu/libc.so.6 ]; then
-    glibc_version=$(/lib/x86_64-linux-gnu/libc.so.6 2>&1 | grep -o 'release version [0-9]\+\.[0-9]\+' | grep -o '[0-9]\+\.[0-9]\+')
-  fi
-
-  # Another alternative: check /lib64/libc.so.6
-  if [ -z "$glibc_version" ] && [ -f /lib64/libc.so.6 ]; then
-    glibc_version=$(/lib64/libc.so.6 2>&1 | grep -o 'release version [0-9]\+\.[0-9]\+' | grep -o '[0-9]\+\.[0-9]\+')
-  fi
-
-  # Final fallback: getconf
-  if [ -z "$glibc_version" ] && command -v getconf >/dev/null 2>&1; then
-    glibc_version=$(getconf GNU_LIBC_VERSION 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+')
-  fi
-
-  if [ -z "$glibc_version" ]; then
-    echo "⚠️  Warning: Could not detect GLIBC version" >&2
-    echo "   Visivo requires GLIBC >= $MIN_GLIBC_VERSION" >&2
-    echo "   Installation will proceed, but may fail if GLIBC is too old" >&2
-    echo "   If you encounter issues, please report them at: https://github.com/$REPO/issues" >&2
-    return 0
-  fi
-
-  echo "Detected GLIBC version: $glibc_version"
-
-  # Compare versions using sort -V (version sort)
-  if printf '%s\n%s\n' "$MIN_GLIBC_VERSION" "$glibc_version" | sort -V -C; then
-    echo "✅ GLIBC version $glibc_version meets minimum requirement ($MIN_GLIBC_VERSION)"
-    return 0
-  else
-    echo "❌ Error: GLIBC version $glibc_version is below minimum requirement ($MIN_GLIBC_VERSION)" >&2
-    echo "" >&2
-    echo "Visivo requires GLIBC version $MIN_GLIBC_VERSION or higher." >&2
-    echo "Your system has GLIBC $glibc_version." >&2
-    echo "" >&2
-    echo "To resolve this, you can:" >&2
-    echo "  1. Upgrade your Linux distribution to a newer version" >&2
-    echo "  2. Use a distribution with newer GLIBC (Ubuntu 22.04+, Debian 12+, Fedora 36+)" >&2
-    echo "  3. Report compatibility issues at: https://github.com/$REPO/issues" >&2
-    echo "" >&2
-    echo "To force installation (may not work), set VISIVO_FORCE_INSTALL=1:" >&2
-    echo "  VISIVO_FORCE_INSTALL=1 curl -fsSL https://visivo.sh | bash" >&2
-    exit 1
-  fi
-}
-
 main() {
   echo "Welcome to the Visivo installer!"
-
+  
   if [ -n "$VERSION" ]; then
     echo "Installing version: $VERSION"
     validate_version "$VERSION"
@@ -162,13 +92,6 @@ main() {
             x86_64|amd64) PLATFORM="linux-x86";;
             *) echo "Error: Unsupported Linux architecture '$ARCH'." >&2; exit 1;;
         esac
-
-        # Check GLIBC version unless force install is set
-        if [ "$VISIVO_FORCE_INSTALL" != "1" ]; then
-          check_glibc_version
-        else
-          echo "⚠️  Force installation enabled - skipping GLIBC version check"
-        fi
         ;;
     Darwin*)
         # Check macOS version

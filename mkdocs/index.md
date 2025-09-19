@@ -11,15 +11,15 @@ curl -fsSL https://visivo.sh | bash
 ```
 
 !!! success "One command, all platforms"
-    Our installation script handles macOS, Linux, and Windows automatically. No Python required!
+    Our installation script handles macOS, Linux, and Windows automatically. If you have an unsupported environment, check out our [pip installation guide](installation.md#python-package-pip).
 
-### 2. Get Started in Seconds
+### 2. Start the Local Server
 
 ```bash
 visivo serve
 ```
 
-This single command gives you a complete dashboard in seconds!
+This single command gives you a complete environment in seconds!
 
 ### 3. Choose an Example
 

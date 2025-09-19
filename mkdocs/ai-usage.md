@@ -2,7 +2,7 @@
 
 ## 🤖 Agent AI-Powered Development with Claude Code
 
-Use the power of an AI Agent to iteratively create and refine your dashboard configuration through conversation. This approach is perfect for rapid prototyping and learning Visivo's capabilities.
+Use the power of an AI Agent to iteratively create and refine your dashboard configuration through conversation. This approach is perfect for rapid prototyping and learning Visivo's capabilities.  It can give you a starting point very quickly.
 
 !!! success "Why Agent AI Works Better"
     AI Agents like Claude Code can read files, run commands, and iterate on solutions. This approach lets you:
@@ -50,143 +50,10 @@ Work with the AI Agent to save, test, and refine the configuration:
 - Ask the Agent to modify charts, add features, or fix any issues
 - Continue the conversation until your dashboard is perfect
 
-### 4. Launch Your Dashboard
+### Considerations
 
-```bash
-visivo serve
-```
-
----
-
-## Advanced AI Techniques
-
-### Working with Real Data
-
-When you have your own dataset, enhance the prompt with specific requirements:
-
-!!! example "Custom Data Prompt"
-    ```
-    I have a dataset with the following columns: [LIST YOUR COLUMNS].
-
-    Create a Visivo dashboard that:
-    - Shows trends over time (if applicable)
-    - Includes comparison charts between categories
-    - Highlights key performance indicators
-    - Uses appropriate chart types for each data type
-
-    Please analyze the data first and suggest the most insightful visualizations.
-    ```
-
-### Iterative Development
-
-Use follow-up prompts to refine your dashboard:
-
-- **"Add a filter to let users select date ranges"**
-- **"Change the bar chart to a line chart and add a trend line"**
-- **"Create a summary table showing key metrics"**
-- **"Add interactive hover tooltips with more details"**
-
-### Data Source Integration
-
-For connecting to databases, provide connection details:
-
-!!! example "Database Connection Prompt"
-    ```
-    Connect to my [PostgreSQL/MySQL/Snowflake] database and create a dashboard.
-
-    Connection details:
-    - Host: [your-host]
-    - Database: [your-database]
-    - Schema: [your-schema]
-
-    Tables of interest:
-    - [table1]: Contains [description]
-    - [table2]: Contains [description]
-
-    Create visualizations that show [specific business questions].
-    ```
-
----
-
-## AI Development Workflow
-
-### 1. **Explore & Understand**
-   - Upload your data or describe your requirements
-   - Let the AI analyze and suggest visualization approaches
-   - Review the generated configuration together
-
-### 2. **Build & Test**
-   - Generate the initial `project.visivo.yml`
-   - Run `visivo run` to validate the configuration
-   - Serve the dashboard with `visivo serve`
-
-### 3. **Iterate & Improve**
-   - Identify areas for improvement
-   - Ask the AI to make specific modifications
-   - Test changes and provide feedback
-
-### 4. **Polish & Deploy**
-   - Fine-tune styling and layout
-   - Add interactive features
-   - Prepare for deployment
-
----
-
-## Tips for Effective AI Collaboration
-
-### Be Specific with Requirements
-
-Instead of: *"Make a nice dashboard"*
-
-Try: *"Create a sales dashboard with monthly revenue trends, top-performing products, and regional comparison charts"*
-
-### Provide Context
-
-Help the AI understand your business needs:
-
-- What decisions will this dashboard inform?
-- Who is the intended audience?
-- What are the key metrics that matter?
-- Are there any specific design preferences?
-
-### Iterate in Small Steps
-
-Rather than asking for everything at once:
-
-1. Start with basic charts
-2. Add interactivity
-3. Enhance styling
-4. Optimize performance
-
-### Test Frequently
-
-- Run `visivo run` after each major change
-- Serve the dashboard to see visual results
-- Provide feedback on what works and what doesn't
-
----
-
-## Common AI Prompts
-
-### Quick Fixes
-- *"The chart title is too small, make it larger"*
-- *"Change the color scheme to use blue tones"*
-- *"Add a tooltip showing the exact values"*
-
-### Feature Additions
-- *"Add a dropdown filter for product categories"*
-- *"Create a summary card showing total revenue"*
-- *"Add a second chart comparing this year vs last year"*
-
-### Data Issues
-- *"The date column isn't being parsed correctly"*
-- *"Some values are showing as null, can we filter those out?"*
-- *"The numbers need to be formatted as currency"*
-
-### Styling Changes
-- *"Make the dashboard look more professional"*
-- *"Use our company colors: #1f77b4 and #ff7f0e"*
-- *"Arrange the charts in a 2x2 grid layout"*
+- Telling your agents to run `visivo run` to validate the configuration is very important.
+- This is a continuously improving technique and we welcome feedback.
 
 ---
 
