@@ -1,6 +1,6 @@
 /**
- * 
- * @param {string} url 
+ *
+ * @param {string} url
  * @param {string} title
  * @param {number} w
  * @param {number} h
@@ -37,10 +37,10 @@ const openOauthPopupWindow = (url, title, w = 700, h = 800) => {
 
   // Handle PopUp blocked
   if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-    popup = window.open(url, '_blank')
+    popup = window.open(url, '_blank');
   }
 
   return popup;
-}
+};
 
-export { openOauthPopupWindow }
+export { openOauthPopupWindow };

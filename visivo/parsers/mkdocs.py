@@ -1,4 +1,5 @@
 from visivo.parsers.mkdocs_utils.markdown import (
+    from_insightprop_model,
     from_pydantic_model,
     from_traceprop_model,
     find_refs,
@@ -85,16 +86,30 @@ class Mkdocs:
         trace_prop_models = [i.split("/")[-1] for i in refs]
         return trace_prop_models
 
-    def get_md_content(self, model_name):
+    def _get_insight_prop_models(self) -> list:
+        """Helper function to get the list of insight prop models. Enables a better error if the model is not found."""
+        insight_props_def = self.SCHEMA["$defs"].get("Insight").get("properties").get("props")
+        refs = list(set(find_refs(insight_props_def["oneOf"])))
+        insight_prop_models = [i.split("/")[-1] for i in refs]
+        return insight_prop_models
+
+    def get_md_content(self, model_name, content_type=""):
         path = self.model_to_path_map.get(model_name, {})
+
         trace_prop_models = self._get_trace_prop_models()
+        insight_prop_models = self._get_insight_prop_models()
+
         if not path:
             raise KeyError(f"model {model_name} not found in project")
-        if model_name in trace_prop_models:
-            md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
+        if model_name in trace_prop_models or model_name in model_name in insight_prop_models:
+            if content_type == "Insight":
+                md = from_insightprop_model(self.SCHEMA["$defs"], model_name)
+            else:
+                md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
         elif model_name == "Layout":
             md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
         else:
             md = from_pydantic_model(self.SCHEMA["$defs"], model_name)
+
         md = self._replace_model_with_page(md=md)
         return md

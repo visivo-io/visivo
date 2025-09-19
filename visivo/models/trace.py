@@ -3,10 +3,10 @@ from typing import Any, Dict, Literal
 from pydantic import BaseModel, Field, model_validator
 from visivo.models.fields import QueryOrStringField
 from visivo.models.models.fields import ModelRefField
-from visivo.models.trace_props.trace_props import TraceProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import generate_ref_field
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.test import Test
 from visivo.models.trace_columns import TraceColumns
 from visivo.models.relation import Relation

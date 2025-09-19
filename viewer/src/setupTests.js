@@ -9,6 +9,8 @@ import 'resize-observer-polyfill/dist/ResizeObserver.global';
 // Set up a default URL config for tests
 import { setGlobalURLConfig, createURLConfig } from './contexts/URLContext';
 
+import { TextDecoder, TextEncoder } from 'util';
+
 // This polyfill ensures react-cool-dimensions works properly in tests
 // Mock console.error to suppress react-cool-dimensions warnings in tests
 const originalError = console.error;
@@ -44,6 +46,21 @@ const { Response, Headers, Request } = require('whatwg-fetch');
 global.Response = Response;
 global.Headers = Headers;
 global.Request = Request;
+
+if (!global.TextDecoder) {
+  global.TextDecoder = TextDecoder;
+}
+
+if (!global.TextEncoder) {
+  global.TextEncoder = TextEncoder;
+}
+
+if (!global.Worker) {
+  global.Worker = class {
+    postMessage() {}
+    terminate() {}
+  };
+}
 
 // Mock React Query to prevent network requests in tests
 jest.mock('@tanstack/react-query', () => {

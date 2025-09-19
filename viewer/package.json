@@ -4,6 +4,7 @@
   "private": true,
   "proxy": "http://0.0.0.0:8000",
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.29.1-dev132.0",
     "@emotion/styled": "^11.14.1",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
@@ -65,7 +66,8 @@
     "testEnvironment": "jest-environment-jsdom",
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
-      "\\.(css|less)$": "<rootDir>/__mocks__/styleMock.js"
+      "\\.(css|less)$": "<rootDir>/__mocks__/styleMock.js",
+      "\\?url$": "<rootDir>/__mocks__/fileMock.js"
     },
     "modulePaths": [
       "<rootDir>/src"
@@ -76,7 +78,7 @@
     "setupFilesAfterEnv": [
       "<rootDir>/src/setupTests.js"
     ]
-  },
+},
   "browserslist": {
     "production": [
       ">0.2%",

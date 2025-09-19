@@ -4,6 +4,7 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
+from visivo.models.input import InputField
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
@@ -19,6 +20,7 @@ from visivo.models.base.context_string import INLINE_REF_REGEX
 from visivo.models.dashboards.fields import DashboardField
 from visivo.models.chart import Chart
 from visivo.models.trace import Trace
+from visivo.models.insight import Insight
 from visivo.models.table import Table
 from visivo.models.defaults import Defaults
 from visivo.models.dbt import Dbt
@@ -55,9 +57,11 @@ class Project(NamedModel, ParentModel):
     )
     models: List[ModelField] = []
     traces: List[Trace] = []
+    insights: List[Insight] = []
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
+    inputs: List[InputField] = []
     dashboards: List[DashboardField] = []
     metrics: List[Metric] = Field(
         [], description="A list of global metric objects that can reference multiple models."

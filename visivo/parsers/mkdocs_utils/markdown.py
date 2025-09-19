@@ -282,3 +282,52 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         + "\n{% endraw %}\n"
     )
     return full_doc
+
+
+def from_insightprop_model(model_defs: dict, model_name: str) -> str:
+    model_def = model_defs.get(model_name, {})
+    if not model_def:
+        raise KeyError(f"Schema missing model: {model_name}")
+    model_md = (
+        "" if not model_def.get("description", {}) else dedent(model_def.get("description")) + "\n"
+    )
+    if model_name.lower() == "layout":
+        description = "These attributes apply to the `chart.layout` object.\n"
+    else:
+        description = f"These attributes apply to insights where `insight.props.type` is set to `{model_name.lower()}`. You would configure these attributes on the insight with the `insight.props` object.\n"
+
+    model = model_defs.get(model_name)
+    nested_structure, details = _get_traceprop_nested_structure(model, details=[])
+    if model_name.lower() == "scatter":
+        title = "Scatter (line, area & scatter)"
+    else:
+        title = model_name
+    yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
+    pattern = r"'([^'#]+) (\#\(.*?\)!)'"
+    processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
+    if model_name.lower() != "layout":
+        includes = (
+            "{!"
+            + f" include-markdown '"
+            + f"reference/props-docs/insight/{model_name.lower()}.md' "
+            + f"\nstart='<!--start-->'"
+            + f"\nend='<!--end-->'"
+            + "!}"
+        )
+    else:
+        includes = ""
+    full_doc = (
+        f"# {title} "
+        + "\n"
+        + includes
+        + model_md
+        + "{% raw %}\n"
+        + "## Attributes\n"
+        + description
+        + "``` yaml\n"
+        + processed_yaml_doc
+        + "\n```\n\n"
+        + "\n".join(details)
+        + "\n{% endraw %}\n"
+    )
+    return full_doc

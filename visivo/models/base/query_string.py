@@ -21,11 +21,14 @@ class QueryString:
         return self.value
 
     def get_value(self) -> str:
-        matches = re.findall(QUERY_STRING_VALUE_REGEX, self.value)
-        if len(matches) == 0:
+        try:
+            matches = re.findall(QUERY_STRING_VALUE_REGEX, self.value)
+            if len(matches) == 0:
+                return None
+            else:
+                return matches[0].strip()
+        except:
             return None
-        else:
-            return matches[0].strip()
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):

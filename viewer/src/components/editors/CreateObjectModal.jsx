@@ -4,9 +4,16 @@ import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
 import SourceConnectionTest from './SourceConnectionTest';
 
-const OPTIONAL_REQUIREMENTS = ["host", "username", "password", "warehouse", "account", "project"]
+const OPTIONAL_REQUIREMENTS = ['host', 'username', 'password', 'warehouse', 'account', 'project'];
 
-const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'property', onSubmitCallback, showFileOption = true }) => {
+const CreateObjectModal = ({
+  isOpen,
+  onClose,
+  objSelectedProperty,
+  objStep = 'property',
+  onSubmitCallback,
+  showFileOption = true,
+}) => {
   const [step, setStep] = useState(objStep); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(objSelectedProperty);
   const [selectedType, setSelectedType] = useState(null);
@@ -39,7 +46,6 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
       resetState();
     }
   }, [isOpen, resetState]);
-
 
   const getValidTypesForProperty = prop => {
     if (!schema?.properties) return [];
@@ -74,7 +80,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
   };
 
   const handleTypeSelect = type => {
-    setSelectedSource(TYPE_VALUE_MAP[type])
+    setSelectedSource(TYPE_VALUE_MAP[type]);
     setSelectedType(type);
     setStep('name');
   };
@@ -88,14 +94,14 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     const properties = typeSchema.properties || {};
 
     if (onSubmitCallback) {
-        mergedRequired = [
+      mergedRequired = [
         ...new Set([
           ...mergedRequired,
           ...OPTIONAL_REQUIREMENTS.filter(optKey => optKey in properties),
         ]),
       ];
     }
-    
+
     // Filter out 'name' since we already have it
     return mergedRequired
       .filter(key => key !== 'name')
@@ -114,7 +120,6 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     }
   };
 
-
   const handleCreate = () => {
     if (!objectName || !selectedType || !selectedProperty) return;
 
@@ -128,12 +133,12 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
       config: {
         name: objectName,
         ...attributes,
-        type: selectedSource?.value
+        type: selectedSource?.value,
       },
       status: 'New', // Set status to New for new objects
       file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
       new_file_path: selectedFilePath || projectFilePath,
-      path: null
+      path: null,
     };
 
     // Update store with new object
@@ -145,8 +150,8 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     });
     // Open the new object in a tab
     if (onSubmitCallback) {
-      onSubmitCallback(newObject)
-    }else{
+      onSubmitCallback(newObject);
+    } else {
       openTab(objectName, selectedType);
     }
 
@@ -255,8 +260,8 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Select the file where you want to save this {displayName.toLowerCase()}. Default is
-                  the project file path.
+                  Select the file where you want to save this {displayName.toLowerCase()}. Default
+                  is the project file path.
                 </p>
               </div>
             )}
@@ -276,36 +281,43 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
             {getRequiredAttributes(selectedType).map(attr => (
               <div key={attr.name} className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  {attr.title || attr.name} {!OPTIONAL_REQUIREMENTS.includes(attr.name) && <span className="text-red-500"> *</span>}
+                  {attr.title || attr.name}{' '}
+                  {!OPTIONAL_REQUIREMENTS.includes(attr.name) && (
+                    <span className="text-red-500"> *</span>
+                  )}
                 </label>
                 {attr.description && (
                   <p className="text-xs text-gray-500 mb-1">{attr.description}</p>
                 )}
 
                 {/* String input */}
-                {((attr.type === 'string' || !attr.type) && attr.name !== 'type' && attr.title !== 'File') && (
-                  <input
-                    type="text"
-                    value={attributes[attr.name] || ''}
-                    required={!OPTIONAL_REQUIREMENTS.includes(attr.name)}
-                    onChange={e =>
-                      setAttributes(prev => ({
-                        ...prev,
-                        [attr.name]: e.target.value,
-                      }))
-                    }
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    placeholder={`Enter ${(attr.title || attr.name).toLowerCase()}...`}
-                  />
-                )}
+                {(attr.type === 'string' || !attr.type) &&
+                  attr.name !== 'type' &&
+                  attr.title !== 'File' && (
+                    <input
+                      type="text"
+                      value={attributes[attr.name] || ''}
+                      required={!OPTIONAL_REQUIREMENTS.includes(attr.name)}
+                      onChange={e =>
+                        setAttributes(prev => ({
+                          ...prev,
+                          [attr.name]: e.target.value,
+                        }))
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      placeholder={`Enter ${(attr.title || attr.name).toLowerCase()}...`}
+                    />
+                  )}
 
-                {((attr.type === 'string' || !attr.type) && attr.name === 'type') && (
+                {(attr.type === 'string' || !attr.type) && attr.name === 'type' && (
                   <select
                     value={selectedSource?.value}
                     disabled={true}
                     className="mt-1  block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   >
-                    <option value="" disabled>Select a source...</option>
+                    <option value="" disabled>
+                      Select a source...
+                    </option>
                     <option value="sqlite">SQLite (local DB)</option>
                     <option value="duckdb">DuckDB (in-memory/local)</option>
                     <option value="postgresql">PostgreSQL</option>
@@ -319,19 +331,19 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                 )}
 
                 {/* File input */}
-                  {attr.type === 'string' && attr.title === 'File' &&(
-                    <input
-                      type="file"
-                      onChange={e => {
-                        const file = e.target.files?.[0] || null;
-                        setAttributes(prev => ({
-                          ...prev,
-                          [attr.name]: file,
-                        }));
-                      }}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    />
-                  )}
+                {attr.type === 'string' && attr.title === 'File' && (
+                  <input
+                    type="file"
+                    onChange={e => {
+                      const file = e.target.files?.[0] || null;
+                      setAttributes(prev => ({
+                        ...prev,
+                        [attr.name]: file,
+                      }));
+                    }}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  />
+                )}
 
                 {/* Reference input (like model refs) */}
                 {attr.$ref && (
@@ -430,14 +442,14 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                 )}
               </div>
             ))}
-            
-            <SourceConnectionTest 
+
+            <SourceConnectionTest
               objectName={objectName}
               selectedSource={selectedSource}
               attributes={attributes}
               isVisible={selectedProperty === 'sources'}
             />
-            
+
             <button
               onClick={handleCreate}
               className="w-full bg-[#713B57] text-white py-2 px-4 rounded-lg hover:bg-[#5A2F46]"

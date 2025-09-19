@@ -1,13 +1,14 @@
+from visivo.logger.logger import Logger
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
+from visivo.models.props.layout import Layout
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.trace import Trace
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
-from visivo.models.trace_props.layout import Layout
-from visivo.models.trace_props.trace_props import TraceProps
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 from visivo.query.sqlglot_utils import (
     parse_expression,

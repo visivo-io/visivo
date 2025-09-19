@@ -68,6 +68,10 @@ class TableColumnDefinition(BaseModel):
         None,
         description="The name of the trace that the column defs apply to.",
     )
+    insight_name: str = Field(
+        None,
+        description="The name of the insight that the column defs apply to.",
+    )
     columns: List[TableColumn] = Field(
         description="A list of column definitions that contain `header` and `key`. `header` is the title of the column in the table. `key` is the path to the array property you want to include.  For example 'props.x' or 'columns.x_data'.",
     )

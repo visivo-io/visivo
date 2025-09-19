@@ -14,7 +14,7 @@ let globalURLConfig = null;
 
 /**
  * Set the global URL config (used internally by URLProvider)
- * @param {URLConfig} config 
+ * @param {URLConfig} config
  */
 export function setGlobalURLConfig(config) {
   globalURLConfig = config;
@@ -28,7 +28,9 @@ export function setGlobalURLConfig(config) {
  */
 export function getUrl(key, params = {}) {
   if (!globalURLConfig) {
-    throw new Error('getUrl() called before URLConfig was initialized. Make sure URLProvider is rendered before any API calls.');
+    throw new Error(
+      'getUrl() called before URLConfig was initialized. Make sure URLProvider is rendered before any API calls.'
+    );
   }
   return globalURLConfig.getUrl(key, params);
 }
@@ -49,23 +51,19 @@ export function URLProvider({ urlConfig, host, deploymentRoot, environment, chil
       setGlobalURLConfig(urlConfig);
       return urlConfig;
     }
-    
+
     // Otherwise, fall back to creating from individual props (for backward compatibility)
     const newConfig = createURLConfig({
       host,
       deploymentRoot,
-      environment
+      environment,
     });
-    
+
     setGlobalURLConfig(newConfig);
     return newConfig;
   }, [urlConfig, host, deploymentRoot, environment]);
 
-  return (
-    <URLContext.Provider value={finalUrlConfig}>
-      {children}
-    </URLContext.Provider>
-  );
+  return <URLContext.Provider value={finalUrlConfig}>{children}</URLContext.Provider>;
 }
 
 /**

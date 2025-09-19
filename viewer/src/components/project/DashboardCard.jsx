@@ -28,20 +28,19 @@ function DashboardCard({ projectId, dashboard }) {
       const formData = new FormData();
       formData.append('file', blob, `${dashboard.name}.png`);
       const dashboardNameHash = md5(dashboard.name);
-      
+
       let url = getUrl('dashboardThumbnail', { hash: dashboardNameHash });
       const response = await fetch(url, {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.status}`);
       }
-      
+
       const json = await response.json();
       setImageUrl(json.signed_thumbnail_file_url);
-      
     } catch (error) {
       console.error('Error uploading thumbnail:', error);
     }
@@ -60,12 +59,21 @@ function DashboardCard({ projectId, dashboard }) {
   // Simplified approach: Just start thumbnail generation after a short delay
   // This ensures navigation isn't blocked but thumbnails still generate
   useEffect(() => {
-    if (!shouldStartThumbnail && dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && project) {
+    if (
+      !shouldStartThumbnail &&
+      dashboardData &&
+      !dashboardData.signed_thumbnail_file_url &&
+      !imageUrl &&
+      project
+    ) {
       // Use requestIdleCallback to start thumbnail generation when the browser is idle
       if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(() => {
-          setShouldStartThumbnail(true);
-        }, { timeout: 1000 }); // Start within 1 second if browser never goes idle
+        requestIdleCallback(
+          () => {
+            setShouldStartThumbnail(true);
+          },
+          { timeout: 1000 }
+        ); // Start within 1 second if browser never goes idle
       } else {
         // Fallback for browsers without requestIdleCallback
         setTimeout(() => {
@@ -75,12 +83,12 @@ function DashboardCard({ projectId, dashboard }) {
     }
   }, [shouldStartThumbnail, dashboardData, imageUrl, project, dashboard.name]);
 
-  const needThumbnail = shouldStartThumbnail && 
-    !!dashboardData && 
-    !dashboardData.signed_thumbnail_file_url && 
-    !imageUrl && 
+  const needThumbnail =
+    shouldStartThumbnail &&
+    !!dashboardData &&
+    !dashboardData.signed_thumbnail_file_url &&
+    !imageUrl &&
     !!project;
-
 
   const CardContent = () => (
     <div
@@ -135,7 +143,6 @@ function DashboardCard({ projectId, dashboard }) {
       </div>
     </div>
   );
-
 
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">

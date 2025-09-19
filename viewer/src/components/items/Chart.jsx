@@ -12,6 +12,8 @@ import MenuContainer from './MenuContainer';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
+import { useInsightsData } from '../../hooks/useInsightsData';
+import { chartDataFromInsightData } from '../../models/Insight';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -28,31 +30,54 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
+
+  const insightNames = useMemo(() => {
+    if (!chart.insights?.length) return [];
+    return chart.insights.map(insight => insight.name);
+  }, [chart.insights]);
+
+  const hasInsights = chart.insights && chart.insights.length > 0;
+
+  const { insightsData, isInsightsLoading } = useInsightsData(
+    project.id,
+    hasInsights ? insightNames : []
+  );
+
+  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
+
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
 
   const [selectedCohortData, setSelectedCohortData] = useState([]);
 
   const selectedPlotData = useMemo(() => {
-    return traceNamesInData(selectedCohortData)
-      .map(traceName => {
-        const trace = chart.traces.find(trace => trace.name === traceName);
-        if (!trace) {
-          return [];
-        }
-        return Object.keys(selectedCohortData[traceName]).map(cohortName => {
-          const chartData = chartDataFromCohortData(
-            selectedCohortData[traceName][cohortName],
-            trace,
-            cohortName
-          );
-          return chartData;
-        });
-      })
-      .flat();
-  }, [selectedCohortData, chart.traces]);
+    let data = [];
 
-  if (!tracesData) {
+    // Handle trace-based data
+    if (selectedCohortData && Object.keys(selectedCohortData).length > 0) {
+      const traceData = traceNamesInData(selectedCohortData)
+        .map(traceName => {
+          const trace = chart.traces.find(t => t.name === traceName);
+          if (!trace) return [];
+          return Object.keys(selectedCohortData[traceName]).map(cohortName =>
+            chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
+          );
+        })
+        .flat();
+      data.push(...traceData);
+    }
+
+    // Handle insight-based data
+    if (hasInsights && insightsData) {
+      const insightName = chart.insights[0]?.name;
+      const insightData = chartDataFromInsightData(insightsData);
+      data.push(...insightData.filter(insight => insight.name === insightName));
+    }
+
+    return data;
+  }, [selectedCohortData, insightsData, chart.traces, chart.insights, hasInsights]);
+
+  if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 

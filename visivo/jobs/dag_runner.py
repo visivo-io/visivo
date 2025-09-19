@@ -2,6 +2,7 @@ from typing import Any
 import warnings
 
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.insight import Insight
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dashboard import Dashboard
@@ -18,6 +19,7 @@ from visivo.jobs.job import JobResult
 from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
+from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
@@ -132,6 +134,8 @@ class DagRunner:
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Trace):
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
+        elif isinstance(item, Insight):
+            return insight_job(insight=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, CsvScriptModel):
             return csv_script_job(
                 csv_script_model=item, output_dir=self.output_dir, working_dir=self.working_dir

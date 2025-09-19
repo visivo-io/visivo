@@ -120,6 +120,116 @@ nav:
                   - reference/configuration/Destinations/ConsoleDestination/index.md
           - Include:
               - reference/configuration/Include/index.md
+          - Inputs:
+              - DropdownInput:
+                  - reference/configuration/Inputs/DropdownInput/index.md
+          - Insight:
+              - reference/configuration/Insight/index.md
+              - InsightColumns:
+                  - reference/configuration/Insight/InsightColumns/index.md
+              - InsightInteraction:
+                  - reference/configuration/Insight/InsightInteraction/index.md
+              - Model:
+                  - reference/configuration/Insight/Model/index.md
+              - Props:
+                  - Area: &id001
+                      - reference/configuration/Insight/Props/Scatter/index.md
+                  - Bar:
+                      - reference/configuration/Insight/Props/Bar/index.md
+                  - Barpolar:
+                      - reference/configuration/Insight/Props/Barpolar/index.md
+                  - Box:
+                      - reference/configuration/Insight/Props/Box/index.md
+                  - Candlestick:
+                      - reference/configuration/Insight/Props/Candlestick/index.md
+                  - Carpet:
+                      - reference/configuration/Insight/Props/Carpet/index.md
+                  - Choropleth:
+                      - reference/configuration/Insight/Props/Choropleth/index.md
+                  - Choroplethmap:
+                      - reference/configuration/Insight/Props/Choroplethmap/index.md
+                  - Choroplethmapbox:
+                      - reference/configuration/Insight/Props/Choroplethmapbox/index.md
+                  - Cone:
+                      - reference/configuration/Insight/Props/Cone/index.md
+                  - Contour:
+                      - reference/configuration/Insight/Props/Contour/index.md
+                  - Contourcarpet:
+                      - reference/configuration/Insight/Props/Contourcarpet/index.md
+                  - Densitymap:
+                      - reference/configuration/Insight/Props/Densitymap/index.md
+                  - Densitymapbox:
+                      - reference/configuration/Insight/Props/Densitymapbox/index.md
+                  - Funnel:
+                      - reference/configuration/Insight/Props/Funnel/index.md
+                  - Funnelarea:
+                      - reference/configuration/Insight/Props/Funnelarea/index.md
+                  - Heatmap:
+                      - reference/configuration/Insight/Props/Heatmap/index.md
+                  - Histogram:
+                      - reference/configuration/Insight/Props/Histogram/index.md
+                  - Histogram2d:
+                      - reference/configuration/Insight/Props/Histogram2d/index.md
+                  - Histogram2dcontour:
+                      - reference/configuration/Insight/Props/Histogram2dcontour/index.md
+                  - Icicle:
+                      - reference/configuration/Insight/Props/Icicle/index.md
+                  - Image:
+                      - reference/configuration/Insight/Props/Image/index.md
+                  - Indicator:
+                      - reference/configuration/Insight/Props/Indicator/index.md
+                  - Isosurface:
+                      - reference/configuration/Insight/Props/Isosurface/index.md
+                  - Line: *id001
+                  - Mesh3d:
+                      - reference/configuration/Insight/Props/Mesh3d/index.md
+                  - Ohlc:
+                      - reference/configuration/Insight/Props/Ohlc/index.md
+                  - Parcats:
+                      - reference/configuration/Insight/Props/Parcats/index.md
+                  - Parcoords:
+                      - reference/configuration/Insight/Props/Parcoords/index.md
+                  - Pie:
+                      - reference/configuration/Insight/Props/Pie/index.md
+                  - Sankey:
+                      - reference/configuration/Insight/Props/Sankey/index.md
+                  - Scatter: *id001
+                  - Scatter3d:
+                      - reference/configuration/Insight/Props/Scatter3d/index.md
+                  - Scattercarpet:
+                      - reference/configuration/Insight/Props/Scattercarpet/index.md
+                  - Scattergeo:
+                      - reference/configuration/Insight/Props/Scattergeo/index.md
+                  - Scattergl:
+                      - reference/configuration/Insight/Props/Scattergl/index.md
+                  - Scattermap:
+                      - reference/configuration/Insight/Props/Scattermap/index.md
+                  - Scattermapbox:
+                      - reference/configuration/Insight/Props/Scattermapbox/index.md
+                  - Scatterpolar:
+                      - reference/configuration/Insight/Props/Scatterpolar/index.md
+                  - Scatterpolargl:
+                      - reference/configuration/Insight/Props/Scatterpolargl/index.md
+                  - Scattersmith:
+                      - reference/configuration/Insight/Props/Scattersmith/index.md
+                  - Scatterternary:
+                      - reference/configuration/Insight/Props/Scatterternary/index.md
+                  - Splom:
+                      - reference/configuration/Insight/Props/Splom/index.md
+                  - Streamtube:
+                      - reference/configuration/Insight/Props/Streamtube/index.md
+                  - Sunburst:
+                      - reference/configuration/Insight/Props/Sunburst/index.md
+                  - Surface:
+                      - reference/configuration/Insight/Props/Surface/index.md
+                  - Treemap:
+                      - reference/configuration/Insight/Props/Treemap/index.md
+                  - Violin:
+                      - reference/configuration/Insight/Props/Violin/index.md
+                  - Volume:
+                      - reference/configuration/Insight/Props/Volume/index.md
+                  - Waterfall:
+                      - reference/configuration/Insight/Props/Waterfall/index.md
           - Models:
               - SqlModel:
                   - reference/configuration/Models/SqlModel/index.md
@@ -167,8 +277,6 @@ nav:
               - Model:
                   - reference/configuration/Trace/Model/index.md
               - Props:
-                  - Area: &id001
-                      - reference/configuration/Trace/Props/Scatter/index.md
                   - Bar:
                       - reference/configuration/Trace/Props/Bar/index.md
                   - Barpolar:
@@ -215,7 +323,6 @@ nav:
                       - reference/configuration/Trace/Props/Indicator/index.md
                   - Isosurface:
                       - reference/configuration/Trace/Props/Isosurface/index.md
-                  - Line: *id001
                   - Mesh3d:
                       - reference/configuration/Trace/Props/Mesh3d/index.md
                   - Ohlc:
@@ -228,7 +335,8 @@ nav:
                       - reference/configuration/Trace/Props/Pie/index.md
                   - Sankey:
                       - reference/configuration/Trace/Props/Sankey/index.md
-                  - Scatter: *id001
+                  - Scatter:
+                      - reference/configuration/Trace/Props/Scatter/index.md
                   - Scatter3d:
                       - reference/configuration/Trace/Props/Scatter3d/index.md
                   - Scattercarpet:

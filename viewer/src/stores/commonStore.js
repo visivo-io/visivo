@@ -5,7 +5,7 @@ const createCommonSlice = (set, get) => {
   const evaluateIsNewProject = () => {
     const { project } = get();
     const dashboards = project?.project_json?.dashboards ?? [];
-    const isNew = project?.project_json?.name === "Quickstart Visivo" && dashboards.length === 0;
+    const isNew = project?.project_json?.name === 'Quickstart Visivo' && dashboards.length === 0;
     set({ isNewProject: isNew });
   };
 
@@ -16,15 +16,15 @@ const createCommonSlice = (set, get) => {
     scrollPositions: {},
     setScrollPosition: (dashName, pos) => {
       set(state => ({
-        scrollPositions: { ...state.scrollPositions, [dashName]: pos }
+        scrollPositions: { ...state.scrollPositions, [dashName]: pos },
       }));
     },
-    setProject: (project) => {
+    setProject: project => {
       set({ project });
       evaluateIsNewProject();
     },
 
-    setProjectFilePath: (projectFilePath) => {
+    setProjectFilePath: projectFilePath => {
       set({ projectFilePath });
     },
 
@@ -38,7 +38,7 @@ const createCommonSlice = (set, get) => {
       const projectFilePath = await fetchProjectFilePath();
       set({ projectFilePath });
     },
-  }
+  };
 };
 
 export default createCommonSlice;
