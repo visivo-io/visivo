@@ -76,6 +76,7 @@ extra_css:
   - stylesheets/icon-colors.css
 nav:
   - Quick Start: index.md
+  - AI Usage: ai-usage.md
   - Installation: installation.md
   - Change Log: https://github.com/visivo-io/visivo/releases
   - Topics:
