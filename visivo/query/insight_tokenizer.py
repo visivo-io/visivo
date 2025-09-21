@@ -25,10 +25,6 @@ from visivo.logger.logger import Logger
 
 
 class InsightTokenizer:
-    """
-    Tokenizes insights to generate both server-side (pre) and client-side (post) queries.
-    Uses SQLglot for intelligent query analysis and dependency detection.
-    """
 
     def __init__(self, insight: Insight, model: Model, source: Source):
         self.insight = insight
@@ -38,28 +34,25 @@ class InsightTokenizer:
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
-        # Analysis results
-        self.select_items = {}  # prop_path -> sql_expression
-        self.selects = {}  # prop_path -> items
-        self.columns = {}  # column_name -> items
-        self.column_items = {}  # column_name -> sql_expression
-        self.interaction_dependencies = {}  # interaction -> dependencies
-        self.input_dependencies = set()  # All input names referenced
-        self.required_columns = set()  # Columns needed in pre-query
-        self.groupby_statements = set()  # GROUP BY expressions needed
+        self.select_items = {}
+        self.selects = {}
+        self.columns = {}
+        self.column_items = {}
+        self.interaction_dependencies = {}
+        self.input_dependencies = set()
+        self.required_columns = set()
+        self.groupby_statements = set()
         self.is_dynamic_interactions = False
 
         self._analyze_insight()
 
     def tokenize(self) -> TokenizedInsight:
-        """Main entry point - returns tokenized insight with pre/post queries"""
         pre_query = self._generate_pre_query()
         post_query = self._generate_post_query()
 
         if self.is_dynamic_interactions:
             pre_query, post_query = post_query, pre_query
 
-        # Determine source type
         if isinstance(self.model, LocalMergeModel):
             source_type = "duckdb"
         elif self.source.type:
@@ -93,28 +86,23 @@ class InsightTokenizer:
         )
 
     def _analyze_insight(self):
-        """Master analysis method that coordinates all parsing"""
         self._analyze_props()
         self._analyze_columns()
         self._analyze_interactions()
         self._determine_groupby_requirements()
 
     def _analyze_props(self):
-        """Extract SQL expressions from insight props using recursive traversal"""
         self._extract_select_items(self.insight.props, ["props"])
 
     def _analyze_columns(self):
-        """Extract SQL expressions from insight columns section"""
         if self.insight.columns:
             self._extract_select_items(self.insight.columns, ["columns"])
 
     def _extract_select_items(self, obj: Any, path: List[str]):
-        """Recursively extract SQL expressions from nested objects"""
         if obj is None:
             return
 
         if isinstance(obj, (InsightProps, Layout)):
-            # Get all fields including extra ones from the model dump
             props_dict = obj.model_dump()
             for key, value in props_dict.items():
                 if value is not None:
@@ -141,7 +129,6 @@ class InsightTokenizer:
                 self._extract_select_items(value, path + [key])
 
         else:
-            # This is a leaf value - extract SQL if it's a query
             query_id = ".".join(path)
 
             sql_expression = None
@@ -156,34 +143,28 @@ class InsightTokenizer:
                 else:
                     self.column_items[query_id] = sql_expression
 
-                # Analyze the SQL expression
                 self._analyze_sql_expression(sql_expression)
 
     def _analyze_interactions(self):
-        """Parse interactions to understand client-side requirements"""
         if not self.insight.interactions:
             return
 
         for interaction in self.insight.interactions:
             interaction_deps = set()
 
-            # Analyze filter interactions
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
                     interaction_deps.update(filter_expr)
-                    # Add columns referenced in filter to required columns
                     columns = self._extract_column_dependencies(filter_expr)
                     self.required_columns.update(columns)
 
-            # Analyze split interactions
             if interaction.split:
                 split_expr = interaction.split.get_value()
                 if split_expr:
                     columns = self._extract_column_dependencies(split_expr)
                     self.required_columns.update(columns)
 
-            # Analyze sort interactions
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
@@ -191,7 +172,6 @@ class InsightTokenizer:
                     self.required_columns.update(columns)
 
     def _analyze_sql_expression(self, sql_expr: str):
-        """Use SQLglot to analyze a SQL expression for aggregations and dependencies"""
         try:
             parsed = parse_expression(sql_expr, dialect=self.sqlglot_dialect)
 
@@ -204,7 +184,6 @@ class InsightTokenizer:
             self._fallback_aggregation_analysis(sql_expr)
 
     def _fallback_aggregation_analysis(self, sql_expr: str):
-        """Fallback aggregation detection using simple pattern matching"""
         agg_functions = [
             "sum(",
             "count(",
@@ -222,7 +201,6 @@ class InsightTokenizer:
         if any(agg in sql_lower for agg in agg_functions):
             import re
 
-            # Simple pattern to find potential column names not inside parentheses
             column_pattern = r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b"
             matches = re.findall(column_pattern, sql_expr)
 
@@ -246,19 +224,16 @@ class InsightTokenizer:
 
             for match in matches:
                 if match.lower() not in sql_keywords:
-                    # Check if this column is not inside a function call
                     if not self._is_inside_function(sql_expr, match):
                         self.groupby_statements.add(match)
 
     def _is_inside_function(self, sql_expr: str, column: str) -> bool:
-        """Check if a column reference is inside a function call"""
         import re
 
         pattern = rf"\w+\([^)]*\b{re.escape(column)}\b[^)]*\)"
         return bool(re.search(pattern, sql_expr, re.IGNORECASE))
 
     def _extract_column_dependencies(self, sql_expr: str) -> List[str]:
-        """Get list of columns referenced in expression"""
         try:
             parsed = parse_expression(sql_expr, dialect=self.sqlglot_dialect)
             return extract_column_references(parsed)
@@ -280,7 +255,6 @@ class InsightTokenizer:
             return [match for match in matches if match.lower() not in sql_keywords]
 
     def _determine_groupby_requirements(self):
-        """Determine final GROUP BY requirements"""
 
         has_any_aggregation = False
         all_referenced_columns = set()
@@ -313,7 +287,6 @@ class InsightTokenizer:
                     self.groupby_statements.add(column)
 
     def _is_column_inside_aggregation(self, column: str) -> bool:
-        """Check if a column is used only inside aggregation functions across all expressions"""
         for expr in list(self.select_items.values()) + list(self.column_items.values()):
             if column.lower() in expr.lower():
                 if not self._is_inside_function(expr, column):
@@ -321,9 +294,6 @@ class InsightTokenizer:
         return True
 
     def _generate_pre_query(self) -> str:
-        """
-        Generate server-side SQL query with precomputed CTE for duplicated and complex expressions.
-        """
         base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
 
         occurrences = {}
@@ -342,12 +312,10 @@ class InsightTokenizer:
             if preferred_alias:
                 occ["preferred_aliases"].add(preferred_alias)
 
-        # Register column expressions
         for column_path, sql_expr in self.column_items.items():
             short = column_path.split(".", 1)[1]
             register(sql_expr, "column", column_path, preferred_alias=short)
 
-        # Register prop expressions
         for prop_path, sql_expr in self.select_items.items():
             short_prop = prop_path.split(".", 1)[1]
             if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
@@ -360,14 +328,11 @@ class InsightTokenizer:
             else:
                 register(sql_expr, "prop", prop_path, preferred_alias=short_prop)
 
-        # Register required columns
         for req in list(self.required_columns or []):
             register(req, "required", req, preferred_alias=req)
 
-        # Build alias map
         alias_map, used_aliases = {}, set()
         for norm, info in occurrences.items():
-            # Always alias if expression is not a simple column
             force_alias = "(" in info["orig"] or ")" in info["orig"] or " " in info["orig"]
             if info["count"] > 1 or force_alias:
                 preferred_alias = None
@@ -376,7 +341,6 @@ class InsightTokenizer:
                 alias = self._make_alias_name(preferred_alias, used_aliases, prefix="expr")
                 alias_map[norm] = alias
 
-        # Projections for outer query (always reference aliases when available)
         outer_projections = []
         for column_path, sql_expr in self.column_items.items():
             norm = self._normalize_expr_sql(sql_expr)
@@ -405,7 +369,6 @@ class InsightTokenizer:
         for col in self.required_columns:
             outer_projections.append(exp.column(col))
 
-        # Build query with CTE if needed
         if alias_map:
             cte_projections = [
                 exp.alias_(occurrences[n]["orig"], alias) for n, alias in alias_map.items()
@@ -424,7 +387,6 @@ class InsightTokenizer:
             base_model = exp.Subquery(this=base_sql_expr).as_("base_model")
             query = exp.Select().select(*outer_projections).from_(base_model)
 
-        # Static filters
         static_filters = []
         for interaction in self.insight.interactions or []:
             if interaction.filter:
@@ -438,7 +400,6 @@ class InsightTokenizer:
         if static_filters:
             query = query.where(*static_filters)
 
-        # Group by
         if self.groupby_statements:
             mapped_groupbys = []
             for g in self.groupby_statements:
@@ -446,7 +407,6 @@ class InsightTokenizer:
                 mapped_groupbys.append(exp.column(alias_map.get(norm_g, g)))
             query = query.group_by(*mapped_groupbys)
 
-        # Static sorts (safe unwrap)
         static_sorts = []
         for interaction in self.insight.interactions or []:
             if interaction.sort:
@@ -464,17 +424,13 @@ class InsightTokenizer:
         return query.sql(dialect=self.sqlglot_dialect, pretty=True)
 
     def _generate_post_query(self) -> str:
-        """Generate client-side query with dynamic filters/sorts"""
 
-        # return "SELECT * FROM insight_data"
         return self.model.sql
 
     def _parameterize_input_references(self, expr: str) -> str:
-        """Replace ${ref(input).value} with parameter placeholders"""
         return expr
 
     def _serialize_interactions(self) -> List[Dict[str, Any]]:
-        """Convert interactions to serializable format"""
         if not self.insight.interactions:
             return []
 
@@ -503,7 +459,6 @@ class InsightTokenizer:
         return result
 
     def _get_split_column(self) -> Optional[str]:
-        """Get the column used for splitting data into multiple traces"""
         if self.insight.interactions:
             for interaction in self.insight.interactions:
                 if interaction.split:
@@ -511,7 +466,6 @@ class InsightTokenizer:
         return None
 
     def _get_sort_expressions(self) -> Optional[List[str]]:
-        """Get sort expressions for client-side ordering"""
         sort_exprs = []
         if self.insight.interactions:
             for interaction in self.insight.interactions:
@@ -522,10 +476,6 @@ class InsightTokenizer:
         return sort_exprs if sort_exprs else None
 
     def _normalize_expr_sql(self, sql_expr: str) -> str:
-        """
-        Return a canonical form of an expression using sqlglot.
-        If parsing fails, fall back to the stripped original.
-        """
         if sql_expr is None:
             return ""
         s = str(sql_expr).strip()
@@ -538,10 +488,6 @@ class InsightTokenizer:
     def _make_alias_name(
         self, preferred: Optional[str], used: Set[str], prefix: str = "expr"
     ) -> str:
-        """
-        Create a safe alias name (no collisions with used).
-        If preferred is given and not used, choose that (sanitized).
-        """
 
         def sanitize(name: str) -> str:
             return re.sub(r"[^\w]", "_", name)
@@ -561,9 +507,5 @@ class InsightTokenizer:
             i += 1
 
     def _is_dynamic(self, expr: str) -> bool:
-        """
-        Checks if an interaction uses dynamic inputs via ref(...).
-            Example: {"filter": "?{ sales_amount > 1000 AND region = ${ref(sales-region)} }"}
-        """
         DYNAMIC_PATTERN = re.compile(r"\$\{\s*ref\([^)]+\)\s*\}", re.IGNORECASE)
         return bool(DYNAMIC_PATTERN.search(expr))

@@ -43,20 +43,15 @@ class GroupByBuilder:
         has_non_aggregates = False
 
         for expression in select_items.values():
-            # Parse the expression
             parsed = parse_expression(expression, dialect=self.dialect)
             if not parsed:
                 continue
 
-            # Skip window functions - they don't require GROUP BY
             if has_window_function(parsed):
                 continue
 
-            # Check for aggregates (excluding window functions)
             if has_aggregate_function(parsed) and not has_window_function(parsed):
                 has_aggregates = True
-
-            # Check for non-aggregated columns
             non_agg_cols = find_non_aggregated_columns(parsed)
             if non_agg_cols:
                 has_non_aggregates = True
@@ -67,7 +62,7 @@ class GroupByBuilder:
         self,
         select_expr: exp.Select,
         select_items: Optional[Dict[str, str]],
-        cohort_on: Optional[str] = None,
+        split_column: Optional[str] = None,
         sanitize_alias_fn=None,
     ) -> exp.Select:
         """
@@ -76,7 +71,7 @@ class GroupByBuilder:
         Args:
             select_expr: The SELECT expression to modify
             select_items: Dictionary of alias to expression
-            cohort_on: Optional cohort_on value to include in GROUP BY
+            split_column: Optional split_column value to include in GROUP BY
             sanitize_alias_fn: Optional function to sanitize aliases
 
         Returns:
@@ -87,35 +82,25 @@ class GroupByBuilder:
 
         group_by_items = []
 
-        # Get non-aggregate columns from select items
         for alias, expression in select_items.items():
             parsed = parse_expression(expression, dialect=self.dialect)
             if not parsed:
                 continue
 
-            # Skip window functions - they don't go in GROUP BY
             if has_window_function(parsed):
                 continue
 
-            # Check if this is a non-aggregate expression
             if not has_aggregate_function(parsed):
-                # Use the sanitized quoted alias for GROUP BY to match SELECT
                 sanitized_alias = sanitize_alias_fn(alias) if sanitize_alias_fn else alias
                 group_by_items.append(exp.Identifier(this=sanitized_alias, quoted=True))
 
-        # Always add cohort_on to GROUP BY if it exists and we have GROUP BY items
-        if group_by_items and cohort_on:
-            # Check if cohort_on is not a literal string (which shouldn't be grouped by)
-            cohort_on_value = cohort_on.strip()
-            if not (cohort_on_value.startswith("'") and cohort_on_value.endswith("'")):
-                # It's a column reference, add to GROUP BY
-                group_by_items.append(exp.Identifier(this="cohort_on", quoted=True))
+        if group_by_items and split_column:
+            split_column_value = split_column.strip()
+            if not (split_column_value.startswith("'") and split_column_value.endswith("'")):
+                group_by_items.append(exp.Identifier(this="split_column", quoted=True))
             elif group_by_items:
-                # Even for literal cohort_on values, we need to include it in GROUP BY
-                # since it's in the SELECT clause
-                group_by_items.append(exp.Identifier(this="cohort_on", quoted=True))
+                group_by_items.append(exp.Identifier(this="split_column", quoted=True))
 
-        # Add GROUP BY clause if there are items
         if group_by_items:
             select_expr = select_expr.group_by(*group_by_items)
 

@@ -9,7 +9,7 @@ providing better dialect handling and type safety.
 from sqlglot import exp
 import sqlglot
 from typing import Optional, List, Tuple, Dict
-from visivo.models.tokenized_trace import TokenizedTrace
+from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.query.relation_graph import RelationGraph, NoJoinPathError, AmbiguousJoinError
@@ -40,18 +40,18 @@ class SqlglotQueryBuilder:
     string templates and providing proper dialect-specific SQL generation.
     """
 
-    def __init__(self, tokenized_trace: TokenizedTrace, project: Project):
+    def __init__(self, tokenized_insight: TokenizedInsight, project: Project):
         """
         Initialize the query builder.
 
         Args:
-            tokenized_trace: The tokenized trace with resolved expressions
+            tokenized_insight: The tokenized insight with resolved expressions
             project: The project containing models, metrics, and relations
         """
-        self.tokenized_trace = tokenized_trace
+        self.tokenized_insight = tokenized_insight
         self.project = project
         self.dag: ProjectDag = project.dag()
-        self.dialect = get_sqlglot_dialect(tokenized_trace.source_type)
+        self.dialect = get_sqlglot_dialect(tokenized_insight.source_type)
         self.model_sanitizer = ModelNameSanitizer()  # Create instance for this query
 
         # Build model alias map for relation resolution
@@ -116,8 +116,8 @@ class SqlglotQueryBuilder:
             True if the query references multiple models
         """
         # Check if tokenized_trace has referenced_models attribute
-        if hasattr(self.tokenized_trace, "referenced_models"):
-            referenced_models = self.tokenized_trace.referenced_models
+        if hasattr(self.tokenized_insight, "referenced_models"):
+            referenced_models = self.tokenized_insight.referenced_models
             return referenced_models is not None and len(referenced_models) > 0
         return False
 
@@ -135,7 +135,7 @@ class SqlglotQueryBuilder:
         select_expr = self._build_select_expression()
 
         # Add WHERE clause if filters exist
-        if self.tokenized_trace.filter_by:
+        if self.tokenized_insight.filter_by:
             select_expr = self._add_where_clause(select_expr)
 
         # Add GROUP BY if needed
@@ -146,11 +146,11 @@ class SqlglotQueryBuilder:
         select_expr = self._add_having_clause(select_expr)
 
         # Add ORDER BY if specified
-        if self.tokenized_trace.order_by:
+        if self.tokenized_insight.order_by:
             select_expr = self._add_order_by(select_expr)
 
         # Add LIMIT if specified
-        if hasattr(self.tokenized_trace, "limit") and self.tokenized_trace.limit:
+        if hasattr(self.tokenized_insight, "limit") and self.tokenized_insight.limit:
             select_expr = self._add_limit(select_expr)
 
         # Combine CTE and main query
@@ -196,7 +196,7 @@ class SqlglotQueryBuilder:
         select_expr = self._build_joined_select(all_models, join_paths)
 
         # Add WHERE clause if filters exist
-        if self.tokenized_trace.filter_by:
+        if self.tokenized_insight.filter_by:
             select_expr = self._add_where_clause_qualified(select_expr, all_models)
 
         # Add GROUP BY if needed
@@ -207,11 +207,11 @@ class SqlglotQueryBuilder:
         select_expr = self._add_having_clause_qualified(select_expr, all_models)
 
         # Add ORDER BY if specified
-        if self.tokenized_trace.order_by:
+        if self.tokenized_insight.order_by:
             select_expr = self._add_order_by_qualified(select_expr, all_models)
 
         # Add LIMIT if specified
-        if hasattr(self.tokenized_trace, "limit") and self.tokenized_trace.limit:
+        if hasattr(self.tokenized_insight, "limit") and self.tokenized_insight.limit:
             select_expr = self._add_limit(select_expr)
 
         # Combine CTEs and main query
@@ -227,11 +227,11 @@ class SqlglotQueryBuilder:
         Returns:
             A CTE expression or None if not needed
         """
-        if not self.tokenized_trace.sql:
+        if not self.tokenized_insight.pre_query:
             return None
 
-        model_name = getattr(self.tokenized_trace, "model_name", "base_model")
-        return self.cte_builder.build_base_cte(self.tokenized_trace.sql, model_name)
+        model_name = getattr(self.tokenized_insight, "model_name", "base_model")
+        return self.cte_builder.build_base_cte(self.tokenized_insight.pre_query, model_name)
 
     def _build_select_expression(self) -> exp.Select:
         """
@@ -243,8 +243,8 @@ class SqlglotQueryBuilder:
         select = exp.Select()
 
         # Add SELECT items from tokenized_trace
-        if self.tokenized_trace.select_items:
-            for alias, expression in self.tokenized_trace.select_items.items():
+        if self.tokenized_insight.select_items:
+            for alias, expression in self.tokenized_insight.select_items.items():
                 # Parse the expression using utility function
                 parsed_expr = parse_expression(expression, dialect=self.dialect)
                 if not parsed_expr:
@@ -271,19 +271,19 @@ class SqlglotQueryBuilder:
             select = select.select(exp.Star())
 
         # Always add cohort_on column
-        if hasattr(self.tokenized_trace, "cohort_on") and self.tokenized_trace.cohort_on:
-            cohort_on_expr = parse_expression(self.tokenized_trace.cohort_on, dialect=self.dialect)
+        if hasattr(self.tokenized_insight, "split_column") and self.tokenized_insight.split_column:
+            split_expr = parse_expression(self.tokenized_insight.split_column, dialect=self.dialect)
             if not cohort_on_expr:
                 # If parsing fails, use the raw string
-                cohort_on_expr = exp.Literal.string(self.tokenized_trace.cohort_on)
+                split_expr = exp.Literal.string(self.tokenized_insight.split_column)
 
             # Add cohort_on with alias "cohort_on"
             select = select.select(
-                exp.Alias(this=cohort_on_expr, alias=exp.Identifier(this="cohort_on", quoted=True))
+                exp.Alias(this=split_expr, alias=exp.Identifier(this="split_column", quoted=True))
             )
 
         # Set FROM clause to reference the CTE
-        model_name = getattr(self.tokenized_trace, "model_name", "base_model")
+        model_name = getattr(self.tokenized_insight, "model_name", "base_model")
         select = select.from_(model_name)
 
         return select
@@ -295,7 +295,7 @@ class SqlglotQueryBuilder:
         Returns:
             True if GROUP BY is required
         """
-        return self.group_by_builder.needs_group_by(self.tokenized_trace.select_items)
+        return self.group_by_builder.needs_group_by(self.tokenized_insight.select_items)
 
     def _add_group_by(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -307,9 +307,9 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with GROUP BY
         """
-        cohort_on = getattr(self.tokenized_trace, "cohort_on", None)
+        split_column = getattr(self.tokenized_insight, "split_column", None)
         return self.group_by_builder.build(
-            select_expr, self.tokenized_trace.select_items, cohort_on, self._sanitize_alias
+            select_expr, self.tokenized_insight.select_items, split_column, self._sanitize_alias
         )
 
     def _add_where_clause(self, select_expr: exp.Select) -> exp.Select:
@@ -322,7 +322,7 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with WHERE clause
         """
-        return self.where_builder.build(select_expr, self.tokenized_trace.filter_by)
+        return self.where_builder.build(select_expr, self.tokenized_insight.filter_by)
 
     def _add_having_clause(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -334,7 +334,7 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with HAVING clause
         """
-        return self.having_builder.build(select_expr, self.tokenized_trace.filter_by)
+        return self.having_builder.build(select_expr, self.tokenized_insight.filter_by)
 
     def _add_order_by(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -351,8 +351,8 @@ class SqlglotQueryBuilder:
         """
         return self.order_by_builder.build(
             select_expr,
-            self.tokenized_trace.order_by,
-            self.tokenized_trace.select_items,
+            self.tokenized_insight.order_by,
+            self.tokenized_insight.select_items,
             self._sanitize_alias,
         )
 
@@ -366,7 +366,7 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with LIMIT
         """
-        limit_value = getattr(self.tokenized_trace, "limit", None)
+        limit_value = getattr(self.tokenized_insight, "limit", None)
         if limit_value:
             select_expr = select_expr.limit(limit_value)
 
@@ -379,8 +379,8 @@ class SqlglotQueryBuilder:
         Returns:
             The base model name
         """
-        # The base model is the model directly associated with the trace
-        # This is stored in the TokenizedTrace's sql field (from model.sql)
+        # The base model is the model directly associated with the insight
+        # This is stored in the TokenizedInsight's pre_query field (from model.sql)
         # We need to extract the model name from the DAG
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.models.model import Model
@@ -395,7 +395,7 @@ class SqlglotQueryBuilder:
 
             # Find the model whose SQL matches our tokenized trace SQL
             for model in models:
-                if hasattr(model, "sql") and model.sql == self.tokenized_trace.sql:
+                if hasattr(model, "sql") and model.sql == self.tokenized_insight.pre_query:
                     self._base_model_name_cache = model.name
                     return model.name
 
@@ -508,7 +508,7 @@ class SqlglotQueryBuilder:
                 sanitized_name = self._get_model_alias(model.name)
                 schema[f"{sanitized_name}_cte"] = model_schema
                 # And base_model for single model queries
-                if hasattr(self, "tokenized_trace") and self.tokenized_trace.sql == getattr(
+                if hasattr(self, "tokenized_insight") and self.tokenized_insight.pre_query == getattr(
                     model, "sql", None
                 ):
                     schema["base_model"] = model_schema
@@ -643,8 +643,8 @@ class SqlglotQueryBuilder:
             joined_models.add(join_model)
 
         # Add SELECT items with qualification
-        if self.tokenized_trace.select_items:
-            for alias, expression in self.tokenized_trace.select_items.items():
+        if self.tokenized_insight.select_items:
+            for alias, expression in self.tokenized_insight.select_items.items():
                 # Qualify the expression with model names
                 qualified_expr = self._qualify_expression(expression, model_names)
                 # Sanitize the alias (replace dots with pipes)
@@ -659,15 +659,15 @@ class SqlglotQueryBuilder:
             select = select.select(exp.Star())
 
         # Always add cohort_on column
-        if hasattr(self.tokenized_trace, "cohort_on") and self.tokenized_trace.cohort_on:
-            cohort_on_expr = parse_expression(self.tokenized_trace.cohort_on, dialect=self.dialect)
+        if hasattr(self.tokenized_insight, "split_column") and self.tokenized_insight.split_column:
+            split_expr = parse_expression(self.tokenized_insight.split_column, dialect=self.dialect)
             if not cohort_on_expr:
                 # If parsing fails, use the raw string
-                cohort_on_expr = exp.Literal.string(self.tokenized_trace.cohort_on)
+                split_expr = exp.Literal.string(self.tokenized_insight.split_column)
 
             # Add cohort_on with alias "cohort_on"
             select = select.select(
-                exp.Alias(this=cohort_on_expr, alias=exp.Identifier(this="cohort_on", quoted=True))
+                exp.Alias(this=split_expr, alias=exp.Identifier(this="split_column", quoted=True))
             )
 
         return select
@@ -717,8 +717,6 @@ class SqlglotQueryBuilder:
             return exp.Column(this=expression)
 
         # For now, return the parsed expression as-is
-        # TODO: Implement proper column qualification logic
-        # This would need to determine which model each column belongs to
         return parsed
 
     def _add_where_clause_qualified(
@@ -734,8 +732,6 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with WHERE clause
         """
-        # For now, use the same logic as single model
-        # TODO: Add column qualification
         return self._add_where_clause(select_expr)
 
     def _add_group_by_qualified(
@@ -751,8 +747,6 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with GROUP BY
         """
-        # For now, use the same logic as single model (which includes cohort_on)
-        # TODO: Add column qualification
         return self._add_group_by(select_expr)
 
     def _add_having_clause_qualified(
@@ -768,8 +762,6 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with HAVING clause
         """
-        # For now, use the same logic as single model
-        # TODO: Add column qualification
         return self._add_having_clause(select_expr)
 
     def _add_order_by_qualified(
@@ -785,6 +777,4 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with ORDER BY
         """
-        # For now, use the same logic as single model
-        # TODO: Add column qualification
         return self._add_order_by(select_expr)

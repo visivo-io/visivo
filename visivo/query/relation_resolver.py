@@ -49,19 +49,14 @@ class RelationResolver:
         """
 
         def replacer(model_name: str, field_name: Optional[str]) -> str:
-            # Get the SQL alias for this model
             model_alias = self.model_alias_map.get(model_name, model_name)
 
-            # Return the qualified SQL reference
             if field_name:
                 return f"{model_alias}{suffix}.{field_name}"
             else:
                 return f"{model_alias}{suffix}"
 
-        # Use shared pattern utility for replacement
         resolved = replace_refs(condition, replacer)
-
-        # Log the resolution for debugging
         if condition != resolved:
             self.logger.debug(f"Resolved relation condition: '{condition}' -> '{resolved}'")
 
@@ -96,11 +91,9 @@ class RelationResolver:
         Returns:
             True if condition is valid, False otherwise
         """
-        # Check syntax validity
         is_valid, _ = validate_ref_syntax(condition)
         if not is_valid:
             return False
 
-        # Check that at least 2 models are referenced
         models = extract_model_names(condition)
         return len(models) >= 2
