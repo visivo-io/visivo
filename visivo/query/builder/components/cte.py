@@ -38,7 +38,6 @@ class CTEBuilder:
         if not model_sql:
             return None
 
-        # Parse the model SQL
         parsed_sql = parse_expression(model_sql, dialect=self.dialect)
         if not parsed_sql:
             Logger.instance().debug(f"Failed to parse model SQL: {model_sql[:100]}...")
@@ -49,7 +48,6 @@ class CTEBuilder:
             f"SQL: {parsed_sql.sql(dialect=self.dialect) if parsed_sql else 'None'}"
         )
 
-        # Create CTE with given name
         cte = exp.CTE(alias=exp.Identifier(this=model_name), this=parsed_sql)
         return cte
 
@@ -73,7 +71,6 @@ class CTEBuilder:
             # No project or models provided, cannot build CTEs
             return ctes
 
-        # If models_by_name not provided, get from project
         if not models_by_name and self.project:
             from visivo.models.dag import all_descendants_of_type
             from visivo.models.models.model import Model
@@ -85,10 +82,8 @@ class CTEBuilder:
         for model_name in model_names:
             model = models_by_name.get(model_name)
             if model and hasattr(model, "sql") and model.sql:
-                # Parse the model SQL
                 parsed_sql = parse_expression(model.sql, dialect=self.dialect)
                 if parsed_sql:
-                    # Create CTE with sanitized name
                     cte_name = f"{get_model_alias_fn(model_name)}_cte"
                     cte = exp.CTE(alias=exp.Identifier(this=cte_name), this=parsed_sql)
                     ctes.append(cte)
@@ -110,8 +105,6 @@ class CTEBuilder:
         """
         if not ctes:
             return select_expr
-
-        # Add CTEs to SELECT using WITH clause
         for cte in ctes:
             select_expr = select_expr.with_(cte.alias, as_=cte.this)
 

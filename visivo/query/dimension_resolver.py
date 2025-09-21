@@ -46,37 +46,27 @@ class DimensionResolver:
         """Build an index of all dimensions in the project."""
         self.dimensions_by_name = {}
 
-        # Get all models from the DAG
         from visivo.models.dag import all_descendants_of_type
 
         all_models = all_descendants_of_type(type=Model, dag=self.dag)
 
         for model in all_models:
-            # First add implicit dimensions (lower priority)
             if hasattr(model, "_implicit_dimensions") and model._implicit_dimensions:
                 for dimension in model._implicit_dimensions:
-                    # Add by simple name (for current model context)
                     self.dimensions_by_name[dimension.name] = (model, dimension)
 
-                    # Add with model qualifier for cross-model access
                     qualified_name = f"{model.name}.{dimension.name}"
                     self.dimensions_by_name[qualified_name] = (model, dimension)
 
-            # Then add explicit model dimensions (higher priority - overwrites implicit)
             if hasattr(model, "dimensions") and model.dimensions:
                 for dimension in model.dimensions:
-                    # Add by simple name (for current model context)
                     self.dimensions_by_name[dimension.name] = (model, dimension)
 
-                    # Add with model qualifier for cross-model access
                     qualified_name = f"{model.name}.{dimension.name}"
                     self.dimensions_by_name[qualified_name] = (model, dimension)
 
-        # Finally add project-level dimensions (highest priority)
         if hasattr(self.project, "dimensions") and self.project.dimensions:
             for dimension in self.project.dimensions:
-                # Project-level dimensions don't have a specific model
-                # They can reference dimensions from multiple models
                 self.dimensions_by_name[dimension.name] = (None, dimension)
 
     def find_dimension(self, name: str) -> Optional[tuple]:
@@ -107,15 +97,11 @@ class DimensionResolver:
         Raises:
             DimensionNotFoundError: If the dimension cannot be found
         """
-        # Check cache first
         cache_key = f"{current_model}.{dimension_name}" if current_model else dimension_name
         if cache_key in self._dimension_cache:
             return self._dimension_cache[cache_key]
 
-        # Try to find the dimension
         result = self.find_dimension(dimension_name)
-
-        # If not found and we have a current model context, try with model qualifier
         if not result and current_model:
             qualified_name = f"{current_model}.{dimension_name}"
             result = self.find_dimension(qualified_name)
@@ -125,14 +111,11 @@ class DimensionResolver:
 
         model, dimension = result
 
-        # Get the dimension expression
         expression = dimension.expression if dimension.expression else dimension.name
 
-        # For project-level dimensions, resolve any nested dimension references
-        if model is None:  # Project-level dimension
+        if model is None:
             expression = self._resolve_nested_dimension_references(expression)
 
-        # Cache the result
         self._dimension_cache[cache_key] = expression
 
         return expression
@@ -149,7 +132,6 @@ class DimensionResolver:
         """
         import re
 
-        # Pattern to match ${ref(model).dimension} or ${ref(dimension)}
         pattern = r"\$\{\s*ref\(\s*([^)]+)\s*\)(?:\.([^}]+))?\s*\}"
 
         def replace_ref(match):
@@ -157,26 +139,18 @@ class DimensionResolver:
             second_part = match.group(2).strip() if match.group(2) else None
 
             if second_part:
-                # ${ref(model).dimension} format
                 qualified_name = f"{first_part}.{second_part}"
                 try:
-                    # Recursively resolve the referenced dimension
                     resolved = self.resolve_dimension_expression(qualified_name)
                     return f"({resolved})"
                 except DimensionNotFoundError:
-                    # Not a dimension, return as-is
                     return match.group(0)
             else:
-                # ${ref(dimension)} format
                 try:
-                    # Recursively resolve the referenced dimension
                     resolved = self.resolve_dimension_expression(first_part)
                     return f"({resolved})"
                 except DimensionNotFoundError:
-                    # Not a dimension, return as-is
                     return match.group(0)
-
-        # Replace all dimension references
         return re.sub(pattern, replace_ref, expression)
 
     def get_models_from_dimension(self, dimension_name: str) -> Set[str]:
@@ -197,11 +171,8 @@ class DimensionResolver:
 
         models = set()
 
-        # If it's a model-level dimension, it references its own model
         if model is not None:
             models.add(model.name)
-
-        # For project-level dimensions, parse the expression for model references
         if model is None or dimension.expression:
             models.update(self._extract_models_from_expression(dimension.expression))
 
@@ -223,19 +194,15 @@ class DimensionResolver:
 
         models = set()
 
-        # Get all model names from the DAG for validation
         all_models = all_descendants_of_type(type=Model, dag=self.dag)
         model_names = {model.name for model in all_models}
 
-        # Pattern to match ${ref(model).field} or ${ref(model).dimension}
         pattern = r"\$\{\s*ref\(\s*([^)]+)\s*\)\.([^}]+)\s*\}"
 
         for match in re.finditer(pattern, expression):
             model_name = match.group(1).strip().strip("'\"")
             field_name = match.group(2).strip()
 
-            # If it's a valid model name, add it regardless of whether the field is a dimension
-            # This handles both dimension references and direct field references
             if model_name in model_names:
                 models.add(model_name)
 
@@ -254,7 +221,6 @@ class DimensionResolver:
         Returns:
             Tuple of (resolved_expression, referenced_models)
         """
-        # Pattern to match ${ref(model).dimension} or ${ref(dimension)}
         pattern = r"\$\{\s*ref\(\s*([^)]+)\s*\)(?:\.([^}]+))?\s*\}"
         match = re.match(pattern, reference)
 
@@ -267,7 +233,6 @@ class DimensionResolver:
         referenced_models = set()
 
         if second_part:
-            # Format: ${ref(model).dimension}
             model_name = first_part
             dimension_name = second_part
             qualified_name = f"{model_name}.{dimension_name}"
@@ -277,10 +242,8 @@ class DimensionResolver:
                 referenced_models.add(model_name)
                 return expression, referenced_models
             except DimensionNotFoundError:
-                # Not a dimension, return as-is
                 return reference, set()
         else:
-            # Format: ${ref(dimension)}
             dimension_name = first_part
 
             try:
@@ -288,5 +251,4 @@ class DimensionResolver:
                 models = self.get_models_from_dimension(dimension_name)
                 return expression, models
             except DimensionNotFoundError:
-                # Not a dimension, return as-is
                 return reference, set()
