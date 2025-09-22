@@ -6,8 +6,8 @@ from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
-from visivo.models.trace_props.layout import Layout
-from visivo.models.trace_props.trace_props import TraceProps
+from visivo.models.props.layout import Layout
+from visivo.models.props.trace_props import TraceProps
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 from visivo.query.sqlglot_utils import (
     parse_expression,
@@ -44,7 +44,7 @@ class TraceTokenizer:
     def _get_metric_resolver(self):
         """Lazily initialize and return the MetricResolver."""
         if self._metric_resolver is None and self.project is not None:
-            from visivo.query.metric_resolver import MetricResolver
+            from visivo.query.resolvers.metric_resolver import MetricResolver
 
             self._metric_resolver = MetricResolver(self.project)
         return self._metric_resolver
@@ -52,7 +52,7 @@ class TraceTokenizer:
     def _get_dimension_resolver(self):
         """Lazily initialize and return the DimensionResolver."""
         if self._dimension_resolver is None and self.project is not None:
-            from visivo.query.dimension_resolver import DimensionResolver
+            from visivo.query.resolvers.dimension_resolver import DimensionResolver
 
             self._dimension_resolver = DimensionResolver(self.project)
         return self._dimension_resolver
