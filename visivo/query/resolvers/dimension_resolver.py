@@ -151,6 +151,7 @@ class DimensionResolver:
                     return f"({resolved})"
                 except DimensionNotFoundError:
                     return match.group(0)
+
         return re.sub(pattern, replace_ref, expression)
 
     def get_models_from_dimension(self, dimension_name: str) -> Set[str]:

@@ -64,7 +64,6 @@ class MetricResolver:
             self.metrics_by_name[metric.name] = metric
 
             for predecessor in self.dag.predecessors(metric):
-            for predecessor in self.dag.predecessors(metric):
                 if isinstance(predecessor, SqlModel):
                     qualified_name = f"{predecessor.name}.{metric.name}"
                     self.metrics_by_name[qualified_name] = metric
@@ -261,6 +260,7 @@ class MetricResolver:
         visited.add(metric_name)
 
         resolved_expression = metric.expression
+
         def replace_reference(match):
             ref_content = match.group(1)
             metric_field = match.group(2)
@@ -300,6 +300,7 @@ class MetricResolver:
                     raise
             else:
                 return match.group(0)
+
         resolved_expression = re.sub(METRIC_REF_PATTERN, replace_reference, resolved_expression)
 
         self._metric_cache[metric_name] = resolved_expression

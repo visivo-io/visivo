@@ -15,7 +15,7 @@ from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.logger.logger import Logger
-from visivo.query.relation_resolver import RelationResolver
+from visivo.query.resolvers.relation_resolver import RelationResolver
 import networkx as nx
 
 

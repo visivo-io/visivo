@@ -22,13 +22,11 @@ from visivo.query.sqlglot_utils import (
     parse_expression,
 )
 from visivo.query.model_name_utils import ModelNameSanitizer
-from visivo.query.builder.components import (
-    WhereClauseBuilder,
-    HavingClauseBuilder,
-    GroupByBuilder,
-    OrderByBuilder,
-    CTEBuilder,
-)
+from visivo.query.builders.where_clause_builder import WhereClauseBuilder
+from visivo.query.builders.having_clause_builder import HavingClauseBuilder
+from visivo.query.builders.group_by_builder import GroupByBuilder
+from visivo.query.builders.order_by_builder import OrderByBuilder
+from visivo.query.builders.cte_builder import CTEBuilder
 
 
 class SqlglotQueryBuilder:
@@ -508,9 +506,9 @@ class SqlglotQueryBuilder:
                 sanitized_name = self._get_model_alias(model.name)
                 schema[f"{sanitized_name}_cte"] = model_schema
                 # And base_model for single model queries
-                if hasattr(self, "tokenized_insight") and self.tokenized_insight.pre_query == getattr(
-                    model, "sql", None
-                ):
+                if hasattr(
+                    self, "tokenized_insight"
+                ) and self.tokenized_insight.pre_query == getattr(model, "sql", None):
                     schema["base_model"] = model_schema
 
         return schema if schema else None
