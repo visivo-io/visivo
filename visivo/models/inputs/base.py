@@ -33,7 +33,7 @@ class Input(NamedModel):
             try:
                 context_str = ContextString(f"${{ref({ref_name})}}")
                 item = context_str.get_item(dag) if dag else None
-                return item.name if item else ref_name
+                return f"'{item.name}'" if item else f"'{ref_name}'"
             except Exception as e:
                 Logger.instance().error(f"Failed to resolve ref {ref_name}: {e}")
                 return ref_name
@@ -52,5 +52,6 @@ class Input(NamedModel):
             elif isinstance(self.options, QueryString):
                 query_value = self.options.get_value()
                 model["options"] = self._resolve_query_references(query_value, dag)
+                model["is_query"] = True
 
         return model

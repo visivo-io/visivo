@@ -2,17 +2,12 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
-from visivo.models.base.named_model import NamedModel
 from visivo.models.inputs.dropdown import DropdownInput
 
 
 InputField = Annotated[
     Union[
         DropdownInput,
-        # DateInput,
-        # SliderInput,
-        # ToggleInput,
-        # TextInput,
     ],
     Field(discriminator="type"),
 ]

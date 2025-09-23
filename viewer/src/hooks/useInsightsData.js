@@ -58,6 +58,7 @@ export const useInsightsData = (projectId, insightNames) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['insights', projectId, stableInsightNames],
     queryFn: async () => {
+      // if (!db) return
       const insights = await fetchInsight(projectId, stableInsightNames);
       if (!insights?.length) return {};
 
