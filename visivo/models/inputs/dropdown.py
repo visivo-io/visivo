@@ -11,3 +11,6 @@ class DropdownInput(Input):
         None, description="Static list of options OR a dynamic SQL string '${ref(insight)}'"
     )
     multi: bool = Field(False, description="Allow multi-select")
+
+    def child_items(self):
+        return self.options

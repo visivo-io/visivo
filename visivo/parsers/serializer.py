@@ -1,5 +1,8 @@
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants, all_descendants_of_type
+from visivo.models.input import InputField
+from visivo.models.inputs.base import Input
+from visivo.models.inputs.dropdown import DropdownInput
 from visivo.models.insight import Insight
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
@@ -31,6 +34,7 @@ class Serializer:
         all_charts = []
         all_tables = []
         all_selectors = []
+        all_inputs = []
 
         # Process all objects in the DAG
         for node in dag.nodes():
@@ -48,6 +52,8 @@ class Serializer:
                 all_tables.append(node.model_dump(exclude_none=True, mode="json"))
             elif isinstance(node, Selector):
                 all_selectors.append(node.model_dump(exclude_none=True, mode="json"))
+            elif isinstance(node, Input):
+                all_inputs.append(node.model_dump(exclude_none=True, mode="json"))
 
         # Create the flattened structure
         flattened = {
@@ -60,6 +66,7 @@ class Serializer:
             "charts": all_charts,
             "tables": all_tables,
             "selectors": all_selectors,
+            "inputs": all_inputs,
         }
 
         # Add default source name if it exists
@@ -101,6 +108,11 @@ class Serializer:
                             depth=1,
                         )
 
+                    if component.input:
+                        component.input = all_descendants_of_type(
+                            type=Input, dag=dag, from_node=component, depth=1
+                        )[0]
+
                     for trace in component.traces:
                         trace.model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[
                             0
@@ -138,6 +150,11 @@ class Serializer:
                     ]
                     item.selector.options = options
 
+                if item.input:
+                    item.input = all_descendants_of_type(
+                        type=Input, dag=dag, from_node=item, depth=1
+                    )[0]
+
             dashboard.for_each_item(replace_item_ref)
 
         project.charts = []
@@ -147,4 +164,5 @@ class Serializer:
         project.models = []
         project.sources = []
         project.selectors = []
+        project.inputs = []
         return project

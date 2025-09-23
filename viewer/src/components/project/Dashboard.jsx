@@ -6,6 +6,7 @@ import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
+import Input from '../items/Input';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
@@ -78,6 +79,8 @@ const Dashboard = ({ project, dashboardName }) => {
       object = item.table;
     } else if (item.selector) {
       object = item.selector;
+    } else if (item.input) {
+      object = item.input;
     }
     return shouldShowNamedModel(object);
   };
@@ -156,6 +159,15 @@ const Dashboard = ({ project, dashboardName }) => {
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         ></Selector>
+      );
+    } else if (item.input) {
+      return (
+        <Input
+          input={item.input}
+          project={project}
+          itemWidth={item.width}
+          key={`dashboardRow${rowIndex}Item${itemIndex}`}
+        ></Input>
       );
     } else if (item.markdown) {
       return (

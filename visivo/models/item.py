@@ -1,4 +1,5 @@
 from visivo.models.base.named_model import NamedModel
+from visivo.models.input import InputField
 from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
@@ -27,6 +28,8 @@ class Item(NamedModel, ParentModel):
         chart: ref(chart-name)
       - width: 1
         selector: ref(selector-name)
+      - width: 1
+        input: ref(input-name)
     ```
     ## Markdown
     You can use markdown to add formatted text to your dashboard. Visivo markdown supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also
@@ -139,20 +142,24 @@ class Item(NamedModel, ParentModel):
     selector: Optional[generate_ref_field(Selector)] = Field(
         None, description="A Selector object defined inline or a ref() to a selector"
     )
+    input: Optional[generate_ref_field(InputField)] = Field(
+        None, description="An Input object defined inline or a ref() to a input"
+    )
 
     @model_validator(mode="before")
     @classmethod
     def validate_unique_item_types(cls, data: any):
-        markdown, chart, table, selector = (
+        markdown, chart, table, selector, input = (
             data.get("markdown"),
             data.get("chart"),
             data.get("table"),
             data.get("selector"),
+            data.get("input"),
         )
-        items_set = [i for i in [markdown, chart, table, selector] if i is not None]
+        items_set = [i for i in [markdown, chart, table, selector, input] if i is not None]
         if len(items_set) > 1:
             raise ValueError(
-                'only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+                'only one of the "markdown", "chart", "table", "selector", or "input" properties should be set on an item'
             )
         return data
 
@@ -195,3 +202,5 @@ class Item(NamedModel, ParentModel):
             return self.chart
         if self.selector is not None:
             return self.selector
+        if self.input is not None:
+            return self.input

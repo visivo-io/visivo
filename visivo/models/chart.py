@@ -2,6 +2,7 @@ from typing import List, Optional, TYPE_CHECKING, TypeAlias
 from pydantic import Field
 
 from visivo.logger.logger import Logger
+from visivo.models.base.input_model import InputModel
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -14,7 +15,7 @@ TraceRef: TypeAlias = generate_ref_field(Trace)
 InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
-class Chart(SelectorModel, NamedModel, ParentModel):
+class Chart(InputModel, SelectorModel, NamedModel, ParentModel):
     """
     ## Overview
     Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
@@ -208,7 +209,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
 
     def child_items(self):
         """Return child items for DAG construction"""
-        return self.traces + self.insights + [self.selector]
+        return self.traces + self.insights + [self.selector] + [self.input]
 
     traces: List[TraceRef] = Field(
         [],

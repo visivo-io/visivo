@@ -2,12 +2,21 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
+from visivo.models.base.named_model import NamedModel
 from visivo.models.inputs.dropdown import DropdownInput
 
+
 InputField = Annotated[
-    Union[DropdownInput],
+    Union[
+        DropdownInput,
+        # DateInput,
+        # SliderInput,
+        # ToggleInput,
+        # TextInput,
+    ],
     Field(discriminator="type"),
 ]
+
 """
 Inputs serve as generic value injectors that other components can react to,
 rather than pushing changes themselves.
