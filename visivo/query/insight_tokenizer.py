@@ -56,9 +56,6 @@ class InsightTokenizer:
         pre_query = self._generate_pre_query()
         post_query = self._generate_post_query()
 
-        if self.is_dynamic_interactions:
-            pre_query, post_query = post_query, pre_query
-
         # Determine source type
         if isinstance(self.model, LocalMergeModel):
             source_type = "duckdb"
@@ -465,9 +462,7 @@ class InsightTokenizer:
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
-
-        # return "SELECT * FROM insight_data"
-        return self.model.sql
+        return parse_expression(f"SELECT * FROM '{self.insight.name}'", dialect="duckdb").sql()
 
     def _parameterize_input_references(self, expr: str) -> str:
         """Replace ${ref(input).value} with parameter placeholders"""

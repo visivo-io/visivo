@@ -8,6 +8,7 @@ from visivo.logger.logger import Logger
 from visivo.models.base.context_string import INLINE_REF_REGEX, ContextString
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.query_string import QueryString
+from visivo.query.sqlglot_utils import parse_expression
 
 
 class InputTypes(str, Enum):
@@ -51,7 +52,7 @@ class Input(NamedModel):
                 model["options"] = [str(option) for option in self.options]
             elif isinstance(self.options, QueryString):
                 query_value = self.options.get_value()
-                model["options"] = self._resolve_query_references(query_value, dag)
+                model["options"] = parse_expression(self._resolve_query_references(query_value, dag), "duckdb").sql()
                 model["is_query"] = True
 
         return model

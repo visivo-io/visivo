@@ -19,12 +19,11 @@ const Input = ({ input, project, itemWidth }) => {
 
       switch (input.type) {
         case DROPDOWN: {
-          console.log("input: ", input)
           let options = [];
           let defaultValue;
 
           if (input?.is_query) {
-            const result = await runDuckDBQuery(db, input.options);
+            const result = await runDuckDBQuery(db, input.options, 1000);
             const values = result.getChildAt(0);
             if (values) {
               options = Array.from({ length: values.length }, (_, i) => {
@@ -58,7 +57,8 @@ const Input = ({ input, project, itemWidth }) => {
             options,
             defaultValue,
             label: input?.label ?? '',
-            multi: input?.multi ?? false,
+            isMulti: input?.multi ?? false,
+            name: input.name
           });
           break;
         }
@@ -84,9 +84,7 @@ const Input = ({ input, project, itemWidth }) => {
       <div className="m-auto justify-center">
         {componentData.type === DROPDOWN && (
           <Dropdown
-            defaultValue={componentData.defaultValue}
-            options={componentData.options}
-            isMulti={componentData.multi}
+            {...componentData}
           />
         )}
       </div>

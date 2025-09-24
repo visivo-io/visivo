@@ -50,6 +50,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // const insights = useStore((state) => state.insights);
+  // const inputs = useStore((state) => state.inputs);
 
   // Memoize insight names to prevent array recreation on every render
   const insightNames = useMemo(() => {

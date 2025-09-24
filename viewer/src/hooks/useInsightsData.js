@@ -36,6 +36,7 @@ export const useInsightsData = (projectId, insightNames) => {
   const fetchInsight = useFetchInsights();
   const db = useDuckDB();
   const setInsights = useStore((state) => state.setInsights);
+  const setDB = useStore((state) => state.setDB);
   const storeInsightData = useStore((state) => state.insights);
 
   const stableInsightNames = useMemo(() => {
@@ -56,9 +57,9 @@ export const useInsightsData = (projectId, insightNames) => {
   }, [storeInsightData, stableInsightNames]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['insights', projectId, stableInsightNames],
+    queryKey: ['insights', projectId, stableInsightNames, db],
     queryFn: async () => {
-      // if (!db) return
+      if (!db) return
       const insights = await fetchInsight(projectId, stableInsightNames);
       if (!insights?.length) return {};
 
@@ -73,6 +74,7 @@ export const useInsightsData = (projectId, insightNames) => {
                 post_query: data.post_query ?? `SELECT * FROM "${insight.name}"`,
                 columns: data.metadata?.columns || {},
                 props: data.metadata?.props || {},
+                interactions: data.interactions
               },
             ];
           } catch (error) {
@@ -90,6 +92,7 @@ export const useInsightsData = (projectId, insightNames) => {
 
       // Fire-and-forget caching into DuckDB
       if (db) {
+        setDB(db)
         setTimeout(() => {
           Object.entries(filteredData).forEach(([name, dataObj]) => {
             saveInsightDataSafe(db, name, dataObj);

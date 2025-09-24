@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck, FaChevronDown, FaTimes } from 'react-icons/fa';
+import useStore from '../../../stores/store';
 
 const Dropdown = ({
   label = '',
@@ -7,11 +8,13 @@ const Dropdown = ({
   isMulti = false,
   defaultValue = null,
   placeholder = 'Select option...',
+  name
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState(isMulti ? defaultValue || [] : defaultValue);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const setInputValue = useStore(state => state.setInputValue)
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -73,8 +76,10 @@ const Dropdown = ({
           return [...prev, option];
         }
       });
+      setInputValue(name, selectedItems)
     } else {
       setSelectedItems(option);
+      setInputValue(name, option)
       setIsOpen(false);
     }
   };
@@ -101,7 +106,7 @@ const Dropdown = ({
 
   return (
     <div className="w-full min-w-[200px]">
-      {label && <h2 className="text-lg font-bold mb-2 text-gray-800">{label}</h2>}
+      {label && <h2 className="text-md text-center font-bold mb-2 text-gray-800">{label}</h2>}
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => {
@@ -144,7 +149,7 @@ const Dropdown = ({
             )}
           </div>
           <FaChevronDown
-            className={`w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
+            className={`w-2 h-2 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
               isOpen ? 'transform rotate-180' : ''
             }`}
           />

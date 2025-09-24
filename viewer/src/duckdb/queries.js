@@ -1,4 +1,28 @@
+import { ContextString } from '../utils/context_string';
 import { getTempFilename } from './duckdb';
+
+
+/**
+ * @param {Function} fn 
+ * @param {number} retries
+ * @param {number} delay
+ */
+export const withRetry = async (fn, retries = 5, delay = 500) => {
+  let lastError;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (i < retries - 1) {
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+  }
+  throw lastError;
+};
+
+
 
 /**
  *
@@ -6,11 +30,16 @@ import { getTempFilename } from './duckdb';
  * @param {string} sql
  * @returns {Promise}
  */
-export const runDuckDBQuery = async (db, sql) => {
-  const conn = await db.connect();
-  const arrow = await conn.query(sql);
-  await conn.close();
-  return arrow;
+export const runDuckDBQuery = async (db, sql, retries = 1, delay = 500) => {
+  return withRetry(async () => {
+    const conn = await db.connect();
+    try {
+      const arrow = await conn.query(sql);
+      return arrow;
+    } finally {
+      await conn.close();
+    }
+  }, retries, delay);
 };
 
 /**
@@ -71,4 +100,46 @@ export const tableDuckDBExists = async (db, tableName) => {
 
   const cnt = result.getChild('cnt')?.get(0) ?? 0;
   return cnt > 0;
+};
+
+
+const escapeValue = (val) => {
+  if (Array.isArray(val)) {
+    return `(${val.map(v => `'${String(v).replace(/'/g, "''")}'`).join(",")})`;
+  }
+  return `'${String(val).replace(/'/g, "''")}'`;
+};
+
+const resolveFilters = (interactions, inputs) => {
+  return interactions.map(interaction => {
+    if (!ContextString.isContextString(interaction.filter)) {
+      return interaction.filter;
+    }
+
+    const ctx = new ContextString(interaction.filter);
+
+    const inputName = ctx.getReference();
+    if (!inputName) return interaction.filter;
+
+    const path = ctx.getRefPropsPath();
+
+    let value = inputs[inputName];
+    if (path && value !== undefined && value !== null) {
+      try {
+        const fn = new Function("obj", `return obj${path}`);
+        value = fn(value);
+      } catch {
+        console.warn(`Failed to resolve path ${path} on input ${inputName}`);
+      }
+    }
+
+    return escapeValue(value);
+  });
+};
+
+export const buildQuery = (baseQuery, interactions, inputs) => {
+  const filters = resolveFilters(interactions, inputs);
+  if (filters.length === 0) return baseQuery;
+
+  return `${baseQuery} WHERE ${filters.join(" AND ")}`;
 };
