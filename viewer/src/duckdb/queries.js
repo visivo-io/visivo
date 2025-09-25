@@ -22,8 +22,6 @@ export const withRetry = async (fn, retries = 5, delay = 500) => {
   throw lastError;
 };
 
-
-
 /**
  *
  * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
@@ -35,8 +33,8 @@ export const runDuckDBQuery = async (db, sql, retries = 1, delay = 500) => {
     const conn = await db.connect();
     try {
       const arrow = await conn.query(sql);
-      return arrow;
-    } finally {
+      return arrow
+    }finally {
       await conn.close();
     }
   }, retries, delay);
@@ -124,10 +122,15 @@ const resolveFilters = (interactions, inputs) => {
     const path = ctx.getRefPropsPath();
 
     let value = inputs[inputName];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      if ("id" in value) value = value.id;
+      else value = JSON.stringify(value);
+    }
+
     if (path && value !== undefined && value !== null) {
       try {
         const fn = new Function("obj", `return obj${path}`);
-        value = fn(value);
+        value =  fn(value);
       } catch {
         console.warn(`Failed to resolve path ${path} on input ${inputName}`);
       }
@@ -141,5 +144,5 @@ export const buildQuery = (baseQuery, interactions, inputs) => {
   const filters = resolveFilters(interactions, inputs);
   if (filters.length === 0) return baseQuery;
 
-  return `${baseQuery} WHERE ${filters.join(" AND ")}`;
+  return `${baseQuery}`;
 };

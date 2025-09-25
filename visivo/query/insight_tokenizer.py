@@ -51,10 +51,20 @@ class InsightTokenizer:
 
         self._analyze_insight()
 
+    def parse_duckdb(self, query: str) -> str:
+        try:
+            return parse_expression(query, dialect='duckdb').sql()
+        except:
+            return query
+
     def tokenize(self) -> TokenizedInsight:
         """Main entry point - returns tokenized insight with pre/post queries"""
         pre_query = self._generate_pre_query()
         post_query = self._generate_post_query()
+
+        if self.is_dynamic_interactions:
+            pre_query, post_query = post_query, pre_query
+            post_query = self.parse_duckdb(post_query)
 
         # Determine source type
         if isinstance(self.model, LocalMergeModel):
@@ -87,6 +97,7 @@ class InsightTokenizer:
             groupby_statements=list(self.groupby_statements) if self.groupby_statements else None,
             split_column=self._get_split_column(),
             sort_expressions=self._get_sort_expressions(),
+            is_dynamic_interactions=self.is_dynamic_interactions
         )
 
     def _analyze_insight(self):
@@ -321,7 +332,17 @@ class InsightTokenizer:
         """
         Generate server-side SQL query with precomputed CTE for duplicated and complex expressions.
         """
-        base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
+        for interaction in self.insight.interactions or []:
+            if interaction.filter:
+                filter_expr = interaction.filter.get_value()
+                if filter_expr:
+                    if self._is_dynamic(filter_expr):
+                        self.is_dynamic_interactions = True
+
+        if self.is_dynamic_interactions:
+            base_sql_expr = parse_expression(f"SELECT * FROM '{self.insight.name}'", dialect="duckdb")
+        else:
+            base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
 
         occurrences = {}
 
@@ -432,6 +453,7 @@ class InsightTokenizer:
                     )
                     if self._is_dynamic(filter_expr):
                         self.is_dynamic_interactions = True
+
         if static_filters:
             query = query.where(*static_filters)
 
@@ -462,6 +484,8 @@ class InsightTokenizer:
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
+        if self.is_dynamic_interactions:
+            return self.model.sql
         return parse_expression(f"SELECT * FROM '{self.insight.name}'", dialect="duckdb").sql()
 
     def _parameterize_input_references(self, expr: str) -> str:
@@ -480,7 +504,7 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    interaction_dict["filter"] = filter_expr
+                    interaction_dict["filter"] = self.parse_duckdb(filter_expr)
 
             if interaction.split:
                 split_expr = interaction.split.get_value()
@@ -490,7 +514,7 @@ class InsightTokenizer:
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    interaction_dict["sort"] = sort_expr
+                    interaction_dict["sort"] = self.parse_duckdb(sort_expr)
 
             if interaction_dict:
                 result.append(interaction_dict)

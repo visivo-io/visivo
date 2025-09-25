@@ -6,6 +6,9 @@ import sqlglot
 from sqlglot import exp
 from typing import List, Set, Optional, Tuple
 
+from visivo.logger.logger import Logger
+from visivo.models.base.context_string import ContextString
+
 
 # Map Visivo dialect names to SQLGlot dialect names
 VISIVO_TO_SQLGLOT_DIALECT = {
@@ -37,6 +40,11 @@ def parse_expression(statement: str, dialect: str = None) -> Optional[exp.Expres
     """
     if not statement or not statement.strip():
         return None
+    
+    context_string = ContextString(statement).get_ref_attr()
+    
+    if context_string:
+        statement = statement.replace(context_string, f"'{context_string}'")
 
     try:
         sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None

@@ -23,7 +23,7 @@ const Input = ({ input, project, itemWidth }) => {
           let defaultValue;
 
           if (input?.is_query) {
-            const result = await runDuckDBQuery(db, input.options, 1000);
+            const result = await runDuckDBQuery(db, input.options, 1000).catch(() => false);
             const values = result.getChildAt(0);
             if (values) {
               options = Array.from({ length: values.length }, (_, i) => {
