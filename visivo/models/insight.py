@@ -1,6 +1,5 @@
-from typing import Optional, List, Set
+from typing import Optional, List
 from pydantic import Field
-from visivo.models.base.project_dag import ProjectDag
 from visivo.models.interaction import InsightInteraction
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
@@ -38,6 +37,7 @@ class Insight(NamedModel, ParentModel):
     insights:
       - name: revenue-by-month
         description: "Monthly revenue trends"
+        model: ${ref(orders_model)}
 
         props:
           type: scatter
@@ -71,6 +71,7 @@ class Insight(NamedModel, ParentModel):
 
     ## Migration from Traces
     - `cohort_on` → `split` interaction
+    - Flat JSON output → easier integration with DuckDB WASM & UI components
     """
 
     name: str = Field(description="The unique name of the insight across the entire project.")
@@ -120,106 +121,3 @@ class Insight(NamedModel, ParentModel):
                             children.append(ref_str)
 
         return children
-
-    def get_all_dependent_models(self, dag):
-        """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)"""
-        from visivo.models.models.model import Model
-
-        models = all_descendants_of_type(type=Model, dag=dag, from_node=self)
-        return set(models)
-
-    def get_dependent_source(self, dag, output_dir) -> Source:
-        """Currently an insight can only reference models from the same source"""
-        # Get source through models (similar to how run_insight_job does it)
-        models = self.get_all_dependent_models(dag)
-        if not models:
-            raise ValueError(f"Insight '{self.name}' has no dependent models")
-
-        # Get source from the first model
-        first_model = list(models)[0]
-        source = get_source_for_model(first_model, dag, output_dir)
-        if not source:
-            raise ValueError(
-                f"No source found for model '{first_model.name}' in insight '{self.name}'"
-            )
-
-        return source
-
-    def _get_all_interaction_query_statements(self, dag):
-        interactions = []
-        if not self.interactions:
-            return interactions
-        for interaction in self.interactions:
-            for field_type, field_value in interaction.field_values_with_js_template_literals(
-                dag=dag
-            ).items():
-                interactions.append((field_type, field_value))
-        return interactions
-
-    def _convert_input_refs_to_js_templates(self, text: str, dag: ProjectDag) -> str:
-        """Convert ${ref(input)} to ${input}, leave model/metric/dimension refs intact.
-
-        This method converts input references to JavaScript template literal syntax for
-        client-side interpolation. Model, metric, and dimension references are left
-        unchanged for the FieldResolver to handle.
-
-        Transforms: ${ref(input_name)} → ${input_name}
-
-        Args:
-            text: SQL expression that may contain ${ref(...)} patterns
-            dag: Project DAG for looking up nodes
-
-        Returns:
-            SQL expression with input refs converted to JS template literals, model refs unchanged
-
-        Examples:
-            - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
-            - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
-        """
-        from visivo.models.inputs import Input
-        from visivo.query.patterns import (
-            CONTEXT_STRING_REF_PATTERN_COMPILED,
-            get_model_name_from_match,
-        )
-        from re import Match
-
-        def repl(m: Match) -> str:
-            name = get_model_name_from_match(m)
-            try:
-                node = dag.get_descendant_by_name(name)
-                if isinstance(node, Input):
-                    # Convert input ref to JS template literal syntax
-                    # ${ref(threshold)} → ${threshold}
-                    return f"${{{name}}}"
-            except (ValueError, AttributeError):
-                # Node not found or error - leave the ref as-is for FieldResolver
-                pass
-            return m.group(0)  # Keep non-input refs unchanged
-
-        return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
-
-    def get_all_query_statements(self, dag):
-        query_statements = []
-        interaction_query_statements = self._get_all_interaction_query_statements(dag)
-        query_statements += interaction_query_statements
-        if self.props:
-            props_statements = self.props.extract_query_strings()
-            # Convert input refs to JS template literals in each props statement
-            converted_props = []
-            for key, value in props_statements:
-                converted_value = self._convert_input_refs_to_js_templates(value, dag)
-                converted_props.append((key, converted_value))
-            query_statements += converted_props
-        return query_statements
-
-    def is_dynamic(self, dag) -> bool:
-        from visivo.models.dag import all_descendants_of_type
-        from visivo.models.inputs.input import Input
-
-        input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
-        return len(input_descendants) > 0
-
-    def get_query_info(self, dag: ProjectDag, output_dir) -> InsightQueryInfo:
-        builder = InsightQueryBuilder(self, dag, output_dir)
-        builder.resolve()
-        return builder.build()
