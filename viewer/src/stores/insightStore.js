@@ -1,9 +1,9 @@
-import { runDuckDBQuery, buildQuery } from "../duckdb/queries";
+import { prepPostQuery, runDuckDBQuery } from "../duckdb/queries";
 import { ContextString } from "../utils/context_string";
 
 const createInsightSlice = (set, get) => ({
   insights: {},
-  inputs: {},
+  inputs: null,
   db: null,
 
   setDB: db => set({ db }),
@@ -24,8 +24,15 @@ const createInsightSlice = (set, get) => ({
       },
     })),
 
+  setDefaultInputValue: (inputName, value) =>
+    set(state => {
+      const newInputs = { ...state.inputs, [inputName]: value };
+      return { inputs: newInputs };
+     })
+  ,
   setInputValue: (inputName, value) =>
     set(state => {
+
       const newInputs = { ...state.inputs, [inputName]: value };
 
       setTimeout(async () => {
@@ -43,21 +50,25 @@ const createInsightSlice = (set, get) => ({
 
         for (const insightName of dependentInsights) {
           const insight = insights[insightName];
-          const sql = buildQuery(
-            insight.post_query,
-            insight.interactions,
-            newInputs
-          );
-
+          let post_query = prepPostQuery(insight, state.inputs)
           try {
-            const result = await runDuckDBQuery(db, sql, 3, 300);
+            const result = await runDuckDBQuery(db, post_query, 3, 300);
+            const processedRows = result.toArray().map((row) => {
+              const rowData = row.toJSON();
+              return Object.fromEntries(
+                Object.entries(rowData).map(([key, value]) => [
+                  key,
+                  typeof value === 'bigint' ? value.toString() : value
+                ])
+              );
+            }) || [];
 
             set(s => ({
               insights: {
                 ...s.insights,
                 [insightName]: {
                   ...s.insights[insightName],
-                  result,
+                  processedRows,
                 },
               },
             }));

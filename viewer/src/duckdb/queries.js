@@ -100,49 +100,45 @@ export const tableDuckDBExists = async (db, tableName) => {
   return cnt > 0;
 };
 
+/**
+ * 
+ * @param {Object} insight 
+ * @param {Object} inputs 
+ * @returns {String}
+ */
+export const prepPostQuery = (insight, inputs) => {
+  let post_query = insight.post_query;
+  const contextObj = new ContextString(post_query);
+  const refs = contextObj.getAllRefs();
 
-const escapeValue = (val) => {
-  if (Array.isArray(val)) {
-    return `(${val.map(v => `'${String(v).replace(/'/g, "''")}'`).join(",")})`;
-  }
-  return `'${String(val).replace(/'/g, "''")}'`;
-};
+    if (refs.length > 0) {
+      refs.forEach(refStr => {
+        const refCtx = new ContextString(refStr);
 
-const resolveFilters = (interactions, inputs) => {
-  return interactions.map(interaction => {
-    if (!ContextString.isContextString(interaction.filter)) {
-      return interaction.filter;
+        const insightName = refCtx.getReference();
+
+        if (insightName) {
+          const input = inputs[insightName];
+
+          if (input !== undefined) {
+            let value
+            if (Array.isArray(input)) {
+                if (input.length === 0) {
+                  post_query = post_query.replace(refStr, "(NULL)"); 
+                } else {
+                  value = `(${input.map(v => (typeof v === "string" ? `'${v}'` : v)).join(", ")})`;
+                  post_query = post_query.replace(refStr, value);
+                }
+              } else if (typeof input === "string") {
+                const value = `'${input}'`;
+                post_query = post_query.replace(refStr, value);
+              } else {
+                post_query = post_query.replace(refStr, input);
+              }
+          }
+        }
+      });
     }
 
-    const ctx = new ContextString(interaction.filter);
-
-    const inputName = ctx.getReference();
-    if (!inputName) return interaction.filter;
-
-    const path = ctx.getRefPropsPath();
-
-    let value = inputs[inputName];
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      if ("id" in value) value = value.id;
-      else value = JSON.stringify(value);
-    }
-
-    if (path && value !== undefined && value !== null) {
-      try {
-        const fn = new Function("obj", `return obj${path}`);
-        value =  fn(value);
-      } catch {
-        console.warn(`Failed to resolve path ${path} on input ${inputName}`);
-      }
-    }
-
-    return escapeValue(value);
-  });
-};
-
-export const buildQuery = (baseQuery, interactions, inputs) => {
-  const filters = resolveFilters(interactions, inputs);
-  if (filters.length === 0) return baseQuery;
-
-  return `${baseQuery}`;
-};
+    return post_query
+}

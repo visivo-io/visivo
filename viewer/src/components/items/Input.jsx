@@ -3,6 +3,7 @@ import Dropdown from './inputs/Dropdown';
 import Loading from '../common/Loading';
 import { runDuckDBQuery } from '../../duckdb/queries';
 import { useDuckDB } from '../../contexts/DuckDBContext';
+import useStore from '../../stores/store';
 
 const DROPDOWN = 'dropdown';
 
@@ -10,6 +11,8 @@ const Input = ({ input, project, itemWidth }) => {
   const db = useDuckDB();
   const [componentData, setComponentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const setInputValue = useStore(state => state.setInputValue)
+  const setDefaultInputValue = useStore(state => state.setDefaultInputValue)
 
   useEffect(() => {
     if (!input) return;
@@ -50,7 +53,9 @@ const Input = ({ input, project, itemWidth }) => {
                   ? input.default.map(d => ({ id: d, label: d }))
                   : [];
             }
+            setDefaultInputValue(input.name, input.default)
           }
+
 
           setComponentData({
             type: DROPDOWN,
@@ -85,6 +90,7 @@ const Input = ({ input, project, itemWidth }) => {
         {componentData.type === DROPDOWN && (
           <Dropdown
             {...componentData}
+            setInputValue={setInputValue}
           />
         )}
       </div>

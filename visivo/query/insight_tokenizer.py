@@ -53,7 +53,7 @@ class InsightTokenizer:
 
     def parse_duckdb(self, query: str) -> str:
         try:
-            return parse_expression(query, dialect='duckdb').sql()
+            return parse_expression(query, dialect="duckdb").sql()
         except:
             return query
 
@@ -97,7 +97,7 @@ class InsightTokenizer:
             groupby_statements=list(self.groupby_statements) if self.groupby_statements else None,
             split_column=self._get_split_column(),
             sort_expressions=self._get_sort_expressions(),
-            is_dynamic_interactions=self.is_dynamic_interactions
+            is_dynamic_interactions=self.is_dynamic_interactions,
         )
 
     def _analyze_insight(self):
@@ -340,7 +340,9 @@ class InsightTokenizer:
                         self.is_dynamic_interactions = True
 
         if self.is_dynamic_interactions:
-            base_sql_expr = parse_expression(f"SELECT * FROM '{self.insight.name}'", dialect="duckdb")
+            base_sql_expr = parse_expression(
+                f"SELECT * FROM '{self.insight.name}'", dialect="duckdb"
+            )
         else:
             base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
 

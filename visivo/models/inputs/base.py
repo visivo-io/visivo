@@ -52,7 +52,9 @@ class Input(NamedModel):
                 model["options"] = [str(option) for option in self.options]
             elif isinstance(self.options, QueryString):
                 query_value = self.options.get_value()
-                model["options"] = parse_expression(self._resolve_query_references(query_value, dag), "duckdb").sql()
+                model["options"] = parse_expression(
+                    self._resolve_query_references(query_value, dag), "duckdb"
+                ).sql()
                 model["is_query"] = True
 
         return model

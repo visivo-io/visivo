@@ -6,9 +6,7 @@ from visivo.models.inputs.dropdown import DropdownInput
 
 
 InputField = Annotated[
-    Union[
-        DropdownInput,
-    ],
+    Union[DropdownInput,],
     Field(discriminator="type"),
 ]
 

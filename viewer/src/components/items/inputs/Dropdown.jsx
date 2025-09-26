@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck, FaChevronDown, FaTimes } from 'react-icons/fa';
-import useStore from '../../../stores/store';
 
 const Dropdown = ({
   label = '',
@@ -8,19 +7,29 @@ const Dropdown = ({
   isMulti = false,
   defaultValue = null,
   placeholder = 'Select option...',
-  name
+  name,
+  setInputValue
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState(isMulti ? defaultValue || [] : defaultValue);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const setInputValue = useStore(state => state.setInputValue)
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const filteredOptions = options.filter(option =>
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => {
+    if (name && setInputValue) {
+      if (isMulti) {
+        setInputValue(name, selectedItems.map(item => item.id));
+      } else {
+        setInputValue(name, selectedItems?.id);
+      }
+    }
+  }, [selectedItems, name, isMulti]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -76,10 +85,10 @@ const Dropdown = ({
           return [...prev, option];
         }
       });
-      setInputValue(name, selectedItems)
+      // Don't call setInputValue here - useEffect will handle it
     } else {
       setSelectedItems(option);
-      setInputValue(name, option)
+      // Don't call setInputValue here - useEffect will handle it
       setIsOpen(false);
     }
   };
@@ -90,10 +99,12 @@ const Dropdown = ({
     } else {
       setSelectedItems(null);
     }
+    // useEffect will handle syncing with store
   };
 
   const clearAll = () => {
     setSelectedItems(isMulti ? [] : null);
+    // useEffect will handle syncing with store
   };
 
   const isSelected = option => {

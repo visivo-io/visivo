@@ -115,14 +115,14 @@ def test_insight_tokenizer_pre_post_query_generation():
     """Test that pre and post queries are generated correctly"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
+        "model": {"sql": "SELECT * FROM test_insight"},
         "columns": {"region": "?{region}"},
         "props": {"type": "indicator", "value": "?{sum(amount)}"},
         "interactions": [{"filter": "?{region = '${ref(region_select).value}'}"}],
     }
 
     insight = Insight(**insight_data)
-    model = SqlModelFactory(sql="SELECT * FROM test_table")
+    model = SqlModelFactory(sql="SELECT * FROM test_insight")
     source = SnowflakeSourceFactory()
 
     tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
@@ -133,4 +133,5 @@ def test_insight_tokenizer_pre_post_query_generation():
     assert "region" in tokenized.pre_query
 
     # Post-query should be a simple SELECT with potential filters
-    assert tokenized.post_query.startswith("SELECT * FROM test_table")
+    normalized_post_query = tokenized.post_query.replace('"', '')
+    assert normalized_post_query.startswith("SELECT * FROM test_insight")

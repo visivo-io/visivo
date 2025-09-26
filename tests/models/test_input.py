@@ -59,4 +59,4 @@ def test_dropdown_with_query_options():
 
     assert dropdown.name == "query_options"
     assert "options" in dumped
-    assert "select distinct(category)" in dumped["options"]
+    assert "SELECT DISTINCT (category)" in dumped["options"]

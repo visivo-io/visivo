@@ -40,9 +40,9 @@ def parse_expression(statement: str, dialect: str = None) -> Optional[exp.Expres
     """
     if not statement or not statement.strip():
         return None
-    
+
     context_string = ContextString(statement).get_ref_attr()
-    
+
     if context_string:
         statement = statement.replace(context_string, f"'{context_string}'")
 

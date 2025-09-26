@@ -65,7 +65,7 @@ class ContextString:
         if len(items) == 0:
             raise ValueError(f"Invalid context string reference name: '{reference}'.")
         return items[0]
-    
+
     def get_ref_attr(self) -> str:
         """
         Returns the full '${ref(...)}' attribute if present in the string.
@@ -76,7 +76,6 @@ class ContextString:
         if not match:
             return None
         return match.group(0)
-
 
     @classmethod
     def is_context_string(cls, obj) -> bool:

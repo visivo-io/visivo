@@ -13,6 +13,10 @@ const CONTEXT_STRING_VALUE_REGEX = new RegExp(
   `\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]\\)\\(]+?)\\s*\\}`
 );
 
+const METRIC_REF_PATTERN = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?/;
+
+const METRIC_REF_PATTERN_GLOBAL = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?/g;
+
 export class ContextString {
   constructor(value) {
     this.value = value;
@@ -52,6 +56,16 @@ export class ContextString {
   getPath() {
     const matches = this.value.match(INLINE_PATH_REGEX);
     return matches ? matches[1] : null;
+  }
+
+  getRefAttr() {
+    const match = this.value.match(METRIC_REF_PATTERN);
+    return match ? match[0] : null;
+  }
+
+   getAllRefs() {
+    const matches = this.value.match(METRIC_REF_PATTERN_GLOBAL);
+    return matches || [];
   }
 
   static isContextString(obj) {

@@ -129,16 +129,14 @@ const Dashboard = ({ project, dashboardName }) => {
     if (items.indexOf(item) < 0) {
       return null;
     }
-    if (item.chart) {
+    if (item.input) {
       return (
-        <Chart
-          chart={item.chart}
+        <Input
+          input={item.input}
           project={project}
-          height={getHeight(row.height) - 8}
-          width={getWidth(items, item)}
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
+        ></Input>
       );
     } else if (item.table) {
       return (
@@ -160,14 +158,16 @@ const Dashboard = ({ project, dashboardName }) => {
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         ></Selector>
       );
-    } else if (item.input) {
+    } else if (item.chart) {
       return (
-        <Input
-          input={item.input}
+        <Chart
+          chart={item.chart}
           project={project}
+          height={getHeight(row.height) - 8}
+          width={getWidth(items, item)}
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        ></Input>
+        />
       );
     } else if (item.markdown) {
       return (
