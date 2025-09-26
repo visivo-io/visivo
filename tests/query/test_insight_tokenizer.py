@@ -31,13 +31,12 @@ def test_insight_tokenizer_basic():
     assert tokenized.select_items["props.y"] == "amount"
 
 
-def test_insight_tokenizer_with_columns():
-    """Test insight tokenization with explicit columns"""
+def test_insight_tokenizer_with_additional_props():
+    """Test insight tokenization with additional props"""
     insight_data = {
         "name": "test_insight",
         "model": {"sql": "SELECT * FROM test_table"},
-        "columns": {"region": "?{region}", "category": "?{category}"},
-        "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}"},
+        "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}", "text": "?{region}"},
     }
 
     insight = Insight(**insight_data)
@@ -47,15 +46,13 @@ def test_insight_tokenizer_with_columns():
     tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
     tokenized = tokenizer.tokenize()
 
-    # Check columns are included
-    assert "columns.region" in tokenized.column_items
-    assert "columns.category" in tokenized.column_items
-    assert tokenized.column_items["columns.region"] == "region"
-    assert tokenized.column_items["columns.category"] == "category"
+    # Check that columns support has been removed
+    assert not hasattr(tokenized, "column_items")
 
     # Check props
     assert "props.x" in tokenized.select_items
     assert "props.y" in tokenized.select_items
+    assert "props.text" in tokenized.select_items
 
 
 def test_insight_tokenizer_with_interactions():
@@ -63,7 +60,6 @@ def test_insight_tokenizer_with_interactions():
     insight_data = {
         "name": "test_insight",
         "model": {"sql": "SELECT * FROM test_table"},
-        "columns": {"region": "?{region}"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}"},
         "interactions": [
             {"filter": "?{region = '${ref(region_select).value}'}"},
@@ -116,7 +112,6 @@ def test_insight_tokenizer_pre_post_query_generation():
     insight_data = {
         "name": "test_insight",
         "model": {"sql": "SELECT * FROM test_table"},
-        "columns": {"region": "?{region}"},
         "props": {"type": "indicator", "value": "?{sum(amount)}"},
         "interactions": [{"filter": "?{region = '${ref(region_select).value}'}"}],
     }

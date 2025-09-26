@@ -25,9 +25,6 @@ class TokenizedInsight(BaseModel):
     select_items: Dict[
         str, str
     ]  # prop_path -> sql_expression (e.g. "props.x" -> "date_trunc('month', created_at)")
-    column_items: Dict[
-        str, str
-    ]  # column_name -> sql_expression (e.g. "columns.region" -> "region")
 
     selects: Dict[str, str]
 

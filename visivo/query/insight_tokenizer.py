@@ -3,7 +3,6 @@ from typing import Dict, List, Set, Any, Optional
 from sqlglot import exp
 
 from visivo.models.insight import Insight
-from visivo.models.insight_columns import InsightColumns
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.props.layout import Layout
 from visivo.models.sources.source import Source
@@ -26,18 +25,23 @@ from visivo.logger.logger import Logger
 
 class InsightTokenizer:
 
-    def __init__(self, insight: Insight, model: Model, source: Source):
+    def __init__(self, insight: Insight, model: Model, source: Source, project=None):
         self.insight = insight
         self.source = source
         self.model = model
+        self.project = project  # Optional project for semantic layer access
         self.source_type = source.type
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
+        # Semantic layer resolvers (lazy-loaded)
+        self._metric_resolver = None
+        self._dimension_resolver = None
+        self.referenced_models = set()  # Track models referenced via ${ref(model).field}
+
         self.select_items = {}
         self.selects = {}
         self.columns = {}
-        self.column_items = {}
         self.interaction_dependencies = {}
         self.input_dependencies = set()
         self.required_columns = set()
@@ -45,6 +49,144 @@ class InsightTokenizer:
         self.is_dynamic_interactions = False
 
         self._analyze_insight()
+
+    def _get_metric_resolver(self):
+        """Lazily initialize and return the MetricResolver."""
+        if self._metric_resolver is None and self.project is not None:
+            from visivo.query.resolvers.metric_resolver import MetricResolver
+
+            self._metric_resolver = MetricResolver(self.project)
+        return self._metric_resolver
+
+    def _get_dimension_resolver(self):
+        """Lazily initialize and return the DimensionResolver."""
+        if self._dimension_resolver is None and self.project is not None:
+            from visivo.query.resolvers.dimension_resolver import DimensionResolver
+
+            self._dimension_resolver = DimensionResolver(self.project)
+        return self._dimension_resolver
+
+    def _resolve_metric_reference(self, query_statement: str) -> str:
+        """
+        Resolve metric and dimension references in query statements.
+        Converts ${ref(model).metric_name} or ${ref(metric_name)} to the actual metric expression.
+        Converts ${ref(model).dimension_name} or ${ref(dimension_name)} to the actual dimension expression.
+        Also handles ${ref(model).field} for cross-model field references.
+        Supports both single-model metrics/dimensions and compositions.
+        """
+        # First try to use MetricResolver if project is available
+        if self.project is not None:
+            resolver = self._get_metric_resolver()
+            if resolver:
+                # Pattern to match ${ref(metric_name)} for metric-to-metric references
+                simple_metric_pattern = r"\$\{\s*ref\(\s*([^.)]+)\s*\)\s*\}"
+
+                def replace_simple_metric(match):
+                    metric_name = match.group(1).strip().strip("\"'")
+
+                    # Check if this is actually a metric (not a model)
+                    if metric_name in resolver.metrics_by_name:
+                        try:
+                            # Resolve the metric expression (handles compositions)
+                            resolved_expr = resolver.resolve_metric_expression(metric_name)
+
+                            # Track models used in this metric (excluding current model)
+                            metric_models = resolver.get_models_from_metric(metric_name)
+                            # Only add models that are not the current model
+                            other_models = metric_models - {self.model.name}
+                            self.referenced_models.update(other_models)
+
+                            return f"({resolved_expr})"
+                        except Exception:
+                            # If resolution fails, fall back to original
+                            pass
+
+                    # Not a metric reference, return original
+                    return match.group(0)
+
+                # First resolve simple metric references
+                query_statement = re.sub(
+                    simple_metric_pattern, replace_simple_metric, query_statement
+                )
+
+            # Now try dimension resolution
+            dimension_resolver = self._get_dimension_resolver()
+            if dimension_resolver:
+                # Pattern to match ${ref(dimension_name)} for dimension references
+                simple_dimension_pattern = r"\$\{\s*ref\(\s*([^.)]+)\s*\)\s*\}"
+
+                def replace_simple_dimension(match):
+                    dimension_name = match.group(1).strip().strip("\"'")
+
+                    # Skip if this was already handled as a metric
+                    if resolver and dimension_name in resolver.metrics_by_name:
+                        return match.group(0)
+
+                    # Try to resolve as a dimension
+                    try:
+                        resolved_expr = dimension_resolver.resolve_dimension_expression(
+                            dimension_name, current_model=self.model.name
+                        )
+
+                        # Track models used in this dimension
+                        dimension_models = dimension_resolver.get_models_from_dimension(
+                            dimension_name
+                        )
+                        # Only add models that are not the current model
+                        other_models = dimension_models - {self.model.name}
+                        self.referenced_models.update(other_models)
+
+                        return f"({resolved_expr})"
+                    except Exception:
+                        # Not a dimension, return original
+                        return match.group(0)
+
+                # Resolve simple dimension references
+                query_statement = re.sub(
+                    simple_dimension_pattern, replace_simple_dimension, query_statement
+                )
+
+        # Pattern to match ${ref(model_name).field_or_metric_name}
+        from visivo.models.base.context_string import METRIC_REF_PATTERN
+
+        def replace_ref(match):
+            model_name = match.group(1).strip().strip("\"'")
+            field_or_metric_name = match.group(2).strip() if match.group(2) else None
+
+            if not field_or_metric_name:
+                return match.group(0)
+
+            # Track referenced model
+            if model_name != self.model.name:
+                self.referenced_models.add(model_name)
+
+            # Try to resolve with metric resolver first if available
+            if self.project is not None:
+                resolver = self._get_metric_resolver()
+                if resolver:
+                    qualified_name = f"{model_name}.{field_or_metric_name}"
+                    if qualified_name in resolver.metrics_by_name:
+                        try:
+                            resolved_expr = resolver.resolve_metric_expression(qualified_name)
+                            return f"({resolved_expr})"
+                        except Exception:
+                            pass
+
+                # Try dimension resolver
+                dimension_resolver = self._get_dimension_resolver()
+                if dimension_resolver:
+                    try:
+                        resolved_expr = dimension_resolver.resolve_dimension_expression(
+                            field_or_metric_name, current_model=model_name
+                        )
+                        return f"({resolved_expr})"
+                    except Exception:
+                        pass
+
+            # Fall back to simple field reference
+            return f"{model_name}.{field_or_metric_name}"
+
+        return re.sub(METRIC_REF_PATTERN, replace_ref, query_statement)
 
     def tokenize(self) -> TokenizedInsight:
         pre_query = self._generate_pre_query()
@@ -73,7 +215,6 @@ class InsightTokenizer:
             pre_query=pre_query,
             post_query=post_query,
             select_items=self.select_items,
-            column_items=self.column_items,
             selects=self.selects,
             columns=self.columns,
             props=props,
@@ -87,16 +228,11 @@ class InsightTokenizer:
 
     def _analyze_insight(self):
         self._analyze_props()
-        self._analyze_columns()
         self._analyze_interactions()
         self._determine_groupby_requirements()
 
     def _analyze_props(self):
         self._extract_select_items(self.insight.props, ["props"])
-
-    def _analyze_columns(self):
-        if self.insight.columns:
-            self._extract_select_items(self.insight.columns, ["columns"])
 
     def _extract_select_items(self, obj: Any, path: List[str]):
         if obj is None:
@@ -114,12 +250,6 @@ class InsightTokenizer:
                 if prop_value is not None:
                     self._extract_select_items(prop_value, path + [prop])
 
-        elif isinstance(obj, InsightColumns):
-            for key in obj.model_dump().keys():
-                prop_value = getattr(obj, key, None)
-                if prop_value is not None:
-                    self._extract_select_items(prop_value, path + [key])
-
         elif isinstance(obj, list):
             for i, value in enumerate(obj):
                 self._extract_select_items(value, path + [str(i)])
@@ -132,16 +262,14 @@ class InsightTokenizer:
             query_id = ".".join(path)
 
             sql_expression = None
-            if path[0] in ("props", "columns"):
+            if path[0] == "props":
                 expression = QueryString(obj).get_value()
                 if expression:
-                    sql_expression = expression
+                    # Apply semantic layer resolution to the expression
+                    sql_expression = self._resolve_metric_reference(expression)
 
             if sql_expression and query_id not in ("filter", "order_by"):
-                if path[0] == "props":
-                    self.select_items[query_id] = sql_expression
-                else:
-                    self.column_items[query_id] = sql_expression
+                self.select_items[query_id] = sql_expression
 
                 self._analyze_sql_expression(sql_expression)
 
@@ -155,20 +283,26 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    interaction_deps.update(filter_expr)
-                    columns = self._extract_column_dependencies(filter_expr)
+                    # Apply semantic layer resolution to filter expressions
+                    resolved_filter = self._resolve_metric_reference(filter_expr)
+                    interaction_deps.update(resolved_filter)
+                    columns = self._extract_column_dependencies(resolved_filter)
                     self.required_columns.update(columns)
 
             if interaction.split:
                 split_expr = interaction.split.get_value()
                 if split_expr:
-                    columns = self._extract_column_dependencies(split_expr)
+                    # Apply semantic layer resolution to split expressions
+                    resolved_split = self._resolve_metric_reference(split_expr)
+                    columns = self._extract_column_dependencies(resolved_split)
                     self.required_columns.update(columns)
 
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    columns = self._extract_column_dependencies(sort_expr)
+                    # Apply semantic layer resolution to sort expressions
+                    resolved_sort = self._resolve_metric_reference(sort_expr)
+                    columns = self._extract_column_dependencies(resolved_sort)
                     self.required_columns.update(columns)
 
     def _analyze_sql_expression(self, sql_expr: str):
@@ -259,7 +393,7 @@ class InsightTokenizer:
         has_any_aggregation = False
         all_referenced_columns = set()
 
-        for expr in list(self.select_items.values()) + list(self.column_items.values()):
+        for expr in list(self.select_items.values()):
             try:
                 parsed = parse_expression(expr, dialect=self.sqlglot_dialect)
             except Exception:
@@ -273,21 +407,13 @@ class InsightTokenizer:
 
         if has_any_aggregation:
             derived_targets = set()
-            for expr in self.column_items.values():
-                try:
-                    parsed = parse_expression(expr, dialect=self.sqlglot_dialect)
-                except Exception:
-                    parsed = None
-                if parsed:
-                    for col in parsed.find_all(exp.Column):
-                        derived_targets.add(col.name)
 
             for column in all_referenced_columns.union(self.required_columns):
                 if column not in derived_targets and not self._is_column_inside_aggregation(column):
                     self.groupby_statements.add(column)
 
     def _is_column_inside_aggregation(self, column: str) -> bool:
-        for expr in list(self.select_items.values()) + list(self.column_items.values()):
+        for expr in list(self.select_items.values()):
             if column.lower() in expr.lower():
                 if not self._is_inside_function(expr, column):
                     return False
@@ -312,21 +438,9 @@ class InsightTokenizer:
             if preferred_alias:
                 occ["preferred_aliases"].add(preferred_alias)
 
-        for column_path, sql_expr in self.column_items.items():
-            short = column_path.split(".", 1)[1]
-            register(sql_expr, "column", column_path, preferred_alias=short)
-
         for prop_path, sql_expr in self.select_items.items():
             short_prop = prop_path.split(".", 1)[1]
-            if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
-                col_key = sql_expr
-                col_expr = self.column_items.get(col_key)
-                if col_expr:
-                    register(col_expr, "prop", prop_path, preferred_alias=col_key.split(".", 1)[1])
-                else:
-                    register(short_prop, "prop", prop_path, preferred_alias=short_prop)
-            else:
-                register(sql_expr, "prop", prop_path, preferred_alias=short_prop)
+            register(sql_expr, "prop", prop_path, preferred_alias=short_prop)
 
         for req in list(self.required_columns or []):
             register(req, "required", req, preferred_alias=req)
@@ -342,29 +456,12 @@ class InsightTokenizer:
                 alias_map[norm] = alias
 
         outer_projections = []
-        for column_path, sql_expr in self.column_items.items():
+        for prop_path, sql_expr in self.select_items.items():
             norm = self._normalize_expr_sql(sql_expr)
             alias = alias_map.get(norm)
-            if alias:
-                self.columns[column_path] = alias
             outer_projections.append(exp.column(alias or sql_expr))
-
-        for prop_path, sql_expr in self.select_items.items():
-            if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
-                col_expr = self.column_items.get(sql_expr)
-                if col_expr:
-                    norm = self._normalize_expr_sql(col_expr)
-                    alias = alias_map.get(norm)
-                    outer_projections.append(exp.column(alias or col_expr))
-                else:
-                    short_prop = prop_path.split(".", 1)[1]
-                    outer_projections.append(exp.column(short_prop))
-            else:
-                norm = self._normalize_expr_sql(sql_expr)
-                alias = alias_map.get(norm)
-                outer_projections.append(exp.column(alias or sql_expr))
-                if alias:
-                    self.columns[prop_path] = alias
+            if alias:
+                self.columns[prop_path] = alias
 
         for col in self.required_columns:
             outer_projections.append(exp.column(col))
@@ -392,8 +489,10 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
+                    # Apply semantic layer resolution to filter expressions
+                    resolved_filter = self._resolve_metric_reference(filter_expr)
                     static_filters.append(
-                        parse_expression(filter_expr, dialect=self.sqlglot_dialect)
+                        parse_expression(resolved_filter, dialect=self.sqlglot_dialect)
                     )
                     if self._is_dynamic(filter_expr):
                         self.is_dynamic_interactions = True
@@ -412,7 +511,9 @@ class InsightTokenizer:
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    parsed_sort = parse_expression(sort_expr, dialect=self.sqlglot_dialect)
+                    # Apply semantic layer resolution to sort expressions
+                    resolved_sort = self._resolve_metric_reference(sort_expr)
+                    parsed_sort = parse_expression(resolved_sort, dialect=self.sqlglot_dialect)
                     if isinstance(parsed_sort, exp.Alias):
                         parsed_sort = parsed_sort.this
                     static_sorts.append(parsed_sort)
@@ -441,17 +542,20 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    interaction_dict["filter"] = filter_expr
+                    # Store the resolved filter expression
+                    interaction_dict["filter"] = self._resolve_metric_reference(filter_expr)
 
             if interaction.split:
                 split_expr = interaction.split.get_value()
                 if split_expr:
-                    interaction_dict["split"] = split_expr
+                    # Store the resolved split expression
+                    interaction_dict["split"] = self._resolve_metric_reference(split_expr)
 
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    interaction_dict["sort"] = sort_expr
+                    # Store the resolved sort expression
+                    interaction_dict["sort"] = self._resolve_metric_reference(sort_expr)
 
             if interaction_dict:
                 result.append(interaction_dict)
@@ -462,7 +566,9 @@ class InsightTokenizer:
         if self.insight.interactions:
             for interaction in self.insight.interactions:
                 if interaction.split:
-                    return interaction.split.get_value()
+                    split_expr = interaction.split.get_value()
+                    # Apply semantic layer resolution
+                    return self._resolve_metric_reference(split_expr) if split_expr else None
         return None
 
     def _get_sort_expressions(self) -> Optional[List[str]]:
@@ -472,7 +578,9 @@ class InsightTokenizer:
                 if interaction.sort:
                     sort_expr = interaction.sort.get_value()
                     if sort_expr:
-                        sort_exprs.append(sort_expr)
+                        # Apply semantic layer resolution
+                        resolved_sort = self._resolve_metric_reference(sort_expr)
+                        sort_exprs.append(resolved_sort)
         return sort_exprs if sort_exprs else None
 
     def _normalize_expr_sql(self, sql_expr: str) -> str:
