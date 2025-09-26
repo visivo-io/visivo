@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, screen, within } from '@testing-library/react';
+import { render, fireEvent, screen } from '@testing-library/react';
 import Dropdown from './Dropdown';
 
 const options = [

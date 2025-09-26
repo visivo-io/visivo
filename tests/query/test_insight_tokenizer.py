@@ -133,5 +133,5 @@ def test_insight_tokenizer_pre_post_query_generation():
     assert "region" in tokenized.pre_query
 
     # Post-query should be a simple SELECT with potential filters
-    normalized_post_query = tokenized.post_query.replace('"', '')
+    normalized_post_query = tokenized.post_query.replace('"', "")
     assert normalized_post_query.startswith("SELECT * FROM test_insight")

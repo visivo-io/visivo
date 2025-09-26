@@ -76,7 +76,7 @@ const Input = ({ input, project, itemWidth }) => {
     };
 
     prepareComponent();
-  }, [db, input]);
+  }, [db, input, setDefaultInputValue]);
 
   if (loading) {
     return <Loading text={input?.name ?? ''} width={itemWidth} />;

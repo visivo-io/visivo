@@ -96,7 +96,7 @@ describe('Input component', () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId('dropdown')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
     });
+    expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
   });
 });

@@ -29,7 +29,7 @@ const Dropdown = ({
         setInputValue(name, selectedItems?.id);
       }
     }
-  }, [selectedItems, name, isMulti]);
+  }, [selectedItems, name, isMulti, setInputValue]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -71,6 +71,8 @@ const Dropdown = ({
         if (highlightedIndex >= 0) {
           toggleSelection(filteredOptions[highlightedIndex]);
         }
+        break;
+      default:
         break;
     }
   };
