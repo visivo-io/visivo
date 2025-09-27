@@ -5,7 +5,7 @@ import { runDuckDBQuery } from '../../duckdb/queries';
 import { useDuckDB } from '../../contexts/DuckDBContext';
 import useStore from '../../stores/store';
 
-const DROPDOWN = 'dropdown';
+export const DROPDOWN = 'dropdown';
 
 const Input = ({ input, project, itemWidth }) => {
   const db = useDuckDB();

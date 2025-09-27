@@ -23,7 +23,6 @@ export function chartDataFromInsightData(insightsData) {
       for (const key of Object.keys(obj)) {
         const value = obj[key];
         if (typeof value === 'string') {
-          // Match column(fieldName)
           const match = value.match(/^column\((.+)\)$/);
           if (match) {
             const fieldName = match[1];

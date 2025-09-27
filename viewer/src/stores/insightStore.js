@@ -31,55 +31,54 @@ const createInsightSlice = (set, get) => ({
      })
   ,
   setInputValue: (inputName, value) =>
-    set(state => {
+  set(state => {
+    const newInputs = { ...state.inputs, [inputName]: value };
 
-      const newInputs = { ...state.inputs, [inputName]: value };
+    setTimeout(async () => {
+      const { insights, db } = get();
 
-      setTimeout(async () => {
-        const { insights, db } = get();
+      const dependentInsights = Object.entries(insights)
+        .filter(([_, insight]) =>
+          insight.interactions?.some(i => {
+            if (!ContextString.isContextString(i.filter)) return true;
+            const ctx = new ContextString(i.filter);
+            return ctx.getReference() === inputName;
+          })
+        )
+        .map(([name]) => name);
 
-        const dependentInsights = Object.entries(insights)
-          .filter(([_, insight]) =>
-            insight.interactions?.some(i => {
-              if (!ContextString.isContextString(i.filter)) return true;
-              const ctx = new ContextString(i.filter);
-              return ctx.getReference() === inputName;
-            })
-          )
-          .map(([name]) => name);
+      for (const insightName of dependentInsights) {
+        const insight = insights[insightName];
+        let post_query = prepPostQuery(insight, newInputs);
+        try {
+          const result = await runDuckDBQuery(db, post_query, 3, 300);
+          const processedRows = result.toArray().map((row) => {
+            const rowData = row.toJSON();
+            return Object.fromEntries(
+              Object.entries(rowData).map(([key, value]) => [
+                key,
+                typeof value === 'bigint' ? value.toString() : value
+              ])
+            );
+          }) || [];
 
-        for (const insightName of dependentInsights) {
-          const insight = insights[insightName];
-          let post_query = prepPostQuery(insight, state.inputs)
-          try {
-            const result = await runDuckDBQuery(db, post_query, 3, 300);
-            const processedRows = result.toArray().map((row) => {
-              const rowData = row.toJSON();
-              return Object.fromEntries(
-                Object.entries(rowData).map(([key, value]) => [
-                  key,
-                  typeof value === 'bigint' ? value.toString() : value
-                ])
-              );
-            }) || [];
-
-            set(s => ({
-              insights: {
-                ...s.insights,
-                [insightName]: {
-                  ...s.insights[insightName],
-                  processedRows,
-                },
+          set(s => ({
+            insights: {
+              ...s.insights,
+              [insightName]: {
+                ...s.insights[insightName],
+                insight: processedRows,
               },
-            }));
-          } catch (err) {
-            console.error(`Query for ${insightName} failed:`, err);
-          }
+            },
+          }));
+        } catch (err) {
+          console.error(`Query for ${insightName} failed:`, err);
         }
-      }, 0);
+      }
+    }, 0);
 
-      return { inputs: newInputs };
-    }),
+    return { inputs: newInputs };
+  }),
 });
 
 export default createInsightSlice;
