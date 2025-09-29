@@ -24,15 +24,18 @@ def output_dir():
 @pytest.fixture
 def app(output_dir):
     """Create a Flask test client with a real project and SQLite database."""
+    # Ensure output_dir is absolute to avoid path resolution issues
+    abs_output_dir = os.path.abspath(output_dir)
+
     # Create a project with a SQLite source
-    source = SourceFactory(database=f"{output_dir}/test.sqlite")
+    source = SourceFactory(database=f"{abs_output_dir}/test.sqlite")
     project = ProjectFactory(sources=[source])
 
     # Create SQLite database
-    create_file_database(url=source.url(), output_dir=output_dir)
+    create_file_database(url=source.url(), output_dir=abs_output_dir)
 
     # Create the Flask app with output_dir as static_folder
-    app = FlaskApp(output_dir, project)
+    app = FlaskApp(abs_output_dir, project)
     app.app.config["TESTING"] = True
     return app.app
 
@@ -596,7 +599,7 @@ def test_serve_insight_data_by_hash(client, output_dir):
     """Test serve insight data hash found"""
     insight_name = "my_insight"
     insight_dir = Path(output_dir) / "insights" / insight_name
-    insight_dir.mkdir(parents=True)
+    insight_dir.mkdir(parents=True, exist_ok=True)
 
     insight_file = insight_dir / "insight.json"
     insight_file.write_text(json.dumps({"hello": "world"}))

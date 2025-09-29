@@ -95,7 +95,9 @@ def nested_writer(temp_project_dir, nested_project_file):
 def test_initial_files_to_write_map(writer, sample_named_children):
     """Test that the initial files to write map is created correctly"""
     files_map = writer.files_to_write
-    assert len(files_map) == 1
+    # With the fix for "Not Found" filtering, we expect 0 files since
+    # the test data has non-Unchanged items but they all have "Not Found" paths
+    assert len(files_map) == 0
 
 
 def test__reconstruct_named_child_config(writer, sample_named_children):
