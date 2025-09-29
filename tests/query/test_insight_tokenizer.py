@@ -1,7 +1,8 @@
 from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.models.insight import Insight
+from visivo.models.base.project_dag import ProjectDag
 
-from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory
+from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory, ProjectFactory
 import pytest
 
 
@@ -18,7 +19,18 @@ def test_insight_tokenizer_basic():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Basic checks
@@ -43,7 +55,18 @@ def test_insight_tokenizer_with_additional_props():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Check that columns support has been removed
@@ -71,7 +94,18 @@ def test_insight_tokenizer_with_interactions():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Check interactions are serialized
@@ -97,7 +131,18 @@ def test_insight_tokenizer_aggregation_detection():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Should require GROUP BY due to aggregation
@@ -120,7 +165,18 @@ def test_insight_tokenizer_pre_post_query_generation():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Pre-query should include all necessary columns

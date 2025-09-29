@@ -30,7 +30,7 @@ class InsightTokenizer:
         self.insight = insight
         self.source = source
         self.model = model
-        self.dag = dag  
+        self.dag = dag
         self.project = dag.get_project()
         self.source_type = source.type
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
