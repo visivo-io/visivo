@@ -598,7 +598,7 @@ def test_serve_insight_data_by_hash(client, output_dir):
     """Test serve insight data hash found"""
     insight_name = "my_insight"
     insight_dir = Path(output_dir) / "insights" / insight_name
-    insight_dir.mkdir(parents=True)
+    insight_dir.mkdir(parents=True, exist_ok=True)
 
     insight_file = insight_dir / "insight.json"
     insight_file.write_text(json.dumps({"hello": "world"}))
