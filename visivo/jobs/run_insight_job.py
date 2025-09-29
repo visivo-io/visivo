@@ -10,43 +10,14 @@ from visivo.jobs.job import (
 )
 from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
+from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.jobs.utils import get_source_for_model
-import json
-import os
 
 
 def action(insight: Insight, dag: ProjectDag, output_dir):
     """Execute insight job - tokenize insight and generate insight.json file"""
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
-
-    insight_query_info = insight.get_query_info(dag, output_dir)
-
-    # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
-    if insight_query_info.post_query:
-        import re
-        from visivo.query.input_validator import (
-            validate_insight_with_inputs,
-            INPUT_PLACEHOLDER_PATTERN,
-        )
-
-        # Check if post_query has input placeholders
-        has_placeholders = bool(re.search(INPUT_PLACEHOLDER_PATTERN, insight_query_info.post_query))
-
-        if has_placeholders:
-            try:
-                # Validate query with all input combinations
-                validate_insight_with_inputs(
-                    insight=insight,
-                    query=insight_query_info.post_query,
-                    dag=dag,
-                    output_dir=output_dir,
-                    dialect=source.get_sqlglot_dialect(),  # Use source dialect for validation
-                )
-            except Exception as e:
-                raise ValueError(
-                    f"Input validation failed for insight '{insight.name}': {str(e)}"
-                ) from e
 
     try:
         start_time = time()
@@ -131,6 +102,13 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             error_msg=error_display,
         )
         return JobResult(item=insight, success=False, message=failure_message)
+
+
+def _get_tokenized_insight(insight, dag, output_dir):
+    """Get tokenized insight with pre/post queries"""
+    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
+    source = get_source_for_model(model, dag, output_dir)
+    return InsightTokenizer(insight=insight, source=source, model=model, dag=dag).tokenize()
 
 
 def _get_source(insight, dag, output_dir):
