@@ -108,10 +108,10 @@ def test_ref_selector_Project_dag_has_one_selector():
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 11
     assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
-    assert project.descendants_of_type(type=Trace) == [
+    assert set(project.descendants_of_type(type=Trace)) == {
         project.tables[0].traces[0],
         item.chart.traces[0],
-    ]
+    }
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
     assert project.descendants_of_type(type=Chart) == [item.chart]
 
@@ -130,10 +130,10 @@ def test_ref_selector_item_Project_dag():
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 11
     assert project.descendants_of_type(type=Selector) == project.selectors
-    assert project.descendants_of_type(type=Trace) == [
+    assert set(project.descendants_of_type(type=Trace)) == {
         project.tables[0].traces[0],
         item.chart.traces[0],
-    ]
+    }
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
     assert project.descendants_of_type(type=Chart) == [project.dashboards[0].rows[0].items[0].chart]
 

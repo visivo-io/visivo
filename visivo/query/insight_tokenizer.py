@@ -2,6 +2,7 @@ import re
 from typing import Dict, List, Set, Any, Optional
 from sqlglot import exp
 
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.props.layout import Layout
@@ -25,11 +26,12 @@ from visivo.logger.logger import Logger
 
 class InsightTokenizer:
 
-    def __init__(self, insight: Insight, model: Model, source: Source, project=None):
+    def __init__(self, insight: Insight, model: Model, source: Source, dag: ProjectDag):
         self.insight = insight
         self.source = source
         self.model = model
-        self.project = project  # Optional project for semantic layer access
+        self.dag = dag  
+        self.project = dag.get_project()
         self.source_type = source.type
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)

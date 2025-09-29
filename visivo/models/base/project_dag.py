@@ -39,6 +39,22 @@ class ProjectDag(DiGraph):
         ]
         return roots
 
+    def get_project(self):
+        """
+        Get the Project instance from the root node of the DAG.
+
+        Returns:
+            Project instance if root node is a Project, None otherwise
+        """
+        from visivo.models.project import Project
+
+        roots = self.get_root_nodes()
+        if roots and len(roots) > 0:
+            root = roots[0]
+            if isinstance(root, Project):
+                return root
+        return None
+
     def get_node_by_path(self, path):
         for node in self.nodes():
             if hasattr(node, "path"):

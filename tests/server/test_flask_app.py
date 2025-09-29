@@ -592,10 +592,10 @@ def test_get_job_status_invalid_id(client):
     assert response.get_json()["error"] == "Invalid deploy ID"
 
 
-def serve_insight_data_by_hash(client, tmp_path: Path):
+def test_serve_insight_data_by_hash(client, output_dir):
     """Test serve insight data hash found"""
     insight_name = "my_insight"
-    insight_dir = tmp_path / "insights" / insight_name
+    insight_dir = Path(output_dir) / "insights" / insight_name
     insight_dir.mkdir(parents=True)
 
     insight_file = insight_dir / "insight.json"

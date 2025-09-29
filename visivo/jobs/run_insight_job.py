@@ -16,19 +16,13 @@ from visivo.jobs.job import (
 )
 from time import time
 from visivo.query.insight_tokenizer import InsightTokenizer
+from visivo.jobs.utils import get_source_for_model
 
 
 def action(insight, dag, output_dir):
     """Execute insight job - tokenize insight and generate insight.json file"""
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-
-    # Get appropriate source for the model type
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+    source = get_source_for_model(model, dag, output_dir)
 
     insight_directory = f"{output_dir}/insights/{insight.name}"
     # Tokenize the insight to get pre-query and metadata
@@ -67,30 +61,14 @@ def action(insight, dag, output_dir):
 def _get_tokenized_insight(insight, dag, output_dir):
     """Get tokenized insight with pre/post queries"""
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
-
-    return InsightTokenizer(insight=insight, source=source, model=model).tokenize()
+    source = get_source_for_model(model, dag, output_dir)
+    return InsightTokenizer(insight=insight, source=source, model=model, dag=dag).tokenize()
 
 
 def _get_source(insight, dag, output_dir):
     """Get the appropriate source for an insight"""
-    sources = all_descendants_of_type(type=Source, dag=dag, from_node=insight)
-    if len(sources) == 1:
-        return sources[0]
-
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    if isinstance(model, CsvScriptModel):
-        return model.get_duckdb_source(output_dir)
-    elif isinstance(model, LocalMergeModel):
-        return model.get_duckdb_source(output_dir, dag)
-    else:
-        return model.source
+    return get_source_for_model(model, dag, output_dir)
 
 
 def job(dag, output_dir: str, insight: Insight):
