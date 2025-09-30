@@ -1,19 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaCheck, FaChevronDown, FaTimes } from 'react-icons/fa';
+import { FaChevronDown, FaTimes } from 'react-icons/fa';
+import { runDuckDBQuery } from '../../../duckdb/queries';
+import { useDuckDB } from '../../../contexts/DuckDBContext';
+import DropdownOptions from './DropdownOptions';
+import { DropdownButton, DropdownLabel, DropdownMenu, LoadingBar, LoadingContainer, SearchInput, SelectedTag } from '../../styled/DropdownButton';
 
 const Dropdown = ({
   label = '',
-  options = [],
+  options: rawOptions,
   isMulti = false,
-  defaultValue = null,
+  defaultValue: rawDefaultValue,
   placeholder = 'Select option...',
   name,
-  setInputValue
+  setInputValue,
+  setDefaultInputValue,
+  isQuery = false
 }) => {
+  const db = useDuckDB();
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedItems, setSelectedItems] = useState(isMulti ? defaultValue || [] : defaultValue);
+  const [options, setOptions] = useState([]);
+  const [selectedItems, setSelectedItems] = useState(isMulti ? [] : null);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -22,14 +31,62 @@ const Dropdown = ({
   );
 
   useEffect(() => {
-    if (name && setInputValue) {
+    const initializeDropdown = async () => {
+      setLoading(true);
+      let opts = [];
+
+      if (isQuery) {
+        const result = await runDuckDBQuery(db, rawOptions, 1000).catch(() => false);
+        const values = result?.getChildAt(0);
+        if (values) {
+          opts = Array.from({ length: values.length }, (_, i) => {
+            const val = values.get(i);
+            return { id: val, label: val };
+          });
+        }
+      } 
+      else if (Array.isArray(rawOptions)) {
+        opts = rawOptions.map(option => ({
+          id: option,
+          label: option,
+        }));
+      }
+
+      setOptions(opts);
+
+      if (rawDefaultValue) {
+        let defVal;
+        
+        if (isMulti) {
+          defVal = Array.isArray(rawDefaultValue) && rawDefaultValue.length > 0
+            ? rawDefaultValue.map(d => ({ id: d, label: d }))
+            : [];
+        } else {
+          defVal = { id: rawDefaultValue, label: rawDefaultValue };
+        }
+        
+        setSelectedItems(defVal);
+        
+        if (setDefaultInputValue) {
+          setDefaultInputValue(name, rawDefaultValue);
+        }
+      }
+
+      setLoading(false);
+    };
+
+    initializeDropdown();
+  }, [db, rawOptions, rawDefaultValue, isQuery, isMulti, name, setDefaultInputValue]);
+
+  useEffect(() => {
+    if (name && setInputValue && !loading) {
       if (isMulti) {
         setInputValue(name, selectedItems.map(item => item.id));
       } else {
         setInputValue(name, selectedItems?.id);
       }
     }
-  }, [selectedItems, name, isMulti, setInputValue]);
+  }, [selectedItems, name, isMulti, setInputValue, loading]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -87,10 +144,8 @@ const Dropdown = ({
           return [...prev, option];
         }
       });
-      // Don't call setInputValue here - useEffect will handle it
     } else {
       setSelectedItems(option);
-      // Don't call setInputValue here - useEffect will handle it
       setIsOpen(false);
     }
   };
@@ -101,12 +156,10 @@ const Dropdown = ({
     } else {
       setSelectedItems(null);
     }
-    // useEffect will handle syncing with store
   };
 
   const clearAll = () => {
     setSelectedItems(isMulti ? [] : null);
-    // useEffect will handle syncing with store
   };
 
   const isSelected = option => {
@@ -117,11 +170,22 @@ const Dropdown = ({
     }
   };
 
+  if (loading) {
+    return (
+      <div className="w-full min-w-[200px]">
+        {label && <DropdownLabel>{label}</DropdownLabel>}
+        <LoadingContainer>
+          <LoadingBar/>
+        </LoadingContainer>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-w-[200px]">
-      {label && <h2 className="text-md text-center font-bold mb-2 text-gray-800">{label}</h2>}
+      {label && <DropdownLabel>{label}</DropdownLabel>}
       <div className="relative" ref={dropdownRef}>
-        <button
+        <DropdownButton
           onClick={() => {
             setIsOpen(!isOpen);
             if (!isOpen) {
@@ -129,7 +193,6 @@ const Dropdown = ({
             }
           }}
           onKeyDown={handleKeyDown}
-          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-left shadow-sm hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 flex items-center justify-between cursor-pointer"
         >
           <div className="flex-1 min-w-0">
             {(isMulti ? selectedItems.length === 0 : !selectedItems) ? (
@@ -137,12 +200,12 @@ const Dropdown = ({
             ) : isMulti ? (
               <div className="flex flex-wrap gap-1">
                 {selectedItems.slice(0, 2).map(item => (
-                  <span
+                  <SelectedTag
                     key={item.id}
-                    className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full"
                   >
                     {item.label}
                     <button
+                      aria-label={`Remove ${item.label}`}
                       onClick={e => {
                         e.stopPropagation();
                         removeSelection(item.id);
@@ -151,7 +214,7 @@ const Dropdown = ({
                     >
                       <FaTimes className="w-3 h-3" />
                     </button>
-                  </span>
+                  </SelectedTag>
                 ))}
                 {selectedItems.length > 2 && (
                   <span className="text-sm text-gray-600">+{selectedItems.length - 2} more</span>
@@ -166,14 +229,12 @@ const Dropdown = ({
               isOpen ? 'transform rotate-180' : ''
             }`}
           />
-        </button>
+        </DropdownButton>
 
-        {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg">
-            {/* Search Input */}
+          <DropdownMenu>
             <div className="p-3 border-b border-gray-200">
-              <input
+              <SearchInput
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search options..."
@@ -183,7 +244,6 @@ const Dropdown = ({
                   setHighlightedIndex(-1);
                 }}
                 onKeyDown={handleKeyDown}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               />
             </div>
 
@@ -198,41 +258,16 @@ const Dropdown = ({
               </div>
             )}
 
-            <div className="max-h-64 overflow-y-auto">
-              {filteredOptions.length === 0 ? (
-                <div className="p-3 text-sm text-gray-500 text-center">No options found</div>
-              ) : (
-                filteredOptions.map((option, index) => {
-                  const selected = isSelected(option);
-                  const isHighlighted = highlightedIndex === index;
-
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => toggleSelection(option)}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center justify-between transition-colors cursor-pointer ${
-                        isHighlighted ? 'bg-blue-50 text-blue-700' : ''
-                      } ${selected ? 'bg-blue-50' : ''}`}
-                    >
-                      <span
-                        className={`truncate ${selected ? 'font-medium text-blue-700' : 'text-gray-900'}`}
-                      >
-                        {option.label}
-                      </span>
-                      {selected && <FaCheck className="w-4 h-4 text-blue-600 flex-shrink-0 ml-2" />}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Footer */}
-            {isMulti && (
-              <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 text-center">
-                {selectedItems.length} of {options.length} selected
-              </div>
-            )}
-          </div>
+            <DropdownOptions
+              options={options}
+              filteredOptions={filteredOptions}
+              isSelected={isSelected}
+              toggleSelection={toggleSelection}
+              highlightedIndex={highlightedIndex}
+              isMulti={isMulti}
+              selectedItems={selectedItems}
+            />
+          </DropdownMenu>
         )}
       </div>
     </div>

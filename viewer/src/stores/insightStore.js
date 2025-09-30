@@ -1,5 +1,5 @@
 import { prepPostQuery, runDuckDBQuery } from "../duckdb/queries";
-import { ContextString } from "../utils/context_string";
+import { ContextString } from "../utils/contextString";
 
 const createInsightSlice = (set, get) => ({
   insights: {},

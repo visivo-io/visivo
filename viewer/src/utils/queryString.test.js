@@ -1,4 +1,4 @@
-import { QueryString } from "./query_string";
+import { QueryString } from "./queryString";
 
 describe('QueryString', () => {
   describe('constructor', () => {

@@ -1,4 +1,4 @@
-import { ContextString } from '../utils/context_string';
+import { ContextString } from '../utils/contextString';
 import { getTempFilename } from './duckdb';
 
 

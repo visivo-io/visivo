@@ -1,4 +1,4 @@
-import { QueryString } from "../utils/query_string";
+import { QueryString } from "../utils/queryString";
 
 export function chartDataFromInsightData(insightsData) {
   if (!insightsData) return [];

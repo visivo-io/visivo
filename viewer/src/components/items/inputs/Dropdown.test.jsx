@@ -2,11 +2,7 @@ import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import Dropdown from './Dropdown';
 
-const options = [
-  { id: 1, label: 'Option A' },
-  { id: 2, label: 'Option B' },
-  { id: 3, label: 'Option C' },
-];
+const options = ['Option A', 'Option B', 'Option C'];
 
 describe('Dropdown Component', () => {
   it('renders with placeholder when no value is selected', () => {
@@ -28,6 +24,7 @@ describe('Dropdown Component', () => {
     fireEvent.change(searchInput, { target: { value: 'Option B' } });
 
     expect(screen.getByText('Option B')).toBeInTheDocument();
+    expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
   it('selects single option and closes menu', () => {
@@ -35,31 +32,61 @@ describe('Dropdown Component', () => {
     render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
     fireEvent.click(screen.getByRole('button'));
 
+    fireEvent.click(screen.getByText('Option A'));
     expect(screen.getByText('Option A')).toBeInTheDocument();
   });
 
   it('selects multiple options in multi mode', () => {
     const setInputValue = jest.fn();
-    render(<Dropdown options={options} isMulti name="multiTest" setInputValue={setInputValue} />);
-    fireEvent.click(screen.getByRole('button'));
+    render(
+        <Dropdown
+        options={options}
+        isMulti
+        defaultValue={['Option A']}
+        name="multiTest"
+        setInputValue={setInputValue}
+        />
+    );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
-    expect(screen.getByText('Option B')).toBeInTheDocument();
+
+    const removeButton = screen.getByLabelText('Remove Option A');
+    fireEvent.click(removeButton);
+
+    expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
   it('removes selected option in multi mode', () => {
     const setInputValue = jest.fn();
-    render(<Dropdown options={options} isMulti defaultValue={[options[0]]} name="multiTest" setInputValue={setInputValue} />);
-    
-    expect(screen.getByText('Option A')).toBeInTheDocument();    
+    render(
+      <Dropdown
+        options={options}
+        isMulti
+        defaultValue={['Option A']}
+        name="multiTest"
+        setInputValue={setInputValue}
+      />
+    );
+
+    expect(screen.getByText('Option A')).toBeInTheDocument();
+
+    const removeButton = screen.getByLabelText('Remove Option A');
+    fireEvent.click(removeButton);
+
+    fireEvent.click(removeButton);
+
+    expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
   it('supports keyboard navigation (ArrowDown + Enter)', () => {
     render(<Dropdown options={options} />);
     const button = screen.getByRole('button');
-    
+
     fireEvent.keyDown(button, { key: 'ArrowDown' });
     expect(screen.getByPlaceholderText('Search options...')).toBeInTheDocument();
+
+    fireEvent.keyDown(button, { key: 'ArrowDown' });
+    fireEvent.keyDown(button, { key: 'Enter' });
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
   });
