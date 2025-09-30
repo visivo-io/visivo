@@ -101,7 +101,6 @@ def serve(
         dag_filter=dag_filter,
         threads=threads,
         skip_compile=skip_compile,
-        verbose=verbose,
         project=project,
         server_url=server_url,
         new=new,

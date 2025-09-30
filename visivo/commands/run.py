@@ -65,7 +65,6 @@ def run(
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
         skip_compile=skip_compile,
-        verbose=verbose,
         project=project,
     )
 
