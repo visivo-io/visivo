@@ -32,12 +32,12 @@ def run_phase(
     from time import time
     import os
 
-    # Set verbose environment variable if verbose flag is enabled
+    # Set DEBUG environment variable if verbose flag is enabled
     if verbose:
-        os.environ["VISIVO_VERBOSE"] = "true"
-    elif "VISIVO_VERBOSE" in os.environ:
+        os.environ["DEBUG"] = "true"
+    elif "DEBUG" in os.environ:
         # Clear it if verbose is explicitly False
-        del os.environ["VISIVO_VERBOSE"]
+        del os.environ["DEBUG"]
 
     # Replace compile phase with parse project phase if skip_compile is True.
     # Injects the project if it's available.

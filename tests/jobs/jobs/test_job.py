@@ -11,8 +11,8 @@ from visivo.jobs.job import (
 
 def test_runner_message_success():
     # Clear verbose environment variable to ensure consistent test behavior
-    if "VISIVO_VERBOSE" in os.environ:
-        del os.environ["VISIVO_VERBOSE"]
+    if "DEBUG" in os.environ:
+        del os.environ["DEBUG"]
 
     details = "Testing Details"
     full_path = temp_file("test.duckdb", "file")
@@ -28,8 +28,8 @@ def test_runner_message_success():
 
 def test_runner_message_failure():
     # Clear verbose environment variable to ensure consistent test behavior
-    if "VISIVO_VERBOSE" in os.environ:
-        del os.environ["VISIVO_VERBOSE"]
+    if "DEBUG" in os.environ:
+        del os.environ["DEBUG"]
 
     details = "Testing Details"
     full_path = temp_file("test.sql", "file")
@@ -50,7 +50,7 @@ def test_runner_message_failure():
 def test_runner_message_verbose():
     """Test that verbose mode shows full details without truncation"""
     # Set verbose environment variable
-    os.environ["VISIVO_VERBOSE"] = "true"
+    os.environ["DEBUG"] = "true"
 
     try:
         long_details = "This is a really really really long trace name that would normally be truncated but should show fully in verbose mode"
@@ -73,15 +73,15 @@ def test_runner_message_verbose():
 
     finally:
         # Clean up environment variable
-        if "VISIVO_VERBOSE" in os.environ:
-            del os.environ["VISIVO_VERBOSE"]
+        if "DEBUG" in os.environ:
+            del os.environ["DEBUG"]
 
 
 def test_runner_message_truncation():
     """Test that non-verbose mode truncates long details"""
     # Ensure verbose mode is off
-    if "VISIVO_VERBOSE" in os.environ:
-        del os.environ["VISIVO_VERBOSE"]
+    if "DEBUG" in os.environ:
+        del os.environ["DEBUG"]
 
     long_details = "This is a really really really long trace name that should definitely be truncated in normal mode because it exceeds the width limit"
     full_path = temp_file("test.sql", "file")

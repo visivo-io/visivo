@@ -71,7 +71,7 @@ def _format_message(details, status, full_path=None, error_msg=None):
         return re.sub(r"\033\[[0-9;]*m", "", text)
 
     # Check if verbose mode is enabled via environment variable
-    verbose = os.environ.get("VISIVO_VERBOSE", "").lower() == "true"
+    verbose = os.environ.get("DEBUG", "").lower() == "true"
 
     if not verbose:
         # Apply truncation only in non-verbose mode

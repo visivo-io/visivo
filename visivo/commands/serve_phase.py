@@ -22,12 +22,12 @@ def serve_phase(
     server_url,
     new=False,
 ):
-    # Set verbose environment variable if verbose flag is enabled
+    # Set DEBUG environment variable if verbose flag is enabled
     if verbose:
-        os.environ["VISIVO_VERBOSE"] = "true"
-    elif "VISIVO_VERBOSE" in os.environ:
+        os.environ["DEBUG"] = "true"
+    elif "DEBUG" in os.environ:
         # Clear it if verbose is explicitly False
-        del os.environ["VISIVO_VERBOSE"]
+        del os.environ["DEBUG"]
 
     app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
     server = None  # Will be set later
