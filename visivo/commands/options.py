@@ -170,7 +170,6 @@ def verbose(function):
         return value
 
     click.option(
-        "-v",
         "--verbose",
         help="Enable verbose output. Shows full trace names and details in runtime logs.",
         is_flag=True,
