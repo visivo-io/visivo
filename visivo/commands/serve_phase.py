@@ -17,10 +17,17 @@ def serve_phase(
     dag_filter,
     threads,
     skip_compile,
+    verbose,
     project,
     server_url,
     new=False,
 ):
+    # Set verbose environment variable if verbose flag is enabled
+    if verbose:
+        os.environ["VISIVO_VERBOSE"] = "true"
+    elif "VISIVO_VERBOSE" in os.environ:
+        # Clear it if verbose is explicitly False
+        del os.environ["VISIVO_VERBOSE"]
 
     app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
     server = None  # Will be set later
@@ -51,6 +58,7 @@ def serve_phase(
                 threads=threads,
                 soft_failure=True,
                 skip_compile=True,  # Don't recompile on changes, passing in just compiled one.
+                verbose=verbose,
                 project=project,
                 server_url=server_url,
             )
@@ -84,6 +92,7 @@ def serve_phase(
                 dag_filter=dag_filter,
                 threads=threads,
                 skip_compile=skip_compile,
+                verbose=verbose,
                 project=project,
                 server_url=server_url,
             )

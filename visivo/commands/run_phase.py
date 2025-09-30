@@ -23,12 +23,21 @@ def run_phase(
     dbt_profile: str = None,
     dbt_target: str = None,
     skip_compile: bool = False,
+    verbose: bool = False,
     project: Project = None,
     server_url: str = None,
 ):
     from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
+    import os
+
+    # Set verbose environment variable if verbose flag is enabled
+    if verbose:
+        os.environ["VISIVO_VERBOSE"] = "true"
+    elif "VISIVO_VERBOSE" in os.environ:
+        # Clear it if verbose is explicitly False
+        del os.environ["VISIVO_VERBOSE"]
 
     # Replace compile phase with parse project phase if skip_compile is True.
     # Injects the project if it's available.

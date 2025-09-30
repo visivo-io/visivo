@@ -8,6 +8,7 @@ from visivo.commands.options import (
     dbt_profile,
     dbt_target,
     skip_compile,
+    verbose,
     port,
 )
 
@@ -21,6 +22,7 @@ from visivo.commands.options import (
 @dbt_profile
 @dbt_target
 @skip_compile
+@verbose
 @port
 def run(
     output_dir,
@@ -31,6 +33,7 @@ def run(
     dbt_profile,
     dbt_target,
     skip_compile,
+    verbose,
     port,
 ):
     """
@@ -62,6 +65,7 @@ def run(
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
         skip_compile=skip_compile,
+        verbose=verbose,
         project=project,
     )
 

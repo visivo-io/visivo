@@ -70,6 +70,7 @@ def test_serve(output_dir):
         dag_filter=None,
         threads=2,
         skip_compile=True,
+        verbose=False,
         project=project,
         server_url=server_url,
     )
@@ -98,6 +99,7 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
         dag_filter=None,
         threads=1,
         skip_compile=True,
+        verbose=False,
         project=test_project,
         server_url=server_url,
     )

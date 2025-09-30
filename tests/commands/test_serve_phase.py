@@ -56,6 +56,7 @@ def test_serve_phase_creates_server(test_project, output_dir, server_url):
         dag_filter=None,
         threads=1,
         skip_compile=True,
+        verbose=False,
         project=test_project,
         server_url=server_url,
     )
@@ -83,6 +84,7 @@ def test_serve_phase_handles_dbt_ignore_patterns(test_project, output_dir, serve
         dag_filter=None,
         threads=1,
         skip_compile=True,
+        verbose=False,
         project=test_project,
         server_url=server_url,
     )

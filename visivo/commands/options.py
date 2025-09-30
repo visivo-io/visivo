@@ -160,6 +160,17 @@ def skip_compile(function):
     return function
 
 
+def verbose(function):
+    click.option(
+        "-v",
+        "--verbose",
+        help="Enable verbose output. Shows full trace names and details in runtime logs.",
+        is_flag=True,
+        default=False,
+    )(function)
+    return function
+
+
 def new(function):
     function = click.option(
         "-n",

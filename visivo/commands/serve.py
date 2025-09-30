@@ -14,6 +14,7 @@ from visivo.commands.options import (
     dbt_profile,
     dbt_target,
     skip_compile,
+    verbose,
     new,
 )
 from visivo.discovery.discover import Discover
@@ -32,6 +33,7 @@ from visivo.logger.logger import Logger
 @port
 @threads
 @skip_compile
+@verbose
 @dbt_profile
 @dbt_target
 @new
@@ -45,6 +47,7 @@ def serve(
     dag_filter,
     threads,
     skip_compile,
+    verbose,
     dbt_profile,
     dbt_target,
     new,
@@ -98,6 +101,7 @@ def serve(
         dag_filter=dag_filter,
         threads=threads,
         skip_compile=skip_compile,
+        verbose=verbose,
         project=project,
         server_url=server_url,
         new=new,
