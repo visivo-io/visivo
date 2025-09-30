@@ -2,6 +2,7 @@ from concurrent.futures import Future
 from visivo.models.base.named_model import NamedModel
 from visivo.models.sources.source import Source
 import os
+import re
 import textwrap
 from time import time
 from termcolor import colored
@@ -62,11 +63,40 @@ def start_message(cls_name, item):
 
 
 def _format_message(details, status, full_path=None, error_msg=None):
-    total_width = 90
+    total_width = 100
+    full_details = details
 
-    details = textwrap.shorten(details, width=80, placeholder="(truncated)") + " "
-    num_dots = total_width - len(details)
-    dots = "." * num_dots
+    # Helper function to strip ANSI codes for length calculation
+    def strip_ansi(text):
+        return re.sub(r"\033\[[0-9;]*m", "", text)
+
+    # Check if verbose mode is enabled via environment variable
+    verbose = os.environ.get("DEBUG", "").lower() == "true"
+
+    if not verbose:
+        # Apply truncation only in non-verbose mode
+        # Truncate to 93 chars max (visual width, excluding ANSI codes)
+        visual_width = len(strip_ansi(full_details))
+        if visual_width > 93:
+            # Need to truncate - find where to cut considering ANSI codes
+            details = textwrap.shorten(strip_ansi(full_details), width=93, placeholder="(trunc)")
+        else:
+            details = full_details
+    else:
+        details = full_details
+
+    # Add space after details
+    details = details + " "
+
+    # Calculate dots to align status based on visual length (excluding ANSI codes)
+    visual_len = len(strip_ansi(details))
+    num_dots = total_width - visual_len
+    if num_dots > 0:
+        dots = "." * num_dots
+    else:
+        # If details are longer than total_width, use minimal dots
+        dots = " ... "
+
     error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
     if not full_path:
         return f"{details}{dots}[{status}]{error_str}"

@@ -1,6 +1,7 @@
 from time import time
 
 start_time = time()
+from visivo.commands.options import verbose
 from visivo.logger.logger import Logger, TypeEnum
 
 Logger.instance().info("Starting Visivo...")
@@ -34,7 +35,8 @@ from visivo.version import VISIVO_VERSION
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
 @click.version_option(version=VISIVO_VERSION)
-def visivo(env_file, profile):
+@verbose
+def visivo(env_file, profile, verbose):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
