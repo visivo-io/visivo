@@ -31,7 +31,7 @@ def run(
     dbt_profile,
     dbt_target,
     skip_compile,
-    port
+    port,
 ):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
