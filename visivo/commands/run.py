@@ -21,6 +21,7 @@ from visivo.commands.options import (
 @dbt_profile
 @dbt_target
 @skip_compile
+@port
 def run(
     output_dir,
     working_dir,
@@ -30,6 +31,7 @@ def run(
     dbt_profile,
     dbt_target,
     skip_compile,
+    port
 ):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
