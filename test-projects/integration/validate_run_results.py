@@ -237,7 +237,7 @@ class VisivoRunValidator:
             "Fibonacci Waterfall",
             "funnel trace",
             "Indicator Trace",
-            "markdown-trace-base",
+            "markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters",
             "Simple Line",
             "Surface Trace",
         ]
