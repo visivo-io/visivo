@@ -1,5 +1,5 @@
-from visivo.models.base.query_string import QueryString
-from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
+from visivo.models.base.query_string import QUERY_STRING_VALUE_PATTERN, QueryString
+from visivo.models.base.base_model import STATEMENT_REGEX
 from typing import Annotated, Any, Union
 import re
 from pydantic import Discriminator, Tag

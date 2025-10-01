@@ -16,8 +16,8 @@ from visivo.models.relation import Relation
 from visivo.models.dimension import Dimension
 
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.base.base_model import REF_PROPERTY_PATTERN
-from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
+from visivo.models.base.base_model import REF_REGEX
+from visivo.models.base.context_string import CONTEXT_STRING_REF_PATTERN
 from visivo.models.dashboards.fields import DashboardField
 from visivo.models.chart import Chart
 from visivo.models.trace import Trace

@@ -3,10 +3,10 @@ import re
 
 from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
-    INLINE_REF_REGEX,
-    INLINE_REF_PROPS_PATH_REGEX,
+    CONTEXT_STRING_REF_PATTERN,
+    CONTEXT_STRING_REF_PROPS_PATTERN,
     INLINE_PATH_REGEX,
-    CONTEXT_STRING_VALUE_REGEX,
+    CONTEXT_STRING_VALUE_PATTERN,
 )
 
 
@@ -35,15 +35,15 @@ class ContextString:
         return hash("".join(re.findall(CONTEXT_STRING_VALUE_PATTERN, self.value)))
 
     def get_reference(self) -> str:
-        match = re.search(CONTEXT_STRING_REF_PATTERN, self.value)
-        if match is None:
+        matches = re.findall(CONTEXT_STRING_REF_PATTERN, self.value)
+        if len(matches) == 0:
             return None
         else:
             return get_model_name_from_match(match)
 
     def get_ref_props_path(self) -> str:
-        match = re.search(CONTEXT_STRING_REF_PATTERN, self.value)
-        if match is None:
+        matches = re.findall(CONTEXT_STRING_REF_PROPS_PATTERN, self.value)
+        if len(matches) == 0:
             return None
         else:
             property_path = match.group("property_path")

@@ -12,7 +12,7 @@ import re
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import (
     REF_REGEX,
-    CONTEXT_STRING_VALUE_REGEX,
+    CONTEXT_STRING_VALUE_PATTERN,
 )
 
 RefStringType = NewType(

@@ -1,7 +1,7 @@
 from typing import Any
 
 import re
-from visivo.query.patterns import QUERY_STRING_VALUE_REGEX
+from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
 
 class QueryString:

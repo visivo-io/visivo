@@ -24,15 +24,15 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 # Simple ref pattern: ref(name) without ${ }
 # Used for validation in Pydantic models
 # Example: ref(orders)
-REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
+REF_REGEX = rf"^ref\(\s*(?P<ref_name>[{NAME_REGEX}]+)\)$"
 
 # Inline ref pattern: ${ref(name)} with optional property path
 # Example: ${ref(orders).id} or ${ref(orders).props.color}
-INLINE_REF_REGEX = rf"\${{\s*ref\(([{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
+CONTEXT_STRING_REF_PATTERN = rf"\${{\s*ref\(([{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
 
 # Inline ref with captured property path
 # Example: ${ref(orders).props.color} captures ".props.color"
-INLINE_REF_PROPS_PATH_REGEX = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s*}}"
+CONTEXT_STRING_REF_PROPS_PATTERN = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s*}}"
 
 # Core pattern for ${ref(model).field} or ${ref('model').field}
 # Captures: (quoted_model, unquoted_model, field)
@@ -55,7 +55,7 @@ INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
 
 # General context string value pattern: ${anything}
 # Used for equality and hashing in ContextString class
-CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
+CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
 
 
 # ============================================================================
@@ -65,7 +65,7 @@ CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
 # Query string pattern: ?{expression}
 # Used for inline query expressions in props
 # Example: ?{sum(amount)}
-QUERY_STRING_VALUE_REGEX = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
+QUERY_STRING_VALUE_PATTERN = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
 
 # Query function pattern: query(SELECT ...)
 QUERY_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$"
@@ -76,7 +76,7 @@ COLUMN_REGEX = (
 )
 
 # Combined statement pattern
-STATEMENT_REGEX = rf"{QUERY_REGEX}|{COLUMN_REGEX}|{CONTEXT_STRING_VALUE_REGEX}"
+STATEMENT_REGEX = rf"{QUERY_REGEX}|{COLUMN_REGEX}|{CONTEXT_STRING_VALUE_PATTERN}"
 
 # Indexed column pattern: column(name)[index]
 INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
