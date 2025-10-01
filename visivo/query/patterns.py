@@ -9,12 +9,85 @@ import re
 from typing import Tuple, Optional, List, Set
 
 
+# ============================================================================
+# Base Patterns - Character classes and building blocks
+# ============================================================================
+
+# Valid characters in reference names (allows alphanumeric, spaces, quotes, hyphens, underscores)
+NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
+
+
+# ============================================================================
+# Reference Patterns - ${ref(...)} syntax variations
+# ============================================================================
+
+# Simple ref pattern: ref(name) without ${ }
+# Used for validation in Pydantic models
+# Example: ref(orders)
+REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
+
+# Inline ref pattern: ${ref(name)} with optional property path
+# Example: ${ref(orders).id} or ${ref(orders).props.color}
+INLINE_REF_REGEX = rf"\${{\s*ref\(([{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
+
+# Inline ref with captured property path
+# Example: ${ref(orders).props.color} captures ".props.color"
+INLINE_REF_PROPS_PATH_REGEX = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s*}}"
+
 # Core pattern for ${ref(model).field} or ${ref('model').field}
 # Captures: (quoted_model, unquoted_model, field)
+# This is the most flexible pattern used in query resolution
 REF_PATTERN = r'\$\{\s*ref\((?:[\'"]([^\'\"]+)[\'"]|([^)]+))\)(?:\.([^}]+))?\s*\}'
 
-# Compiled version for performance
+# Metric/dimension reference pattern: ${ref(name)} or ${ref(model).metric}
+# Captures: (model_or_metric_name, optional_field_name)
+# Used specifically for metric and dimension resolution
+METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+
+
+# ============================================================================
+# Context String Patterns - ${ } general syntax
+# ============================================================================
+
+# Inline path pattern: ${path.to.property}
+# Example: ${user.name} or ${data[0].value}
+INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
+
+# General context string value pattern: ${anything}
+# Used for equality and hashing in ContextString class
+CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
+
+
+# ============================================================================
+# Query and Column Patterns
+# ============================================================================
+
+# Query string pattern: ?{expression}
+# Used for inline query expressions in props
+# Example: ?{sum(amount)}
+QUERY_STRING_VALUE_REGEX = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
+
+# Query function pattern: query(SELECT ...)
+QUERY_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$"
+
+# Column function pattern: column(name) or column(name)[slice]
+COLUMN_REGEX = (
+    r"^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
+)
+
+# Combined statement pattern
+STATEMENT_REGEX = rf"{QUERY_REGEX}|{COLUMN_REGEX}|{CONTEXT_STRING_VALUE_REGEX}"
+
+# Indexed column pattern: column(name)[index]
+INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
+
+
+# ============================================================================
+# Compiled Patterns - For performance
+# ============================================================================
+
 REF_PATTERN_COMPILED = re.compile(REF_PATTERN)
+METRIC_REF_PATTERN_COMPILED = re.compile(METRIC_REF_PATTERN)
 
 
 def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:

@@ -1,9 +1,7 @@
 from typing import Any
 
 import re
-
-
-QUERY_STRING_VALUE_REGEX = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
+from visivo.query.patterns import QUERY_STRING_VALUE_REGEX
 
 
 class QueryString:

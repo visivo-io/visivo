@@ -3,15 +3,12 @@ from typing import Any
 import re
 
 from visivo.models.dag import all_descendants_with_name
-
-NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
-INLINE_REF_REGEX = rf"\${{\s*ref\(([{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
-INLINE_REF_PROPS_PATH_REGEX = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s*}}"
-INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
-CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
-
-# Pattern to match ${ref(metric_name)} or ${ref(model).metric_name}
-METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+from visivo.query.patterns import (
+    INLINE_REF_REGEX,
+    INLINE_REF_PROPS_PATH_REGEX,
+    INLINE_PATH_REGEX,
+    CONTEXT_STRING_VALUE_REGEX,
+)
 
 
 class ContextString:

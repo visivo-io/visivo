@@ -149,7 +149,7 @@ class InsightTokenizer:
                 )
 
         # Pattern to match ${ref(model_name).field_or_metric_name}
-        from visivo.models.base.context_string import METRIC_REF_PATTERN
+        from visivo.query.patterns import METRIC_REF_PATTERN
 
         def replace_ref(match):
             model_name = match.group(1).strip().strip("\"'")
