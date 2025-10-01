@@ -474,7 +474,19 @@ class InsightTokenizer:
             ]
 
             base_model = exp.Subquery(this=base_sql_expr).as_("base_model")
-            precomputed_select = exp.Select().select("*", *cte_projections).from_(base_model)
+
+            # When we have GROUP BY, we can't SELECT *, we need to explicitly select only grouped columns
+            if self.groupby_statements:
+                # Select only the columns that will be grouped by
+                grouped_columns = [exp.column(g) for g in self.groupby_statements]
+                precomputed_select = exp.Select().select(*grouped_columns, *cte_projections).from_(base_model)
+
+                # Add GROUP BY to the CTE (where aggregations are)
+                mapped_groupbys = [exp.column(g) for g in self.groupby_statements]
+                precomputed_select = precomputed_select.group_by(*mapped_groupbys)
+            else:
+                # No GROUP BY needed, can use SELECT *
+                precomputed_select = exp.Select().select("*", *cte_projections).from_(base_model)
 
             query = (
                 exp.Select()
@@ -485,6 +497,13 @@ class InsightTokenizer:
         else:
             base_model = exp.Subquery(this=base_sql_expr).as_("base_model")
             query = exp.Select().select(*outer_projections).from_(base_model)
+
+            # Add GROUP BY to simple query if needed
+            if self.groupby_statements:
+                mapped_groupbys = []
+                for g in self.groupby_statements:
+                    mapped_groupbys.append(exp.column(g))
+                query = query.group_by(*mapped_groupbys)
 
         static_filters = []
         for interaction in self.insight.interactions or []:
@@ -500,13 +519,6 @@ class InsightTokenizer:
                         self.is_dynamic_interactions = True
         if static_filters:
             query = query.where(*static_filters)
-
-        if self.groupby_statements:
-            mapped_groupbys = []
-            for g in self.groupby_statements:
-                norm_g = self._normalize_expr_sql(g)
-                mapped_groupbys.append(exp.column(alias_map.get(norm_g, g)))
-            query = query.group_by(*mapped_groupbys)
 
         static_sorts = []
         for interaction in self.insight.interactions or []:
