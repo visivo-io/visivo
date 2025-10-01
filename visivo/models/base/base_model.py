@@ -12,7 +12,7 @@ import re
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import (
     REF_REGEX,
-    CONTEXT_STRING_VALUE_REGEX,
+    CONTEXT_STRING_VALUE_PATTERN,
 )
 
 RefStringType = NewType(
@@ -48,7 +48,7 @@ class ModelStrDiscriminator:
         return self.class_name
 
     def __call__(self, value):
-        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_PATTERN, value):
             return "Context"
         elif isinstance(value, str):
             return "Ref"
@@ -67,7 +67,7 @@ class TraceOrInsightDiscriminator:
         return "TraceOrInsightDiscriminator"
 
     def __call__(self, value):
-        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_PATTERN, value):
             return "Context"
         elif isinstance(value, str):
             return "Ref"

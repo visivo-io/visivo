@@ -4,10 +4,10 @@ import re
 
 from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
-    INLINE_REF_REGEX,
-    INLINE_REF_PROPS_PATH_REGEX,
+    CONTEXT_STRING_REF_PATTERN,
+    CONTEXT_STRING_REF_PROPS_PATTERN,
     INLINE_PATH_REGEX,
-    CONTEXT_STRING_VALUE_REGEX,
+    CONTEXT_STRING_VALUE_PATTERN,
 )
 
 
@@ -27,23 +27,23 @@ class ContextString:
 
     def __eq__(self, other):
         if isinstance(other, ContextString):
-            return re.findall(CONTEXT_STRING_VALUE_REGEX, self.value) == re.findall(
-                CONTEXT_STRING_VALUE_REGEX, other.value
+            return re.findall(CONTEXT_STRING_VALUE_PATTERN, self.value) == re.findall(
+                CONTEXT_STRING_VALUE_PATTERN, other.value
             )
         return False
 
     def __hash__(self):
-        return hash("".join(re.findall(CONTEXT_STRING_VALUE_REGEX, self.value)))
+        return hash("".join(re.findall(CONTEXT_STRING_VALUE_PATTERN, self.value)))
 
     def get_reference(self) -> str:
-        matches = re.findall(INLINE_REF_REGEX, self.value)
+        matches = re.findall(CONTEXT_STRING_REF_PATTERN, self.value)
         if len(matches) == 0:
             return None
         else:
             return matches[0]
 
     def get_ref_props_path(self) -> str:
-        matches = re.findall(INLINE_REF_PROPS_PATH_REGEX, self.value)
+        matches = re.findall(CONTEXT_STRING_REF_PROPS_PATTERN, self.value)
         if len(matches) == 0:
             return None
         else:

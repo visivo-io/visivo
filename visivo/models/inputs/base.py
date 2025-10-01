@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 
 from pydantic import Field, model_serializer
 from visivo.logger.logger import Logger
-from visivo.models.base.context_string import INLINE_REF_REGEX, ContextString
+from visivo.models.base.context_string import CONTEXT_STRING_REF_PATTERN, ContextString
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.query_string import QueryString
 
@@ -38,7 +38,7 @@ class Input(NamedModel):
                 Logger.instance().error(f"Failed to resolve ref {ref_name}: {e}")
                 return ref_name
 
-        return re.sub(INLINE_REF_REGEX, resolve_match, query_value)
+        return re.sub(CONTEXT_STRING_REF_PATTERN, resolve_match, query_value)
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):

@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 from pydantic import ConfigDict, Discriminator, Field, PrivateAttr, model_serializer
 
 from visivo.models.base.base_model import BaseModel, ContextStringType, RefStringType
-from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX, ContextString
+from visivo.models.base.context_string import CONTEXT_STRING_VALUE_PATTERN, ContextString
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
@@ -16,7 +16,7 @@ class SelectorType(str, Enum):
 
 
 def get_discriminator_value(value: Any) -> str:
-    if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+    if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_PATTERN, value):
         return "Context"
     elif isinstance(value, str):
         return "Ref"

@@ -1,7 +1,7 @@
 from typing import Any
 
 import re
-from visivo.query.patterns import QUERY_STRING_VALUE_REGEX
+from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
 
 class QueryString:
@@ -20,7 +20,7 @@ class QueryString:
 
     def get_value(self) -> str:
         try:
-            matches = re.findall(QUERY_STRING_VALUE_REGEX, self.value)
+            matches = re.findall(QUERY_STRING_VALUE_PATTERN, self.value)
             if len(matches) == 0:
                 return None
             else:
