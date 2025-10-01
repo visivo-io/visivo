@@ -71,10 +71,6 @@ class Insight(NamedModel, ParentModel):
 
     name: str = Field(description="The unique name of the insight across the entire project.")
 
-    model: ModelRefField = Field(
-        description="The model or model ref that Visivo should use to build the insight."
-    )
-
     description: Optional[str] = Field(
         None, description="Optional description of what this insight represents."
     )
@@ -89,6 +85,26 @@ class Insight(NamedModel, ParentModel):
     )
 
     def child_items(self):
-        """Return child items for DAG construction"""
-        children = [self.model]
+        """Return child items for DAG construction.
+
+        Extracts model references from props using ${ref(model).field} syntax.
+        """
+        import re
+
+        children = []
+
+        # Extract all ${ref(model_name).field} references from props
+        if self.props:
+            props_str = str(self.props.model_dump())
+            # Match ${ref(model_name).field} or ${ref(model_name)}
+            ref_pattern = r"\$\{ref\(([^)]+)\)(?:\.[^}]+)?\}"
+            matches = re.findall(ref_pattern, props_str)
+
+            # Add unique model references
+            seen_models = set()
+            for model_ref in matches:
+                if model_ref not in seen_models:
+                    children.append(f"ref({model_ref})")
+                    seen_models.add(model_ref)
+
         return children

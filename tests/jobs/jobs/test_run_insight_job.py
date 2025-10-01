@@ -31,7 +31,6 @@ def test_insight_job_action_success(mock_dag_with_project):
     # Create test insight
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT 1 as x, 2 as y"},
         "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
     }
     insight = Insight(**insight_data)
@@ -89,7 +88,6 @@ def test_insight_job_action_failure(mock_dag_with_project):
     """Test that insight job handles failures gracefully"""
     insight_data = {
         "name": "failing_insight",
-        "model": {"sql": "SELECT invalid syntax"},
         "props": {"type": "scatter"},
     }
     insight = Insight(**insight_data)
@@ -124,7 +122,6 @@ def test_get_tokenized_insight(mock_dag_with_project):
     """Test that tokenized insight is generated correctly"""
     insight_data = {
         "name": "tokenize_test",
-        "model": {"sql": "SELECT * FROM test"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{amount}"},
     }
     insight = Insight(**insight_data)
@@ -154,7 +151,7 @@ def test_get_tokenized_insight(mock_dag_with_project):
 
 def test_get_source(mock_dag_with_project):
     """Test that source is retrieved correctly"""
-    insight = Insight(name="source_test", model={"sql": "SELECT 1"}, props={"type": "scatter"})
+    insight = Insight(name="source_test", props={"type": "scatter"})
 
     model = SqlModelFactory()
     source = Mock()
@@ -176,7 +173,7 @@ def test_get_source(mock_dag_with_project):
 
 def test_job_creation(mock_dag_with_project):
     """Test that insight job is created correctly"""
-    insight = Insight(name="job_test", model={"sql": "SELECT 1"}, props={"type": "scatter"})
+    insight = Insight(name="job_test", props={"type": "scatter"})
 
     model = SqlModelFactory()
     source = Mock()

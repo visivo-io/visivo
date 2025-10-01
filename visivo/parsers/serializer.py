@@ -114,18 +114,10 @@ class Serializer:
                                 type=Model, dag=dag, from_node=trace.model
                             )
 
+                    # Insights no longer have a direct model field
+                    # Model references are now embedded in props using ${ref(model).field} syntax
                     for insight in component.insights:
-                        insight.model = all_descendants_of_type(
-                            type=Model, dag=dag, from_node=insight
-                        )[0]
-                        if hasattr(insight.model, "source"):
-                            insight.model.source = all_descendants_of_type(
-                                type=Source, dag=dag, from_node=insight.model
-                            )[0]
-                        if hasattr(insight.model, "models"):
-                            insight.model.models = all_descendants_of_type(
-                                type=Model, dag=dag, from_node=insight.model
-                            )
+                        pass  # No model resolution needed
 
                 if item.selector:
                     item.selector = all_descendants_of_type(

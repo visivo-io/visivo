@@ -186,7 +186,14 @@ class InsightTokenizer:
                         pass
 
             # Fall back to simple field reference
-            return f"{model_name}.{field_or_metric_name}"
+            # If this is the current model, don't use table prefix
+            # (we're selecting from the model's SQL result, not a table)
+            if model_name == self.model.name:
+                return field_or_metric_name
+            else:
+                # For other models, use table-qualified reference
+                # (will need JOIN support to work properly)
+                return f"{model_name}.{field_or_metric_name}"
 
         return re.sub(METRIC_REF_PATTERN, replace_ref, query_statement)
 
