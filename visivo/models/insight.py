@@ -95,22 +95,17 @@ class Insight(NamedModel, ParentModel):
 
         Extracts model references from props using ${ref(model).field} syntax.
         """
-        import re
+        from visivo.query.patterns import extract_model_names
 
         children = []
 
         # Extract all ${ref(model_name).field} references from props
         if self.props:
             props_str = str(self.props.model_dump())
-            # Match ${ref(model_name).field} or ${ref(model_name)}
-            ref_pattern = r"\$\{ref\(([^)]+)\)(?:\.[^}]+)?\}"
-            matches = re.findall(ref_pattern, props_str)
+            model_names = extract_model_names(props_str)
 
-            # Add unique model references
-            seen_models = set()
-            for model_ref in matches:
-                if model_ref not in seen_models:
-                    children.append(f"ref({model_ref})")
-                    seen_models.add(model_ref)
+            # Convert model names to ref() format for DAG
+            for model_name in model_names:
+                children.append(f"ref({model_name})")
 
         return children

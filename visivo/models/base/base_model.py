@@ -11,8 +11,8 @@ from typing import Optional, Union, NewType
 import re
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import (
-    REF_PROPERTY_PATTERN,
-    CONTEXT_STRING_VALUE_PATTERN,
+    REF_REGEX,
+    CONTEXT_STRING_VALUE_REGEX,
 )
 
 RefStringType = NewType(

@@ -134,7 +134,7 @@ class MetricValidator:
 
         # First, replace ${ref(model).field} with sanitized_model.field for SQLGlot parsing
         import re
-        from visivo.models.base.context_string import METRIC_REF_PATTERN
+        from visivo.query.patterns import METRIC_REF_PATTERN
 
         # Replace ${ref(model).field} patterns with sanitized_model.field for SQLGlot
         # Note: METRIC_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases

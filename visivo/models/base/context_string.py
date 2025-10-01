@@ -1,12 +1,12 @@
 from typing import Any
 import re
 
+from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
-    CONTEXT_STRING_REF_PATTERN,
+    INLINE_REF_REGEX,
+    INLINE_REF_PROPS_PATH_REGEX,
     INLINE_PATH_REGEX,
-    CONTEXT_STRING_VALUE_PATTERN,
-    get_model_name_from_match,
-    FIELD_REF_PATTERN,
+    CONTEXT_STRING_VALUE_REGEX,
 )
 
 

@@ -14,7 +14,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.logger.logger import Logger
-from visivo.models.base.context_string import METRIC_REF_PATTERN
+from visivo.query.patterns import METRIC_REF_PATTERN
 import re
 from collections import defaultdict, deque
 
