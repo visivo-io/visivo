@@ -11,7 +11,6 @@ def test_insight_tokenizer_basic():
     # Create a simple insight
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{amount}"},
     }
 
@@ -47,7 +46,6 @@ def test_insight_tokenizer_with_additional_props():
     """Test insight tokenization with additional props"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}", "text": "?{region}"},
     }
 
@@ -82,7 +80,6 @@ def test_insight_tokenizer_with_interactions():
     """Test insight tokenization with interactions"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}"},
         "interactions": [
             {"filter": "?{region = '${ref(region_select).value}'}"},
@@ -119,7 +116,6 @@ def test_insight_tokenizer_aggregation_detection():
     """Test that aggregation functions are properly detected"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {
             "type": "scatter",
             "x": "?{date}",
@@ -156,7 +152,6 @@ def test_insight_tokenizer_pre_post_query_generation():
     """Test that pre and post queries are generated correctly"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {"type": "indicator", "value": "?{sum(amount)}"},
         "interactions": [{"filter": "?{region = '${ref(region_select).value}'}"}],
     }

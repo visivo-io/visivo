@@ -93,31 +93,24 @@ class Insight(NamedModel, ParentModel):
     def child_items(self):
         """Return child items for DAG construction.
 
-        Extracts model references from props and interactions using ${ref(model).field} syntax.
+        Extracts model references from props using ${ref(model).field} syntax.
         """
-        from visivo.query.patterns import extract_ref_names
+        import re
 
         children = []
 
         # Extract all ${ref(model_name).field} references from props
         if self.props:
             props_str = str(self.props.model_dump())
-            model_names = extract_ref_names(props_str)
+            # Match ${ref(model_name).field} or ${ref(model_name)}
+            ref_pattern = r"\$\{ref\(([^)]+)\)(?:\.[^}]+)?\}"
+            matches = re.findall(ref_pattern, props_str)
 
-            # Convert model names to ref() format for DAG
-            for model_name in model_names:
-                children.append(f"ref({model_name})")
-
-        # Extract all ${ref(model_name).field} references from interactions
-        if self.interactions:
-            for interaction in self.interactions:
-                for field_value in interaction.field_values.values():
-                    field_str = str(field_value)
-                    model_names = extract_ref_names(field_str)
-                    # TODO: I think this will skip model scoped children and needs refactored
-                    for model_name in model_names:
-                        ref_str = f"ref({model_name})"
-                        if ref_str not in children:
-                            children.append(ref_str)
+            # Add unique model references
+            seen_models = set()
+            for model_ref in matches:
+                if model_ref not in seen_models:
+                    children.append(f"ref({model_ref})")
+                    seen_models.add(model_ref)
 
         return children

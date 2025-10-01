@@ -32,7 +32,6 @@ class TestInsightTokenizerMetrics:
         # Create an insight that references the model by name
         insight = Insight(
             name="revenue_insight",
-            model="ref(orders)",
             props={
                 "type": "scatter",
                 "x": "?{date}",
@@ -75,7 +74,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="sales_analysis",
-            model="ref(sales)",
             props={
                 "type": "bar",
                 "x": "?{region}",
@@ -116,7 +114,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="product_insight",
-            model="ref(products)",
             props={
                 "type": "scatter",
                 "x": "?{product_name}",
@@ -158,7 +155,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="customer_insight",
-            model="ref(customers)",
             props={
                 "type": "bar",
                 "x": "?{customer_name}",
@@ -201,7 +197,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="bad_insight",
-            model="ref(orders)",
             props={
                 "type": "scatter",
                 "x": "?{date}",
@@ -223,7 +218,8 @@ class TestInsightTokenizerMetrics:
         tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
 
         # Non-existent metric reference should fall back to field reference
-        assert tokenizer.select_items["props.y"] == "orders.nonexistent_metric"
+        # Since we're referencing the current model (orders), no table prefix is added
+        assert tokenizer.select_items["props.y"] == "nonexistent_metric"
 
     def test_complex_metric_expression(self):
         """Test resolving complex metric expressions."""
@@ -243,7 +239,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="conversion_insight",
-            model="ref(analytics)",
             props={
                 "type": "indicator",
                 "value": "?{${ref(analytics).conversion_rate}}",
@@ -282,7 +277,6 @@ class TestInsightTokenizerMetrics:
 
         insight = Insight(
             name="region_insight",
-            model="ref(regions)",
             props={
                 "type": "bar",
                 "x": "?{region}",

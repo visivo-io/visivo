@@ -55,11 +55,10 @@ class TestInsightJobDuckDBIntegration:
 
             insight = Insight(
                 name="revenue_by_region",
-                model="ref(orders)",
                 props={
                     "type": "bar",
-                    "x": "?{region}",
-                    "y": "?{sum(amount)}",
+                    "x": "?{${ref(orders).region}}",
+                    "y": "?{sum(${ref(orders).amount})}",
                 },
             )
 
@@ -107,7 +106,6 @@ class TestInsightJobDuckDBIntegration:
             # Note: Metric references like ${ref(sales).total_sales} are for future enhancement
             insight = Insight(
                 name="product_totals",
-                model="ref(sales)",
                 props={
                     "type": "bar",
                     "x": "?{${ref(sales).product}}",
@@ -177,15 +175,14 @@ class TestInsightJobDuckDBIntegration:
                 ],
             )
 
-            # Create insight using direct SQL expression (dimensions are defined but we use SQL)
-            # Note: Dimension references like ${ref(orders).order_month} are for future enhancement
+            # Create insight using ${ref(model).field} syntax
+            # Can reference dimensions or use direct SQL expressions
             insight = Insight(
                 name="monthly_revenue",
-                model="ref(orders)",
                 props={
                     "type": "bar",
-                    "x": "?{date_trunc('month', order_date)}",
-                    "y": "?{sum(amount)}",
+                    "x": "?{date_trunc('month', ${ref(orders).order_date})}",
+                    "y": "?{sum(${ref(orders).amount})}",
                 },
             )
 
@@ -272,15 +269,14 @@ class TestInsightJobDuckDBIntegration:
                 condition="${ref(orders).customer_id} = ${ref(customers).id}",
             )
 
-            # Create insight (relation is defined but cross-model queries need JOIN support)
-            # For now, just test aggregation on orders model
+            # Create insight using ${ref(model).field} syntax
+            # Relation is defined but cross-model queries need JOIN support
             insight = Insight(
                 name="revenue_by_customer",
-                model="ref(orders)",
                 props={
                     "type": "bar",
-                    "x": "?{customer_id}",
-                    "y": "?{sum(amount)}",
+                    "x": "?{${ref(orders).customer_id}}",
+                    "y": "?{sum(${ref(orders).amount})}",
                 },
             )
 
@@ -390,15 +386,14 @@ class TestInsightJobDuckDBIntegration:
                 condition="${ref(orders).customer_id} = ${ref(customers).id}",
             )
 
-            # Create insight using direct SQL (all features are defined but we use SQL)
+            # Create insight using ${ref(model).field} syntax
             insight = Insight(
                 name="monthly_customer_analysis",
-                model="ref(orders)",
                 props={
                     "type": "bar",
-                    "x": "?{date_trunc('month', order_date)}",
-                    "y": "?{sum(amount)}",
-                    "text": "?{customer_id}",
+                    "x": "?{date_trunc('month', ${ref(orders).order_date})}",
+                    "y": "?{sum(${ref(orders).amount})}",
+                    "text": "?{${ref(orders).customer_id}}",
                 },
             )
 
