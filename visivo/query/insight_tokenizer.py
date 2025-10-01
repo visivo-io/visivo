@@ -403,9 +403,13 @@ class InsightTokenizer:
 
             if parsed and has_aggregate_function(parsed):
                 has_any_aggregation = True
-                all_referenced_columns.update(find_non_aggregated_columns(parsed))
+                # For aggregations, find columns that are NOT inside aggregate functions
+                non_agg_cols = find_non_aggregated_columns(parsed)
+                all_referenced_columns.update(non_agg_cols)
             else:
-                all_referenced_columns.update(self._extract_column_dependencies(expr))
+                # For non-aggregations, add the entire expression to GROUP BY
+                # This handles cases like date_trunc('month', order_date)
+                all_referenced_columns.add(expr)
 
         if has_any_aggregation:
             derived_targets = set()
@@ -478,12 +482,22 @@ class InsightTokenizer:
             # When we have GROUP BY, we can't SELECT *, we need to explicitly select only grouped columns
             if self.groupby_statements:
                 # Select only the columns that will be grouped by
-                grouped_columns = [exp.column(g) for g in self.groupby_statements]
-                precomputed_select = exp.Select().select(*grouped_columns, *cte_projections).from_(base_model)
+                # Parse each groupby statement as an expression (not just a column name)
+                grouped_columns = []
+                for g in self.groupby_statements:
+                    parsed_expr = parse_expression(g, self.sqlglot_dialect)
+                    if parsed_expr:
+                        grouped_columns.append(parsed_expr)
+                    else:
+                        # Fallback to treating it as a column name
+                        grouped_columns.append(exp.column(g))
+
+                precomputed_select = (
+                    exp.Select().select(*grouped_columns, *cte_projections).from_(base_model)
+                )
 
                 # Add GROUP BY to the CTE (where aggregations are)
-                mapped_groupbys = [exp.column(g) for g in self.groupby_statements]
-                precomputed_select = precomputed_select.group_by(*mapped_groupbys)
+                precomputed_select = precomputed_select.group_by(*grouped_columns)
             else:
                 # No GROUP BY needed, can use SELECT *
                 precomputed_select = exp.Select().select("*", *cte_projections).from_(base_model)
@@ -502,7 +516,12 @@ class InsightTokenizer:
             if self.groupby_statements:
                 mapped_groupbys = []
                 for g in self.groupby_statements:
-                    mapped_groupbys.append(exp.column(g))
+                    parsed_expr = parse_expression(g, self.sqlglot_dialect)
+                    if parsed_expr:
+                        mapped_groupbys.append(parsed_expr)
+                    else:
+                        # Fallback to treating it as a column name
+                        mapped_groupbys.append(exp.column(g))
                 query = query.group_by(*mapped_groupbys)
 
         static_filters = []
