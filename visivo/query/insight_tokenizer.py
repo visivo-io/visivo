@@ -54,18 +54,18 @@ class InsightTokenizer:
 
     def _get_metric_resolver(self):
         """Lazily initialize and return the MetricResolver."""
-        if self._metric_resolver is None and self.project is not None:
+        if self._metric_resolver is None and self.dag is not None:
             from visivo.query.resolvers.metric_resolver import MetricResolver
 
-            self._metric_resolver = MetricResolver(self.project)
+            self._metric_resolver = MetricResolver(self.dag)
         return self._metric_resolver
 
     def _get_dimension_resolver(self):
         """Lazily initialize and return the DimensionResolver."""
-        if self._dimension_resolver is None and self.project is not None:
+        if self._dimension_resolver is None and self.dag is not None:
             from visivo.query.resolvers.dimension_resolver import DimensionResolver
 
-            self._dimension_resolver = DimensionResolver(self.project)
+            self._dimension_resolver = DimensionResolver(self.dag)
         return self._dimension_resolver
 
     def _resolve_metric_reference(self, query_statement: str) -> str:

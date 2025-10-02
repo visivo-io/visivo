@@ -30,15 +30,15 @@ class DimensionResolver:
     and resolve dimension references to their actual SQL expressions.
     """
 
-    def __init__(self, project: Project):
+    def __init__(self, dag: ProjectDag):
         """
-        Initialize the DimensionResolver with a project.
+        Initialize the DimensionResolver with a ProjectDag.
 
         Args:
-            project: The project with all models and dimensions
+            dag: The ProjectDag with all models and dimensions
         """
-        self.project = project
-        self.dag: ProjectDag = project.dag()
+        self.dag: ProjectDag = dag
+        self.project = dag.get_project()
         self._dimension_cache: Dict[str, str] = {}
         self._build_dimension_index()
 
