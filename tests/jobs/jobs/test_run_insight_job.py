@@ -23,6 +23,8 @@ def mock_dag_with_project():
     project = ProjectFactory()
     dag = Mock(spec=ProjectDag)
     dag.get_project.return_value = project
+    dag.__len__ = Mock(return_value=0)  # Mock the __len__ method for all_descendants_of_type
+    dag.nodes = Mock(return_value=[])  # Mock the nodes() method to return empty list
     return dag
 
 

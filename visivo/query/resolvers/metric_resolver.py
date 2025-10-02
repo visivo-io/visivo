@@ -40,15 +40,15 @@ class MetricResolver:
     referenced metrics with their actual SQL expressions.
     """
 
-    def __init__(self, project: Project):
+    def __init__(self, dag: ProjectDag):
         """
-        Initialize the MetricResolver with a project.
+        Initialize the MetricResolver with a ProjectDag.
 
         Args:
-            project: The project with all metrics and models
+            dag: The ProjectDag with all metrics and models
         """
-        self.project = project
-        self.dag: ProjectDag = project.dag()
+        self.dag: ProjectDag = dag
+        self.project = dag.get_project()
         self._metric_cache: Dict[str, str] = {}
         self._build_metric_index()
 
