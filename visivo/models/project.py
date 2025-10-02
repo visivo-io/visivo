@@ -16,7 +16,7 @@ from visivo.models.dimension import Dimension
 
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import REF_REGEX
-from visivo.models.base.context_string import CONTEXT_STRING_REF_PATTERN
+from visivo.query.patterns import REF_PATTERN
 from visivo.models.dashboards.fields import DashboardField
 from visivo.models.chart import Chart
 from visivo.models.trace import Trace
@@ -166,9 +166,9 @@ class Project(NamedModel, ParentModel):
             # Case 3: Value is a primitive (str, int, float, bool, None)
             elif isinstance(value, str):
                 # Check for inline references ${ref(Name)}
-                inline_matches = re.search(CONTEXT_STRING_REF_PATTERN, value)
+                inline_matches = re.search(REF_PATTERN, value)
                 if inline_matches and value.strip() == inline_matches.group(0):
-                    ref_name = inline_matches.group(1).strip()
+                    ref_name = inline_matches.group('model_name').strip()
                     return json.dumps(
                         {"name": ref_name, "is_inline_defined": False, "original_value": value}
                     )

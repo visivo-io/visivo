@@ -26,22 +26,13 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 # Example: ref(orders)
 REF_REGEX = rf"^ref\(\s*(?P<ref_name>[{NAME_REGEX}]+)\)$"
 
-# Inline ref pattern: ${ref(name)} with optional property path
-# Example: ${ref(orders).id} or ${ref(orders).props.color}
-# Captures: ref_name
-CONTEXT_STRING_REF_PATTERN = rf"\${{\s*ref\((?P<ref_name>[{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
-
-# Inline ref with captured property path
-# Example: ${ref(orders).props.color} captures ".props.color"
-# Captures: property_path (can be empty string if no property path)
-CONTEXT_STRING_REF_PROPS_PATTERN = rf"\${{\s*ref\([{NAME_REGEX}]+?\)(?P<property_path>[\.\d\w\[\]]*)\s*}}"
-
-# Core pattern for ${ref(model).field} or ${ref('model').field}
-# Captures: model_name (with quotes stripped), field_name (optional)
+# Core pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
+# Captures: model_name (with quotes stripped), field_name (optional, without leading dot/bracket)
 # This is the most flexible pattern used in query resolution
 # The model_name capture handles both quoted 'model' and unquoted model
+# field_name captures property paths like "nested.property" or "[0]" or "list[0].property"
 # field_name is optional - will be None if not present
-REF_PATTERN = r'\$\{\s*ref\([\'"]?(?P<model_name>[^\'")\s]+)[\'"]?\s*\)(?:\.(?P<field_name>[^}]+?))?\s*\}'
+REF_PATTERN = r'\$\{\s*ref\([\'"]?(?P<model_name>[^\'")\s]+)[\'"]?\s*\)(?P<field_name>[\.\d\w\[\]]*?)\s*\}'
 
 # Metric/dimension reference pattern: ${ref(name)} or ${ref(model).metric}
 # Captures: (model_or_metric_name, optional_field_name)
@@ -114,7 +105,11 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     results = []
     for match in REF_PATTERN_COMPILED.finditer(text):
         model_name = match.group('model_name').strip()
-        field_name = match.group('field_name').strip() if match.group('field_name') else None
+        field_name_raw = match.group('field_name').strip() if match.group('field_name') else None
+        # Strip leading dot from field_name if present (e.g., ".id" -> "id")
+        field_name = field_name_raw.lstrip('.') if field_name_raw and field_name_raw.startswith('.') else field_name_raw
+        # Convert empty string to None
+        field_name = field_name if field_name else None
         results.append((model_name, field_name))
     return results
 
@@ -154,7 +149,11 @@ def replace_refs(text: str, replacer_func) -> str:
 
     def replace_match(match):
         model_name = match.group('model_name').strip()
-        field_name = match.group('field_name').strip() if match.group('field_name') else None
+        field_name_raw = match.group('field_name').strip() if match.group('field_name') else None
+        # Strip leading dot from field_name if present (e.g., ".id" -> "id")
+        field_name = field_name_raw.lstrip('.') if field_name_raw and field_name_raw.startswith('.') else field_name_raw
+        # Convert empty string to None
+        field_name = field_name if field_name else None
         return replacer_func(model_name, field_name)
 
     return REF_PATTERN_COMPILED.sub(replace_match, text)
