@@ -1,5 +1,5 @@
 from visivo.models.chart import Chart
-from visivo.models.base.base_model import REF_REGEX
+from visivo.models.base.base_model import REF_PROPERTY_PATTERN
 from pydantic import ValidationError
 import pytest
 
@@ -42,7 +42,7 @@ def test_Chart_ref_string():
         Chart(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
+    assert error["msg"] == f"String should match pattern '{REF_PROPERTY_PATTERN}'"
     assert error["type"] == "string_pattern_mismatch"
 
 

@@ -11,13 +11,13 @@ from typing import Optional, Union, NewType
 import re
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import (
-    REF_REGEX,
+    REF_PROPERTY_PATTERN,
     CONTEXT_STRING_VALUE_PATTERN,
 )
 
 RefStringType = NewType(
     "RefStringType",
-    Annotated[Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("Ref")],
+    Annotated[Annotated[str, StringConstraints(pattern=REF_PROPERTY_PATTERN)], Tag("Ref")],
 )
 
 ContextStringType = NewType(
@@ -110,7 +110,7 @@ class BaseModel(PydanticBaseModel):
     @classmethod
     def is_ref(cls, obj) -> bool:
         return (
-            isinstance(obj, str) and re.search(REF_REGEX, obj)
+            isinstance(obj, str) and re.search(REF_PROPERTY_PATTERN, obj)
         ) or ContextString.is_context_string(obj)
 
     def __hash__(self):

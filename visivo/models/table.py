@@ -7,10 +7,8 @@ from visivo.models.trace import Trace
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.base.base_model import (
-    REF_REGEX,
-    generate_ref_field,
-)
+from visivo.models.base.base_model import generate_ref_field
+
 from pydantic import model_validator
 from enum import IntEnum
 

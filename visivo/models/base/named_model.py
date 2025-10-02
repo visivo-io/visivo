@@ -3,7 +3,8 @@ import pydantic
 import re
 
 from visivo.models.base.context_string import ContextString
-from visivo.models.base.base_model import BaseModel, REF_REGEX
+from visivo.models.base.base_model import BaseModel, REF_PROPERTY_PATTERN
+from visivo.query.patterns import get_model_name_from_match
 
 NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
 
@@ -35,7 +36,8 @@ class NamedModel(BaseModel):
             else:
                 return ContextString(obj).get_reference()
         else:
-            return re.match(REF_REGEX, obj).groupdict()["ref_name"]
+            match = re.match(REF_PROPERTY_PATTERN, obj)
+            return get_model_name_from_match(match)
 
     def __str__(self):
         if self.id() is None:

@@ -149,10 +149,10 @@ class InsightTokenizer:
                 )
 
         # Pattern to match ${ref(model_name).field_or_metric_name}
-        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, _get_model_name_from_match
+        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
 
         def replace_ref(match):
-            model_name = _get_model_name_from_match(match)
+            model_name = get_model_name_from_match(match)
             field_or_metric_name_raw = match.group("property_path")
             # Strip leading dot if present
             field_or_metric_name = (
