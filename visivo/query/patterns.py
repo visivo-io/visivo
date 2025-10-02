@@ -26,10 +26,11 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 # Example: ref(orders)
 REF_REGEX = rf"^ref\(\s*(?P<ref_name>[{NAME_REGEX}]+)\)$"
 
-# Ref function pattern: ref(model) or ref('model') - the inner part without ${ }
-# Captures: model_name (with quotes stripped)
-# Example: ref(orders) or ref('my-model')
-REF_FUNCTION_PATTERN = r"ref\(['\"]?(?P<model_name>[^'\")\s]+)['\"]?\s*\)"
+# Ref function pattern: ref(model) or ref('model') or ref("model") - the inner part without ${ }
+# Captures: model_name_quoted OR model_name_unquoted (one will be None, the other will have the value)
+# Example: ref(orders) or ref('my-model') or ref(Fibonacci Waterfall)
+# Pattern uses alternation to handle quoted vs unquoted names properly
+REF_FUNCTION_PATTERN = rf"ref\(\s*(?:['\"](?P<model_name_quoted>[{NAME_REGEX}]+)['\"]|(?P<model_name_unquoted>[{NAME_REGEX}]+))\s*\)"
 
 # Property path pattern: optional dots, brackets, digits, word chars
 # Captures: property_path (the property path after ref())
@@ -90,6 +91,22 @@ INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 CONTEXT_STRING_REF_PATTERN_COMPILED = re.compile(CONTEXT_STRING_REF_PATTERN)
 
 
+def _get_model_name_from_match(match: re.Match) -> str:
+    """
+    Extract model_name from a match object, handling both quoted and unquoted captures.
+
+    Args:
+        match: A regex match object from CONTEXT_STRING_REF_PATTERN
+
+    Returns:
+        The model name (from whichever capture group matched)
+    """
+    # Check both possible capture groups and return whichever one matched
+    quoted = match.group('model_name_quoted')
+    unquoted = match.group('model_name_unquoted')
+    return (quoted if quoted is not None else unquoted).strip()
+
+
 def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     """
     Extract all ref() components from a text string.
@@ -109,7 +126,7 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     """
     results = []
     for match in CONTEXT_STRING_REF_PATTERN_COMPILED.finditer(text):
-        model_name = match.group("model_name").strip()
+        model_name = _get_model_name_from_match(match)
         property_path_raw = (
             match.group("property_path").strip() if match.group("property_path") else None
         )
@@ -159,7 +176,7 @@ def replace_refs(text: str, replacer_func) -> str:
     """
 
     def replace_match(match):
-        model_name = match.group("model_name").strip()
+        model_name = _get_model_name_from_match(match)
         property_path_raw = (
             match.group("property_path").strip() if match.group("property_path") else None
         )
