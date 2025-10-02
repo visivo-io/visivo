@@ -149,11 +149,19 @@ class InsightTokenizer:
                 )
 
         # Pattern to match ${ref(model_name).field_or_metric_name}
-        from visivo.query.patterns import METRIC_REF_PATTERN
+        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN
 
         def replace_ref(match):
-            model_name = match.group(1).strip().strip("\"'")
-            field_or_metric_name = match.group(2).strip() if match.group(2) else None
+            model_name = match.group("model_name").strip()
+            field_or_metric_name_raw = match.group("property_path")
+            # Strip leading dot if present
+            field_or_metric_name = (
+                field_or_metric_name_raw.lstrip(".")
+                if field_or_metric_name_raw and field_or_metric_name_raw.startswith(".")
+                else field_or_metric_name_raw
+            )
+            # Convert empty string to None
+            field_or_metric_name = field_or_metric_name if field_or_metric_name else None
 
             if not field_or_metric_name:
                 return match.group(0)
@@ -195,7 +203,7 @@ class InsightTokenizer:
                 # (will need JOIN support to work properly)
                 return f"{model_name}.{field_or_metric_name}"
 
-        return re.sub(METRIC_REF_PATTERN, replace_ref, query_statement)
+        return re.sub(CONTEXT_STRING_REF_PATTERN, replace_ref, query_statement)
 
     def tokenize(self) -> TokenizedInsight:
         pre_query = self._generate_pre_query()

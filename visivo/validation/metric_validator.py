@@ -134,17 +134,17 @@ class MetricValidator:
 
         # First, replace ${ref(model).field} with sanitized_model.field for SQLGlot parsing
         import re
-        from visivo.query.patterns import METRIC_REF_PATTERN
+        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN
 
         # Replace ${ref(model).field} patterns with sanitized_model.field for SQLGlot
-        # Note: METRIC_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
+        # Note: CONTEXT_STRING_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
         def replace_for_sql(match):
-            ref_content = match.group(1)
-            field = match.group(2) if match.lastindex >= 2 else None
-
-            # Remove quotes if present
-            if ref_content.startswith(("'", '"')) and ref_content.endswith(("'", '"')):
-                ref_content = ref_content[1:-1]
+            ref_content = match.group("model_name")
+            field_raw = match.group("property_path")
+            # Strip leading dot if present
+            field = field_raw.lstrip(".") if field_raw and field_raw.startswith(".") else field_raw
+            # Convert empty string to None
+            field = field if field else None
 
             # Sanitize the model name for SQL
             sanitized_ref = sanitizer.sanitize(ref_content)
@@ -155,7 +155,7 @@ class MetricValidator:
                 # For ${ref(metric)} without field, keep sanitized name
                 return sanitized_ref
 
-        sql_condition = re.sub(METRIC_REF_PATTERN, replace_for_sql, condition)
+        sql_condition = re.sub(CONTEXT_STRING_REF_PATTERN, replace_for_sql, condition)
 
         try:
             # Parse the condition as a WHERE clause expression
