@@ -14,7 +14,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.logger.logger import Logger
-from visivo.query.patterns import METRIC_REF_PATTERN
+from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN
 import re
 from collections import defaultdict, deque
 
@@ -51,6 +51,29 @@ class MetricResolver:
         self.dag: ProjectDag = project.dag()
         self._metric_cache: Dict[str, str] = {}
         self._build_metric_index()
+
+    @staticmethod
+    def _extract_ref_components(match):
+        """
+        Extract model_name and property_path from a CONTEXT_STRING_REF_PATTERN match.
+
+        Args:
+            match: A regex match object from CONTEXT_STRING_REF_PATTERN
+
+        Returns:
+            Tuple of (ref_content, metric_field) where metric_field may be None
+        """
+        ref_content = match.group("model_name")
+        metric_field_raw = match.group("property_path")
+        # Strip leading dot if present
+        metric_field = (
+            metric_field_raw.lstrip(".")
+            if metric_field_raw and metric_field_raw.startswith(".")
+            else metric_field_raw
+        )
+        # Convert empty string to None
+        metric_field = metric_field if metric_field else None
+        return ref_content, metric_field
 
     def _build_metric_index(self):
         """Build an index of all metrics in the project."""
@@ -107,9 +130,8 @@ class MetricResolver:
             return set()
 
         dependencies = set()
-        for match in re.finditer(METRIC_REF_PATTERN, metric.expression):
-            ref_content = match.group(1)
-            metric_field = match.group(2)
+        for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
+            ref_content, metric_field = self._extract_ref_components(match)
 
             if metric_field:
                 referenced_name = f"{ref_content}.{metric_field}"
@@ -143,9 +165,8 @@ class MetricResolver:
 
             metric = self.find_metric(metric_name)
             if metric:
-                for match in re.finditer(METRIC_REF_PATTERN, metric.expression):
-                    ref_content = match.group(1)
-                    metric_field = match.group(2)
+                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
+                    ref_content, metric_field = self._extract_ref_components(match)
 
                     if metric_field:
                         referenced_name = f"{ref_content}.{metric_field}"
@@ -195,9 +216,8 @@ class MetricResolver:
         for metric_name in self.metrics_by_name:
             metric = self.find_metric(metric_name)
             if metric:
-                for match in re.finditer(METRIC_REF_PATTERN, metric.expression):
-                    ref_content = match.group(1)
-                    metric_field = match.group(2)
+                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
+                    ref_content, metric_field = self._extract_ref_components(match)
 
                     if metric_field:
                         referenced_name = f"{ref_content}.{metric_field}"
@@ -262,8 +282,7 @@ class MetricResolver:
         resolved_expression = metric.expression
 
         def replace_reference(match):
-            ref_content = match.group(1)
-            metric_field = match.group(2)
+            ref_content, metric_field = self._extract_ref_components(match)
             if metric_field:
                 referenced_name = f"{ref_content}.{metric_field}"
             else:
@@ -301,7 +320,9 @@ class MetricResolver:
             else:
                 return match.group(0)
 
-        resolved_expression = re.sub(METRIC_REF_PATTERN, replace_reference, resolved_expression)
+        resolved_expression = re.sub(
+            CONTEXT_STRING_REF_PATTERN, replace_reference, resolved_expression
+        )
 
         self._metric_cache[metric_name] = resolved_expression
 
@@ -416,9 +437,8 @@ class MetricResolver:
                 dep_models = self.get_models_from_metric(dep_name)
                 models.update(dep_models)
 
-            for match in re.finditer(METRIC_REF_PATTERN, metric.expression):
-                ref_content = match.group(1)
-                field = match.group(2)
+            for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
+                ref_content, field = self._extract_ref_components(match)
 
                 if field and ref_content not in self.metrics_by_name:
                     from visivo.models.dag import all_descendants_of_type
@@ -449,9 +469,8 @@ class MetricResolver:
             return lineage
 
         if metric:
-            for match in re.finditer(METRIC_REF_PATTERN, metric.expression):
-                ref_content = match.group(1)
-                metric_field = match.group(2)
+            for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
+                ref_content, metric_field = self._extract_ref_components(match)
 
                 if metric_field:
                     referenced_name = f"{ref_content}.{metric_field}"
@@ -463,9 +482,8 @@ class MetricResolver:
 
         for other_metric_name, other_metric in self.metrics_by_name.items():
             if other_metric_name != metric_name:
-                for match in re.finditer(METRIC_REF_PATTERN, other_metric.expression):
-                    ref_content = match.group(1)
-                    metric_field = match.group(2)
+                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, other_metric.expression):
+                    ref_content, metric_field = self._extract_ref_components(match)
 
                     if metric_field:
                         referenced_name = f"{ref_content}.{metric_field}"

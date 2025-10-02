@@ -26,18 +26,24 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 # Example: ref(orders)
 REF_REGEX = rf"^ref\(\s*(?P<ref_name>[{NAME_REGEX}]+)\)$"
 
+# Ref function pattern: ref(model) or ref('model') - the inner part without ${ }
+# Captures: model_name (with quotes stripped)
+# Example: ref(orders) or ref('my-model')
+REF_FUNCTION_PATTERN = r"ref\(['\"]?(?P<model_name>[^'\")\s]+)['\"]?\s*\)"
+
+# Property path pattern: optional dots, brackets, digits, word chars
+# Captures: property_path (the property path after ref())
+# Examples: .id, [0], .list[0].property, or empty string
+PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
+
 # Core pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
-# Captures: model_name (with quotes stripped), field_name (optional, without leading dot/bracket)
+# Composed of: ${ + REF_FUNCTION + PROPERTY_PATH + }
+# Captures: model_name (with quotes stripped), property_path (optional, without leading dot/bracket)
 # This is the most flexible pattern used in query resolution
 # The model_name capture handles both quoted 'model' and unquoted model
-# field_name captures property paths like "nested.property" or "[0]" or "list[0].property"
-# field_name is optional - will be None if not present
-REF_PATTERN = r'\$\{\s*ref\([\'"]?(?P<model_name>[^\'")\s]+)[\'"]?\s*\)(?P<field_name>[\.\d\w\[\]]*?)\s*\}'
-
-# Metric/dimension reference pattern: ${ref(name)} or ${ref(model).metric}
-# Captures: (model_or_metric_name, optional_field_name)
-# Used specifically for metric and dimension resolution
-METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+# property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
+# property_path is optional - will be None if not present
+CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
 
 
 # ============================================================================
@@ -81,8 +87,7 @@ INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 # Compiled Patterns - For performance
 # ============================================================================
 
-REF_PATTERN_COMPILED = re.compile(REF_PATTERN)
-METRIC_REF_PATTERN_COMPILED = re.compile(METRIC_REF_PATTERN)
+CONTEXT_STRING_REF_PATTERN_COMPILED = re.compile(CONTEXT_STRING_REF_PATTERN)
 
 
 def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
@@ -103,14 +108,20 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
         [('my-model.v2', 'id')]
     """
     results = []
-    for match in REF_PATTERN_COMPILED.finditer(text):
-        model_name = match.group('model_name').strip()
-        field_name_raw = match.group('field_name').strip() if match.group('field_name') else None
-        # Strip leading dot from field_name if present (e.g., ".id" -> "id")
-        field_name = field_name_raw.lstrip('.') if field_name_raw and field_name_raw.startswith('.') else field_name_raw
+    for match in CONTEXT_STRING_REF_PATTERN_COMPILED.finditer(text):
+        model_name = match.group("model_name").strip()
+        property_path_raw = (
+            match.group("property_path").strip() if match.group("property_path") else None
+        )
+        # Strip leading dot from property_path if present (e.g., ".id" -> "id")
+        property_path = (
+            property_path_raw.lstrip(".")
+            if property_path_raw and property_path_raw.startswith(".")
+            else property_path_raw
+        )
         # Convert empty string to None
-        field_name = field_name if field_name else None
-        results.append((model_name, field_name))
+        property_path = property_path if property_path else None
+        results.append((model_name, property_path))
     return results
 
 
@@ -148,18 +159,24 @@ def replace_refs(text: str, replacer_func) -> str:
     """
 
     def replace_match(match):
-        model_name = match.group('model_name').strip()
-        field_name_raw = match.group('field_name').strip() if match.group('field_name') else None
-        # Strip leading dot from field_name if present (e.g., ".id" -> "id")
-        field_name = field_name_raw.lstrip('.') if field_name_raw and field_name_raw.startswith('.') else field_name_raw
+        model_name = match.group("model_name").strip()
+        property_path_raw = (
+            match.group("property_path").strip() if match.group("property_path") else None
+        )
+        # Strip leading dot from property_path if present (e.g., ".id" -> "id")
+        property_path = (
+            property_path_raw.lstrip(".")
+            if property_path_raw and property_path_raw.startswith(".")
+            else property_path_raw
+        )
         # Convert empty string to None
-        field_name = field_name if field_name else None
-        return replacer_func(model_name, field_name)
+        property_path = property_path if property_path else None
+        return replacer_func(model_name, property_path)
 
-    return REF_PATTERN_COMPILED.sub(replace_match, text)
+    return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(replace_match, text)
 
 
-def has_ref_pattern(text: str) -> bool:
+def has_CONTEXT_STRING_REF_PATTERN(text: str) -> bool:
     """
     Check if text contains any ref() patterns.
 
@@ -169,7 +186,7 @@ def has_ref_pattern(text: str) -> bool:
     Returns:
         True if text contains ${ref(...)} patterns
     """
-    return bool(REF_PATTERN_COMPILED.search(text))
+    return bool(CONTEXT_STRING_REF_PATTERN_COMPILED.search(text))
 
 
 def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
