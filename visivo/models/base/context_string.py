@@ -3,8 +3,7 @@ import re
 
 from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
-    CONTEXT_STRING_REF_PATTERN,
-    CONTEXT_STRING_REF_PROPS_PATTERN,
+    REF_PATTERN,
     INLINE_PATH_REGEX,
     CONTEXT_STRING_VALUE_PATTERN,
 )
@@ -35,21 +34,21 @@ class ContextString:
         return hash("".join(re.findall(CONTEXT_STRING_VALUE_PATTERN, self.value)))
 
     def get_reference(self) -> str:
-        matches = re.findall(CONTEXT_STRING_REF_PATTERN, self.value)
-        if len(matches) == 0:
+        match = re.search(REF_PATTERN, self.value)
+        if match is None:
             return None
         else:
-            return get_model_name_from_match(match)
+            return match.group('model_name')
 
     def get_ref_props_path(self) -> str:
-        matches = re.findall(CONTEXT_STRING_REF_PROPS_PATTERN, self.value)
-        if len(matches) == 0:
+        match = re.search(REF_PATTERN, self.value)
+        if match is None:
             return None
         else:
-            property_path = match.group("property_path")
-            # property_path now captures the full property path including dots and brackets
-            # Return empty string if no property_path, otherwise return as-is
-            return property_path if property_path else ""
+            field_name = match.group('field_name')
+            # field_name now captures the full property path including dots and brackets
+            # Return empty string if no field_name, otherwise return as-is
+            return field_name if field_name else ""
 
     def get_path(self) -> str:
         matches = re.findall(INLINE_PATH_REGEX, self.value)
