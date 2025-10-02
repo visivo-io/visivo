@@ -11,7 +11,6 @@ This module provides functionality to:
 from typing import Dict, List, Optional, Set
 from visivo.models.metric import Metric
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.logger.logger import Logger
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
@@ -104,6 +103,27 @@ class MetricResolver:
         """
         return self.metrics_by_name.get(name)
 
+    def _get_metric_name_in_index(self, metric: Metric) -> Optional[str]:
+        """
+        Get the name that this metric is stored under in metrics_by_name.
+
+        Args:
+            metric: The Metric object
+
+        Returns:
+            The name (simple or qualified) that this metric is indexed under, or None if not found
+        """
+        # Check if it's in the index by simple name
+        if metric.name in self.metrics_by_name and self.metrics_by_name[metric.name] is metric:
+            return metric.name
+
+        # Check if it's in the index by qualified name
+        for qualified_name, indexed_metric in self.metrics_by_name.items():
+            if indexed_metric is metric and "." in qualified_name:
+                return qualified_name
+
+        return None
+
     def get_metric_dependencies(
         self, metric_name: str, visited: Optional[Set[str]] = None
     ) -> Set[str]:
@@ -130,17 +150,17 @@ class MetricResolver:
             return set()
 
         dependencies = set()
-        for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
-            ref_content, metric_field = self._extract_ref_components(match)
 
-            if metric_field:
-                referenced_name = f"{ref_content}.{metric_field}"
-            else:
-                referenced_name = ref_content
-
-            if self.find_metric(referenced_name):
-                dependencies.add(referenced_name)
-                dependencies.update(self.get_metric_dependencies(referenced_name, visited.copy()))
+        # Use DAG successors (children) to get dependencies
+        # Since Metric.child_items() returns refs to models/metrics it depends on,
+        # the DAG edges point from metric -> its dependencies
+        for successor in self.dag.successors(metric):
+            if isinstance(successor, Metric):
+                # Get the name to use (simple or qualified)
+                dep_name = self._get_metric_name_in_index(successor)
+                if dep_name:
+                    dependencies.add(dep_name)
+                    dependencies.update(self.get_metric_dependencies(dep_name, visited.copy()))
 
         return dependencies
 
@@ -165,18 +185,14 @@ class MetricResolver:
 
             metric = self.find_metric(metric_name)
             if metric:
-                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
-                    ref_content, metric_field = self._extract_ref_components(match)
-
-                    if metric_field:
-                        referenced_name = f"{ref_content}.{metric_field}"
-                    else:
-                        referenced_name = ref_content
-
-                    if self.find_metric(referenced_name):
-                        cycle = dfs(referenced_name, visited, stack.copy())
-                        if cycle:
-                            return cycle
+                # Use DAG successors to find metric dependencies
+                for successor in self.dag.successors(metric):
+                    if isinstance(successor, Metric):
+                        referenced_name = self._get_metric_name_in_index(successor)
+                        if referenced_name:
+                            cycle = dfs(referenced_name, visited, stack.copy())
+                            if cycle:
+                                return cycle
 
             stack.pop()
             return None
@@ -216,17 +232,13 @@ class MetricResolver:
         for metric_name in self.metrics_by_name:
             metric = self.find_metric(metric_name)
             if metric:
-                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
-                    ref_content, metric_field = self._extract_ref_components(match)
-
-                    if metric_field:
-                        referenced_name = f"{ref_content}.{metric_field}"
-                    else:
-                        referenced_name = ref_content
-
-                    if self.find_metric(referenced_name):
-                        adjacency[metric_name].add(referenced_name)
-                        in_degree[metric_name] += 1
+                # Use DAG successors to find metric dependencies
+                for successor in self.dag.successors(metric):
+                    if isinstance(successor, Metric):
+                        referenced_name = self._get_metric_name_in_index(successor)
+                        if referenced_name and referenced_name in self.metrics_by_name:
+                            adjacency[metric_name].add(referenced_name)
+                            in_degree[metric_name] += 1
         queue = deque([m for m in self.metrics_by_name if in_degree[m] == 0])
         sorted_metrics = []
 
@@ -437,17 +449,10 @@ class MetricResolver:
                 dep_models = self.get_models_from_metric(dep_name)
                 models.update(dep_models)
 
-            for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
-                ref_content, field = self._extract_ref_components(match)
-
-                if field and ref_content not in self.metrics_by_name:
-                    from visivo.models.dag import all_descendants_of_type
-
-                    all_models = all_descendants_of_type(type=SqlModel, dag=self.dag)
-                    for model in all_models:
-                        if model.name == ref_content:
-                            models.add(ref_content)
-                            break
+            # Use DAG successors to find model dependencies
+            for successor in self.dag.successors(metric):
+                if isinstance(successor, SqlModel):
+                    models.add(successor.name)
 
             return models
 
@@ -468,30 +473,18 @@ class MetricResolver:
         if not metric:
             return lineage
 
-        if metric:
-            for match in re.finditer(CONTEXT_STRING_REF_PATTERN, metric.expression):
-                ref_content, metric_field = self._extract_ref_components(match)
+        # Get upstream: metrics this metric depends on (successors in DAG)
+        for successor in self.dag.successors(metric):
+            if isinstance(successor, Metric):
+                upstream_name = self._get_metric_name_in_index(successor)
+                if upstream_name:
+                    lineage["upstream"].add(upstream_name)
 
-                if metric_field:
-                    referenced_name = f"{ref_content}.{metric_field}"
-                else:
-                    referenced_name = ref_content
-
-                if self.find_metric(referenced_name):
-                    lineage["upstream"].add(referenced_name)
-
-        for other_metric_name, other_metric in self.metrics_by_name.items():
-            if other_metric_name != metric_name:
-                for match in re.finditer(CONTEXT_STRING_REF_PATTERN, other_metric.expression):
-                    ref_content, metric_field = self._extract_ref_components(match)
-
-                    if metric_field:
-                        referenced_name = f"{ref_content}.{metric_field}"
-                    else:
-                        referenced_name = ref_content
-
-                    if referenced_name == metric_name:
-                        lineage["downstream"].add(other_metric_name)
-                        break
+        # Get downstream: metrics that depend on this metric (predecessors in DAG)
+        for predecessor in self.dag.predecessors(metric):
+            if isinstance(predecessor, Metric):
+                downstream_name = self._get_metric_name_in_index(predecessor)
+                if downstream_name:
+                    lineage["downstream"].add(downstream_name)
 
         return lineage
