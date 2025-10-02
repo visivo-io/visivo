@@ -21,16 +21,16 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 # Reference Patterns - ${ref(...)} syntax variations
 # ============================================================================
 
-# Simple ref pattern: ref(name) without ${ }
-# Used for validation in Pydantic models
-# Example: ref(orders)
-REF_REGEX = rf"^ref\(\s*(?P<ref_name>[{NAME_REGEX}]+)\)$"
-
-# Ref function pattern: ref(model) or ref('model') or ref("model") - the inner part without ${ }
-# Captures: model_name_quoted OR model_name_unquoted (one will be None, the other will have the value)
+# Ref function pattern: ref(model) or ref('model') or ref("model")
+# Captures: model_name (may include surrounding quotes which are stripped by helper function)
 # Example: ref(orders) or ref('my-model') or ref(Fibonacci Waterfall)
-# Pattern uses alternation to handle quoted vs unquoted names properly
-REF_FUNCTION_PATTERN = rf"ref\(\s*(?:['\"](?P<model_name_quoted>[{NAME_REGEX}]+)['\"]|(?P<model_name_unquoted>[{NAME_REGEX}]+))\s*\)"
+# This pattern is used both standalone and as part of CONTEXT_STRING_REF_PATTERN
+REF_FUNCTION_PATTERN = rf"ref\(\s*(?P<model_name>[{NAME_REGEX}]+)\s*\)"
+
+# Simple ref pattern: ref(name) without ${ }
+# Used for validation in Pydantic models - just an alias to REF_FUNCTION_PATTERN with anchors
+# Example: ref(orders)
+REF_PROPERTY_PATTERN = rf"^{REF_FUNCTION_PATTERN}$"
 
 # Property path pattern: optional dots, brackets, digits, word chars
 # Captures: property_path (the property path after ref())
@@ -91,20 +91,32 @@ INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 CONTEXT_STRING_REF_PATTERN_COMPILED = re.compile(CONTEXT_STRING_REF_PATTERN)
 
 
-def _get_model_name_from_match(match: re.Match) -> str:
+def get_model_name_from_match(match: re.Match) -> str:
     """
-    Extract model_name from a match object, handling both quoted and unquoted captures.
+    Extract model_name from a match object, stripping quotes if present.
 
     Args:
-        match: A regex match object from CONTEXT_STRING_REF_PATTERN
+        match: A regex match object from CONTEXT_STRING_REF_PATTERN or REF_FUNCTION_PATTERN
 
     Returns:
-        The model name (from whichever capture group matched)
+        The model name with surrounding quotes stripped
+
+    Examples:
+        >>> # For match of ref('my-model')
+        >>> get_model_name_from_match(match)
+        'my-model'
+
+        >>> # For match of ref(orders)
+        >>> get_model_name_from_match(match)
+        'orders'
     """
-    # Check both possible capture groups and return whichever one matched
-    quoted = match.group('model_name_quoted')
-    unquoted = match.group('model_name_unquoted')
-    return (quoted if quoted is not None else unquoted).strip()
+    model_name = match.group("model_name").strip()
+    # Strip surrounding quotes (both single and double)
+    if (model_name.startswith("'") and model_name.endswith("'")) or (
+        model_name.startswith('"') and model_name.endswith('"')
+    ):
+        model_name = model_name[1:-1]
+    return model_name
 
 
 def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
@@ -120,13 +132,10 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     Examples:
         >>> extract_ref_components("${ref(orders).user_id} = ${ref(users).id}")
         [('orders', 'user_id'), ('users', 'id')]
-
-        >>> extract_ref_components("${ref('my-model.v2').id}")
-        [('my-model.v2', 'id')]
     """
     results = []
     for match in CONTEXT_STRING_REF_PATTERN_COMPILED.finditer(text):
-        model_name = _get_model_name_from_match(match)
+        model_name = get_model_name_from_match(match)
         property_path_raw = (
             match.group("property_path").strip() if match.group("property_path") else None
         )
@@ -176,7 +185,7 @@ def replace_refs(text: str, replacer_func) -> str:
     """
 
     def replace_match(match):
-        model_name = _get_model_name_from_match(match)
+        model_name = get_model_name_from_match(match)
         property_path_raw = (
             match.group("property_path").strip() if match.group("property_path") else None
         )
