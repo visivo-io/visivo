@@ -14,7 +14,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
 from visivo.logger.logger import Logger
-from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN
+from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, _get_model_name_from_match
 import re
 from collections import defaultdict, deque
 
@@ -63,7 +63,7 @@ class MetricResolver:
         Returns:
             Tuple of (ref_content, metric_field) where metric_field may be None
         """
-        ref_content = match.group("model_name")
+        ref_content = _get_model_name_from_match(match)
         metric_field_raw = match.group("property_path")
         # Strip leading dot if present
         metric_field = (

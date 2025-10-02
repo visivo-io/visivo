@@ -6,6 +6,7 @@ from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN,
     INLINE_PATH_REGEX,
     CONTEXT_STRING_VALUE_PATTERN,
+    _get_model_name_from_match,
 )
 
 
@@ -38,7 +39,7 @@ class ContextString:
         if match is None:
             return None
         else:
-            return match.group("model_name")
+            return _get_model_name_from_match(match)
 
     def get_ref_props_path(self) -> str:
         match = re.search(CONTEXT_STRING_REF_PATTERN, self.value)

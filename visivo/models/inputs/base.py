@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 from pydantic import Field, model_serializer
 from visivo.logger.logger import Logger
 from visivo.models.base.context_string import ContextString
-from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN
+from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, _get_model_name_from_match
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.query_string import QueryString
 
@@ -30,7 +30,7 @@ class Input(NamedModel):
         """Resolve all ${ref(...)} patterns in query string using DAG lookup."""
 
         def resolve_match(match: re.Match) -> str:
-            ref_name = match.group("model_name")
+            ref_name = _get_model_name_from_match(match)
             try:
                 context_str = ContextString(f"${{ref({ref_name})}}")
                 item = context_str.get_item(dag) if dag else None
