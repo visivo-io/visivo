@@ -75,27 +75,28 @@ class Metric(NamedModel, ParentModel):
         """
         Return child items for DAG construction.
 
-        For nested metrics (those defined under a model), this returns a reference to the parent model.
-        For standalone metrics (project-level), this extracts model/metric references from the expression.
+        Extracts model and metric references from the metric expression using ${ref(...)} syntax.
+        This allows the DAG to properly track dependencies between metrics and the models/metrics they reference.
 
         Returns:
-            List of ref() strings for dependencies
+            List of ref() strings for models and metrics referenced in the expression
         """
+        from visivo.query.patterns import extract_ref_components
+
         children = []
 
-        # Check if this is a nested metric (has a parent_name set)
-        if hasattr(self, "_parent_name") and self._parent_name:
-            # Nested metric - reference the parent model only
-            children.append(f"ref({self._parent_name})")
-        else:
-            # Standalone metric - extract references from expression
-            from visivo.query.patterns import extract_ref_components
+        # Extract all ${ref(model).field} and ${ref(metric)} references from expression
+        if self.expression:
+            ref_components = extract_ref_components(self.expression)
 
-            if self.expression:
-                ref_components = extract_ref_components(self.expression)
-
-                # Convert to ref() format for DAG
-                for model_or_metric_name, field_name in ref_components:
+            # Convert to ref() format for DAG
+            # Each component is (model_or_metric_name, field_name)
+            for model_or_metric_name, field_name in ref_components:
+                if field_name:
+                    # This is a model.field reference
+                    children.append(f"ref({model_or_metric_name})")
+                else:
+                    # This is a metric reference (no field)
                     children.append(f"ref({model_or_metric_name})")
 
         return children
