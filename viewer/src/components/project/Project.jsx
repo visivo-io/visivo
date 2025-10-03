@@ -83,8 +83,8 @@ function Project(props) {
         })
       })
     });
-
-  }, [props.project, setDefaultInputValue])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.project])
 
   // Initialize dashboards in store when props change
   useEffect(() => {

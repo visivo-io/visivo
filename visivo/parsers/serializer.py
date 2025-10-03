@@ -1,7 +1,6 @@
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants, all_descendants_of_type
-from visivo.models.input import InputField
-from visivo.models.inputs.base import Input
+from visivo.models.inputs.base import InputBasemodel
 from visivo.models.inputs.dropdown import DropdownInput
 from visivo.models.insight import Insight
 from visivo.models.selector import Selector
@@ -52,7 +51,7 @@ class Serializer:
                 all_tables.append(node.model_dump(exclude_none=True, mode="json"))
             elif isinstance(node, Selector):
                 all_selectors.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Input):
+            elif isinstance(node, InputBasemodel):
                 all_inputs.append(node.model_dump(exclude_none=True, mode="json"))
 
         # Create the flattened structure
@@ -108,11 +107,6 @@ class Serializer:
                             depth=1,
                         )
 
-                    if component.input:
-                        component.input = all_descendants_of_type(
-                            type=Input, dag=dag, from_node=component, depth=1
-                        )[0]
-
                     for trace in component.traces:
                         trace.model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[
                             0
@@ -152,7 +146,7 @@ class Serializer:
 
                 if item.input:
                     item.input = all_descendants_of_type(
-                        type=Input, dag=dag, from_node=item, depth=1
+                        type=InputBasemodel, dag=dag, from_node=item, depth=1
                     )[0]
 
             dashboard.for_each_item(replace_item_ref)

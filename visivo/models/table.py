@@ -1,6 +1,5 @@
 from typing import Any, List, Optional, TypeAlias
 
-from visivo.models.base.input_model import InputModel
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.insight import Insight
 from visivo.models.table_column_definition import TableColumnDefinition
@@ -30,7 +29,7 @@ class RowsPerPageEnum(IntEnum):
     one_thousand = 1000
 
 
-class Table(InputModel, SelectorModel, NamedModel, ParentModel):
+class Table(SelectorModel, NamedModel, ParentModel):
     """
     Tables enable you to quickly represent trace data in a tabular format.
 
@@ -113,7 +112,7 @@ class Table(InputModel, SelectorModel, NamedModel, ParentModel):
 
     def child_items(self):
         """Return child items for DAG construction"""
-        return self.traces + self.insights + [self.selector] + [self.input]
+        return self.traces + self.insights + [self.selector]
 
     @model_validator(mode="before")
     @classmethod

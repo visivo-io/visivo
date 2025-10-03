@@ -7,6 +7,7 @@ from pydantic import Field, model_serializer
 from visivo.logger.logger import Logger
 from visivo.models.base.context_string import INLINE_REF_REGEX, ContextString
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.query_string import QueryString
 from visivo.query.sqlglot_utils import parse_expression
 
@@ -15,7 +16,7 @@ class InputTypes(str, Enum):
     DROPDOWN = "dropdown"
 
 
-class Input(NamedModel):
+class InputBasemodel(NamedModel, ParentModel):
     type: InputTypes = Field(
         default=InputTypes.DROPDOWN,
         description="Type of input component (dropdown)",
@@ -40,6 +41,9 @@ class Input(NamedModel):
                 return ref_name
 
         return re.sub(INLINE_REF_REGEX, resolve_match, query_value)
+
+    def child_items(self):
+        return []
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):
