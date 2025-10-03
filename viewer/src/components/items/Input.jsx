@@ -4,7 +4,7 @@ import useStore from '../../stores/store';
 
 export const DROPDOWN = 'dropdown';
 
-const Input = ({ input, itemWidth }) => {
+const Input = ({ input, itemWidth, project }) => {
   const setInputValue = useStore(state => state.setInputValue);
   const setDefaultInputValue = useStore(state => state.setDefaultInputValue);
 
