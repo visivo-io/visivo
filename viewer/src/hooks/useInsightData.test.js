@@ -298,7 +298,7 @@ describe('useInsightsData Hook', () => {
         resolveQuery([]);
       });
 
-      expect(result.current.insightsData).toEqual([]);
+      expect(result.current.insightsData).toEqual({});
     });
   });
 });

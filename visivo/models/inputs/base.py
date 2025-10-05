@@ -8,14 +8,16 @@ from visivo.logger.logger import Logger
 from visivo.models.base.context_string import ContextString
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.query_string import QueryString
+from visivo.query.sqlglot_utils import parse_expression
 
 
 class InputTypes(str, Enum):
     DROPDOWN = "dropdown"
 
 
-class Input(NamedModel):
+class InputBasemodel(NamedModel, ParentModel):
     type: InputTypes = Field(
         default=InputTypes.DROPDOWN,
         description="Type of input component (dropdown)",
@@ -34,12 +36,15 @@ class Input(NamedModel):
             try:
                 context_str = ContextString(f"${{ref({ref_name})}}")
                 item = context_str.get_item(dag) if dag else None
-                return item.name if item else ref_name
+                return f"'{item.name}'" if item else f"'{ref_name}'"
             except Exception as e:
                 Logger.instance().error(f"Failed to resolve ref {ref_name}: {e}")
                 return ref_name
 
         return re.sub(CONTEXT_STRING_REF_PATTERN, resolve_match, query_value)
+
+    def child_items(self):
+        return []
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):
@@ -52,6 +57,9 @@ class Input(NamedModel):
                 model["options"] = [str(option) for option in self.options]
             elif isinstance(self.options, QueryString):
                 query_value = self.options.get_value()
-                model["options"] = self._resolve_query_references(query_value, dag)
+                model["options"] = parse_expression(
+                    self._resolve_query_references(query_value, dag), "duckdb"
+                ).sql()
+                model["is_query"] = True
 
         return model

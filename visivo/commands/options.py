@@ -160,6 +160,26 @@ def skip_compile(function):
     return function
 
 
+def verbose(function):
+    def set_debug_env(ctx, param, value):
+        """Callback to set DEBUG environment variable when verbose is enabled."""
+        import os
+
+        if value:
+            os.environ["DEBUG"] = "true"
+        return value
+
+    click.option(
+        "--verbose",
+        help="Enable verbose output. Shows full trace names and details in runtime logs.",
+        is_flag=True,
+        default=False,
+        callback=set_debug_env,
+        is_eager=True,
+    )(function)
+    return function
+
+
 def new(function):
     function = click.option(
         "-n",

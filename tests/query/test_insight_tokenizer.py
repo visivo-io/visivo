@@ -157,7 +157,7 @@ def test_insight_tokenizer_pre_post_query_generation():
     }
 
     insight = Insight(**insight_data)
-    model = SqlModelFactory(sql="SELECT * FROM test_table")
+    model = SqlModelFactory(sql="SELECT * FROM test_insight")
     source = SnowflakeSourceFactory()
 
     # Create a mock DAG with a Project as root
@@ -179,4 +179,5 @@ def test_insight_tokenizer_pre_post_query_generation():
     assert "region" in tokenized.pre_query
 
     # Post-query should be a simple SELECT with potential filters
-    assert tokenized.post_query.startswith("SELECT * FROM test_table")
+    normalized_post_query = tokenized.post_query.replace('"', "")
+    assert normalized_post_query.startswith("SELECT * FROM test_insight")

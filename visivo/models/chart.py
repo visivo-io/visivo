@@ -1,7 +1,6 @@
 from typing import List, Optional, TYPE_CHECKING, TypeAlias
 from pydantic import Field
 
-from visivo.logger.logger import Logger
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel

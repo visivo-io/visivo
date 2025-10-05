@@ -52,6 +52,12 @@ class InsightTokenizer:
 
         self._analyze_insight()
 
+    def parse_duckdb(self, query: str) -> str:
+        try:
+            return parse_expression(query, dialect="duckdb").sql()
+        except:
+            return query
+
     def _get_metric_resolver(self):
         """Lazily initialize and return the MetricResolver."""
         if self._metric_resolver is None and self.dag is not None:
@@ -211,6 +217,7 @@ class InsightTokenizer:
 
         if self.is_dynamic_interactions:
             pre_query, post_query = post_query, pre_query
+            post_query = self.parse_duckdb(post_query)
 
         if isinstance(self.model, LocalMergeModel):
             source_type = "duckdb"
@@ -241,6 +248,7 @@ class InsightTokenizer:
             groupby_statements=list(self.groupby_statements) if self.groupby_statements else None,
             split_column=self._get_split_column(),
             sort_expressions=self._get_sort_expressions(),
+            is_dynamic_interactions=self.is_dynamic_interactions,
         )
 
     def _analyze_insight(self):
@@ -441,7 +449,19 @@ class InsightTokenizer:
         return True
 
     def _generate_pre_query(self) -> str:
-        base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
+        for interaction in self.insight.interactions or []:
+            if interaction.filter:
+                filter_expr = interaction.filter.get_value()
+                if filter_expr:
+                    if self._is_dynamic(filter_expr):
+                        self.is_dynamic_interactions = True
+
+        if self.is_dynamic_interactions:
+            base_sql_expr = parse_expression(
+                f"SELECT * FROM '{self.insight.name}'", dialect="duckdb"
+            )
+        else:
+            base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
 
         occurrences = {}
 
@@ -551,6 +571,7 @@ class InsightTokenizer:
                     )
                     if self._is_dynamic(filter_expr):
                         self.is_dynamic_interactions = True
+
         if static_filters:
             query = query.where(*static_filters)
 
@@ -573,8 +594,9 @@ class InsightTokenizer:
         return query.sql(dialect=self.sqlglot_dialect, pretty=True)
 
     def _generate_post_query(self) -> str:
-
-        return self.model.sql
+(??)
+(??)        # return "SELECT * FROM insight_data"
+(??)        return self.model.sql
 
     def _parameterize_input_references(self, expr: str) -> str:
         return expr
@@ -590,8 +612,7 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    # Store the resolved filter expression
-                    interaction_dict["filter"] = self._resolve_metric_reference(filter_expr)
+(??)                    interaction_dict["filter"] = filter_expr
 
             if interaction.split:
                 split_expr = interaction.split.get_value()
@@ -602,8 +623,7 @@ class InsightTokenizer:
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    # Store the resolved sort expression
-                    interaction_dict["sort"] = self._resolve_metric_reference(sort_expr)
+(??)                    interaction_dict["sort"] = sort_expr
 
             if interaction_dict:
                 result.append(interaction_dict)

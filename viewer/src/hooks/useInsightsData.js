@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFetchInsights } from '../contexts/QueryContext';
-import { tableDuckDBExists, insertDuckDBFile } from '../duckdb/queries';
+import { tableDuckDBExists, insertDuckDBFile, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { fetchInsightData } from '../queries/insightsData';
@@ -32,11 +32,44 @@ const saveInsightDataSafe = async (db, insightName, dataObj) => {
   }
 };
 
+const getInsightData = async (db, filteredData, inputs) => {
+  let new_data = {}
+  for (const key in filteredData) {
+    const insight = filteredData[key];
+    if (!insight) continue;
+    
+    try {
+      let post_query = prepPostQuery(insight, inputs)
+      const result = await runDuckDBQuery(db, post_query, 10, 1000);  
+      
+      const processedRows = result.toArray().map((row) => {
+        const rowData = row.toJSON();
+        return Object.fromEntries(
+          Object.entries(rowData).map(([key, value]) => [
+            key,
+            typeof value === 'bigint' ? value.toString() : value
+          ])
+        );
+      });
+      
+      new_data[key] = {
+        ...insight,
+        insight: processedRows || []
+      };
+    } catch (error) {
+      console.error(`Failed to query ${key} from DuckDB:`, error);
+    }
+  }
+  return new_data;
+};
+
 export const useInsightsData = (projectId, insightNames) => {
   const fetchInsight = useFetchInsights();
   const db = useDuckDB();
   const setInsights = useStore((state) => state.setInsights);
+  const setDB = useStore((state) => state.setDB);
   const storeInsightData = useStore((state) => state.insights);
+  const inputs = useStore(state => state.inputs)
 
   const stableInsightNames = useMemo(() => {
     if (!insightNames?.length) return [];
@@ -55,51 +88,56 @@ export const useInsightsData = (projectId, insightNames) => {
     );
   }, [storeInsightData, stableInsightNames]);
 
+  const queryFn = useCallback(async () => {
+    if (!db && !inputs) return {};
+    
+    const insights = await fetchInsight(projectId, stableInsightNames);
+    if (!insights?.length) return {};
+
+    const results = await Promise.all(
+      insights.map(async (insight) => {
+        try {
+          const data = await fetchInsightData(insight);
+          return [
+            insight.name,
+            {
+              insight: data.data ?? [],
+              post_query: data.post_query ?? `SELECT * FROM "${insight.name}"`,
+              columns: data.metadata?.columns || {},
+              props: data.metadata?.props || {},
+              interactions: data.interactions,
+              dynamic_interactions: data.dynamic_interactions
+            },
+          ];
+        } catch (error) {
+          console.error(`Failed to fetch ${insight.name}:`, error);
+          return null;
+        }
+      })
+    );
+
+    const processedData = Object.fromEntries(
+      results.filter((r) => r !== null)
+    );
+
+    let filteredData = filterObject(processedData, stableInsightNames);
+
+    setDB(db);
+    setTimeout(() => {
+      Object.entries(filteredData).forEach(([name, dataObj]) => {
+        saveInsightDataSafe(db, name, dataObj);
+      });
+    }, 0);
+
+    filteredData = await getInsightData(db, filteredData, inputs);
+
+    return filteredData;
+  }, [db, fetchInsight, projectId, stableInsightNames, setDB, inputs]);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['insights', projectId, stableInsightNames],
-    queryFn: async () => {
-      const insights = await fetchInsight(projectId, stableInsightNames);
-      if (!insights?.length) return {};
-
-      const results = await Promise.all(
-        insights.map(async (insight) => {
-          try {
-            const data = await fetchInsightData(insight);
-            return [
-              insight.name,
-              {
-                insight: data.data ?? [],
-                post_query: data.post_query ?? `SELECT * FROM "${insight.name}"`,
-                columns: data.metadata?.columns || {},
-                props: data.metadata?.props || {},
-              },
-            ];
-          } catch (error) {
-            console.error(`Failed to fetch ${insight.name}:`, error);
-            return null;
-          }
-        })
-      );
-
-      const processedData = Object.fromEntries(
-        results.filter((r) => r !== null)
-      );
-
-      const filteredData = filterObject(processedData, stableInsightNames);
-
-      // Fire-and-forget caching into DuckDB
-      if (db) {
-        setTimeout(() => {
-          Object.entries(filteredData).forEach(([name, dataObj]) => {
-            saveInsightDataSafe(db, name, dataObj);
-          });
-        }, 0);
-      }
-
-      setInsights(filteredData);
-      return filteredData;
-    },
-    enabled: !!projectId && stableInsightNames.length > 0 && !hasCompleteData,
+    queryKey: ['insights', projectId, stableInsightNames, !!db],
+    queryFn,
+    enabled: !!projectId && stableInsightNames.length > 0 && !!db && !hasCompleteData,
     staleTime: Infinity,
     cacheTime: Infinity,
     refetchOnWindowFocus: false,
@@ -107,8 +145,14 @@ export const useInsightsData = (projectId, insightNames) => {
     retry: false,
   });
 
+  useMemo(() => {
+    if (data && !hasCompleteData && Object.keys(data).length > 0) {
+      setInsights(data);
+    }
+  }, [data, hasCompleteData, setInsights]);
+
   return {
-    insightsData: hasCompleteData ? storeInsightData : data || {},
+    insightsData: storeInsightData || {},
     isInsightsLoading: hasCompleteData ? false : isLoading,
     hasAllInsightData:
       hasCompleteData || (data && Object.keys(data).length > 0),

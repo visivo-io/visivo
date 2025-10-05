@@ -6,6 +6,7 @@ import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
+import Input from '../items/Input';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
@@ -78,6 +79,8 @@ const Dashboard = ({ project, dashboardName }) => {
       object = item.table;
     } else if (item.selector) {
       object = item.selector;
+    } else if (item.input) {
+      object = item.input;
     }
     return shouldShowNamedModel(object);
   };
@@ -126,16 +129,14 @@ const Dashboard = ({ project, dashboardName }) => {
     if (items.indexOf(item) < 0) {
       return null;
     }
-    if (item.chart) {
+    if (item.input) {
       return (
-        <Chart
-          chart={item.chart}
+        <Input
+          input={item.input}
           project={project}
-          height={getHeight(row.height) - 8}
-          width={getWidth(items, item)}
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
+        ></Input>
       );
     } else if (item.table) {
       return (
@@ -156,6 +157,17 @@ const Dashboard = ({ project, dashboardName }) => {
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         ></Selector>
+      );
+    } else if (item.chart) {
+      return (
+        <Chart
+          chart={item.chart}
+          project={project}
+          height={getHeight(row.height) - 8}
+          width={getWidth(items, item)}
+          itemWidth={item.width}
+          key={`dashboardRow${rowIndex}Item${itemIndex}`}
+        />
       );
     } else if (item.markdown) {
       return (

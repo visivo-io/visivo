@@ -1,4 +1,4 @@
-import { QueryString } from "../utils/query_string";
+import { QueryString } from "../utils/queryString";
 
 export function chartDataFromInsightData(insightsData) {
   if (!insightsData) return [];
@@ -23,7 +23,6 @@ export function chartDataFromInsightData(insightsData) {
       for (const key of Object.keys(obj)) {
         const value = obj[key];
         if (typeof value === 'string') {
-          // Match column(fieldName)
           const match = value.match(/^column\((.+)\)$/);
           if (match) {
             const fieldName = match[1];

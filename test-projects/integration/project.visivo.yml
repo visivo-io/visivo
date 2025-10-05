@@ -130,7 +130,7 @@ dashboards:
           - table:
               name: awesome-table-2
               column_defs:
-                - trace_name: markdown-trace-base
+                - trace_name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
                   columns:
                     - key: "columns.vanilla_text"
                     - key: "columns.markdown"
@@ -138,7 +138,7 @@ dashboards:
                       markdown: true
               traces:
                 - model: ${ ref(markdown-table-base) }
-                  name: markdown-trace-base
+                  name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
                   columns:
                     vanilla_text: vanilla_text
                     markdown: markdown
