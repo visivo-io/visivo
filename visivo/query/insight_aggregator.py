@@ -178,6 +178,7 @@ class InsightAggregator:
                 "input_dependencies": tokenized_insight.input_dependencies,
                 "requires_groupby": tokenized_insight.requires_groupby,
                 "sort_expressions": tokenized_insight.sort_expressions,
+                "dynamic_interactions": tokenized_insight.is_dynamic_interactions,
             },
         }
 

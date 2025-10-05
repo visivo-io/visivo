@@ -8,12 +8,14 @@ import FilterBar from './FilterBar';
 import useStore from '../../stores/store';
 import { throttle } from 'lodash';
 import { useSearchParams } from 'react-router-dom';
+import { DROPDOWN } from '../items/Input';
 
 function Project(props) {
   const [searchParams] = useSearchParams();
   const elementId = searchParams.get('element_id');
   const setScrollPosition = useStore(state => state.setScrollPosition);
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
+  const setDefaultInputValue = useStore(state => state.setDefaultInputValue)
   const throttleRef = useRef();
   const [windowPosition, setWindowPosition] = useState('');
 
@@ -60,6 +62,29 @@ function Project(props) {
     setCurrentDashboardName,
     filterDashboards,
   } = useStore();
+
+  useEffect(() => {
+    props.project.project_json.dashboards.forEach(dashboard => {
+      dashboard.rows.forEach(row => {
+        row.items.map(item => {
+          if (item?.input) {
+            const input = item.input
+            switch(input.type){
+              case DROPDOWN:
+                if (input?.default) {
+                  setDefaultInputValue(input.name, input.default)
+                }
+                break
+              default:
+                break
+            }
+          }
+          return null
+        })
+      })
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.project])
 
   // Initialize dashboards in store when props change
   useEffect(() => {

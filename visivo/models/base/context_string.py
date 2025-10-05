@@ -66,6 +66,17 @@ class ContextString:
             raise ValueError(f"Invalid context string reference name: '{reference}'.")
         return items[0]
 
+    def get_ref_attr(self) -> str:
+        """
+        Returns the full '${ref(...)}' attribute if present in the string.
+        Example:
+            'year = ${ref(Selected Year)}' -> '${ref(Selected Year)}'
+        """
+        match = re.search(METRIC_REF_PATTERN, self.value)
+        if not match:
+            return None
+        return match.group(0)
+
     @classmethod
     def is_context_string(cls, obj) -> bool:
         return isinstance(obj, ContextString) or (

@@ -4,7 +4,8 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
-from visivo.models.input import InputField
+from visivo.models.input import Input
+from visivo.models.inputs.base import InputBasemodel
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
@@ -61,7 +62,7 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
-    inputs: List[InputField] = []
+    inputs: List[Input] = []
     dashboards: List[DashboardField] = []
     metrics: List[Metric] = Field(
         [], description="A list of global metric objects that can reference multiple models."
@@ -256,6 +257,12 @@ class Project(NamedModel, ParentModel):
             if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
+                )
+
+            inputs = all_descendants_of_type(type=InputBasemodel, dag=dag, from_node=table)
+            if len(inputs) > 0 and inputs[0].type == SelectorType.multiple:
+                raise ValueError(
+                    f"Table with name '{table.name}' has an input with a 'multiple' type.  This is not permitted."
                 )
 
         return self

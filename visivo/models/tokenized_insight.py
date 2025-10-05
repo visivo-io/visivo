@@ -41,6 +41,7 @@ class TokenizedInsight(BaseModel):
 
     # SQL execution metadata
     requires_groupby: bool = False
+    is_dynamic_interactions: bool = False
     groupby_statements: Optional[List[str]] = None
 
     # Additional metadata for client processing

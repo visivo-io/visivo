@@ -4,10 +4,12 @@ from pydantic import Field
 
 from visivo.models.inputs.dropdown import DropdownInput
 
-InputField = Annotated[
-    Union[DropdownInput],
+
+Input = Annotated[
+    Union[DropdownInput,],
     Field(discriminator="type"),
 ]
+
 """
 Inputs serve as generic value injectors that other components can react to,
 rather than pushing changes themselves.
