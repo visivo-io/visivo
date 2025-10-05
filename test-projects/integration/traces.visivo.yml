@@ -143,3 +143,20 @@ traces:
       - ?{ waterfall is not null }
       - ?{ category not in ('Earnings From Continuing Operations') }
       - ?{ year in ('Sep 2023', 'Sep 2022') }
+
+  - name: QueryString Columns Test
+    model: ${ ref(test table) }
+    columns:
+      x_col: x
+      y_col: y
+      color_col: case when x >= 5 then '#713B57' else '#999999' end
+      size_col: case when y > 10 then 15 else 8 end
+    props:
+      type: scatter
+      x: ?{ columns.x_col }
+      y: ?{ columns.y_col }
+      mode: markers
+      marker:
+        color: ?{ columns.color_col }
+        size: ?{ columns.size_col }
+
