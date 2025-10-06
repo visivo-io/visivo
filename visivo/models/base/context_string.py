@@ -9,6 +9,8 @@ from visivo.query.patterns import (
     get_model_name_from_match,
 )
 
+METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+
 
 class ContextString:
     """

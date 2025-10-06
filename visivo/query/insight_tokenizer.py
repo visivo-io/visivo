@@ -594,9 +594,8 @@ class InsightTokenizer:
         return query.sql(dialect=self.sqlglot_dialect, pretty=True)
 
     def _generate_post_query(self) -> str:
-(??)
-(??)        # return "SELECT * FROM insight_data"
-(??)        return self.model.sql
+        # return "SELECT * FROM insight_data"
+        return self.model.sql
 
     def _parameterize_input_references(self, expr: str) -> str:
         return expr
@@ -612,7 +611,8 @@ class InsightTokenizer:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-(??)                    interaction_dict["filter"] = filter_expr
+                    # Store the resolved filter expression
+                    interaction_dict["filter"] = self._resolve_metric_reference(filter_expr)
 
             if interaction.split:
                 split_expr = interaction.split.get_value()
@@ -623,7 +623,8 @@ class InsightTokenizer:
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-(??)                    interaction_dict["sort"] = sort_expr
+                    # Store the resolved sort expression
+                    interaction_dict["sort"] = self._resolve_metric_reference(sort_expr)
 
             if interaction_dict:
                 result.append(interaction_dict)
