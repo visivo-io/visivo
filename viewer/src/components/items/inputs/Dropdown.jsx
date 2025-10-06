@@ -204,16 +204,25 @@ const Dropdown = ({
                     key={item.id}
                   >
                     {item.label}
-                    <button
+                    <span
+                      role="button"
+                      tabIndex={0}
                       aria-label={`Remove ${item.label}`}
                       onClick={e => {
                         e.stopPropagation();
                         removeSelection(item.id);
                       }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          removeSelection(item.id);
+                        }
+                      }}
                       className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors cursor-pointer"
                     >
                       <FaTimes className="w-3 h-3" />
-                    </button>
+                    </span>
                   </SelectedTag>
                 ))}
                 {selectedItems.length > 2 && (
