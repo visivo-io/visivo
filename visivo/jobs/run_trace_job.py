@@ -17,17 +17,12 @@ from visivo.jobs.job import (
 from time import time
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_string_factory import QueryStringFactory
+from visivo.jobs.utils import get_source_for_model
 
 
 def action(trace, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+    source = get_source_for_model(model, dag, output_dir)
 
     trace_directory = f"{output_dir}/traces/{trace.name}"
     query_string = _get_query_string(trace, dag, output_dir)
@@ -57,28 +52,14 @@ def action(trace, dag, output_dir):
 
 def _get_query_string(trace, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+    source = get_source_for_model(model, dag, output_dir)
     tokenized_trace = TraceTokenizer(trace=trace, model=model, source=source).tokenize()
     return QueryStringFactory(tokenized_trace=tokenized_trace).build()
 
 
 def _get_source(trace, dag, output_dir):
-    sources = all_descendants_of_type(type=Source, dag=dag, from_node=trace)
-    if len(sources) == 1:
-        return sources[0]
-
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel):
-        return model.get_duckdb_source(output_dir)
-    elif isinstance(model, LocalMergeModel):
-        return model.get_duckdb_source(output_dir, dag)
-    else:
-        return model.source
+    return get_source_for_model(model, dag, output_dir)
 
 
 def job(dag, output_dir: str, trace: Trace):

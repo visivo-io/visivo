@@ -1,7 +1,8 @@
 from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.models.insight import Insight
+from visivo.models.base.project_dag import ProjectDag
 
-from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory
+from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory, ProjectFactory
 import pytest
 
 
@@ -10,7 +11,6 @@ def test_insight_tokenizer_basic():
     # Create a simple insight
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{amount}"},
     }
 
@@ -18,7 +18,18 @@ def test_insight_tokenizer_basic():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Basic checks
@@ -31,39 +42,44 @@ def test_insight_tokenizer_basic():
     assert tokenized.select_items["props.y"] == "amount"
 
 
-def test_insight_tokenizer_with_columns():
-    """Test insight tokenization with explicit columns"""
+def test_insight_tokenizer_with_additional_props():
+    """Test insight tokenization with additional props"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
-        "columns": {"region": "?{region}", "category": "?{category}"},
-        "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}"},
+        "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}", "text": "?{region}"},
     }
 
     insight = Insight(**insight_data)
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
-    # Check columns are included
-    assert "columns.region" in tokenized.column_items
-    assert "columns.category" in tokenized.column_items
-    assert tokenized.column_items["columns.region"] == "region"
-    assert tokenized.column_items["columns.category"] == "category"
+    # Check that columns support has been removed
+    assert not hasattr(tokenized, "column_items")
 
     # Check props
     assert "props.x" in tokenized.select_items
     assert "props.y" in tokenized.select_items
+    assert "props.text" in tokenized.select_items
 
 
 def test_insight_tokenizer_with_interactions():
     """Test insight tokenization with interactions"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
-        "columns": {"region": "?{region}"},
         "props": {"type": "scatter", "x": "?{date}", "y": "?{sum(amount)}"},
         "interactions": [
             {"filter": "?{region = '${ref(region_select).value}'}"},
@@ -75,7 +91,18 @@ def test_insight_tokenizer_with_interactions():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Check interactions are serialized
@@ -89,7 +116,6 @@ def test_insight_tokenizer_aggregation_detection():
     """Test that aggregation functions are properly detected"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_table"},
         "props": {
             "type": "scatter",
             "x": "?{date}",
@@ -101,7 +127,18 @@ def test_insight_tokenizer_aggregation_detection():
     model = SqlModelFactory(sql="SELECT * FROM test_table")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Should require GROUP BY due to aggregation
@@ -115,8 +152,6 @@ def test_insight_tokenizer_pre_post_query_generation():
     """Test that pre and post queries are generated correctly"""
     insight_data = {
         "name": "test_insight",
-        "model": {"sql": "SELECT * FROM test_insight"},
-        "columns": {"region": "?{region}"},
         "props": {"type": "indicator", "value": "?{sum(amount)}"},
         "interactions": [{"filter": "?{region = '${ref(region_select).value}'}"}],
     }
@@ -125,7 +160,18 @@ def test_insight_tokenizer_pre_post_query_generation():
     model = SqlModelFactory(sql="SELECT * FROM test_insight")
     source = SnowflakeSourceFactory()
 
-    tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
+    # Create a mock DAG with a Project as root
+    project = ProjectFactory()
+    dag = ProjectDag()
+    dag.add_node(project)
+    dag.add_node(source)
+    dag.add_node(model)
+    dag.add_node(insight)
+    dag.add_edge(project, source)
+    dag.add_edge(source, model)
+    dag.add_edge(model, insight)
+
+    tokenizer = InsightTokenizer(insight=insight, model=model, source=source, dag=dag)
     tokenized = tokenizer.tokenize()
 
     # Pre-query should include all necessary columns

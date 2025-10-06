@@ -61,14 +61,9 @@ class ParentModel(ABC):
                 ):
                     continue
                 elif isinstance(item, DefaultSource):
-                    name = root.defaults.source_name
-                    dag_item = self.__get_dereferenced_item_by_name(
-                        name=name,
-                        dag=dag,
-                        root=root,
-                        item=item,
-                        parent_item=parent_item,
-                    )
+                    # Skip DefaultSource resolution during initial DAG building
+                    # It will be resolved in the dereference phase
+                    continue
                 if item.__class__.__name__ == "Test":
                     dag.add_edge(root, dag_item)
                 else:
@@ -95,6 +90,16 @@ class ParentModel(ABC):
                     dag.add_edge(parent_item, dereferenced_item)
                 elif BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
+                    dereferenced_item = self.__get_dereferenced_item_by_name(
+                        name=name,
+                        dag=dag,
+                        root=root,
+                        item=item,
+                        parent_item=parent_item,
+                    )
+                    dag.add_edge(parent_item, dereferenced_item)
+                elif isinstance(item, DefaultSource):
+                    name = root.defaults.source_name
                     dereferenced_item = self.__get_dereferenced_item_by_name(
                         name=name,
                         dag=dag,

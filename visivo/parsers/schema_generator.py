@@ -13,6 +13,8 @@ def generate_project_schema():
     schema_string = schema_string.replace("?P<column_name>", "")
     schema_string = schema_string.replace("?P<query_statement>", "")
     schema_string = schema_string.replace("?P<query_string>", "")
+    schema_string = schema_string.replace("?P<model_name>", "")
+    schema_string = schema_string.replace("?P<property_path>", "")
 
     return schema_string
 

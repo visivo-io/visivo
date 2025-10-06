@@ -9,20 +9,15 @@ from pydantic import (
 from typing_extensions import Annotated
 from typing import Optional, Union, NewType
 import re
-from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX, ContextString
-from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX
-
-REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
-QUERY_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$"
-COLUMN_REGEX = (
-    r"^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
+from visivo.models.base.context_string import ContextString
+from visivo.query.patterns import (
+    REF_PROPERTY_PATTERN,
+    CONTEXT_STRING_VALUE_PATTERN,
 )
-STATEMENT_REGEX = rf"{QUERY_REGEX}|{COLUMN_REGEX}|{QUERY_STRING_VALUE_REGEX}"
-INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 
 RefStringType = NewType(
     "RefStringType",
-    Annotated[Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("Ref")],
+    Annotated[Annotated[str, StringConstraints(pattern=REF_PROPERTY_PATTERN)], Tag("Ref")],
 )
 
 ContextStringType = NewType(
@@ -53,7 +48,7 @@ class ModelStrDiscriminator:
         return self.class_name
 
     def __call__(self, value):
-        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_PATTERN, value):
             return "Context"
         elif isinstance(value, str):
             return "Ref"
@@ -72,7 +67,7 @@ class TraceOrInsightDiscriminator:
         return "TraceOrInsightDiscriminator"
 
     def __call__(self, value):
-        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_PATTERN, value):
             return "Context"
         elif isinstance(value, str):
             return "Ref"
@@ -115,7 +110,7 @@ class BaseModel(PydanticBaseModel):
     @classmethod
     def is_ref(cls, obj) -> bool:
         return (
-            isinstance(obj, str) and re.search(REF_REGEX, obj)
+            isinstance(obj, str) and re.search(REF_PROPERTY_PATTERN, obj)
         ) or ContextString.is_context_string(obj)
 
     def __hash__(self):

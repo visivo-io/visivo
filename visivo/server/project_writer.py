@@ -238,11 +238,13 @@ class ProjectWriter:
             else:
                 relevant_files.append(value.get("file_path"))
                 relevant_files.append(value.get("new_file_path"))
-        relevant_files = [x for x in list(set(relevant_files)) if x is not None]
+        relevant_files = [
+            x for x in list(set(relevant_files)) if x is not None and x != "Not Found"
+        ]
         files_to_write = {}
 
         for file_path in relevant_files:
-            if file_path is None:
+            if file_path is None or file_path == "Not Found":
                 continue
             elif os.path.isfile(file_path):
                 with open(file_path, "r") as file:

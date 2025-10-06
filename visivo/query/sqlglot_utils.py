@@ -76,6 +76,11 @@ def has_aggregate_function(expr: exp.Expression) -> bool:
         if isinstance(node, exp.AggFunc):
             return True
 
+        # Special handling for DuckDB-specific aggregates that SQLGlot doesn't recognize
+        # MODE is an aggregate in DuckDB but parsed as Anonymous by SQLGlot
+        if isinstance(node, exp.Anonymous) and node.this and node.this.upper() == "MODE":
+            return True
+
     return False
 
 

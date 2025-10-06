@@ -1,10 +1,11 @@
 from typing import Optional, Literal, Set
 from pydantic import Field, ConfigDict, field_validator
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
 from visivo.query.patterns import extract_model_names, validate_ref_syntax, count_model_references
 
 
-class Relation(NamedModel):
+class Relation(NamedModel, ParentModel):
     """
     A Relation defines how two models can be joined together.
 
@@ -80,3 +81,25 @@ class Relation(NamedModel):
             )
 
         return v
+
+    def child_items(self):
+        """
+        Return child items for DAG construction.
+
+        Extracts model references from the relation condition using ${ref(model).field} syntax.
+        This allows the DAG to properly track dependencies between relations and the models they connect.
+
+        Returns:
+            List of ref() strings for models referenced in the condition
+        """
+        children = []
+
+        # Extract all model names from the condition
+        if self.condition:
+            model_names = extract_model_names(self.condition)
+
+            # Convert to ref() format for DAG
+            for model_name in model_names:
+                children.append(f"ref({model_name})")
+
+        return children

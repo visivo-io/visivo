@@ -17,7 +17,7 @@ def register_views(app, flask_app, output_dir):
     register_editor_views(app, flask_app, output_dir)
     register_dashboard_views(app, flask_app, output_dir)
     register_trace_views(app, flask_app, output_dir)
+    register_insight_views(app, flask_app, output_dir)
     register_source_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)
-    register_insight_views(app, flask_app, output_dir)
