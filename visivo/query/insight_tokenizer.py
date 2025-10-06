@@ -573,7 +573,7 @@ class InsightTokenizer:
         return query.sql(dialect=self.sqlglot_dialect, pretty=True)
 
     def _generate_post_query(self) -> str:
-
+        # return "SELECT * FROM insight_data"
         return self.model.sql
 
     def _parameterize_input_references(self, expr: str) -> str:
