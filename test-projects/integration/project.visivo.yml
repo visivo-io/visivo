@@ -79,6 +79,7 @@ sources:
     username: default
     password: clickhouse
 
+
   - name: remote-snowflake
     type: snowflake
     database: JARED_DEV
