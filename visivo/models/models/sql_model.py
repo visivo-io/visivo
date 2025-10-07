@@ -53,25 +53,16 @@ class SqlModel(Model, ParentModel):
         """Set parent names on nested metrics and dimensions, and validate no ref() in expressions."""
         from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN
 
-        # Set parent names on nested metrics
-        for metric in self.metrics:
-            metric.set_parent_name(self.name)
-            # Validate no ref() in nested metric expressions
-            if has_CONTEXT_STRING_REF_PATTERN(metric.expression):
-                raise ValueError(
-                    f"Nested metric '{metric.name}' in model '{self.name}' cannot use ref() syntax in expression. "
-                    f"Nested metrics can only reference fields from their parent model directly."
-                )
-
-        # Set parent names on nested dimensions
-        for dimension in self.dimensions:
-            dimension.set_parent_name(self.name)
-            # Validate no ref() in nested dimension expressions
-            if has_CONTEXT_STRING_REF_PATTERN(dimension.expression):
-                raise ValueError(
-                    f"Nested dimension '{dimension.name}' in model '{self.name}' cannot use ref() syntax in expression. "
-                    f"Nested dimensions can only reference fields from their parent model directly."
-                )
+        # Process both metrics and dimensions
+        for obj_type, objects in [("metric", self.metrics), ("dimension", self.dimensions)]:
+            for obj in objects:
+                obj.set_parent_name(self.name)
+                # Validate no ref() in nested object expressions
+                if has_CONTEXT_STRING_REF_PATTERN(obj.expression):
+                    raise ValueError(
+                        f"Nested {obj_type} '{obj.name}' in model '{self.name}' cannot use ref() syntax in expression. "
+                        f"Nested {obj_type}s can only reference fields from their parent model directly."
+                    )
 
         return self
 

@@ -85,9 +85,11 @@ class MetricResolver:
         for metric in all_metrics:
             self.metrics_by_name[metric.name] = metric
 
-            for predecessor in self.dag.predecessors(metric):
-                if isinstance(predecessor, SqlModel):
-                    qualified_name = f"{predecessor.name}.{metric.name}"
+            # Metrics now point TO their parent model as successors (not predecessors)
+            # So we look at successors to find the SqlModel
+            for successor in self.dag.successors(metric):
+                if isinstance(successor, SqlModel):
+                    qualified_name = f"{successor.name}.{metric.name}"
                     self.metrics_by_name[qualified_name] = metric
                     break
 
@@ -439,9 +441,10 @@ class MetricResolver:
                 model_name = metric_name.split(".")[0]
                 models.add(model_name)
             else:
-                for predecessor in self.dag.predecessors(metric):
-                    if isinstance(predecessor, SqlModel):
-                        models.add(predecessor.name)
+                # Metrics now point TO their parent model as successors (not predecessors)
+                for successor in self.dag.successors(metric):
+                    if isinstance(successor, SqlModel):
+                        models.add(successor.name)
                         break
 
             dependencies = self.get_metric_dependencies(metric_name)

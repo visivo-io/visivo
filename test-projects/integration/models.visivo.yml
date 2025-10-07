@@ -1,6 +1,12 @@
 models:
   - name: local_test_table
     sql: "SELECT * FROM test_table"
+    metrics:
+      - name: x_sum
+        expression: "SUM(x)"
+    dimensions:
+      - name: x_rounded
+        expression: "ROUND(x, 2)"
   - name: second_local_test_table
     sql: "SELECT * FROM second_test_table"
   - name: join_table
