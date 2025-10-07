@@ -53,10 +53,15 @@ it('handles json files', async () => {
 
 
 it('ignores unsupported extensions', async () => {
+  const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
   const file = new File(['dummy'], 'notes.txt');
   await insertDuckDBFile(db, file, 'txt_table');
 
   // No handlers should be called
   expect(db.registerFileText).not.toHaveBeenCalled();
   expect(db.registerFileHandle).not.toHaveBeenCalled();
+  expect(consoleWarnSpy).toHaveBeenCalledWith('Unsupported file extension: txt');
+
+  consoleWarnSpy.mockRestore();
 });

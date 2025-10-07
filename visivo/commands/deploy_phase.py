@@ -320,7 +320,9 @@ async def process_traces_async(traces, output_dir, project_id, form_headers, jso
         raise click.ClickException("Failed to create trace records.")
 
 
-async def process_insights_async(insights, output_dir, project_id, form_headers, json_headers, host):
+async def process_insights_async(
+    insights, output_dir, project_id, form_headers, json_headers, host
+):
     """
     Coordinates the asynchronous upload of insight data files and the creation of insight records.
     """
@@ -574,7 +576,8 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
                 )
             )
             send_progress(
-                f"Insight uploads completed in {time() - process_insights_start_time:.2f} seconds", "info"
+                f"Insight uploads completed in {time() - process_insights_start_time:.2f} seconds",
+                "info",
             )
         else:
             send_progress("No insights to upload", "info")
