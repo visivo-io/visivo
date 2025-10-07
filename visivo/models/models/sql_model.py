@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 from visivo.models.base.base_model import generate_ref_field
 from pydantic import ConfigDict, Field, model_validator
@@ -9,8 +9,6 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.sources.fields import SourceRefField
 from visivo.models.sources.source import DefaultSource
-from visivo.models.metric import Metric
-from visivo.models.dimension import Dimension
 
 
 class SqlModel(Model, ParentModel):
@@ -43,31 +41,7 @@ class SqlModel(Model, ParentModel):
         alias="target",
     )
 
-    metrics: List[Metric] = Field(
-        [], description="A list of model-scoped metrics that aggregate data from this model."
-    )
-
-    dimensions: List[Dimension] = Field(
-        [], description="A list of computed dimensions (row-level calculations) for this model."
-    )
-
-    @model_validator(mode="after")
-    def set_parent_names_on_nested_objects(self):
-        """Set parent names on nested metrics and dimensions, and validate no ref() in expressions."""
-        from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN
-
-        # Process both metrics and dimensions
-        for obj_type, objects in [("metric", self.metrics), ("dimension", self.dimensions)]:
-            for obj in objects:
-                obj.set_parent_name(self.name)
-                # Validate no ref() in nested object expressions
-                if has_CONTEXT_STRING_REF_PATTERN(obj.expression):
-                    raise ValueError(
-                        f"Nested {obj_type} '{obj.name}' in model '{self.name}' cannot use ref() syntax in expression. "
-                        f"Nested {obj_type}s can only reference fields from their parent model directly."
-                    )
-
-        return self
+    # NOTE: metrics and dimensions are now defined on the base Model class
 
     def child_items(self):
         children = []
