@@ -1,6 +1,6 @@
 from typing import Optional
 import re
-from pydantic import Field, ConfigDict, field_validator
+from pydantic import Field, ConfigDict, field_validator, PrivateAttr
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
@@ -48,6 +48,12 @@ class Metric(NamedModel, ParentModel):
         None, description="Human-readable description of what this metric represents."
     )
 
+    _parent_name: Optional[str] = PrivateAttr(default=None)
+
+    def set_parent_name(self, value: str):
+        """Set the parent model name for nested metrics."""
+        self._parent_name = value
+
     @field_validator("name")
     @classmethod
     def validate_sql_identifier(cls, v: Optional[str]) -> Optional[str]:
@@ -68,28 +74,27 @@ class Metric(NamedModel, ParentModel):
         """
         Return child items for DAG construction.
 
-        Extracts model and metric references from the metric expression using ${ref(...)} syntax.
-        This allows the DAG to properly track dependencies between metrics and the models/metrics they reference.
+        For nested metrics (those defined under a model), this returns a reference to the parent model.
+        For standalone metrics (project-level), this extracts model/metric references from the expression.
 
         Returns:
-            List of ref() strings for models and metrics referenced in the expression
+            List of ref() strings for dependencies
         """
-        from visivo.query.patterns import extract_ref_components
-
         children = []
 
-        # Extract all ${ref(model).field} and ${ref(metric)} references from expression
-        if self.expression:
-            ref_components = extract_ref_components(self.expression)
+        # Check if this is a nested metric (has a parent_name set)
+        if hasattr(self, "_parent_name") and self._parent_name:
+            # Nested metric - reference the parent model only
+            children.append(f"ref({self._parent_name})")
+        else:
+            # Standalone metric - extract references from expression
+            from visivo.query.patterns import extract_ref_components
 
-            # Convert to ref() format for DAG
-            # Each component is (model_or_metric_name, field_name)
-            for model_or_metric_name, field_name in ref_components:
-                if field_name:
-                    # This is a model.field reference
-                    children.append(f"ref({model_or_metric_name})")
-                else:
-                    # This is a metric reference (no field)
+            if self.expression:
+                ref_components = extract_ref_components(self.expression)
+
+                # Convert to ref() format for DAG
+                for model_or_metric_name, field_name in ref_components:
                     children.append(f"ref({model_or_metric_name})")
 
         return children

@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from visivo.models.base.base_model import generate_ref_field
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.sources.fields import SourceRefField
@@ -48,15 +48,38 @@ class SqlModel(Model, ParentModel):
         [], description="A list of computed dimensions (row-level calculations) for this model."
     )
 
+    @model_validator(mode="after")
+    def set_parent_names_on_nested_objects(self):
+        """Set parent names on nested metrics and dimensions, and validate no ref() in expressions."""
+        from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN
+
+        # Set parent names on nested metrics
+        for metric in self.metrics:
+            metric.set_parent_name(self.name)
+            # Validate no ref() in nested metric expressions
+            if has_CONTEXT_STRING_REF_PATTERN(metric.expression):
+                raise ValueError(
+                    f"Nested metric '{metric.name}' in model '{self.name}' cannot use ref() syntax in expression. "
+                    f"Nested metrics can only reference fields from their parent model directly."
+                )
+
+        # Set parent names on nested dimensions
+        for dimension in self.dimensions:
+            dimension.set_parent_name(self.name)
+            # Validate no ref() in nested dimension expressions
+            if has_CONTEXT_STRING_REF_PATTERN(dimension.expression):
+                raise ValueError(
+                    f"Nested dimension '{dimension.name}' in model '{self.name}' cannot use ref() syntax in expression. "
+                    f"Nested dimensions can only reference fields from their parent model directly."
+                )
+
+        return self
+
     def child_items(self):
         children = []
         if self.source:
             children.append(self.source)
         else:
             children.append(DefaultSource())
-
-        # Add metrics and dimensions as child items
-        children.extend(self.metrics)
-        children.extend(self.dimensions)
 
         return children
