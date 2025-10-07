@@ -80,6 +80,15 @@ class Project(NamedModel, ParentModel):
         for child_type in project_children:
             items = getattr(self, child_type, [])
             children.extend(items)
+
+        # Also add nested metrics and dimensions from models
+        # These are not direct children of the project but need to be in the DAG
+        for model in self.models:
+            if hasattr(model, "metrics"):
+                children.extend(model.metrics)
+            if hasattr(model, "dimensions"):
+                children.extend(model.dimensions)
+
         return children
 
     def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
