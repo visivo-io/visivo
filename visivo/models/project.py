@@ -81,13 +81,12 @@ class Project(NamedModel, ParentModel):
             items = getattr(self, child_type, [])
             children.extend(items)
 
-        # Also add nested metrics and dimensions from SqlModels
+        # Also add nested metrics and dimensions from models
         # These are not direct children of the project but need to be in the DAG
-        from visivo.models.models.sql_model import SqlModel
-
         for model in self.models:
-            if isinstance(model, SqlModel):
+            if hasattr(model, "metrics"):
                 children.extend(model.metrics)
+            if hasattr(model, "dimensions"):
                 children.extend(model.dimensions)
 
         return children

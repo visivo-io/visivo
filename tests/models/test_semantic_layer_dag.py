@@ -89,18 +89,25 @@ def test_standalone_metric_extracts_model_references():
         name="orders",
         sql="SELECT * FROM orders",
         source=f"ref({source.name})",
+        metrics=[Metric(name="total_revenue", expression="SUM(amount)")],
+    )
+    users_model = SqlModel(
+        name="users",
+        sql="SELECT * FROM users",
+        source=f"ref({source.name})",
+        metrics=[Metric(name="total_users", expression="COUNT(DISTINCT id)")],
     )
 
-    # Standalone metric references single model
+    # Standalone metric references both models
     standalone_metric = Metric(
-        name="total_revenue",
-        expression="SUM(${ref(orders).amount})",
+        name="revenue_per_user",
+        expression="${ref(orders).total_revenue} / ${ref(users).total_users}",
     )
 
     project = Project(
         name="test_project",
         sources=[source],
-        models=[orders_model],
+        models=[orders_model, users_model],
         metrics=[standalone_metric],
         dashboards=[],
     )
@@ -113,12 +120,13 @@ def test_standalone_metric_extracts_model_references():
     # Verify standalone metric has no parent name
     assert not hasattr(standalone_metric, "_parent_name") or standalone_metric._parent_name is None
 
-    # Verify child_items extracts model reference
+    # Verify child_items extracts model references
     children = standalone_metric.child_items()
-    assert set(children) == {"ref(orders)"}
+    assert set(children) == {"ref(orders)", "ref(users)"}
 
-    # Verify edge exists from metric to model (metric depends on model)
+    # Verify edges exist from metric to both models (metric depends on both models)
     assert dag.has_edge(standalone_metric, orders_model)
+    assert dag.has_edge(standalone_metric, users_model)
 
 
 def test_standalone_dimension_extracts_model_references():
@@ -259,27 +267,36 @@ def test_mixed_nested_and_standalone_metrics():
     """Test project with both nested and standalone metrics."""
     source = SourceFactory()
 
-    # Model with nested metrics
+    # Model with nested metric
     orders_model = SqlModel(
         name="orders",
         sql="SELECT * FROM orders",
         source=f"ref({source.name})",
         metrics=[
             Metric(name="total_revenue", expression="SUM(amount)"),
-            Metric(name="avg_revenue", expression="AVG(amount)"),
         ],
     )
 
-    # Standalone metric referencing nested metric from same model
+    # Another model with nested metric
+    users_model = SqlModel(
+        name="users",
+        sql="SELECT * FROM users",
+        source=f"ref({source.name})",
+        metrics=[
+            Metric(name="user_count", expression="COUNT(*)"),
+        ],
+    )
+
+    # Standalone metric referencing nested metrics
     standalone_metric = Metric(
-        name="double_revenue",
-        expression="${ref(orders).total_revenue} * 2",
+        name="revenue_per_user",
+        expression="${ref(orders).total_revenue} / ${ref(users).user_count}",
     )
 
     project = Project(
         name="test_project",
         sources=[source],
-        models=[orders_model],
+        models=[orders_model, users_model],
         metrics=[standalone_metric],
         dashboards=[],
     )
@@ -289,16 +306,17 @@ def test_mixed_nested_and_standalone_metrics():
     # Verify DAG is valid
     assert networkx.is_directed_acyclic_graph(dag)
 
-    # Verify nested metrics reference their parent model
+    # Verify nested metrics reference their parent models
     assert orders_model.metrics[0]._parent_name == "orders"
-    assert orders_model.metrics[1]._parent_name == "orders"
+    assert users_model.metrics[0]._parent_name == "users"
 
-    # Verify standalone metric references the model
+    # Verify standalone metric references both models (not the nested metrics directly)
     standalone_children = standalone_metric.child_items()
-    assert set(standalone_children) == {"ref(orders)"}
+    assert set(standalone_children) == {"ref(orders)", "ref(users)"}
 
-    # Verify edges (nested metrics depend on their parent model)
+    # Verify edges (nested metrics depend on their parent models)
     assert dag.has_edge(orders_model.metrics[0], orders_model)
-    assert dag.has_edge(orders_model.metrics[1], orders_model)
-    # Standalone metric depends on the model
+    assert dag.has_edge(users_model.metrics[0], users_model)
+    # Standalone metric depends on both models
     assert dag.has_edge(standalone_metric, orders_model)
+    assert dag.has_edge(standalone_metric, users_model)
