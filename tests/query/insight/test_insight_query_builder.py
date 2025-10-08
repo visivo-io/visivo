@@ -208,3 +208,210 @@ class TestInsightQueryBuilder:
         dialect = builder._get_sqlglot_dialect()
         assert dialect is not None
         assert isinstance(dialect, str)
+
+    def test_build_models_ctes_no_dimensions(self):
+        """Test building CTEs for models without dimensions."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Build CTEs
+        ctes = builder.build_models_ctes()
+
+        # Should have CTE for orders
+        assert "orders" in ctes
+        # Without dimensions, should be the base SQL
+        assert ctes["orders"] == "SELECT * FROM orders_table"
+
+    def test_build_models_ctes_with_dimensions(self):
+        """Test building CTEs for models with nested dimensions."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+            dimensions=[
+                Dimension(name="order_year", expression="YEAR(order_date)"),
+                Dimension(name="total_price", expression="quantity * price"),
+            ],
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).order_year}}",
+                y="?{${ref(orders).total_price}}",
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Build CTEs
+        ctes = builder.build_models_ctes()
+
+        # Should have CTE for orders
+        assert "orders" in ctes
+        cte_sql = ctes["orders"]
+
+        # Should include SELECT *
+        assert "SELECT" in cte_sql.upper()
+        assert "*" in cte_sql
+
+        # Should include dimension aliases
+        assert "order_year" in cte_sql
+        assert "total_price" in cte_sql
+
+        # Should include dimension expressions
+        assert "YEAR(order_date)" in cte_sql or "YEAR" in cte_sql
+        assert "quantity * price" in cte_sql or "quantity" in cte_sql
+
+    def test_build_models_ctes_with_specific_columns_and_dimensions(self):
+        """Test building CTEs for models with specific columns (not *) and dimensions."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT order_id, order_date, quantity, price FROM orders_table",
+            source=f"ref({source.name})",
+            dimensions=[
+                Dimension(name="order_year", expression="YEAR(order_date)"),
+                Dimension(name="total_price", expression="quantity * price"),
+            ],
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).order_year}}",
+                y="?{${ref(orders).total_price}}",
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Build CTEs
+        ctes = builder.build_models_ctes()
+
+        # Should have CTE for orders
+        assert "orders" in ctes
+        cte_sql = ctes["orders"]
+
+        # Should preserve original columns
+        assert "order_id" in cte_sql
+        assert "order_date" in cte_sql
+        assert "quantity" in cte_sql
+        assert "price" in cte_sql
+
+        # Should include dimension aliases
+        assert "order_year" in cte_sql
+        assert "total_price" in cte_sql
+
+        # Should NOT have SELECT * since base SQL has specific columns
+        # The base SQL columns should be preserved
+        assert "FROM orders_table" in cte_sql
+
+    def test_build_models_ctes_multiple_models(self):
+        """Test building CTEs for multiple models."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+            dimensions=[
+                Dimension(name="order_year", expression="YEAR(order_date)"),
+            ],
+        )
+        users_model = SqlModel(
+            name="users",
+            sql="SELECT * FROM users_table",
+            source=f"ref({source.name})",
+            dimensions=[
+                Dimension(name="user_region", expression="UPPER(region)"),
+            ],
+        )
+
+        revenue_metric = Metric(
+            name="revenue",
+            expression="SUM(${ref(orders).amount})"
+        )
+        user_dim = Dimension(
+            name="user_name",
+            expression="${ref(users).name}"
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(user_name)}}",
+                y="?{${ref(revenue)}}",
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model, users_model],
+            metrics=[revenue_metric],
+            dimensions=[user_dim],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Build CTEs
+        ctes = builder.build_models_ctes()
+
+        # Should have CTEs for both models
+        assert "orders" in ctes
+        assert "users" in ctes
+
+        # Orders CTE should include its dimension
+        assert "order_year" in ctes["orders"]
+
+        # Users CTE should include its dimension
+        assert "user_region" in ctes["users"]
