@@ -1,10 +1,12 @@
-from typing import Set, List
+from typing import Set, List, Dict
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.insight import Insight
 from visivo.models.models.model import Model
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.source import Source
 from visivo.models.dag import all_descendants_of_type
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
+import sqlglot
 
 
 class InsightQueryBuilder:
@@ -24,9 +26,37 @@ class InsightQueryBuilder:
 
         pass
 
-    def build_models_ctes(self):
+    def build_models_ctes(self) -> Dict[str, str]:
+        ctes = {}
 
-        pass
+        for model in self._referenced_models:
+            if model.dimensions:
+                # Parse the model's base SQL
+                parsed_sql = sqlglot.parse_one(model.sql, dialect=self._sqlglot_dialect)
+
+                # Add each dimension as a computed column to the existing SELECT
+                for dimension in model.dimensions:
+                    # Parse the dimension expression
+                    dim_expr = sqlglot.parse_one(dimension.expression, dialect=self._sqlglot_dialect)
+
+                    # Create an aliased column: <expression> AS <dimension_name>
+                    aliased_column = sqlglot.expressions.Alias(
+                        this=dim_expr,
+                        alias=dimension.name
+                    )
+
+                    # Add to the SELECT clause (copy=False modifies in place)
+                    parsed_sql.select(aliased_column, append=True, copy=False)
+
+                # Generate the SQL with added dimensions
+                cte_sql = parsed_sql.sql(dialect=self._sqlglot_dialect)
+            else:
+                # No dimensions, just use the base SQL
+                cte_sql = model.sql
+
+            ctes[model.name] = cte_sql
+
+        return ctes
 
     def _find_all_objects_referenced_from_interactions(self) -> Set:
         referenced_names = self.insight.get_interaction_references()
