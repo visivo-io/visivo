@@ -174,3 +174,37 @@ class TestInsightQueryBuilder:
         model_names = [m.name for m in builder._referenced_models]
         assert "orders" in model_names
         assert "users" in model_names
+
+    def test_get_sqlglot_dialect(self):
+        """Test getting the SQLGlot dialect from the source."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders",
+            source=f"ref({source.name})",
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Should get the dialect from the source
+        dialect = builder._get_sqlglot_dialect()
+        assert dialect is not None
+        assert isinstance(dialect, str)
