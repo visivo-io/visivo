@@ -2,7 +2,9 @@ from typing import Set, List
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.insight import Insight
 from visivo.models.models.model import Model
+from visivo.models.sources.source import Source
 from visivo.models.dag import all_descendants_of_type
+from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
 
 class InsightQueryBuilder:
@@ -15,6 +17,16 @@ class InsightQueryBuilder:
             self._find_all_objects_referenced_from_interactions()
         )
         self._referenced_models = self._find_all_referenced_models()
+        self._sqlglot_dialect = self._get_sqlglot_dialect()
+
+    def build_query(self):
+        models_ctes = self.build_models_ctes()
+
+        pass
+
+    def build_models_ctes(self):
+
+        pass
 
     def _find_all_objects_referenced_from_interactions(self) -> Set:
         referenced_names = self.insight.get_interaction_references()
@@ -29,9 +41,7 @@ class InsightQueryBuilder:
     def _find_all_referenced_models(self) -> List[Model]:
         return all_descendants_of_type(type=Model, dag=self.dag, from_node=self.insight)
 
-    def build_models_ctes(self):
-        pass
+    def _get_sqlglot_dialect(self) -> str:
+        source = all_descendants_of_type(type=Source, dag=self.dag, from_node=self.insight)[0]
 
-    def build_query(self):
-
-        pass
+        return get_sqlglot_dialect(source.get_dialect())
