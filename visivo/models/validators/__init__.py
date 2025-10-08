@@ -7,6 +7,7 @@ from visivo.models.validators.models_have_sources_validator import ModelsHaveSou
 from visivo.models.validators.dag_validator import DagValidator
 from visivo.models.validators.project_root_node_validator import ProjectRootNodeValidator
 from visivo.models.validators.names_validator import NamesValidator
+from visivo.models.validators.semantic_layer_validator import SemanticLayerValidator
 from visivo.models.validators.project_validator import ProjectValidator
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "DagValidator",
     "ProjectRootNodeValidator",
     "NamesValidator",
+    "SemanticLayerValidator",
     "ProjectValidator",
 ]
