@@ -345,3 +345,47 @@ def test_get_diff_dag_filter():
     project_dag = new_project.dag()
     diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
     assert diff_filter == "dashboard+,row+,item+,chart+,trace+,model+"
+
+
+def test_get_descendant_by_name_single_node():
+    """Test getting a single descendant by name."""
+    project = ProjectFactory()
+    dag = project.dag()
+
+    # Should find the single dashboard
+    dashboard = dag.get_descendant_by_name("dashboard")
+    assert dashboard == project.dashboards[0]
+
+
+def test_get_descendant_by_name_with_from_node():
+    """Test getting a descendant from a specific starting node."""
+    project = ProjectFactory()
+    dag = project.dag()
+
+    # Should find the trace from the dashboard
+    trace = dag.get_descendant_by_name("trace", from_node=project.dashboards[0])
+    assert trace == project.dashboards[0].rows[0].items[0].chart.traces[0]
+
+
+def test_get_descendant_by_name_not_found():
+    """Test that ValueError is raised when no node is found."""
+    project = ProjectFactory()
+    dag = project.dag()
+
+    with pytest.raises(ValueError) as exc_info:
+        dag.get_descendant_by_name("nonexistent")
+
+    assert "No node found with name 'nonexistent'" in str(exc_info.value)
+
+
+def test_get_descendant_by_name_not_found_from_node():
+    """Test that ValueError is raised when no descendant is found from a node."""
+    project = ProjectFactory()
+    model = project.dashboards[0].rows[0].items[0].chart.traces[0].model
+    dag = project.dag()
+
+    # Model has no descendants with name "dashboard"
+    with pytest.raises(ValueError) as exc_info:
+        dag.get_descendant_by_name("dashboard", from_node=model)
+
+    assert "No descendant found with name 'dashboard'" in str(exc_info.value)

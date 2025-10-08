@@ -69,6 +69,36 @@ class ProjectDag(DiGraph):
                     return node
         raise ValueError(f"Item with name {name} not found.")
 
+    def get_descendant_by_name(self, name, from_node=None):
+        """
+        Get a single descendant node by name.
+
+        Args:
+            name: Name of the node to find
+            from_node: Optional starting node to search from (searches entire DAG if None)
+
+        Returns:
+            The single node with the given name
+
+        Raises:
+            ValueError: If no node is found or multiple nodes are found with the same name
+        """
+        descendants = all_descendants_with_name(name=name, dag=self, from_node=from_node)
+
+        if len(descendants) == 0:
+            if from_node:
+                raise ValueError(
+                    f"No descendant found with name '{name}' from node '{getattr(from_node, 'name', from_node)}'."
+                )
+            else:
+                raise ValueError(f"No node found with name '{name}'.")
+        elif len(descendants) > 1:
+            raise ValueError(
+                f"Multiple nodes found with name '{name}'. Expected exactly one, found {len(descendants)}."
+            )
+
+        return descendants[0]
+
     def get_nodes_by_types(self, types: List, is_named=Optional[bool]):
         nodes = []
 
@@ -178,10 +208,10 @@ class ProjectDag(DiGraph):
         filters = parse_filter_str(filter_str)
         for filter in filters:
             post, name, pre = filter
-            item = all_descendants_with_name(name=name, dag=self)
-            if len(item) == 1:
-                item = item[0]
-            else:
+            try:
+                item = self.get_descendant_by_name(name)
+            except ValueError:
+                # If not found or multiple found, skip this filter
                 continue
             pre_length = 0
             post_length = 0
