@@ -7,6 +7,7 @@ from visivo.models.validators.models_have_sources_validator import ModelsHaveSou
 from visivo.models.validators.dag_validator import DagValidator
 from visivo.models.validators.project_root_node_validator import ProjectRootNodeValidator
 from visivo.models.validators.names_validator import NamesValidator
+from visivo.models.validators.semantic_layer_validator import SemanticLayerValidator
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -31,6 +32,7 @@ class ProjectValidator:
             DagValidator(),
             ProjectRootNodeValidator(),
             NamesValidator(),
+            SemanticLayerValidator(),  # Must run after DAG validator
         ]
 
     def validate(self, project: "Project") -> "Project":
