@@ -16,9 +16,9 @@ describe('SourceConnectionTest', () => {
     attributes: {
       host: 'localhost',
       database: 'test_db',
-      username: 'user'
+      username: 'user',
     },
-    isVisible: true
+    isVisible: true,
   };
 
   beforeEach(() => {
@@ -28,22 +28,14 @@ describe('SourceConnectionTest', () => {
 
   describe('visibility conditions', () => {
     it('should not render when isVisible is false', () => {
-      render(
-        <SourceConnectionTest
-          {...defaultProps}
-          isVisible={false}
-        />
-      );
+      render(<SourceConnectionTest {...defaultProps} isVisible={false} />);
 
       expect(screen.queryByText('Connection Status')).not.toBeInTheDocument();
     });
 
     it('should not render for CSV sources', () => {
       render(
-        <SourceConnectionTest
-          {...defaultProps}
-          selectedSource={{ value: 'csv', label: 'CSV' }}
-        />
+        <SourceConnectionTest {...defaultProps} selectedSource={{ value: 'csv', label: 'CSV' }} />
       );
 
       expect(screen.queryByText('Connection Status')).not.toBeInTheDocument();
@@ -51,10 +43,7 @@ describe('SourceConnectionTest', () => {
 
     it('should not render for Excel sources', () => {
       render(
-        <SourceConnectionTest
-          {...defaultProps}
-          selectedSource={{ value: 'xls', label: 'Excel' }}
-        />
+        <SourceConnectionTest {...defaultProps} selectedSource={{ value: 'xls', label: 'Excel' }} />
       );
 
       expect(screen.queryByText('Connection Status')).not.toBeInTheDocument();
@@ -70,12 +59,7 @@ describe('SourceConnectionTest', () => {
 
   describe('test connection button', () => {
     it('should be disabled when objectName is not provided', () => {
-      render(
-        <SourceConnectionTest
-          {...defaultProps}
-          objectName=""
-        />
-      );
+      render(<SourceConnectionTest {...defaultProps} objectName="" />);
 
       const button = screen.getByText('Test Connection');
       expect(button).toBeDisabled();
@@ -89,8 +73,8 @@ describe('SourceConnectionTest', () => {
     });
 
     it('should show "Testing..." text when testing connection', async () => {
-      explorerApi.testSourceConnectionFromConfig.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ status: 'connected' }), 100))
+      explorerApi.testSourceConnectionFromConfig.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ status: 'connected' }), 100))
       );
 
       render(<SourceConnectionTest {...defaultProps} />);
@@ -110,7 +94,7 @@ describe('SourceConnectionTest', () => {
   describe('connection testing', () => {
     it('should call API with correct source configuration', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       render(<SourceConnectionTest {...defaultProps} />);
@@ -124,14 +108,14 @@ describe('SourceConnectionTest', () => {
           type: 'postgresql',
           host: 'localhost',
           database: 'test_db',
-          username: 'user'
+          username: 'user',
         });
       });
     });
 
     it('should display success status for successful connection', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       const { container } = render(<SourceConnectionTest {...defaultProps} />);
@@ -152,7 +136,7 @@ describe('SourceConnectionTest', () => {
     it('should display failure status for failed connection', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
         status: 'connection_failed',
-        error: 'Connection timeout'
+        error: 'Connection timeout',
       });
 
       const { container } = render(<SourceConnectionTest {...defaultProps} />);
@@ -171,9 +155,7 @@ describe('SourceConnectionTest', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      explorerApi.testSourceConnectionFromConfig.mockRejectedValue(
-        new Error('Network error')
-      );
+      explorerApi.testSourceConnectionFromConfig.mockRejectedValue(new Error('Network error'));
 
       render(<SourceConnectionTest {...defaultProps} />);
 
@@ -186,9 +168,7 @@ describe('SourceConnectionTest', () => {
     });
 
     it('should handle API errors without message', async () => {
-      explorerApi.testSourceConnectionFromConfig.mockRejectedValue(
-        new Error()
-      );
+      explorerApi.testSourceConnectionFromConfig.mockRejectedValue(new Error());
 
       render(<SourceConnectionTest {...defaultProps} />);
 
@@ -204,7 +184,7 @@ describe('SourceConnectionTest', () => {
   describe('config change detection', () => {
     it('should clear test result when objectName changes', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       const { rerender } = render(<SourceConnectionTest {...defaultProps} />);
@@ -218,12 +198,7 @@ describe('SourceConnectionTest', () => {
       });
 
       // Change objectName
-      rerender(
-        <SourceConnectionTest
-          {...defaultProps}
-          objectName="different_source"
-        />
-      );
+      rerender(<SourceConnectionTest {...defaultProps} objectName="different_source" />);
 
       // Result should be cleared
       await waitFor(() => {
@@ -233,7 +208,7 @@ describe('SourceConnectionTest', () => {
 
     it('should clear test result when attributes change', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       const { rerender } = render(<SourceConnectionTest {...defaultProps} />);
@@ -252,7 +227,7 @@ describe('SourceConnectionTest', () => {
           {...defaultProps}
           attributes={{
             ...defaultProps.attributes,
-            host: 'different.host.com'
+            host: 'different.host.com',
           }}
         />
       );
@@ -265,7 +240,7 @@ describe('SourceConnectionTest', () => {
 
     it('should clear test result when selectedSource changes', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       const { rerender } = render(<SourceConnectionTest {...defaultProps} />);
@@ -294,7 +269,7 @@ describe('SourceConnectionTest', () => {
 
     it('should not show success status when config has changed after successful test', async () => {
       explorerApi.testSourceConnectionFromConfig.mockResolvedValue({
-        status: 'connected'
+        status: 'connected',
       });
 
       const { rerender } = render(<SourceConnectionTest {...defaultProps} />);
@@ -313,7 +288,7 @@ describe('SourceConnectionTest', () => {
           {...defaultProps}
           attributes={{
             ...defaultProps.attributes,
-            port: 5433
+            port: 5433,
           }}
         />
       );
@@ -325,8 +300,8 @@ describe('SourceConnectionTest', () => {
 
   describe('loading states', () => {
     it('should show loading spinner during connection test', async () => {
-      explorerApi.testSourceConnectionFromConfig.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ status: 'connected' }), 100))
+      explorerApi.testSourceConnectionFromConfig.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ status: 'connected' }), 100))
       );
 
       const { container } = render(<SourceConnectionTest {...defaultProps} />);
@@ -353,12 +328,7 @@ describe('SourceConnectionTest', () => {
 
   describe('edge cases', () => {
     it('should handle undefined selectedSource gracefully', () => {
-      render(
-        <SourceConnectionTest
-          {...defaultProps}
-          selectedSource={undefined}
-        />
-      );
+      render(<SourceConnectionTest {...defaultProps} selectedSource={undefined} />);
 
       const button = screen.getByText('Test Connection');
       fireEvent.click(button);
@@ -368,34 +338,24 @@ describe('SourceConnectionTest', () => {
         type: undefined,
         host: 'localhost',
         database: 'test_db',
-        username: 'user'
+        username: 'user',
       });
     });
 
     it('should handle empty attributes object', () => {
-      render(
-        <SourceConnectionTest
-          {...defaultProps}
-          attributes={{}}
-        />
-      );
+      render(<SourceConnectionTest {...defaultProps} attributes={{}} />);
 
       const button = screen.getByText('Test Connection');
       fireEvent.click(button);
 
       expect(explorerApi.testSourceConnectionFromConfig).toHaveBeenCalledWith({
         name: 'test_source',
-        type: 'postgresql'
+        type: 'postgresql',
       });
     });
 
     it('should not trigger test when objectName is missing', () => {
-      render(
-        <SourceConnectionTest
-          {...defaultProps}
-          objectName=""
-        />
-      );
+      render(<SourceConnectionTest {...defaultProps} objectName="" />);
 
       const button = screen.getByText('Test Connection');
       fireEvent.click(button);

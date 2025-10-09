@@ -1,4 +1,4 @@
-import { QueryString } from "./queryString";
+import { QueryString } from './queryString';
 
 describe('QueryString', () => {
   describe('constructor', () => {
@@ -45,7 +45,7 @@ describe('QueryString', () => {
 
     it('should return null for query string with only whitespace', () => {
       const queryString = new QueryString('?{   }');
-      expect(queryString.getValue()).toBe("");
+      expect(queryString.getValue()).toBe('');
     });
   });
 

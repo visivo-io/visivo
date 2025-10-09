@@ -17,6 +17,12 @@ class WorksheetModel(Base):
         "SessionStateModel", back_populates="worksheet", uselist=False, cascade="all, delete-orphan"
     )
     results = relationship("ResultModel", back_populates="worksheet", cascade="all, delete-orphan")
+    cells = relationship(
+        "QueryCellModel",
+        back_populates="worksheet",
+        cascade="all, delete-orphan",
+        order_by="QueryCellModel.cell_order",
+    )
 
     def to_dict(self):
         return {

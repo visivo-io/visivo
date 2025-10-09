@@ -4,7 +4,6 @@ import { fetchTraceQuery } from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
 import { useWorksheets } from '../../contexts/WorksheetContext';
-import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import QueryPanel from './QueryPanel';
 import Divider from './Divider';
 import VerticalDivider from './VerticalDivider';
@@ -56,14 +55,10 @@ const Info = tw.div`
 const HIDDEN_MODEL_TYPES = ['CsvScriptModel', 'LocalMergeModel'];
 
 const QueryExplorer = () => {
-  const editorRef = React.useRef(null);
-  const monacoRef = React.useRef(null);
-
   const {
     setQuery,
     setError,
     setResults,
-    handleRunQuery,
     setTreeData,
     setSelectedType,
     setExplorerData,
@@ -72,6 +67,7 @@ const QueryExplorer = () => {
     setSplitRatio,
     setIsDragging,
     setActiveWorksheetId,
+    initializeWorksheets,
   } = useStore();
 
   const [sidebarWidth, setSidebarWidth] = React.useState(300);
@@ -79,7 +75,6 @@ const QueryExplorer = () => {
 
   const project = useStore(state => state.project);
   const namedChildren = useStore(state => state.namedChildren);
-  const isLoading = useStore(state => state.isLoading);
   const isDragging = useStore(state => state.isDragging);
   const info = useStore(state => state.info);
   const explorerData = useStore(state => state.explorerData);
@@ -133,6 +128,11 @@ const QueryExplorer = () => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, setIsDragging, setSplitRatio]);
+
+  // Initialize worksheets on mount
+  useEffect(() => {
+    initializeWorksheets();
+  }, [initializeWorksheets]);
 
   useEffect(() => {
     const loadExplorerData = async () => {
@@ -281,8 +281,6 @@ const QueryExplorer = () => {
     }
   };
 
-  useQueryHotkeys(handleRunQuery, isLoading, editorRef, monacoRef);
-
   useEffect(() => {
     const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
     if (activeWorksheet) {
@@ -369,7 +367,7 @@ const QueryExplorer = () => {
           />
 
           <RightPanel id="right-panel">
-            <QueryPanel editorRef={editorRef} monacoRef={monacoRef} />
+            <QueryPanel />
             <Divider isDragging={isDragging} handleMouseDown={handleMouseDown} />
             <ResultsPanel project={project} />
           </RightPanel>

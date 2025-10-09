@@ -1,4 +1,3 @@
-
 import tw from 'tailwind-styled-components';
 
 export const DropdownButton = tw.button`
@@ -47,7 +46,6 @@ export const SearchInput = tw.input`
   focus:border-blue-500
   text-sm
 `;
-
 
 export const SelectedTag = tw.span`
   inline-flex
