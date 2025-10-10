@@ -18,11 +18,7 @@ class TestInsightInteractionReferences:
                 x="?{date}",
                 y="?{amount}",
             ),
-            interactions=[
-                InsightInteraction(
-                    filter="?{${ref(users).status} = 'active'}"
-                )
-            ],
+            interactions=[InsightInteraction(filter="?{${ref(users).status} = 'active'}")],
         )
 
         references = insight.get_interaction_references()
@@ -37,11 +33,7 @@ class TestInsightInteractionReferences:
                 x="?{date}",
                 y="?{amount}",
             ),
-            interactions=[
-                InsightInteraction(
-                    split="?{${ref(region)}}"
-                )
-            ],
+            interactions=[InsightInteraction(split="?{${ref(region)}}")],
         )
 
         references = insight.get_interaction_references()
@@ -56,11 +48,7 @@ class TestInsightInteractionReferences:
                 x="?{date}",
                 y="?{amount}",
             ),
-            interactions=[
-                InsightInteraction(
-                    sort="?{${ref(created_date)} DESC}"
-                )
-            ],
+            interactions=[InsightInteraction(sort="?{${ref(created_date)} DESC}")],
         )
 
         references = insight.get_interaction_references()
@@ -79,7 +67,7 @@ class TestInsightInteractionReferences:
                 InsightInteraction(
                     filter="?{${ref(orders).status} = 'shipped'}",
                     split="?{${ref(region)}}",
-                    sort="?{${ref(date)} DESC}"
+                    sort="?{${ref(date)} DESC}",
                 )
             ],
         )
@@ -99,12 +87,8 @@ class TestInsightInteractionReferences:
                 y="?{amount}",
             ),
             interactions=[
-                InsightInteraction(
-                    filter="?{${ref(users).active} = true}"
-                ),
-                InsightInteraction(
-                    split="?{${ref(products).category}}"
-                )
+                InsightInteraction(filter="?{${ref(users).active} = true}"),
+                InsightInteraction(split="?{${ref(products).category}}"),
             ],
         )
 
@@ -155,9 +139,7 @@ class TestInsightInteractionReferences:
                 x="?{date}",
                 y="?{amount}",
             ),
-            interactions=[
-                InsightInteraction()
-            ],
+            interactions=[InsightInteraction()],
         )
 
         references = insight.get_interaction_references()

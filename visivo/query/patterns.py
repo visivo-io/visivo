@@ -151,7 +151,7 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     return results
 
 
-def extract_model_names(text: str) -> Set[str]:
+def extract_ref_names(text: str) -> Set[str]:
     """
     Extract unique model names from ref() patterns in text.
 
@@ -162,7 +162,7 @@ def extract_model_names(text: str) -> Set[str]:
         Set of unique model names
 
     Example:
-        >>> extract_model_names("${ref(orders).id} = ${ref(users).id}")
+        >>> extract_ref_names("${ref(orders).id} = ${ref(users).id}")
         {'orders', 'users'}
     """
     return {model for model, _ in extract_ref_components(text)}
@@ -247,4 +247,4 @@ def count_model_references(text: str) -> int:
     Returns:
         Number of unique models referenced
     """
-    return len(extract_model_names(text))
+    return len(extract_ref_names(text))

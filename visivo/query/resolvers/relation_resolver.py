@@ -6,7 +6,7 @@ actual SQL references that can be used by the query builder.
 """
 
 from typing import Dict, Optional, Set
-from visivo.query.patterns import replace_refs, extract_model_names, validate_ref_syntax
+from visivo.query.patterns import replace_refs, extract_ref_names, validate_ref_syntax
 from visivo.logger.logger import Logger
 
 
@@ -67,7 +67,7 @@ class RelationResolver:
         Extract model names referenced in a condition.
 
         This method is provided for backward compatibility with tests.
-        Production code should use visivo.query.patterns.extract_model_names directly
+        Production code should use visivo.query.patterns.extract_ref_names directly
         or the Relation.get_referenced_models() method.
 
         Args:
@@ -76,7 +76,7 @@ class RelationResolver:
         Returns:
             Set of model names found in the condition
         """
-        return extract_model_names(condition)
+        return extract_ref_names(condition)
 
     def validate_condition(self, condition: str) -> bool:
         """
@@ -95,5 +95,5 @@ class RelationResolver:
         if not is_valid:
             return False
 
-        models = extract_model_names(condition)
+        models = extract_ref_names(condition)
         return len(models) >= 2

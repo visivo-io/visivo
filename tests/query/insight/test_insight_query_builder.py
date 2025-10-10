@@ -89,10 +89,7 @@ class TestInsightQueryBuilder:
             source=f"ref({source.name})",
         )
 
-        revenue_metric = Metric(
-            name="revenue",
-            expression="SUM(${ref(orders).amount})"
-        )
+        revenue_metric = Metric(name="revenue", expression="SUM(${ref(orders).amount})")
 
         insight = Insight(
             name="test_insight",
@@ -136,16 +133,10 @@ class TestInsightQueryBuilder:
         )
 
         # Metric that references orders
-        revenue_metric = Metric(
-            name="revenue",
-            expression="SUM(${ref(orders).amount})"
-        )
+        revenue_metric = Metric(name="revenue", expression="SUM(${ref(orders).amount})")
 
         # Dimension that references users
-        user_region = Dimension(
-            name="user_region",
-            expression="${ref(users).region}"
-        )
+        user_region = Dimension(name="user_region", expression="${ref(users).region}")
 
         insight = Insight(
             name="test_insight",
@@ -372,14 +363,8 @@ class TestInsightQueryBuilder:
             ],
         )
 
-        revenue_metric = Metric(
-            name="revenue",
-            expression="SUM(${ref(orders).amount})"
-        )
-        user_dim = Dimension(
-            name="user_name",
-            expression="${ref(users).name}"
-        )
+        revenue_metric = Metric(name="revenue", expression="SUM(${ref(orders).amount})")
+        user_dim = Dimension(name="user_name", expression="${ref(users).name}")
 
         insight = Insight(
             name="test_insight",
@@ -498,5 +483,63 @@ class TestInsightQueryBuilder:
 
         # Verify it's the correct MD5 hash
         import hashlib
+
         expected_hash = hashlib.md5("test_dimension".encode()).hexdigest()
         assert hash1 == expected_hash
+
+    def test_build_models_ctes_with_sort_interaction_and_input(self):
+        """Test building CTEs with sort interaction that references both dimension and input."""
+        from visivo.models.inputs.dropdown import DropdownInput
+
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        # Standalone dimension that references the model
+        order_year_dim = Dimension(name="order_year", expression="${ref(orders).order_date}")
+
+        # Input for the interaction
+        year_input = DropdownInput(
+            name="selected_year", label="Select Year", options=["2023", "2024"]
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).order_date}}",
+                y="?{${ref(orders).amount}}",
+            ),
+            interactions=[
+                # Sort interaction that references both the dimension and an input
+                InsightInteraction(sort="?{${ref(order_year)}}", filter="?{${ref(selected_year)}}")
+            ],
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            dimensions=[order_year_dim],
+            inputs=[year_input],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        builder = InsightQueryBuilder(insight, dag)
+
+        # Build CTEs
+        ctes = builder.build_models_ctes()
+
+        # Should have CTE for orders
+        assert "orders" in ctes
+        cte_sql = ctes["orders"]
+
+        # Should include ORDER BY clause with hashed dimension name
+        # because the interaction also references an input
+        assert "ORDER BY" in cte_sql.upper()
+        assert "5bdbcd471fae0a4053aa63914e290964" in cte_sql  # order_year hashed
