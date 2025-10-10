@@ -1,13 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Panel } from '../styled/Panel';
 import useStore from '../../stores/store';
 import WorksheetTabManager from '../worksheets/WorksheetTabManager';
 import NotebookWorksheet from '../notebook/NotebookWorksheet';
-import SourceDropdown from './SourceDropdown';
 
 const QueryPanel = () => {
-  const { selectedSource, setSelectedSource, splitRatio, worksheetsError, clearWorksheetError } =
-    useStore();
+  const { worksheetsError, clearWorksheetError } = useStore();
 
   const {
     worksheets,
@@ -19,14 +17,6 @@ const QueryPanel = () => {
   } = useStore();
 
   const visibleWorksheets = worksheets.filter(w => w.is_visible);
-
-  // Update selectedSource when active worksheet changes
-  useEffect(() => {
-    const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
-    if (activeWorksheet?.selected_source) {
-      // selectedSource will be set from namedChildren in Explorer
-    }
-  }, [activeWorksheetId, worksheets]);
 
   const handleWorksheetCreate = async () => {
     try {
@@ -44,22 +34,8 @@ const QueryPanel = () => {
     }
   };
 
-  const handleSourceChange = async newSource => {
-    setSelectedSource(newSource);
-    // Update active worksheet with new source
-    if (activeWorksheetId) {
-      try {
-        await updateWorksheetData(activeWorksheetId, {
-          selected_source: newSource?.name,
-        });
-      } catch (err) {
-        console.error('Failed to update worksheet source:', err);
-      }
-    }
-  };
-
   return (
-    <Panel style={{ flex: splitRatio }}>
+    <Panel style={{ flex: 1 }}>
       <WorksheetTabManager
         worksheets={visibleWorksheets}
         activeWorksheetId={activeWorksheetId}
@@ -96,15 +72,6 @@ const QueryPanel = () => {
           </button>
         </div>
       )}
-
-      <div className="flex justify-between items-center px-6 py-3 border-b border-gray-200 bg-white">
-        <h2 className="text-base font-semibold text-gray-700">Notebook</h2>
-        <SourceDropdown
-          selectedSource={selectedSource}
-          onSourceChange={handleSourceChange}
-          isLoading={worksheetsLoading}
-        />
-      </div>
 
       <div className="flex-1 min-h-0 overflow-auto bg-gray-50">
         {activeWorksheetId ? (

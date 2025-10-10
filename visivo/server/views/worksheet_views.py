@@ -1,5 +1,8 @@
 from flask import jsonify, request
 from visivo.logger.logger import Logger
+from visivo.server.services.query_service import execute_query_on_source
+import json
+from visivo.utils import get_utc_now
 
 
 def register_worksheet_views(app, flask_app, output_dir):
@@ -34,11 +37,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             if not data or "name" not in data:
                 return jsonify({"message": "Name is required"}), 400
 
-            result = flask_app.worksheet_repo.create_worksheet(
-                name=data["name"],
-                query=data.get("query", ""),
-                selected_source=data.get("selected_source"),
-            )
+            result = flask_app.worksheet_repo.create_worksheet(name=data["name"])
             return jsonify(result), 201
         except Exception as e:
             Logger.instance().error(f"Error creating worksheet: {str(e)}")
@@ -201,26 +200,45 @@ def register_worksheet_views(app, flask_app, output_dir):
             if not query_text or not query_text.strip():
                 return jsonify({"message": "Cell has no query to execute"}), 400
 
-            # Get worksheet to get selected source
-            worksheet_data = flask_app.worksheet_repo.get_worksheet(worksheet_id)
-            if not worksheet_data:
-                return jsonify({"message": "Worksheet not found"}), 404
+            # Use cell's selected source (query service will handle project defaults)
+            source_name = cell.get("selected_source")
 
-            worksheet = worksheet_data["worksheet"]
-            source_name = worksheet.get("selected_source")
+            # Execute the query using the query service
+            result_data = execute_query_on_source(query_text, source_name, flask_app.project)
 
-            # Execute the query using the existing query execution logic
-            # This will need to be implemented to use the query execution service
-            # For now, return a placeholder
+            # Prepare query stats
+            query_stats = {
+                "timestamp": get_utc_now().isoformat(),
+                "source": result_data["source_name"],
+                "executionTime": result_data["execution_time"],
+            }
+
+            # Save the results to the database
+            flask_app.worksheet_repo.save_cell_result(
+                cell_id=cell_id,
+                results_json=json.dumps(
+                    {"columns": result_data["columns"], "rows": result_data["rows"]}
+                ),
+                query_stats_json=json.dumps(query_stats),
+                is_truncated=result_data["is_truncated"],
+            )
+
+            # Return the results
             return (
                 jsonify(
                     {
-                        "message": "Query execution will be implemented with query service integration"
+                        "columns": result_data["columns"],
+                        "rows": result_data["rows"],
+                        "is_truncated": result_data["is_truncated"],
+                        "query_stats": query_stats,
                     }
                 ),
-                501,
+                200,
             )
 
+        except ValueError as e:
+            Logger.instance().error(f"Error executing cell: {str(e)}")
+            return jsonify({"message": str(e)}), 400
         except Exception as e:
             Logger.instance().error(f"Error executing cell: {str(e)}")
             return jsonify({"message": str(e)}), 500

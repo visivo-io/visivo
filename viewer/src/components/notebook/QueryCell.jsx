@@ -5,9 +5,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import SaveIcon from '@mui/icons-material/Save';
 import { Menu, MenuItem, IconButton, CircularProgress } from '@mui/material';
 import useStore from '../../stores/store';
 import CellResultView from './CellResultView';
+import CreateObjectModal from '../editors/CreateObjectModal';
+import SourceDropdown from '../explorer/SourceDropdown';
 
 const QueryCell = ({
   worksheetId,
@@ -19,13 +22,21 @@ const QueryCell = ({
   onDelete,
   onAddBelow,
   onQueryChange,
+  onSourceChange,
   isFirst,
   isLast,
 }) => {
   const editorRef = useRef(null);
   const [localQuery, setLocalQuery] = useState(cell.query_text || '');
   const [anchorEl, setAnchorEl] = useState(null);
-  const { project } = useStore();
+  const [showSaveAsModelModal, setShowSaveAsModelModal] = useState(false);
+  const { project, namedChildren } = useStore();
+
+  // Get the selected source config from namedChildren based on cell's selected_source name
+  const selectedSource =
+    cell.selected_source && namedChildren[cell.selected_source]
+      ? namedChildren[cell.selected_source].config
+      : null;
 
   // Sync local query with cell query when cell changes
   useEffect(() => {
@@ -58,11 +69,29 @@ const QueryCell = ({
     onAddBelow();
   };
 
+  const handleSaveAsModel = () => {
+    handleMenuClose();
+    setShowSaveAsModelModal(true);
+  };
+
+  const handleModelCreated = newModel => {
+    // Model has been created and added to namedChildren
+    // We could show a success message here if needed
+    console.log('Model created:', newModel);
+  };
+
+  const handleSourceChange = newSource => {
+    // Update the cell's source
+    if (onSourceChange) {
+      onSourceChange(newSource?.name);
+    }
+  };
+
   return (
     <div className="mb-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
       {/* Cell Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <DragIndicatorIcon className="text-gray-400 cursor-move" fontSize="small" />
           <span className="text-xs text-gray-500 font-medium">Cell {cell.cell_order + 1}</span>
           {isExecuting && (
@@ -75,6 +104,14 @@ const QueryCell = ({
           {result && !error && !isExecuting && (
             <span className="text-xs text-green-600">Complete</span>
           )}
+          {/* Source Dropdown */}
+          <div className="ml-2">
+            <SourceDropdown
+              selectedSource={selectedSource}
+              onSourceChange={handleSourceChange}
+              isLoading={isExecuting}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -114,6 +151,10 @@ const QueryCell = ({
               horizontal: 'right',
             }}
           >
+            <MenuItem onClick={handleSaveAsModel} disabled={!localQuery.trim()}>
+              <SaveIcon fontSize="small" className="mr-2" />
+              Save as Model
+            </MenuItem>
             <MenuItem onClick={handleAddBelow}>
               <AddIcon fontSize="small" className="mr-2" />
               Add Cell Below
@@ -195,6 +236,17 @@ const QueryCell = ({
           <CellResultView result={result} cell={cell} worksheetId={worksheetId} project={project} />
         </div>
       )}
+
+      {/* Save as Model Modal */}
+      <CreateObjectModal
+        isOpen={showSaveAsModelModal}
+        onClose={() => setShowSaveAsModelModal(false)}
+        objSelectedProperty="models"
+        objStep="type"
+        onSubmitCallback={handleModelCreated}
+        showFileOption={true}
+        initialAttributes={{ sql: localQuery }}
+      />
     </div>
   );
 };

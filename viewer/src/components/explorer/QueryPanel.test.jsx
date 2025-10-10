@@ -284,10 +284,7 @@ describe('QueryPanel', () => {
     fireEvent.change(sourceDropdown, { target: { value: 'source2' } });
 
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to update worksheet source:',
-        mockError
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to update worksheet source:', mockError);
     });
 
     consoleErrorSpy.mockRestore();

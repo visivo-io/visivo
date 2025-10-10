@@ -5,9 +5,7 @@ import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
 import { useWorksheets } from '../../contexts/WorksheetContext';
 import QueryPanel from './QueryPanel';
-import Divider from './Divider';
 import VerticalDivider from './VerticalDivider';
-import ResultsPanel from './ResultsPanel';
 import useStore from '../../stores/store';
 import { getAncestors } from '../lineage/graphUtils';
 
@@ -31,8 +29,6 @@ const MainContent = tw.div`
 
 const RightPanel = tw.div`
   flex-1
-  flex
-  flex-col
   min-h-0
   overflow-hidden
 `;
@@ -64,8 +60,6 @@ const QueryExplorer = () => {
     setExplorerData,
     setSelectedSource,
     setQueryStats,
-    setSplitRatio,
-    setIsDragging,
     setActiveWorksheetId,
     initializeWorksheets,
   } = useStore();
@@ -75,7 +69,6 @@ const QueryExplorer = () => {
 
   const project = useStore(state => state.project);
   const namedChildren = useStore(state => state.namedChildren);
-  const isDragging = useStore(state => state.isDragging);
   const info = useStore(state => state.info);
   const explorerData = useStore(state => state.explorerData);
   const selectedSource = useStore(state => state.selectedSource);
@@ -92,42 +85,6 @@ const QueryExplorer = () => {
   useEffect(() => {
     setActiveWorksheetId(activeWorksheetId);
   }, [activeWorksheetId, setActiveWorksheetId]);
-
-  const handleMouseDown = e => {
-    setIsDragging(true);
-    e.preventDefault();
-  };
-
-  useEffect(() => {
-    const handleMouseMove = e => {
-      if (!isDragging) return;
-
-      const container = document.getElementById('right-panel');
-      if (!container) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const containerHeight = containerRect.height;
-      const mouseY = e.clientY - containerRect.top;
-
-      // Calculate ratio (constrain between 0.2 and 0.8)
-      const newRatio = Math.max(0.2, Math.min(0.8, mouseY / containerHeight));
-      setSplitRatio(newRatio);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, setIsDragging, setSplitRatio]);
 
   // Initialize worksheets on mount
   useEffect(() => {
@@ -366,10 +323,8 @@ const QueryExplorer = () => {
             }}
           />
 
-          <RightPanel id="right-panel">
+          <RightPanel>
             <QueryPanel />
-            <Divider isDragging={isDragging} handleMouseDown={handleMouseDown} />
-            <ResultsPanel project={project} />
           </RightPanel>
         </MainContent>
       </div>

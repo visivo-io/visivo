@@ -16,6 +16,7 @@ class QueryCellModel(Base):
     id = Column(String, primary_key=True)
     worksheet_id = Column(String, ForeignKey("worksheets.id"), nullable=False)
     query_text = Column(String, default="")
+    selected_source = Column(String, nullable=True)  # Source name for this cell
     cell_order = Column(Integer, nullable=False)
     view_mode = Column(String, default="table")  # 'table' or 'dimension_pills'
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -29,6 +30,7 @@ class QueryCellModel(Base):
             "id": self.id,
             "worksheet_id": self.worksheet_id,
             "query_text": self.query_text,
+            "selected_source": self.selected_source,
             "cell_order": self.cell_order,
             "view_mode": self.view_mode,
             "created_at": self.created_at.isoformat() if self.created_at else None,

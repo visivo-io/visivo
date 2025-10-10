@@ -62,6 +62,19 @@ const NotebookWorksheet = ({ worksheetId }) => {
     [worksheetId, updateCellData]
   );
 
+  const handleSourceChange = useCallback(
+    (cellId, newSource) => {
+      console.log('[NotebookWorksheet] Source change requested:', {
+        cellId,
+        newSource,
+        worksheetId,
+      });
+      // Update cell's selected source
+      updateCellData(worksheetId, cellId, { selected_source: newSource });
+    },
+    [worksheetId, updateCellData]
+  );
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = e => {
@@ -140,6 +153,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
             onDelete={() => handleDeleteCell(cellData.cell.id)}
             onAddBelow={() => handleAddCellBelow(cellData.cell.id)}
             onQueryChange={newQuery => handleQueryChange(cellData.cell.id, newQuery)}
+            onSourceChange={newSource => handleSourceChange(cellData.cell.id, newSource)}
             isFirst={index === 0}
             isLast={index === cells.length - 1}
           />

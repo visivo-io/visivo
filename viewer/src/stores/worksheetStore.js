@@ -9,6 +9,7 @@ import {
   updateCell,
   deleteCell,
   reorderCells,
+  executeCell as executeCellAPI,
 } from '../api/worksheet';
 import { executeQuery } from '../services/queryService';
 
@@ -157,6 +158,12 @@ const createWorksheetSlice = (set, get) => ({
   // Update a cell
   updateCellData: async (worksheetId, cellId, updates) => {
     try {
+      console.log('[worksheetStore] updateCellData called:', {
+        worksheetId,
+        cellId,
+        updates,
+      });
+
       const currentCells = get().worksheetCells[worksheetId] || [];
 
       // Update local state immediately for optimistic updates
@@ -171,12 +178,16 @@ const createWorksheetSlice = (set, get) => ({
 
       // Trigger auto-save if enabled and query_text is being updated
       if (get().autoSaveEnabled && updates.query_text !== undefined) {
+        console.log('[worksheetStore] Triggering auto-save for query_text');
         get().triggerAutoSave(worksheetId, cellId, updates);
       } else {
         // For non-query updates, save immediately
-        await updateCell(worksheetId, cellId, updates);
+        console.log('[worksheetStore] Saving immediately (non-query update)');
+        const result = await updateCell(worksheetId, cellId, updates);
+        console.log('[worksheetStore] Update cell API result:', result);
       }
     } catch (err) {
+      console.error('[worksheetStore] Error updating cell:', err);
       set(state => ({
         cellsError: { ...state.cellsError, [worksheetId]: 'Failed to update cell' },
       }));
@@ -234,7 +245,14 @@ const createWorksheetSlice = (set, get) => ({
     const currentCells = state.worksheetCells[worksheetId] || [];
     const cell = currentCells.find(c => c.cell.id === cellId);
 
+    console.log('[worksheetStore] executeCellQuery called:', {
+      worksheetId,
+      cellId,
+      cellData: cell?.cell,
+    });
+
     if (!cell || !cell.cell.query_text?.trim()) {
+      console.log('[worksheetStore] Skipping execution - no query text');
       return;
     }
 
@@ -244,25 +262,22 @@ const createWorksheetSlice = (set, get) => ({
     }));
 
     try {
-      // Get worksheet for source information
-      const worksheet = state.allWorksheets.find(w => w.id === worksheetId);
-      const sourceName = worksheet?.selected_source;
+      console.log('[worksheetStore] Calling backend executeCell API...');
+      // Use the new backend API that handles cell's selected_source
+      const result = await executeCellAPI(worksheetId, cellId);
+      console.log('[worksheetStore] Backend execution result:', result);
+      console.log('[worksheetStore] Backend query_stats.source:', result.query_stats?.source);
 
-      const startTime = performance.now();
-      const timestamp = new Date();
+      // Parse the results
+      const queryResults = {
+        columns: result.columns,
+        data: result.rows,
+      };
 
-      // Execute the query
-      const queryResults = await executeQuery(
-        cell.cell.query_text,
-        state.project?.id,
-        sourceName,
-        worksheetId
-      );
+      const queryStats = result.query_stats;
+      console.log('[worksheetStore] Query stats source name:', queryStats?.source);
 
-      const endTime = performance.now();
-      const executionTime = ((endTime - startTime) / 1000).toFixed(2);
-
-      // Format results
+      // Format results for display
       const formattedResults = {
         name: 'Query Results',
         traces: [
@@ -286,12 +301,6 @@ const createWorksheetSlice = (set, get) => ({
         ],
       };
 
-      const queryStats = {
-        timestamp: timestamp.toISOString(),
-        executionTime,
-        source: sourceName,
-      };
-
       // Update cell with results
       set(state => ({
         worksheetCells: {
@@ -306,7 +315,7 @@ const createWorksheetSlice = (set, get) => ({
                       rows: queryResults.data,
                     }),
                     query_stats_json: JSON.stringify(queryStats),
-                    is_truncated: false,
+                    is_truncated: result.is_truncated || false,
                   },
                   formattedResults,
                   queryStats,
