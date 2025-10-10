@@ -138,7 +138,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
   }
 
   return (
-    <div className="py-4 px-6">
+    <div className="flex-1 min-h-0 overflow-y-auto py-4 px-6">
       {/* Cells List */}
       <div className="space-y-4">
         {cells.map((cellData, index) => (

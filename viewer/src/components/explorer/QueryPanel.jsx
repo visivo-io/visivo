@@ -1,5 +1,4 @@
 import React from 'react';
-import { Panel } from '../styled/Panel';
 import useStore from '../../stores/store';
 import WorksheetTabManager from '../worksheets/WorksheetTabManager';
 import NotebookWorksheet from '../notebook/NotebookWorksheet';
@@ -35,7 +34,7 @@ const QueryPanel = () => {
   };
 
   return (
-    <Panel style={{ flex: 1 }}>
+    <div className="bg-white p-2 flex-1 flex flex-col relative min-h-0">
       <WorksheetTabManager
         worksheets={visibleWorksheets}
         activeWorksheetId={activeWorksheetId}
@@ -73,7 +72,7 @@ const QueryPanel = () => {
         </div>
       )}
 
-      <div className="flex-1 min-h-0 overflow-auto bg-gray-50">
+      <div className="flex-1 min-h-0 flex flex-col bg-gray-50">
         {activeWorksheetId ? (
           <NotebookWorksheet worksheetId={activeWorksheetId} />
         ) : (
@@ -91,7 +90,7 @@ const QueryPanel = () => {
           </div>
         )}
       </div>
-    </Panel>
+    </div>
   );
 };
 

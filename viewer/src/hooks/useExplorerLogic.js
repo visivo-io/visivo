@@ -1,0 +1,258 @@
+import { useEffect, useCallback } from 'react';
+import useStore from '../stores/store';
+import { useWorksheets } from '../contexts/WorksheetContext';
+import { fetchTraceQuery } from '../services/queryService';
+import { fetchExplorer } from '../api/explorer';
+import { getAncestors } from '../components/lineage/graphUtils';
+
+const HIDDEN_MODEL_TYPES = ['CsvScriptModel', 'LocalMergeModel'];
+
+export const useExplorerLogic = () => {
+  // Store state
+  const {
+    setQuery,
+    setError,
+    setResults,
+    setTreeData,
+    setSelectedType,
+    setExplorerData,
+    setSelectedSource,
+    setQueryStats,
+    setActiveWorksheetId,
+    initializeWorksheets,
+  } = useStore();
+
+  const namedChildren = useStore(state => state.namedChildren);
+  const info = useStore(state => state.info);
+  const explorerData = useStore(state => state.explorerData);
+  const selectedSource = useStore(state => state.selectedSource);
+  const selectedType = useStore(state => state.selectedType);
+  const treeData = useStore(state => state.treeData);
+
+  // Worksheet context
+  const {
+    worksheets,
+    activeWorksheetId,
+    actions: { updateWorksheet, loadWorksheetResults },
+  } = useWorksheets();
+
+  // Set project and activeWorksheetId in store
+  useEffect(() => {
+    setActiveWorksheetId(activeWorksheetId);
+  }, [activeWorksheetId, setActiveWorksheetId]);
+
+  // Initialize worksheets on mount
+  useEffect(() => {
+    initializeWorksheets();
+  }, [initializeWorksheets]);
+
+  // Load explorer data
+  useEffect(() => {
+    const loadExplorerData = async () => {
+      try {
+        const data = await fetchExplorer();
+        if (data) {
+          setExplorerData(data);
+        }
+      } catch (err) {
+        console.error('Error loading explorer data:', err);
+        setError('Failed to load explorer data');
+      }
+    };
+    loadExplorerData();
+  }, [setExplorerData, setError]);
+
+  // Set default source from namedChildren when available
+  useEffect(() => {
+    if (namedChildren && Object.keys(namedChildren).length > 0 && !selectedSource) {
+      const sources = Object.values(namedChildren).filter(item => item.type_key === 'sources');
+      if (sources.length > 0) {
+        // Check if there's a default source from explorerData
+        if (explorerData?.default_source) {
+          const defaultSource = sources.find(s => s.config.name === explorerData.default_source);
+          if (defaultSource) {
+            setSelectedSource(defaultSource.config);
+          } else {
+            setSelectedSource(sources[0].config);
+          }
+        } else {
+          setSelectedSource(sources[0].config);
+        }
+      }
+    }
+  }, [namedChildren, selectedSource, explorerData, setSelectedSource]);
+
+  // Transform data based on selected type
+  const transformData = useCallback(() => {
+    if (!explorerData) return [];
+
+    const data = [];
+
+    switch (selectedType) {
+      case 'models':
+        if (explorerData.models) {
+          const modelItems = explorerData.models
+            .filter(model => model && typeof model === 'object' && model.name)
+            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
+            .map((model, index) => ({
+              id: `model-${model.name}-${index}`,
+              name: model.name,
+              type: 'model',
+              config: model,
+            }));
+          data.push(...modelItems);
+        }
+        break;
+      case 'traces':
+        if (explorerData.traces) {
+          const traceItems = explorerData.traces
+            .filter(trace => trace && typeof trace === 'object' && trace.name)
+            .filter(trace => {
+              const ancestors = getAncestors(trace.name, namedChildren);
+              return ![...ancestors].some(ancestor =>
+                HIDDEN_MODEL_TYPES.includes(namedChildren[ancestor]?.type)
+              );
+            })
+            .map((trace, index) => ({
+              id: `trace-${trace.name}-${index}`,
+              name: trace.name,
+              type: 'trace',
+              config: trace,
+            }));
+          data.push(...traceItems);
+        }
+        break;
+      default:
+        break;
+    }
+    return data;
+  }, [selectedType, explorerData, namedChildren]);
+
+  // Update tree data when transform changes
+  useEffect(() => {
+    setTreeData(transformData());
+  }, [transformData, setTreeData]);
+
+  // Handle tab change
+  const handleTabChange = useCallback(
+    type => {
+      setSelectedType(type);
+    },
+    [setSelectedType]
+  );
+
+  // Handle item click
+  const handleItemClick = useCallback(
+    async item => {
+      let newQuery = '';
+      let newSource = selectedSource;
+
+      try {
+        switch (item.type) {
+          case 'model':
+            if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
+              const duckdbSource = Object.values(namedChildren || {}).find(
+                child => child.type_key === 'sources' && child.type === 'DuckdbSource'
+              );
+              newSource = duckdbSource ? duckdbSource.config : selectedSource;
+            } else if (item.config.source) {
+              const matchingSource = Object.values(namedChildren || {}).find(
+                child =>
+                  child.type_key === 'sources' && child.config.name === item.config.source.name
+              );
+              newSource = matchingSource ? matchingSource.config : selectedSource;
+            } else {
+              const sources = Object.values(namedChildren || {}).filter(
+                child => child.type_key === 'sources'
+              );
+              newSource = sources.length > 0 ? sources[0].config : selectedSource;
+            }
+            newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
+            break;
+          case 'trace':
+            try {
+              newQuery = await fetchTraceQuery(item.name);
+            } catch (err) {
+              console.error('Failed to fetch trace query:', err);
+              setError(`Failed to fetch trace query: ${err.message}`);
+              return;
+            }
+            break;
+          default:
+            newQuery = '';
+            break;
+        }
+
+        setQuery(newQuery);
+        if (newSource) {
+          setSelectedSource(newSource);
+        }
+
+        // Update active worksheet with new query
+        if (activeWorksheetId) {
+          await updateWorksheet(activeWorksheetId, {
+            query: newQuery,
+            selected_source: newSource?.name,
+          });
+        }
+      } catch (err) {
+        console.error('Error in handleItemClick:', err);
+        setError(err.message || 'Failed to process item click');
+      }
+    },
+    [
+      selectedSource,
+      namedChildren,
+      setQuery,
+      setSelectedSource,
+      setError,
+      activeWorksheetId,
+      updateWorksheet,
+    ]
+  );
+
+  // Update query and source when active worksheet changes
+  useEffect(() => {
+    const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
+    if (activeWorksheet) {
+      setQuery(activeWorksheet.query || '');
+      if (activeWorksheet.selected_source && namedChildren) {
+        const sourceData = Object.values(namedChildren).find(
+          item =>
+            item.type_key === 'sources' && item.config.name === activeWorksheet.selected_source
+        );
+        if (sourceData) setSelectedSource(sourceData.config);
+      }
+    }
+  }, [activeWorksheetId, worksheets, namedChildren, setQuery, setSelectedSource]);
+
+  // Load results when active worksheet changes
+  useEffect(() => {
+    // Clear existing results when worksheet changes
+    setResults(null);
+    setQueryStats(null);
+
+    if (activeWorksheetId) {
+      loadWorksheetResults(activeWorksheetId).then(
+        ({ results: loadedResults, queryStats: loadedStats }) => {
+          if (loadedResults) {
+            setResults(loadedResults);
+          }
+          if (loadedStats) {
+            setQueryStats(loadedStats);
+          }
+        }
+      );
+    }
+  }, [activeWorksheetId, loadWorksheetResults, setResults, setQueryStats]);
+
+  return {
+    // State
+    info,
+    treeData,
+    selectedType,
+    // Handlers
+    handleTabChange,
+    handleItemClick,
+  };
+};
