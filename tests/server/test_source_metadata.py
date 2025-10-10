@@ -30,10 +30,17 @@ class TestSourceMetadata:
 
         def isinstance_side_effect(obj, cls):
             from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+            from visivo.models.sources.source import Source
+            import builtins
 
-            if cls == SqlalchemySource and hasattr(obj, "name") and hasattr(obj, "type"):
+            # Mock our test sources as both Source and SqlalchemySource
+            if (
+                (cls == SqlalchemySource or cls == Source)
+                and hasattr(obj, "name")
+                and hasattr(obj, "type")
+            ):
                 return True
-            return isinstance.__wrapped__(obj, cls)
+            return builtins.isinstance(obj, cls)
 
         self.mock_isinstance.side_effect = isinstance_side_effect
 
@@ -471,15 +478,17 @@ class TestSourceMetadata:
         non_sqlalchemy_source.name = "not_sqlalchemy"
         sources = [non_sqlalchemy_source]
 
-        # Create a custom isinstance patcher for this test that returns False for non-SqlalchemySource
+        # Create a custom isinstance patcher for this test that returns False for non-Source
         with patch("visivo.server.source_metadata.isinstance") as mock_isinstance_local:
 
             def isinstance_side_effect_local(obj, cls):
                 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+                from visivo.models.sources.source import Source
+                import builtins
 
-                if cls == SqlalchemySource:
-                    return False  # This mock is not a SqlalchemySource
-                return isinstance.__wrapped__(obj, cls)
+                if cls == SqlalchemySource or cls == Source:
+                    return False  # This mock is not a Source
+                return builtins.isinstance(obj, cls)
 
             mock_isinstance_local.side_effect = isinstance_side_effect_local
 
