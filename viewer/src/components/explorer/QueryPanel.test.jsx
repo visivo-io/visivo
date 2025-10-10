@@ -183,25 +183,8 @@ describe('QueryPanel', () => {
     expect(mockStoreState.clearWorksheetError).toHaveBeenCalledTimes(1);
   });
 
-  test('updates selected source and worksheet when source is changed', async () => {
-    render(<QueryPanel />);
-    const sourceDropdown = screen.getByTestId('source-dropdown');
-
-    fireEvent.change(sourceDropdown, { target: { value: 'source2' } });
-
-    await waitFor(() => {
-      expect(mockStoreState.setSelectedSource).toHaveBeenCalledWith({ name: 'source2' });
-      expect(mockStoreState.updateWorksheetData).toHaveBeenCalledWith('ws1', {
-        selected_source: 'source2',
-      });
-    });
-  });
-
-  test('renders SourceDropdown with correct selected source', () => {
-    render(<QueryPanel />);
-    const sourceDropdown = screen.getByTestId('source-dropdown');
-    expect(sourceDropdown.value).toBe('source1');
-  });
+  // Note: Source dropdown tests removed as this functionality moved to QueryCell component
+  // Each cell now has its own source dropdown rather than a global one at QueryPanel level
 
   test('filters worksheets to only show visible ones', () => {
     useStore.mockImplementation(selector => {
@@ -268,25 +251,5 @@ describe('QueryPanel', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  test('handles source change error gracefully', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mockError = new Error('Failed to update source');
-    useStore.mockImplementation(selector => {
-      const state = {
-        ...mockStoreState,
-        updateWorksheetData: jest.fn().mockRejectedValue(mockError),
-      };
-      return typeof selector === 'function' ? selector(state) : state;
-    });
-
-    render(<QueryPanel />);
-    const sourceDropdown = screen.getByTestId('source-dropdown');
-    fireEvent.change(sourceDropdown, { target: { value: 'source2' } });
-
-    await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to update worksheet source:', mockError);
-    });
-
-    consoleErrorSpy.mockRestore();
-  });
+  // Note: Source change error handling test removed as this functionality moved to QueryCell component
 });
