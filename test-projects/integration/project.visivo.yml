@@ -31,6 +31,7 @@ sources:
     username: postgres
     password: "{{ env_var('PG_PASSWORD') }}"
     port: 5434
+
   - name: local-mysql
     database: visivo
     type: mysql
@@ -38,6 +39,7 @@ sources:
     username: root
     password: "{{ env_var('MYSQL_PASSWORD') }}"
     port: 3306
+
   - name: remote-snowflake
     type: snowflake
     database: JARED_DEV
@@ -47,6 +49,7 @@ sources:
     warehouse: DEV
     password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
     role: PROD
+    
   - name: remote-bigquery
     type: bigquery
     database: test

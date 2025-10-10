@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Set
 from pydantic import Field
 from visivo.models.interaction import InsightInteraction
 from visivo.models.props.insight_props import InsightProps
@@ -88,17 +88,44 @@ class Insight(NamedModel, ParentModel):
 
         Extracts model references from props using ${ref(model).field} syntax.
         """
-        from visivo.query.patterns import extract_model_names
+        from visivo.query.patterns import extract_ref_names
 
         children = []
 
         # Extract all ${ref(model_name).field} references from props
         if self.props:
             props_str = str(self.props.model_dump())
-            model_names = extract_model_names(props_str)
+            model_names = extract_ref_names(props_str)
 
             # Convert model names to ref() format for DAG
             for model_name in model_names:
                 children.append(f"ref({model_name})")
 
         return children
+
+    def get_interaction_references(self) -> Set[str]:
+        """Get all model/dimension/metric names referenced in interactions.
+
+        Extracts references from filter, split, and sort fields in all interactions.
+
+        Returns:
+            Set of referenced object names from interactions
+        """
+        from visivo.query.patterns import extract_ref_names
+
+        referenced_names = set()
+
+        if not self.interactions:
+            return referenced_names
+
+        # Extract references from each interaction's filter, split, and sort
+        for interaction in self.interactions:
+            for field in ["filter", "split", "sort"]:
+                field_value = getattr(interaction, field, None)
+                if field_value:
+                    # Convert to string to extract references
+                    field_str = str(field_value)
+                    model_names = extract_ref_names(field_str)
+                    referenced_names.update(model_names)
+
+        return referenced_names

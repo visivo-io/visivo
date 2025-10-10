@@ -1,7 +1,6 @@
 from typing import Any
 import re
 
-from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN,
     INLINE_PATH_REGEX,
@@ -62,10 +61,10 @@ class ContextString:
 
     def get_item(self, dag: Any) -> Any:
         reference = self.get_reference()
-        items = all_descendants_with_name(reference, dag)
-        if len(items) == 0:
+        try:
+            return dag.get_descendant_by_name(reference)
+        except ValueError:
             raise ValueError(f"Invalid context string reference name: '{reference}'.")
-        return items[0]
 
     def get_ref_attr(self) -> str:
         """
