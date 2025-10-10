@@ -176,12 +176,16 @@ class Insight(NamedModel, ParentModel):
             - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
             - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
         """
+<<<<<<< HEAD
         from visivo.models.inputs import Input
         from visivo.query.patterns import (
             CONTEXT_STRING_REF_PATTERN_COMPILED,
             get_model_name_from_match,
         )
         from re import Match
+=======
+        from visivo.query.patterns import extract_ref_names
+>>>>>>> 1d282794 (Rename method)
 
         def repl(m: Match) -> str:
             name = get_model_name_from_match(m)
@@ -198,6 +202,7 @@ class Insight(NamedModel, ParentModel):
 
         return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
 
+<<<<<<< HEAD
     def get_all_query_statements(self, dag):
         query_statements = []
         interaction_query_statements = self._get_all_interaction_query_statements(dag)
@@ -211,6 +216,17 @@ class Insight(NamedModel, ParentModel):
                 converted_props.append((key, converted_value))
             query_statements += converted_props
         return query_statements
+=======
+        # Extract references from each interaction's filter, split, and sort
+        for interaction in self.interactions:
+            for field in ["filter", "split", "sort"]:
+                field_value = getattr(interaction, field, None)
+                if field_value:
+                    # Convert to string to extract references
+                    field_str = str(field_value)
+                    model_names = extract_ref_names(field_str)
+                    referenced_names.update(model_names)
+>>>>>>> 1d282794 (Rename method)
 
     def is_dynamic(self, dag) -> bool:
         from visivo.models.dag import all_descendants_of_type
