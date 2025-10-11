@@ -514,8 +514,8 @@ class TestInsightQueryBuilder:
                 y="?{${ref(orders).amount}}",
             ),
             interactions=[
-                # Sort interaction that references both the dimension and an input
-                InsightInteraction(sort="?{${ref(order_year)}}", filter="?{${ref(selected_year)}}")
+                InsightInteraction(filter="?{${ref(order_year)} = ${ref(selected_year)}}"),
+                InsightInteraction(sort="?{${ref(order_year)} DESC }"),
             ],
         )
 
@@ -532,14 +532,10 @@ class TestInsightQueryBuilder:
         dag = project.dag()
         builder = InsightQueryBuilder(insight, dag)
 
-        # Build CTEs
         ctes = builder.build_models_ctes()
 
-        # Should have CTE for orders
         assert "orders" in ctes
         cte_sql = ctes["orders"]
 
-        # Should include ORDER BY clause with hashed dimension name
-        # because the interaction also references an input
-        assert "ORDER BY" in cte_sql.upper()
-        assert "5bdbcd471fae0a4053aa63914e290964" in cte_sql  # order_year hashed
+        assert "ORDER BY 5bdbcd471fae0a4053aa63914e290964 DESC" in cte_sql
+        assert "WHERE 5bdbcd471fae0a4053aa63914e290964 = $5bdbcd471fae0a4053aa63914e290964" in cte_sql
