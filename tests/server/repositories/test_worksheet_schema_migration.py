@@ -5,10 +5,10 @@ import sqlite3
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 
-def test_schema_migration_from_old_database(db_path):
+def test_schema_migration_from_old_database(empty_db_path):
     """Test that old database schema is automatically migrated."""
     # Create an old database with the old schema (missing selected_source column)
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(empty_db_path)
     cursor = conn.cursor()
 
     # Create old schema tables
@@ -69,7 +69,7 @@ def test_schema_migration_from_old_database(db_path):
     conn.close()
 
     # Now initialize the repository - it should detect old schema and recreate
-    repository = WorksheetRepository(db_path)
+    repository = WorksheetRepository(empty_db_path)
 
     # Verify that we can now query with selected_source column
     # This would fail if migration didn't work

@@ -195,6 +195,11 @@ def register_worksheet_views(app, flask_app, output_dir):
                 return jsonify({"message": "Cell not found"}), 404
 
             cell = cell_data["cell"]
+
+            # Validate that the cell belongs to the specified worksheet
+            if cell.get("worksheet_id") != worksheet_id:
+                return jsonify({"message": "Worksheet not found"}), 404
+
             query_text = cell.get("query_text", "")
 
             if not query_text or not query_text.strip():

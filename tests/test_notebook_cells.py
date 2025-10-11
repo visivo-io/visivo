@@ -28,16 +28,17 @@ class TestQueryCellModel:
 
     def test_create_query_cell(self, repo):
         """Test creating a query cell."""
-        worksheet = repo.create_worksheet("Test Worksheet", "SELECT 1")
+        worksheet = repo.create_worksheet("Test Worksheet")
         assert len(worksheet["cells"]) == 1
         cell = worksheet["cells"][0]
-        assert cell["query_text"] == "SELECT 1"
+        # Initial cell is empty
+        assert cell["query_text"] == ""
         assert cell["cell_order"] == 0
         assert cell["view_mode"] == "table"
 
     def test_cell_to_dict(self, repo):
         """Test cell serialization to dictionary."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         cell = worksheet["cells"][0]
         assert "id" in cell
         assert "worksheet_id" in cell
@@ -53,7 +54,7 @@ class TestCellResultModel:
 
     def test_create_cell_result(self, repo):
         """Test saving a cell result."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         cell_id = worksheet["cells"][0]["id"]
 
         # Save a result
@@ -73,7 +74,7 @@ class TestCellResultModel:
 
     def test_truncated_result_flag(self, repo):
         """Test the is_truncated flag for large results."""
-        worksheet = repo.create_worksheet("Test", "SELECT *")
+        worksheet = repo.create_worksheet("Test")
         cell_id = worksheet["cells"][0]["id"]
 
         # Save a truncated result
@@ -88,16 +89,23 @@ class TestWorksheetRepository:
 
     def test_create_worksheet_with_initial_cell(self, repo):
         """Test that creating a worksheet automatically creates an initial cell."""
-        worksheet = repo.create_worksheet("New Worksheet", "SELECT * FROM users", "my_source")
+        worksheet = repo.create_worksheet("New Worksheet")
 
         assert worksheet["worksheet"]["name"] == "New Worksheet"
-        assert worksheet["worksheet"]["selected_source"] == "my_source"
         assert len(worksheet["cells"]) == 1
-        assert worksheet["cells"][0]["query_text"] == "SELECT * FROM users"
+        # Initial cell is empty - need to update it to add query
+        cell_id = worksheet["cells"][0]["id"]
+        repo.update_cell(
+            cell_id, {"query_text": "SELECT * FROM users", "selected_source": "my_source"}
+        )
+        # Verify update
+        cell_data = repo.get_cell(cell_id)
+        assert cell_data["cell"]["query_text"] == "SELECT * FROM users"
+        assert cell_data["cell"]["selected_source"] == "my_source"
 
     def test_create_additional_cell(self, repo):
         """Test adding a new cell to an existing worksheet."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         worksheet_id = worksheet["worksheet"]["id"]
 
         # Create a second cell
@@ -114,8 +122,12 @@ class TestWorksheetRepository:
 
     def test_list_cells_ordered(self, repo):
         """Test that list_cells returns cells in correct order."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         worksheet_id = worksheet["worksheet"]["id"]
+
+        # Update the initial cell to have a query
+        initial_cell_id = worksheet["cells"][0]["id"]
+        repo.update_cell(initial_cell_id, {"query_text": "SELECT 1"})
 
         # Create multiple cells
         repo.create_cell(worksheet_id, "SELECT 2")
@@ -127,7 +139,7 @@ class TestWorksheetRepository:
 
     def test_update_cell(self, repo):
         """Test updating cell properties."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         cell_id = worksheet["cells"][0]["id"]
 
         # Update cell
@@ -143,8 +155,12 @@ class TestWorksheetRepository:
 
     def test_delete_cell(self, repo):
         """Test deleting a cell."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         worksheet_id = worksheet["worksheet"]["id"]
+
+        # Update the initial cell to have a query
+        initial_cell_id = worksheet["cells"][0]["id"]
+        repo.update_cell(initial_cell_id, {"query_text": "SELECT 1"})
 
         # Create additional cells
         cell2 = repo.create_cell(worksheet_id, "SELECT 2")
@@ -164,8 +180,12 @@ class TestWorksheetRepository:
 
     def test_reorder_cells(self, repo):
         """Test reordering cells within a worksheet."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         worksheet_id = worksheet["worksheet"]["id"]
+
+        # Update the initial cell to have a query
+        initial_cell_id = worksheet["cells"][0]["id"]
+        repo.update_cell(initial_cell_id, {"query_text": "SELECT 1"})
 
         cell2 = repo.create_cell(worksheet_id, "SELECT 2")
         cell3 = repo.create_cell(worksheet_id, "SELECT 3")
@@ -188,56 +208,44 @@ class TestMigration:
     """Test migration from single-query worksheets to multi-cell format."""
 
     def test_migrate_worksheet_with_query(self, repo):
-        """Test migrating a worksheet that has a query but no cells."""
-        # Create an old-style worksheet directly in the database
-        session = repo.Session()
-        old_worksheet = WorksheetModel(
-            id=str(uuid.uuid4()), name="Old Worksheet", query="SELECT * FROM old_table"
-        )
-        old_worksheet.session_state = SessionStateModel(tab_order=1, is_visible=True)
-        session.add(old_worksheet)
-        session.commit()
-        worksheet_id = old_worksheet.id
-        session.close()
+        """Test that worksheets now always have cells with the new architecture."""
+        # Create a worksheet - it will have an initial empty cell
+        worksheet = repo.create_worksheet("Old Worksheet")
+        worksheet_id = worksheet["worksheet"]["id"]
+        cell_id = worksheet["cells"][0]["id"]
 
-        # Run migration
-        repo.migrate_existing_worksheets()
+        # Update the cell to have a query
+        repo.update_cell(cell_id, {"query_text": "SELECT * FROM old_table"})
 
-        # Verify cell was created
+        # Verify cell exists with query
         cells = repo.list_cells(worksheet_id)
         assert len(cells) == 1
         assert cells[0]["cell"]["query_text"] == "SELECT * FROM old_table"
         assert cells[0]["cell"]["cell_order"] == 0
 
     def test_migrate_worksheet_without_query(self, repo):
-        """Test that migration doesn't create cells for worksheets without queries."""
-        session = repo.Session()
-        empty_worksheet = WorksheetModel(id=str(uuid.uuid4()), name="Empty Worksheet", query="")
-        empty_worksheet.session_state = SessionStateModel(tab_order=1, is_visible=True)
-        session.add(empty_worksheet)
-        session.commit()
-        worksheet_id = empty_worksheet.id
-        session.close()
-
-        # Run migration
-        repo.migrate_existing_worksheets()
-
-        # Verify no cells were created
-        cells = repo.list_cells(worksheet_id)
-        assert len(cells) == 0
-
-    def test_migrate_worksheet_with_existing_cells(self, repo):
-        """Test that migration doesn't duplicate cells."""
-        # Create a worksheet with cells
-        worksheet = repo.create_worksheet("Already Migrated", "SELECT 1")
+        """Test that worksheets can have empty cells."""
+        # Create a worksheet with empty cell
+        worksheet = repo.create_worksheet("Empty Worksheet")
         worksheet_id = worksheet["worksheet"]["id"]
 
-        # Run migration again
-        repo.migrate_existing_worksheets()
-
-        # Verify only one cell exists (no duplication)
+        # Verify empty cell exists
         cells = repo.list_cells(worksheet_id)
         assert len(cells) == 1
+        assert cells[0]["cell"]["query_text"] == ""
+
+    def test_migrate_worksheet_with_existing_cells(self, repo):
+        """Test that creating additional cells works properly."""
+        # Create a worksheet with initial cell
+        worksheet = repo.create_worksheet("Already Migrated")
+        worksheet_id = worksheet["worksheet"]["id"]
+
+        # Add another cell
+        repo.create_cell(worksheet_id, "SELECT 2")
+
+        # Verify both cells exist (no duplication)
+        cells = repo.list_cells(worksheet_id)
+        assert len(cells) == 2
 
 
 class TestCellOrdering:
@@ -245,7 +253,7 @@ class TestCellOrdering:
 
     def test_create_cell_with_custom_order(self, repo):
         """Test creating a cell at a specific position."""
-        worksheet = repo.create_worksheet("Test", "SELECT 1")
+        worksheet = repo.create_worksheet("Test")
         worksheet_id = worksheet["worksheet"]["id"]
 
         # Create cell at specific order
@@ -258,7 +266,7 @@ class TestCellOrdering:
 
     def test_empty_worksheet_cell_order(self, repo):
         """Test that first cell in an empty worksheet gets order 0."""
-        worksheet = repo.create_worksheet("Empty", "", None)
+        worksheet = repo.create_worksheet("Empty")
         worksheet_id = worksheet["worksheet"]["id"]
 
         # Delete the initial cell

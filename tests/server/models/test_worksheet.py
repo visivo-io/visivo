@@ -23,9 +23,7 @@ def test_worksheet_creation(session):
 def test_worksheet_to_dict(session):
     """Test the to_dict method of WorksheetModel."""
     now = get_utc_now()
-    worksheet = WorksheetModel(
-        id="test-id", name="Test Worksheet", created_at=now, updated_at=now
-    )
+    worksheet = WorksheetModel(id="test-id", name="Test Worksheet", created_at=now, updated_at=now)
     session.add(worksheet)
     session.commit()
 

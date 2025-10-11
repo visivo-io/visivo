@@ -35,16 +35,17 @@ def flask_app_with_worksheets(tmp_path):
     # Create a test worksheet with a cell
     worksheet_result = app.worksheet_repo.create_worksheet(name="Test Worksheet")
 
+    # Get the list of cells (includes initial empty cell)
+    cells = app.worksheet_repo.list_cells(worksheet_result["worksheet"]["id"])
+    cell_id = cells[0]["cell"]["id"]
+
     # Update the initial cell with a query and source
-    cell_id = worksheet_result["cells"][0]["id"]
     app.worksheet_repo.update_cell(
         cell_id, {"query_text": "SELECT 1 as col", "selected_source": "test_source"}
     )
 
-    # Refresh the worksheet result to include updated cell
-    worksheet_result["cells"] = app.worksheet_repo.list_cells(
-        worksheet_result["worksheet"]["id"]
-    )
+    # Attach cells to worksheet result for easy access in tests
+    worksheet_result["cells"] = cells
 
     yield app, worksheet_result
 
@@ -71,7 +72,7 @@ class TestExecuteCellEndpoint:
         """Test that executing a cell returns query results."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Update cell with a query
         app.worksheet_repo.update_cell(cell_id, {"query_text": "SELECT 42 as answer"})
@@ -94,7 +95,7 @@ class TestExecuteCellEndpoint:
         """Test that cell results are saved to the database."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Update cell with a query
         app.worksheet_repo.update_cell(cell_id, {"query_text": "SELECT 1 as col"})
@@ -116,7 +117,7 @@ class TestExecuteCellEndpoint:
         """Test that invalid SQL returns an error."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Mock query service to raise an error
         mock_query_service.side_effect = Exception("SQL syntax error")
@@ -136,7 +137,7 @@ class TestExecuteCellEndpoint:
         """Test that executing an empty query returns an error."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Update cell with empty query
         app.worksheet_repo.update_cell(cell_id, {"query_text": ""})
@@ -164,7 +165,7 @@ class TestExecuteCellEndpoint:
     def test_execute_cell_returns_404_for_invalid_worksheet_id(self, flask_app_with_worksheets):
         """Test that executing a cell for a non-existent worksheet returns 404."""
         app, worksheet_result = flask_app_with_worksheets
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         with app.app.test_client() as client:
             response = client.post(f"/api/worksheet/invalid-worksheet-id/cells/{cell_id}/execute/")
@@ -179,7 +180,7 @@ class TestExecuteCellEndpoint:
         """Test that query stats include execution time."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         app.worksheet_repo.update_cell(cell_id, {"query_text": "SELECT 1 as col"})
 
@@ -197,7 +198,7 @@ class TestExecuteCellEndpoint:
         """Test that query stats include source name."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         app.worksheet_repo.update_cell(cell_id, {"query_text": "SELECT 1 as col"})
 
@@ -215,7 +216,7 @@ class TestExecuteCellEndpoint:
         """Test that truncation flag is properly handled."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Mock truncated results
         mock_query_service.return_value = {
@@ -241,7 +242,7 @@ class TestExecuteCellEndpoint:
         """Test that execute_cell uses the cell's selected source."""
         app, worksheet_result = flask_app_with_worksheets
         worksheet_id = worksheet_result["worksheet"]["id"]
-        cell_id = worksheet_result["cells"][0]["id"]
+        cell_id = worksheet_result["cells"][0]["cell"]["id"]
 
         # Verify cell has the correct source
         cell_data = app.worksheet_repo.get_cell(cell_id)
