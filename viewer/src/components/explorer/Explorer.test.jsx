@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';

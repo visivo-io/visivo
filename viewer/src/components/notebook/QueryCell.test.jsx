@@ -96,7 +96,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open the menu (find button with MoreVertIcon)
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
       expect(screen.getByText('Save as Model')).toBeInTheDocument();
@@ -107,10 +107,10 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} cell={emptyCell} />);
 
       // Open the menu
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
-      const saveMenuItem = screen.getByText('Save as Model').closest('li');
+      const saveMenuItem = screen.getByRole('menuitem', { name: /save as model/i });
       expect(saveMenuItem).toHaveClass('Mui-disabled');
     });
 
@@ -118,7 +118,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open the menu
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
       // Click Save as Model
@@ -134,7 +134,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Save as Model'));
 
@@ -147,7 +147,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Save as Model'));
 
@@ -160,7 +160,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open the modal
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Save as Model'));
 
@@ -182,7 +182,7 @@ describe('QueryCell', () => {
       render(<QueryCell {...defaultProps} />);
 
       // Open modal and create model
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Save as Model'));
 
@@ -207,7 +207,7 @@ describe('QueryCell', () => {
       fireEvent.change(editor, { target: { value: 'SELECT * FROM products' } });
 
       // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Save as Model'));
 
@@ -221,7 +221,7 @@ describe('QueryCell', () => {
     it('renders all menu items', () => {
       render(<QueryCell {...defaultProps} />);
 
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
       expect(screen.getByText('Save as Model')).toBeInTheDocument();
@@ -232,7 +232,7 @@ describe('QueryCell', () => {
     it('calls onAddBelow when Add Cell Below is clicked', () => {
       render(<QueryCell {...defaultProps} />);
 
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Add Cell Below'));
 
@@ -242,7 +242,7 @@ describe('QueryCell', () => {
     it('calls onDelete when Delete Cell is clicked', () => {
       render(<QueryCell {...defaultProps} />);
 
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
       fireEvent.click(screen.getByText('Delete Cell'));
 
@@ -252,10 +252,10 @@ describe('QueryCell', () => {
     it('disables delete when cell is first and last', () => {
       render(<QueryCell {...defaultProps} isFirst={true} isLast={true} />);
 
-      const menuButton = screen.getByTestId('MoreVertIcon').closest('button');
+      const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
-      const deleteMenuItem = screen.getByText('Delete Cell').closest('li');
+      const deleteMenuItem = screen.getByRole('menuitem', { name: /delete cell/i });
       expect(deleteMenuItem).toHaveClass('Mui-disabled');
     });
   });

@@ -135,7 +135,7 @@ const QueryCell = ({
               </>
             )}
           </button>
-          <IconButton size="small" onClick={handleMenuOpen}>
+          <IconButton size="small" onClick={handleMenuOpen} data-testid="cell-menu-button">
             <MoreVertIcon fontSize="small" />
           </IconButton>
           <Menu

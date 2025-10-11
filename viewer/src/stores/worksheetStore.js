@@ -11,7 +11,6 @@ import {
   reorderCells,
   executeCell as executeCellAPI,
 } from '../api/worksheet';
-import { executeQuery } from '../services/queryService';
 
 const createWorksheetSlice = (set, get) => ({
   // Worksheet state
