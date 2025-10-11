@@ -25,10 +25,10 @@ class InsightQueryBuilder:
 
         self._name_to_hash_map = {}
 
-        self._objects_referenced_by_interactions = (
+        self._objects_referenced_by_interactions_with_inputs = (
             self._find_all_objects_referenced_from_interactions_with_inputs()
         )
-        self._has_client_side_interactions = len(self._objects_referenced_by_interactions) > 0
+        self._has_client_side_interactions = len(self._objects_referenced_by_interactions_with_inputs) > 0
         self._referenced_models = self._find_all_referenced_models()
         self._sqlglot_dialect = self._get_sqlglot_dialect()
 
