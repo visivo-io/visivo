@@ -2,15 +2,13 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Input, { DROPDOWN } from './Input';
 
-jest.mock('./inputs/Dropdown', () => ({ label }) => (
-  <div data-testid="dropdown">{label}</div>
-));
+jest.mock('./inputs/Dropdown', () => ({ label }) => <div data-testid="dropdown">{label}</div>);
 
 const mockSetInputValue = jest.fn();
 const mockSetDefaultInputValue = jest.fn();
 jest.mock('../../stores/store', () => ({
   __esModule: true,
-  default: (fn) =>
+  default: fn =>
     fn({
       setInputValue: mockSetInputValue,
       setDefaultInputValue: mockSetDefaultInputValue,

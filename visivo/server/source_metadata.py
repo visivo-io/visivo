@@ -8,10 +8,10 @@ from pydantic import ValidationError, TypeAdapter
 import json
 
 
-def _find_source(sources: List[Any], source_name: str) -> Optional[SqlalchemySource]:
-    """Find a SqlalchemySource by name."""
+def _find_source(sources: List[Any], source_name: str) -> Optional[Source]:
+    """Find a Source by name."""
     for src in sources:
-        if isinstance(src, SqlalchemySource) and src.name == source_name:
+        if isinstance(src, Source) and src.name == source_name:
             return src
     return None
 

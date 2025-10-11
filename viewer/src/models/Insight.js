@@ -1,4 +1,4 @@
-import { QueryString } from "../utils/queryString";
+import { QueryString } from '../utils/queryString';
 
 export function chartDataFromInsightData(insightsData) {
   if (!insightsData) return [];
@@ -29,7 +29,7 @@ export function chartDataFromInsightData(insightsData) {
             obj[key] = dataArrays[fieldName] || [];
           } else if (QueryString.isQueryString(value)) {
             const queryString = new QueryString(value);
-            const queryValue = queryString.getValue()
+            const queryValue = queryString.getValue();
             const fieldName = queryValue.split('.').pop();
             const colKey = Object.values(columns).find(c => c.includes(fieldName));
             obj[key] = colKey ? dataArrays[colKey] : [];

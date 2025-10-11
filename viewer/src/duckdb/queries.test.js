@@ -51,7 +51,6 @@ it('handles json files', async () => {
   expect(db.dropFile).toHaveBeenCalled();
 });
 
-
 it('ignores unsupported extensions', async () => {
   const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 

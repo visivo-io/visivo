@@ -39,13 +39,13 @@ describe('Dropdown Component', () => {
   it('selects multiple options in multi mode', () => {
     const setInputValue = jest.fn();
     render(
-        <Dropdown
+      <Dropdown
         options={options}
         isMulti
         defaultValue={['Option A']}
         name="multiTest"
         setInputValue={setInputValue}
-        />
+      />
     );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();

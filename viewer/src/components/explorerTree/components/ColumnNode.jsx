@@ -17,7 +17,17 @@ const ColumnNode = ({ column, sourceName, databaseName, schemaName, tableName })
     </ColumnInfo>
   );
 
-  return <TreeItem itemId={nodeId} label={columnLabel} />;
+  return (
+    <TreeItem
+      itemId={nodeId}
+      label={columnLabel}
+      sx={{
+        '& > .MuiTreeItem-content': {
+          paddingLeft: '96px',
+        },
+      }}
+    />
+  );
 };
 
 export default ColumnNode;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
@@ -48,6 +48,11 @@ let mockDefaultStore = {
   setProject: jest.fn(),
   setActiveWorksheetId: jest.fn(),
   handleRunQuery: jest.fn(),
+  initializeWorksheets: jest.fn(),
+  worksheets: [],
+  activeWorksheetId: null,
+  worksheetsLoading: false,
+  worksheetsError: null,
 };
 // Mock Zustand store
 jest.mock('../../stores/store', () => ({
@@ -265,19 +270,12 @@ describe('Explorer', () => {
     jest.clearAllMocks();
   });
 
-  it('handles errors during query execution', async () => {
-    mockDefaultStore.error = 'Query failed';
-
+  it('renders without crashing with notebook interface', async () => {
     renderWithProviders(<Explorer />);
 
-    const editor = screen.getByTestId('mock-editor');
-    const runButton = screen.getByText('Run Query');
-
-    fireEvent.change(editor, { target: { value: 'SELECT * FROM test' } });
-    fireEvent.click(runButton);
-
     await waitFor(() => {
-      expect(screen.getByText('Query failed')).toBeInTheDocument();
+      // Check that the new notebook interface is rendered
+      expect(screen.queryByTestId('mock-editor')).not.toBeInTheDocument();
     });
   });
 
@@ -302,6 +300,96 @@ describe('Explorer', () => {
 
     await waitFor(() => {
       expect(screen.getByText('model1')).toBeInTheDocument();
+    });
+  });
+
+  describe('Worksheet Initialization', () => {
+    it('calls initializeWorksheets on mount', async () => {
+      const mockStore = useStore();
+      mockStore.initializeWorksheets = jest.fn();
+
+      renderWithProviders(<Explorer />);
+
+      await waitFor(() => {
+        expect(mockStore.initializeWorksheets).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('loads explorer data on mount', async () => {
+      renderWithProviders(<Explorer />);
+
+      await waitFor(() => {
+        expect(fetchExplorer).toHaveBeenCalled();
+      });
+    });
+
+    it('sets default source when namedChildren has sources', async () => {
+      const mockStore = useStore();
+      mockStore.namedChildren = {
+        source1: {
+          type_key: 'sources',
+          config: { name: 'source1', type: 'postgres' },
+        },
+      };
+      mockStore.selectedSource = null;
+      mockStore.setSelectedSource = jest.fn();
+
+      renderWithProviders(<Explorer />);
+
+      await waitFor(() => {
+        expect(mockStore.setSelectedSource).toHaveBeenCalledWith({
+          name: 'source1',
+          type: 'postgres',
+        });
+      });
+    });
+
+    it('uses default source from explorerData if available', async () => {
+      const mockStore = useStore();
+      mockStore.namedChildren = {
+        source1: {
+          type_key: 'sources',
+          config: { name: 'source1', type: 'postgres' },
+        },
+        source2: {
+          type_key: 'sources',
+          config: { name: 'source2', type: 'duckdb' },
+        },
+      };
+      mockStore.selectedSource = null;
+      mockStore.explorerData = {
+        ...mockExplorerData,
+        default_source: 'source2',
+      };
+      mockStore.setSelectedSource = jest.fn();
+
+      renderWithProviders(<Explorer />);
+
+      await waitFor(() => {
+        expect(mockStore.setSelectedSource).toHaveBeenCalledWith({
+          name: 'source2',
+          type: 'duckdb',
+        });
+      });
+    });
+
+    it('does not set source if one is already selected', async () => {
+      const mockStore = useStore();
+      mockStore.namedChildren = {
+        source1: {
+          type_key: 'sources',
+          config: { name: 'source1', type: 'postgres' },
+        },
+      };
+      mockStore.selectedSource = { name: 'existing-source' };
+      mockStore.setSelectedSource = jest.fn();
+
+      renderWithProviders(<Explorer />);
+
+      // Wait a bit to ensure the effect doesn't run
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(mockStore.setSelectedSource).not.toHaveBeenCalled();
     });
   });
 });

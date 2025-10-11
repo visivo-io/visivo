@@ -1,14 +1,14 @@
-import React from "react";
-import { FaCheck } from "react-icons/fa";
+import React from 'react';
+import { FaCheck } from 'react-icons/fa';
 
-const DropdownOptions = ({ 
-  options, 
+const DropdownOptions = ({
+  options,
   filteredOptions,
-  isSelected, 
-  toggleSelection, 
+  isSelected,
+  toggleSelection,
   highlightedIndex,
   isMulti,
-  selectedItems
+  selectedItems,
 }) => {
   return (
     <>
@@ -49,4 +49,4 @@ const DropdownOptions = ({
   );
 };
 
-export default DropdownOptions
+export default DropdownOptions;

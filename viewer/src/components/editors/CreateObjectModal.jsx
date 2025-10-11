@@ -13,12 +13,13 @@ const CreateObjectModal = ({
   objStep = 'property',
   onSubmitCallback,
   showFileOption = true,
+  initialAttributes = {},
 }) => {
   const [step, setStep] = useState(objStep); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(objSelectedProperty);
   const [selectedType, setSelectedType] = useState(null);
   const [objectName, setObjectName] = useState('');
-  const [attributes, setAttributes] = useState({});
+  const [attributes, setAttributes] = useState(initialAttributes);
   const [selectedFilePath, setSelectedFilePath] = useState('');
   const [selectedSource, setSelectedSource] = useState(null);
 
@@ -35,10 +36,10 @@ const CreateObjectModal = ({
     setSelectedProperty(objSelectedProperty);
     setSelectedType(null);
     setObjectName('');
-    setAttributes({});
+    setAttributes(initialAttributes);
     setSelectedFilePath('');
     setSelectedSource(null);
-  }, [objStep, objSelectedProperty]);
+  }, [objStep, objSelectedProperty, initialAttributes]);
 
   // Add effect to reset state when modal closes
   useEffect(() => {
@@ -290,10 +291,31 @@ const CreateObjectModal = ({
                   <p className="text-xs text-gray-500 mb-1">{attr.description}</p>
                 )}
 
-                {/* String input */}
+                {/* String input - use textarea for sql */}
                 {(attr.type === 'string' || !attr.type) &&
                   attr.name !== 'type' &&
-                  attr.title !== 'File' && (
+                  attr.title !== 'File' &&
+                  attr.name === 'sql' && (
+                    <textarea
+                      value={attributes[attr.name] || ''}
+                      required={!OPTIONAL_REQUIREMENTS.includes(attr.name)}
+                      onChange={e =>
+                        setAttributes(prev => ({
+                          ...prev,
+                          [attr.name]: e.target.value,
+                        }))
+                      }
+                      rows={8}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 font-mono text-sm"
+                      placeholder="Enter SQL query..."
+                    />
+                  )}
+
+                {/* String input - regular text input for other fields */}
+                {(attr.type === 'string' || !attr.type) &&
+                  attr.name !== 'type' &&
+                  attr.title !== 'File' &&
+                  attr.name !== 'sql' && (
                     <input
                       type="text"
                       value={attributes[attr.name] || ''}

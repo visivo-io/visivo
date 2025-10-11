@@ -3,7 +3,15 @@ import { FaChevronDown, FaTimes } from 'react-icons/fa';
 import { runDuckDBQuery } from '../../../duckdb/queries';
 import { useDuckDB } from '../../../contexts/DuckDBContext';
 import DropdownOptions from './DropdownOptions';
-import { DropdownButton, DropdownLabel, DropdownMenu, LoadingBar, LoadingContainer, SearchInput, SelectedTag } from '../../styled/DropdownButton';
+import {
+  DropdownButton,
+  DropdownLabel,
+  DropdownMenu,
+  LoadingBar,
+  LoadingContainer,
+  SearchInput,
+  SelectedTag,
+} from '../../styled/DropdownButton';
 
 const Dropdown = ({
   label = '',
@@ -14,7 +22,7 @@ const Dropdown = ({
   name,
   setInputValue,
   setDefaultInputValue,
-  isQuery = false
+  isQuery = false,
 }) => {
   const db = useDuckDB();
   const [isOpen, setIsOpen] = useState(false);
@@ -44,8 +52,7 @@ const Dropdown = ({
             return { id: val, label: val };
           });
         }
-      } 
-      else if (Array.isArray(rawOptions)) {
+      } else if (Array.isArray(rawOptions)) {
         opts = rawOptions.map(option => ({
           id: option,
           label: option,
@@ -56,17 +63,18 @@ const Dropdown = ({
 
       if (rawDefaultValue) {
         let defVal;
-        
+
         if (isMulti) {
-          defVal = Array.isArray(rawDefaultValue) && rawDefaultValue.length > 0
-            ? rawDefaultValue.map(d => ({ id: d, label: d }))
-            : [];
+          defVal =
+            Array.isArray(rawDefaultValue) && rawDefaultValue.length > 0
+              ? rawDefaultValue.map(d => ({ id: d, label: d }))
+              : [];
         } else {
           defVal = { id: rawDefaultValue, label: rawDefaultValue };
         }
-        
+
         setSelectedItems(defVal);
-        
+
         if (setDefaultInputValue) {
           setDefaultInputValue(name, rawDefaultValue);
         }
@@ -81,7 +89,10 @@ const Dropdown = ({
   useEffect(() => {
     if (name && setInputValue && !loading) {
       if (isMulti) {
-        setInputValue(name, selectedItems.map(item => item.id));
+        setInputValue(
+          name,
+          selectedItems.map(item => item.id)
+        );
       } else {
         setInputValue(name, selectedItems?.id);
       }
@@ -175,7 +186,7 @@ const Dropdown = ({
       <div className="w-full min-w-[200px]">
         {label && <DropdownLabel>{label}</DropdownLabel>}
         <LoadingContainer>
-          <LoadingBar/>
+          <LoadingBar />
         </LoadingContainer>
       </div>
     );
@@ -200,9 +211,7 @@ const Dropdown = ({
             ) : isMulti ? (
               <div className="flex flex-wrap gap-1">
                 {selectedItems.slice(0, 2).map(item => (
-                  <SelectedTag
-                    key={item.id}
-                  >
+                  <SelectedTag key={item.id}>
                     {item.label}
                     <span
                       role="button"

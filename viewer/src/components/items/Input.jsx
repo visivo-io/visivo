@@ -25,7 +25,6 @@ const Input = ({ input, itemWidth, project }) => {
             setDefaultInputValue={setDefaultInputValue}
           />
         )}
-      
       </div>
     </div>
   );

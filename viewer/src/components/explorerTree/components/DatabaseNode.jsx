@@ -77,6 +77,11 @@ const DatabaseNode = ({ database, sourceName }) => {
       isLoading={isLoading}
       error={error}
       loadingText={isLoadingSchemas ? 'Loading schemas...' : 'Loading tables...'}
+      sx={{
+        '& > .MuiTreeItem-content': {
+          paddingLeft: '24px',
+        },
+      }}
     >
       {children}
     </TreeNodeWrapper>

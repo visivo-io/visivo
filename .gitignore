@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 .DS_Store
 
+.playwright-mcp/
+
 # Environments
 .env
 .venv

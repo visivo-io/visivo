@@ -63,6 +63,10 @@ export const StyledTreeView = styled(SimpleTreeView)`
     font-size: 14px;
     color: #374151;
   }
+
+  .MuiTreeItem-group {
+    margin-left: 0;
+  }
 `;
 
 export const ItemLabel = styled('div')`

@@ -28,11 +28,12 @@ const TreeNodeWrapper = ({
   errorText = 'Connection failed',
   placeholderText = 'Click to expand',
   showPlaceholder = true,
+  sx = {},
 }) => {
   // Render error state
   if (error) {
     return (
-      <TreeItem itemId={nodeId} label={label}>
+      <TreeItem itemId={nodeId} label={label} sx={sx}>
         <TreeItem
           itemId={`${nodeId}-error`}
           label={
@@ -51,7 +52,7 @@ const TreeNodeWrapper = ({
   // Render loading state
   if (isLoading && !children) {
     return (
-      <TreeItem itemId={nodeId} label={label}>
+      <TreeItem itemId={nodeId} label={label} sx={sx}>
         <TreeItem
           itemId={`${nodeId}-loading`}
           label={
@@ -68,7 +69,7 @@ const TreeNodeWrapper = ({
   // Render children if present
   if (children && React.Children.count(children) > 0) {
     return (
-      <TreeItem itemId={nodeId} label={label}>
+      <TreeItem itemId={nodeId} label={label} sx={sx}>
         {children}
       </TreeItem>
     );
@@ -77,7 +78,7 @@ const TreeNodeWrapper = ({
   // Render placeholder for empty state
   if (showPlaceholder) {
     return (
-      <TreeItem itemId={nodeId} label={label}>
+      <TreeItem itemId={nodeId} label={label} sx={sx}>
         <TreeItem
           itemId={`${nodeId}-placeholder`}
           label={<LoadingLabel>{placeholderText}</LoadingLabel>}
@@ -87,7 +88,7 @@ const TreeNodeWrapper = ({
   }
 
   // Just render the node without children
-  return <TreeItem itemId={nodeId} label={label} />;
+  return <TreeItem itemId={nodeId} label={label} sx={sx} />;
 };
 
 export default TreeNodeWrapper;

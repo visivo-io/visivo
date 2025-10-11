@@ -6,9 +6,7 @@ const INLINE_REF_REGEX = new RegExp(
 const INLINE_REF_PROPS_PATH_REGEX = new RegExp(
   `\\$\\{\\s*ref\\(${NAME_REGEX}+?\\)([\\.\\d\\w\\[\\]]*)\\s*\\}`
 );
-const INLINE_PATH_REGEX = new RegExp(
-  `\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]]+?)\\s*\\}`
-);
+const INLINE_PATH_REGEX = new RegExp(`\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]]+?)\\s*\\}`);
 const CONTEXT_STRING_VALUE_REGEX = new RegExp(
   `\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]\\)\\(]+?)\\s*\\}`
 );
@@ -29,18 +27,15 @@ export class ContextString {
   equals(other) {
     if (other instanceof ContextString) {
       return (
-        (this.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join("") ===
-        (other.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join("")
+        (this.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join('') ===
+        (other.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join('')
       );
     }
     return false;
   }
 
   hashCode() {
-    return (
-      (this.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join("").hashCode ??
-      0
-    );
+    return (this.value.match(CONTEXT_STRING_VALUE_REGEX) || []).join('').hashCode ?? 0;
   }
 
   getReference() {
@@ -63,14 +58,14 @@ export class ContextString {
     return match ? match[0] : null;
   }
 
-   getAllRefs() {
+  getAllRefs() {
     const matches = this.value.match(METRIC_REF_PATTERN_GLOBAL);
     return matches || [];
   }
 
   static isContextString(obj) {
     if (obj instanceof ContextString) return true;
-    if (typeof obj === "string") {
+    if (typeof obj === 'string') {
       return new ContextString(obj).getReference() !== null;
     }
     return false;

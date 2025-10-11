@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { testSourceConnectionFromConfig } from '../../api/explorer';
 
-const SourceConnectionTest = ({ 
-  objectName, 
-  selectedSource, 
-  attributes, 
-  isVisible = true 
-}) => {
+const SourceConnectionTest = ({ objectName, selectedSource, attributes, isVisible = true }) => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState(null);
   const [lastTestedConfig, setLastTestedConfig] = useState(null);
@@ -15,13 +10,13 @@ const SourceConnectionTest = ({
 
   const configHasChanged = useCallback(() => {
     if (!lastTestedConfig) return true;
-    
+
     const currentConfig = {
       name: objectName,
       type: selectedSource?.value,
-      ...attributes
+      ...attributes,
     };
-    
+
     return JSON.stringify(currentConfig) !== JSON.stringify(lastTestedConfig);
   }, [objectName, selectedSource, attributes, lastTestedConfig]);
 
@@ -34,28 +29,27 @@ const SourceConnectionTest = ({
 
   const handleTestConnection = async () => {
     if (!objectName) return;
-    
+
     setIsTestingConnection(true);
     setConnectionTestResult(null);
-    
+
     try {
       const sourceConfig = {
         name: objectName,
         type: selectedSource?.value,
-        ...attributes
+        ...attributes,
       };
-      
+
       // Save the tested config
       setLastTestedConfig(sourceConfig);
-      
+
       // Test the connection using the API
       const result = await testSourceConnectionFromConfig(sourceConfig);
       setConnectionTestResult(result);
-      
     } catch (error) {
       setConnectionTestResult({
         status: 'connection_failed',
-        error: error.message || 'Failed to test connection'
+        error: error.message || 'Failed to test connection',
       });
     } finally {
       setIsTestingConnection(false);
@@ -76,7 +70,7 @@ const SourceConnectionTest = ({
           {isTestingConnection ? 'Testing...' : 'Test Connection'}
         </button>
       </div>
-      
+
       {/* Connection Status Indicator */}
       <div className="flex items-center space-x-2">
         {isTestingConnection ? (
@@ -87,15 +81,35 @@ const SourceConnectionTest = ({
         ) : connectionTestResult ? (
           connectionTestResult.status === 'connected' && !configHasChanged() ? (
             <>
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              <svg
+                className="w-5 h-5 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
               </svg>
               <span className="text-sm text-green-600">Connection successful</span>
             </>
           ) : (
             <>
-              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              <svg
+                className="w-5 h-5 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
               </svg>
               <span className="text-sm text-red-600">
                 {connectionTestResult.error || 'Connection failed'}
