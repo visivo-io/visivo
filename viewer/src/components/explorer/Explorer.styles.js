@@ -22,6 +22,7 @@ export const RightPanel = tw.div`
   min-h-0
   flex
   flex-col
+  min-w-0
 `;
 
 export const Info = tw.div`
