@@ -1,6 +1,5 @@
 import { useEffect, useCallback } from 'react';
 import useStore from '../stores/store';
-import { useWorksheets } from '../contexts/WorksheetContext';
 import { fetchTraceQuery } from '../services/queryService';
 import { fetchExplorer } from '../api/explorer';
 import { getAncestors } from '../components/lineage/graphUtils';
@@ -20,6 +19,9 @@ export const useExplorerLogic = () => {
     setQueryStats,
     setActiveWorksheetId,
     initializeWorksheets,
+    worksheets,
+    activeWorksheetId,
+    updateWorksheetData,
   } = useStore();
 
   const namedChildren = useStore(state => state.namedChildren);
@@ -28,13 +30,6 @@ export const useExplorerLogic = () => {
   const selectedSource = useStore(state => state.selectedSource);
   const selectedType = useStore(state => state.selectedType);
   const treeData = useStore(state => state.treeData);
-
-  // Worksheet context
-  const {
-    worksheets,
-    activeWorksheetId,
-    actions: { updateWorksheet, loadWorksheetResults },
-  } = useWorksheets();
 
   // Set project and activeWorksheetId in store
   useEffect(() => {
@@ -190,7 +185,7 @@ export const useExplorerLogic = () => {
 
         // Update active worksheet with new query
         if (activeWorksheetId) {
-          await updateWorksheet(activeWorksheetId, {
+          await updateWorksheetData(activeWorksheetId, {
             query: newQuery,
             selected_source: newSource?.name,
           });
@@ -207,7 +202,7 @@ export const useExplorerLogic = () => {
       setSelectedSource,
       setError,
       activeWorksheetId,
-      updateWorksheet,
+      updateWorksheetData,
     ]
   );
 
@@ -226,25 +221,12 @@ export const useExplorerLogic = () => {
     }
   }, [activeWorksheetId, worksheets, namedChildren, setQuery, setSelectedSource]);
 
-  // Load results when active worksheet changes
+  // Clear results when active worksheet changes
+  // Results are now loaded per-cell by NotebookWorksheet component
   useEffect(() => {
-    // Clear existing results when worksheet changes
     setResults(null);
     setQueryStats(null);
-
-    if (activeWorksheetId) {
-      loadWorksheetResults(activeWorksheetId).then(
-        ({ results: loadedResults, queryStats: loadedStats }) => {
-          if (loadedResults) {
-            setResults(loadedResults);
-          }
-          if (loadedStats) {
-            setQueryStats(loadedStats);
-          }
-        }
-      );
-    }
-  }, [activeWorksheetId, loadWorksheetResults, setResults, setQueryStats]);
+  }, [activeWorksheetId, setResults, setQueryStats]);
 
   return {
     // State

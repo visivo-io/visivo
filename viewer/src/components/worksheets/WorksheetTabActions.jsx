@@ -3,7 +3,7 @@ import tw from 'tailwind-styled-components';
 import AddIcon from '@mui/icons-material/Add';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import WorksheetListPopup from './WorksheetListPopup';
-import { useWorksheets } from '../../contexts/WorksheetContext';
+import useStore from '../../stores/store';
 
 const Container = tw.div`
   flex items-center space-x-2
@@ -15,7 +15,13 @@ const ActionButton = tw.button`
 
 const WorksheetTabActions = ({ onWorksheetCreate, onWorksheetOpen, isLoading }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const { allWorksheets, activeWorksheetId, actions } = useWorksheets();
+  const {
+    allWorksheets,
+    activeWorksheetId,
+    setActiveWorksheet,
+    updateWorksheetData,
+    deleteWorksheetById,
+  } = useStore();
 
   const handleCreate = e => {
     onWorksheetCreate();
@@ -53,12 +59,12 @@ const WorksheetTabActions = ({ onWorksheetCreate, onWorksheetOpen, isLoading }) 
         <WorksheetListPopup
           worksheets={allWorksheets}
           activeWorksheetId={activeWorksheetId}
-          onSelect={actions.setActiveWorksheetId}
+          onSelect={setActiveWorksheet}
           onClose={() => setIsPopupOpen(false)}
           onToggleVisibility={(id, isVisible) =>
-            actions.updateWorksheet(id, { is_visible: isVisible })
+            updateWorksheetData(id, { is_visible: isVisible })
           }
-          onDelete={actions.deleteWorksheet}
+          onDelete={deleteWorksheetById}
         />
       )}
     </>

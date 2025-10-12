@@ -2,7 +2,7 @@ import React from 'react';
 import tw from 'tailwind-styled-components';
 import WorksheetTab from './WorksheetTab';
 import WorksheetTabActions from './WorksheetTabActions';
-import { useWorksheets } from '../../contexts/WorksheetContext';
+import useStore from '../../stores/store';
 
 const Container = tw.div`
   flex items-center border-b border-gray-200 bg-white px-4 overflow-x-auto min-h-[48px]
@@ -22,14 +22,14 @@ const WorksheetTabManager = ({
   onWorksheetClose,
   isLoading,
 }) => {
-  const { actions } = useWorksheets();
+  const { updateWorksheetData } = useStore();
 
   const handleWorksheetClose = worksheetId => {
     if (onWorksheetClose) {
       onWorksheetClose(worksheetId);
     } else {
       // Hide the worksheet instead of deleting it
-      actions.updateWorksheet(worksheetId, { is_visible: false });
+      updateWorksheetData(worksheetId, { is_visible: false });
 
       // If we're closing the active worksheet, switch to another visible one
       if (worksheetId === activeWorksheetId) {
