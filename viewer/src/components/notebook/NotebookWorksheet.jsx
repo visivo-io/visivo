@@ -75,6 +75,19 @@ const NotebookWorksheet = ({ worksheetId }) => {
     [worksheetId, updateCellData]
   );
 
+  const handleModelChange = useCallback(
+    (cellId, modelName) => {
+      console.log('[NotebookWorksheet] Model change requested:', {
+        cellId,
+        modelName,
+        worksheetId,
+      });
+      // Update cell's associated model
+      updateCellData(worksheetId, cellId, { associated_model: modelName });
+    },
+    [worksheetId, updateCellData]
+  );
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = e => {
@@ -154,6 +167,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
             onAddBelow={() => handleAddCellBelow(cellData.cell.id)}
             onQueryChange={newQuery => handleQueryChange(cellData.cell.id, newQuery)}
             onSourceChange={newSource => handleSourceChange(cellData.cell.id, newSource)}
+            onModelChange={modelName => handleModelChange(cellData.cell.id, modelName)}
             isFirst={index === 0}
             isLast={index === cells.length - 1}
           />

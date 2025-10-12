@@ -61,9 +61,7 @@ const WorksheetTabActions = ({ onWorksheetCreate, onWorksheetOpen, isLoading }) 
           activeWorksheetId={activeWorksheetId}
           onSelect={setActiveWorksheet}
           onClose={() => setIsPopupOpen(false)}
-          onToggleVisibility={(id, isVisible) =>
-            updateWorksheetData(id, { is_visible: isVisible })
-          }
+          onToggleVisibility={(id, isVisible) => updateWorksheetData(id, { is_visible: isVisible })}
           onDelete={deleteWorksheetById}
         />
       )}

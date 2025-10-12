@@ -32,10 +32,7 @@ const ExplorerLayout = ({
             />
           </div>
 
-          <VerticalDivider
-            isDragging={isResizingSidebar}
-            handleMouseDown={onSidebarResizeStart}
-          />
+          <VerticalDivider isDragging={isResizingSidebar} handleMouseDown={onSidebarResizeStart} />
 
           <RightPanel>
             <QueryPanel />

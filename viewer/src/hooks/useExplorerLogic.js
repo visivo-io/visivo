@@ -22,6 +22,8 @@ export const useExplorerLogic = () => {
     worksheets,
     activeWorksheetId,
     updateWorksheetData,
+    worksheetCells,
+    addCell,
   } = useStore();
 
   const namedChildren = useStore(state => state.namedChildren);
@@ -139,12 +141,11 @@ export const useExplorerLogic = () => {
   // Handle item click
   const handleItemClick = useCallback(
     async item => {
-      let newQuery = '';
-      let newSource = selectedSource;
-
       try {
         switch (item.type) {
-          case 'model':
+          case 'model': {
+            // Get the model's source
+            let newSource = selectedSource;
             if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
               const duckdbSource = Object.values(namedChildren || {}).find(
                 child => child.type_key === 'sources' && child.type === 'DuckdbSource'
@@ -162,9 +163,69 @@ export const useExplorerLogic = () => {
               );
               newSource = sources.length > 0 ? sources[0].config : selectedSource;
             }
-            newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
+
+            // Check if any cell in the current worksheet already has this model associated
+            if (activeWorksheetId && worksheetCells[activeWorksheetId]) {
+              const cells = worksheetCells[activeWorksheetId];
+              const existingCell = cells.find(
+                cellData => cellData.cell.associated_model === item.name
+              );
+
+              if (existingCell) {
+                // Cell with this model exists - scroll to it and focus the editor
+                console.log('[useExplorerLogic] Found existing cell with model:', item.name);
+                // Use setTimeout to allow React to render, then scroll and focus
+                setTimeout(() => {
+                  const cellElement = document.getElementById(`cell-${existingCell.cell.id}`);
+                  if (cellElement) {
+                    cellElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Find the Monaco editor within the cell and focus it
+                    const editorTextarea = cellElement.querySelector('.monaco-editor textarea');
+                    if (editorTextarea) {
+                      editorTextarea.focus();
+                    }
+                  }
+                }, 100);
+                return;
+              }
+            }
+
+            // No cell with this model - create a new cell
+            console.log('[useExplorerLogic] Creating new cell for model:', item.name);
+            if (activeWorksheetId && addCell) {
+              const modelSql = item.config.sql || '';
+              // Create a new cell at the end with the model's data
+              await addCell(activeWorksheetId, modelSql, null);
+
+              // Get the newly created cell and update it with model association and source
+              setTimeout(async () => {
+                const cells = worksheetCells[activeWorksheetId];
+                if (cells && cells.length > 0) {
+                  const newCell = cells[cells.length - 1];
+                  // Update the cell with the model association and source
+                  await useStore.getState().updateCellData(activeWorksheetId, newCell.cell.id, {
+                    associated_model: item.name,
+                    selected_source: newSource?.name,
+                  });
+
+                  // Scroll to the new cell
+                  setTimeout(() => {
+                    const cellElement = document.getElementById(`cell-${newCell.cell.id}`);
+                    if (cellElement) {
+                      cellElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      const editorTextarea = cellElement.querySelector('.monaco-editor textarea');
+                      if (editorTextarea) {
+                        editorTextarea.focus();
+                      }
+                    }
+                  }, 100);
+                }
+              }, 200);
+            }
             break;
-          case 'trace':
+          }
+          case 'trace': {
+            let newQuery = '';
             try {
               newQuery = await fetchTraceQuery(item.name);
             } catch (err) {
@@ -172,23 +233,23 @@ export const useExplorerLogic = () => {
               setError(`Failed to fetch trace query: ${err.message}`);
               return;
             }
+
+            setQuery(newQuery);
+            if (selectedSource) {
+              setSelectedSource(selectedSource);
+            }
+
+            // Update active worksheet with new query
+            if (activeWorksheetId) {
+              await updateWorksheetData(activeWorksheetId, {
+                query: newQuery,
+                selected_source: selectedSource?.name,
+              });
+            }
             break;
+          }
           default:
-            newQuery = '';
             break;
-        }
-
-        setQuery(newQuery);
-        if (newSource) {
-          setSelectedSource(newSource);
-        }
-
-        // Update active worksheet with new query
-        if (activeWorksheetId) {
-          await updateWorksheetData(activeWorksheetId, {
-            query: newQuery,
-            selected_source: newSource?.name,
-          });
         }
       } catch (err) {
         console.error('Error in handleItemClick:', err);
@@ -203,6 +264,8 @@ export const useExplorerLogic = () => {
       setError,
       activeWorksheetId,
       updateWorksheetData,
+      worksheetCells,
+      addCell,
     ]
   );
 

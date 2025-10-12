@@ -26,13 +26,16 @@ class WorksheetRepository:
         """Validate database schema and recreate if outdated."""
         session = self.Session()
         try:
-            # Try to query with selected_source column to validate schema
+            # Try to query with selected_source and associated_model columns to validate schema
             session.query(QueryCellModel).first()
         except Exception as e:
             error_msg = str(e)
-            if "no such column: query_cells.selected_source" in error_msg:
+            if (
+                "no such column: query_cells.selected_source" in error_msg
+                or "no such column: query_cells.associated_model" in error_msg
+            ):
                 Logger.instance().info(
-                    "Detected outdated database schema (missing query_cells.selected_source column). "
+                    "Detected outdated database schema (missing query_cells columns). "
                     "Recreating database with new schema..."
                 )
                 session.close()
@@ -74,6 +77,7 @@ class WorksheetRepository:
                 worksheet_id=worksheet.id,
                 query_text="",
                 selected_source=None,
+                associated_model=None,
                 cell_order=0,
                 view_mode="table",
             )
@@ -190,6 +194,7 @@ class WorksheetRepository:
         query_text: str = "",
         cell_order: int = None,
         selected_source: str = None,
+        associated_model: str = None,
     ) -> dict:
         """Create a new query cell for a worksheet."""
         session = self.Session()
@@ -213,6 +218,7 @@ class WorksheetRepository:
                 worksheet_id=worksheet_id,
                 query_text=query_text,
                 selected_source=selected_source,
+                associated_model=associated_model,
                 cell_order=cell_order,
                 view_mode="table",
             )
@@ -291,7 +297,13 @@ class WorksheetRepository:
             if not cell:
                 return False
 
-            valid_fields = {"query_text", "view_mode", "cell_order", "selected_source"}
+            valid_fields = {
+                "query_text",
+                "view_mode",
+                "cell_order",
+                "selected_source",
+                "associated_model",
+            }
             for key, value in updates.items():
                 if key in valid_fields:
                     setattr(cell, key, value)

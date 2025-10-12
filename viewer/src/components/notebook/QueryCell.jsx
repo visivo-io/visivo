@@ -11,6 +11,7 @@ import useStore from '../../stores/store';
 import CellResultView from './CellResultView';
 import CreateObjectModal from '../editors/CreateObjectModal';
 import SourceDropdown from '../explorer/SourceDropdown';
+import ModelDropdown from '../explorer/ModelDropdown';
 
 const QueryCell = ({
   worksheetId,
@@ -23,6 +24,7 @@ const QueryCell = ({
   onAddBelow,
   onQueryChange,
   onSourceChange,
+  onModelChange,
   isFirst,
   isLast,
 }) => {
@@ -30,6 +32,7 @@ const QueryCell = ({
   const [localQuery, setLocalQuery] = useState(cell.query_text || '');
   const [anchorEl, setAnchorEl] = useState(null);
   const [showSaveAsModelModal, setShowSaveAsModelModal] = useState(false);
+  const [isModelModified, setIsModelModified] = useState(false);
   const { project, namedChildren } = useStore();
 
   // Get the selected source config from namedChildren based on cell's selected_source name
@@ -43,11 +46,46 @@ const QueryCell = ({
     setLocalQuery(cell.query_text || '');
   }, [cell.query_text]);
 
+  // Check if model exists in namedChildren
+  useEffect(() => {
+    if (cell.associated_model && namedChildren) {
+      const modelExists = namedChildren[cell.associated_model];
+      if (!modelExists) {
+        console.warn(`Associated model '${cell.associated_model}' not found in namedChildren`);
+      }
+    }
+  }, [cell.associated_model, namedChildren]);
+
   const handleEditorChange = value => {
     if (value !== undefined) {
       setLocalQuery(value);
       // Debounced update to store handled by parent
       onQueryChange(value);
+
+      // If this cell is associated with a model, mark it as modified
+      if (cell.associated_model && namedChildren[cell.associated_model]) {
+        const model = namedChildren[cell.associated_model];
+        // Check if the query has changed from the model's SQL
+        if (model.config.sql !== value) {
+          setIsModelModified(true);
+          // Update the model's SQL in namedChildren
+          useStore.setState({
+            namedChildren: {
+              ...namedChildren,
+              [cell.associated_model]: {
+                ...model,
+                config: {
+                  ...model.config,
+                  sql: value,
+                },
+                status: model.status === 'New' ? 'New' : 'Modified',
+              },
+            },
+          });
+        } else {
+          setIsModelModified(false);
+        }
+      }
     }
   };
 
@@ -87,13 +125,85 @@ const QueryCell = ({
     }
   };
 
+  const handleModelChange = modelName => {
+    // Update the cell's associated model
+    if (onModelChange) {
+      if (modelName) {
+        // Check if model exists, or create it if new
+        const existingModel = namedChildren[modelName];
+        if (existingModel) {
+          // Load model's SQL and source into cell
+          const modelSql = existingModel.config.sql || '';
+          const modelSource = existingModel.config.source;
+
+          // Update cell with model data
+          setLocalQuery(modelSql);
+          onQueryChange(modelSql);
+
+          // Update source if model has one
+          if (modelSource && modelSource.name) {
+            const sourceData = Object.values(namedChildren || {}).find(
+              item => item.type_key === 'sources' && item.config.name === modelSource.name
+            );
+            if (sourceData && onSourceChange) {
+              onSourceChange(sourceData.config.name);
+            }
+          }
+
+          setIsModelModified(false);
+        } else {
+          // Create new model in namedChildren
+          const newModel = {
+            type: 'SqlModel',
+            type_key: 'models',
+            config: {
+              name: modelName,
+              sql: localQuery || '',
+              source: selectedSource ? { name: selectedSource.name } : null,
+            },
+            status: 'New',
+            file_path: useStore.getState().projectFilePath,
+            new_file_path: useStore.getState().projectFilePath,
+            path: null,
+          };
+
+          useStore.setState({
+            namedChildren: {
+              ...namedChildren,
+              [modelName]: newModel,
+            },
+          });
+
+          setIsModelModified(false);
+        }
+
+        onModelChange(modelName);
+      } else {
+        // Clear model association
+        onModelChange(null);
+        setIsModelModified(false);
+      }
+    }
+  };
+
   return (
-    <div className="mb-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+    <div
+      id={`cell-${cell.id}`}
+      className="mb-4 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow"
+    >
       {/* Cell Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50">
         <div className="flex items-center gap-3">
           <DragIndicatorIcon className="text-gray-400 cursor-move" fontSize="small" />
-          <span className="text-xs text-gray-500 font-medium">Cell {cell.cell_order + 1}</span>
+          {/* Model Dropdown */}
+          <div className="ml-2">
+            <ModelDropdown
+              associatedModel={cell.associated_model}
+              onModelChange={handleModelChange}
+              isLoading={isExecuting}
+              isModified={isModelModified}
+            />
+          </div>
           {isExecuting && (
             <span className="text-xs text-blue-600 flex items-center gap-1">
               <CircularProgress size={12} thickness={6} />
@@ -104,16 +214,16 @@ const QueryCell = ({
           {result && !error && !isExecuting && (
             <span className="text-xs text-green-600">Complete</span>
           )}
+        </div>
+        <div className="flex items-center gap-1">
           {/* Source Dropdown */}
-          <div className="ml-2">
+          <div className="mr-2">
             <SourceDropdown
               selectedSource={selectedSource}
               onSourceChange={handleSourceChange}
               isLoading={isExecuting}
             />
           </div>
-        </div>
-        <div className="flex items-center gap-1">
           <button
             type="button"
             className={`text-white ${
