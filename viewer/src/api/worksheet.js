@@ -155,5 +155,29 @@ export const executeCell = async (worksheetId, cellId) => {
   if (response.status === 200) {
     return await response.json();
   }
-  throw new Error('Failed to execute cell');
+
+  // Parse error response to get detailed SQL error message
+  let errorMessage = 'Failed to execute cell';
+  try {
+    const errorData = await response.json();
+    if (errorData.error) {
+      errorMessage = errorData.error;
+    } else if (errorData.detail) {
+      errorMessage = errorData.detail;
+    } else if (errorData.message) {
+      errorMessage = errorData.message;
+    }
+  } catch (parseError) {
+    // If parsing fails, try to get text response
+    try {
+      const errorText = await response.text();
+      if (errorText) {
+        errorMessage = errorText;
+      }
+    } catch (textError) {
+      // Use default error message
+    }
+  }
+
+  throw new Error(errorMessage);
 };

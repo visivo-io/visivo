@@ -117,7 +117,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <h3 className="text-sm font-semibold text-red-800 mb-2">Error Loading Cells</h3>
-        <p className="text-sm text-red-700">{error}</p>
+        <p className="text-sm text-red-700 font-mono whitespace-pre-wrap break-words">{error}</p>
         <button
           type="button"
           className="mt-3 text-sm text-red-800 hover:text-red-900 underline"

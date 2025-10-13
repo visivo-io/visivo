@@ -332,8 +332,10 @@ const QueryCell = ({
       {/* Error Display */}
       {error && (
         <div className="px-4 py-3 bg-red-50 border-t border-red-100">
-          <div className="text-sm text-red-800 font-medium">Error</div>
-          <div className="text-sm text-red-700 mt-1">{error}</div>
+          <div className="text-sm text-red-800 font-medium mb-2">Error</div>
+          <div className="text-sm text-red-700 font-mono whitespace-pre-wrap break-words">
+            {error}
+          </div>
         </div>
       )}
 
