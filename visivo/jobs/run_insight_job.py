@@ -13,6 +13,24 @@ from time import time
 from visivo.jobs.utils import get_source_for_model
 import json
 import os
+from decimal import Decimal
+from datetime import date, datetime
+
+
+def _convert_to_json_serializable(data):
+    """Convert data to JSON serializable format"""
+    if isinstance(data, list):
+        return [{k: _convert_value(v) for k, v in row.items()} for row in data]
+    return data
+
+
+def _convert_value(value):
+    """Convert individual values to JSON serializable types"""
+    if isinstance(value, Decimal):
+        return float(value)
+    elif isinstance(value, (date, datetime)):
+        return value.isoformat()
+    return value
 
 
 def action(insight: Insight, dag: ProjectDag, output_dir):
@@ -52,11 +70,19 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
         start_time = time()
 
         files_directory = f"{output_dir}/files"
+<<<<<<< HEAD
         if insight_query_info.pre_query:
             import polars as pl
 
             data = source.read_sql(insight_query_info.pre_query)
             # Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
+=======
+        if tokenized_insight.pre_query:
+            data = source.read_sql(tokenized_insight.pre_query)
+            import polars as pl
+
+            df = pl.DataFrame(_convert_to_json_serializable(data))
+>>>>>>> 00a137f3 (WIP)
             os.makedirs(files_directory, exist_ok=True)
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
             df = pl.DataFrame(data)
@@ -74,6 +100,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             ]
 
         # Store insight metadata with file references and post_query
+<<<<<<< HEAD
         insight_data = {
             "name": insight.name,
             "files": files,
@@ -83,6 +110,9 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             "split_key": insight_query_info.split_key,
             "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }
+=======
+        insight_data = {"files": files, "query": tokenized_insight.post_query, "props_mapping": {}}
+>>>>>>> 00a137f3 (WIP)
 
         insight_directory = f"{output_dir}/insights"
         insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")
