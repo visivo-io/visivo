@@ -1,6 +1,7 @@
 from typing import Optional, List, Set
 from pydantic import Field
 from visivo.models.interaction import InsightInteraction
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -86,7 +87,7 @@ class Insight(NamedModel, ParentModel):
     def child_items(self):
         """Return child items for DAG construction.
 
-        Extracts model references from props using ${ref(model).field} syntax.
+        Extracts model references from props and interactions using ${ref(model).field} syntax.
         """
         from visivo.query.patterns import extract_ref_names
 
@@ -101,7 +102,24 @@ class Insight(NamedModel, ParentModel):
             for model_name in model_names:
                 children.append(f"ref({model_name})")
 
+        # Extract all ${ref(model_name).field} references from interactions
+        if self.interactions:
+            for interaction in self.interactions:
+                for field_value in interaction.field_values.values():
+                    field_str = str(field_value)
+                    model_names = extract_ref_names(field_str)
+                    for model_name in model_names:
+                        ref_str = f"ref({model_name})"
+                        if ref_str not in children:
+                            children.append(ref_str)
+
         return children
+
+    def get_all_dependent_models(self, dag) -> Set[SqlModel]:
+        pass
+    
+    def is_dynamic(self, dag) -> bool:
+        pass
 
     def get_interaction_references(self) -> Set[str]:
         """Get all model/dimension/metric names referenced in interactions.
@@ -120,12 +138,10 @@ class Insight(NamedModel, ParentModel):
 
         # Extract references from each interaction's filter, split, and sort
         for interaction in self.interactions:
-            for field in ["filter", "split", "sort"]:
-                field_value = getattr(interaction, field, None)
-                if field_value:
-                    # Convert to string to extract references
-                    field_str = str(field_value)
-                    model_names = extract_ref_names(field_str)
-                    referenced_names.update(model_names)
+            for field_value in interaction.field_values.values():
+                # Convert to string to extract references
+                field_str = str(field_value)
+                model_names = extract_ref_names(field_str)
+                referenced_names.update(model_names)
 
         return referenced_names

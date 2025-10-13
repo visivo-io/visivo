@@ -83,27 +83,6 @@ class SqlglotQueryBuilder:
         # Parse the generated SQL back to apply qualify
         query = sqlglot.parse_one(sql, read=self.dialect)
 
-        # Build schema from dimensions
-        schema = self._build_schema_from_dimensions()
-
-        # Apply qualify to properly quote identifiers and resolve columns
-        # Only apply if we have schema and it's not causing issues
-        if schema:
-            try:
-                query = sqlglot.optimizer.qualify.qualify(
-                    query,
-                    schema=schema,
-                    quote_identifiers=True,  # Ensure all identifiers are quoted
-                    identify=True,  # Quote all identifiers, not just necessary ones
-                    dialect=self.dialect,
-                )
-            except Exception as e:
-                # If qualify fails, just use the query as-is
-                # This can happen with already-quoted identifiers
-                Logger.instance().debug(f"SQLGlot qualify failed, using unqualified query: {e}")
-                pass
-
-        # Generate final SQL
         return query.sql(dialect=self.dialect, pretty=True)
 
     def _is_multi_model_query(self) -> bool:
@@ -401,39 +380,14 @@ class SqlglotQueryBuilder:
         return "base_model"
 
     def _sanitize_model_name(self, model_name: str) -> str:
-        """
-        Sanitize model name to be SQL-compliant.
-
-        Args:
-            model_name: Original model name that may contain spaces or special characters
-
-        Returns:
-            SQL-safe identifier
-        """
         return self.model_sanitizer.sanitize(model_name)
 
     def _get_model_alias(self, model_name: str) -> str:
-        """
-        Get the SQL alias for a model (with caching).
-
-        Args:
-            model_name: Original model name
-
-        Returns:
-            SQL-safe alias for CTEs and table references
-        """
         return self.model_sanitizer.sanitize(model_name)
 
     def _build_model_alias_map(self) -> Dict[str, str]:
-        """
-        Build a mapping of model names to their SQL aliases.
-
-        Returns:
-            Dictionary mapping model names to sanitized aliases
-        """
         alias_map = {}
 
-        # Get all models from the project
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.models.model import Model
 
@@ -459,102 +413,7 @@ class SqlglotQueryBuilder:
         """
         return alias.replace(".", "|")
 
-    def _build_schema_from_dimensions(self) -> Optional[Dict[str, Dict[str, str]]]:
-        """
-        Build a schema dictionary from model dimensions for SQLGlot qualify.
-
-        Returns:
-            Schema dict like {"table_name": {"column_name": "DATA_TYPE"}}
-        """
-        if not self.project:
-            return None
-
-        schema = {}
-
-        # Get all models from the project
-        from visivo.models.dag import all_descendants_of_type
-        from visivo.models.models.model import Model
-
-        dag = self.project.dag()
-        all_models = all_descendants_of_type(type=Model, dag=dag)
-
-        for model in all_models:
-            model_schema = {}
-
-            # Add explicit dimensions
-            if hasattr(model, "dimensions") and model.dimensions:
-                for dimension in model.dimensions:
-                    # Map dimension data types to SQL types
-                    sql_type = self._map_dimension_type_to_sql(dimension.data_type)
-                    # Strip quotes from dimension name for schema
-                    column_name = dimension.name.strip('"').strip("'")
-                    model_schema[column_name] = sql_type
-
-            # Add implicit dimensions if they exist
-            if hasattr(model, "_implicit_dimensions") and model._implicit_dimensions:
-                for dimension in model._implicit_dimensions:
-                    sql_type = self._map_dimension_type_to_sql(dimension.data_type)
-                    # Strip quotes from dimension name for schema
-                    column_name = dimension.name.strip('"').strip("'")
-                    model_schema[column_name] = sql_type
-
-            # Add to schema with both original and sanitized model names
-            if model_schema:
-                # Add with original name
-                schema[model.name] = model_schema
-                # Also add with sanitized name (for CTEs)
-                sanitized_name = self._get_model_alias(model.name)
-                schema[f"{sanitized_name}_cte"] = model_schema
-                # And base_model for single model queries
-                if hasattr(
-                    self, "tokenized_insight"
-                ) and self.tokenized_insight.pre_query == getattr(model, "sql", None):
-                    schema["base_model"] = model_schema
-
-        return schema if schema else None
-
-    def _map_dimension_type_to_sql(self, dimension_type: Optional[str]) -> str:
-        """
-        Map dimension data types to SQL types for schema.
-
-        Args:
-            dimension_type: Dimension data type (e.g., 'string', 'integer', 'date')
-
-        Returns:
-            SQL type string
-        """
-        if not dimension_type:
-            return "VARCHAR"
-
-        type_mapping = {
-            "string": "VARCHAR",
-            "text": "VARCHAR",
-            "integer": "INTEGER",
-            "int": "INTEGER",
-            "bigint": "BIGINT",
-            "float": "FLOAT",
-            "double": "DOUBLE",
-            "decimal": "DECIMAL",
-            "numeric": "NUMERIC",
-            "date": "DATE",
-            "datetime": "TIMESTAMP",
-            "timestamp": "TIMESTAMP",
-            "boolean": "BOOLEAN",
-            "bool": "BOOLEAN",
-        }
-
-        return type_mapping.get(dimension_type.lower(), "VARCHAR")
-
     def _build_model_ctes(self, model_names: List[str]) -> List[exp.CTE]:
-        """
-        Build CTEs for multiple models.
-
-        Args:
-            model_names: List of model names to create CTEs for
-
-        Returns:
-            List of CTE expressions
-        """
         if not self.project:
             # If no project, we can only build CTE for base model
             base_cte = self._build_base_cte()

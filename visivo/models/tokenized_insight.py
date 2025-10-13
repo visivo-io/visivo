@@ -15,21 +15,15 @@ class TokenizedInsight(BaseModel):
     source_type: str
     description: Optional[str] = None
 
-    # Server-side query (executed on backend database)
-    pre_query: str
-
-    # Client-side query template (executed in DuckDB WASM)
+    pre_queries: List[str]
     post_query: str
 
-    # Data structure mapping
     select_items: Dict[
         str, str
     ]  # prop_path -> sql_expression (e.g. "props.x" -> "date_trunc('month', created_at)")
 
     selects: Dict[str, str]
-
     columns: Dict[str, str]
-
     props: Optional[Dict[Any, Any]] = None
 
     # Interaction metadata for client-side execution

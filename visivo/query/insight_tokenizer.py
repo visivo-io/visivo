@@ -3,6 +3,7 @@ from typing import Dict, List, Set, Any, Optional
 from sqlglot import exp
 
 from visivo.models.base.project_dag import ProjectDag
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.props.layout import Layout
@@ -28,11 +29,12 @@ class InsightTokenizer:
 
     def __init__(self, insight: Insight, model: Model, source: Source, dag: ProjectDag):
         self.insight = insight
-        self.source = source
-        self.model = model
         self.dag = dag
         self.project = dag.get_project()
+
+        self.source = self._get_sqlglot_dialect()
         self.source_type = source.type
+
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
@@ -100,9 +102,8 @@ class InsightTokenizer:
 
                             # Track models used in this metric (excluding current model)
                             metric_models = resolver.get_models_from_metric(metric_name)
-                            # Only add models that are not the current model
-                            other_models = metric_models - {self.model.name}
-                            self.referenced_models.update(other_models)
+
+                            self.referenced_models.update(metric_models)
 
                             return f"({resolved_expr})"
                         except Exception:
@@ -130,19 +131,16 @@ class InsightTokenizer:
                     if resolver and dimension_name in resolver.metrics_by_name:
                         return match.group(0)
 
-                    # Try to resolve as a dimension
                     try:
                         resolved_expr = dimension_resolver.resolve_dimension_expression(
-                            dimension_name, current_model=self.model.name
+                            dimension_name
                         )
 
                         # Track models used in this dimension
                         dimension_models = dimension_resolver.get_models_from_dimension(
                             dimension_name
                         )
-                        # Only add models that are not the current model
-                        other_models = dimension_models - {self.model.name}
-                        self.referenced_models.update(other_models)
+                        self.referenced_models.update(dimension_models)
 
                         return f"({resolved_expr})"
                     except Exception:
@@ -172,9 +170,7 @@ class InsightTokenizer:
             if not field_or_metric_name:
                 return match.group(0)
 
-            # Track referenced model
-            if model_name != self.model.name:
-                self.referenced_models.add(model_name)
+            self.referenced_models.add(model_name)
 
             # Try to resolve with metric resolver first if available
             if self.project is not None:
@@ -212,16 +208,17 @@ class InsightTokenizer:
         return re.sub(CONTEXT_STRING_REF_PATTERN, replace_ref, query_statement)
 
     def tokenize(self) -> TokenizedInsight:
-        pre_query = self._generate_pre_query()
+        main_query = self._generate_main_query()
         post_query = self._generate_post_query()
 
         if self.is_dynamic_interactions:
-            pre_query, post_query = post_query, pre_query
-            post_query = self.parse_duckdb(post_query)
+            pre_queries = []
+            post_query = self.parse_duckdb(main_query)
+        else:
+            pre_queries = [main_query]
+            post_query = "select * from "
 
-        if isinstance(self.model, LocalMergeModel):
-            source_type = "duckdb"
-        elif self.source.type:
+        if self.source.type:
             source_type = self.source.type
         else:
             source_type = None
@@ -236,7 +233,7 @@ class InsightTokenizer:
             source=self.source.name,
             source_type=source_type,
             description=self.insight.description,
-            pre_query=pre_query,
+            pre_query=pre_queries,
             post_query=post_query,
             select_items=self.select_items,
             selects=self.selects,
@@ -448,7 +445,7 @@ class InsightTokenizer:
                     return False
         return True
 
-    def _generate_pre_query(self) -> str:
+    def _generate_main_query(self) -> str:
         for interaction in self.insight.interactions or []:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
@@ -686,3 +683,8 @@ class InsightTokenizer:
     def _is_dynamic(self, expr: str) -> bool:
         DYNAMIC_PATTERN = re.compile(r"\$\{\s*ref\([^)]+\)\s*\}", re.IGNORECASE)
         return bool(DYNAMIC_PATTERN.search(expr))
+
+    def _get_sqlglot_dialect(self) -> str:
+        source = all_descendants_of_type(type=Source, dag=self.dag, from_node=self.insight)[0]
+
+        return get_sqlglot_dialect(source.get_dialect())
