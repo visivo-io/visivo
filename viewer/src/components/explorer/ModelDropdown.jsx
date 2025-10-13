@@ -71,6 +71,21 @@ const Control = props => {
 // Hide the default dropdown indicator
 const DropdownIndicator = () => null;
 
+// Custom Placeholder component that looks like a pill with input
+const Placeholder = props => {
+  return (
+    <components.Placeholder {...props}>
+      <div className="flex items-center justify-between p-2 shadow-md rounded-2xl border bg-gray-100 border-gray-200 min-w-full">
+        <div className="flex items-center flex-1 min-w-0">
+          <HiPencil className="w-5 h-5 mr-2 text-gray-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-500 italic">type to create model...</span>
+        </div>
+        <HiChevronDown className="w-4 h-4 ml-2 text-gray-600 flex-shrink-0" />
+      </div>
+    </components.Placeholder>
+  );
+};
+
 const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified = false }) => {
   const namedChildren = useStore(state => state.namedChildren);
 
@@ -115,9 +130,13 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
       backgroundColor: 'transparent',
       border: 'none',
       boxShadow: 'none',
-      minHeight: 'auto',
+      minHeight: '48px',
+      height: '48px',
       cursor: 'pointer',
       padding: 0,
+      overflow: 'visible',
+      display: 'flex',
+      alignItems: 'center',
       '&:hover': {
         border: 'none',
       },
@@ -125,6 +144,9 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
     valueContainer: base => ({
       ...base,
       padding: 0,
+      overflow: 'visible',
+      display: 'flex',
+      alignItems: 'center',
     }),
     indicatorSeparator: () => ({
       display: 'none',
@@ -167,13 +189,16 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
     input: base => ({
       ...base,
       margin: 0,
-      padding: 0,
+      padding: '0.5rem',
+      fontSize: '0.875rem',
+      color: '#4b5563',
     }),
   };
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex items-center justify-center min-w-[180px] md:min-w-[220px]">
       <CreatableSelect
+        className="w-full"
         value={selectedOption}
         onChange={handleChange}
         onCreateOption={handleCreate}
@@ -187,19 +212,11 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
           Control,
           DropdownIndicator,
           IndicatorSeparator: () => null,
+          Placeholder,
         }}
         styles={customStyles}
         menuPlacement="auto"
         menuPosition="fixed"
-        placeholder={
-          <div className="flex items-center justify-between p-2 shadow-md rounded-2xl border bg-gray-100 border-gray-200">
-            <div className="flex items-center">
-              <HiPencil className="w-5 h-5 mr-2 text-gray-600" />
-              <span className="text-sm font-medium text-gray-600">No model</span>
-            </div>
-            <HiChevronDown className="w-4 h-4 ml-2 text-gray-600" />
-          </div>
-        }
         formatCreateLabel={inputValue => `Create model: ${inputValue}`}
       />
     </div>

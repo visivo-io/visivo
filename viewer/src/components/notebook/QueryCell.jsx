@@ -211,9 +211,6 @@ const QueryCell = ({
             </span>
           )}
           {error && <span className="text-xs text-red-600">Error</span>}
-          {result && !error && !isExecuting && (
-            <span className="text-xs text-green-600">Complete</span>
-          )}
         </div>
         <div className="flex items-center gap-1">
           {/* Source Dropdown */}

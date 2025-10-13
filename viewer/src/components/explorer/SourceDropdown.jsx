@@ -96,9 +96,13 @@ const SourceDropdown = ({ selectedSource, onSourceChange, isLoading }) => {
       backgroundColor: 'transparent',
       border: 'none',
       boxShadow: 'none',
-      minHeight: 'auto',
+      minHeight: '48px',
+      height: '48px',
       cursor: 'pointer',
       padding: 0,
+      overflow: 'visible',
+      display: 'flex',
+      alignItems: 'center',
       '&:hover': {
         border: 'none',
       },
@@ -106,6 +110,9 @@ const SourceDropdown = ({ selectedSource, onSourceChange, isLoading }) => {
     valueContainer: base => ({
       ...base,
       padding: 0,
+      overflow: 'visible',
+      display: 'flex',
+      alignItems: 'center',
     }),
     indicatorSeparator: () => ({
       display: 'none',
