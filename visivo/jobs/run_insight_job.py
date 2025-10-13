@@ -1,3 +1,4 @@
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.models.insight import Insight
@@ -6,21 +7,19 @@ from visivo.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
-    start_message,
 )
 from time import time
 from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.jobs.utils import get_source_for_model
+import json
 import os
 
 
-def action(insight, dag, output_dir):
+def action(insight: Insight, dag: ProjectDag, output_dir):
     """Execute insight job - tokenize insight and generate insight.json file"""
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    insight_directory = f"{output_dir}/insights"
-    # Tokenize the insight to get pre-query and metadata
     tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
     try:
         start_time = time()
@@ -34,12 +33,20 @@ def action(insight, dag, output_dir):
             os.makedirs(files_directory, exist_ok=True)
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
             df.write_parquet(parquet_path)
-        
-        insight_data = {
+            files = [parquet_path]
+        else:
+            models = insight.get_all_dependent_models(dag=dag)
+            files = [f"{files_directory}/{model.name_hash()}.parquet" for model in models]
+            files = [f for f in files if os.path.exists(f)]
 
-        }
-        
+        # TODO Add in the mapping
+        insight_data = {"files": files, "mapping": {}}
 
+        insight_directory = f"{output_dir}/insights"
+        insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")
+        os.makedirs(insight_directory, exist_ok=True)
+        with open(insight_path, "w") as f:
+            json.dump(insight_data, f, indent=2)
 
         success_message = format_message_success(
             details=f"Updated data for insight \033[4m{insight.name}\033[0m",
@@ -54,7 +61,7 @@ def action(insight, dag, output_dir):
         else:
             message = repr(e)
         failure_message = format_message_failure(
-            details=f"Failed query for insight \033[4m{insight.name}\033[0m",
+            details=f"Failed job for insight \033[4m{insight.name}\033[0m",
             start_time=start_time,
             full_path=None,
             error_msg=message,

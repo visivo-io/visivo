@@ -7,12 +7,13 @@ from visivo.jobs.job import (
     format_message_success,
 )
 from visivo.jobs.utils import get_source_for_model
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
 from visivo.models.models.sql_model import SqlModel
 
 
-def action(sql_model, dag, output_dir):
+def action(sql_model: SqlModel, dag: ProjectDag, output_dir):
     """Execute the SQL model query and save result to parquet file.
 
     Args:
