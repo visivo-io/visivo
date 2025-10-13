@@ -4,7 +4,7 @@ from pydantic import Field
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.query_string import QueryString
 from visivo.models.fields import QueryOrStringField
-from visivo.models.inputs.base import Input
+from visivo.models.inputs.input import Input
 
 
 class DropdownInput(Input):
