@@ -5,7 +5,8 @@ import re
 from flask import jsonify, send_file, send_from_directory
 from visivo.logger.logger import Logger
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
-
+import glob
+import hashlib
 
 def register_data_views(app, flask_app, output_dir):
     @app.route("/api/explorer/")
@@ -70,3 +71,22 @@ def register_data_views(app, flask_app, output_dir):
         html = html.replace("</head>", f"{scripts}</head>")
 
         return html
+
+    @app.route("/api/files/<hash>/")
+    def serve_file_data_by_hash(hash):
+        """API endpoint to serve insight data by hash"""
+        try:
+            # Find insight name by hash
+            files = glob.glob(os.path.join(output_dir, "files", "*"))
+
+            for file in files:
+                if hash in file:
+                    data_file = os.path.join(output_dir, "files", f"{hash}.parquet")
+                    if os.path.exists(data_file):
+                        return send_file(data_file)
+                    break
+
+            return jsonify({"message": f"Data file not found for hash: {hash}"}), 404
+        except Exception as e:
+            Logger.instance().error(f"Error serving insight data by hash: {str(e)}")
+            return jsonify({"message": str(e)}), 500

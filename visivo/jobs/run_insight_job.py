@@ -1,12 +1,6 @@
-from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.project import Project
-from visivo.models.sources.source import Source
 from visivo.models.insight import Insight
-from visivo.query.insight_aggregator import InsightAggregator
 from visivo.jobs.job import (
     Job,
     JobResult,
@@ -17,6 +11,7 @@ from visivo.jobs.job import (
 from time import time
 from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.jobs.utils import get_source_for_model
+import os
 
 
 def action(insight, dag, output_dir):
@@ -24,18 +19,27 @@ def action(insight, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    insight_directory = f"{output_dir}/insights/{insight.name}"
+    insight_directory = f"{output_dir}/insights"
     # Tokenize the insight to get pre-query and metadata
     tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
     try:
         start_time = time()
 
-        # Execute the pre-query to get raw data
-        flat_data = source.read_sql(tokenized_insight.pre_query)
-        # Aggregate data into flat structure and generate insight.json
-        InsightAggregator.aggregate_insight_data(
-            data=flat_data, insight_dir=insight_directory, tokenized_insight=tokenized_insight
-        )
+        if tokenized_insight.pre_query:
+            files_directory = f"{output_dir}/files"
+            data = source.read_sql(tokenized_insight.pre_query)
+            import polars as pl
+
+            df = pl.DataFrame(data)
+            os.makedirs(files_directory, exist_ok=True)
+            parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
+            df.write_parquet(parquet_path)
+        
+        insight_data = {
+
+        }
+        
+
 
         success_message = format_message_success(
             details=f"Updated data for insight \033[4m{insight.name}\033[0m",

@@ -24,20 +24,18 @@ def action(sql_model, dag, output_dir):
         JobResult indicating success or failure
     """
     source = get_source_for_model(sql_model, dag, output_dir)
-    model_directory = f"{output_dir}/models/{sql_model.name}"
+    files_directory = f"{output_dir}/files"
 
     try:
         start_time = time()
 
-        # Execute the SQL query
         data = source.read_sql(sql_model.sql)
 
-        # Save to parquet using polars
         import polars as pl
 
         df = pl.DataFrame(data)
-        os.makedirs(model_directory, exist_ok=True)
-        parquet_path = f"{model_directory}/data.parquet"
+        os.makedirs(files_directory, exist_ok=True)
+        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet"
         df.write_parquet(parquet_path)
 
         success_message = format_message_success(
