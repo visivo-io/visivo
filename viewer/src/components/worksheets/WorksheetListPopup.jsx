@@ -5,7 +5,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 const PopupOverlay = tw.div`
-  fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center
+  fixed inset-0 backdrop z-50 flex items-center justify-center
 `;
 
 const PopupContent = tw.div`
