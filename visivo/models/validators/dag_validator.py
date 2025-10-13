@@ -4,7 +4,7 @@ from visivo.models.validators.base_validator import BaseProjectValidator
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.table import Table
 from visivo.models.selector import Selector, SelectorType
-from visivo.models.inputs.base import InputBasemodel
+from visivo.models.inputs.base import Input
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class DagValidator(BaseProjectValidator):
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
                 )
 
-            inputs = all_descendants_of_type(type=InputBasemodel, dag=dag, from_node=table)
+            inputs = all_descendants_of_type(type=Input, dag=dag, from_node=table)
             if len(inputs) > 0 and inputs[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has an input with a 'multiple' type.  This is not permitted."

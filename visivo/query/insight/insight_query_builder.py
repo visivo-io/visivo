@@ -1,6 +1,6 @@
 from typing import Set, List, Dict
 from visivo.models.base.project_dag import ProjectDag
-from visivo.models.inputs.base import InputBasemodel
+from visivo.models.inputs.base import Input
 from visivo.models.insight import Insight
 from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
@@ -90,7 +90,7 @@ class InsightQueryBuilder:
 
         # Use DAG to check if any inputs are descendants of this insight
         input_descendants = all_descendants_of_type(
-            type=InputBasemodel, dag=self.dag, from_node=self.insight
+            type=Input, dag=self.dag, from_node=self.insight
         )
 
         # If no inputs are descendants, no interactions can reference them
@@ -112,7 +112,7 @@ class InsightQueryBuilder:
             # Check if any references are to input descendants
             for name in interaction_refs:
                 obj = self.dag.get_descendant_by_name(name, from_node=self.insight)
-                if isinstance(obj, InputBasemodel):
+                if isinstance(obj, Input):
                     has_input_ref = True
                     break
 
@@ -120,7 +120,7 @@ class InsightQueryBuilder:
             if has_input_ref:
                 for name in interaction_refs:
                     obj = self.dag.get_descendant_by_name(name, from_node=self.insight)
-                    if not isinstance(obj, InputBasemodel):
+                    if not isinstance(obj, Input):
                         referenced_objects.add(obj)
 
         return referenced_objects
@@ -218,7 +218,7 @@ class InsightQueryBuilder:
                 dimension_obj = obj2
                 input_obj = obj1
 
-            if dimension_obj and isinstance(input_obj, InputBasemodel):
+            if dimension_obj and isinstance(input_obj, Input):
                 # Build WHERE clause: dimension_hash = $dimension_hash
                 dimension_col = self._get_hashed_name(dimension_obj.name)
                 left_col = dimension_col

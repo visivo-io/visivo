@@ -2,14 +2,14 @@ from unittest.mock import Mock
 import pytest
 from requests import patch
 from visivo.logger.logger import Logger
-from visivo.models.inputs.base import InputBasemodel
+from visivo.models.inputs.base import Input
 from visivo.models.inputs.dropdown import DropdownInput
 from visivo.models.base.query_string import QueryString
 
 
 def test_serialize_without_options():
     """Test serialization when no options attribute exists"""
-    input_obj = InputBasemodel()
+    input_obj = Input()
 
     original_data = {"type": "dropdown", "label": "Test Input"}
     mock_serializer = Mock(return_value=original_data.copy())

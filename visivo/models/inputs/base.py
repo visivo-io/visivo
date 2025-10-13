@@ -17,7 +17,7 @@ class InputTypes(str, Enum):
     DROPDOWN = "dropdown"
 
 
-class InputBasemodel(NamedModel, ParentModel):
+class Input(NamedModel, ParentModel):
     type: InputTypes = Field(
         default=InputTypes.DROPDOWN,
         description="Type of input component (dropdown)",

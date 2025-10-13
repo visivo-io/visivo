@@ -5,7 +5,7 @@ from pydantic import Field
 from visivo.models.inputs.dropdown import DropdownInput
 
 
-Input = Annotated[
+InputField = Annotated[
     Union[DropdownInput,],
     Field(discriminator="type"),
 ]

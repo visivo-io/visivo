@@ -1,5 +1,5 @@
 from visivo.models.base.named_model import NamedModel
-from visivo.models.input import Input
+from visivo.models.inputs.input import InputField
 from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
@@ -142,7 +142,7 @@ class Item(NamedModel, ParentModel):
     selector: Optional[generate_ref_field(Selector)] = Field(
         None, description="A Selector object defined inline or a ref() to a selector"
     )
-    input: Optional[generate_ref_field(Input)] = Field(
+    input: Optional[generate_ref_field(InputField)] = Field(
         None, description="An Input object defined inline or a ref() to a input"
     )
 

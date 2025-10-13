@@ -142,9 +142,9 @@ class Insight(NamedModel, ParentModel):
             True if this insight has Input descendants, False otherwise
         """
         from visivo.models.dag import all_descendants_of_type
-        from visivo.models.inputs.base import InputBasemodel
+        from visivo.models.inputs.base import Input
 
-        input_descendants = all_descendants_of_type(type=InputBasemodel, dag=dag, from_node=self)
+        input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
         return len(input_descendants) > 0
 
     def get_interaction_references(self) -> Set[str]:
