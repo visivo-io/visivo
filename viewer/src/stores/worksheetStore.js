@@ -175,13 +175,22 @@ const createWorksheetSlice = (set, get) => ({
         },
       }));
 
-      // Trigger auto-save if enabled and query_text is being updated
-      if (get().autoSaveEnabled && updates.query_text !== undefined) {
+      // Determine if this is a batched update (multiple fields) or query-only update
+      const updateKeys = Object.keys(updates);
+      const isBatchedUpdate = updateKeys.length > 1;
+      const isQueryOnlyUpdate = updateKeys.length === 1 && updates.query_text !== undefined;
+
+      if (get().autoSaveEnabled && isQueryOnlyUpdate) {
+        // Only debounce for query-only updates (auto-save while typing)
         console.log('[worksheetStore] Triggering auto-save for query_text');
         get().triggerAutoSave(worksheetId, cellId, updates);
       } else {
-        // For non-query updates, save immediately
-        console.log('[worksheetStore] Saving immediately (non-query update)');
+        // For batched updates or non-query updates, save immediately to ensure atomicity
+        console.log('[worksheetStore] Saving immediately:', {
+          isBatchedUpdate,
+          isQueryOnlyUpdate,
+          updateKeys,
+        });
         const result = await updateCell(worksheetId, cellId, updates);
         console.log('[worksheetStore] Update cell API result:', result);
       }

@@ -119,6 +119,8 @@ def register_worksheet_views(app, flask_app, output_dir):
                 worksheet_id=worksheet_id,
                 query_text=data.get("query_text", ""),
                 cell_order=data.get("cell_order"),
+                selected_source=data.get("selected_source"),
+                associated_model=data.get("associated_model"),
             )
             if cell is None:
                 return jsonify({"message": "Worksheet not found"}), 404

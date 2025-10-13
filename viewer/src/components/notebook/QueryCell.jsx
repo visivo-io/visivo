@@ -25,6 +25,7 @@ const QueryCell = ({
   onQueryChange,
   onSourceChange,
   onModelChange,
+  onBatchCellUpdate,
   isFirst,
   isLast,
 }) => {
@@ -136,21 +137,38 @@ const QueryCell = ({
           const modelSql = existingModel.config.sql || '';
           const modelSource = existingModel.config.source;
 
-          // Update cell with model data
+          // Update local state
           setLocalQuery(modelSql);
-          onQueryChange(modelSql);
+          setIsModelModified(false);
 
-          // Update source if model has one
+          // Prepare batched update with all related fields
+          const batchedUpdates = {
+            query_text: modelSql,
+            associated_model: modelName,
+          };
+
+          // Add source to batched update if model has one
           if (modelSource && modelSource.name) {
             const sourceData = Object.values(namedChildren || {}).find(
               item => item.type_key === 'sources' && item.config.name === modelSource.name
             );
-            if (sourceData && onSourceChange) {
-              onSourceChange(sourceData.config.name);
+            if (sourceData) {
+              batchedUpdates.selected_source = sourceData.config.name;
             }
           }
 
-          setIsModelModified(false);
+          // Send all updates in a single atomic call
+          if (onBatchCellUpdate) {
+            console.log('[QueryCell] Sending batched model update:', batchedUpdates);
+            onBatchCellUpdate(batchedUpdates);
+          } else {
+            // Fallback to individual updates if batch handler not available
+            onQueryChange(modelSql);
+            if (batchedUpdates.selected_source && onSourceChange) {
+              onSourceChange(batchedUpdates.selected_source);
+            }
+            onModelChange(modelName);
+          }
         } else {
           // Create new model in namedChildren
           const newModel = {
@@ -175,9 +193,10 @@ const QueryCell = ({
           });
 
           setIsModelModified(false);
-        }
 
-        onModelChange(modelName);
+          // Update cell with new model association only
+          onModelChange(modelName);
+        }
       } else {
         // Clear model association
         onModelChange(null);

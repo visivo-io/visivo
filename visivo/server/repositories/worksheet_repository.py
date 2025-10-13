@@ -270,8 +270,19 @@ class WorksheetRepository:
                 .all()
             )
 
+            Logger.instance().info(
+                f"[list_cells] Loading {len(cells)} cells for worksheet {worksheet_id}"
+            )
+
             result = []
             for cell in cells:
+                # Log cell details for debugging
+                Logger.instance().info(
+                    f"[list_cells] Cell {cell.id}: "
+                    f"selected_source={cell.selected_source}, "
+                    f"associated_model={cell.associated_model}"
+                )
+
                 latest_result = (
                     session.query(CellResultModel)
                     .filter_by(cell_id=cell.id)
@@ -295,7 +306,11 @@ class WorksheetRepository:
         try:
             cell = session.query(QueryCellModel).filter_by(id=cell_id).first()
             if not cell:
+                Logger.instance().warning(f"[update_cell] Cell {cell_id} not found")
                 return False
+
+            # Log the updates being applied
+            Logger.instance().info(f"[update_cell] Applying updates to cell {cell_id}: {updates}")
 
             valid_fields = {
                 "query_text",
@@ -304,21 +319,33 @@ class WorksheetRepository:
                 "selected_source",
                 "associated_model",
             }
+
+            # Track which fields were actually updated
+            updated_fields = {}
             for key, value in updates.items():
                 if key in valid_fields:
+                    old_value = getattr(cell, key)
                     setattr(cell, key, value)
+                    updated_fields[key] = {"old": old_value, "new": value}
+
+            Logger.instance().info(f"[update_cell] Fields updated: {updated_fields}")
 
             session.commit()
             session.flush()  # Ensure changes are written to DB
             session.expire_all()  # Clear all cached objects
 
-            # Verify the update
+            # Verify the update by reading back from database
+            verification_cell = session.query(QueryCellModel).filter_by(id=cell_id).first()
             Logger.instance().info(
-                f"[update_cell] Updated cell {cell_id}: selected_source = {cell.selected_source}"
+                f"[update_cell] Verification after commit - cell {cell_id}: "
+                f"selected_source={verification_cell.selected_source}, "
+                f"associated_model={verification_cell.associated_model}, "
+                f"query_text_length={len(verification_cell.query_text) if verification_cell.query_text else 0}"
             )
 
             return True
-        except:
+        except Exception as e:
+            Logger.instance().error(f"[update_cell] Error updating cell {cell_id}: {str(e)}")
             session.rollback()
             raise
         finally:

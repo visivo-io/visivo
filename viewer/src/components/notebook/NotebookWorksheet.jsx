@@ -88,6 +88,19 @@ const NotebookWorksheet = ({ worksheetId }) => {
     [worksheetId, updateCellData]
   );
 
+  const handleBatchCellUpdate = useCallback(
+    (cellId, updates) => {
+      console.log('[NotebookWorksheet] Batch cell update requested:', {
+        cellId,
+        updates,
+        worksheetId,
+      });
+      // Update cell with multiple fields atomically
+      updateCellData(worksheetId, cellId, updates);
+    },
+    [worksheetId, updateCellData]
+  );
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = e => {
@@ -168,6 +181,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
             onQueryChange={newQuery => handleQueryChange(cellData.cell.id, newQuery)}
             onSourceChange={newSource => handleSourceChange(cellData.cell.id, newSource)}
             onModelChange={modelName => handleModelChange(cellData.cell.id, modelName)}
+            onBatchCellUpdate={updates => handleBatchCellUpdate(cellData.cell.id, updates)}
             isFirst={index === 0}
             isLast={index === cells.length - 1}
           />
