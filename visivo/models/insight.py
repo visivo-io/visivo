@@ -142,7 +142,7 @@ class Insight(NamedModel, ParentModel):
             True if this insight has Input descendants, False otherwise
         """
         from visivo.models.dag import all_descendants_of_type
-        from visivo.models.inputs.base import Input
+        from visivo.models.inputs.input import Input
 
         input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
         return len(input_descendants) > 0

@@ -1,6 +1,6 @@
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants, all_descendants_of_type
-from visivo.models.inputs.base import Input
+from visivo.models.inputs.input import Input
 from visivo.models.inputs.dropdown import DropdownInput
 from visivo.models.insight import Insight
 from visivo.models.selector import Selector

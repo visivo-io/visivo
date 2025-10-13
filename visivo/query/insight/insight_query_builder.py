@@ -1,6 +1,6 @@
 from typing import Set, List, Dict
 from visivo.models.base.project_dag import ProjectDag
-from visivo.models.inputs.base import Input
+from visivo.models.inputs.input import Input
 from visivo.models.insight import Insight
 from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel

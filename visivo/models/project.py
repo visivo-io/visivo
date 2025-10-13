@@ -4,8 +4,8 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
-from visivo.models.inputs.input import InputField
-from visivo.models.inputs.base import Input
+from visivo.models.inputs.fields import InputField
+from visivo.models.inputs.input import Input
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
