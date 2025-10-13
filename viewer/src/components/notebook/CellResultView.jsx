@@ -3,9 +3,12 @@ import Table from '../items/Table';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import { IconButton, Tooltip } from '@mui/material';
+import useStore from '../../stores/store';
+import DimensionPillsView from './DimensionPillsView';
 
 const CellResultView = ({ result, cell, worksheetId, project }) => {
   const [viewMode, setViewMode] = useState(cell.view_mode || 'table');
+  const updateCellData = useStore(state => state.updateCellData);
 
   // Parse results if they're in the backend format
   const formattedResults = result.formattedResults || {
@@ -55,6 +58,14 @@ const CellResultView = ({ result, cell, worksheetId, project }) => {
   const rowCount = formattedResults.traces[0]?.data?.length || 0;
   const isTruncated = result.is_truncated;
 
+  const handleViewModeChange = newMode => {
+    setViewMode(newMode);
+    // Persist the view mode to the backend
+    if (updateCellData && worksheetId && cell.id) {
+      updateCellData(worksheetId, cell.id, { view_mode: newMode });
+    }
+  };
+
   return (
     <div className="bg-white">
       {/* Results Header */}
@@ -76,7 +87,7 @@ const CellResultView = ({ result, cell, worksheetId, project }) => {
           <Tooltip title="Table View">
             <IconButton
               size="small"
-              onClick={() => setViewMode('table')}
+              onClick={() => handleViewModeChange('table')}
               sx={{
                 color: viewMode === 'table' ? 'primary.main' : 'text.secondary',
               }}
@@ -87,7 +98,7 @@ const CellResultView = ({ result, cell, worksheetId, project }) => {
           <Tooltip title="Dimension Pills View">
             <IconButton
               size="small"
-              onClick={() => setViewMode('dimension_pills')}
+              onClick={() => handleViewModeChange('dimension_pills')}
               sx={{
                 color: viewMode === 'dimension_pills' ? 'primary.main' : 'text.secondary',
               }}
@@ -103,9 +114,7 @@ const CellResultView = ({ result, cell, worksheetId, project }) => {
         {viewMode === 'table' ? (
           <Table table={formattedResults} project={project} height={400} />
         ) : (
-          <div className="p-4">
-            <div className="text-sm text-gray-500">Dimension Pills view coming soon...</div>
-          </div>
+          <DimensionPillsView result={result} cell={cell} />
         )}
       </div>
     </div>

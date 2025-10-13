@@ -145,13 +145,23 @@ export const reorderCells = async (worksheetId, cellOrder) => {
   throw new Error('Failed to reorder cells');
 };
 
-export const executeCell = async (worksheetId, cellId) => {
-  const response = await fetch(getUrl('worksheetCellExecute', { worksheetId, cellId }), {
+export const executeCell = async (worksheetId, cellId, signal = null) => {
+  const fetchOptions = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-  });
+  };
+
+  // Add abort signal if provided
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(
+    getUrl('worksheetCellExecute', { worksheetId, cellId }),
+    fetchOptions
+  );
   if (response.status === 200) {
     return await response.json();
   }

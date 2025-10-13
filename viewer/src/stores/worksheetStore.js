@@ -28,6 +28,8 @@ const createWorksheetSlice = (set, get) => ({
 
   // Execution state
   executingCells: {},
+  cellExecutionTimers: {}, // Track execution start times
+  cellAbortControllers: {}, // Track abort controllers for cancellation
 
   // Auto-save state
   autoSaveEnabled: true,
@@ -264,15 +266,20 @@ const createWorksheetSlice = (set, get) => ({
       return;
     }
 
-    // Mark cell as executing
+    // Create abort controller for cancellation
+    const abortController = new AbortController();
+
+    // Mark cell as executing and track start time
     set(state => ({
       executingCells: { ...state.executingCells, [cellId]: true },
+      cellExecutionTimers: { ...state.cellExecutionTimers, [cellId]: Date.now() },
+      cellAbortControllers: { ...state.cellAbortControllers, [cellId]: abortController },
     }));
 
     try {
       console.log('[worksheetStore] Calling backend executeCell API...');
       // Use the new backend API that handles cell's selected_source
-      const result = await executeCellAPI(worksheetId, cellId);
+      const result = await executeCellAPI(worksheetId, cellId, abortController.signal);
       console.log('[worksheetStore] Backend execution result:', result);
       console.log('[worksheetStore] Backend query_stats.source:', result.query_stats?.source);
 
@@ -310,47 +317,85 @@ const createWorksheetSlice = (set, get) => ({
       };
 
       // Update cell with results
-      set(state => ({
-        worksheetCells: {
-          ...state.worksheetCells,
-          [worksheetId]: currentCells.map(c =>
-            c.cell.id === cellId
-              ? {
-                  ...c,
-                  result: {
-                    results_json: JSON.stringify({
-                      columns: queryResults.columns,
-                      rows: queryResults.data,
-                    }),
-                    query_stats_json: JSON.stringify(queryStats),
-                    is_truncated: result.is_truncated || false,
-                  },
-                  formattedResults,
-                  queryStats,
-                  error: null, // Clear any previous errors
-                }
-              : c
-          ),
-        },
-        executingCells: { ...state.executingCells, [cellId]: false },
-      }));
+      set(state => {
+        const newState = {
+          worksheetCells: {
+            ...state.worksheetCells,
+            [worksheetId]: currentCells.map(c =>
+              c.cell.id === cellId
+                ? {
+                    ...c,
+                    result: {
+                      results_json: JSON.stringify({
+                        columns: queryResults.columns,
+                        rows: queryResults.data,
+                      }),
+                      query_stats_json: JSON.stringify(queryStats),
+                      is_truncated: result.is_truncated || false,
+                    },
+                    formattedResults,
+                    queryStats,
+                    error: null, // Clear any previous errors
+                  }
+                : c
+            ),
+          },
+          executingCells: { ...state.executingCells, [cellId]: false },
+        };
+
+        // Clean up execution tracking
+        const newTimers = { ...state.cellExecutionTimers };
+        const newControllers = { ...state.cellAbortControllers };
+        delete newTimers[cellId];
+        delete newControllers[cellId];
+        newState.cellExecutionTimers = newTimers;
+        newState.cellAbortControllers = newControllers;
+
+        return newState;
+      });
     } catch (err) {
-      // Update cell with error
-      set(state => ({
-        worksheetCells: {
-          ...state.worksheetCells,
-          [worksheetId]: currentCells.map(c =>
-            c.cell.id === cellId
-              ? {
-                  ...c,
-                  error: err.message || 'Failed to execute query',
-                  result: null,
-                }
-              : c
-          ),
-        },
-        executingCells: { ...state.executingCells, [cellId]: false },
-      }));
+      // Check if it was a user cancellation
+      const wasCancelled = err.name === 'AbortError';
+
+      // Update cell with error or cancellation message
+      set(state => {
+        const newState = {
+          worksheetCells: {
+            ...state.worksheetCells,
+            [worksheetId]: currentCells.map(c =>
+              c.cell.id === cellId
+                ? {
+                    ...c,
+                    error: wasCancelled
+                      ? 'Query execution cancelled by user'
+                      : err.message || 'Failed to execute query',
+                    result: null,
+                  }
+                : c
+            ),
+          },
+          executingCells: { ...state.executingCells, [cellId]: false },
+        };
+
+        // Clean up execution tracking
+        const newTimers = { ...state.cellExecutionTimers };
+        const newControllers = { ...state.cellAbortControllers };
+        delete newTimers[cellId];
+        delete newControllers[cellId];
+        newState.cellExecutionTimers = newTimers;
+        newState.cellAbortControllers = newControllers;
+
+        return newState;
+      });
+    }
+  },
+
+  // Cancel a cell execution
+  cancelCellExecution: cellId => {
+    const state = get();
+    const abortController = state.cellAbortControllers[cellId];
+    if (abortController) {
+      abortController.abort();
     }
   },
 

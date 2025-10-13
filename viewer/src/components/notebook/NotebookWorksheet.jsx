@@ -101,6 +101,29 @@ const NotebookWorksheet = ({ worksheetId }) => {
     [worksheetId, updateCellData]
   );
 
+  const handleFocusNextCell = useCallback(
+    cellId => {
+      const currentCells = cells;
+      const currentIndex = currentCells.findIndex(c => c.cell.id === cellId);
+      if (currentIndex !== -1 && currentIndex < currentCells.length - 1) {
+        const nextCellId = currentCells[currentIndex + 1].cell.id;
+        // Scroll to and focus the next cell
+        setTimeout(() => {
+          const nextCellElement = document.getElementById(`cell-${nextCellId}`);
+          if (nextCellElement) {
+            nextCellElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Try to focus the Monaco editor inside
+            const monacoTextarea = nextCellElement.querySelector('textarea');
+            if (monacoTextarea) {
+              monacoTextarea.focus();
+            }
+          }
+        }, 150);
+      }
+    },
+    [cells]
+  );
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = e => {
@@ -182,6 +205,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
             onSourceChange={newSource => handleSourceChange(cellData.cell.id, newSource)}
             onModelChange={modelName => handleModelChange(cellData.cell.id, modelName)}
             onBatchCellUpdate={updates => handleBatchCellUpdate(cellData.cell.id, updates)}
+            onFocusNext={() => handleFocusNextCell(cellData.cell.id)}
             isFirst={index === 0}
             isLast={index === cells.length - 1}
           />
@@ -209,10 +233,18 @@ const NotebookWorksheet = ({ worksheetId }) => {
             Run cell
           </div>
           <div>
+            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Shift+Enter</kbd>{' '}
+            Run cell and advance
+          </div>
+          <div>
+            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Alt+Enter</kbd>{' '}
+            Insert cell below
+          </div>
+          <div>
             <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">
               Cmd/Ctrl+Shift+N
             </kbd>{' '}
-            Add cell
+            Add cell at end
           </div>
         </div>
       </div>

@@ -26,6 +26,7 @@ const QueryCell = ({
   onSourceChange,
   onModelChange,
   onBatchCellUpdate,
+  onFocusNext,
   isFirst,
   isLast,
 }) => {
@@ -34,7 +35,10 @@ const QueryCell = ({
   const [anchorEl, setAnchorEl] = useState(null);
   const [showSaveAsModelModal, setShowSaveAsModelModal] = useState(false);
   const [isModelModified, setIsModelModified] = useState(false);
-  const { project, namedChildren } = useStore();
+  const [showLongRunningWarning, setShowLongRunningWarning] = useState(false);
+  const executionTimerRef = useRef(null);
+
+  const { project, namedChildren, cancelCellExecution } = useStore();
 
   // Get the selected source config from namedChildren based on cell's selected_source name
   const selectedSource =
@@ -56,6 +60,38 @@ const QueryCell = ({
       }
     }
   }, [cell.associated_model, namedChildren]);
+
+  // Monitor execution time and show warning after 30 seconds
+  useEffect(() => {
+    if (isExecuting) {
+      // Clear any existing timer
+      if (executionTimerRef.current) {
+        clearTimeout(executionTimerRef.current);
+      }
+
+      // Set a timer for 30 seconds
+      executionTimerRef.current = setTimeout(() => {
+        setShowLongRunningWarning(true);
+      }, 30000);
+
+      return () => {
+        if (executionTimerRef.current) {
+          clearTimeout(executionTimerRef.current);
+        }
+      };
+    } else {
+      // Clear warning when execution stops
+      setShowLongRunningWarning(false);
+      if (executionTimerRef.current) {
+        clearTimeout(executionTimerRef.current);
+      }
+    }
+  }, [isExecuting]);
+
+  const handleCancelExecution = () => {
+    cancelCellExecution(cell.id);
+    setShowLongRunningWarning(false);
+  };
 
   const handleEditorChange = value => {
     if (value !== undefined) {
@@ -224,10 +260,26 @@ const QueryCell = ({
             />
           </div>
           {isExecuting && (
-            <span className="text-xs text-blue-600 flex items-center gap-1">
-              <CircularProgress size={12} thickness={6} />
-              Running...
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-blue-600 flex items-center gap-1">
+                <CircularProgress size={12} thickness={6} />
+                Running...
+              </span>
+              {showLongRunningWarning && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-orange-600 font-medium">
+                    Taking longer than expected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCancelExecution}
+                    className="text-xs px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
           )}
           {error && <span className="text-xs text-red-600">Error</span>}
         </div>
@@ -329,9 +381,29 @@ const QueryCell = ({
             onMount={(editor, monaco) => {
               editorRef.current = editor;
 
-              // Add keyboard shortcuts
+              // Cmd/Ctrl+Enter: Execute current cell
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
                 onExecute();
+              });
+
+              // Shift+Enter: Execute current cell and advance to next (or create new)
+              editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
+                onExecute();
+                // Focus next cell after a short delay to allow execution to start
+                setTimeout(() => {
+                  if (isLast) {
+                    // If this is the last cell, add a new one below
+                    onAddBelow();
+                  } else if (onFocusNext) {
+                    // Otherwise, focus the next cell
+                    onFocusNext();
+                  }
+                }, 100);
+              });
+
+              // Alt+Enter: Insert a new cell below without executing
+              editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, () => {
+                onAddBelow();
               });
 
               // Auto-resize editor
