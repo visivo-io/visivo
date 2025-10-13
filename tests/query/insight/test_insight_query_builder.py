@@ -45,7 +45,7 @@ class TestInsightQueryBuilder:
         builder = InsightQueryBuilder(insight, dag)
 
         # Should find no referenced objects when there are no interactions
-        assert len(builder._objects_referenced_by_interactions) == 0
+        assert len(builder._objects_referenced_by_interactions_with_inputs) == 0
 
     def test_find_all_models_single_model(self):
         """Test finding all models with a single model."""
@@ -538,4 +538,6 @@ class TestInsightQueryBuilder:
         cte_sql = ctes["orders"]
 
         assert "ORDER BY 5bdbcd471fae0a4053aa63914e290964 DESC" in cte_sql
-        assert "WHERE 5bdbcd471fae0a4053aa63914e290964 = $5bdbcd471fae0a4053aa63914e290964" in cte_sql
+        assert (
+            "WHERE 5bdbcd471fae0a4053aa63914e290964 = $5bdbcd471fae0a4053aa63914e290964" in cte_sql
+        )

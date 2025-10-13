@@ -15,7 +15,11 @@ class TokenizedInsight(BaseModel):
     source_type: str
     description: Optional[str] = None
 
+<<<<<<< HEAD
     pre_query: str
+=======
+    pre_queries: List[str]
+>>>>>>> 6b6853ba (WIP)
     post_query: str
 
     select_items: Dict[

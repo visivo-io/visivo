@@ -20,10 +20,19 @@ class InsightInteraction(BaseModel):
     split: Optional[QueryString] = Field(
         None, description="Column or expression to split data into multiple traces"
     )
+<<<<<<< HEAD
     sort: Optional[QueryString] = Field(None, description="Column or expression to sort data by")
 
     @property
     def field_values(self) -> Dict[str, str]:
+=======
+    sort: Optional[QueryOrStringField] = Field(
+        None, description="Column or expression to sort data by"
+    )
+
+    @property
+    def field_values(self) -> Dict[str, QueryOrStringField]:
+>>>>>>> 6b6853ba (WIP)
         """Return a dictionary of field names to their non-None values.
 
         Returns:
@@ -34,6 +43,7 @@ class InsightInteraction(BaseModel):
         for field_name in ["filter", "split", "sort"]:
             field_value = getattr(self, field_name, None)
             if field_value is not None:
+<<<<<<< HEAD
                 fields[field_name] = field_value.get_value()
         return fields
 
@@ -83,4 +93,7 @@ class InsightInteraction(BaseModel):
             if field_value is not None:
                 fields[field_name] = replace_input_refs(field_value.get_value())
 
+=======
+                fields[field_name] = field_value
+>>>>>>> 6b6853ba (WIP)
         return fields

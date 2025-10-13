@@ -2,6 +2,7 @@ from typing import Optional, List, Set
 from pydantic import Field
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.interaction import InsightInteraction
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -113,7 +114,10 @@ class Insight(NamedModel, ParentModel):
                 for field_value in interaction.field_values.values():
                     field_str = str(field_value)
                     model_names = extract_ref_names(field_str)
+<<<<<<< HEAD
                     # TODO: I think this will skip model scoped children and needs refactored
+=======
+>>>>>>> 6b6853ba (WIP)
                     for model_name in model_names:
                         ref_str = f"ref({model_name})"
                         if ref_str not in children:
@@ -121,9 +125,20 @@ class Insight(NamedModel, ParentModel):
 
         return children
 
+<<<<<<< HEAD
     def get_all_dependent_models(self, dag):
         """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)"""
         from visivo.models.models.model import Model
+=======
+    def get_all_dependent_models(self, dag) -> Set[SqlModel]:
+        pass
+    
+    def is_dynamic(self, dag) -> bool:
+        pass
+
+    def get_interaction_references(self) -> Set[str]:
+        """Get all model/dimension/metric names referenced in interactions.
+>>>>>>> 6b6853ba (WIP)
 
         models = all_descendants_of_type(type=Model, dag=dag, from_node=self)
         return set(models)
@@ -219,6 +234,7 @@ class Insight(NamedModel, ParentModel):
 =======
         # Extract references from each interaction's filter, split, and sort
         for interaction in self.interactions:
+<<<<<<< HEAD
             for field in ["filter", "split", "sort"]:
                 field_value = getattr(interaction, field, None)
                 if field_value:
@@ -227,6 +243,13 @@ class Insight(NamedModel, ParentModel):
                     model_names = extract_ref_names(field_str)
                     referenced_names.update(model_names)
 >>>>>>> 1d282794 (Rename method)
+=======
+            for field_value in interaction.field_values.values():
+                # Convert to string to extract references
+                field_str = str(field_value)
+                model_names = extract_ref_names(field_str)
+                referenced_names.update(model_names)
+>>>>>>> 6b6853ba (WIP)
 
     def is_dynamic(self, dag) -> bool:
         from visivo.models.dag import all_descendants_of_type
