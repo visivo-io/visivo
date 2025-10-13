@@ -126,9 +126,11 @@ class TestInsightJobDuckDBIntegration:
             # Verify the job succeeded
             assert result.success is True, f"Job failed: {result.message}"
 
-            # Check output file exists
-            insight_file = os.path.join(temp_dir, "insights", "product_totals", "insight.json")
+            insight_file = os.path.join(temp_dir, "files", f"{insight.name_hash()}.parquet")
             assert os.path.exists(insight_file)
+
+            insight_data = os.path.join(temp_dir, "insights", f"{insight.name_hash()}.json")
+            assert os.path.exists(insight_data)
 
             with open(insight_file, "r") as f:
                 insight_json = json.load(f)

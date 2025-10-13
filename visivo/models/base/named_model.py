@@ -25,9 +25,7 @@ class NamedModel(BaseModel):
         None, description="The path to the file that contains the object definition."
     )
 
-    @pydantic.computed_field
-    @property
-    def name_hash(self):
+    def name_hash(self) -> Optional[str]:
         if self.name:
             return hashlib.md5(self.name.encode()).hexdigest()
         return None

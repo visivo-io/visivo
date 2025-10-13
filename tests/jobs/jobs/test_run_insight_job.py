@@ -72,18 +72,22 @@ def test_insight_job_action_success(mock_dag_with_project):
                 # Verify read_sql was called
                 source.read_sql.assert_called_once()
 
-                # Check that insight.json was created
-                insight_file = os.path.join(temp_dir, "insights", "test_insight", "insight.json")
+                # Check that insight.json was created with name_hash
+                insight_hash = insight.name_hash()
+                insight_file = os.path.join(temp_dir, "insights", f"{insight_hash}.json")
                 assert os.path.exists(insight_file)
 
                 # Check file contents
                 with open(insight_file, "r") as f:
                     insight_json = json.load(f)
 
-                assert "data" in insight_json
-                assert "pre_query" in insight_json
+                assert "files" in insight_json
                 assert "post_query" in insight_json
                 assert "metadata" in insight_json
+
+                # Check that parquet file was created
+                parquet_file = os.path.join(temp_dir, "files", f"{insight_hash}.parquet")
+                assert os.path.exists(parquet_file)
 
 
 def test_insight_job_action_failure(mock_dag_with_project):
@@ -116,7 +120,7 @@ def test_insight_job_action_failure(mock_dag_with_project):
                 assert isinstance(result, JobResult)
                 assert result.success == False
                 assert result.item == insight
-                assert "Failed query" in result.message
+                assert "Failed job" in result.message
                 assert "failing_insight" in result.message
 
 

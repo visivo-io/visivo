@@ -29,12 +29,12 @@ class InsightTokenizer:
 
     def __init__(self, insight: Insight, model: Model, source: Source, dag: ProjectDag):
         self.insight = insight
+        self.model = model
+        self.source = source
         self.dag = dag
         self.project = dag.get_project()
 
-        self.source = self._get_sqlglot_dialect()
         self.source_type = source.type
-
         self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
@@ -212,11 +212,11 @@ class InsightTokenizer:
         post_query = self._generate_post_query()
 
         if self.is_dynamic_interactions:
-            pre_queries = []
+            pre_query = ""
             post_query = self.parse_duckdb(main_query)
         else:
-            pre_queries = [main_query]
-            post_query = "select * from "
+            pre_query = main_query
+            post_query = f"SELECT * FROM {self.insight.name}"
 
         if self.source.type:
             source_type = self.source.type
@@ -233,7 +233,7 @@ class InsightTokenizer:
             source=self.source.name,
             source_type=source_type,
             description=self.insight.description,
-            pre_query=pre_queries,
+            pre_query=pre_query,
             post_query=post_query,
             select_items=self.select_items,
             selects=self.selects,
@@ -683,8 +683,3 @@ class InsightTokenizer:
     def _is_dynamic(self, expr: str) -> bool:
         DYNAMIC_PATTERN = re.compile(r"\$\{\s*ref\([^)]+\)\s*\}", re.IGNORECASE)
         return bool(DYNAMIC_PATTERN.search(expr))
-
-    def _get_sqlglot_dialect(self) -> str:
-        source = all_descendants_of_type(type=Source, dag=self.dag, from_node=self.insight)[0]
-
-        return get_sqlglot_dialect(source.get_dialect())
