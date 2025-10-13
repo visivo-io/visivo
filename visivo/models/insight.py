@@ -131,10 +131,36 @@ class Insight(NamedModel, ParentModel):
         from visivo.models.models.model import Model
 =======
     def get_all_dependent_models(self, dag) -> Set[SqlModel]:
-        pass
-    
+        """Find all SQL models that are descendants of this insight in the DAG.
+
+        Args:
+            dag: The project DAG
+
+        Returns:
+            Set of SqlModel objects that are descendants of this insight
+        """
+        from visivo.models.dag import all_descendants_of_type
+
+        models = all_descendants_of_type(type=SqlModel, dag=dag, from_node=self)
+        return set(models)
+
     def is_dynamic(self, dag) -> bool:
-        pass
+        """Check if any descendants of this insight are Input items.
+
+        An insight is considered dynamic if it has any Input descendants,
+        meaning it can change based on user interaction.
+
+        Args:
+            dag: The project DAG
+
+        Returns:
+            True if this insight has Input descendants, False otherwise
+        """
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.inputs.base import InputBasemodel
+
+        input_descendants = all_descendants_of_type(type=InputBasemodel, dag=dag, from_node=self)
+        return len(input_descendants) > 0
 
     def get_interaction_references(self) -> Set[str]:
         """Get all model/dimension/metric names referenced in interactions.
