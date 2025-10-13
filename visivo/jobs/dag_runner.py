@@ -5,7 +5,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.insight import Insight
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.models.models.sql_model import SqlModel 
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.logger.logger import Logger
 from time import time
@@ -21,6 +21,7 @@ from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
+from visivo.jobs.run_sql_model_job import job as sql_model_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -145,22 +146,7 @@ class DagRunner:
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, SqlModel):
-            is_model_consumed_and_dynamic = False
-            for insight in get_all_items
-                dependent_models = get_all_dependent_models(self.project_dag)
-                if hasattr(item, "name"):
-                    item_name = item.name
-                else:
-                    item_name = getattr(item, "id", lambda: None)()
-                if item in dependent_models or (item_name and any(
-                        model for model in dependent_models if getattr(model, "name", None) == item_name
-                    )):
-                    if insight.is_dynamic(self.project_dag):
-                        is_model_consumed_and_dynamic = True
-                        break
-            if is_model_consumed_and_dynamic:
-                all_dynamic_insights = True
-            
+            return sql_model_job(sql_model=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir)
         return None
