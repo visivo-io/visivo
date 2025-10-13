@@ -1,5 +1,9 @@
 from visivo.models.base.named_model import NamedModel
+<<<<<<< HEAD
 from visivo.models.inputs.fields import InputField
+=======
+from visivo.models.inputs.input import InputField
+>>>>>>> 1a8e94a9 (Refactor file names to be consistent)
 from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel

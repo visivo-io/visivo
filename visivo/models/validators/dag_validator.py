@@ -4,7 +4,11 @@ from visivo.models.validators.base_validator import BaseProjectValidator
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.table import Table
 from visivo.models.selector import Selector, SelectorType
+<<<<<<< HEAD
 from visivo.models.inputs.input import Input
+=======
+from visivo.models.inputs.base import Input
+>>>>>>> 1a8e94a9 (Refactor file names to be consistent)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
