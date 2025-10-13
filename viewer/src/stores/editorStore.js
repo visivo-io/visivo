@@ -370,6 +370,97 @@ const createEditorSlice = (set, get) => ({
 
       return { namedChildren: updatedNamedChildren };
     }),
+
+  // Rename a named child (changes the key in namedChildren and the name in config)
+  renameNamedChild: (oldName, newName) =>
+    set(state => {
+      // Check if old name exists
+      if (!state.namedChildren.hasOwnProperty(oldName)) {
+        console.warn('Child not found in namedChildren store');
+        return state;
+      }
+
+      // Check if new name already exists
+      if (state.namedChildren.hasOwnProperty(newName)) {
+        console.warn('A child with the new name already exists');
+        return state;
+      }
+
+      // Get the child to rename
+      const childToRename = { ...state.namedChildren[oldName] };
+
+      // Update the name in config
+      let configToUpdate =
+        typeof childToRename.config === 'string'
+          ? JSON.parse(childToRename.config)
+          : { ...childToRename.config };
+
+      configToUpdate.name = newName;
+
+      // Create new namedChildren object with renamed key
+      const updatedNamedChildren = { ...state.namedChildren };
+      delete updatedNamedChildren[oldName];
+      updatedNamedChildren[newName] = {
+        ...childToRename,
+        config: configToUpdate,
+        status: childToRename.status === 'New' ? 'New' : 'Modified',
+      };
+
+      // Update tabs if the renamed child has an open tab
+      const updatedTabs = state.tabs.map(tab =>
+        tab.name === oldName ? { ...tab, name: newName } : tab
+      );
+
+      console.log('Renaming child:', oldName, '->', newName);
+
+      return {
+        namedChildren: updatedNamedChildren,
+        tabs: updatedTabs,
+      };
+    }),
+
+  // Delete an entire named child
+  deleteNamedChild: name =>
+    set(state => {
+      // Check if child exists
+      if (!state.namedChildren.hasOwnProperty(name)) {
+        console.warn('Child not found in namedChildren store');
+        return state;
+      }
+
+      const childToDelete = state.namedChildren[name];
+
+      // Create new namedChildren object with child marked as deleted
+      const updatedNamedChildren = { ...state.namedChildren };
+
+      // If it's a new child that hasn't been saved yet, remove it entirely
+      if (childToDelete.status === 'New') {
+        delete updatedNamedChildren[name];
+      } else {
+        // Mark existing child as Deleted so it will be removed from files on write
+        updatedNamedChildren[name] = {
+          ...childToDelete,
+          status: 'Deleted',
+        };
+      }
+
+      // Close any tabs for the deleted child
+      const updatedTabs = state.tabs.filter(tab => tab.name !== name);
+      const newActiveTabId =
+        state.activeTabId && state.tabs.find(t => t.id === state.activeTabId)?.name === name
+          ? updatedTabs.length > 0
+            ? updatedTabs[updatedTabs.length - 1].id
+            : null
+          : state.activeTabId;
+
+      console.log('Deleting child:', name);
+
+      return {
+        namedChildren: updatedNamedChildren,
+        tabs: updatedTabs,
+        activeTabId: newActiveTabId,
+      };
+    }),
 });
 
 export default createEditorSlice;

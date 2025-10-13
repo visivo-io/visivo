@@ -30,8 +30,8 @@ def parse_sql_error(error: Exception, query: str) -> str:
     import re
 
     # Try to find line numbers
-    line_match = re.search(r'line\s+(\d+)', error_str, re.IGNORECASE)
-    col_match = re.search(r'column\s+(\d+)', error_str, re.IGNORECASE)
+    line_match = re.search(r"line\s+(\d+)", error_str, re.IGNORECASE)
+    col_match = re.search(r"column\s+(\d+)", error_str, re.IGNORECASE)
 
     formatted_error = f"Query execution failed: {error_str}"
 
@@ -40,7 +40,7 @@ def parse_sql_error(error: Exception, query: str) -> str:
         formatted_error += f"\n\nError location: Line {line_num}"
 
         # Show the problematic line from the query
-        query_lines = query.split('\n')
+        query_lines = query.split("\n")
         if 0 < line_num <= len(query_lines):
             formatted_error += f"\n>>> {query_lines[line_num - 1].strip()}"
             if col_match:
@@ -49,13 +49,13 @@ def parse_sql_error(error: Exception, query: str) -> str:
 
     # Add helpful hints based on error type
     error_lower = error_str.lower()
-    if 'syntax error' in error_lower:
+    if "syntax error" in error_lower:
         formatted_error += "\n\nHint: Check your SQL syntax. Common issues include missing commas, unclosed quotes, or typos in keywords."
-    elif 'does not exist' in error_lower or 'not found' in error_lower:
+    elif "does not exist" in error_lower or "not found" in error_lower:
         formatted_error += "\n\nHint: The referenced table or column may not exist. Check your schema or use the Sources tab to explore available tables."
-    elif 'ambiguous' in error_lower:
+    elif "ambiguous" in error_lower:
         formatted_error += "\n\nHint: Column name is ambiguous. Try using table aliases or fully qualified column names (table.column)."
-    elif 'permission denied' in error_lower or 'access denied' in error_lower:
+    elif "permission denied" in error_lower or "access denied" in error_lower:
         formatted_error += "\n\nHint: You may not have permission to access this resource. Check your database credentials."
 
     return formatted_error

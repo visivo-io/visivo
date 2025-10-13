@@ -323,10 +323,13 @@ def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
 
     # Test query execution with invalid SQL
     response = client.post(f"/api/worksheet/{worksheet_id}/cells/{cell_id}/execute/")
-    assert response.status_code == 500
+    # Now returns 400 (Bad Request) instead of 500 due to enhanced error handling
+    assert response.status_code == 400
     data = json.loads(response.data)
     captured = capsys.readouterr()
-    assert "sqlite3.OperationalError" in data["message"]
+    # Check for enhanced error message with helpful hints
+    assert "Query execution failed" in data["message"]
+    assert "Hint:" in data["message"]
     assert "Error executing cell:" in captured.out
 
 
