@@ -46,7 +46,8 @@ const CreateObjectModal = ({
     if (!isOpen) {
       resetState();
     }
-  }, [isOpen, resetState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const getValidTypesForProperty = prop => {
     if (!schema?.properties) return [];
