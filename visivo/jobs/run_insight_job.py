@@ -38,13 +38,13 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
+    insight_query_info = insight.get_query_info(dag)
     try:
         start_time = time()
 
         files_directory = f"{output_dir}/files"
-        if tokenized_insight.pre_query:
-            data = source.read_sql(tokenized_insight.pre_query)
+        if insight_query_info.pre_query:
+            data = source.read_sql(insight_query_info.pre_query)
             import polars as pl
 
             df = pl.DataFrame(_convert_to_json_serializable(data))
@@ -58,7 +58,11 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             files = [f for f in files if os.path.exists(f)]
 
         # Store insight metadata with file references and post_query
-        insight_data = {"files": files, "query": tokenized_insight.post_query, "props_mapping": {}}
+        insight_data = {
+            "files": files,
+            "query": insight_query_info.post_query,
+            "props_mapping": insight_query_info.props_mapping,
+        }
 
         insight_directory = f"{output_dir}/insights"
         insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")

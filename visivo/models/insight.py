@@ -1,10 +1,13 @@
 from typing import Optional, List, Set
 from pydantic import Field
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.interaction import InsightInteraction
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
+from visivo.query.insight.insight_query_builder import InsightQueryBuilder
+from visivo.query.insight.insight_query_info import InsightQueryInfo
 
 
 class Insight(NamedModel, ParentModel):
@@ -126,5 +129,5 @@ class Insight(NamedModel, ParentModel):
         input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
         return len(input_descendants) > 0
 
-    def get_query_info():
-        pass
+    def get_query_info(self, dag: ProjectDag) -> InsightQueryInfo:
+       return InsightQueryBuilder.build(self, dag) 
