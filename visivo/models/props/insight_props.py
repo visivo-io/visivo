@@ -98,6 +98,7 @@ class InsightProps(JsonSchemaBase):
         recurse(data, prefix)
 
         return results
+<<<<<<< HEAD
 
     def extract_static_props(self) -> dict:
         """
@@ -168,3 +169,5 @@ class InsightProps(JsonSchemaBase):
         # Filter and return static props
         result = recurse(data)
         return result if result else {}
+=======
+>>>>>>> 90a32362 (Deleted a few unneeded files and added extract_query_strings method to insight_props)
