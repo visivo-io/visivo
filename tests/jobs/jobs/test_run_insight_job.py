@@ -77,15 +77,13 @@ def test_insight_job_action_success(mock_dag_with_project):
                 insight_file = os.path.join(temp_dir, "insights", f"{insight_hash}.json")
                 assert os.path.exists(insight_file)
 
-                # Check file contents
                 with open(insight_file, "r") as f:
                     insight_json = json.load(f)
 
                 assert "files" in insight_json
-                assert "post_query" in insight_json
-                assert "metadata" in insight_json
+                assert "query" in insight_json
+                assert "props_mapping" in insight_json
 
-                # Check that parquet file was created
                 parquet_file = os.path.join(temp_dir, "files", f"{insight_hash}.parquet")
                 assert os.path.exists(parquet_file)
 

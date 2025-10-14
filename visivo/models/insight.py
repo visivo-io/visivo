@@ -114,58 +114,17 @@ class Insight(NamedModel, ParentModel):
         return children
 
     def get_all_dependent_models(self, dag) -> Set[SqlModel]:
-        """Find all SQL models that are descendants of this insight in the DAG.
-
-        Args:
-            dag: The project DAG
-
-        Returns:
-            Set of SqlModel objects that are descendants of this insight
-        """
         from visivo.models.dag import all_descendants_of_type
 
         models = all_descendants_of_type(type=SqlModel, dag=dag, from_node=self)
         return set(models)
 
     def is_dynamic(self, dag) -> bool:
-        """Check if any descendants of this insight are Input items.
-
-        An insight is considered dynamic if it has any Input descendants,
-        meaning it can change based on user interaction.
-
-        Args:
-            dag: The project DAG
-
-        Returns:
-            True if this insight has Input descendants, False otherwise
-        """
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.inputs.input import Input
 
         input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=self)
         return len(input_descendants) > 0
 
-    def get_interaction_references(self) -> Set[str]:
-        """Get all model/dimension/metric names referenced in interactions.
-
-        Extracts references from filter, split, and sort fields in all interactions.
-
-        Returns:
-            Set of referenced object names from interactions
-        """
-        from visivo.query.patterns import extract_ref_names
-
-        referenced_names = set()
-
-        if not self.interactions:
-            return referenced_names
-
-        # Extract references from each interaction's filter, split, and sort
-        for interaction in self.interactions:
-            for field_value in interaction.field_values.values():
-                # Convert to string to extract references
-                field_str = str(field_value)
-                model_names = extract_ref_names(field_str)
-                referenced_names.update(model_names)
-
-        return referenced_names
+    def get_query_info():
+        pass
