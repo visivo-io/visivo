@@ -32,7 +32,6 @@ class Insight(NamedModel, ParentModel):
     insights:
       - name: revenue-by-month
         description: "Monthly revenue trends"
-        model: ${ref(orders_model)}
 
         props:
           type: scatter
@@ -66,7 +65,6 @@ class Insight(NamedModel, ParentModel):
 
     ## Migration from Traces
     - `cohort_on` → `split` interaction
-    - Flat JSON output → easier integration with DuckDB WASM & UI components
     """
 
     name: str = Field(description="The unique name of the insight across the entire project.")
