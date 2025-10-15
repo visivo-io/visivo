@@ -59,6 +59,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
 
         # Store insight metadata with file references and post_query
         insight_data = {
+            "name": insight.name,
             "files": files,
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,

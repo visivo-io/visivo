@@ -44,8 +44,8 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     tracesQuery: '/data/traces.json',
     traceData: '/data/traces/{hash}.json',
-    insightsQuery: '/api/insights.json',
-    insightData: '/api/insights/{hash}.json',
+    insightsQuery: '/data/insights.json',
+    insightData: '/data/insights/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
 
