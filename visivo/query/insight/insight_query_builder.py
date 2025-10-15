@@ -6,4 +6,11 @@ class InsightQueryBuilder:
 
     @staticmethod
     def build(insight, dag: ProjectDag):
-        return InsightQueryInfo()
+        dummy_data = {
+            "post_query": f"SELECT * from {insight.hash_name()}",
+            "props_mapping": {
+                "props.x": "x",
+                "props.y": "y",
+            },
+        }
+        return InsightQueryInfo(**dummy_data)
