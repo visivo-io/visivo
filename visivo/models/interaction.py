@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple, List
 from pydantic import BaseModel, Field
 
 from re import Match
@@ -97,3 +97,6 @@ class InsightInteraction(BaseModel):
                 fields[field_name] = field_value
 >>>>>>> 6b6853ba (WIP)
         return fields
+
+    def extract_query_strings(self, prefix: str = "interaction") -> List[Tuple[str, str]]:
+        pass 
