@@ -59,6 +59,9 @@ export const insertDuckDBFile = async (db, file, tableName) => {
     case 'json':
       await _insertJSON(db, file, tableName);
       return;
+    case 'parquet':
+      await _insertParquet(db, file, tableName);
+      return;
     default:
     // Unsupported file extension
   }
@@ -73,13 +76,35 @@ const _insertJSON = async (db, file, tableName) => {
 
     const conn = await db.connect();
     await conn.query(`
-      CREATE TABLE "${tableName}" AS 
+      CREATE TABLE "${tableName}" AS
       SELECT * FROM read_json_auto('${tempFile}')
     `);
     await conn.close();
 
     await db.dropFile(tempFile);
   } catch (e) {
+    throw e;
+  }
+};
+
+const _insertParquet = async (db, file, tableName) => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+
+    const tempFile = getTempFilename() + '.parquet';
+    await db.registerFileBuffer(tempFile, uint8Array);
+
+    const conn = await db.connect();
+    await conn.query(`
+      CREATE TABLE "${tableName}" AS
+      SELECT * FROM read_parquet('${tempFile}')
+    `);
+    await conn.close();
+
+    await db.dropFile(tempFile);
+  } catch (e) {
+    console.error('Failed to import Parquet file:', e);
     throw e;
   }
 };
@@ -109,8 +134,8 @@ export const tableDuckDBExists = async (db, tableName) => {
  * @returns {String}
  */
 export const prepPostQuery = (insight, inputs) => {
-  let post_query = insight.post_query;
-  const contextObj = new ContextString(post_query);
+  let query = insight.query;
+  const contextObj = new ContextString(query);
   const refs = contextObj.getAllRefs();
 
   if (refs.length > 0) {
@@ -126,21 +151,21 @@ export const prepPostQuery = (insight, inputs) => {
           let value;
           if (Array.isArray(input)) {
             if (input.length === 0) {
-              post_query = post_query.replace(refStr, '(NULL)');
+              query = query.replace(refStr, '(NULL)');
             } else {
               value = `(${input.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')})`;
-              post_query = post_query.replace(refStr, value);
+              query = query.replace(refStr, value);
             }
           } else if (typeof input === 'string') {
             const value = `'${input}'`;
-            post_query = post_query.replace(refStr, value);
+            query = query.replace(refStr, value);
           } else {
-            post_query = post_query.replace(refStr, input);
+            query = query.replace(refStr, input);
           }
         }
       }
     });
   }
 
-  return post_query;
+  return query;
 };

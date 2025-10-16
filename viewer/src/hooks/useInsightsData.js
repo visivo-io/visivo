@@ -11,39 +11,48 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { fetchInsightData } from '../queries/insightsData';
 
-function filterObject(obj, keys) {
-  return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
-}
+/**
+ * Fetch and cache a parquet file in DuckDB
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
+ * @param {string} nameHash - Table name to store the data under
+ * @param {string} url - URL to fetch the parquet file from
+ * @returns {Promise<boolean>} - True if file was cached, false if already exists
+ */
+const fetchAndCacheParquetFile = async (db, nameHash, url) => {
+  if (!db || !nameHash || !url) return false;
 
-const saveInsightDataSafe = async (db, insightName, dataObj) => {
-  if (!db || !insightName || !dataObj?.insight) return;
   try {
-    const exists = await tableDuckDBExists(db, insightName).catch(() => false);
-    if (exists) return;
+    const exists = await tableDuckDBExists(db, nameHash).catch(() => false);
+    if (exists) {
+      return false; // Already cached
+    }
 
-    const jsonBlob = new Blob([JSON.stringify(dataObj.insight)], {
-      type: 'application/json',
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch parquet file: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const file = new File([blob], `${nameHash}.parquet`, {
+      type: 'application/octet-stream',
     });
 
-    const file = new File([jsonBlob], `${insightName}.json`, {
-      type: 'application/json',
-    });
-
-    await insertDuckDBFile(db, file, insightName);
+    await insertDuckDBFile(db, file, nameHash);
+    return true;
   } catch (error) {
-    // Failed to cache insight
+    if (!error.message?.includes('already exists')) {
+      console.error(`Failed to cache parquet file ${nameHash}:`, error);
+    }
+    return false;
   }
 };
 
-const getInsightData = async (db, filteredData, inputs) => {
+const getInsightData = async (db, insights, inputs) => {
   let new_data = {};
-  for (const key in filteredData) {
-    const insight = filteredData[key];
-    if (!insight) continue;
-
+  for (const insight in insights) {
     try {
-      let post_query = prepPostQuery(insight, inputs);
-      const result = await runDuckDBQuery(db, post_query, 10, 1000);
+      let query = prepPostQuery(insight, inputs);
+      const result = await runDuckDBQuery(db, query, 10, 1000);
 
       const processedRows = result.toArray().map(row => {
         const rowData = row.toJSON();
@@ -55,22 +64,21 @@ const getInsightData = async (db, filteredData, inputs) => {
         );
       });
 
-      new_data[key] = {
+      new_data[insight.name] = {
         ...insight,
-        insight: processedRows || [],
+        data: processedRows || [],
       };
     } catch (error) {
-      // Failed to query from DuckDB
+      console.error(`Failed to query ${insight.name} from DuckDB:`, error);
     }
   }
   return new_data;
 };
 
 export const useInsightsData = (projectId, insightNames) => {
-  const fetchInsight = useFetchInsights();
+  const fetchInsights = useFetchInsights();
   const db = useDuckDB();
   const setInsights = useStore(state => state.setInsights);
-  const setDB = useStore(state => state.setDB);
   const storeInsightData = useStore(state => state.insights);
   const inputs = useStore(state => state.inputs);
 
@@ -86,7 +94,6 @@ export const useInsightsData = (projectId, insightNames) => {
     return stableInsightNames.every(
       name =>
         storeInsightData[name]?.insight &&
-        storeInsightData[name]?.columns &&
         storeInsightData[name]?.props
     );
   }, [storeInsightData, stableInsightNames]);
@@ -94,45 +101,29 @@ export const useInsightsData = (projectId, insightNames) => {
   const queryFn = useCallback(async () => {
     if (!db && !inputs) return {};
 
-    const insights = await fetchInsight(projectId, stableInsightNames);
+    const insights = await fetchInsights(projectId, stableInsightNames);
     if (!insights?.length) return {};
 
     const results = await Promise.all(
       insights.map(async insight => {
         try {
           const data = await fetchInsightData(insight);
-          return [
-            insight.name,
-            {
-              insight: data.data ?? [],
-              post_query: data.post_query ?? `SELECT * FROM "${insight.name}"`,
-              columns: data.metadata?.columns || {},
-              props: data.metadata?.props || {},
-              interactions: data.interactions,
-              dynamic_interactions: data.dynamic_interactions,
-            },
-          ];
+
+          await Promise.all(
+            data.files.map(fileInfo =>
+              fetchAndCacheParquetFile(db, fileInfo.name_hash, fileInfo.signed_data_file_url)
+            )
+          );
+
+          return data;
         } catch (error) {
           return null;
         }
       })
     );
 
-    const processedData = Object.fromEntries(results.filter(r => r !== null));
-
-    let filteredData = filterObject(processedData, stableInsightNames);
-
-    setDB(db);
-    setTimeout(() => {
-      Object.entries(filteredData).forEach(([name, dataObj]) => {
-        saveInsightDataSafe(db, name, dataObj);
-      });
-    }, 0);
-
-    filteredData = await getInsightData(db, filteredData, inputs);
-
-    return filteredData;
-  }, [db, fetchInsight, projectId, stableInsightNames, setDB, inputs]);
+    return await getInsightData(db, results, inputs);
+  }, [db, fetchInsights, projectId, stableInsightNames, inputs]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['insights', projectId, stableInsightNames, !!db],
@@ -157,23 +148,4 @@ export const useInsightsData = (projectId, insightNames) => {
     hasAllInsightData: hasCompleteData || (data && Object.keys(data).length > 0),
     error,
   };
-};
-
-export const fetchInsightsData = async insights => {
-  if (!insights?.length) return {};
-
-  const results = await Promise.allSettled(
-    insights.map(async insight => {
-      const response = await fetch(insight.signed_data_file_url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      return [insight.name, data];
-    })
-  );
-
-  return Object.fromEntries(
-    results.filter(result => result.status === 'fulfilled').map(result => result.value)
-  );
 };

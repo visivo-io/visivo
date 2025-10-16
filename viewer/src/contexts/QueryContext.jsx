@@ -1,13 +1,13 @@
 import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
-import { fetchInsights as defaultFetchInsight } from '../api/insights';
+import { fetchInsights as defaultFetchInsights } from '../api/insights';
 
 // Default query functions
 const defaultQueries = {
   fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
-  fetchInsights: defaultFetchInsight,
+  fetchInsights: defaultFetchInsights,
 };
 
 // Create context
@@ -19,14 +19,14 @@ const QueryContext = createContext(defaultQueries);
  *
  * @param {Object} props
  * @param {Function} props.fetchTraces - Custom traces fetch function
- * @param {Function} props.fetchInsights - Custom traces fetch function
+ * @param {Function} props.fetchInsights - Custom insights fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
  * @param {ReactNode} props.children
  */
 export function QueryProvider({ fetchTraces, fetchInsights, fetchDashboard, children }) {
   const queries = {
     fetchTraces: fetchTraces || defaultFetchTraces,
-    fetchInsights: fetchInsights || defaultFetchInsight,
+    fetchInsights: fetchInsights || defaultFetchInsights,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
   };
 

@@ -6,14 +6,14 @@ export function chartDataFromInsightData(insightsData) {
   const insights = [];
 
   for (const [insightName, insightObj] of Object.entries(insightsData)) {
-    if (!insightObj?.insight || !insightObj?.columns || !insightObj?.props) continue;
+    if (!insightObj?.data || !insightObj?.props_mapping) continue;
 
-    const { insight, columns, props } = insightObj;
+    const { data, props_mapping } = insightObj;
 
     const dataArrays = {};
     for (const [, field] of Object.entries(columns)) {
       const keyName = field;
-      dataArrays[keyName] = insight.map(row => row[keyName]);
+      dataArrays[keyName] = data.map(row => row[keyName]);
     }
 
     const insight_props = JSON.parse(JSON.stringify(props));

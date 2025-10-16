@@ -51,11 +51,17 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             os.makedirs(files_directory, exist_ok=True)
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
             df.write_parquet(parquet_path)
-            files = [parquet_path]
+            files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
         else:
             models = insight.get_all_dependent_models(dag=dag)
-            files = [f"{files_directory}/{model.name_hash()}.parquet" for model in models]
-            files = [f for f in files if os.path.exists(f)]
+            files = [
+                {
+                    "name_hash": model.name_hash(),
+                    "signed_data_file_url": f"{files_directory}/{model.name_hash()}.parquet",
+                }
+                for model in models
+                if os.path.exists(f"{files_directory}/{model.name_hash()}.parquet")
+            ]
 
         # Store insight metadata with file references and post_query
         insight_data = {
