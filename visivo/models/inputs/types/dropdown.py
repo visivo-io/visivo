@@ -14,7 +14,7 @@ class DropdownInput(Input):
     )
     multi: bool = Field(False, description="Allow multi-select")
 
-    def child_items(self):
+    def child_items(self): #TODO: Tim & Jared to discuss if this is how we want to handle inputs based on query results and how this impacts the dag runner. Not sure if this is accounted for now
         if isinstance(self.options, QueryString):
             if ContextString.is_context_string(self.options):
                 return [self.options]

@@ -3,7 +3,7 @@ import pytest
 from requests import patch
 from visivo.logger.logger import Logger
 from visivo.models.inputs.input import Input
-from visivo.models.inputs.dropdown import DropdownInput
+from visivo.models.inputs.types.dropdown import DropdownInput
 from visivo.models.base.query_string import QueryString
 
 

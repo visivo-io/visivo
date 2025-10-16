@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple, List
 from pydantic import BaseModel, Field
 
 from visivo.models.fields import QueryOrStringField
@@ -33,3 +33,6 @@ class InsightInteraction(BaseModel):
             if field_value is not None:
                 fields[field_name] = field_value
         return fields
+
+    def extract_query_strings(self, prefix: str = "interaction") -> List[Tuple[str, str]]:
+        pass 

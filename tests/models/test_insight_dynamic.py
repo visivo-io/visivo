@@ -6,7 +6,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
-from visivo.models.inputs.dropdown import DropdownInput
+from visivo.models.inputs.types.dropdown import DropdownInput
 from visivo.models.dimension import Dimension
 from tests.factories.model_factories import SourceFactory
 

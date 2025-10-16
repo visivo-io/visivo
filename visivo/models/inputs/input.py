@@ -30,18 +30,7 @@ class Input(NamedModel, ParentModel):
 
     def _resolve_query_references(self, query_value: str, dag) -> str:
         """Resolve all ${ref(...)} patterns in query string using DAG lookup."""
-
-        def resolve_match(match: re.Match) -> str:
-            ref_name = get_model_name_from_match(match)
-            try:
-                context_str = ContextString(f"${{ref({ref_name})}}")
-                item = context_str.get_item(dag) if dag else None
-                return f"'{item.name}'" if item else f"'{ref_name}'"
-            except Exception as e:
-                Logger.instance().error(f"Failed to resolve ref {ref_name}: {e}")
-                return ref_name
-
-        return re.sub(CONTEXT_STRING_REF_PATTERN, resolve_match, query_value)
+        pass #TODO: create a resolver that works with implicit dimensions (ie. ${ref(model)."column on model"}), global (ie. ${ref(...)} ) and field references (ie. ${ref(model)."field in dag"})
 
     def child_items(self):
         return []
