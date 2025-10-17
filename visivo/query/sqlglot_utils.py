@@ -134,7 +134,7 @@ def find_non_aggregated_columns(expr: exp.Expression) -> List[str]:
         if not is_aggregated:
             # Get the full expression containing this column
             # We want the highest-level expression that contains this column
-            # but isn't the entire statement
+            # but not the entire statement 
             column_expr = column
             parent = column.parent
 

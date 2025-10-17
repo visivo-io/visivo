@@ -2,6 +2,7 @@ from typing import Optional, List
 
 from visivo.models.base.base_model import generate_ref_field
 from pydantic import ConfigDict, Field, model_validator
+from visivo.query.schema_aggregator import SchemaAggregator # We might want to change the name of the SchemaAggregator, it's kinda more of reader/writer class
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.sources.fields import SourceRefField

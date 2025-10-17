@@ -45,6 +45,7 @@ PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 # property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
 # property_path is optional - will be None if not present
 CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
+FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
 # ============================================================================

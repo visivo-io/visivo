@@ -6,9 +6,9 @@ from visivo.query.patterns import (
     INLINE_PATH_REGEX,
     CONTEXT_STRING_VALUE_PATTERN,
     get_model_name_from_match,
+    FIELD_REF_PATTERN 
 )
 
-METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
 class ContextString:
@@ -72,7 +72,7 @@ class ContextString:
         Example:
             'year = ${ref(Selected Year)}' -> '${ref(Selected Year)}'
         """
-        match = re.search(METRIC_REF_PATTERN, self.value)
+        match = re.search(FIELD_REF_PATTERN, self.value)
         if not match:
             return None
         return match.group(0)
