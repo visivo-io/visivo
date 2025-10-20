@@ -14,7 +14,6 @@ from datetime import datetime, date, time
 from decimal import Decimal
 from sqlglot.schema import MappingSchema
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
-from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
 
 class SqlalchemySource(Source, ABC):
@@ -246,6 +245,10 @@ class SqlalchemySource(Source, ABC):
             db_entry["tables"] = table_entries
 
         return db_entry
+    
+    def get_sqlglot_dialect(self):
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+        return get_sqlglot_dialect(self.get_dialect())
 
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """
@@ -266,7 +269,7 @@ class SqlalchemySource(Source, ABC):
             inspector = inspect(engine)
 
             # Get SQLGlot dialect for this source
-            sqlglot_dialect = get_sqlglot_dialect(self.get_dialect())
+            sqlglot_dialect = self.get_sqlglot_dialect()
 
             # Initialize result structure
             result = {

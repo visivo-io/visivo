@@ -1,4 +1,5 @@
 import os
+import json
 from time import time
 from visivo.jobs.job import (
     Job,
@@ -11,9 +12,11 @@ from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
 from visivo.models.models.sql_model import SqlModel
+from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.query.sqlglot_utils import schema_from_sql
+    
 
-
-def action(sql_model: SqlModel, dag: ProjectDag, output_dir):
+def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
     """Execute the SQL model query and save result to parquet file.
 
     Args:
@@ -30,17 +33,36 @@ def action(sql_model: SqlModel, dag: ProjectDag, output_dir):
     try:
         start_time = time()
 
+        # New schema portion of the job
+        sqlglot_dialect = source.get_sqlglot_dialect()
+        model_hash = sql_model.name_hash()
+        sql = sql_model.sql
+        #TODO: Reading schema from files for every model job is going to be slower than holding it in memory
+        stored_schema = SchemaAggregator.load_source_schema(source_name=source.name, output_dir=output_dir) 
+        schema = stored_schema["sqlglot_schema"]
+        
+        query_result_schema = schema_from_sql(
+            sqlglot_dialect=sqlglot_dialect, 
+            sql=sql, 
+            schema= schema, 
+            model_hash= model_hash
+        )
+        schema_directory = f"{output_dir}/schema/{sql_model.name}/"
+        os.makedirs(schema_directory, exist_ok=True)
+        schema_file = f"{schema_directory}schema.json"
+        with open(schema_file, "w") as fp:
+            json.dump(query_result_schema, fp, indent=2, default=str)
+
+
         data = source.read_sql(sql_model.sql)
-
         import polars as pl
-
         df = pl.DataFrame(data)
         os.makedirs(files_directory, exist_ok=True)
-        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet"
+        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet" 
         df.write_parquet(parquet_path)
 
         success_message = format_message_success(
-            details=f"Updated data for model \033[4m{sql_model.name}\033[0m",
+            details=f"Updated data & wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,
             full_path=parquet_path,
         )
@@ -52,14 +74,55 @@ def action(sql_model: SqlModel, dag: ProjectDag, output_dir):
         else:
             message = repr(e)
         failure_message = format_message_failure(
-            details=f"Failed query for model \033[4m{sql_model.name}\033[0m",
+            details=f"Failed query or schema build for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,
-            full_path=None,
+            full_path=sql_model.file_path,
             error_msg=message,
         )
         return JobResult(item=sql_model, success=False, message=failure_message)
 
+def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
+    try: 
+        start_time = time()
+        source = get_source_for_model(sql_model, dag, output_dir)
+        sqlglot_dialect = source.get_sqlglot_dialect()
+        model_hash = sql_model.name_hash()
+        sql = sql_model.sql
+        #TODO: Reading schema from files for every model job is going to be slower than holding it in memory
+        stored_schema = SchemaAggregator.load_source_schema(source_name=source.name, output_dir=output_dir) 
+        schema = stored_schema["sqlglot_schema"]
+        
+        query_result_schema = schema_from_sql(
+            sqlglot_dialect=sqlglot_dialect, 
+            sql=sql, 
+            schema= schema, 
+            model_hash= model_hash
+        )
+        schema_directory = f"{output_dir}/schema/{sql_model.name}/"
+        os.makedirs(schema_directory, exist_ok=True)
+        schema_file = f"{schema_directory}schema.json"
+        with open(schema_file, "w") as fp:
+            json.dump(query_result_schema, fp, indent=2, default=str)
+        success_message = format_message_success(
+            details=f"Updated wrote schema for model \033[4m{sql_model.name}\033[0m",
+            start_time=start_time,
+            full_path=schema_file,
+        )
+        return JobResult(item=sql_model, success=True, message=success_message)
+    except Exception as e:
+        if hasattr(e, "message"):
+            message = e.message
+        else:
+            message = repr(e)
+        failure_message = format_message_failure(
+            details=f"Failed schema build for model \033[4m{sql_model.name}\033[0m",
+            start_time=start_time,
+            full_path=sql_model.file_path,
+            error_msg=message,
+        )
+        return JobResult(item=sql_model, success=False, message=failure_message)
 
+    
 def job(dag, output_dir: str, sql_model: SqlModel):
     """Create a Job for the SQL model if it's referenced by a dynamic insight.
 
@@ -81,18 +144,22 @@ def job(dag, output_dir: str, sql_model: SqlModel):
     for insight in insights:
         if insight.is_dynamic(dag):
             # Check if this sql_model is in the insight's dependent models
-            dependent_models = insight.get_all_dependent_models(dag)
-            if sql_model in dependent_models:
-                # This model is referenced by a dynamic insight, create a job
-                source = get_source_for_model(sql_model, dag, output_dir)
-                return Job(
-                    item=sql_model,
-                    source=source,
-                    action=action,
-                    sql_model=sql_model,
-                    dag=dag,
-                    output_dir=output_dir,
-                )
+            source = get_source_for_model(sql_model, dag, output_dir)
+            return Job(
+                item=sql_model,
+                source=source,
+                action=model_query_and_schema_action,
+                sql_model=sql_model,
+                dag=dag,
+                output_dir=output_dir,
+            )
 
-    # Not referenced by any dynamic insight, no job needed
-    return None
+    # Not referenced by any dynamic insight, run the schema-only action
+    return Job(
+        item=sql_model,
+        source=source,
+        action=schema_only_action,
+        sql_model=sql_model,
+        dag=dag,
+        output_dir=output_dir,
+    )

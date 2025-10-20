@@ -3,29 +3,37 @@ SQLGlot utility functions for AST analysis and SQL building.
 """
 
 import sqlglot
-from sqlglot import exp
-from typing import List, Set, Optional, Tuple
+from sqlglot import exp, parse_one
+from sqlglot.schema import MappingSchema
+from sqlglot.dialects import Dialects
+from sqlglot.optimizer import optimize
+from typing import List, Set, Optional, Tuple, Dict
+from hashlib import md5
+from sqlglot.optimizer import qualify
 
-from visivo.logger.logger import Logger
+
 from visivo.models.base.context_string import ContextString
 
 
-# Map Visivo dialect names to SQLGlot dialect names
+
+# Map divergent Visivo source types to SQLGlot dialect names
 VISIVO_TO_SQLGLOT_DIALECT = {
     "postgresql": "postgres",
-    "mysql": "mysql",
-    "snowflake": "snowflake",
-    "bigquery": "bigquery",
-    "sqlite": "sqlite",
-    "duckdb": "duckdb",
-    "redshift": "redshift",
 }
 
 
 def get_sqlglot_dialect(visivo_dialect: str) -> str:
     """Convert Visivo dialect name to SQLGlot dialect name."""
-    return VISIVO_TO_SQLGLOT_DIALECT.get(visivo_dialect, visivo_dialect)
+    sqlglot_dialects = [i.value for i in Dialects if i != '']
+    if visivo_dialect in sqlglot_dialects:
+        return visivo_dialect
+    else:
+        mapped_sqlglot_dialect = VISIVO_TO_SQLGLOT_DIALECT.get(visivo_dialect)
 
+        if mapped_sqlglot_dialect:
+            return mapped_sqlglot_dialect
+        else: 
+            raise NotImplementedError(f"Dialect {visivo_dialect} not found in SQLglot map.")
 
 def parse_expression(statement: str, dialect: str = None) -> Optional[exp.Expression]:
     """
@@ -226,3 +234,61 @@ def get_expression_for_groupby(expr: exp.Expression) -> str:
         return expr.this.sql()
 
     return expr.sql()
+
+def identify_column_references(model_hash: str, model_schema: Dict, expr_sql: str ) -> Tuple[Dict, str]:
+    """
+    Parses individual SQL expression returning fully expressed column references to model aliases
+    >> Given: 
+        model_hash = "model"
+        model_schema = {model_hash: {"column_a": "INT", "column_b": "TEXT"}}
+        expr_sql = 'max(column_a) + count(distinct column_b)'
+    >> Returns: 
+        MAX("model"."column_a") + COUNT(DISTINCT "model"."column_b") AS "380ea7fef19ed53b"
+    """
+
+    query = exp.select(parse_one(expr_sql)).from_(model_hash)
+    qualified = qualify.qualify(query, schema=model_schema)
+
+    # use only the expression, not the alias wrapper
+    aliasable = qualified.expressions[0].this.sql(identify=True)
+
+    alias_hash = md5(aliasable.encode("utf-8")).hexdigest()[:16]  
+    proj = qualified.expressions[0]
+    proj.set("alias", exp.to_identifier(alias_hash))
+
+    return qualified.expressions[0].sql(identify=True)
+
+def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) -> dict:
+    """
+    Uses input schema plus sql to produce the new schema expected from the query. 
+    >>> Given:
+        sql = "select a + 1 as a1, cast(upper(b) as int) as b1, upper(b) as b11, * from t"
+        schema = MappingSchema( schema={"t": {"a": "INT", "b": "TEXT"}})
+        model_hash = "model"
+    >>> Expect: 
+            {'model': {'a1': 'INT', 'b1': 'INT', 'b11': 'VARCHAR', 'a': 'INT', 'b': 'TEXT'}}
+
+    """
+    # 1. Parse
+    expr = sqlglot.parse_one(sql, read=sqlglot_dialect)
+
+    # 2. Qualify with schema so column refs resolve
+    schema = MappingSchema(schema=schema)
+    expr = qualify.qualify(expr, qualify_columns= True, schema=schema)
+
+    # 3. Optimize which annotates types using the schema including stars
+    expr = optimize(expr, schema=schema)
+    
+
+    # 4. Get output columns and types from the select list
+    column_schema = {}
+    select = expr.find(exp.Select)
+    for proj in select.expressions:
+        alias = proj.alias_or_name
+        dtype = proj.type  # sqlglot.exp.DataType
+        column_schema[alias] = dtype.this.value if dtype else None
+
+    result = {
+        model_hash: column_schema
+    }
+    return result 

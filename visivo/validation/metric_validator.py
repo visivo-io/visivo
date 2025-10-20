@@ -14,38 +14,8 @@ class MetricValidator:
 
     @staticmethod
     def _get_sqlglot_dialect(source_type: Optional[str] = None) -> str:
-        """
-        Maps source types to SQLGlot dialect names.
-
-        Args:
-            source_type: The source type (e.g., 'postgresql', 'mysql', 'snowflake')
-
-        Returns:
-            SQLGlot dialect name
-        """
-        if not source_type:
-            return "postgres"  # Default to postgres
-
-        dialect_map = {
-            "postgresql": "postgres",
-            "postgres": "postgres",
-            "mysql": "mysql",
-            "snowflake": "snowflake",
-            "bigquery": "bigquery",
-            "sqlite": "sqlite",
-            "duckdb": "duckdb",
-            "redshift": "redshift",
-            "presto": "presto",
-            "trino": "trino",
-            "spark": "spark",
-            "hive": "hive",
-            "oracle": "oracle",
-            "tsql": "tsql",
-            "mssql": "tsql",
-            "sqlserver": "tsql",
-        }
-
-        return dialect_map.get(source_type.lower(), "postgres")
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+        return get_sqlglot_dialect(source_type)
 
     @staticmethod
     def validate_aggregate_expression(

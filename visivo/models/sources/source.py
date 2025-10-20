@@ -17,7 +17,8 @@ class Source(ABC, NamedModel):
     @abstractmethod
     def read_sql(self, query: str, **kwargs):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
-
+    
+    @abstractmethod
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """Extract table and column metadata and build SQLGlot schema.
 
