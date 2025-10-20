@@ -11,9 +11,8 @@ from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
 )
-from visivo.query.sqlglot_utils import identify_column_references
+from visivo.query.sqlglot_utils import identify_column_references, field_alias_hasher
 from visivo.logger.logger import Logger
-
 
 class FieldResolver:
     """
@@ -46,6 +45,7 @@ class FieldResolver:
         self._resolution_cache: Dict[str, str] = {}
         self._resolution_stack: list = []  # Track current resolution path for cycle detection
 
+    
     def _load_model_schema(self, model_name: str) -> Optional[dict]:
         if model_name in self._schema_cache:
             return self._schema_cache[model_name]
@@ -111,7 +111,7 @@ class FieldResolver:
                 f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
             )
 
-    def resolve(self, field_node: Union[Metric, Dimension]) -> Tuple[str, str]:
+    def resolve(self, expression: str) -> str:
         """
         Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing
         them with their expressions until we are left with only sql statements.
@@ -123,7 +123,7 @@ class FieldResolver:
             sqlglot_utils.identify_column_references before we return and replace using the parent model
             schema to qualify columns and the model source dialect to inform dialect
 
-        Returns resolved sql plus a unique set of sql_model nodes used in the expression
+        Returns resolved sql str
         """
 
         def replace_one_by_one(text, repl_fn):
@@ -188,9 +188,9 @@ class FieldResolver:
             # recurse into any refs produced by the replacement
             return replace_one_by_one(inner, repl_fn)
 
-        resolved_sql = replace_one_by_one(field_node.expression, repl_fn=repl_fn)
+        resolved_sql = replace_one_by_one(expression, repl_fn=repl_fn)
         # TODO: We could validate that types from different models line up using sqlglot at this point too.
         #      This might make sense to do if we start validating the run queries on compile rather than
         #      during the run like we do currently.
-        hashed_alias = md5(resolved_sql.encode("utf-8")).hexdigest()[:16]
-        return (f"{resolved_sql} AS {hashed_alias}", hashed_alias)
+        hashed_alias = field_alias_hasher(resolved_sql)
+        return f"{resolved_sql} AS {hashed_alias}"

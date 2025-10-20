@@ -39,7 +39,7 @@ class InsightInteraction(BaseModel):
                 fields[field_name] = field_value.get_value()
         return fields
 
-    def field_values_with_sanitized_inputs(self, dag: ProjectDag) -> str:
+    def field_values_with_sanitized_inputs(self, dag: ProjectDag) -> dict:
         
         def replace_only_inputs(text: str) -> str:
             comments = []

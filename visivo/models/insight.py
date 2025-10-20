@@ -6,8 +6,10 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.sources import Source
 from visivo.query.insight.insight_query_builder import InsightQueryBuilder
 from visivo.query.insight.insight_query_info import InsightQueryInfo
+from visivo.models.dag import all_descendants_of_type
 
 
 class Insight(NamedModel, ParentModel):
@@ -110,6 +112,7 @@ class Insight(NamedModel, ParentModel):
                 for field_value in interaction.field_values.values():
                     field_str = str(field_value)
                     model_names = extract_ref_names(field_str)
+                    #TODO: I think this will skip model scoped children and needs refactored
                     for model_name in model_names:
                         ref_str = f"ref({model_name})"
                         if ref_str not in children:
@@ -118,10 +121,35 @@ class Insight(NamedModel, ParentModel):
         return children
 
     def get_all_dependent_models(self, dag) -> Set[SqlModel]:
-        from visivo.models.dag import all_descendants_of_type
-
         models = all_descendants_of_type(type=SqlModel, dag=dag, from_node=self)
         return set(models)
+    
+    def get_dependent_source(self, dag) -> Source:
+        """Currently an insight can only reference models from the same source"""
+        source = all_descendants_of_type(type=Source, dag=dag, from_node=self)[0]
+        return source
+    
+    def get_native_dialect(self, dag):
+        source = self.get_dependent_source(dag=dag)
+        return source.get_sqlglot_dialect()
+
+    def _get_all_interaction_query_statements(self, dag): 
+        interactions = []
+        if not self.interactions:
+            return interactions
+        for interaction in self.interactions:
+            for field_type, field_value in interaction.field_values_with_sanitized_inputs(dag=dag).items():
+                interactions.append((field_type, field_value))
+        return interactions
+             
+    def get_all_query_statements(self, dag):
+        query_statements = []
+        interaction_query_statements = self._get_all_interaction_query_statements(dag)
+        query_statements += interaction_query_statements
+        if self.props:
+            props_statements = self.props.extract_query_strings()
+            query_statements += props_statements
+        return query_statements
 
     def is_dynamic(self, dag) -> bool:
         from visivo.models.dag import all_descendants_of_type
@@ -131,4 +159,4 @@ class Insight(NamedModel, ParentModel):
         return len(input_descendants) > 0
 
     def get_query_info(self, dag: ProjectDag, output_dir) -> InsightQueryInfo:
-        return InsightQueryBuilder.build(self, dag, output_dir)
+        return InsightQueryBuilder(self, dag, output_dir).build()

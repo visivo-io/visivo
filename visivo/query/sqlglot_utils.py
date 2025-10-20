@@ -285,3 +285,6 @@ def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) ->
 
     result = {model_hash: column_schema}
     return result
+
+def field_alias_hasher(expression) -> str:
+    return md5(expression.encode("utf-8")).hexdigest()[:16]

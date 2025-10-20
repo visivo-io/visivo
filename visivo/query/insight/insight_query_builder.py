@@ -1,5 +1,7 @@
 from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.base.project_dag import ProjectDag
+from visivo.models.insight import Insight
+from visivo.query.sqlglot_utils import field_alias_hasher
 
 from visivo.query.resolvers.field_resolver import FieldResolver
 from visivo.query.resolvers.relation_resolver import RelationResolver
@@ -21,14 +23,45 @@ class InsightQueryBuilder:
       - Need to express model CTEs named after the model hash name as the FieldResolver & ModelSchema expect
       - Have to collect all of the query statements from insight.props & insight.interactions
     """
+    def __init__(self, insight: Insight,  dag: ProjectDag, output_dir):
+      self.dag = dag 
+      self.output_dir = output_dir
+      self.insight = insight
+      self.field_resolver = FieldResolver(
+         dag=dag, 
+         output_dir=output_dir, 
+         native_dialect= insight.get_native_dialect()
+         )
+      
+      self.resolved_query_statements = None
+      self.is_resolved = False
+      
 
-    @staticmethod
-    def build(insight, dag: ProjectDag, output_dir):
-        dummy_data = {
-            "post_query": f"SELECT * from {insight.hash_name()}",
-            "props_mapping": {
-                "props.x": "x",
-                "props.y": "y",
-            },
+    def resolve(self):
+      """Sets the resolved_query_statements"""
+      unresolved_query_statements = self.insight.get_all_query_statements(self.dag)
+      resolved_query_statements = []
+      for key, statement in unresolved_query_statements:
+         resolved_statement = self.field_resolver.resolve(expression=statement)
+         resolved_query_statements.append((key, resolved_statement))
+      self.resolved_query_statements = resolved_query_statements
+      self.is_resolved = True
+      
+    
+    def _props_mapping(self):
+      props_statements = [(key, statement) for key, statement in self.resolved_query_statements if 'props.' in key ]
+      props_map = {}
+      for key, statement in props_statements:
+         props_map[key] = field_alias_hasher(statement)
+      return  props_map
+        
+       
+
+    def build(self):
+        if not self.is_resolved:
+           raise Exception("Need to resolve before running build")
+        data = {
+            "post_query": f"SELECT * from {self.insight.hash_name()}",
+            "props_mapping": self._props_mapping,
         }
-        return InsightQueryInfo(**dummy_data)
+        return InsightQueryInfo(**data)
