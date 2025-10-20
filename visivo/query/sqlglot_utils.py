@@ -235,7 +235,7 @@ def get_expression_for_groupby(expr: exp.Expression) -> str:
 
     return expr.sql()
 
-def identify_column_references(model_hash: str, model_schema: Dict, expr_sql: str, dialect: str ) -> Tuple[Dict, str]:
+def identify_column_references(model_hash: str, model_schema: Dict, expr_sql: str, dialect: str) -> str:
     """
     Parses individual SQL expression returning fully expressed column references to model aliases
     >> Given: 
@@ -245,18 +245,11 @@ def identify_column_references(model_hash: str, model_schema: Dict, expr_sql: st
     >> Returns: 
         MAX("model"."column_a") + COUNT(DISTINCT "model"."column_b") AS "380ea7fef19ed53b"
     """
-
     query = exp.select(parse_one(expr_sql, read=dialect)).from_(model_hash)
     qualified = qualify.qualify(query, schema=model_schema)
+    qualified_str = qualified.expressions[0].sql(identify=True)
+    return qualified_str.replace(' AS "_col_0"', '')
 
-    # use only the expression, not the alias wrapper
-    aliasable = qualified.expressions[0].this.sql(identify=True)
-
-    alias_hash = md5(aliasable.encode("utf-8")).hexdigest()[:16]  
-    proj = qualified.expressions[0]
-    proj.set("alias", exp.to_identifier(alias_hash))
-
-    return qualified.expressions[0].sql(identify=True)
 
 def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) -> dict:
     """

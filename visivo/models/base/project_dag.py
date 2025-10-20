@@ -1,6 +1,5 @@
-import json
-import re
 from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph
+
 from visivo.models.dag import all_descendants_with_name, parse_filter_str
 from typing import List, Optional
 
@@ -158,7 +157,7 @@ class ProjectDag(DiGraph):
 
     def get_named_children(self, node_name: str) -> List[str]:
         """
-        Returns a list of names of all named parent nodes for the given node name.
+        Returns a list of names of all named children nodes for the given node name.
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
@@ -173,9 +172,9 @@ class ProjectDag(DiGraph):
         except ValueError:
             return []
 
-    def get_named_parents(self, node_name: str) -> List[str]:
+    def get_named_parents(self, node_name:str ) -> List[str]:
         """
-        Returns a list of names of all named child nodes for the given node name.
+        Returns a list of names of all named parent nodes for the given node name.
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
