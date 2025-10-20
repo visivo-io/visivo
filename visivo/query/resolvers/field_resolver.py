@@ -38,6 +38,7 @@ class FieldResolver:
         """
         self.dag = dag
         self.output_dir = output_dir
+        self.native_dialect = native_dialect
 
         # Caches to avoid repeated file reads and detect cycles
         self._schema_cache: Dict[str, dict] = {}

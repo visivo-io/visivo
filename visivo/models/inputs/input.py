@@ -1,7 +1,7 @@
 from datetime import date
 from enum import Enum
 import re
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 from pydantic import Field, model_serializer
 from visivo.logger.logger import Logger
@@ -33,7 +33,13 @@ class Input(NamedModel, ParentModel):
         pass  # TODO: create a resolver that works with implicit dimensions (ie. ${ref(model)."column on model"}), global (ie. ${ref(...)} ) and field references (ie. ${ref(model)."field in dag"})
 
     def child_items(self):
+        # Wouldnt the insight always be a child item because it needs a value from the input?
         return []
+
+    def placeholder(self) -> Tuple[str, str]:
+        raise NotImplementedError(
+            f"place holder value not yet implemented for input type: {self.type}"
+        )
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):

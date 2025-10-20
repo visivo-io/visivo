@@ -82,7 +82,8 @@ class Insight(NamedModel, ParentModel):
     )
 
     interactions: Optional[List[InsightInteraction]] = Field(
-        None, description="Client-side interactions that can be applied to the insight data."
+        None,
+        description="Leverage Inputs to create client-side interactions that will be applied to the insight data.",
     )
 
     def child_items(self):

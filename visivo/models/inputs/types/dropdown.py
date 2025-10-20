@@ -1,5 +1,5 @@
 import re
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Tuple
 from pydantic import Field
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.query_string import QueryString
@@ -10,9 +10,14 @@ from visivo.models.inputs.input import Input
 class DropdownInput(Input):
     type: Literal["dropdown"] = "dropdown"
     options: Optional[Union[List[str], QueryOrStringField, str]] = Field(
-        None, description="Static list of options OR a dynamic SQL string '${ref(insight)}'"
+        None, description="Static list of options OR a dynamic SQL string '${ref(model).field}'"
     )
     multi: bool = Field(False, description="Allow multi-select")
+
+    def placeholder(self) -> Tuple[str, str]:
+        placeholder = "'visivo-input-placeholder-string'"
+        comment = " -- replace('visivo-input-placeholder-string', ${" + f"ref({self.name})" + "})"
+        return placeholder, comment
 
     def child_items(
         self,
