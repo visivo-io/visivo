@@ -1,5 +1,6 @@
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.metric import Metric
+from visivo.models.dimension import Dimension
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
 
 

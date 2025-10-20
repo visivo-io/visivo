@@ -9,28 +9,9 @@ from visivo.jobs.job import (
     format_message_success,
 )
 from time import time
-from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.jobs.utils import get_source_for_model
 import json
 import os
-from decimal import Decimal
-from datetime import date, datetime
-
-
-def _convert_to_json_serializable(data):
-    """Convert data to JSON serializable format"""
-    if isinstance(data, list):
-        return [{k: _convert_value(v) for k, v in row.items()} for row in data]
-    return data
-
-
-def _convert_value(value):
-    """Convert individual values to JSON serializable types"""
-    if isinstance(value, Decimal):
-        return float(value)
-    elif isinstance(value, (date, datetime)):
-        return value.isoformat()
-    return value
 
 
 def action(insight: Insight, dag: ProjectDag, output_dir):
@@ -44,10 +25,8 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
 
         files_directory = f"{output_dir}/files"
         if insight_query_info.pre_query:
-            data = source.read_sql(insight_query_info.pre_query)
-            import polars as pl
-
-            df = pl.DataFrame(_convert_to_json_serializable(data))
+            df = source.read_sql(insight_query_info.pre_query)
+            #Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
             os.makedirs(files_directory, exist_ok=True)
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
             df.write_parquet(parquet_path)
@@ -96,13 +75,6 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             error_msg=message,
         )
         return JobResult(item=insight, success=False, message=failure_message)
-
-
-def _get_tokenized_insight(insight, dag, output_dir):
-    """Get tokenized insight with pre/post queries"""
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    source = get_source_for_model(model, dag, output_dir)
-    return InsightTokenizer(insight=insight, source=source, model=model, dag=dag).tokenize()
 
 
 def _get_source(insight, dag, output_dir):
