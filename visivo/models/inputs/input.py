@@ -36,7 +36,7 @@ class Input(NamedModel, ParentModel):
         # Wouldnt the insight always be a child item because it needs a value from the input?
         return []
 
-    def placeholder(self) -> Tuple[str, str]:
+    def query_placeholder(self) -> Tuple[str, str]:
         raise NotImplementedError(
             f"place holder value not yet implemented for input type: {self.type}"
         )

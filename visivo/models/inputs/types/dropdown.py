@@ -14,7 +14,7 @@ class DropdownInput(Input):
     )
     multi: bool = Field(False, description="Allow multi-select")
 
-    def placeholder(self) -> Tuple[str, str]:
+    def query_placeholder(self) -> Tuple[str, str]:
         placeholder = "'visivo-input-placeholder-string'"
         comment = " -- replace('visivo-input-placeholder-string', ${" + f"ref({self.name})" + "})"
         return placeholder, comment
