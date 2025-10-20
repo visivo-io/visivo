@@ -16,7 +16,7 @@ class DropdownInput(Input):
 
     def query_placeholder(self) -> Tuple[str, str]:
         placeholder = "'visivo-input-placeholder-string'"
-        comment = " -- replace('visivo-input-placeholder-string', ${" + f"ref({self.name})" + "})"
+        comment = f" -- replace('visivo-input-placeholder-string', Input({self.name}) )"
         return placeholder, comment
 
     def child_items(
