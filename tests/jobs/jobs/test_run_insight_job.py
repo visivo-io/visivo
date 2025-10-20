@@ -3,7 +3,7 @@ import os
 import json
 from unittest.mock import Mock, patch
 
-from visivo.jobs.run_insight_job import action, _get_tokenized_insight, _get_source, job
+from visivo.jobs.run_insight_job import action, _get_source, job
 from visivo.models.insight import Insight
 from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.jobs.job import JobResult
@@ -120,37 +120,6 @@ def test_insight_job_action_failure(mock_dag_with_project):
                 assert result.item == insight
                 assert "Failed job" in result.message
                 assert "failing_insight" in result.message
-
-
-def test_get_tokenized_insight(mock_dag_with_project):
-    """Test that tokenized insight is generated correctly"""
-    insight_data = {
-        "name": "tokenize_test",
-        "props": {"type": "scatter", "x": "?{date}", "y": "?{amount}"},
-    }
-    insight = Insight(**insight_data)
-
-    model = SqlModelFactory(sql="SELECT * FROM test")
-    source = Mock()
-    source.name = "test_source"
-    source.type = "snowflake"
-    source.get_dialect.return_value = "snowflake"
-
-    dag = mock_dag_with_project
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        with patch("visivo.jobs.run_insight_job.all_descendants_of_type") as mock_descendants:
-            with patch("visivo.jobs.run_insight_job.get_source_for_model") as mock_get_source:
-                mock_descendants.return_value = [model]
-                mock_get_source.return_value = source
-
-                tokenized = _get_tokenized_insight(insight, dag, temp_dir)
-
-                assert isinstance(tokenized, TokenizedInsight)
-                assert tokenized.name == "tokenize_test"
-                assert tokenized.source == source.name
-                assert "props.x" in tokenized.select_items
-                assert "props.y" in tokenized.select_items
 
 
 def test_get_source(mock_dag_with_project):
