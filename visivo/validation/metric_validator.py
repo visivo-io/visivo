@@ -15,6 +15,7 @@ class MetricValidator:
     @staticmethod
     def _get_sqlglot_dialect(source_type: Optional[str] = None) -> str:
         from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
         return get_sqlglot_dialect(source_type)
 
     @staticmethod

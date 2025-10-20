@@ -6,9 +6,8 @@ from visivo.query.patterns import (
     INLINE_PATH_REGEX,
     CONTEXT_STRING_VALUE_PATTERN,
     get_model_name_from_match,
-    FIELD_REF_PATTERN 
+    FIELD_REF_PATTERN,
 )
-
 
 
 class ContextString:

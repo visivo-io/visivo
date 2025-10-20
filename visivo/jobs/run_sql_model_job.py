@@ -14,7 +14,7 @@ from visivo.models.insight import Insight
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.query.sqlglot_utils import schema_from_sql
-    
+
 
 def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
     """Execute the SQL model query and save result to parquet file.
@@ -37,15 +37,14 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         sqlglot_dialect = source.get_sqlglot_dialect()
         model_hash = sql_model.name_hash()
         sql = sql_model.sql
-        #TODO: Reading schema from files for every model job is going to be slower than holding it in memory
-        stored_schema = SchemaAggregator.load_source_schema(source_name=source.name, output_dir=output_dir) 
+        # TODO: Reading schema from files for every model job is going to be slower than holding it in memory
+        stored_schema = SchemaAggregator.load_source_schema(
+            source_name=source.name, output_dir=output_dir
+        )
         schema = stored_schema["sqlglot_schema"]
-        
+
         query_result_schema = schema_from_sql(
-            sqlglot_dialect=sqlglot_dialect, 
-            sql=sql, 
-            schema= schema, 
-            model_hash= model_hash
+            sqlglot_dialect=sqlglot_dialect, sql=sql, schema=schema, model_hash=model_hash
         )
         schema_directory = f"{output_dir}/schema/{sql_model.name}/"
         os.makedirs(schema_directory, exist_ok=True)
@@ -53,12 +52,12 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         with open(schema_file, "w") as fp:
             json.dump(query_result_schema, fp, indent=2, default=str)
 
-
         data = source.read_sql(sql_model.sql)
         import polars as pl
+
         df = pl.DataFrame(data)
         os.makedirs(files_directory, exist_ok=True)
-        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet" 
+        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet"
         df.write_parquet(parquet_path)
 
         success_message = format_message_success(
@@ -81,22 +80,22 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         )
         return JobResult(item=sql_model, success=False, message=failure_message)
 
+
 def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
-    try: 
+    try:
         start_time = time()
         source = get_source_for_model(sql_model, dag, output_dir)
         sqlglot_dialect = source.get_sqlglot_dialect()
         model_hash = sql_model.name_hash()
         sql = sql_model.sql
-        #TODO: Reading schema from files for every model job is going to be slower than holding it in memory
-        stored_schema = SchemaAggregator.load_source_schema(source_name=source.name, output_dir=output_dir) 
+        # TODO: Reading schema from files for every model job is going to be slower than holding it in memory
+        stored_schema = SchemaAggregator.load_source_schema(
+            source_name=source.name, output_dir=output_dir
+        )
         schema = stored_schema["sqlglot_schema"]
-        
+
         query_result_schema = schema_from_sql(
-            sqlglot_dialect=sqlglot_dialect, 
-            sql=sql, 
-            schema= schema, 
-            model_hash= model_hash
+            sqlglot_dialect=sqlglot_dialect, sql=sql, schema=schema, model_hash=model_hash
         )
         schema_directory = f"{output_dir}/schema/{sql_model.name}/"
         os.makedirs(schema_directory, exist_ok=True)
@@ -122,7 +121,7 @@ def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
         )
         return JobResult(item=sql_model, success=False, message=failure_message)
 
-    
+
 def job(dag, output_dir: str, sql_model: SqlModel):
     """Create a Job for the SQL model if it's referenced by a dynamic insight.
 

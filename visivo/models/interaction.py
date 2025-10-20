@@ -35,4 +35,4 @@ class InsightInteraction(BaseModel):
         return fields
 
     def extract_query_strings(self, prefix: str = "interaction") -> List[Tuple[str, str]]:
-        pass 
+        pass

@@ -98,42 +98,41 @@ class FieldResolver:
         # Use identify_column_references to qualify the expression
         try:
             qualified = identify_column_references(
-                model_hash=model_hash, 
-                model_schema=schema, 
-                expr_sql=expression, 
-                dialect=self.native_dialect
+                model_hash=model_hash,
+                model_schema=schema,
+                expr_sql=expression,
+                dialect=self.native_dialect,
             )
             return qualified
         except Exception as e:
             raise ValueError(
                 f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
             )
-        
 
-          
-            
-              
-    def resolve(self, field_node: Union[Metric, Dimension]) -> Tuple[str, str]: 
+    def resolve(self, field_node: Union[Metric, Dimension]) -> Tuple[str, str]:
         """
-        Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing 
-        them with their expressions until we are left with only sql statements. 
+        Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing
+        them with their expressions until we are left with only sql statements.
 
-          - Use the dag to iterate by calling direct parents of the metric/dimension node. 
-          - If a "${ref(model).field}" is not a direct parent of the current metric/dimension node 
+          - Use the dag to iterate by calling direct parents of the metric/dimension node.
+          - If a "${ref(model).field}" is not a direct parent of the current metric/dimension node
             then it's an implicit dimension and should be replaced with "model_hash.field"
-          - Once the direct parent of a field is a sql_model then we should run the expression through 
+          - Once the direct parent of a field is a sql_model then we should run the expression through
             sqlglot_utils.identify_column_references before we return and replace using the parent model
             schema to qualify columns and the model source dialect to inform dialect
 
         Returns resolved sql plus a unique set of sql_model nodes used in the expression
         """
+
         def replace_one_by_one(text, repl_fn):
             # pattern is a compiled regex
             steps = 0
             while steps < 10000:
                 steps += 1
                 # subn with count=1 replaces only the first match
-                new_text, n = CONTEXT_STRING_REF_PATTERN_COMPILED.subn(lambda m: repl_fn(m), text, count=1)
+                new_text, n = CONTEXT_STRING_REF_PATTERN_COMPILED.subn(
+                    lambda m: repl_fn(m), text, count=1
+                )
                 if n == 0:
                     break
                 text = new_text
@@ -142,58 +141,54 @@ class FieldResolver:
         # Example, resolve ${ref(name)} recursively
 
         def resolve_ref(model_name, field_name) -> str:
-            # When field name is none then the model name is actually a metric or dimension. 
+            # When field name is none then the model name is actually a metric or dimension.
             # This is validated in compile to be true ie. ${ref(global-metric)}
             if field_name == None:
                 field_node = self.dag.get_descendant_by_name(model_name)
-            else: #field name is not null
+            else:  # field name is not null
                 model_node = self.dag.get_descendant_by_name(model_name)
-                try: 
-                    #set the field node to the descenant of the model
-                    field_node = self.dag.get_descendant_by_name(
-                        field_name, 
-                        from_node=model_node
-                    )
+                try:
+                    # set the field node to the descenant of the model
+                    field_node = self.dag.get_descendant_by_name(field_name, from_node=model_node)
                 except ValueError:
-                    #No model found check to see if there's a matching implicit dimension in the schema
+                    # No model found check to see if there's a matching implicit dimension in the schema
                     model_hash = model_node.name_hash()
-                    schema = self._load_model_schema(model_node.name) 
+                    schema = self._load_model_schema(model_node.name)
                     table = schema.get(model_hash)
-                    if not table: 
+                    if not table:
                         raise Exception(f"Missing schema for model: {model_node.name}.")
                     column = table.get(field_name)
                     if not column:
-                        columns = ', '.join(table.values())
-                        raise Exception(f"No column: {field_name} exists on model: {model_node.name}. Here's the available columns returned from the model: {columns}")
-                    #If the field name is found in the schema it's an implicit dimension like expected and we can return the qualified expression
-                    #In most dialects this will just be f"{model_hash}"."{field_name}", but some don't use double quotes. 
-                    return self._qualify_expression(
-                        expression=field_name,
-                        model_node=model_node
+                        columns = ", ".join(table.values())
+                        raise Exception(
+                            f"No column: {field_name} exists on model: {model_node.name}. Here's the available columns returned from the model: {columns}"
                         )
-                
+                    # If the field name is found in the schema it's an implicit dimension like expected and we can return the qualified expression
+                    # In most dialects this will just be f"{model_hash}"."{field_name}", but some don't use double quotes.
+                    return self._qualify_expression(expression=field_name, model_node=model_node)
+
             field_parent = self.dag.get_named_parents(field_node.name)[0]
             if isinstance(field_parent, SqlModel):
                 return self._qualify_expression(
-                    expression= field_node.expression, 
-                    model_node=field_parent
-                    )
+                    expression=field_node.expression, model_node=field_parent
+                )
             elif has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
                 return field_node.expression
-            else: 
-                raise Exception("Parent should either be a SqlModel or expression should return another nested expression")
-            
+            else:
+                raise Exception(
+                    "Parent should either be a SqlModel or expression should return another nested expression"
+                )
+
         def repl_fn(match):
             model_name = match.group("model_name").strip()
             field_name = match.group("property_path") or ""
             inner = resolve_ref(model_name, field_name)
             # recurse into any refs produced by the replacement
             return replace_one_by_one(inner, repl_fn)
-        
+
         resolved_sql = replace_one_by_one(field_node.expression, repl_fn=repl_fn)
-        #TODO: We could validate that types from different models line up using sqlglot at this point too. 
-        #      This might make sense to do if we start validating the run queries on compile rather than 
-        #      during the run like we do currently. 
+        # TODO: We could validate that types from different models line up using sqlglot at this point too.
+        #      This might make sense to do if we start validating the run queries on compile rather than
+        #      during the run like we do currently.
         hashed_alias = md5(resolved_sql.encode("utf-8")).hexdigest()[:16]
         return (f"{resolved_sql} AS {hashed_alias}", hashed_alias)
-    

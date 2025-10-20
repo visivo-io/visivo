@@ -130,4 +130,4 @@ class Insight(NamedModel, ParentModel):
         return len(input_descendants) > 0
 
     def get_query_info(self, dag: ProjectDag, output_dir) -> InsightQueryInfo:
-       return InsightQueryBuilder.build(self, dag, output_dir) 
+        return InsightQueryBuilder.build(self, dag, output_dir)

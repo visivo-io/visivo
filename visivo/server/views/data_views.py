@@ -8,6 +8,7 @@ from visivo.utils import SCHEMA_FILE, VIEWER_PATH
 import glob
 import hashlib
 
+
 def register_data_views(app, flask_app, output_dir):
     @app.route("/api/explorer/")
     def explorer_api():

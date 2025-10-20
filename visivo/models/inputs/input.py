@@ -29,8 +29,8 @@ class Input(NamedModel, ParentModel):
     default: Optional[Union[str, int, float, bool, date, List[str]]] = None
 
     def _resolve_query_references(self, query_value: str, dag) -> str:
-        """Resolve all ${ref(...)} patterns in query string using DAG lookup."""        
-        pass #TODO: create a resolver that works with implicit dimensions (ie. ${ref(model)."column on model"}), global (ie. ${ref(...)} ) and field references (ie. ${ref(model)."field in dag"})
+        """Resolve all ${ref(...)} patterns in query string using DAG lookup."""
+        pass  # TODO: create a resolver that works with implicit dimensions (ie. ${ref(model)."column on model"}), global (ie. ${ref(...)} ) and field references (ie. ${ref(model)."field in dag"})
 
     def child_items(self):
         return []
