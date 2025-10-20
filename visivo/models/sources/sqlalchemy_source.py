@@ -245,6 +245,10 @@ class SqlalchemySource(Source, ABC):
             db_entry["tables"] = table_entries
 
         return db_entry
+    
+    def get_sqlglot_dialect(self):
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+        return get_sqlglot_dialect(self.get_dialect())
 
     def get_sqlglot_dialect(self):
         from visivo.query.sqlglot_utils import get_sqlglot_dialect
