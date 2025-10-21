@@ -10,7 +10,7 @@ from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
 from visivo.models.inputs.types.dropdown import DropdownInput
-from visivo.jobs.run_sql_model_job import job, action
+from visivo.jobs.run_sql_model_job import job, model_query_and_schema_action, schema_only_action
 from visivo.jobs.job import JobResult
 from tests.factories.model_factories import SourceFactory, ProjectFactory
 from tests.support.utils import temp_folder
@@ -20,7 +20,7 @@ class TestRunSqlModelJob:
     """Tests for sql_model_job job creation logic."""
 
     def test_job_created_for_dynamic_insight(self):
-        """Test that a job is created when a model is referenced by a dynamic insight."""
+        """Test that a job is created with model_query_and_schema_action when a model is referenced by a dynamic insight."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -60,12 +60,13 @@ class TestRunSqlModelJob:
 
         sql_model_job = job(dag=dag, output_dir=output_dir, sql_model=orders_model)
 
-        # Job should be created because insight is dynamic
+        # Job should be created with model_query_and_schema_action because insight is dynamic
         assert sql_model_job is not None
         assert sql_model_job.item == orders_model
+        assert sql_model_job.action == model_query_and_schema_action
 
-    def test_job_not_created_for_static_insight(self):
-        """Test that no job is created when a model is only referenced by static insights."""
+    def test_job_created_with_schema_only_for_static_insight(self):
+        """Test that a job is created with schema_only_action when a model is only referenced by static insights."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -96,11 +97,13 @@ class TestRunSqlModelJob:
 
         sql_model_job = job(dag=dag, output_dir=output_dir, sql_model=orders_model)
 
-        # No job should be created because insight is not dynamic
-        assert sql_model_job is None
+        # Job should be created with schema_only_action because insight is not dynamic
+        assert sql_model_job is not None
+        assert sql_model_job.item == orders_model
+        assert sql_model_job.action == schema_only_action
 
-    def test_job_not_created_for_unreferenced_model(self):
-        """Test that no job is created for a model not referenced by any dynamic insight."""
+    def test_job_uses_correct_action_based_on_dynamic_insight(self):
+        """Test that jobs use model_query_and_schema_action when ANY insight is dynamic, schema_only_action otherwise."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -143,20 +146,25 @@ class TestRunSqlModelJob:
         output_dir = temp_folder()
         dag = project.dag()
 
-        # Job should not be created for users_model
-        sql_model_job = job(dag=dag, output_dir=output_dir, sql_model=users_model)
-        assert sql_model_job is None
+        # Both models get jobs, but with different actions
+        # users_model gets model_query_and_schema_action because ANY insight is dynamic
+        users_job = job(dag=dag, output_dir=output_dir, sql_model=users_model)
+        assert users_job is not None
+        assert users_job.item == users_model
+        assert users_job.action == model_query_and_schema_action
 
-        # But should be created for orders_model
-        sql_model_job = job(dag=dag, output_dir=output_dir, sql_model=orders_model)
-        assert sql_model_job is not None
+        # orders_model also gets model_query_and_schema_action
+        orders_job = job(dag=dag, output_dir=output_dir, sql_model=orders_model)
+        assert orders_job is not None
+        assert orders_job.item == orders_model
+        assert orders_job.action == model_query_and_schema_action
 
 
 class TestRunSqlModelJobAction:
     """Tests for sql_model_job action execution."""
 
-    def test_action_success(self):
-        """Test that action successfully executes SQL and saves parquet file."""
+    def test_model_query_and_schema_action_success(self):
+        """Test that model_query_and_schema_action successfully executes SQL and saves parquet file."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -177,13 +185,25 @@ class TestRunSqlModelJobAction:
         # Mock the source to return test data
         test_data = [{"id": 1, "name": "test"}, {"id": 2, "name": "test2"}]
 
-        with patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source:
+        with (
+            patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source,
+            patch(
+                "visivo.jobs.run_sql_model_job.SchemaAggregator.load_source_schema"
+            ) as mock_load_schema,
+            patch("visivo.jobs.run_sql_model_job.schema_from_sql") as mock_schema_from_sql,
+        ):
+
             mock_source = Mock()
             mock_source.read_sql.return_value = test_data
+            mock_source.get_sqlglot_dialect.return_value = "sqlite"
             mock_get_source.return_value = mock_source
 
+            # Mock schema loading
+            mock_load_schema.return_value = {"sqlglot_schema": {}}
+            mock_schema_from_sql.return_value = {"columns": ["id", "name"]}
+
             # Execute action
-            result = action(orders_model, dag, output_dir)
+            result = model_query_and_schema_action(orders_model, dag, output_dir)
 
             # Check result
             assert isinstance(result, JobResult)
@@ -205,8 +225,12 @@ class TestRunSqlModelJobAction:
             assert df["id"].to_list() == [1, 2]
             assert df["name"].to_list() == ["test", "test2"]
 
-    def test_action_failure(self):
-        """Test that action handles SQL execution failures gracefully."""
+            # Verify schema file was created
+            schema_file = os.path.join(output_dir, "schema", orders_model.name, "schema.json")
+            assert os.path.exists(schema_file)
+
+    def test_model_query_and_schema_action_failure(self):
+        """Test that model_query_and_schema_action handles SQL execution failures gracefully."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -224,18 +248,125 @@ class TestRunSqlModelJobAction:
         output_dir = temp_folder()
         dag = project.dag()
 
-        with patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source:
+        with (
+            patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source,
+            patch(
+                "visivo.jobs.run_sql_model_job.SchemaAggregator.load_source_schema"
+            ) as mock_load_schema,
+        ):
+
             mock_source = Mock()
+            mock_source.get_sqlglot_dialect.return_value = "sqlite"
             # Simulate SQL execution failure
             mock_source.read_sql.side_effect = Exception("SQL syntax error")
             mock_get_source.return_value = mock_source
+            mock_load_schema.return_value = {"sqlglot_schema": {}}
 
             # Execute action
-            result = action(orders_model, dag, output_dir)
+            result = model_query_and_schema_action(orders_model, dag, output_dir)
 
             # Check result
             assert isinstance(result, JobResult)
             assert result.success is False
             assert result.item == orders_model
             assert "Failed query" in result.message
+            assert "orders" in result.message
+
+    def test_schema_only_action_success(self):
+        """Test that schema_only_action successfully writes schema without executing query."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            dashboards=[],
+        )
+
+        output_dir = temp_folder()
+        dag = project.dag()
+
+        with (
+            patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source,
+            patch(
+                "visivo.jobs.run_sql_model_job.SchemaAggregator.load_source_schema"
+            ) as mock_load_schema,
+            patch("visivo.jobs.run_sql_model_job.schema_from_sql") as mock_schema_from_sql,
+        ):
+
+            mock_source = Mock()
+            mock_source.get_sqlglot_dialect.return_value = "sqlite"
+            mock_get_source.return_value = mock_source
+
+            # Mock schema loading
+            mock_load_schema.return_value = {"sqlglot_schema": {}}
+            mock_schema_from_sql.return_value = {"columns": ["id", "name", "date"]}
+
+            # Execute action
+            result = schema_only_action(orders_model, dag, output_dir)
+
+            # Check result
+            assert isinstance(result, JobResult)
+            assert result.success is True
+            assert result.item == orders_model
+            assert "orders" in result.message
+
+            # Verify read_sql was NOT called (schema only, no data query)
+            mock_source.read_sql.assert_not_called()
+
+            # Verify schema file was created
+            schema_file = os.path.join(output_dir, "schema", orders_model.name, "schema.json")
+            assert os.path.exists(schema_file)
+
+            # Verify parquet file was NOT created (schema only, no data)
+            parquet_path = os.path.join(output_dir, "files", f"{orders_model.name_hash()}.parquet")
+            assert not os.path.exists(parquet_path)
+
+    def test_schema_only_action_failure(self):
+        """Test that schema_only_action handles schema generation failures gracefully."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT invalid syntax",
+            source=f"ref({source.name})",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            dashboards=[],
+        )
+
+        output_dir = temp_folder()
+        dag = project.dag()
+
+        with (
+            patch("visivo.jobs.run_sql_model_job.get_source_for_model") as mock_get_source,
+            patch(
+                "visivo.jobs.run_sql_model_job.SchemaAggregator.load_source_schema"
+            ) as mock_load_schema,
+            patch("visivo.jobs.run_sql_model_job.schema_from_sql") as mock_schema_from_sql,
+        ):
+
+            mock_source = Mock()
+            mock_source.get_sqlglot_dialect.return_value = "sqlite"
+            mock_get_source.return_value = mock_source
+            mock_load_schema.return_value = {"sqlglot_schema": {}}
+            # Simulate schema generation failure
+            mock_schema_from_sql.side_effect = Exception("Invalid SQL syntax")
+
+            # Execute action
+            result = schema_only_action(orders_model, dag, output_dir)
+
+            # Check result
+            assert isinstance(result, JobResult)
+            assert result.success is False
+            assert result.item == orders_model
+            assert "Failed schema" in result.message
             assert "orders" in result.message
