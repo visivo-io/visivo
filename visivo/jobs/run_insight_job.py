@@ -26,6 +26,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
         files_directory = f"{output_dir}/files"
         if insight_query_info.pre_query:
             import polars as pl
+
             data = source.read_sql(insight_query_info.pre_query)
             # Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
             os.makedirs(files_directory, exist_ok=True)

@@ -160,9 +160,7 @@ class FieldResolver:
                 field_name_stripped = field_name.lstrip(".")
                 try:
                     # set the field node to the descenant of the model
-                    field_node = self.dag.get_descendant_by_name(
-                        field_name_stripped, from_node=model_node
-                    )
+                    field_node = self.dag.get_descendant_by_name(field_name_stripped)
                 except ValueError:
                     # No model found check to see if there's a matching implicit dimension in the schema
                     model_hash = model_node.name_hash()
@@ -184,7 +182,8 @@ class FieldResolver:
                         expression=field_name_stripped, model_node=model_node
                     )
 
-            field_parent = self.dag.get_named_parents(field_node.name)[0]
+            field_parent_name = self.dag.get_named_parents(field_node.name)[0]
+            field_parent = self.dag.get_descendant_by_name(field_parent_name)
             if isinstance(field_parent, SqlModel):
                 return self._qualify_expression(
                     expression=field_node.expression, model_node=field_parent
@@ -208,5 +207,5 @@ class FieldResolver:
         #      This might make sense to do if we start validating the run queries on compile rather than
         #      during the run like we do currently.
         hashed_alias = field_alias_hasher(resolved_sql)
-        resolved_strip_alias = resolved_sql.split(' AS ')[0]
+        resolved_strip_alias = resolved_sql.split(" AS ")[0]
         return f'{resolved_strip_alias} AS "{hashed_alias}"'

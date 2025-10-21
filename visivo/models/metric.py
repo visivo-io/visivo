@@ -54,6 +54,7 @@ class Metric(NamedModel, ParentModel):
         """Set the parent model name for nested metrics."""
         self._parent_name = value
 
+    # TODO: Need to find a way to make names globally unique without creating confusion maybe something like alias should be set in place on model scoped metrics and then name can be computed from the model and alias?
     @field_validator("name")
     @classmethod
     def validate_sql_identifier(cls, v: Optional[str]) -> Optional[str]:

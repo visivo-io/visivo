@@ -67,7 +67,7 @@ class InsightQueryBuilder:
         ]
         props_map = {}
         for key, statement in props_statements:
-            props_map[key] = statement.split(' AS ')[1]
+            props_map[key] = statement.split(" AS ")[1]
         return props_map
 
     @property
@@ -543,7 +543,6 @@ class InsightQueryBuilder:
         pre_query = self.pre_query
         post_query = self.post_query
         props_mapping = self.props_mapping
-
 
         data = {
             "pre_query": pre_query,
