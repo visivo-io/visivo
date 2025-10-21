@@ -113,7 +113,7 @@ def has_window_function(expr: exp.Expression) -> bool:
     return False
 
 
-def find_non_aggregated_columns(expr: exp.Expression) -> List[str]:
+def find_non_aggregated_expressions(expr: exp.Expression) -> List[str]:
     """
     Find all column references that are not inside aggregate functions.
     These columns need to be included in GROUP BY.

@@ -4,6 +4,7 @@ from visivo.query.sqlglot_utils import field_alias_hasher
 
 from visivo.query.resolvers.field_resolver import FieldResolver
 from visivo.query.relation_graph import RelationGraph
+from visivo.query.sqlglot_utils import find_non_aggregated_expressions, has_window_function, has_aggregate_function
 
 
 class InsightQueryBuilder:
@@ -33,9 +34,11 @@ class InsightQueryBuilder:
         source = insight.get_dependent_source(dag)
         self.default_schema = source.db_schema
         self.default_database = source.database
-        self.field_resolver = FieldResolver(
+        field_resolver =  FieldResolver(
             dag=dag, output_dir=output_dir, native_dialect=insight.get_native_dialect()
         )
+        self.field_resolver = field_resolver
+        self.relation_graph = RelationGraph(dag, field_resolver)
 
         self.main_query = None
         self.resolved_query_statements = None
@@ -84,59 +87,78 @@ class InsightQueryBuilder:
         self.is_resolved = True
 
     def _build_main_query(self):
-        return "Really elegantly built sql "
-    
+        """
+        Pull all of the _build methods together adding them to a single sqlglot AST. This method should format the query
+        and it should transpile it to duckdb if the query is dynamic because that's where the main query will run in that
+        case. The _build methods should be writing sql in the native source dialect of the insight up till this point. 
+        """
+        pass 
     def _build_ctes(self):
         """
-        Loop through models dependent insight building the CTE SQLglot expressions with 
-        either file references (dyanmic) or fully expressed table context
+        Loop through self.models insight building the CTE SQLglot expressions. Dynamic vs. non dynamic insights will 
+        function differently:
+
+        1. **Dyanmic Insights**: The select within each cte runs a "select * from f'{model.name.name_hash()}.parquet'" 
+        2. **Non-Dynamic Insights**: The select within each cte will pass through the model.sql directly.
+        
+        In both cases we could use the SchemaAggregator to fully express the columns within each cte. Also the cte
+        will always be aliased with the model.name_hash() value. This is the value that the fields are expecting. 
         """
         pass  
         
     def _build_main_select(self):
         """
-        Add resolved props, split and filter statements to the select statment
+        Create the final select after the CTEs. Loop through resolved_query_statements filtering for props, split 
+        and filter statements striped of "ASC, DESC".
         """
         pass 
     
     def _build_from_and_joins(self):
         """
-        Use RelationGraph - I think we can delete the RelationResolver? It's kinda 
-        pointless and repetative with FieldResolver but with worse methodology. 
+        Use RelationGraph to determine join path between all of the dependent models. RelationGraph should determine
+        which model is used in the from clause and order of the joins between models. We will need to update 
+        @visivo/query/relaion_graph.py and create a method that is able to do this. The current ones only work with
+        two models, but the foundation is there. 
+        
         """
         pass 
     
     def _build_where_clause(self):
         """
-        Find filter statements that have non-aggregates in the resolved sql via sqlglot utils 
-        functions and add those statments to this clause.
+        Find filter statements that have non-aggregates in the resolved sql via sqlglot utils function 
+        has_aggregate_function() and add those statments to this clause.
         """
         pass 
     
     def _build_group_by(self):
         """
-        Leverage the sqlglot_utils function to pull out top level non aggregate expressions
-        into the group by statement automatically. 
+        Leverage the sqlglot_utils function find_non_aggregated_expressions() to pull out top level 
+        non aggregate expressions into the group by statement. The function does all of the hard work. 
+        It will pull out a list of expressions that need to be added to the groupby. 
         """
         pass 
     def _build_having(self):
         """
-        Find filter statements that have aggregates in the resolved sql via sqlglot utils 
-        functions and add those statments to this clause. 
+        Find filter statements that have aggregates in the resolved 
+        sql via sqlglot utils function using has_aggregate_function() and add 
+        those entire statments to this clause. 
         """
         pass 
      
     def _build_qualify(self):
         """
-        SNOWFLAKE & BIGQUERY pre-queries ONLY we can workaround this with a different structure.
-        Find filter statements that have aggregates in the resolved sql via sqlglot utils 
-        functions and add those statments to this clause. 
+        Works for REDSHIFT SNOWFLAKE, BIGQUERY & DUCKDB NATIVE DIALECT ONLY in V1. We should use 
+        sqlglot to determine if the native dialect supports qualify. I think addeding a new function in
+        sqlglot_utils.py would make sense for this purpose. 
+
+        Find filter statements that have have windows in the resolved sql via sqlglot utils 
+        has_window_function() and add those statments to this clause. 
         """
         pass
     
     def _build_order_by(self):
         """
-        Find order_by statements that have aggregates in the resolved sql via sqlglot utils 
+        Find order_by statements that have aggregates in the resolved sql via  
         functions and add those statments to this clause. 
         """
         pass
