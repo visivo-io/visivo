@@ -69,7 +69,7 @@ class InsightQueryBuilder:
         if self.is_dyanmic:
             return self._build_main_query()
         else:
-            # Should be able to execute this in JS as long as we do the following:
+            # Should be able to execute this in JS as long as we do the following-
             # await db.registerFileURL("insight_hash.parquet", "https://signed.file/call.parquet");
             return f"SELECT * FROM '{self.insight_hash}.parquet'"
 
