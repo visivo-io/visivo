@@ -461,7 +461,9 @@ class TestFieldResolverCaseStatements:
         model_hash = model.name_hash()
         schema_dir = tmpdir.mkdir("schema").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
-        schema_data = {model_hash: {"status": "VARCHAR", "amount": "DECIMAL", "priority": "INTEGER"}}
+        schema_data = {
+            model_hash: {"status": "VARCHAR", "amount": "DECIMAL", "priority": "INTEGER"}
+        }
         schema_file.write(json.dumps(schema_data))
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")

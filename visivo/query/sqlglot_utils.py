@@ -254,8 +254,15 @@ def identify_column_references(
     # Wrap schema in MappingSchema for SQLGlot's qualify function
     schema = MappingSchema(schema=model_schema)
     qualified = qualify.qualify(query, qualify_columns=True, schema=schema)
-    qualified_str = qualified.expressions[0].sql(identify=True)
-    return qualified_str.replace(' AS "_col_0"', "")
+
+    # Get the first expression and strip any alias
+    # We need the qualified expression without alias for use in larger SQL statements
+    first_expr = qualified.expressions[0]
+    if isinstance(first_expr, exp.Alias):
+        # If it's an Alias node, get the underlying expression
+        first_expr = first_expr.this
+
+    return first_expr.sql(identify=True)
 
 
 def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) -> dict:
