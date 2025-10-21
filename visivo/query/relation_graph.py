@@ -9,13 +9,11 @@ This module provides functionality to:
 """
 
 from typing import Dict, List, Optional, Set, Tuple
-from collections import deque, defaultdict
+from collections import deque
 from visivo.models.relation import Relation
 from visivo.models.models.model import Model
-from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
-from visivo.logger.logger import Logger
-from visivo.query.resolvers.relation_resolver import RelationResolver
+from visivo.query.resolvers.field_resolver import FieldResolver
 import networkx as nx
 
 
@@ -41,7 +39,7 @@ class RelationGraph:
     - Weights can represent relation preferences
     """
 
-    def __init__(self, project: Project, model_alias_map: Optional[Dict[str, str]] = None):
+    def __init__(self, dag: ProjectDag, field_resolver: FieldResolver):
         """
         Initialize the RelationGraph with a project.
 
@@ -49,10 +47,10 @@ class RelationGraph:
             project: The project containing models and relations
             model_alias_map: Optional mapping of model names to their SQL aliases
         """
-        self.project = project
-        self.dag: ProjectDag = project.dag()
+        
+        self.dag = dag
         self.graph = nx.Graph()
-        self.relation_resolver = RelationResolver(model_alias_map)
+        self.field_resolver = field_resolver
         self._resolved_conditions = {}  # Cache for resolved conditions
         self._build_relation_graph()
 
@@ -78,7 +76,7 @@ class RelationGraph:
                 # Convert set to list to access models
                 model_list = list(models)
                 # Resolve the condition immediately and cache it
-                resolved_condition = self.relation_resolver.resolve_condition(relation.condition)
+                resolved_condition = self.field_resolver.resolve(relation.condition)
                 self._resolved_conditions[relation.condition] = resolved_condition
 
                 # Add edge with relation details (undirected, so order doesn't matter)

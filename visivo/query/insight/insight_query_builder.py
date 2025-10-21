@@ -3,7 +3,7 @@ from visivo.models.base.project_dag import ProjectDag
 from visivo.query.sqlglot_utils import field_alias_hasher
 
 from visivo.query.resolvers.field_resolver import FieldResolver
-from visivo.query.resolvers.relation_resolver import RelationResolver
+from visivo.query.relation_graph import RelationGraph
 
 
 class InsightQueryBuilder:
@@ -85,6 +85,62 @@ class InsightQueryBuilder:
 
     def _build_main_query(self):
         return "Really elegantly built sql "
+    
+    def _build_ctes(self):
+        """
+        Loop through models dependent insight building the CTE SQLglot expressions with 
+        either file references (dyanmic) or fully expressed table context
+        """
+        pass  
+        
+    def _build_main_select(self):
+        """
+        Add resolved props, split and filter statements to the select statment
+        """
+        pass 
+    
+    def _build_from_and_joins(self):
+        """
+        Use RelationGraph - I think we can delete the RelationResolver? It's kinda 
+        pointless and repetative with FieldResolver but with worse methodology. 
+        """
+        pass 
+    
+    def _build_where_clause(self):
+        """
+        Find filter statements that have non-aggregates in the resolved sql via sqlglot utils 
+        functions and add those statments to this clause.
+        """
+        pass 
+    
+    def _build_group_by(self):
+        """
+        Leverage the sqlglot_utils function to pull out top level non aggregate expressions
+        into the group by statement automatically. 
+        """
+        pass 
+    def _build_having(self):
+        """
+        Find filter statements that have aggregates in the resolved sql via sqlglot utils 
+        functions and add those statments to this clause. 
+        """
+        pass 
+     
+    def _build_qualify(self):
+        """
+        SNOWFLAKE & BIGQUERY pre-queries ONLY we can workaround this with a different structure.
+        Find filter statements that have aggregates in the resolved sql via sqlglot utils 
+        functions and add those statments to this clause. 
+        """
+        pass
+    
+    def _build_order_by(self):
+        """
+        Find order_by statements that have aggregates in the resolved sql via sqlglot utils 
+        functions and add those statments to this clause. 
+        """
+        pass
+    
 
     def build(self):
 
