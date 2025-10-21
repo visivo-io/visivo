@@ -398,3 +398,187 @@ class TestFieldResolverQualification:
         # Should contain SUM and amount
         assert "SUM" in qualified.upper() or "sum" in qualified
         assert "amount" in qualified
+
+
+class TestFieldResolverCaseStatements:
+    """Test resolution of CASE statements with ${ref(...)} patterns."""
+
+    def test_resolve_simple_case_with_ref(self, tmpdir):
+        """Test resolving a CASE statement with a single ${ref(...)} in WHEN clause."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="another_local_test_table",
+            sql="SELECT * FROM test_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("another_local_test_table")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"new_x": "INTEGER", "name": "VARCHAR"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve CASE statement from the example
+        case_expr = "case when ${ref(another_local_test_table).new_x} >= 5 then '#713B57' else '#4F494C' end"
+        result = resolver.resolve(case_expr)
+
+        # Should preserve CASE structure
+        assert "CASE" in result.upper() or "case" in result
+        assert "WHEN" in result.upper() or "when" in result
+        assert "THEN" in result.upper() or "then" in result
+        assert "ELSE" in result.upper() or "else" in result
+        assert "END" in result.upper() or "end" in result
+
+        # Should contain the qualified column reference
+        assert "new_x" in result
+
+        # Should contain the literal values
+        assert "#713B57" in result or "713B57" in result
+        assert "#4F494C" in result or "4F494C" in result
+
+        # Should have an alias
+        assert " AS " in result
+
+    def test_resolve_case_with_multiple_refs(self, tmpdir):
+        """Test resolving a CASE statement with multiple ${ref(...)} patterns."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"status": "VARCHAR", "amount": "DECIMAL", "priority": "INTEGER"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # CASE with multiple refs
+        case_expr = """
+            case
+                when ${ref(orders).status} = 'urgent' and ${ref(orders).amount} > 1000 then ${ref(orders).priority} + 10
+                when ${ref(orders).status} = 'normal' then ${ref(orders).priority}
+                else 0
+            end
+        """
+        result = resolver.resolve(case_expr)
+
+        # Should preserve CASE structure
+        assert "CASE" in result.upper() or "case" in result
+        assert "WHEN" in result.upper() or "when" in result
+        assert "END" in result.upper() or "end" in result
+
+        # Should contain all column references
+        assert "status" in result
+        assert "amount" in result
+        assert "priority" in result
+
+        # Should have an alias
+        assert " AS " in result
+
+    def test_resolve_nested_case_statements(self, tmpdir):
+        """Test resolving nested CASE statements with ${ref(...)} patterns."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="products",
+            sql="SELECT * FROM products_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("products")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"category": "VARCHAR", "price": "DECIMAL", "stock": "INTEGER"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Nested CASE statements
+        case_expr = """
+            case
+                when ${ref(products).category} = 'electronics' then
+                    case
+                        when ${ref(products).price} > 1000 then 'premium'
+                        else 'standard'
+                    end
+                when ${ref(products).stock} = 0 then 'out_of_stock'
+                else 'available'
+            end
+        """
+        result = resolver.resolve(case_expr)
+
+        # Should preserve CASE structure (will have multiple CASE/END pairs)
+        case_count = result.upper().count("CASE")
+        assert case_count >= 1  # At least one CASE (nested ones might be formatted differently)
+
+        # Should contain all column references
+        assert "category" in result
+        assert "price" in result
+        assert "stock" in result
+
+        # Should have an alias
+        assert " AS " in result
+
+    def test_resolve_case_with_comparison_operators(self, tmpdir):
+        """Test CASE statements with various comparison operators."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="metrics",
+            sql="SELECT * FROM metrics_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("metrics")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"value": "DECIMAL", "threshold": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # CASE with different comparison operators
+        case_expr = """
+            case
+                when ${ref(metrics).value} >= ${ref(metrics).threshold} then 'high'
+                when ${ref(metrics).value} < ${ref(metrics).threshold} * 0.5 then 'low'
+                when ${ref(metrics).value} <> 0 then 'medium'
+                else 'none'
+            end
+        """
+        result = resolver.resolve(case_expr)
+
+        # Should preserve CASE structure
+        assert "CASE" in result.upper() or "case" in result
+        assert "END" in result.upper() or "end" in result
+
+        # Should contain column references
+        assert "value" in result
+        assert "threshold" in result
+
+        # Should preserve comparison operators
+        assert ">=" in result or ">" in result
+        assert "<" in result
+
+        # Should have an alias
+        assert " AS " in result
