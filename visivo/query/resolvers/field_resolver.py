@@ -157,7 +157,7 @@ class FieldResolver:
                 except ValueError:
                     # No model found check to see if there's a matching implicit dimension in the schema
                     model_hash = model_node.name_hash()
-                    schema = self._load_model_schema(model_node.name)
+                    schema = self._load_model_schema(model_node.name)                    
                     table = schema.get(model_hash)
                     if not table:
                         raise Exception(f"Missing schema for model: {model_node.name}.")

@@ -14,6 +14,7 @@ from visivo.query.sqlglot_utils import (
     get_sqlglot_dialect,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.logger.logger import Logger
 import sqlglot
 from sqlglot import exp
 from sqlglot.optimizer import qualify
@@ -37,17 +38,18 @@ class InsightQueryBuilder:
     """
 
     def __init__(self, insight, dag: ProjectDag, output_dir):
+        self.logger = Logger.instance()
         self.dag = dag
         self.output_dir = output_dir
         self.insight_hash = insight.name_hash()
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
         self.is_dyanmic = insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
-        source = insight.get_dependent_source(dag)
+        source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
         self.default_database = source.database
         field_resolver = FieldResolver(
-            dag=dag, output_dir=output_dir, native_dialect=insight.get_native_dialect(dag)
+            dag=dag, output_dir=output_dir, native_dialect=source.get_sqlglot_dialect()
         )
         self.field_resolver = field_resolver
         self.relation_graph = RelationGraph(dag, field_resolver)
@@ -55,6 +57,11 @@ class InsightQueryBuilder:
         self.main_query = None
         self.resolved_query_statements = None
         self.is_resolved = False
+
+        self.logger.debug(f"InsightQueryBuilder initialized for insight: {self.insight_hash}")
+        self.logger.debug(f"  Is dynamic: {self.is_dyanmic}")
+        self.logger.debug(f"  Models: {[m.name_hash() for m in self.models]}")
+        self.logger.debug(f"  Unresolved statements: {len(self.unresolved_query_statements)}")
 
     @property
     def props_mapping(self):
@@ -91,12 +98,16 @@ class InsightQueryBuilder:
     def resolve(self):
         """Sets the resolved_query_statements"""
 
+        self.logger.debug(f"Starting resolution for insight: {self.insight_hash}")
         resolved_query_statements = []
         for key, statement in self.unresolved_query_statements:
+            self.logger.debug(f"  Resolving statement: {key}")
             resolved_statement = self.field_resolver.resolve(expression=statement)
             resolved_query_statements.append((key, resolved_statement))
+            self.logger.debug(f"    Resolved to: {resolved_statement}")
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True
+        self.logger.debug(f"Resolution complete for insight: {self.insight_hash}")
 
     def _build_main_query(self):
         """
@@ -104,18 +115,50 @@ class InsightQueryBuilder:
         and it should transpile it to duckdb if the query is dynamic because that's where the main query will run in that
         case. The _build methods should be writing sql in the native source dialect of the insight up till this point.
         """
+        self.logger.debug(f"Building main query for insight: {self.insight_hash}")
         native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
         target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        self.logger.debug(f"  Native dialect: {native_dialect}, Target dialect: {target_dialect}")
 
         # Build all the query components
+        self.logger.debug("  Building CTEs...")
         ctes = self._build_ctes()
+        self.logger.debug(f"    Built {len(ctes) if ctes else 0} CTEs")
+
+        self.logger.debug("  Building SELECT expressions...")
         select_expressions = self._build_main_select()
+        self.logger.debug(
+            f"    Built {len(select_expressions) if select_expressions else 0} SELECT expressions"
+        )
+
+        self.logger.debug("  Building FROM and JOINs...")
         from_table, joins = self._build_from_and_joins()
+        self.logger.debug(f"    FROM: {from_table.sql() if from_table else 'None'}")
+        self.logger.debug(f"    Joins: {len(joins) if joins else 0}")
+
+        self.logger.debug("  Building WHERE clause...")
         where_clause = self._build_where_clause()
+        self.logger.debug(f"    WHERE: {'Present' if where_clause else 'None'}")
+
+        self.logger.debug("  Building GROUP BY...")
         group_by_expressions = self._build_group_by()
+        self.logger.debug(
+            f"    GROUP BY: {len(group_by_expressions) if group_by_expressions else 0} expressions"
+        )
+
+        self.logger.debug("  Building HAVING clause...")
         having_clause = self._build_having()
+        self.logger.debug(f"    HAVING: {'Present' if having_clause else 'None'}")
+
+        self.logger.debug("  Building QUALIFY clause...")
         qualify_clause = self._build_qualify()
+        self.logger.debug(f"    QUALIFY: {'Present' if qualify_clause else 'None'}")
+
+        self.logger.debug("  Building ORDER BY...")
         order_by_expressions = self._build_order_by()
+        self.logger.debug(
+            f"    ORDER BY: {len(order_by_expressions) if order_by_expressions else 0} expressions"
+        )
 
         # Start building the SELECT query
         query = exp.Select()
@@ -164,6 +207,7 @@ class InsightQueryBuilder:
                 query = query.order_by(order_expr, copy=False)
 
         # Final qualification with default database and schema
+        self.logger.debug("  Qualifying query with default database and schema...")
         try:
             query = qualify.qualify(
                 query,
@@ -171,12 +215,17 @@ class InsightQueryBuilder:
                 db=self.default_schema,
                 dialect=target_dialect,
             )
-        except Exception:
+            self.logger.debug("    Query qualification successful")
+        except Exception as e:
             # If qualification fails, continue with unqualified query
+            self.logger.debug(f"    Query qualification failed: {e}")
             pass
 
         # Generate formatted SQL string
+        self.logger.debug("  Generating formatted SQL...")
         formatted_sql = query.sql(dialect=target_dialect, pretty=True)
+        self.logger.debug(f"Main query built successfully for insight: {self.insight_hash}")
+        self.logger.debug(f"Query length: {len(formatted_sql)} characters")
 
         return formatted_sql
 
@@ -537,9 +586,32 @@ class InsightQueryBuilder:
 
         if not self.is_resolved:
             raise Exception("Need to resolve before running build")
+
+        self.logger.debug(f"Building InsightQueryInfo for insight: {self.insight_hash}")
+
+        pre_query = self.pre_query
+        post_query = self.post_query
+        props_mapping = self.props_mapping
+
+        self.logger.debug(f"  Pre-query: {'Present' if pre_query else 'None'}")
+        if pre_query:
+            self.logger.debug(f"    Length: {len(pre_query)} characters")
+
+        self.logger.debug(f"  Post-query: {'Present' if post_query else 'None'}")
+        if post_query:
+            self.logger.debug(f"    Length: {len(post_query)} characters")
+
+        self.logger.debug(f"  Props mapping: {len(props_mapping)} items")
+        for key, value in props_mapping.items():
+            self.logger.debug(f"    {key} -> {value}")
+
         data = {
-            "pre_query": self.pre_query,
-            "post_query": self.post_query,
-            "props_mapping": self.props_mapping,
+            "pre_query": pre_query,
+            "post_query": post_query,
+            "props_mapping": props_mapping,
         }
-        return InsightQueryInfo(**data)
+
+        insight_query_info = InsightQueryInfo(**data)
+        self.logger.debug(f"InsightQueryInfo built successfully for insight: {self.insight_hash}")
+
+        return insight_query_info

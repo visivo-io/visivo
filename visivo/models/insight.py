@@ -2,7 +2,6 @@ from typing import Optional, List, Set
 from pydantic import Field
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.interaction import InsightInteraction
-from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -10,6 +9,7 @@ from visivo.models.sources.source import Source
 from visivo.query.insight.insight_query_builder import InsightQueryBuilder
 from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.dag import all_descendants_of_type
+from visivo.jobs.utils import get_source_for_model
 
 
 class Insight(NamedModel, ParentModel):
@@ -120,18 +120,27 @@ class Insight(NamedModel, ParentModel):
 
         return children
 
-    def get_all_dependent_models(self, dag) -> Set[SqlModel]:
-        models = all_descendants_of_type(type=SqlModel, dag=dag, from_node=self)
+    def get_all_dependent_models(self, dag):
+        """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)"""
+        from visivo.models.models.model import Model
+
+        models = all_descendants_of_type(type=Model, dag=dag, from_node=self)
         return set(models)
 
-    def get_dependent_source(self, dag) -> Source:
+    def get_dependent_source(self, dag, output_dir) -> Source:
         """Currently an insight can only reference models from the same source"""
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=self)[0]
-        return source
+        # Get source through models (similar to how run_insight_job does it)
+        models = self.get_all_dependent_models(dag)
+        if not models:
+            raise ValueError(f"Insight '{self.name}' has no dependent models")
 
-    def get_native_dialect(self, dag):
-        source = self.get_dependent_source(dag=dag)
-        return source.get_sqlglot_dialect()
+        # Get source from the first model
+        first_model = list(models)[0]
+        source = get_source_for_model(first_model, dag, output_dir)
+        if not source:
+            raise ValueError(f"No source found for model '{first_model.name}' in insight '{self.name}'")
+
+        return source
 
     def _get_all_interaction_query_statements(self, dag):
         interactions = []
