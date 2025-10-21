@@ -19,7 +19,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    insight_query_info = insight.get_query_info(dag)
+    insight_query_info = insight.get_query_info(dag, output_dir)
     try:
         start_time = time()
 

@@ -2,6 +2,7 @@ import tempfile
 import os
 import json
 from unittest.mock import Mock, patch
+import polars as pl
 
 from visivo.jobs.run_insight_job import action, _get_source, job
 from visivo.models.insight import Insight
@@ -43,9 +44,12 @@ def test_insight_job_action_success(mock_dag_with_project):
     source.name = "test_source"
     source.type = "snowflake"
     source.get_dialect.return_value = "snowflake"
+    source.get_sqlglot_dialect.return_value = "snowflake"
+    source.db_schema = "public"
+    source.database = "test_db"
 
-    # Test data to return from read_sql
-    test_data = [{"x": 1, "y": 2}, {"x": 3, "y": 4}]
+    # Test data to return from read_sql (as Polars DataFrame)
+    test_data = pl.DataFrame([{"x": 1, "y": 2}, {"x": 3, "y": 4}])
     source.read_sql.return_value = test_data
 
     # Use the mock DAG with project
@@ -55,37 +59,44 @@ def test_insight_job_action_success(mock_dag_with_project):
         # Mock all_descendants_of_type function and get_source_for_model
         with patch("visivo.jobs.run_insight_job.all_descendants_of_type") as mock_descendants:
             with patch("visivo.jobs.run_insight_job.get_source_for_model") as mock_get_source:
-                # First call returns model
-                mock_descendants.return_value = [model]
-                # get_source_for_model returns source
-                mock_get_source.return_value = source
+                with patch("visivo.models.insight.all_descendants_of_type") as mock_insight_descendants:
+                    # First call returns model
+                    mock_descendants.return_value = [model]
+                    # Mock insight's internal calls to all_descendants_of_type
+                    mock_insight_descendants.side_effect = lambda type, dag, from_node=None: (
+                        [source] if type.__name__ == "Source" else [model]
+                    )
+                    # get_source_for_model returns source
+                    mock_get_source.return_value = source
 
-                # Execute action
-                result = action(insight, dag, temp_dir)
+                    # Execute action
+                    result = action(insight, dag, temp_dir)
 
-                # Check result
-                assert isinstance(result, JobResult)
-                assert result.success == True
-                assert result.item == insight
-                assert "test_insight" in result.message
+                    # Check result
+                    assert isinstance(result, JobResult)
+                    if not result.success:
+                        print(f"Job failed with message: {result.message}")
+                    assert result.success == True
+                    assert result.item == insight
+                    assert "test_insight" in result.message
 
-                # Verify read_sql was called
-                source.read_sql.assert_called_once()
+                    # Verify read_sql was called
+                    source.read_sql.assert_called_once()
 
-                # Check that insight.json was created with name_hash
-                insight_hash = insight.name_hash()
-                insight_file = os.path.join(temp_dir, "insights", f"{insight_hash}.json")
-                assert os.path.exists(insight_file)
+                    # Check that insight.json was created with name_hash
+                    insight_hash = insight.name_hash()
+                    insight_file = os.path.join(temp_dir, "insights", f"{insight_hash}.json")
+                    assert os.path.exists(insight_file)
 
-                with open(insight_file, "r") as f:
-                    insight_json = json.load(f)
+                    with open(insight_file, "r") as f:
+                        insight_json = json.load(f)
 
-                assert "files" in insight_json
-                assert "query" in insight_json
-                assert "props_mapping" in insight_json
+                    assert "files" in insight_json
+                    assert "query" in insight_json
+                    assert "props_mapping" in insight_json
 
-                parquet_file = os.path.join(temp_dir, "files", f"{insight_hash}.parquet")
-                assert os.path.exists(parquet_file)
+                    parquet_file = os.path.join(temp_dir, "files", f"{insight_hash}.parquet")
+                    assert os.path.exists(parquet_file)
 
 
 def test_insight_job_action_failure(mock_dag_with_project):
@@ -102,6 +113,9 @@ def test_insight_job_action_failure(mock_dag_with_project):
     source.name = "test_source"
     source.type = "snowflake"
     source.get_dialect.return_value = "snowflake"
+    source.get_sqlglot_dialect.return_value = "snowflake"
+    source.db_schema = "public"
+    source.database = "test_db"
     source.read_sql.side_effect = Exception("SQL Error")
 
     dag = mock_dag_with_project
@@ -109,17 +123,22 @@ def test_insight_job_action_failure(mock_dag_with_project):
     with tempfile.TemporaryDirectory() as temp_dir:
         with patch("visivo.jobs.run_insight_job.all_descendants_of_type") as mock_descendants:
             with patch("visivo.jobs.run_insight_job.get_source_for_model") as mock_get_source:
-                mock_descendants.return_value = [model]
-                mock_get_source.return_value = source
+                with patch("visivo.models.insight.all_descendants_of_type") as mock_insight_descendants:
+                    mock_descendants.return_value = [model]
+                    # Mock insight's internal calls to all_descendants_of_type
+                    mock_insight_descendants.side_effect = lambda type, dag, from_node=None: (
+                        [source] if type.__name__ == "Source" else [model]
+                    )
+                    mock_get_source.return_value = source
 
-                result = action(insight, dag, temp_dir)
+                    result = action(insight, dag, temp_dir)
 
-                # Check result
-                assert isinstance(result, JobResult)
-                assert result.success == False
-                assert result.item == insight
-                assert "Failed job" in result.message
-                assert "failing_insight" in result.message
+                    # Check result
+                    assert isinstance(result, JobResult)
+                    assert result.success == False
+                    assert result.item == insight
+                    assert "Failed job" in result.message
+                    assert "failing_insight" in result.message
 
 
 def test_get_source(mock_dag_with_project):

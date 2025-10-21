@@ -60,10 +60,12 @@ class FieldResolver:
                 self._schema_cache[model_name] = schema
                 return schema
         except FileNotFoundError:
-            Logger().error(f"Schema file not found for model '{model_name}' at {schema_file}")
+            Logger.instance().error(
+                f"Schema file not found for model '{model_name}' at {schema_file}"
+            )
             return None
         except json.JSONDecodeError as e:
-            Logger().error(f"Failed to parse schema file for model '{model_name}': {e}")
+            Logger.instance().error(f"Failed to parse schema file for model '{model_name}': {e}")
             return None
 
     def _is_implicit_dimension(self, model_name: str, field_name: str) -> bool:

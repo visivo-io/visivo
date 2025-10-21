@@ -289,3 +289,84 @@ def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) ->
 
 def field_alias_hasher(expression) -> str:
     return md5(expression.encode("utf-8")).hexdigest()[:16]
+
+
+def supports_qualify(dialect: str) -> bool:
+    """
+    Check if a SQL dialect supports the QUALIFY clause using SQLGlot.
+
+    Args:
+        dialect: SQLGlot dialect name
+
+    Returns:
+        True if the dialect supports QUALIFY clause, False otherwise
+    """
+    if not dialect:
+        return False
+
+    try:
+        sqlglot_dialect = get_sqlglot_dialect(dialect)
+
+        # Try to parse a simple query with QUALIFY
+        test_query = """
+        SELECT
+            name,
+            ROW_NUMBER() OVER (PARTITION BY category ORDER BY value DESC) as rn
+        FROM test_table
+        QUALIFY rn = 1
+        """
+
+        parsed = sqlglot.parse_one(test_query, read=sqlglot_dialect)
+
+        # Check if QUALIFY clause was successfully parsed
+        qualify_node = parsed.find(exp.Qualify)
+
+        # If we found a QUALIFY node, the dialect supports it
+        return qualify_node is not None
+
+    except Exception:
+        # If parsing fails or any error occurs, the dialect doesn't support QUALIFY
+        return False
+
+
+def strip_sort_order(expr_str: str, dialect: str = None) -> str:
+    """
+    Remove ASC/DESC ordering from a SQL expression.
+    Useful for using ORDER BY expressions in SELECT or GROUP BY clauses.
+
+    Args:
+        expr_str: SQL expression string that may contain ASC/DESC
+        dialect: SQLGlot dialect name (optional)
+
+    Returns:
+        Cleaned SQL expression without ASC/DESC ordering
+    """
+    if not expr_str or not expr_str.strip():
+        return expr_str
+
+    try:
+        sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None
+
+        # Parse the expression
+        parsed = sqlglot.parse_one(expr_str, dialect=sqlglot_dialect)
+
+        # Remove any Ordered nodes (which represent ASC/DESC)
+        def remove_ordering(node):
+            # If this is an Ordered node, return its child expression
+            if isinstance(node, exp.Ordered):
+                return node.this
+            return node
+
+        # Transform the tree to remove ordering
+        cleaned = parsed.transform(remove_ordering)
+
+        # Return the SQL without ordering
+        return cleaned.sql(dialect=sqlglot_dialect)
+
+    except Exception:
+        # If parsing fails, try simple string replacement as fallback
+        # Remove common ORDER BY keywords
+        result = expr_str
+        for keyword in [" ASC", " DESC", " asc", " desc"]:
+            result = result.replace(keyword, "")
+        return result.strip()
