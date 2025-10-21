@@ -41,7 +41,15 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         stored_schema = SchemaAggregator.load_source_schema(
             source_name=source.name, output_dir=output_dir
         )
-        schema = stored_schema["sqlglot_schema"]
+
+        # Convert stored format to DataType objects for schema_from_sql
+        from sqlglot import exp
+
+        schema = {}
+        for table_name, columns in stored_schema.get("sqlglot_schema", {}).items():
+            schema[table_name] = {}
+            for col_name, col_type_str in columns.items():
+                schema[table_name][col_name] = exp.DataType.build(col_type_str)
 
         query_result_schema = schema_from_sql(
             sqlglot_dialect=sqlglot_dialect, sql=sql, schema=schema, model_hash=model_hash
@@ -92,7 +100,15 @@ def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
         stored_schema = SchemaAggregator.load_source_schema(
             source_name=source.name, output_dir=output_dir
         )
-        schema = stored_schema["sqlglot_schema"]
+
+        # Convert stored format to DataType objects for schema_from_sql
+        from sqlglot import exp
+
+        schema = {}
+        for table_name, columns in stored_schema.get("sqlglot_schema", {}).items():
+            schema[table_name] = {}
+            for col_name, col_type_str in columns.items():
+                schema[table_name][col_name] = exp.DataType.build(col_type_str)
 
         query_result_schema = schema_from_sql(
             sqlglot_dialect=sqlglot_dialect, sql=sql, schema=schema, model_hash=model_hash

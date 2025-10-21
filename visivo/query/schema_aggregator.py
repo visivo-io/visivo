@@ -96,26 +96,25 @@ class SchemaAggregator:
         for table_name, table_info in tables_data.items():
             processed_table = {"columns": {}, "metadata": {}}
 
-            # Process columns
+            # Process columns - store just type string and nullable flag
             if "columns" in table_info:
                 for col_name, col_info in table_info["columns"].items():
-                    if isinstance(col_info, exp.DataType):
-                        # Convert SQLGlot DataType to serializable format
+                    if isinstance(col_info, dict) and "type" in col_info:
+                        # Already has type info
+                        processed_table["columns"][col_name] = {
+                            "type": col_info["type"],
+                            "nullable": col_info.get("nullable", True),
+                        }
+                    elif isinstance(col_info, exp.DataType):
+                        # Convert DataType to string
                         processed_table["columns"][col_name] = {
                             "type": col_info.sql(),
-                            "sqlglot_type": SqlglotTypeMapper.serialize_datatype(col_info),
-                            "nullable": True,  # Default assumption
+                            "nullable": True,
                         }
-                    elif isinstance(col_info, dict):
-                        # Already processed column info
-                        processed_table["columns"][col_name] = col_info
                     else:
-                        # String type or other format
+                        # Use string representation
                         processed_table["columns"][col_name] = {
                             "type": str(col_info),
-                            "sqlglot_type": SqlglotTypeMapper.serialize_datatype(
-                                SqlglotTypeMapper._parse_type_string(str(col_info))
-                            ),
                             "nullable": True,
                         }
 
@@ -130,13 +129,14 @@ class SchemaAggregator:
     @staticmethod
     def _serialize_mapping_schema(mapping_schema: MappingSchema) -> Dict[str, Any]:
         """
-        Serialize SQLGlot MappingSchema to JSON format.
+        Serialize SQLGlot MappingSchema to simple dict format.
 
         Args:
             mapping_schema: SQLGlot MappingSchema instance
 
         Returns:
-            Serializable schema representation
+            Dict mapping table names to column dicts with type strings
+            Format: {"table_name": {"col1": "INT", "col2": "VARCHAR"}}
         """
         try:
             serialized = {}
@@ -157,16 +157,11 @@ class SchemaAggregator:
                 serialized[table_name] = {}
 
                 for col_name, col_type in columns.items():
+                    # Store just the SQL string representation
                     if isinstance(col_type, exp.DataType):
-                        serialized[table_name][col_name] = SqlglotTypeMapper.serialize_datatype(
-                            col_type
-                        )
+                        serialized[table_name][col_name] = col_type.sql()
                     else:
-                        serialized[table_name][col_name] = {
-                            "sql": str(col_type),
-                            "type": str(col_type),
-                            "expressions": [],
-                        }
+                        serialized[table_name][col_name] = str(col_type)
 
             return serialized
 
@@ -204,7 +199,7 @@ class SchemaAggregator:
         Build SQLGlot MappingSchema from stored schema data.
 
         Args:
-            schema_data: Stored schema data
+            schema_data: Stored schema data with "sqlglot_schema" key
 
         Returns:
             SQLGlot MappingSchema instance
@@ -212,26 +207,19 @@ class SchemaAggregator:
         schema = MappingSchema()
 
         try:
-            # Process tables from stored format
-            tables_data = schema_data.get("tables", {})
+            # Get the sqlglot_schema - it's already {table: {col: type_str}}
+            sqlglot_schema_data = schema_data.get("sqlglot_schema", {})
 
-            for table_name, table_info in tables_data.items():
-                columns = {}
-                for col_name, col_info in table_info.get("columns", {}).items():
-                    # Reconstruct SQLGlot DataType from stored format
-                    if "sqlglot_type" in col_info:
-                        columns[col_name] = SqlglotTypeMapper.deserialize_datatype(
-                            col_info["sqlglot_type"]
-                        )
-                    else:
-                        # Fallback to parsing type string
-                        columns[col_name] = SqlglotTypeMapper._parse_type_string(
-                            col_info.get("type", "VARCHAR")
-                        )
+            for table_name, columns in sqlglot_schema_data.items():
+                column_types = {}
+
+                for col_name, col_type_str in columns.items():
+                    # Parse the type string to DataType
+                    column_types[col_name] = exp.DataType.build(col_type_str)
 
                 # Add table to schema
-                if columns:
-                    schema.add_table(table_name, columns)
+                if column_types:
+                    schema.add_table(table_name, column_types)
 
         except Exception as e:
             Logger.instance().error(f"Error building MappingSchema from stored data: {e}")
