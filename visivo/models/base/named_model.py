@@ -27,7 +27,9 @@ class NamedModel(BaseModel):
 
     def name_hash(self) -> Optional[str]:
         if self.name:
-            return hashlib.md5(self.name.encode()).hexdigest()
+            # Prefix with 'm' to ensure hash starts with a letter, not a digit
+            # This makes it a valid SQL identifier without requiring quotes
+            return "m" + hashlib.md5(self.name.encode()).hexdigest()
         return None
 
     @classmethod

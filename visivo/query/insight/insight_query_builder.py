@@ -67,7 +67,7 @@ class InsightQueryBuilder:
         ]
         props_map = {}
         for key, statement in props_statements:
-            props_map[key] = field_alias_hasher(statement)
+            props_map[key] = statement.split(' AS ')[1]
         return props_map
 
     @property
@@ -271,12 +271,13 @@ class InsightQueryBuilder:
 
                 if parsed_expr:
                     # Generate alias for the expression
-                    alias = field_alias_hasher(cleaned_statement)
+                    # alias = field_alias_hasher(cleaned_statement)
 
-                    # Create an aliased expression
-                    aliased_expr = exp.alias_(parsed_expr, alias, quoted=True)
+                    # # Create an aliased expression
+                    # aliased_expr = exp.alias_(parsed_expr, alias, quoted=True)
 
                     # Transpile to target dialect if needed
+                    aliased_expr = parsed_expr
                     if self.is_dyanmic and target_dialect != native_dialect:
                         transpiled = aliased_expr.sql(dialect=target_dialect)
                         aliased_expr = parse_expression(transpiled, target_dialect)
@@ -539,23 +540,10 @@ class InsightQueryBuilder:
         if not self.is_resolved:
             raise Exception("Need to resolve before running build")
 
-        self.logger.debug(f"Building InsightQueryInfo for insight: {self.insight_hash}")
-
         pre_query = self.pre_query
         post_query = self.post_query
         props_mapping = self.props_mapping
 
-        self.logger.debug(f"  Pre-query: {'Present' if pre_query else 'None'}")
-        if pre_query:
-            self.logger.debug(f"    Length: {len(pre_query)} characters")
-
-        self.logger.debug(f"  Post-query: {'Present' if post_query else 'None'}")
-        if post_query:
-            self.logger.debug(f"    Length: {len(post_query)} characters")
-
-        self.logger.debug(f"  Props mapping: {len(props_mapping)} items")
-        for key, value in props_mapping.items():
-            self.logger.debug(f"    {key} -> {value}")
 
         data = {
             "pre_query": pre_query,
@@ -565,5 +553,9 @@ class InsightQueryBuilder:
 
         insight_query_info = InsightQueryInfo(**data)
         self.logger.debug(f"InsightQueryInfo built successfully for insight: {self.insight_hash}")
+        self.logger.debug(f"Post query: {post_query}")
+        self.logger.debug(f"Pre query: {pre_query}")
+        self.logger.debug(f"props_mapping: {props_mapping}")
+        self.logger.debug(f"Resolved Statements: {self.resolved_query_statements}")
 
         return insight_query_info

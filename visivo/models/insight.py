@@ -138,7 +138,9 @@ class Insight(NamedModel, ParentModel):
         first_model = list(models)[0]
         source = get_source_for_model(first_model, dag, output_dir)
         if not source:
-            raise ValueError(f"No source found for model '{first_model.name}' in insight '{self.name}'")
+            raise ValueError(
+                f"No source found for model '{first_model.name}' in insight '{self.name}'"
+            )
 
         return source
 

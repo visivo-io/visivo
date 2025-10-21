@@ -5,8 +5,8 @@ insights:
     props:
       type: scatter
       mode: markers+lines
-      x: ?{${ref(join_table).x}}
-      y: ?{${ref(join_table).y}}
+      x: ?{${ref(another_local_test_table).new_x}}
+      y: ?{${ref(another_local_test_table).new_y}}
       marker:
         color: "#713B57"
         size: 10
@@ -19,13 +19,13 @@ insights:
     description: "Bar chart with split based on y value threshold"
     props:
       type: bar
-      x: ?{${ref(join_table).x}}
-      y: ?{${ref(join_table).y}}
+      x: ?{${ref(another_local_test_table).new_x}}
+      y: ?{${ref(another_local_test_table).new_y}}
       marker:
-        color: ?{ case when ${ref(join_table).x} >= 5 then '#713B57' else '#4F494C' end }
+        color: ?{ case when ${ref(another_local_test_table).new_x} >= 5 then '#713B57' else '#4F494C' end }
     interactions:
-      - split: ?{ CASE WHEN ${ref(join_table).y} >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
-      - sort: ?{${ref(join_table).x} ASC}
+      - split: ?{ CASE WHEN ${ref(another_local_test_table).new_y} >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
+      - sort: ?{${ref(another_local_test_table).new_x} ASC}
 
   # Aggregated bar chart with filter
   - name: aggregated-bar-insight
@@ -39,18 +39,6 @@ insights:
         line:
           color: ?{CASE WHEN ${ref(local_test_table).x} <= 3 THEN '#D25946' else '#191D33' END}
           width: 2.5
-
-  # Indicator insight
-  - name: csv-indicator-insight
-    description: "Indicator showing the last y value from CSV data"
-    props:
-      type: indicator
-      mode: number+delta
-      value: ?{${ref(csv).y}}
-      number:
-        prefix: "$"
-      delta:
-        reference: 3
 
   # 3D scatter with filter interaction
   - name: 3d-scatter-insight
@@ -67,29 +55,6 @@ insights:
     interactions:
       - filter: ?{${ref(local_test_table).x} > 1}
       - sort: ?{${ref(local_test_table).x} ASC}
-
-  # Waterfall chart with multiple filters and split
-  - name: waterfall-insight
-    description: "Waterfall chart showing P&L by category and year"
-    props:
-      type: waterfall
-      base: 0
-      x: ?{${ref(waterfall_model).category}}
-      y: ?{ try_cast( replace(${ref(waterfall_model).thousands_dollars}, ',', '') as float ) * try_cast(${ref(waterfall_model).sign} as float) }
-      text: ?{ cast(${ref(waterfall_model).thousands_dollars} as text) }
-      measure: ?{${ref(waterfall_model).waterfall}}
-      increasing:
-        marker:
-          color: "#b97a9b"
-      decreasing:
-        marker:
-          color: "#edbdb5"
-    interactions:
-      - filter: ?{ ${ref(waterfall_model).waterfall} is not null }
-      - filter: ?{ ${ref(waterfall_model).category} not in ('Earnings From Continuing Operations') }
-      - filter: ?{ ${ref(waterfall_model).year} in ('Sep 2023', 'Sep 2022') }
-      - split: ?{${ref(waterfall_model).year}}
-      - sort: ?{${ref(waterfall_model).row} ASC}
 
   # Line chart with metric usage
   - name: metric-line-insight

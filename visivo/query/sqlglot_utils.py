@@ -246,10 +246,14 @@ def identify_column_references(
         model_schema = {model_hash: {"column_a": "INT", "column_b": "TEXT"}}
         expr_sql = 'max(column_a) + count(distinct column_b)'
     >> Returns:
-        MAX("model"."column_a") + COUNT(DISTINCT "model"."column_b") AS "380ea7fef19ed53b"
+        MAX("model"."column_a") + COUNT(DISTINCT "model"."column_b")
     """
+    # Build a SELECT query with the expression from the model_hash table
     query = exp.select(parse_one(expr_sql, read=dialect)).from_(model_hash)
-    qualified = qualify.qualify(query, schema=model_schema)
+
+    # Wrap schema in MappingSchema for SQLGlot's qualify function
+    schema = MappingSchema(schema=model_schema)
+    qualified = qualify.qualify(query, qualify_columns=True, schema=schema)
     qualified_str = qualified.expressions[0].sql(identify=True)
     return qualified_str.replace(' AS "_col_0"', "")
 
@@ -288,7 +292,7 @@ def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) ->
 
 
 def field_alias_hasher(expression) -> str:
-    return md5(expression.encode("utf-8")).hexdigest()[:16]
+    return "m" + md5(expression.encode("utf-8")).hexdigest()[:16]
 
 
 def supports_qualify(dialect: str) -> bool:

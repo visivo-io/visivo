@@ -89,13 +89,6 @@ charts:
     layout:
       title:
         text: "Aggregated Bar Chart"
-  - name: waterfall-chart
-    insights:
-      - ${ ref(waterfall-insight) }
-    layout:
-      title:
-        text: "P&L Waterfall by Year"
-      waterfallgroupgap: 0.1
 dashboards:
   - name: Insights Dashboard
     level: 0
@@ -111,10 +104,8 @@ dashboards:
             chart: ${ ref(fibonacci-split-chart) }
       - height: medium
         items:
-          - width: 4
+          - width: 12
             chart: ${ ref(aggregated-bar-chart) }
-          - width: 8
-            chart: ${ ref(waterfall-chart) }
   - name: Table Dashboard
     level: 1
     tags:

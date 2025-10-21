@@ -74,6 +74,9 @@ class FieldResolver:
         # Schema format is {model_hash: {column: type, ...}}
         # We need to find the columns for this model
         try:
+            if schema is None:
+                return False
+
             model = self.dag.get_descendant_by_name(model_name)
             model_hash = model.name_hash()
 
@@ -151,25 +154,35 @@ class FieldResolver:
                 field_node = self.dag.get_descendant_by_name(model_name)
             else:  # field name is not null
                 model_node = self.dag.get_descendant_by_name(model_name)
+                # Strip leading dot from field_name since property_path includes it
+                # e.g., "${ref(orders).total_amount}" has property_path = ".total_amount"
+                # but the metric/dimension/column is named "total_amount"
+                field_name_stripped = field_name.lstrip(".")
                 try:
                     # set the field node to the descenant of the model
-                    field_node = self.dag.get_descendant_by_name(field_name, from_node=model_node)
+                    field_node = self.dag.get_descendant_by_name(
+                        field_name_stripped, from_node=model_node
+                    )
                 except ValueError:
                     # No model found check to see if there's a matching implicit dimension in the schema
                     model_hash = model_node.name_hash()
-                    schema = self._load_model_schema(model_node.name)                    
+                    schema = self._load_model_schema(model_node.name)
+                    if not schema:
+                        raise Exception(f"Missing schema for model: {model_node.name}.")
                     table = schema.get(model_hash)
                     if not table:
                         raise Exception(f"Missing schema for model: {model_node.name}.")
-                    column = table.get(field_name)
+                    column = table.get(field_name_stripped)
                     if not column:
-                        columns = ", ".join(table.values())
+                        columns = ", ".join(table.keys())
                         raise Exception(
-                            f"No column: {field_name} exists on model: {model_node.name}. Here's the available columns returned from the model: {columns}"
+                            f"No column: {field_name_stripped} exists on model: {model_node.name}. Here's the available columns returned from the model: {columns}"
                         )
                     # If the field name is found in the schema it's an implicit dimension like expected and we can return the qualified expression
                     # In most dialects this will just be f"{model_hash}"."{field_name}", but some don't use double quotes.
-                    return self._qualify_expression(expression=field_name, model_node=model_node)
+                    return self._qualify_expression(
+                        expression=field_name_stripped, model_node=model_node
+                    )
 
             field_parent = self.dag.get_named_parents(field_node.name)[0]
             if isinstance(field_parent, SqlModel):
@@ -195,4 +208,5 @@ class FieldResolver:
         #      This might make sense to do if we start validating the run queries on compile rather than
         #      during the run like we do currently.
         hashed_alias = field_alias_hasher(resolved_sql)
-        return f"{resolved_sql} AS {hashed_alias}"
+        resolved_strip_alias = resolved_sql.split(' AS ')[0]
+        return f'{resolved_strip_alias} AS "{hashed_alias}"'
