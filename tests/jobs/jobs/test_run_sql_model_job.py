@@ -103,7 +103,7 @@ class TestRunSqlModelJob:
         assert sql_model_job.action == schema_only_action
 
     def test_job_uses_correct_action_based_on_dynamic_insight(self):
-        """Test that jobs use model_query_and_schema_action when ANY insight is dynamic, schema_only_action otherwise."""
+        """Test that only models referenced by dynamic insights get parquet generation."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -146,14 +146,13 @@ class TestRunSqlModelJob:
         output_dir = temp_folder()
         dag = project.dag()
 
-        # Both models get jobs, but with different actions
-        # users_model gets model_query_and_schema_action because ANY insight is dynamic
+        # users_model is NOT referenced by the dynamic insight, so it gets schema_only_action
         users_job = job(dag=dag, output_dir=output_dir, sql_model=users_model)
         assert users_job is not None
         assert users_job.item == users_model
-        assert users_job.action == model_query_and_schema_action
+        assert users_job.action == schema_only_action
 
-        # orders_model also gets model_query_and_schema_action
+        # orders_model IS referenced by the dynamic insight, so it gets model_query_and_schema_action
         orders_job = job(dag=dag, output_dir=output_dir, sql_model=orders_model)
         assert orders_job is not None
         assert orders_job.item == orders_model

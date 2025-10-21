@@ -243,7 +243,9 @@ class InsightQueryBuilder:
                     pass
 
             # Create the CTE with the model_hash as the alias
-            cte = exp.CTE(this=cte_query, alias=exp.TableAlias(this=exp.Identifier(this=model_hash)))
+            cte = exp.CTE(
+                this=cte_query, alias=exp.TableAlias(this=exp.Identifier(this=model_hash))
+            )
             ctes.append(cte)
 
         return ctes
