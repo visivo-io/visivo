@@ -139,11 +139,13 @@ def job(dag, output_dir: str, sql_model: SqlModel):
     # Find all insights in the project
     insights = all_descendants_of_type(type=Insight, dag=dag)
 
+    # Get source for the model
+    source = get_source_for_model(sql_model, dag, output_dir)
+
     # Check if any insight is dynamic and references this sql_model
     for insight in insights:
         if insight.is_dynamic(dag):
             # Check if this sql_model is in the insight's dependent models
-            source = get_source_for_model(sql_model, dag, output_dir)
             return Job(
                 item=sql_model,
                 source=source,

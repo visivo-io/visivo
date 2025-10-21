@@ -14,6 +14,7 @@ from visivo.query.patterns import (
 from visivo.query.sqlglot_utils import identify_column_references, field_alias_hasher
 from visivo.logger.logger import Logger
 
+
 class FieldResolver:
     """
     Recursively resolves ${ref(...)} patterns in SQL expressions.
@@ -45,7 +46,6 @@ class FieldResolver:
         self._resolution_cache: Dict[str, str] = {}
         self._resolution_stack: list = []  # Track current resolution path for cycle detection
 
-    
     def _load_model_schema(self, model_name: str) -> Optional[dict]:
         if model_name in self._schema_cache:
             return self._schema_cache[model_name]

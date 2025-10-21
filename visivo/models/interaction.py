@@ -8,7 +8,7 @@ from visivo.models.base.project_dag import ProjectDag
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED
 
 
-#TODO: This should really be a discriminated single selection between a filter, split and sort class rather than this composite object
+# TODO: This should really be a discriminated single selection between a filter, split and sort class rather than this composite object
 class InsightInteraction(BaseModel):
     """
     Represents a client-side interaction that can be applied to insight data.
@@ -20,9 +20,7 @@ class InsightInteraction(BaseModel):
     split: Optional[QueryString] = Field(
         None, description="Column or expression to split data into multiple traces"
     )
-    sort: Optional[QueryString] = Field(
-        None, description="Column or expression to sort data by"
-    )
+    sort: Optional[QueryString] = Field(None, description="Column or expression to sort data by")
 
     @property
     def field_values(self) -> Dict[str, str]:
@@ -40,23 +38,25 @@ class InsightInteraction(BaseModel):
         return fields
 
     def field_values_with_sanitized_inputs(self, dag: ProjectDag) -> dict:
-        
+
         def replace_only_inputs(text: str) -> str:
             comments = []
+
             def repl(m: Match) -> str:
                 name = m.group("model_name").strip()
                 prop = m.group("property_path") or ""
                 node = dag.get_descendant_by_name(name)
-                if isinstance(node, Input):  
+                if isinstance(node, Input):
                     placeholder, comment = node.query_placeholder()
                     comments.append(comment)
                     return placeholder
-                return m.group(0) #return match as is if not input
+                return m.group(0)  # return match as is if not input
+
             expr_sanitized_inputs = CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
-            comment_str = ''.join(comments)
+            comment_str = "".join(comments)
             expr_sanitized_inputs_and_comments = expr_sanitized_inputs + comment_str
             return expr_sanitized_inputs_and_comments
-        
+
         fields = {}
         for field_name in ["filter", "split", "sort"]:
             field_value = getattr(self, field_name, None)
