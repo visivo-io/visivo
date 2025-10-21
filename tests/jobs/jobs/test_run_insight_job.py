@@ -59,7 +59,9 @@ def test_insight_job_action_success(mock_dag_with_project):
         # Mock all_descendants_of_type function and get_source_for_model
         with patch("visivo.jobs.run_insight_job.all_descendants_of_type") as mock_descendants:
             with patch("visivo.jobs.run_insight_job.get_source_for_model") as mock_get_source:
-                with patch("visivo.models.insight.all_descendants_of_type") as mock_insight_descendants:
+                with patch(
+                    "visivo.models.insight.all_descendants_of_type"
+                ) as mock_insight_descendants:
                     # First call returns model
                     mock_descendants.return_value = [model]
                     # Mock insight's internal calls to all_descendants_of_type
@@ -123,7 +125,9 @@ def test_insight_job_action_failure(mock_dag_with_project):
     with tempfile.TemporaryDirectory() as temp_dir:
         with patch("visivo.jobs.run_insight_job.all_descendants_of_type") as mock_descendants:
             with patch("visivo.jobs.run_insight_job.get_source_for_model") as mock_get_source:
-                with patch("visivo.models.insight.all_descendants_of_type") as mock_insight_descendants:
+                with patch(
+                    "visivo.models.insight.all_descendants_of_type"
+                ) as mock_insight_descendants:
                     mock_descendants.return_value = [model]
                     # Mock insight's internal calls to all_descendants_of_type
                     mock_insight_descendants.side_effect = lambda type, dag, from_node=None: (
