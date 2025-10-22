@@ -137,6 +137,15 @@ class WorksheetRepository:
             if not worksheet:
                 return False
 
+            # Handle cell reordering if cell_order is provided
+            if "cell_order" in updates:
+                cell_order = updates["cell_order"]
+                for index, cell_id in enumerate(cell_order):
+                    cell = session.query(QueryCellModel).filter_by(id=cell_id).first()
+                    if cell and cell.worksheet_id == worksheet_id:
+                        cell.cell_order = index
+
+            # Update other worksheet fields
             valid_fields = {"name"}
             for key, value in updates.items():
                 if key in valid_fields:

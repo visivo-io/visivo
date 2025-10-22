@@ -21,6 +21,11 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
     if (hasStartedRef.current) {
       return;
     }
+
+    // Track event listeners and timeouts for cleanup
+    const eventListeners = [];
+    const timeouts = [];
+
     const waitForChartsToLoad = async () => {
       const container = containerRef.current;
       if (!container) return;
@@ -48,9 +53,11 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
                       resolve();
                     };
                     plot.addEventListener('plotly_afterplot', handler);
+                    eventListeners.push({ element: plot, event: 'plotly_afterplot', handler });
 
                     // Fallback timeout in case event doesn't fire
-                    setTimeout(resolve, 2000);
+                    const timeoutId = setTimeout(resolve, 2000);
+                    timeouts.push(timeoutId);
                   }
                 })
             )
@@ -76,9 +83,18 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
                 if (img.complete) {
                   resolve();
                 } else {
-                  img.onload = resolve;
-                  img.onerror = resolve; // Don't block on broken images
-                  setTimeout(resolve, 1000); // Fallback timeout
+                  const handleLoad = () => {
+                    img.removeEventListener('load', handleLoad);
+                    img.removeEventListener('error', handleLoad);
+                    resolve();
+                  };
+                  img.addEventListener('load', handleLoad);
+                  img.addEventListener('error', handleLoad);
+                  eventListeners.push({ element: img, event: 'load', handler: handleLoad });
+                  eventListeners.push({ element: img, event: 'error', handler: handleLoad });
+
+                  const timeoutId = setTimeout(resolve, 1000);
+                  timeouts.push(timeoutId);
                 }
               })
           )
@@ -95,7 +111,6 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
 
       const container = containerRef.current;
       if (!container) {
-        console.error('No container found for thumbnail generation');
         hasStartedRef.current = false;
         return;
       }
@@ -106,7 +121,6 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
         await yieldToMain();
 
         if (!containerRef.current) {
-          console.error('Container became null during thumbnail generation');
           hasStartedRef.current = false;
           return;
         }
@@ -175,14 +189,11 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
         tempCanvas.toBlob(blob => {
           if (blob) {
             onThumbnailGenerated(blob);
-          } else {
-            console.error('Failed to generate thumbnail blob');
           }
           // Reset the flag when done (success or failure)
           hasStartedRef.current = false;
         });
       } catch (error) {
-        console.error('Error generating thumbnail:', error);
         // Reset the flag on error
         hasStartedRef.current = false;
       }
@@ -192,6 +203,19 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
     startTransition(() => {
       generateThumbnail();
     });
+
+    // Cleanup function
+    return () => {
+      // Clean up all event listeners
+      eventListeners.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
+
+      // Clear all timeouts
+      timeouts.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+    };
   }, [dashboard, onThumbnailGenerated, ASPECT_RATIO]);
 
   return (

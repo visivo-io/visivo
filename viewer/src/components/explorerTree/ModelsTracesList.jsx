@@ -24,35 +24,38 @@ const ModelsTracesList = ({ data, onItemClick }) => {
     [setInfo]
   );
 
-  const handleContextMenu = React.useCallback(
-    (e, node) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleContextMenu = React.useCallback((e, node) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-      setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
-        node: node,
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node: node,
+    });
+  }, []);
+
+  const handleRename = React.useCallback(
+    node => {
+      const itemType = namedChildren[node.name]?.type || node.type || 'Item';
+      setRenameDialog({
+        currentName: node.name,
+        itemType: itemType,
       });
     },
-    []
+    [namedChildren]
   );
 
-  const handleRename = React.useCallback(node => {
-    const itemType = namedChildren[node.name]?.type || node.type || 'Item';
-    setRenameDialog({
-      currentName: node.name,
-      itemType: itemType,
-    });
-  }, [namedChildren]);
-
-  const handleDelete = React.useCallback(node => {
-    const itemType = namedChildren[node.name]?.type || node.type || 'Item';
-    setDeleteDialog({
-      itemName: node.name,
-      itemType: itemType,
-    });
-  }, [namedChildren]);
+  const handleDelete = React.useCallback(
+    node => {
+      const itemType = namedChildren[node.name]?.type || node.type || 'Item';
+      setDeleteDialog({
+        itemName: node.name,
+        itemType: itemType,
+      });
+    },
+    [namedChildren]
+  );
 
   const confirmRename = React.useCallback(
     async newName => {
@@ -64,7 +67,7 @@ const ModelsTracesList = ({ data, onItemClick }) => {
         try {
           await writeModifiedFiles();
         } catch (error) {
-          console.error('Failed to save rename:', error);
+          // Failed to save rename
         }
       }
       setRenameDialog(null);
@@ -81,7 +84,7 @@ const ModelsTracesList = ({ data, onItemClick }) => {
       try {
         await writeModifiedFiles();
       } catch (error) {
-        console.error('Failed to save deletion:', error);
+        // Failed to save deletion
       }
     }
   }, [deleteDialog, deleteNamedChild, setInfo, writeModifiedFiles]);

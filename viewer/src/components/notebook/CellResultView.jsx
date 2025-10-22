@@ -5,6 +5,7 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import { IconButton, Tooltip } from '@mui/material';
 import useStore from '../../stores/store';
 import DimensionPillsView from './DimensionPillsView';
+import { QUERY_LIMITS } from '../../constants/queryLimits';
 
 const CellResultView = ({ result, cell, worksheetId, project }) => {
   const [viewMode, setViewMode] = useState(cell.view_mode || 'table');
@@ -74,7 +75,9 @@ const CellResultView = ({ result, cell, worksheetId, project }) => {
           <span className="text-sm font-medium text-gray-700">
             {rowCount.toLocaleString()} row{rowCount !== 1 ? 's' : ''}
             {isTruncated && (
-              <span className="ml-2 text-orange-600 text-xs">(Truncated at 100,000 rows)</span>
+              <span className="ml-2 text-orange-600 text-xs">
+                (Truncated at {QUERY_LIMITS.MAX_RESULT_ROWS.toLocaleString()} rows)
+              </span>
             )}
           </span>
           {queryStats && (

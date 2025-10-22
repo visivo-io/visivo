@@ -132,17 +132,8 @@ export const deleteCell = async (worksheetId, cellId) => {
 };
 
 export const reorderCells = async (worksheetId, cellOrder) => {
-  const response = await fetch(getUrl('worksheetCellsReorder', { id: worksheetId }), {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ cell_order: cellOrder }),
-  });
-  if (response.status === 200) {
-    return true;
-  }
-  throw new Error('Failed to reorder cells');
+  // Cell reordering is now handled through the worksheet update endpoint
+  return await updateWorksheet(worksheetId, { cell_order: cellOrder });
 };
 
 export const executeCell = async (worksheetId, cellId, signal = null) => {

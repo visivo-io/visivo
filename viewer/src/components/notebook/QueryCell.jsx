@@ -12,6 +12,7 @@ import CellResultView from './CellResultView';
 import CreateObjectModal from '../editors/CreateObjectModal';
 import SourceDropdown from '../explorer/SourceDropdown';
 import ModelDropdown from '../explorer/ModelDropdown';
+import { QUERY_LIMITS } from '../../constants/queryLimits';
 
 const QueryCell = ({
   worksheetId,
@@ -56,7 +57,7 @@ const QueryCell = ({
     if (cell.associated_model && namedChildren) {
       const modelExists = namedChildren[cell.associated_model];
       if (!modelExists) {
-        console.warn(`Associated model '${cell.associated_model}' not found in namedChildren`);
+        // Associated model not found in namedChildren
       }
     }
   }, [cell.associated_model, namedChildren]);
@@ -72,7 +73,7 @@ const QueryCell = ({
       // Set a timer for 30 seconds
       executionTimerRef.current = setTimeout(() => {
         setShowLongRunningWarning(true);
-      }, 30000);
+      }, QUERY_LIMITS.WARNING_TIMEOUT_MS);
 
       return () => {
         if (executionTimerRef.current) {
@@ -152,7 +153,6 @@ const QueryCell = ({
   const handleModelCreated = newModel => {
     // Model has been created and added to namedChildren
     // We could show a success message here if needed
-    console.log('Model created:', newModel);
   };
 
   const handleSourceChange = newSource => {
@@ -195,7 +195,6 @@ const QueryCell = ({
 
           // Send all updates in a single atomic call
           if (onBatchCellUpdate) {
-            console.log('[QueryCell] Sending batched model update:', batchedUpdates);
             onBatchCellUpdate(batchedUpdates);
           } else {
             // Fallback to individual updates if batch handler not available

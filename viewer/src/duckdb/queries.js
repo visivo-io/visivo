@@ -60,7 +60,7 @@ export const insertDuckDBFile = async (db, file, tableName) => {
       await _insertJSON(db, file, tableName);
       return;
     default:
-      console.warn(`Unsupported file extension: ${extension}`);
+    // Unsupported file extension
   }
 };
 
@@ -80,7 +80,6 @@ const _insertJSON = async (db, file, tableName) => {
 
     await db.dropFile(tempFile);
   } catch (e) {
-    console.error('Failed to import JSON file:', e);
     throw e;
   }
 };

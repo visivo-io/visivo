@@ -52,7 +52,6 @@ export const useExplorerLogic = () => {
           setExplorerData(data);
         }
       } catch (err) {
-        console.error('Error loading explorer data:', err);
         setError('Failed to load explorer data');
       }
     };
@@ -173,9 +172,8 @@ export const useExplorerLogic = () => {
 
               if (existingCell) {
                 // Cell with this model exists - scroll to it and focus the editor
-                console.log('[useExplorerLogic] Found existing cell with model:', item.name);
                 // Use setTimeout to allow React to render, then scroll and focus
-                setTimeout(() => {
+                const timerId = setTimeout(() => {
                   const cellElement = document.getElementById(`cell-${existingCell.cell.id}`);
                   if (cellElement) {
                     cellElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -186,12 +184,12 @@ export const useExplorerLogic = () => {
                     }
                   }
                 }, 100);
-                return;
+                // Cleanup timeout on unmount
+                return () => clearTimeout(timerId);
               }
             }
 
             // No cell with this model - create a new cell
-            console.log('[useExplorerLogic] Creating new cell for model:', item.name);
             if (activeWorksheetId && addCell) {
               const modelSql = item.config.sql || '';
               // Create a new cell at the end with the model's data
@@ -229,7 +227,6 @@ export const useExplorerLogic = () => {
             try {
               newQuery = await fetchTraceQuery(item.name);
             } catch (err) {
-              console.error('Failed to fetch trace query:', err);
               setError(`Failed to fetch trace query: ${err.message}`);
               return;
             }
@@ -252,7 +249,6 @@ export const useExplorerLogic = () => {
             break;
         }
       } catch (err) {
-        console.error('Error in handleItemClick:', err);
         setError(err.message || 'Failed to process item click');
       }
     },

@@ -10,7 +10,7 @@ const createEditorSlice = (set, get) => ({
       const data = await fetchSchema();
       set({ schema: data });
     } catch (e) {
-      console.error('Error fetching schema:', e);
+      // Error fetching schema
     }
   },
 
@@ -55,7 +55,6 @@ const createEditorSlice = (set, get) => ({
         isLoading: false,
       });
     } catch (e) {
-      console.error('Error writing files:', e);
       set({
         writeError: e.message || 'Failed to write files',
         isLoading: false,
@@ -128,7 +127,6 @@ const createEditorSlice = (set, get) => ({
         set({ error: 'Failed to fetch data', isLoading: false });
       }
     } catch (e) {
-      console.error('Error fetching named children', e);
       set({ error: e.message || 'An error occurred', isLoading: false });
     }
   },
@@ -316,7 +314,6 @@ const createEditorSlice = (set, get) => ({
     set(state => {
       const childName = path[0];
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        console.warn('Child not found in namedChildren store');
         return state;
       }
 
@@ -338,7 +335,6 @@ const createEditorSlice = (set, get) => ({
         for (let i = 0; i < attributePath.length - 1; i++) {
           parent = parent[attributePath[i]];
           if (!parent) {
-            console.warn('Invalid path');
             return state;
           }
         }
@@ -365,9 +361,6 @@ const createEditorSlice = (set, get) => ({
         },
       };
 
-      console.log('Deleting path:', path);
-      console.log('Updated config:', configToUpdate);
-
       return { namedChildren: updatedNamedChildren };
     }),
 
@@ -376,13 +369,11 @@ const createEditorSlice = (set, get) => ({
     set(state => {
       // Check if old name exists
       if (!state.namedChildren.hasOwnProperty(oldName)) {
-        console.warn('Child not found in namedChildren store');
         return state;
       }
 
       // Check if new name already exists
       if (state.namedChildren.hasOwnProperty(newName)) {
-        console.warn('A child with the new name already exists');
         return state;
       }
 
@@ -411,8 +402,6 @@ const createEditorSlice = (set, get) => ({
         tab.name === oldName ? { ...tab, name: newName } : tab
       );
 
-      console.log('Renaming child:', oldName, '->', newName);
-
       return {
         namedChildren: updatedNamedChildren,
         tabs: updatedTabs,
@@ -424,7 +413,6 @@ const createEditorSlice = (set, get) => ({
     set(state => {
       // Check if child exists
       if (!state.namedChildren.hasOwnProperty(name)) {
-        console.warn('Child not found in namedChildren store');
         return state;
       }
 
@@ -452,8 +440,6 @@ const createEditorSlice = (set, get) => ({
             ? updatedTabs[updatedTabs.length - 1].id
             : null
           : state.activeTabId;
-
-      console.log('Deleting child:', name);
 
       return {
         namedChildren: updatedNamedChildren,

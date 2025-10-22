@@ -72,7 +72,7 @@ const createInsightSlice = (set, get) => ({
               },
             }));
           } catch (err) {
-            console.error(`Query for ${insightName} failed:`, err);
+            // Query failed
           }
         }
       }, 0);

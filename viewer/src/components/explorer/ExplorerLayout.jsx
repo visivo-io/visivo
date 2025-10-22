@@ -74,7 +74,6 @@ const ExplorerLayout = ({
         objStep="type"
         showFileOption={false}
         onSubmitCallback={newSource => {
-          console.log('New source created:', newSource);
           // Modal will automatically update namedChildren store
           // Tree will refresh automatically via store subscription
           setShowCreateSourceModal(false);

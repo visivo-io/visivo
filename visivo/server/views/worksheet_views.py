@@ -170,23 +170,6 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error deleting cell: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/<worksheet_id>/cells/reorder/", methods=["PUT"])
-    def reorder_cells(worksheet_id):
-        """Reorder cells in a worksheet."""
-        try:
-            data = request.get_json()
-            if not data or "cell_order" not in data:
-                return jsonify({"message": "cell_order array required"}), 400
-
-            success = flask_app.worksheet_repo.reorder_cells(worksheet_id, data["cell_order"])
-            if not success:
-                return jsonify({"message": "Failed to reorder cells"}), 500
-
-            return jsonify({"message": "Cells reordered successfully"})
-        except Exception as e:
-            Logger.instance().error(f"Error reordering cells: {str(e)}")
-            return jsonify({"message": str(e)}), 500
-
     @app.route("/api/worksheet/<worksheet_id>/cells/<cell_id>/execute/", methods=["POST"])
     def execute_cell(worksheet_id, cell_id):
         """Execute a cell's query."""

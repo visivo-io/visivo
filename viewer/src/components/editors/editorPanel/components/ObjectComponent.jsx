@@ -43,7 +43,6 @@ function ObjectComponent({ name, data, path }) {
   };
 
   const handleDelete = () => {
-    console.log('Deleting path:', path); // Debug log
     deleteNamedChildAttribute(path);
     setContextMenu(null);
   };

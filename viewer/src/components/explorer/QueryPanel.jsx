@@ -21,7 +21,7 @@ const QueryPanel = () => {
     try {
       await createNewWorksheet();
     } catch (err) {
-      console.error('Failed to create worksheet:', err);
+      // Failed to create worksheet
     }
   };
 
@@ -29,7 +29,7 @@ const QueryPanel = () => {
     try {
       await updateWorksheetData(id, { name });
     } catch (err) {
-      console.error('Failed to rename worksheet:', err);
+      // Failed to rename worksheet
     }
   };
 

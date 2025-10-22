@@ -31,9 +31,7 @@ const saveInsightDataSafe = async (db, insightName, dataObj) => {
 
     await insertDuckDBFile(db, file, insightName);
   } catch (error) {
-    if (!error.message?.includes('already exists')) {
-      console.error(`Failed to cache ${insightName}:`, error);
-    }
+    // Failed to cache insight
   }
 };
 
@@ -62,7 +60,7 @@ const getInsightData = async (db, filteredData, inputs) => {
         insight: processedRows || [],
       };
     } catch (error) {
-      console.error(`Failed to query ${key} from DuckDB:`, error);
+      // Failed to query from DuckDB
     }
   }
   return new_data;
@@ -115,7 +113,6 @@ export const useInsightsData = (projectId, insightNames) => {
             },
           ];
         } catch (error) {
-          console.error(`Failed to fetch ${insight.name}:`, error);
           return null;
         }
       })

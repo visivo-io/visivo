@@ -18,7 +18,6 @@ const DimensionPillsView = ({ result, cell }) => {
         data: parsed.rows || [],
       };
     } catch (err) {
-      console.error('Failed to parse results:', err);
       return { columns: [], data: [] };
     }
   }, [result.results_json]);
@@ -127,9 +126,7 @@ const DimensionPillsView = ({ result, cell }) => {
       {activeDimension && dimensionStats[activeDimension] && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Values for "{activeDimension}"
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-700">Values for "{activeDimension}"</h3>
             <span className="text-xs text-gray-500">
               {dimensionStats[activeDimension].isComplete
                 ? `Showing all ${dimensionStats[activeDimension].cardinality} values`
@@ -138,12 +135,7 @@ const DimensionPillsView = ({ result, cell }) => {
           </div>
           <div className="flex flex-wrap gap-3">
             {dimensionStats[activeDimension].values.map(({ value, count, percentage }) => (
-              <Tooltip
-                key={value}
-                title={`${count} rows (${percentage}%)`}
-                placement="top"
-                arrow
-              >
+              <Tooltip key={value} title={`${count} rows (${percentage}%)`} placement="top" arrow>
                 <button
                   onClick={() => handlePillClick(value)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all border-2 ${
@@ -179,8 +171,14 @@ const DimensionPillsView = ({ result, cell }) => {
           </h4>
           <div className="text-sm text-purple-800">
             <p>
-              Appears {dimensionStats[activeDimension].values.find(v => v.value === selectedValue)?.count} times
-              ({dimensionStats[activeDimension].values.find(v => v.value === selectedValue)?.percentage}% of total)
+              Appears{' '}
+              {dimensionStats[activeDimension].values.find(v => v.value === selectedValue)?.count}{' '}
+              times (
+              {
+                dimensionStats[activeDimension].values.find(v => v.value === selectedValue)
+                  ?.percentage
+              }
+              % of total)
             </p>
           </div>
         </div>
@@ -200,9 +198,7 @@ const DimensionPillsView = ({ result, cell }) => {
               </span>
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Switch to Table view to see numeric values
-          </p>
+          <p className="text-xs text-gray-500 mt-2">Switch to Table view to see numeric values</p>
         </div>
       )}
 

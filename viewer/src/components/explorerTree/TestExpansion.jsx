@@ -8,7 +8,6 @@ const TestExpansion = () => {
   const [expandedNodes, setExpandedNodes] = useState([]);
 
   const handleNodeToggle = (event, nodeIds) => {
-    console.log('Test expansion - current:', expandedNodes, 'new:', nodeIds);
     setExpandedNodes(nodeIds);
   };
 

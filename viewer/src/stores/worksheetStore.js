@@ -159,12 +159,6 @@ const createWorksheetSlice = (set, get) => ({
   // Update a cell
   updateCellData: async (worksheetId, cellId, updates) => {
     try {
-      console.log('[worksheetStore] updateCellData called:', {
-        worksheetId,
-        cellId,
-        updates,
-      });
-
       const currentCells = get().worksheetCells[worksheetId] || [];
 
       // Update local state immediately for optimistic updates
@@ -177,27 +171,18 @@ const createWorksheetSlice = (set, get) => ({
         },
       }));
 
-      // Determine if this is a batched update (multiple fields) or query-only update
+      // Determine if this is a query-only update for debouncing
       const updateKeys = Object.keys(updates);
-      const isBatchedUpdate = updateKeys.length > 1;
       const isQueryOnlyUpdate = updateKeys.length === 1 && updates.query_text !== undefined;
 
       if (get().autoSaveEnabled && isQueryOnlyUpdate) {
         // Only debounce for query-only updates (auto-save while typing)
-        console.log('[worksheetStore] Triggering auto-save for query_text');
         get().triggerAutoSave(worksheetId, cellId, updates);
       } else {
         // For batched updates or non-query updates, save immediately to ensure atomicity
-        console.log('[worksheetStore] Saving immediately:', {
-          isBatchedUpdate,
-          isQueryOnlyUpdate,
-          updateKeys,
-        });
-        const result = await updateCell(worksheetId, cellId, updates);
-        console.log('[worksheetStore] Update cell API result:', result);
+        await updateCell(worksheetId, cellId, updates);
       }
     } catch (err) {
-      console.error('[worksheetStore] Error updating cell:', err);
       set(state => ({
         cellsError: { ...state.cellsError, [worksheetId]: 'Failed to update cell' },
       }));
@@ -255,14 +240,7 @@ const createWorksheetSlice = (set, get) => ({
     const currentCells = state.worksheetCells[worksheetId] || [];
     const cell = currentCells.find(c => c.cell.id === cellId);
 
-    console.log('[worksheetStore] executeCellQuery called:', {
-      worksheetId,
-      cellId,
-      cellData: cell?.cell,
-    });
-
     if (!cell || !cell.cell.query_text?.trim()) {
-      console.log('[worksheetStore] Skipping execution - no query text');
       return;
     }
 
@@ -277,11 +255,8 @@ const createWorksheetSlice = (set, get) => ({
     }));
 
     try {
-      console.log('[worksheetStore] Calling backend executeCell API...');
       // Use the new backend API that handles cell's selected_source
       const result = await executeCellAPI(worksheetId, cellId, abortController.signal);
-      console.log('[worksheetStore] Backend execution result:', result);
-      console.log('[worksheetStore] Backend query_stats.source:', result.query_stats?.source);
 
       // Parse the results
       const queryResults = {
@@ -290,7 +265,6 @@ const createWorksheetSlice = (set, get) => ({
       };
 
       const queryStats = result.query_stats;
-      console.log('[worksheetStore] Query stats source name:', queryStats?.source);
 
       // Format results for display
       const formattedResults = {
@@ -428,7 +402,7 @@ const createWorksheetSlice = (set, get) => ({
           return { autoSaveTimers: newTimers };
         });
       } catch (err) {
-        console.error('Auto-save failed:', err);
+        // Auto-save failed silently
       }
     }, state.autoSaveDebounceMs);
 

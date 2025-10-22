@@ -35,7 +35,6 @@ const TextEditorModal = ({ isOpen, onClose, objectName, setSnackBarOpen, setMess
         }
       } catch (error) {
         setError('Failed to load installed editors');
-        console.error('Error:', error);
       }
     };
 
@@ -76,7 +75,6 @@ const TextEditorModal = ({ isOpen, onClose, objectName, setSnackBarOpen, setMess
       onClose();
     } catch (error) {
       setError('Failed to open editor');
-      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }

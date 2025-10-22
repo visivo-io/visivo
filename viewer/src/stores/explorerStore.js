@@ -18,9 +18,19 @@ const createExplorerSlice = (set, get) => ({
   setError: error => set({ error }),
 
   info: null,
+  infoTimeoutId: null,
   setInfo: info => {
+    // Clear any existing timeout
+    const currentTimeoutId = get().infoTimeoutId;
+    if (currentTimeoutId) {
+      clearTimeout(currentTimeoutId);
+    }
+
     set({ info });
-    setTimeout(() => set({ info: null }), 5000);
+
+    // Set new timeout and store its ID
+    const timeoutId = setTimeout(() => set({ info: null, infoTimeoutId: null }), 5000);
+    set({ infoTimeoutId: timeoutId });
   },
 
   isLoading: false,

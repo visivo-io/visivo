@@ -64,11 +64,6 @@ const NotebookWorksheet = ({ worksheetId }) => {
 
   const handleSourceChange = useCallback(
     (cellId, newSource) => {
-      console.log('[NotebookWorksheet] Source change requested:', {
-        cellId,
-        newSource,
-        worksheetId,
-      });
       // Update cell's selected source
       updateCellData(worksheetId, cellId, { selected_source: newSource });
     },
@@ -77,11 +72,6 @@ const NotebookWorksheet = ({ worksheetId }) => {
 
   const handleModelChange = useCallback(
     (cellId, modelName) => {
-      console.log('[NotebookWorksheet] Model change requested:', {
-        cellId,
-        modelName,
-        worksheetId,
-      });
       // Update cell's associated model
       updateCellData(worksheetId, cellId, { associated_model: modelName });
     },
@@ -90,11 +80,6 @@ const NotebookWorksheet = ({ worksheetId }) => {
 
   const handleBatchCellUpdate = useCallback(
     (cellId, updates) => {
-      console.log('[NotebookWorksheet] Batch cell update requested:', {
-        cellId,
-        updates,
-        worksheetId,
-      });
       // Update cell with multiple fields atomically
       updateCellData(worksheetId, cellId, updates);
     },
@@ -108,7 +93,7 @@ const NotebookWorksheet = ({ worksheetId }) => {
       if (currentIndex !== -1 && currentIndex < currentCells.length - 1) {
         const nextCellId = currentCells[currentIndex + 1].cell.id;
         // Scroll to and focus the next cell
-        setTimeout(() => {
+        const timerId = setTimeout(() => {
           const nextCellElement = document.getElementById(`cell-${nextCellId}`);
           if (nextCellElement) {
             nextCellElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -119,6 +104,9 @@ const NotebookWorksheet = ({ worksheetId }) => {
             }
           }
         }, 150);
+
+        // Store timer ID for potential cleanup
+        return () => clearTimeout(timerId);
       }
     },
     [cells]
@@ -233,8 +221,8 @@ const NotebookWorksheet = ({ worksheetId }) => {
             Run cell
           </div>
           <div>
-            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Shift+Enter</kbd>{' '}
-            Run cell and advance
+            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Shift+Enter</kbd> Run
+            cell and advance
           </div>
           <div>
             <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Alt+Enter</kbd>{' '}

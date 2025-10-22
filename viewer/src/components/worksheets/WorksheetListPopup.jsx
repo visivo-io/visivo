@@ -89,7 +89,7 @@ const WorksheetListPopup = ({
       onSelect(worksheet.id);
       onClose();
     } catch (err) {
-      console.error('Error selecting worksheet:', err);
+      // Error selecting worksheet
     }
   };
 
@@ -106,7 +106,6 @@ const WorksheetListPopup = ({
       // Delete worksheet
       await onDelete(worksheetId);
     } catch (err) {
-      console.error('Error deleting worksheet:', err);
       // Remove from deleting state if there's an error
       setDeletingIds(prev => {
         const next = new Set(prev);
