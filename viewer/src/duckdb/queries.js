@@ -281,3 +281,118 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
 
   return { loaded, failed };
 };
+
+/**
+ * Load parquet file from URL and register it in DuckDB with caching
+ *
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
+ * @param {string} url - URL to fetch the parquet file from
+ * @param {string} nameHash - Name hash to use as table name
+ * @param {boolean} force - Force reload even if cached (default: false)
+ * @returns {Promise<void>}
+ */
+export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
+  const cache = getParquetCache();
+
+  // Check if already loaded (unless forcing reload)
+  if (!force && cache.isLoaded(nameHash)) {
+    console.debug(`Parquet file ${nameHash} already loaded from cache`);
+    return;
+  }
+
+  // Check if table already exists in DuckDB
+  if (!force && (await tableDuckDBExists(db, nameHash))) {
+    cache.markLoaded(nameHash, url);
+    console.debug(`Parquet file ${nameHash} already exists in DuckDB`);
+    return;
+  }
+
+  // Use cache to prevent duplicate concurrent fetches
+  return cache.getOrFetch(nameHash, async () => {
+    try {
+      cache.markLoading(nameHash, url);
+      console.debug(`Loading parquet file from ${url} as table '${nameHash}'`);
+
+      // Fetch the parquet file
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch parquet file: ${response.status} ${response.statusText}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      // Register file in DuckDB
+      const tempFile = getTempFilename() + '.parquet';
+      await db.registerFileBuffer(tempFile, uint8Array);
+
+      // Create table from parquet file using name_hash as table name
+      const conn = await db.connect();
+      try {
+        // Drop existing table if forcing reload
+        if (force) {
+          await conn.query(`DROP TABLE IF EXISTS "${nameHash}"`);
+        }
+
+        await conn.query(`
+          CREATE TABLE "${nameHash}" AS
+          SELECT * FROM read_parquet('${tempFile}')
+        `);
+        console.debug(`Successfully created table '${nameHash}' from parquet file`);
+      } finally {
+        await conn.close();
+        await db.dropFile(tempFile);
+      }
+
+      cache.markLoaded(nameHash, url);
+    } catch (error) {
+      console.error(`Error loading parquet file from ${url}:`, error);
+      cache.markError(nameHash, url, error);
+      throw error;
+    }
+  });
+};
+
+/**
+ * Load multiple parquet files in parallel from insight file references
+ *
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
+ * @param {Array<{name_hash: string, signed_data_file_url: string}>} files - File references
+ * @param {boolean} force - Force reload even if cached (default: false)
+ * @returns {Promise<{loaded: string[], failed: Array<{nameHash: string, error: string}>}>}
+ */
+export const loadInsightParquetFiles = async (db, files, force = false) => {
+  if (!files || files.length === 0) {
+    return { loaded: [], failed: [] };
+  }
+
+  console.debug(`Loading ${files.length} parquet files for insight`);
+
+  const results = await Promise.allSettled(
+    files.map(file => loadParquetFromURL(db, file.signed_data_file_url, file.name_hash, force))
+  );
+
+  const loaded = [];
+  const failed = [];
+
+  results.forEach((result, index) => {
+    const file = files[index];
+    if (result.status === 'fulfilled') {
+      loaded.push(file.name_hash);
+    } else {
+      failed.push({
+        nameHash: file.name_hash,
+        url: file.signed_data_file_url,
+        error: result.reason.message || String(result.reason),
+      });
+    }
+  });
+
+  if (failed.length > 0) {
+    console.error(`Failed to load ${failed.length} parquet files:`, failed);
+  }
+
+  console.debug(`Successfully loaded ${loaded.length}/${files.length} parquet files`);
+
+  return { loaded, failed };
+};
