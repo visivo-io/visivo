@@ -67,7 +67,11 @@ class InsightQueryBuilder:
         ]
         props_map = {}
         for key, statement in props_statements:
-            props_map[key] = statement.split(" AS ")[1]
+            # Extract alias after " AS " and strip surrounding quotes
+            alias = statement.split(" AS ")[1]
+            # Remove surrounding quotes (both single and double)
+            alias = alias.strip("'\"")
+            props_map[key] = alias
         return props_map
 
     @property
@@ -86,9 +90,9 @@ class InsightQueryBuilder:
         if self.is_dyanmic:
             return self._build_main_query()
         else:
-            # Should be able to execute this in JS as long as we do the following-
-            # await db.registerFileURL("insight_hash.parquet", "https://signed.file/call.parquet");
-            return f"SELECT * FROM '{self.insight_hash}.parquet'"
+            # Non-dynamic: Query the registered table directly (no .parquet extension)
+            # Frontend registers parquet files as tables using insight_hash as table name
+            return f'SELECT * FROM "{self.insight_hash}"'
 
     def resolve(self):
         """Sets the resolved_query_statements"""
@@ -204,8 +208,9 @@ class InsightQueryBuilder:
             )
 
             if self.is_dyanmic:
-                # Dynamic insights: SELECT * FROM 'model_hash.parquet'
-                cte_sql = f"SELECT * FROM '{model_hash}.parquet'"
+                # Dynamic insights: Query the registered table directly (no .parquet extension)
+                # Frontend registers parquet files as tables using model_hash as table name
+                cte_sql = f'SELECT * FROM "{model_hash}"'
                 dialect_for_parse = "duckdb"  # Parse as DuckDB for dynamic
             else:
                 # Non-dynamic insights: Use model.sql directly
