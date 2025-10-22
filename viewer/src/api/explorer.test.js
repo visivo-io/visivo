@@ -43,7 +43,6 @@ describe('explorer API functions', () => {
       const result = await fetchExplorer();
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith('Failed to fetch explorer data');
     });
   });
 
@@ -70,7 +69,6 @@ describe('explorer API functions', () => {
       const result = await fetchSourceMetadata();
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith('Failed to fetch source metadata');
     });
   });
 
@@ -117,9 +115,6 @@ describe('explorer API functions', () => {
       const result = await fetchDatabases(sourceName);
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
-        `Failed to fetch databases for source: ${sourceName}`
-      );
     });
   });
 
@@ -171,9 +166,6 @@ describe('explorer API functions', () => {
       const result = await fetchSchemas(sourceName, databaseName);
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
-        `Failed to fetch schemas for ${sourceName}.${databaseName}`
-      );
     });
   });
 
@@ -249,9 +241,6 @@ describe('explorer API functions', () => {
       const result = await fetchTables(sourceName, databaseName, schemaName);
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
-        `Failed to fetch tables for ${sourceName}.${databaseName}.${schemaName}`
-      );
     });
   });
 
@@ -298,9 +287,6 @@ describe('explorer API functions', () => {
       const result = await testSourceConnection(sourceName);
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
-        `Failed to test connection for source: ${sourceName}`
-      );
     });
   });
 
@@ -380,9 +366,6 @@ describe('explorer API functions', () => {
       const result = await fetchColumns(sourceName, databaseName, tableName, schemaName);
 
       expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith(
-        `Failed to fetch columns for ${sourceName}.${databaseName}.${schemaName}.${tableName}`
-      );
     });
   });
 

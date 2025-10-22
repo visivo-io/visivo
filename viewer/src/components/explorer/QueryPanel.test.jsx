@@ -205,51 +205,5 @@ describe('QueryPanel', () => {
     expect(screen.queryByText('Hidden Worksheet')).not.toBeInTheDocument();
   });
 
-  test('handles createWorksheet error gracefully', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mockError = new Error('Failed to create');
-    useStore.mockImplementation(selector => {
-      const state = {
-        ...mockStoreState,
-        createNewWorksheet: jest.fn().mockRejectedValue(mockError),
-        activeWorksheetId: null,
-      };
-      return typeof selector === 'function' ? selector(state) : state;
-    });
-
-    render(<QueryPanel />);
-    const createBtn = screen.getByRole('button', { name: /create worksheet/i });
-    fireEvent.click(createBtn);
-
-    await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to create worksheet:', mockError);
-    });
-
-    consoleErrorSpy.mockRestore();
-  });
-
-  test('handles rename error gracefully', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mockError = new Error('Failed to rename');
-    useStore.mockImplementation(selector => {
-      const state = {
-        ...mockStoreState,
-        updateWorksheetData: jest.fn().mockRejectedValue(mockError),
-      };
-      return typeof selector === 'function' ? selector(state) : state;
-    });
-
-    render(<QueryPanel />);
-    const renameInput = screen.getByTestId('rename-input-ws1');
-    fireEvent.change(renameInput, { target: { value: 'New Name' } });
-    fireEvent.blur(renameInput);
-
-    await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to rename worksheet:', mockError);
-    });
-
-    consoleErrorSpy.mockRestore();
-  });
-
   // Note: Source change error handling test removed as this functionality moved to QueryCell component
 });

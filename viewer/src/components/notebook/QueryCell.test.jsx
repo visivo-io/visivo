@@ -193,7 +193,7 @@ describe('QueryCell', () => {
       fireEvent.click(screen.getByTestId('modal-create'));
 
       await waitFor(() => {
-        expect(consoleLogSpy).toHaveBeenCalledWith('Model created:', expect.any(Object));
+        expect(screen.queryByTestId('create-object-modal')).not.toBeInTheDocument();
       });
 
       consoleLogSpy.mockRestore();
