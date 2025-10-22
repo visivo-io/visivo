@@ -75,3 +75,110 @@ export const updateSessionState = async states => {
   }
   throw new Error('Failed to update session state');
 };
+
+// Cell API Functions
+export const listCells = async worksheetId => {
+  const response = await fetch(getUrl('worksheetCells', { id: worksheetId }));
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error('Failed to fetch cells');
+};
+
+export const getCell = async (worksheetId, cellId) => {
+  const response = await fetch(getUrl('worksheetCellDetail', { worksheetId, cellId }));
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error('Failed to fetch cell');
+};
+
+export const createCell = async (worksheetId, data) => {
+  const response = await fetch(getUrl('worksheetCells', { id: worksheetId }), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (response.status === 201) {
+    return await response.json();
+  }
+  throw new Error('Failed to create cell');
+};
+
+export const updateCell = async (worksheetId, cellId, data) => {
+  const response = await fetch(getUrl('worksheetCellDetail', { worksheetId, cellId }), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error('Failed to update cell');
+};
+
+export const deleteCell = async (worksheetId, cellId) => {
+  const response = await fetch(getUrl('worksheetCellDetail', { worksheetId, cellId }), {
+    method: 'DELETE',
+  });
+  if (response.status === 200) {
+    return true;
+  }
+  throw new Error('Failed to delete cell');
+};
+
+export const reorderCells = async (worksheetId, cellOrder) => {
+  // Cell reordering is now handled through the worksheet update endpoint
+  return await updateWorksheet(worksheetId, { cell_order: cellOrder });
+};
+
+export const executeCell = async (worksheetId, cellId, signal = null) => {
+  const fetchOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  // Add abort signal if provided
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(
+    getUrl('worksheetCellExecute', { worksheetId, cellId }),
+    fetchOptions
+  );
+  if (response.status === 200) {
+    return await response.json();
+  }
+
+  // Parse error response to get detailed SQL error message
+  let errorMessage = 'Failed to execute cell';
+  try {
+    const errorData = await response.json();
+    if (errorData.error) {
+      errorMessage = errorData.error;
+    } else if (errorData.detail) {
+      errorMessage = errorData.detail;
+    } else if (errorData.message) {
+      errorMessage = errorData.message;
+    }
+  } catch (parseError) {
+    // If parsing fails, try to get text response
+    try {
+      const errorText = await response.text();
+      if (errorText) {
+        errorMessage = errorText;
+      }
+    } catch (textError) {
+      // Use default error message
+    }
+  }
+
+  throw new Error(errorMessage);
+};

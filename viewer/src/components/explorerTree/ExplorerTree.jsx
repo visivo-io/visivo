@@ -3,7 +3,6 @@ import { StyledSidebar, SelectContainer, TreeContainer } from './styles/TreeStyl
 import ModelsTracesList from './ModelsTracesList';
 import SourcesTree from './SourcesTree';
 import { HiOutlineDatabase } from 'react-icons/hi';
-import { MdScatterPlot } from 'react-icons/md';
 import { FaServer } from 'react-icons/fa';
 import { Tooltip } from '@mui/material';
 
@@ -35,19 +34,6 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
               }`}
             >
               <HiOutlineDatabase size={28} />
-            </button>
-          </Tooltip>
-
-          <Tooltip title="SQL Traces" placement="bottom">
-            <button
-              onClick={() => onTypeChange('traces')}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                selectedTab === 'traces'
-                  ? 'bg-orange-100 text-orange-700 shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <MdScatterPlot size={24} />
             </button>
           </Tooltip>
         </div>

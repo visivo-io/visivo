@@ -6,7 +6,6 @@ export const fetchExplorer = async () => {
     const data = await response.json();
     return data;
   } else {
-    console.error('Failed to fetch explorer data');
     return null;
   }
 };
@@ -17,7 +16,6 @@ export const fetchSourceMetadata = async () => {
     const data = await response.json();
     return data;
   } else {
-    console.error('Failed to fetch source metadata');
     return null;
   }
 };
@@ -30,7 +28,6 @@ export const fetchDatabases = async sourceName => {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to fetch databases for source: ${sourceName}`);
     return null;
   }
 };
@@ -43,7 +40,6 @@ export const fetchSchemas = async (sourceName, databaseName) => {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to fetch schemas for ${sourceName}.${databaseName}`);
     return null;
   }
 };
@@ -58,9 +54,6 @@ export const fetchTables = async (sourceName, databaseName, schemaName = null) =
     const data = await response.json();
     return data;
   } else {
-    console.error(
-      `Failed to fetch tables for ${sourceName}.${databaseName}.${schemaName || 'default'}`
-    );
     return null;
   }
 };
@@ -73,7 +66,6 @@ export const testSourceConnection = async sourceName => {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to test connection for source: ${sourceName}`);
     return null;
   }
 };
@@ -90,7 +82,6 @@ export const testSourceConnectionFromConfig = async sourceConfig => {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to test connection for source configuration`);
     const error = await response.text();
     try {
       return JSON.parse(error);
@@ -110,9 +101,6 @@ export const fetchColumns = async (sourceName, databaseName, tableName, schemaNa
     const data = await response.json();
     return data;
   } else {
-    console.error(
-      `Failed to fetch columns for ${sourceName}.${databaseName}.${schemaName || 'default'}.${tableName}`
-    );
     return null;
   }
 };

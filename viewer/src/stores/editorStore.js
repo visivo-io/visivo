@@ -10,7 +10,7 @@ const createEditorSlice = (set, get) => ({
       const data = await fetchSchema();
       set({ schema: data });
     } catch (e) {
-      console.error('Error fetching schema:', e);
+      // Error fetching schema
     }
   },
 
@@ -55,7 +55,6 @@ const createEditorSlice = (set, get) => ({
         isLoading: false,
       });
     } catch (e) {
-      console.error('Error writing files:', e);
       set({
         writeError: e.message || 'Failed to write files',
         isLoading: false,
@@ -128,7 +127,6 @@ const createEditorSlice = (set, get) => ({
         set({ error: 'Failed to fetch data', isLoading: false });
       }
     } catch (e) {
-      console.error('Error fetching named children', e);
       set({ error: e.message || 'An error occurred', isLoading: false });
     }
   },
@@ -316,7 +314,6 @@ const createEditorSlice = (set, get) => ({
     set(state => {
       const childName = path[0];
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        console.warn('Child not found in namedChildren store');
         return state;
       }
 
@@ -338,7 +335,6 @@ const createEditorSlice = (set, get) => ({
         for (let i = 0; i < attributePath.length - 1; i++) {
           parent = parent[attributePath[i]];
           if (!parent) {
-            console.warn('Invalid path');
             return state;
           }
         }
@@ -365,10 +361,91 @@ const createEditorSlice = (set, get) => ({
         },
       };
 
-      console.log('Deleting path:', path);
-      console.log('Updated config:', configToUpdate);
-
       return { namedChildren: updatedNamedChildren };
+    }),
+
+  // Rename a named child (changes the key in namedChildren and the name in config)
+  renameNamedChild: (oldName, newName) =>
+    set(state => {
+      // Check if old name exists
+      if (!state.namedChildren.hasOwnProperty(oldName)) {
+        return state;
+      }
+
+      // Check if new name already exists
+      if (state.namedChildren.hasOwnProperty(newName)) {
+        return state;
+      }
+
+      // Get the child to rename
+      const childToRename = { ...state.namedChildren[oldName] };
+
+      // Update the name in config
+      let configToUpdate =
+        typeof childToRename.config === 'string'
+          ? JSON.parse(childToRename.config)
+          : { ...childToRename.config };
+
+      configToUpdate.name = newName;
+
+      // Create new namedChildren object with renamed key
+      const updatedNamedChildren = { ...state.namedChildren };
+      delete updatedNamedChildren[oldName];
+      updatedNamedChildren[newName] = {
+        ...childToRename,
+        config: configToUpdate,
+        status: childToRename.status === 'New' ? 'New' : 'Modified',
+      };
+
+      // Update tabs if the renamed child has an open tab
+      const updatedTabs = state.tabs.map(tab =>
+        tab.name === oldName ? { ...tab, name: newName } : tab
+      );
+
+      return {
+        namedChildren: updatedNamedChildren,
+        tabs: updatedTabs,
+      };
+    }),
+
+  // Delete an entire named child
+  deleteNamedChild: name =>
+    set(state => {
+      // Check if child exists
+      if (!state.namedChildren.hasOwnProperty(name)) {
+        return state;
+      }
+
+      const childToDelete = state.namedChildren[name];
+
+      // Create new namedChildren object with child marked as deleted
+      const updatedNamedChildren = { ...state.namedChildren };
+
+      // If it's a new child that hasn't been saved yet, remove it entirely
+      if (childToDelete.status === 'New') {
+        delete updatedNamedChildren[name];
+      } else {
+        // Mark existing child as Deleted so it will be removed from files on write
+        updatedNamedChildren[name] = {
+          ...childToDelete,
+          status: 'Deleted',
+        };
+      }
+
+      // Close any tabs for the deleted child
+      const updatedTabs = state.tabs.filter(tab => tab.name !== name);
+      const newActiveTabId =
+        state.activeTabId && state.tabs.find(t => t.id === state.activeTabId)?.name === name
+          ? updatedTabs.length > 0
+            ? updatedTabs[updatedTabs.length - 1].id
+            : null
+          : state.activeTabId;
+
+      return {
+        namedChildren: updatedNamedChildren,
+        tabs: updatedTabs,
+        activeTabId: newActiveTabId,
+      };
     }),
 });
 

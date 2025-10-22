@@ -61,22 +61,22 @@ def test_create_worksheet(client):
         "/api/worksheet/",
         json={
             "name": "Test Worksheet",
-            "query": "SELECT * FROM test",
-            "selected_source": "test_source",
         },
     )
     assert response.status_code == 201
     data = json.loads(response.data)
     assert data["worksheet"]["name"] == "Test Worksheet"
-    assert data["worksheet"]["query"] == "SELECT * FROM test"
-    assert data["worksheet"]["selected_source"] == "test_source"
     assert data["session_state"]["tab_order"] == 1
     assert data["session_state"]["is_visible"] is True
+    # Verify initial empty cell was created
+    assert "cells" in data
+    assert len(data["cells"]) == 1
+    assert data["cells"][0]["query_text"] == ""
 
 
 def test_create_worksheet_without_name(client):
     """Test POST /api/worksheet endpoint with missing name."""
-    response = client.post("/api/worksheet/", json={"query": "SELECT * FROM test"})
+    response = client.post("/api/worksheet/", json={})
     assert response.status_code == 400
     data = json.loads(response.data)
     assert "Name is required" in data["message"]
@@ -85,7 +85,7 @@ def test_create_worksheet_without_name(client):
 def test_get_worksheet(client, worksheet_repo):
     """Test GET /api/worksheet/<id> endpoint."""
     # Create a worksheet first
-    result = worksheet_repo.create_worksheet(name="Test Worksheet", query="SELECT * FROM test")
+    result = worksheet_repo.create_worksheet(name="Test Worksheet")
     worksheet_id = result["worksheet"]["id"]
 
     # Test retrieval
@@ -94,7 +94,6 @@ def test_get_worksheet(client, worksheet_repo):
     data = json.loads(response.data)
     assert data["worksheet"]["id"] == worksheet_id
     assert data["worksheet"]["name"] == "Test Worksheet"
-    assert data["worksheet"]["query"] == "SELECT * FROM test"
 
 
 def test_get_nonexistent_worksheet(client):
@@ -129,14 +128,13 @@ def test_update_worksheet(client, worksheet_repo):
     # Test update
     response = client.put(
         f"/api/worksheet/{worksheet_id}/",
-        json={"name": "Updated Name", "query": "SELECT * FROM updated"},
+        json={"name": "Updated Name"},
     )
     assert response.status_code == 200
 
     # Verify changes
     updated = worksheet_repo.get_worksheet(worksheet_id)
     assert updated["worksheet"]["name"] == "Updated Name"
-    assert updated["worksheet"]["query"] == "SELECT * FROM updated"
 
 
 def test_update_nonexistent_worksheet(client):
@@ -213,36 +211,34 @@ def test_update_session_state_invalid_data(client):
 
 
 def test_execute_query_with_worksheet(client, worksheet_repo, mocker):
-    """Test POST /api/query/<project_id> with worksheet_id."""
+    """Test POST /api/worksheet/<worksheet_id>/cells/<cell_id>/execute/ endpoint."""
     # Create a worksheet
-    result = worksheet_repo.create_worksheet(
-        name="Test Worksheet",
-        query="SELECT * FROM test_table",
-        selected_source="source",  # This matches the source name from SourceFactory
-    )
+    result = worksheet_repo.create_worksheet(name="Test Worksheet")
     worksheet_id = result["worksheet"]["id"]
 
-    # Test query execution
-    response = client.post(
-        "/api/query/test-project/",
-        json={
-            "query": "SELECT * FROM test_table",
-            "source": "source",
-            "worksheet_id": worksheet_id,
-        },
+    # Get the initial cell created with the worksheet
+    cells = worksheet_repo.list_cells(worksheet_id)
+    cell_id = cells[0]["cell"]["id"]
+
+    # Update the cell with a query
+    worksheet_repo.update_cell(
+        cell_id, {"query_text": "SELECT * FROM test_table", "selected_source": "source"}
     )
+
+    # Test query execution
+    response = client.post(f"/api/worksheet/{worksheet_id}/cells/{cell_id}/execute/")
     assert response.status_code == 200
     data = json.loads(response.data)
     assert "columns" in data
     assert "rows" in data
 
-    # Verify results were saved
-    worksheet = worksheet_repo.get_worksheet(worksheet_id)
-    assert worksheet["results"] is not None
+    # Verify results were saved to the cell
+    cell_data = worksheet_repo.get_cell(cell_id)
+    assert cell_data["result"] is not None
 
 
 def test_execute_query_source_fallback(client, worksheet_repo):
-    """Test POST /api/query/<project_id> with invalid source falls back to available source.
+    """Test cell execution with invalid source falls back to available source.
 
     The execute_query endpoint has a fallback mechanism:
     1. Try to use the requested source
@@ -251,22 +247,21 @@ def test_execute_query_source_fallback(client, worksheet_repo):
     4. Only fail if no sources are available
     """
     # Create a worksheet
-    result = worksheet_repo.create_worksheet(
-        name="Test Worksheet",
-        query="SELECT * FROM test_table",
-        selected_source="nonexistent_source",
-    )
+    result = worksheet_repo.create_worksheet(name="Test Worksheet")
     worksheet_id = result["worksheet"]["id"]
 
-    # Test query execution with non-existent source
-    response = client.post(
-        "/api/query/test-project/",
-        json={
-            "query": "SELECT * FROM test_table",
-            "source": "nonexistent_source",
-            "worksheet_id": worksheet_id,
-        },
+    # Get the initial cell
+    cells = worksheet_repo.list_cells(worksheet_id)
+    cell_id = cells[0]["cell"]["id"]
+
+    # Update cell with query and non-existent source
+    worksheet_repo.update_cell(
+        cell_id,
+        {"query_text": "SELECT * FROM test_table", "selected_source": "nonexistent_source"},
     )
+
+    # Test query execution with non-existent source
+    response = client.post(f"/api/worksheet/{worksheet_id}/cells/{cell_id}/execute/")
     # Should succeed by falling back to the available source
     assert response.status_code == 200
     data = json.loads(response.data)
@@ -274,17 +269,22 @@ def test_execute_query_source_fallback(client, worksheet_repo):
     assert "rows" in data
 
     # Verify results were saved
-    worksheet = worksheet_repo.get_worksheet(worksheet_id)
-    assert worksheet["results"] is not None
+    cell_data = worksheet_repo.get_cell(cell_id)
+    assert cell_data["result"] is not None
 
 
-def test_execute_query_no_sources(client, worksheet_repo):
-    """Test POST /api/query/<project_id> when no sources are available."""
+def test_execute_query_no_sources(client, worksheet_repo, output_dir):
+    """Test cell execution when no sources are available."""
     # Create a worksheet
-    result = worksheet_repo.create_worksheet(
-        name="Test Worksheet", query="SELECT * FROM test_table"
-    )
+    result = worksheet_repo.create_worksheet(name="Test Worksheet")
     worksheet_id = result["worksheet"]["id"]
+
+    # Get the initial cell
+    cells = worksheet_repo.list_cells(worksheet_id)
+    cell_id = cells[0]["cell"]["id"]
+
+    # Update cell with query
+    worksheet_repo.update_cell(cell_id, {"query_text": "SELECT * FROM test_table"})
 
     # Create a new app instance with a minimal project (no sources, no models, no dashboards)
     minimal_project = ProjectFactory(
@@ -296,42 +296,41 @@ def test_execute_query_no_sources(client, worksheet_repo):
         tables=[],  # Ensure no tables
     )
 
-    # Ensure the output directory exists for the new app instance
-    new_output_dir = os.path.join(client.application.static_folder, "no_sources_test")
-    os.makedirs(new_output_dir, exist_ok=True)
-
-    # Create the Flask app with the new output directory
-    app = FlaskApp(new_output_dir, minimal_project)
+    # Use the same output directory so the new app can access the existing worksheet database
+    # Create the Flask app with the same output directory
+    app = FlaskApp(output_dir, minimal_project)
     test_client = app.app.test_client()
 
     # Test query execution with no available sources
-    response = test_client.post(
-        "/api/query/test-project/",
-        json={"query": "SELECT * FROM test_table", "worksheet_id": worksheet_id},
-    )
+    response = test_client.post(f"/api/worksheet/{worksheet_id}/cells/{cell_id}/execute/")
     assert response.status_code == 400
     data = json.loads(response.data)
     assert "No source configured" in data["message"]
 
 
 def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
-    """Test POST /api/query/<project_id> with invalid SQL."""
+    """Test cell execution with invalid SQL."""
     # Create a worksheet
-    result = worksheet_repo.create_worksheet(
-        name="Test Worksheet", query="INVALID SQL", selected_source="source"
-    )
+    result = worksheet_repo.create_worksheet(name="Test Worksheet")
     worksheet_id = result["worksheet"]["id"]
 
+    # Get the initial cell
+    cells = worksheet_repo.list_cells(worksheet_id)
+    cell_id = cells[0]["cell"]["id"]
+
+    # Update cell with invalid SQL
+    worksheet_repo.update_cell(cell_id, {"query_text": "INVALID SQL", "selected_source": "source"})
+
     # Test query execution with invalid SQL
-    response = client.post(
-        "/api/query/test-project/",
-        json={"query": "INVALID SQL", "source": "source", "worksheet_id": worksheet_id},
-    )
-    assert response.status_code == 500
+    response = client.post(f"/api/worksheet/{worksheet_id}/cells/{cell_id}/execute/")
+    # Now returns 400 (Bad Request) instead of 500 due to enhanced error handling
+    assert response.status_code == 400
     data = json.loads(response.data)
     captured = capsys.readouterr()
-    assert "sqlite3.OperationalError" in data["message"]
-    assert "Query execution error" in captured.out
+    # Check for enhanced error message with helpful hints
+    assert "Query execution failed" in data["message"]
+    assert "Hint:" in data["message"]
+    assert "Error executing cell:" in captured.out
 
 
 def test_missing_project_name(client):

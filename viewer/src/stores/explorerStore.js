@@ -18,9 +18,19 @@ const createExplorerSlice = (set, get) => ({
   setError: error => set({ error }),
 
   info: null,
+  infoTimeoutId: null,
   setInfo: info => {
+    // Clear any existing timeout
+    const currentTimeoutId = get().infoTimeoutId;
+    if (currentTimeoutId) {
+      clearTimeout(currentTimeoutId);
+    }
+
     set({ info });
-    setTimeout(() => set({ info: null }), 5000);
+
+    // Set new timeout and store its ID
+    const timeoutId = setTimeout(() => set({ info: null, infoTimeoutId: null }), 5000);
+    set({ infoTimeoutId: timeoutId });
   },
 
   isLoading: false,
@@ -159,18 +169,13 @@ const createExplorerSlice = (set, get) => ({
       return;
     }
 
-    // Check if already loaded
-    if (sourcesMetadata.sources.length > 0) {
-      return;
-    }
-
     set(state => ({
       loadingStates: { ...state.loadingStates, sources: true },
     }));
 
     try {
       // Get sources from namedChildren
-      const sources = Object.values(namedChildren || {})
+      const sourcesFromNamedChildren = Object.values(namedChildren || {})
         .filter(item => item.type_key === 'sources')
         .map(item => ({
           name: item.config.name,
@@ -179,14 +184,40 @@ const createExplorerSlice = (set, get) => ({
           status: 'unknown',
         }));
 
-      set(state => ({
-        sourcesMetadata: { ...state.sourcesMetadata, sources },
-      }));
+      // Get existing source names
+      const existingSourceNames = new Set(
+        sourcesMetadata.sources.map(src => src.name)
+      );
 
-      // Trigger connection tests for all sources in the background
-      sources.forEach(source => {
-        get().testConnection(source.name);
-      });
+      // Find new sources that aren't already in the metadata
+      const newSources = sourcesFromNamedChildren.filter(
+        src => !existingSourceNames.has(src.name)
+      );
+
+      // If there are new sources, add them to the metadata
+      if (newSources.length > 0) {
+        set(state => ({
+          sourcesMetadata: {
+            ...state.sourcesMetadata,
+            sources: [...state.sourcesMetadata.sources, ...newSources],
+          },
+        }));
+
+        // Trigger connection tests for new sources in the background
+        newSources.forEach(source => {
+          get().testConnection(source.name);
+        });
+      } else if (sourcesMetadata.sources.length === 0) {
+        // First load - set all sources
+        set(state => ({
+          sourcesMetadata: { ...state.sourcesMetadata, sources: sourcesFromNamedChildren },
+        }));
+
+        // Trigger connection tests for all sources in the background
+        sourcesFromNamedChildren.forEach(source => {
+          get().testConnection(source.name);
+        });
+      }
     } catch (err) {
       get().setError('Failed to load sources');
     } finally {

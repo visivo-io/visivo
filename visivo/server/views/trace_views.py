@@ -6,6 +6,7 @@ from flask import jsonify, request, send_file
 
 from visivo.logger.logger import Logger
 from visivo.utils import get_utc_now
+from visivo.server.services.query_service import execute_query_on_source
 
 
 def register_trace_views(app, flask_app, output_dir):
@@ -63,66 +64,34 @@ def register_trace_views(app, flask_app, output_dir):
 
             query = data["query"]
             source_name = data.get("source")
-            Logger.instance().info(f"Executing query with source: {source_name}")
-            worksheet_id = data.get("worksheet_id")  # New: Get worksheet_id if provided
+            worksheet_id = data.get("worksheet_id")
 
-            # Get the appropriate source based on the request
-            source = None
-            if source_name:
-                source = next(
-                    (s for s in flask_app._project.sources if s.name == source_name),
-                    None,
-                )
-
-            if (
-                not source
-                and flask_app._project.defaults
-                and flask_app._project.defaults.source_name
-            ):
-                source = next(
-                    (
-                        s
-                        for s in flask_app._project.sources
-                        if s.name == flask_app._project.defaults.source_name
-                    ),
-                    None,
-                )
-
-            if not source and flask_app._project.sources:
-                source = flask_app._project.sources[0]
-
-            if not source:
-                return jsonify({"message": "No source configured"}), 400
-
-            Logger.instance().info(f"Executing query with source: {source.name}")
-
-            # Execute the query using read_sql
-            result = source.read_sql(query)
-
-            # Transform the result into the expected format
-            # result is now a list of dictionaries instead of a Polars DataFrame
-            if result is None or len(result) == 0:
-                response_data = {"columns": [], "rows": []}
-            else:
-                # Extract column names from the first row
-                columns = list(result[0].keys()) if result else []
-                response_data = {
-                    "columns": columns,
-                    "rows": result,
-                }
+            # Use the query service to execute the query
+            # This provides enhanced error messages, result truncation, and execution time tracking
+            response_data = execute_query_on_source(query, source_name, flask_app._project)
 
             # If worksheet_id is provided, save the results
             if worksheet_id:
                 query_stats = {
                     "timestamp": get_utc_now().isoformat(),
-                    "source": source.name,
+                    "source": response_data["source_name"],
+                    "execution_time": response_data["execution_time"],
+                    "is_truncated": response_data.get("is_truncated", False),
+                }
+                # Save results (excluding source_name and execution_time from saved data)
+                result_data = {
+                    "columns": response_data["columns"],
+                    "rows": response_data["rows"],
                 }
                 flask_app.worksheet_repo.save_results(
-                    worksheet_id, json.dumps(response_data), json.dumps(query_stats)
+                    worksheet_id, json.dumps(result_data), json.dumps(query_stats)
                 )
 
             return jsonify(response_data), 200
 
+        except ValueError as e:
+            # ValueError is raised by query_service with enhanced error messages
+            return jsonify({"message": str(e)}), 400
         except Exception as e:
             Logger.instance().error(f"Query execution error: {str(e)}")
             return jsonify({"message": str(e)}), 500

@@ -1,9 +1,8 @@
 import { ContextString } from '../utils/contextString';
 import { getTempFilename } from './duckdb';
 
-
 /**
- * @param {Function} fn 
+ * @param {Function} fn
  * @param {number} retries
  * @param {number} delay
  */
@@ -29,15 +28,19 @@ export const withRetry = async (fn, retries = 5, delay = 500) => {
  * @returns {Promise}
  */
 export const runDuckDBQuery = async (db, sql, retries = 1, delay = 500) => {
-  return withRetry(async () => {
-    const conn = await db.connect();
-    try {
-      const arrow = await conn.query(sql);
-      return arrow
-    }finally {
-      await conn.close();
-    }
-  }, retries, delay);
+  return withRetry(
+    async () => {
+      const conn = await db.connect();
+      try {
+        const arrow = await conn.query(sql);
+        return arrow;
+      } finally {
+        await conn.close();
+      }
+    },
+    retries,
+    delay
+  );
 };
 
 /**
@@ -57,7 +60,7 @@ export const insertDuckDBFile = async (db, file, tableName) => {
       await _insertJSON(db, file, tableName);
       return;
     default:
-      console.warn(`Unsupported file extension: ${extension}`);
+    // Unsupported file extension
   }
 };
 
@@ -77,7 +80,6 @@ const _insertJSON = async (db, file, tableName) => {
 
     await db.dropFile(tempFile);
   } catch (e) {
-    console.error('Failed to import JSON file:', e);
     throw e;
   }
 };
@@ -101,9 +103,9 @@ export const tableDuckDBExists = async (db, tableName) => {
 };
 
 /**
- * 
- * @param {Object} insight 
- * @param {Object} inputs 
+ *
+ * @param {Object} insight
+ * @param {Object} inputs
  * @returns {String}
  */
 export const prepPostQuery = (insight, inputs) => {
@@ -111,34 +113,34 @@ export const prepPostQuery = (insight, inputs) => {
   const contextObj = new ContextString(post_query);
   const refs = contextObj.getAllRefs();
 
-    if (refs.length > 0) {
-      refs.forEach(refStr => {
-        const refCtx = new ContextString(refStr);
+  if (refs.length > 0) {
+    refs.forEach(refStr => {
+      const refCtx = new ContextString(refStr);
 
-        const insightName = refCtx.getReference();
+      const insightName = refCtx.getReference();
 
-        if (insightName) {
-          const input = inputs[insightName];
+      if (insightName) {
+        const input = inputs[insightName];
 
-          if (input !== undefined) {
-            let value
-            if (Array.isArray(input)) {
-                if (input.length === 0) {
-                  post_query = post_query.replace(refStr, "(NULL)"); 
-                } else {
-                  value = `(${input.map(v => (typeof v === "string" ? `'${v}'` : v)).join(", ")})`;
-                  post_query = post_query.replace(refStr, value);
-                }
-              } else if (typeof input === "string") {
-                const value = `'${input}'`;
-                post_query = post_query.replace(refStr, value);
-              } else {
-                post_query = post_query.replace(refStr, input);
-              }
+        if (input !== undefined) {
+          let value;
+          if (Array.isArray(input)) {
+            if (input.length === 0) {
+              post_query = post_query.replace(refStr, '(NULL)');
+            } else {
+              value = `(${input.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')})`;
+              post_query = post_query.replace(refStr, value);
+            }
+          } else if (typeof input === 'string') {
+            const value = `'${input}'`;
+            post_query = post_query.replace(refStr, value);
+          } else {
+            post_query = post_query.replace(refStr, input);
           }
         }
-      });
-    }
+      }
+    });
+  }
 
-    return post_query
-}
+  return post_query;
+};

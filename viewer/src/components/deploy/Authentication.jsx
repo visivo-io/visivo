@@ -29,7 +29,6 @@ const Authentication = ({ setStatus }) => {
 
       pollAuthStatus(data.auth_id);
     } catch (error) {
-      console.error('Authentication error:', error);
       setIsLoading(false);
     }
   };
@@ -60,7 +59,6 @@ const Authentication = ({ setStatus }) => {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Polling error:', error);
         clearInterval(interval);
         setIsLoading(false);
       }

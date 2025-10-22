@@ -26,7 +26,6 @@ function ListComponent({ name, data, path }) {
   };
 
   const handleDelete = () => {
-    console.log('Deleting path:', path);
     deleteNamedChildAttribute(path);
     setContextMenu(null);
   };

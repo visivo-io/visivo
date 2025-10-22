@@ -1,7 +1,12 @@
 import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFetchInsights } from '../contexts/QueryContext';
-import { tableDuckDBExists, insertDuckDBFile, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
+import {
+  tableDuckDBExists,
+  insertDuckDBFile,
+  runDuckDBQuery,
+  prepPostQuery,
+} from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { fetchInsightData } from '../queries/insightsData';
@@ -26,38 +31,36 @@ const saveInsightDataSafe = async (db, insightName, dataObj) => {
 
     await insertDuckDBFile(db, file, insightName);
   } catch (error) {
-    if (!error.message?.includes('already exists')) {
-      console.error(`Failed to cache ${insightName}:`, error);
-    }
+    // Failed to cache insight
   }
 };
 
 const getInsightData = async (db, filteredData, inputs) => {
-  let new_data = {}
+  let new_data = {};
   for (const key in filteredData) {
     const insight = filteredData[key];
     if (!insight) continue;
-    
+
     try {
-      let post_query = prepPostQuery(insight, inputs)
-      const result = await runDuckDBQuery(db, post_query, 10, 1000);  
-      
-      const processedRows = result.toArray().map((row) => {
+      let post_query = prepPostQuery(insight, inputs);
+      const result = await runDuckDBQuery(db, post_query, 10, 1000);
+
+      const processedRows = result.toArray().map(row => {
         const rowData = row.toJSON();
         return Object.fromEntries(
           Object.entries(rowData).map(([key, value]) => [
             key,
-            typeof value === 'bigint' ? value.toString() : value
+            typeof value === 'bigint' ? value.toString() : value,
           ])
         );
       });
-      
+
       new_data[key] = {
         ...insight,
-        insight: processedRows || []
+        insight: processedRows || [],
       };
     } catch (error) {
-      console.error(`Failed to query ${key} from DuckDB:`, error);
+      // Failed to query from DuckDB
     }
   }
   return new_data;
@@ -66,10 +69,10 @@ const getInsightData = async (db, filteredData, inputs) => {
 export const useInsightsData = (projectId, insightNames) => {
   const fetchInsight = useFetchInsights();
   const db = useDuckDB();
-  const setInsights = useStore((state) => state.setInsights);
-  const setDB = useStore((state) => state.setDB);
-  const storeInsightData = useStore((state) => state.insights);
-  const inputs = useStore(state => state.inputs)
+  const setInsights = useStore(state => state.setInsights);
+  const setDB = useStore(state => state.setDB);
+  const storeInsightData = useStore(state => state.insights);
+  const inputs = useStore(state => state.inputs);
 
   const stableInsightNames = useMemo(() => {
     if (!insightNames?.length) return [];
@@ -81,7 +84,7 @@ export const useInsightsData = (projectId, insightNames) => {
     if (!storeInsightData) return false;
 
     return stableInsightNames.every(
-      (name) =>
+      name =>
         storeInsightData[name]?.insight &&
         storeInsightData[name]?.columns &&
         storeInsightData[name]?.props
@@ -90,12 +93,12 @@ export const useInsightsData = (projectId, insightNames) => {
 
   const queryFn = useCallback(async () => {
     if (!db && !inputs) return {};
-    
+
     const insights = await fetchInsight(projectId, stableInsightNames);
     if (!insights?.length) return {};
 
     const results = await Promise.all(
-      insights.map(async (insight) => {
+      insights.map(async insight => {
         try {
           const data = await fetchInsightData(insight);
           return [
@@ -106,19 +109,16 @@ export const useInsightsData = (projectId, insightNames) => {
               columns: data.metadata?.columns || {},
               props: data.metadata?.props || {},
               interactions: data.interactions,
-              dynamic_interactions: data.dynamic_interactions
+              dynamic_interactions: data.dynamic_interactions,
             },
           ];
         } catch (error) {
-          console.error(`Failed to fetch ${insight.name}:`, error);
           return null;
         }
       })
     );
 
-    const processedData = Object.fromEntries(
-      results.filter((r) => r !== null)
-    );
+    const processedData = Object.fromEntries(results.filter(r => r !== null));
 
     let filteredData = filterObject(processedData, stableInsightNames);
 
@@ -154,17 +154,16 @@ export const useInsightsData = (projectId, insightNames) => {
   return {
     insightsData: storeInsightData || {},
     isInsightsLoading: hasCompleteData ? false : isLoading,
-    hasAllInsightData:
-      hasCompleteData || (data && Object.keys(data).length > 0),
+    hasAllInsightData: hasCompleteData || (data && Object.keys(data).length > 0),
     error,
   };
 };
 
-export const fetchInsightsData = async (insights) => {
+export const fetchInsightsData = async insights => {
   if (!insights?.length) return {};
 
   const results = await Promise.allSettled(
-    insights.map(async (insight) => {
+    insights.map(async insight => {
       const response = await fetch(insight.signed_data_file_url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -175,8 +174,6 @@ export const fetchInsightsData = async (insights) => {
   );
 
   return Object.fromEntries(
-    results
-      .filter((result) => result.status === 'fulfilled')
-      .map((result) => result.value)
+    results.filter(result => result.status === 'fulfilled').map(result => result.value)
   );
 };

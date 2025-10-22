@@ -33,7 +33,6 @@ const StageSelection = ({ status }) => {
         const data = await res.json();
         setStages(data.stages || []);
       } catch (err) {
-        console.error('Failed to fetch stages:', err);
         setStages([]);
       } finally {
         setLoading(false);
@@ -80,7 +79,6 @@ const StageSelection = ({ status }) => {
           resetDeploymentState();
         }
       } catch (err) {
-        console.error('Error polling deployment status:', err);
         clearInterval(interval);
         resetDeploymentState();
       }
@@ -103,7 +101,6 @@ const StageSelection = ({ status }) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       pollDeploymentStatus(data.deploy_id);
     } catch (err) {
-      console.error('Deployment failed:', err);
       setDeploying(false);
       setDeployingMsg('Deployment failed');
     }

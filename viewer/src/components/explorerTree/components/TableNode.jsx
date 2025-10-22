@@ -26,7 +26,15 @@ const TableNode = ({ table, sourceName, databaseName, schemaName }) => {
   );
 
   return (
-    <TreeItem itemId={nodeId} label={tableLabel}>
+    <TreeItem
+      itemId={nodeId}
+      label={tableLabel}
+      sx={{
+        '& > .MuiTreeItem-content': {
+          paddingLeft: '72px',
+        },
+      }}
+    >
       {isLoadingColumns ? (
         <TreeItem
           itemId={`${nodeId}-loading`}

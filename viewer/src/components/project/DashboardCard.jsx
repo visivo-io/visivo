@@ -42,7 +42,7 @@ function DashboardCard({ projectId, dashboard }) {
       const json = await response.json();
       setImageUrl(json.signed_thumbnail_file_url);
     } catch (error) {
-      console.error('Error uploading thumbnail:', error);
+      // Error uploading thumbnail
     }
   };
 

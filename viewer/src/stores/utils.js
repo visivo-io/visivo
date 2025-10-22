@@ -6,7 +6,7 @@ function getRelativePath(base, target) {
   if (!target || typeof target !== 'string') {
     return '';
   }
-  
+
   // Remove leading slashes and split by '/'
   const baseParts = base.replace(/^\//, '').split('/');
   const targetParts = target.replace(/^\//, '').split('/');

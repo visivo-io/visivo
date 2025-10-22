@@ -15,7 +15,9 @@ export class QueryString {
   }
 
   static isQueryString(obj) {
-    return obj instanceof QueryString ||
-      (typeof obj === "string" && QueryString.QUERY_STRING_VALUE_PATTERN.test(obj));
+    return (
+      obj instanceof QueryString ||
+      (typeof obj === 'string' && QueryString.QUERY_STRING_VALUE_PATTERN.test(obj))
+    );
   }
 }
