@@ -73,3 +73,79 @@ insights:
       line:
         color: "#D25946"
         shape: spline
+
+  # ===== INPUT-DRIVEN INSIGHTS FOR TESTING =====
+
+  # Test Split Interaction with Input
+  - name: split-input-test-insight
+    description: "Bar chart with dynamic split based on input threshold"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#D25946' END }
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= ${ref(split_threshold)} THEN 'High Y Values' ELSE 'Low Y Values' END }
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Test Non-Aggregate Filter with Input
+  - name: filter-nonaggregate-input-test-insight
+    description: "Scatter plot with dynamic non-aggregate filter"
+    props:
+      type: scatter
+      mode: markers+lines
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        size: 10
+        color: "#4F494C"
+      line:
+        color: "#713B57"
+        width: 2
+    interactions:
+      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Test Aggregate Filter with Input
+  - name: filter-aggregate-input-test-insight
+    description: "Aggregated bar chart with dynamic aggregate filter (HAVING)"
+    props:
+      type: bar
+      x: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'Group A' ELSE 'Group B' END }
+      y: ?{ AVG(${ref(local_test_table).y}) }
+      marker:
+        color: ["#713B57", "#D25946"]
+    interactions:
+      - filter: ?{ AVG(${ref(local_test_table).y}) > ${ref(min_avg_y)} }
+
+  # Test Sort Order with Input
+  - name: sort-input-test-insight
+    description: "Line chart with dynamic sort direction"
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{${ref(another_local_test_table).new_x}}
+      y: ?{${ref(another_local_test_table).new_y}}
+      line:
+        shape: spline
+        color: "#191D33"
+      marker:
+        size: 8
+        color: "#D25946"
+    interactions:
+      - sort: ?{${ref(another_local_test_table).new_x} ${ref(sort_direction)}}
+
+  # Combined Test - All Interactions with Inputs
+  - name: combined-interactions-test-insight
+    description: "Chart testing split, filter, and sort together"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#4F494C' END }
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= ${ref(split_threshold)} THEN 'Above Threshold' ELSE 'Below Threshold' END }
+      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
+      - sort: ?{${ref(local_test_table).x} ${ref(sort_direction)}}

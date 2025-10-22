@@ -10,6 +10,35 @@ defaults:
   source_name: local-duckdb
   alert_name: slack
 
+inputs:
+  # Input for split testing
+  - name: split_threshold
+    label: "Split Threshold"
+    type: dropdown
+    default: "5"
+    options: ["3", "5", "7"]
+
+  # Input for non-aggregate filter testing
+  - name: min_x_value
+    label: "Minimum X Value"
+    type: dropdown
+    default: "2"
+    options: ["0", "2", "4", "6"]
+
+  # Input for aggregate filter testing
+  - name: min_avg_y
+    label: "Minimum Average Y"
+    type: dropdown
+    default: "5"
+    options: ["0", "5", "10"]
+
+  # Input for sort order testing
+  - name: sort_direction
+    label: "Sort Direction"
+    type: dropdown
+    default: "ASC"
+    options: ["ASC", "DESC"]
+
 alerts:
   - name: slack
     destinations:
@@ -92,6 +121,43 @@ charts:
     layout:
       title:
         text: "Aggregated Bar Chart"
+
+  # Input-driven test charts
+  - name: split-input-test-chart
+    insights:
+      - ${ ref(split-input-test-insight) }
+    layout:
+      title:
+        text: "Split Interaction Test (Input-Driven)"
+
+  - name: filter-nonaggregate-input-test-chart
+    insights:
+      - ${ ref(filter-nonaggregate-input-test-insight) }
+    layout:
+      title:
+        text: "Non-Aggregate Filter Test (Input-Driven)"
+
+  - name: filter-aggregate-input-test-chart
+    insights:
+      - ${ ref(filter-aggregate-input-test-insight) }
+    layout:
+      title:
+        text: "Aggregate Filter Test (Input-Driven)"
+
+  - name: sort-input-test-chart
+    insights:
+      - ${ ref(sort-input-test-insight) }
+    layout:
+      title:
+        text: "Sort Order Test (Input-Driven)"
+
+  - name: combined-interactions-test-chart
+    insights:
+      - ${ ref(combined-interactions-test-insight) }
+    layout:
+      title:
+        text: "Combined Interactions Test"
+
 dashboards:
   - name: Insights Dashboard
     level: 0
@@ -99,6 +165,7 @@ dashboards:
       - "insights"
       - "interactive"
     rows:
+      # Original insights (no inputs)
       - height: medium
         items:
           - width: 6
@@ -107,10 +174,28 @@ dashboards:
             chart: ${ ref(fibonacci-split-chart) }
       - height: medium
         items:
-          - width: 12
+          - width: 6
             chart: ${ ref(aggregated-bar-chart) }
-          - width: 7
+          - width: 6
             chart: ${ref(composite-metric-chart)}
+
+      # Input-driven test charts
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(split-input-test-chart) }
+          - width: 6
+            chart: ${ ref(filter-nonaggregate-input-test-chart) }
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(filter-aggregate-input-test-chart) }
+          - width: 6
+            chart: ${ ref(sort-input-test-chart) }
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ ref(combined-interactions-test-chart) }
   - name: Table Dashboard
     level: 1
     tags:

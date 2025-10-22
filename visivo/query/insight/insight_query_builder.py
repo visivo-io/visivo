@@ -190,13 +190,18 @@ class InsightQueryBuilder:
         Loop through self.models insight building the CTE SQLglot expressions. Dynamic vs. non dynamic insights will
         function differently:
 
-        1. **Dyanmic Insights**: The select within each cte runs a "select * from f'{model.name.name_hash()}.parquet'"
+        1. **Dynamic Insights**: No CTEs are generated - parquet files are already registered as tables using model_hash
         2. **Non-Dynamic Insights**: The select within each cte will pass through the model.sql directly.
 
         In both cases we could use the SchemaAggregator to fully express the columns within each cte. Also the cte
         will always be aliased with the model.name_hash() value. This is the value that the fields are expecting.
         """
         ctes = []
+
+        # Dynamic insights don't need CTEs - tables are already registered with model_hash names
+        if self.is_dyanmic:
+            return ctes
+
         native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
 
         for model in self.models:
@@ -207,15 +212,9 @@ class InsightQueryBuilder:
                 source_name=model.name, output_dir=self.output_dir
             )
 
-            if self.is_dyanmic:
-                # Dynamic insights: Query the registered table directly (no .parquet extension)
-                # Frontend registers parquet files as tables using model_hash as table name
-                cte_sql = f'SELECT * FROM "{model_hash}"'
-                dialect_for_parse = "duckdb"  # Parse as DuckDB for dynamic
-            else:
-                # Non-dynamic insights: Use model.sql directly
-                cte_sql = model.sql
-                dialect_for_parse = native_dialect
+            # Non-dynamic insights: Use model.sql directly
+            cte_sql = model.sql
+            dialect_for_parse = native_dialect
 
             # Parse the CTE SQL
             cte_query = sqlglot.parse_one(cte_sql, read=dialect_for_parse)

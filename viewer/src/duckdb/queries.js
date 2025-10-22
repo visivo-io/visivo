@@ -129,6 +129,11 @@ export const tableDuckDBExists = async (db, tableName) => {
 };
 
 /**
+ * Prepare post query by replacing input placeholders with actual values
+ *
+ * Handles two formats:
+ * 1. Old format: ${ref(input_name)} - directly in query
+ * 2. New format: 'visivo-input-placeholder-string' with comment containing Input(name)
  *
  * @param {Object} insight
  * @param {Object} inputs
@@ -136,13 +141,44 @@ export const tableDuckDBExists = async (db, tableName) => {
  */
 export const prepPostQuery = (insight, inputs) => {
   let query = insight.query;
+
+  // Pattern 1: Handle new placeholder format with comments
+  // Matches: 'visivo-input-placeholder-string' /* replace('visivo-input-placeholder-string', Input(input_name)) */
+  // eslint-disable-next-line no-useless-escape
+  const placeholderPattern = new RegExp(
+    "'visivo-input-placeholder-string'\\s*\\/\\*\\s*replace\\('visivo-input-placeholder-string',\\s*Input\\(([^)]+)\\)\\s*\\)\\s*(?:AS\\s+\"[^\"]+\")?\\s*\\*\\/",
+    'g'
+  );
+
+  query = query.replace(placeholderPattern, (match, inputName) => {
+    const trimmedName = inputName.trim();
+    const inputValue = inputs[trimmedName];
+
+    if (inputValue === undefined) {
+      console.warn(`Input '${trimmedName}' not found in inputs store, leaving placeholder`);
+      return match; // Leave as-is if input not found
+    }
+
+    // Format value based on type
+    if (Array.isArray(inputValue)) {
+      if (inputValue.length === 0) {
+        return '(NULL)';
+      }
+      return `(${inputValue.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')})`;
+    } else if (typeof inputValue === 'string') {
+      return `'${inputValue}'`;
+    } else {
+      return String(inputValue);
+    }
+  });
+
+  // Pattern 2: Handle old ${ref(input_name)} format (for backwards compatibility)
   const contextObj = new ContextString(query);
   const refs = contextObj.getAllRefs();
 
   if (refs.length > 0) {
     refs.forEach(refStr => {
       const refCtx = new ContextString(refStr);
-
       const insightName = refCtx.getReference();
 
       if (insightName) {
