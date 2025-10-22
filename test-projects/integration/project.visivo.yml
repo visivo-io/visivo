@@ -77,6 +77,9 @@ charts:
     layout:
       title:
         text: "Simple Scatter with Insights"
+  - name: composite-metric-chart
+    insights: 
+      - ${ref(composite-scatter-insight)}
   - name: fibonacci-split-chart
     insights:
       - ${ ref(fibonacci-split-insight) }
@@ -106,6 +109,8 @@ dashboards:
         items:
           - width: 12
             chart: ${ ref(aggregated-bar-chart) }
+          - width: 7
+            chart: ${ref(composite-metric-chart)}
   - name: Table Dashboard
     level: 1
     tags:

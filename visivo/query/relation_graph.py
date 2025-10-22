@@ -76,7 +76,7 @@ class RelationGraph:
                 # Convert set to list to access models
                 model_list = list(models)
                 # Resolve the condition immediately and cache it
-                resolved_condition = self.field_resolver.resolve(relation.condition)
+                resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
                 self._resolved_conditions[relation.condition] = resolved_condition
 
                 # Add edge with relation details (undirected, so order doesn't matter)

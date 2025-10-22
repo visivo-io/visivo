@@ -23,6 +23,17 @@ from visivo.models.table import Table
 from visivo.models.row import Row, HeightEnum
 from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
+from visivo.models.relation import Relation
+
+
+class RelationFactory(factory.Factory):
+    class Meta:
+        model = Relation
+
+    name = "relation"
+    join_type = "inner"
+    condition = "${ref(model_a).id} = ${ref(model_b).id}"
+    is_default = False
 
 
 class DestinationFactory(factory.Factory):

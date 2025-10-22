@@ -297,28 +297,38 @@ class InsightQueryBuilder:
         if not self.models:
             return None, []
 
-        # Get model hashes (these are used as CTE aliases)
-        model_hashes = [model.name_hash() for model in self.models]
+        # Get model names for RelationGraph (it uses names, not hashes)
+        model_names = [model.name for model in self.models]
 
-        # If only one model, just return FROM with that model
-        if len(model_hashes) == 1:
-            from_table = exp.Table(this=exp.Identifier(this=model_hashes[0]))
+        # Create name->hash mapping for SQL generation (SQL uses hashes as table aliases)
+        name_to_hash = {model.name: model.name_hash() for model in self.models}
+
+        # If only one model, just return FROM with that model's hash
+        if len(model_names) == 1:
+            model_hash = name_to_hash[model_names[0]]
+            from_table = exp.Table(this=exp.Identifier(this=model_hash))
             return from_table, []
 
-        # Get the join plan from RelationGraph
-        join_plan = self.relation_graph.get_join_plan(model_hashes)
-        from_model = join_plan["from_model"]
+        # Get the join plan from RelationGraph (pass names, get names back)
+        join_plan = self.relation_graph.get_join_plan(model_names)
+        from_model_name = join_plan["from_model"]
         joins = join_plan["joins"]
 
-        # Build FROM clause
-        from_table = exp.Table(this=exp.Identifier(this=from_model))
+        # Convert from_model name to hash for SQL
+        from_model_hash = name_to_hash[from_model_name]
+
+        # Build FROM clause using hash
+        from_table = exp.Table(this=exp.Identifier(this=from_model_hash))
 
         # Build JOIN clauses
         join_nodes = []
         native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
         target_dialect = "duckdb" if self.is_dyanmic else native_dialect
 
-        for _left_model, right_model, condition, join_type in joins:
+        for _left_model_name, right_model_name, condition, join_type in joins:
+            # Convert right model name to hash for SQL
+            right_model_hash = name_to_hash[right_model_name]
+
             # Parse the join condition
             join_condition = parse_expression(condition, native_dialect)
 
@@ -327,9 +337,9 @@ class InsightQueryBuilder:
                 transpiled = join_condition.sql(dialect=target_dialect)
                 join_condition = parse_expression(transpiled, target_dialect)
 
-            # Create the join node
+            # Create the join node using hash as table alias
             join_node = exp.Join(
-                this=exp.Table(this=exp.Identifier(this=right_model)),
+                this=exp.Table(this=exp.Identifier(this=right_model_hash)),
                 on=join_condition,
                 kind=join_type.upper() if join_type else "INNER",
             )

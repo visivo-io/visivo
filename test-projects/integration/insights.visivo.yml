@@ -13,6 +13,12 @@ insights:
       line:
         color: "#4F494C"
         width: 2
+  - name: composite-scatter-insight
+    props: 
+      type: scatter 
+      x: ?{${ref(another_local_test_table).new_x}}
+      y: ?{${ref(composite_metric)}}
+
 
   # Bar chart insight with split interaction (replaces cohort_on)
   - name: fibonacci-split-insight

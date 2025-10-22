@@ -116,7 +116,7 @@ class FieldResolver:
                 f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
             )
 
-    def resolve(self, expression: str) -> str:
+    def resolve(self, expression: str, alias=True) -> str:
         """
         Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing
         them with their expressions until we are left with only sql statements.
@@ -148,9 +148,9 @@ class FieldResolver:
         # Example, resolve ${ref(name)} recursively
 
         def resolve_ref(model_name, field_name) -> str:
-            # When field name is none then the model name is actually a metric or dimension.
+            # When field name is none or empty string then the model name is actually a metric or dimension.
             # This is validated in compile to be true ie. ${ref(global-metric)}
-            if field_name == None:
+            if not field_name:
                 field_node = self.dag.get_descendant_by_name(model_name)
             else:  # field name is not null
                 model_node = self.dag.get_descendant_by_name(model_name)
@@ -185,9 +185,15 @@ class FieldResolver:
             field_parent_name = self.dag.get_named_parents(field_node.name)[0]
             field_parent = self.dag.get_descendant_by_name(field_parent_name)
             if isinstance(field_parent, SqlModel):
-                return self._qualify_expression(
-                    expression=field_node.expression, model_node=field_parent
-                )
+                # Check if expression still has unresolved refs
+                if has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
+                    # Return unresolved expression for outer recursion to handle
+                    return field_node.expression
+                else:
+                    # No more refs - qualify the expression
+                    return self._qualify_expression(
+                        expression=field_node.expression, model_node=field_parent
+                    )
             elif has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
                 return field_node.expression
             else:
@@ -208,4 +214,7 @@ class FieldResolver:
         #      during the run like we do currently.
         hashed_alias = field_alias_hasher(resolved_sql)
         resolved_strip_alias = resolved_sql.split(" AS ")[0]
-        return f'{resolved_strip_alias} AS "{hashed_alias}"'
+        if alias:
+            return f'{resolved_strip_alias} AS "{hashed_alias}"'
+        else:
+            return resolved_strip_alias

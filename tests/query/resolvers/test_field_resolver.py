@@ -400,6 +400,165 @@ class TestFieldResolverQualification:
         assert "amount" in qualified
 
 
+class TestFieldResolverGlobalMetricsAndDimensions:
+    """Test resolution of globally scoped metrics and dimensions."""
+
+    def test_resolve_global_metric(self, tmpdir):
+        """Test resolving a global metric reference ${ref(metric_name)}."""
+        # Setup DAG with a model and a global metric
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        # Global metric defined at project level - must reference through model
+        global_metric = Metric(name="composite_metric", expression="SUM(${ref(orders).amount}) * 2")
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            metrics=[global_metric],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schema for the base model
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve global metric reference
+        result = resolver.resolve("${ref(composite_metric)}")
+
+        # Should contain the metric expression
+        assert "SUM" in result.upper() or "sum" in result
+        assert "amount" in result
+        assert "*" in result
+        assert "2" in result
+
+    def test_resolve_global_dimension(self, tmpdir):
+        """Test resolving a global dimension reference ${ref(dimension_name)}."""
+        # Setup DAG with a model and a global dimension
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        # Global dimension defined at project level - must reference through model
+        global_dimension = Dimension(name="order_status", expression="UPPER(${ref(orders).status})")
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            dimensions=[global_dimension],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schema for the base model
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "status": "VARCHAR"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve global dimension reference
+        result = resolver.resolve("${ref(order_status)}")
+
+        # Should contain the dimension expression
+        assert "UPPER" in result.upper() or "upper" in result
+        assert "status" in result
+
+    def test_resolve_expression_with_global_metric(self, tmpdir):
+        """Test resolving a complex expression containing a global metric reference."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        global_metric = Metric(
+            name="total_revenue",
+            expression="SUM(${ref(orders).price} * ${ref(orders).quantity})",
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            metrics=[global_metric],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "price": "DECIMAL", "quantity": "INTEGER"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve expression with global metric
+        result = resolver.resolve("${ref(total_revenue)} / 100")
+
+        # Should contain the metric expression and the division
+        assert "SUM" in result.upper() or "sum" in result
+        assert "price" in result
+        assert "quantity" in result
+        assert "/" in result
+        assert "100" in result
+
+    def test_resolve_nested_global_metric(self, tmpdir):
+        """Test resolving a global metric that references another global metric."""
+        # Setup DAG with nested global metrics
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="sales",
+            sql="SELECT * FROM sales_table",
+            source="ref(test_source)",
+        )
+        # First metric references a model field
+        base_metric = Metric(name="gross_revenue", expression="SUM(${ref(sales).amount})")
+        # Second metric references the first metric
+        derived_metric = Metric(name="net_revenue", expression="${ref(gross_revenue)} * 0.9")
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            metrics=[base_metric, derived_metric],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("sales")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve nested metric reference
+        result = resolver.resolve("${ref(net_revenue)}")
+
+        # Should contain the fully resolved expression
+        assert "SUM" in result.upper() or "sum" in result
+        assert "amount" in result
+        assert "*" in result
+        assert "0.9" in result
+
+
 class TestFieldResolverCaseStatements:
     """Test resolution of CASE statements with ${ref(...)} patterns."""
 
