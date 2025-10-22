@@ -751,6 +751,122 @@ class TestValidation:
         assert any("isolated" in w.lower() for w in warnings)
 
 
+class TestDefaultRelationResolution:
+    """Test that is_default flag resolves ambiguous paths."""
+
+    @pytest.mark.xfail(reason="is_default flag resolution not yet fully implemented")
+    def test_is_default_flag_resolves_ambiguity(self, tmpdir):
+        """
+        Test that when multiple paths exist, is_default=True chooses that relation.
+
+        This is the desired behavior but may not be fully implemented yet.
+        """
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        # Diamond: A-B-D and A-C-D (two equal paths)
+        model_a = SqlModel(name="a", sql="SELECT * FROM a", source="ref(test_source)")
+        model_b = SqlModel(name="b", sql="SELECT * FROM b", source="ref(test_source)")
+        model_c = SqlModel(name="c", sql="SELECT * FROM c", source="ref(test_source)")
+        model_d = SqlModel(name="d", sql="SELECT * FROM d", source="ref(test_source)")
+
+        # Mark one path as default
+        rel_ab = Relation(name="a_to_b", condition="${ref(a).id} = ${ref(b).a_id}", is_default=True)
+        rel_ac = Relation(
+            name="a_to_c", condition="${ref(a).id} = ${ref(c).a_id}", is_default=False
+        )
+        rel_bd = Relation(name="b_to_d", condition="${ref(b).id} = ${ref(d).b_id}", is_default=True)
+        rel_cd = Relation(
+            name="c_to_d", condition="${ref(c).id} = ${ref(d).c_id}", is_default=False
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b, model_c, model_d],
+            relations=[rel_ab, rel_ac, rel_bd, rel_cd],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schemas
+        schema_base = tmpdir.mkdir("schema")
+        for model in [model_a, model_b, model_c, model_d]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {
+                model_hash: {
+                    "id": "INTEGER",
+                    "a_id": "INTEGER",
+                    "b_id": "INTEGER",
+                    "c_id": "INTEGER",
+                }
+            }
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        # Should NOT raise AmbiguousJoinError since default path is marked
+        # Should prefer the default path (A-B-D)
+        try:
+            path = graph._find_path_between_two("a", "d")
+            # Verify it chose the default path (through B)
+            assert len(path) == 2
+            assert any(
+                "b" in str(from_m).lower() or "b" in str(to_m).lower() for from_m, to_m, _ in path
+            )
+        except AmbiguousJoinError:
+            pytest.fail("is_default flag should have resolved ambiguity")
+
+    def test_multiple_defaults_between_same_models(self, tmpdir):
+        """Test handling when multiple relations between same models are marked default."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        # Two relations between same models, both marked default
+        rel1 = Relation(
+            name="by_id",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+            is_default=True,
+        )
+        rel2 = Relation(
+            name="by_email",
+            condition="${ref(orders).email} = ${ref(users).email}",
+            is_default=True,
+        )
+
+        # Should this raise an error? Or just pick one?
+        # Current behavior is undocumented
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=[rel1, rel2],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schemas
+        schema_base = tmpdir.mkdir("schema")
+        for model in [model_a, model_b]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "email": "VARCHAR"}}
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        # What happens? Should work but behavior is undefined
+        # NetworkX will pick one deterministically
+        path = graph._find_path_between_two("orders", "users")
+        assert len(path) == 1
+
+
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
