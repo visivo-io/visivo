@@ -3,7 +3,7 @@ import CreatableSelect from 'react-select/creatable';
 import { components } from 'react-select';
 import { Tooltip } from '@mui/material';
 import Pill from '../common/Pill';
-import { HiOutlineDatabase, HiChevronDown, HiPencil } from 'react-icons/hi';
+import { HiOutlineDatabase, HiChevronDown } from 'react-icons/hi';
 import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
 import useStore from '../../stores/store';
 
@@ -77,7 +77,7 @@ const Placeholder = props => {
     <components.Placeholder {...props}>
       <div className="flex items-center justify-between p-2 shadow-md rounded-2xl border bg-gray-100 border-gray-200 min-w-full">
         <div className="flex items-center flex-1 min-w-0">
-          <HiPencil className="w-5 h-5 mr-2 text-gray-600 flex-shrink-0" />
+          <HiOutlineDatabase className="w-5 h-5 mr-2 text-gray-600 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-500 italic">type to create model...</span>
         </div>
         <HiChevronDown className="w-4 h-4 ml-2 text-gray-600 flex-shrink-0" />
@@ -160,7 +160,10 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
       borderRadius: '0.5rem',
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
       overflow: 'hidden',
-      zIndex: 1000,
+    }),
+    menuPortal: base => ({
+      ...base,
+      zIndex: 9999,
     }),
     menuList: base => ({
       ...base,
@@ -216,7 +219,8 @@ const ModelDropdown = ({ associatedModel, onModelChange, isLoading, isModified =
         }}
         styles={customStyles}
         menuPlacement="auto"
-        menuPosition="fixed"
+        menuPosition="absolute"
+        menuPortalTarget={document.body}
         formatCreateLabel={inputValue => `Create model: ${inputValue}`}
       />
     </div>

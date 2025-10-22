@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import QueryCell from './QueryCell';
 import useStore from '../../stores/store';
@@ -91,132 +91,6 @@ describe('QueryCell', () => {
     });
   });
 
-  describe('Save as Model functionality', () => {
-    it('renders Save as Model menu item', () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Open the menu (find button with MoreVertIcon)
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-
-      expect(screen.getByText('Save as Model')).toBeInTheDocument();
-    });
-
-    it('disables Save as Model when query is empty', () => {
-      const emptyCell = { ...mockCell, query_text: '' };
-      render(<QueryCell {...defaultProps} cell={emptyCell} />);
-
-      // Open the menu
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-
-      const saveMenuItem = screen.getByRole('menuitem', { name: /save as model/i });
-      expect(saveMenuItem).toHaveClass('Mui-disabled');
-    });
-
-    it('opens CreateObjectModal when Save as Model is clicked', async () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Open the menu
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-
-      // Click Save as Model
-      const saveMenuItem = screen.getByText('Save as Model');
-      fireEvent.click(saveMenuItem);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-object-modal')).toBeInTheDocument();
-      });
-    });
-
-    it('passes models as selected property to modal', async () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-      fireEvent.click(screen.getByText('Save as Model'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-property')).toHaveTextContent('models');
-      });
-    });
-
-    it('passes cell query as initial SQL attribute', async () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-      fireEvent.click(screen.getByText('Save as Model'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-initial-sql')).toHaveTextContent(mockCell.query_text);
-      });
-    });
-
-    it('closes modal when modal close is clicked', async () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Open the modal
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-      fireEvent.click(screen.getByText('Save as Model'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-object-modal')).toBeInTheDocument();
-      });
-
-      // Close the modal
-      fireEvent.click(screen.getByTestId('modal-close'));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('create-object-modal')).not.toBeInTheDocument();
-      });
-    });
-
-    it('handles model creation successfully', async () => {
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      render(<QueryCell {...defaultProps} />);
-
-      // Open modal and create model
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-      fireEvent.click(screen.getByText('Save as Model'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-object-modal')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('modal-create'));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('create-object-modal')).not.toBeInTheDocument();
-      });
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it('uses current query text when Save as Model is clicked', async () => {
-      render(<QueryCell {...defaultProps} />);
-
-      // Change the query
-      const editor = screen.getByTestId('mock-sql-editor');
-      fireEvent.change(editor, { target: { value: 'SELECT * FROM products' } });
-
-      // Open menu and click Save as Model
-      const menuButton = screen.getByTestId('cell-menu-button');
-      fireEvent.click(menuButton);
-      fireEvent.click(screen.getByText('Save as Model'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-initial-sql')).toHaveTextContent('SELECT * FROM products');
-      });
-    });
-  });
-
   describe('Cell menu interactions', () => {
     it('renders all menu items', () => {
       render(<QueryCell {...defaultProps} />);
@@ -224,7 +98,6 @@ describe('QueryCell', () => {
       const menuButton = screen.getByTestId('cell-menu-button');
       fireEvent.click(menuButton);
 
-      expect(screen.getByText('Save as Model')).toBeInTheDocument();
       expect(screen.getByText('Add Cell Below')).toBeInTheDocument();
       expect(screen.getByText('Delete Cell')).toBeInTheDocument();
     });

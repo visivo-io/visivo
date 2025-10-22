@@ -2,7 +2,8 @@ import React from 'react';
 import Select, { components } from 'react-select';
 import { Tooltip } from '@mui/material';
 import Pill from '../common/Pill';
-import { HiOutlineDatabase, HiChevronDown } from 'react-icons/hi';
+import { HiChevronDown } from 'react-icons/hi';
+import { FaServer } from 'react-icons/fa';
 import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
 import useStore from '../../stores/store';
 
@@ -26,7 +27,7 @@ const SingleValue = ({ data, ...props }) => {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
     border: 'border-gray-200',
-    icon: HiOutlineDatabase,
+    icon: FaServer,
   };
 
   const Icon = typeConfig.icon;
@@ -127,6 +128,10 @@ const SourceDropdown = ({ selectedSource, onSourceChange, isLoading }) => {
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
       overflow: 'hidden',
     }),
+    menuPortal: base => ({
+      ...base,
+      zIndex: 9999,
+    }),
     menuList: base => ({
       ...base,
       padding: '0.5rem',
@@ -175,11 +180,12 @@ const SourceDropdown = ({ selectedSource, onSourceChange, isLoading }) => {
         }}
         styles={customStyles}
         menuPlacement="auto"
-        menuPosition="fixed"
+        menuPosition="absolute"
+        menuPortalTarget={document.body}
         placeholder={
           <div className="flex items-center justify-between p-2 shadow-md rounded-2xl border bg-gray-100 border-gray-200">
             <div className="flex items-center">
-              <HiOutlineDatabase className="w-5 h-5 mr-2 text-gray-600" />
+              <FaServer className="w-4 h-4 mr-2 text-gray-600" />
               <span className="text-sm font-medium text-gray-600">Select a source</span>
             </div>
             <HiChevronDown className="w-4 h-4 ml-2 text-gray-600" />

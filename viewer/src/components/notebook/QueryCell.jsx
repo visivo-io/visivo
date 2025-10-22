@@ -5,11 +5,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import SaveIcon from '@mui/icons-material/Save';
 import { Menu, MenuItem, IconButton, CircularProgress } from '@mui/material';
 import useStore from '../../stores/store';
 import CellResultView from './CellResultView';
-import CreateObjectModal from '../editors/CreateObjectModal';
 import SourceDropdown from '../explorer/SourceDropdown';
 import ModelDropdown from '../explorer/ModelDropdown';
 import { QUERY_LIMITS } from '../../constants/queryLimits';
@@ -34,7 +32,6 @@ const QueryCell = ({
   const editorRef = useRef(null);
   const [localQuery, setLocalQuery] = useState(cell.query_text || '');
   const [anchorEl, setAnchorEl] = useState(null);
-  const [showSaveAsModelModal, setShowSaveAsModelModal] = useState(false);
   const [isModelModified, setIsModelModified] = useState(false);
   const [showLongRunningWarning, setShowLongRunningWarning] = useState(false);
   const executionTimerRef = useRef(null);
@@ -143,16 +140,6 @@ const QueryCell = ({
   const handleAddBelow = () => {
     handleMenuClose();
     onAddBelow();
-  };
-
-  const handleSaveAsModel = () => {
-    handleMenuClose();
-    setShowSaveAsModelModal(true);
-  };
-
-  const handleModelCreated = newModel => {
-    // Model has been created and added to namedChildren
-    // We could show a success message here if needed
   };
 
   const handleSourceChange = newSource => {
@@ -328,10 +315,6 @@ const QueryCell = ({
               horizontal: 'right',
             }}
           >
-            <MenuItem onClick={handleSaveAsModel} disabled={!localQuery.trim()}>
-              <SaveIcon fontSize="small" className="mr-2" />
-              Save as Model
-            </MenuItem>
             <MenuItem onClick={handleAddBelow}>
               <AddIcon fontSize="small" className="mr-2" />
               Add Cell Below
@@ -435,17 +418,6 @@ const QueryCell = ({
           <CellResultView result={result} cell={cell} worksheetId={worksheetId} project={project} />
         </div>
       )}
-
-      {/* Save as Model Modal */}
-      <CreateObjectModal
-        isOpen={showSaveAsModelModal}
-        onClose={() => setShowSaveAsModelModal(false)}
-        objSelectedProperty="models"
-        objStep="type"
-        onSubmitCallback={handleModelCreated}
-        showFileOption={true}
-        initialAttributes={{ sql: localQuery }}
-      />
     </div>
   );
 };
