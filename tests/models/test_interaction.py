@@ -125,9 +125,9 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         assert "${ref(orders).category}" in result["split"]
         assert "${ref(orders).date} DESC" in result["sort"]
         # Should not have any comments since no inputs
-        assert " -- replace" not in result["filter"]
-        assert " -- replace" not in result["split"]
-        assert " -- replace" not in result["sort"]
+        assert " /* replace" not in result["filter"]
+        assert " /* replace" not in result["split"]
+        assert " /* replace" not in result["sort"]
 
     def test_single_input_reference_in_filter(self):
         """Test filter with input reference is replaced with placeholder + comment."""
@@ -163,7 +163,7 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         assert "'visivo-input-placeholder-string'" in result["filter"]
         # Should have comment at the end
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_year) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_year) ) */"
             in result["filter"]
         )
         # Model reference should remain
@@ -208,7 +208,7 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         # Check filter
         assert "'visivo-input-placeholder-string'" in result["filter"]
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_year) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_year) ) */"
             in result["filter"]
         )
         assert "${ref(orders).year}" in result["filter"]
@@ -216,14 +216,14 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         # Check split
         assert "'visivo-input-placeholder-string'" in result["split"]
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_category) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_category) ) */"
             in result["split"]
         )
 
         # Check sort
         assert "'visivo-input-placeholder-string'" in result["sort"]
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(sort_field) )" in result["sort"]
+            " /* replace('visivo-input-placeholder-string', Input(sort_field) ) */" in result["sort"]
         )
 
     def test_mixed_references(self):
@@ -263,7 +263,7 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         # Input reference replaced with placeholder
         assert "'visivo-input-placeholder-string'" in result["filter"]
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_status) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_status) ) */"
             in result["filter"]
         )
         # Model references should remain unchanged
@@ -333,11 +333,11 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         assert result["filter"].count("'visivo-input-placeholder-string'") == 4
         # Should have two comments appended
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_year) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_year) ) */"
             in result["filter"]
         )
         assert (
-            " -- replace('visivo-input-placeholder-string', Input(selected_category) )"
+            " /* replace('visivo-input-placeholder-string', Input(selected_category) ) */"
             in result["filter"]
         )
         # Model references should remain
