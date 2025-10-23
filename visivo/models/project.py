@@ -4,8 +4,8 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
-from visivo.models.input import Input
-from visivo.models.inputs.base import InputBasemodel
+from visivo.models.inputs.fields import InputField
+from visivo.models.inputs.input import Input
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
@@ -62,7 +62,7 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
-    inputs: List[Input] = []
+    inputs: List[InputField] = []
     dashboards: List[DashboardField] = []
     metrics: List[Metric] = Field(
         [], description="A list of global metric objects that can reference multiple models."
@@ -80,6 +80,16 @@ class Project(NamedModel, ParentModel):
         for child_type in project_children:
             items = getattr(self, child_type, [])
             children.extend(items)
+
+        # Also add nested metrics and dimensions from SqlModels
+        # These are not direct children of the project but need to be in the DAG
+        from visivo.models.models.sql_model import SqlModel
+
+        for model in self.models:
+            if isinstance(model, SqlModel):
+                children.extend(model.metrics)
+                children.extend(model.dimensions)
+
         return children
 
     def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
@@ -206,88 +216,25 @@ class Project(NamedModel, ParentModel):
         return fully_referenced_project_child_dict
 
     @model_validator(mode="after")
-    def validate_cli_version(self):
-        if self.cli_version != VISIVO_VERSION:
-            raise ClickException(
-                f"The project specifies {self.cli_version}, but the current version of visivo installed is {VISIVO_VERSION}. Your project version needs to match your CLI version."
-            )
-        return self
+    def validate_project(self):
+        """
+        Run all project validators.
 
-    @model_validator(mode="after")
-    def validate_default_names(self):
-        sources, alerts = (self.sources, self.alerts)
-        source_names = [source.name for source in sources]
-        alert_names = [alert.name for alert in alerts]
-        defaults = self.defaults
-        if not defaults:
-            return self
+        This method orchestrates all validation logic using the validator classes
+        defined in visivo.models.validators. This makes validators easier to find,
+        maintain, and test.
 
-        if defaults.source_name and defaults.source_name not in source_names:
-            raise ValueError(f"default source '{defaults.source_name}' does not exist")
+        Returns:
+            The validated project
 
-        if defaults.alert_name and defaults.alert_name not in alert_names:
-            raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
+        Raises:
+            ValueError: If any validation fails
+            ClickException: If CLI version validation fails
+        """
+        from visivo.models.validators import ProjectValidator
 
-        return self
-
-    @model_validator(mode="after")
-    def validate_models_have_sources(self):
-        defaults = self.defaults
-        if defaults and defaults.source_name:
-            return self
-
-        for model in self.descendants_of_type(Model):
-            if isinstance(model, SqlModel) and not model.source:
-                raise ValueError(
-                    f"'{model.name}' does not specify a source and project does not specify default source"
-                )
-
-        return self
-
-    @model_validator(mode="after")
-    def validate_dag(self):
-
-        dag = self.dag()
-        if not dag.validate_dag():
-            raise ValueError("Project contains a circular reference.")
-
-        tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
-        for table in tables:
-            selectors = all_descendants_of_type(type=Selector, dag=dag, from_node=table)
-            if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
-                raise ValueError(
-                    f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
-                )
-
-            inputs = all_descendants_of_type(type=InputBasemodel, dag=dag, from_node=table)
-            if len(inputs) > 0 and inputs[0].type == SelectorType.multiple:
-                raise ValueError(
-                    f"Table with name '{table.name}' has an input with a 'multiple' type.  This is not permitted."
-                )
-
-        return self
-
-    @model_validator(mode="after")
-    def validate_project_is_sole_root_node(self):
-        dag = self.dag()
-        roots = dag.get_root_nodes()
-        if len(roots) > 1:
-            root_list = ", ".join([root.__class__.__name__ for root in roots])
-            raise ValueError(
-                f"Project must be the sole root node in the DAG. Current root nodes: {root_list}"
-            )
-        elif len(roots) == 0:
-            raise ValueError("No root nodes found in the DAG. Please add a name for your project.")
-        elif len(roots) == 1:
-            root = roots[0]
-            if root.__class__.__name__ != "Project":
-                raise ValueError("The sole root node in the DAG must be a Project.")
-        return self
-
-    @model_validator(mode="after")
-    def validate_names(self):
-        Project.traverse_names([], self)
-        return self
+        validator = ProjectValidator()
+        return validator.validate(self)
 
     @model_validator(mode="before")
     def set_path_on_named_models(cls, values):

@@ -26,6 +26,9 @@ class BaseDuckdbSource(Source):
         """All DuckDB-based sources use the duckdb dialect."""
         return "duckdb"
 
+    def get_sqlglot_dialect(self):
+        return self.get_dialect()
+
     def description(self):
         """Return a description of this source for logging and error messages."""
         return f"{self.type} source '{self.name}'"

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.server.views import register_views

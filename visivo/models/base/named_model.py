@@ -1,6 +1,7 @@
 from typing import Optional
 import pydantic
 import re
+import hashlib
 
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.base_model import BaseModel, REF_PROPERTY_PATTERN
@@ -23,6 +24,13 @@ class NamedModel(BaseModel):
     file_path: Optional[str] = pydantic.Field(
         None, description="The path to the file that contains the object definition."
     )
+
+    def name_hash(self) -> Optional[str]:
+        if self.name:
+            # Prefix with 'm' to ensure hash starts with a letter, not a digit
+            # This makes it a valid SQL identifier without requiring quotes
+            return "m" + hashlib.md5(self.name.encode()).hexdigest()
+        return None
 
     @classmethod
     def get_name(cls, obj):

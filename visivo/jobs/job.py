@@ -36,7 +36,7 @@ class Job:
         **kwargs,
     ):
         self.item = item
-        self.source = source  # PR question: Why do we need this? It seems like it might some uneeded imports and runs
+        self.source = source  # PR question: Why do we need this? It seems like it might some uneeded imports and runs - bumping this question (jared)
         self.action = action
         self.kwargs = kwargs  # These get passed to the action when it is run
         self.future: Future = None
