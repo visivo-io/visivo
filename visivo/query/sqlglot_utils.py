@@ -381,3 +381,104 @@ def strip_sort_order(expr_str: str, dialect: str = None) -> str:
         for keyword in [" ASC", " DESC", " asc", " desc"]:
             result = result.replace(keyword, "")
         return result.strip()
+
+
+def validate_query(
+    query_sql: str,
+    dialect: str = "duckdb",
+    insight_name: str = "unknown",
+    query_type: str = "query",
+    context: Optional[Dict] = None,
+    raise_on_error: bool = True,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Validate SQL query using SQLGlot parser.
+
+    Per SQLGLOT.md: SQLGlot provides robust SQL validation with detailed
+    error messages including line/column information. This function validates
+    that a SQL query is syntactically correct by attempting to parse it.
+
+    This validation catches SQL errors at build time (during visivo run)
+    rather than at runtime in the browser's DuckDB WASM engine, providing
+    better error messages and preventing broken deployments.
+
+    Args:
+        query_sql: SQL query string to validate
+        dialect: SQLGlot dialect name (e.g., "duckdb", "postgres", "bigquery")
+        insight_name: Name of insight for error context (helps user debug)
+        query_type: Type of query ("pre_query", "post_query", etc.)
+        context: Additional error context dict (models, props, interactions)
+        raise_on_error: If True, raises SqlValidationError on invalid SQL
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - is_valid: True if query is valid, False otherwise
+        - error_message: None if valid, error string if invalid
+
+    Raises:
+        SqlValidationError: If query is invalid and raise_on_error=True
+            Contains full context for actionable error messages
+
+    Example:
+        >>> validate_query(
+        ...     "SELECT * FROM users",
+        ...     dialect="duckdb",
+        ...     insight_name="user_stats",
+        ...     query_type="post_query"
+        ... )
+        (True, None)
+
+        >>> validate_query(
+        ...     "SELECT * FROM WHERE",  # Invalid SQL
+        ...     dialect="duckdb",
+        ...     insight_name="user_stats",
+        ...     query_type="post_query",
+        ...     context={"props": ["props.x", "props.y"]}
+        ... )
+        SqlValidationError: ...with full formatted error...
+    """
+    from sqlglot.errors import ParseError
+    from visivo.query.sql_validation_error import SqlValidationError
+
+    # Empty queries are considered valid
+    if not query_sql or not query_sql.strip():
+        return True, None
+
+    try:
+        # Attempt to parse the query using SQLGlot
+        # This validates SQL syntax according to the specified dialect
+        parsed = parse_one(query_sql, read=dialect)
+
+        if parsed is None:
+            # parse_one returned None - query is invalid but no ParseError was raised
+            error_msg = f"Failed to parse SQL for {insight_name} ({query_type})"
+            if raise_on_error:
+                # Create a basic ParseError for consistency
+                raise SqlValidationError(
+                    sqlglot_error=ParseError(error_msg),
+                    query_sql=query_sql,
+                    insight_name=insight_name,
+                    query_type=query_type,
+                    dialect=dialect,
+                    context=context,
+                )
+            return False, error_msg
+
+        # Query parsed successfully - it's valid SQL
+        return True, None
+
+    except ParseError as e:
+        # SQLGlot raised a ParseError - query has syntax errors
+        # The ParseError contains line/column information and detailed message
+        if raise_on_error:
+            # Wrap in SqlValidationError with full Visivo context
+            raise SqlValidationError(
+                sqlglot_error=e,
+                query_sql=query_sql,
+                insight_name=insight_name,
+                query_type=query_type,
+                dialect=dialect,
+                context=context,
+            ) from e
+        # Don't raise, just return validation failure
+        return False, str(e)

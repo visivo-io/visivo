@@ -550,13 +550,71 @@ class InsightQueryBuilder:
         return order_by_expressions
 
     def build(self):
+        """
+        Build and validate insight queries.
 
+        This method generates pre_query and post_query SQL, then validates them
+        using SQLGlot to catch syntax errors at build time rather than runtime.
+
+        Validation ensures that:
+        - post_query is valid DuckDB SQL (runs in browser WASM)
+        - pre_query is valid in the source dialect (runs on backend)
+
+        Returns:
+            InsightQueryInfo: Query information with validated SQL
+
+        Raises:
+            SqlValidationError: If generated SQL is syntactically invalid
+        """
         if not self.is_resolved:
             raise Exception("Need to resolve before running build")
 
         pre_query = self.pre_query
         post_query = self.post_query
         props_mapping = self.props_mapping
+
+        # Collect context for error messages
+        context = {
+            "models": [m.name for m in self.models],
+            "props": list(props_mapping.keys()),
+            "is_dynamic": self.is_dyanmic,
+        }
+
+        # VALIDATE POST-QUERY (runs in DuckDB WASM - critical!)
+        if post_query:
+            from visivo.query.sqlglot_utils import validate_query
+
+            self.logger.debug(f"Validating post_query for insight: {self.insight_hash}")
+
+            validate_query(
+                query_sql=post_query,
+                dialect="duckdb",
+                insight_name=self.insight_hash,
+                query_type="post_query",
+                context=context,
+                raise_on_error=True,  # Fail build on invalid SQL
+            )
+
+            self.logger.debug("✓ Post-query validation passed")
+
+        # VALIDATE PRE-QUERY (runs on source backend)
+        if pre_query and not self.is_dyanmic:
+            from visivo.query.sqlglot_utils import validate_query
+
+            native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
+
+            self.logger.debug(f"Validating pre_query for insight: {self.insight_hash}")
+
+            validate_query(
+                query_sql=pre_query,
+                dialect=native_dialect,
+                insight_name=self.insight_hash,
+                query_type="pre_query",
+                context=context,
+                raise_on_error=True,
+            )
+
+            self.logger.debug("✓ Pre-query validation passed")
 
         data = {
             "pre_query": pre_query,

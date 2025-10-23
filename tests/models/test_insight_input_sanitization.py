@@ -61,7 +61,7 @@ class TestInsightInputSanitization:
 
         assert marker_color_statement is not None
         assert "'visivo-input-placeholder-string'" in marker_color_statement
-        assert "-- replace" in marker_color_statement
+        assert "/* replace" in marker_color_statement
         assert "color_choice" in marker_color_statement
 
     def test_insight_with_input_in_interactions_filter(self):
@@ -114,7 +114,7 @@ class TestInsightInputSanitization:
 
         assert filter_statement is not None
         assert "'visivo-input-placeholder-string'" in filter_statement
-        assert "-- replace" in filter_statement
+        assert "/* replace" in filter_statement
 
     def test_insight_with_input_in_both_props_and_interactions(self):
         """Test that inputs in BOTH props and interactions are sanitized."""
@@ -271,7 +271,7 @@ class TestInsightInputSanitization:
         assert "${ref(threshold)}" not in result
 
         # Comment should be added
-        assert "-- replace" in result
+        assert "/* replace" in result
         assert "threshold" in result
 
     def test_input_placeholder_format(self):
@@ -318,7 +318,7 @@ class TestInsightInputSanitization:
         assert marker_color_statement.startswith("'visivo-input-placeholder-string'")
 
         # Comment should include input name for frontend parsing
-        assert "-- replace('visivo-input-placeholder-string', Input(color)" in marker_color_statement
+        assert "/* replace('visivo-input-placeholder-string', Input(color)" in marker_color_statement
 
     def test_get_query_statements_with_input_in_props_does_not_crash(self):
         """Test that get_all_query_statements() doesn't crash with input in props.

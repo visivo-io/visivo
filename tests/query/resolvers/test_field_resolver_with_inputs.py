@@ -71,12 +71,13 @@ class TestFieldResolverWithInputs:
             native_dialect="duckdb",
         )
 
-        # Sanitized placeholder should pass through unchanged
-        placeholder = "'visivo-input-placeholder-string' -- replace('visivo-input-placeholder-string', Input(threshold))"
+        # Sanitized placeholder should pass through (may have alias added)
+        placeholder = "'visivo-input-placeholder-string' /* replace('visivo-input-placeholder-string', Input(threshold)) */"
         result = field_resolver.resolve(expression=placeholder)
 
-        # Placeholder should be unchanged (no resolution attempted)
-        assert result == placeholder
+        # Placeholder and comment should be preserved in result
+        assert "'visivo-input-placeholder-string'" in result
+        assert "/* replace('visivo-input-placeholder-string', Input(threshold)) */" in result
 
     def test_field_resolver_resolves_model_refs_in_mixed_expression(self):
         """Test that FieldResolver correctly resolves model refs while leaving placeholders intact."""

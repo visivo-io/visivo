@@ -17,7 +17,7 @@ class DropdownInput(Input):
 
     def query_placeholder(self):
         placeholder = "'visivo-input-placeholder-string'"
-        comment = f" -- replace('visivo-input-placeholder-string', Input({self.name}) )"
+        comment = f" /* replace('visivo-input-placeholder-string', Input({self.name}) ) */"
         return placeholder, comment
 
     def _validate_query(self, query_sql: str, dialect: str = "duckdb") -> None:
