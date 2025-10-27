@@ -101,7 +101,7 @@ export const useInsightsData = (projectId, insightNames) => {
   const db = useDuckDB();
   const setInsights = useStore(state => state.setInsights);
   const storeInsightData = useStore(state => state.insights);
-  const inputs = useStore(state => state.inputs) || {};
+  const getInputs = useStore(state => state.inputs);
 
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInsightNames = useMemo(() => {
@@ -143,6 +143,9 @@ export const useInsightsData = (projectId, insightNames) => {
 
     console.debug(`Fetched ${insights.length} insights from API`);
 
+    // Get current inputs from store
+    const inputs = getInputs || {};
+
     // Step 2: Process each insight in parallel
     const results = await Promise.allSettled(
       insights.map(insight => processInsight(db, insight, inputs))
@@ -169,7 +172,7 @@ export const useInsightsData = (projectId, insightNames) => {
     console.debug(`Successfully processed ${Object.keys(mergedData).length} insights`);
 
     return mergedData;
-  }, [db, projectId, stableInsightNames, inputs]);
+  }, [db, projectId, stableInsightNames, getInputs]);
 
   // React Query for data fetching
   const { data, isLoading, error } = useQuery({
@@ -193,8 +196,8 @@ export const useInsightsData = (projectId, insightNames) => {
 
   return {
     insightsData: storeInsightData || {},
-    isLoading: hasCompleteData ? false : isLoading,
-    hasAllData: hasCompleteData || (data && Object.keys(data).length > 0),
+    isInsightsLoading: hasCompleteData ? false : isLoading,
+    hasAllInsightData: hasCompleteData || (data && Object.keys(data).length > 0),
     error,
   };
 };

@@ -98,7 +98,10 @@ class InsightQueryBuilder:
         """Sets the resolved_query_statements"""
         resolved_query_statements = []
         for key, statement in self.unresolved_query_statements:
-            resolved_statement = self.field_resolver.resolve(expression=statement)
+            if key == "filter":
+                resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
+            else:
+                resolved_statement = self.field_resolver.resolve(expression=statement)
             resolved_query_statements.append((key, resolved_statement))
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True

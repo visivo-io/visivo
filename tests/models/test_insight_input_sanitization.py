@@ -85,9 +85,7 @@ class TestInsightInputSanitization:
                 y="?{${ref(orders).amount}}",
             ),
             interactions=[
-                InsightInteraction(
-                    filter="?{${ref(orders).amount} > ${ref(min_amount)}}"
-                ),
+                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(min_amount)}}"),
             ],
         )
 
@@ -125,12 +123,8 @@ class TestInsightInputSanitization:
             source=f"ref({source.name})",
         )
 
-        color_input = DropdownInput(
-            name="color_choice", label="Color", options=["red", "blue"]
-        )
-        threshold_input = DropdownInput(
-            name="min_amount", label="Minimum", options=["100", "500"]
-        )
+        color_input = DropdownInput(name="color_choice", label="Color", options=["red", "blue"])
+        threshold_input = DropdownInput(name="min_amount", label="Minimum", options=["100", "500"])
 
         insight = Insight(
             name="test_insight",
@@ -141,9 +135,7 @@ class TestInsightInputSanitization:
                 marker={"color": "?{${ref(color_choice)}}"},
             ),
             interactions=[
-                InsightInteraction(
-                    filter="?{${ref(orders).amount} > ${ref(min_amount)}}"
-                ),
+                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(min_amount)}}"),
             ],
         )
 
@@ -163,9 +155,7 @@ class TestInsightInputSanitization:
 
         # Count sanitized statements
         sanitized_count = sum(
-            1
-            for _, value in query_statements
-            if "'visivo-input-placeholder-string'" in value
+            1 for _, value in query_statements if "'visivo-input-placeholder-string'" in value
         )
 
         assert sanitized_count == 2  # One in props, one in interaction
@@ -179,9 +169,7 @@ class TestInsightInputSanitization:
             source=f"ref({source.name})",
         )
 
-        threshold_input = DropdownInput(
-            name="threshold", label="Threshold", options=["5", "10"]
-        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["5", "10"])
 
         # Marker color uses BOTH model ref and input ref
         insight = Insight(
@@ -235,9 +223,7 @@ class TestInsightInputSanitization:
             source=f"ref({source.name})",
         )
 
-        threshold_input = DropdownInput(
-            name="threshold", label="Threshold", options=["5", "10"]
-        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["5", "10"])
 
         insight = Insight(
             name="test_insight",
@@ -318,7 +304,9 @@ class TestInsightInputSanitization:
         assert marker_color_statement.startswith("'visivo-input-placeholder-string'")
 
         # Comment should include input name for frontend parsing
-        assert "/* replace('visivo-input-placeholder-string', Input(color)" in marker_color_statement
+        assert (
+            "/* replace('visivo-input-placeholder-string', Input(color)" in marker_color_statement
+        )
 
     def test_get_query_statements_with_input_in_props_does_not_crash(self):
         """Test that get_all_query_statements() doesn't crash with input in props.
@@ -333,9 +321,7 @@ class TestInsightInputSanitization:
             source=f"ref({source.name})",
         )
 
-        color_input = DropdownInput(
-            name="color", label="Color", options=["red", "blue"]
-        )
+        color_input = DropdownInput(name="color", label="Color", options=["red", "blue"])
 
         insight = Insight(
             name="test_insight",
@@ -366,7 +352,6 @@ class TestInsightInputSanitization:
 
         # Verify the input was sanitized
         has_placeholder = any(
-            "'visivo-input-placeholder-string'" in value
-            for _, value in query_statements
+            "'visivo-input-placeholder-string'" in value for _, value in query_statements
         )
         assert has_placeholder

@@ -1,6 +1,8 @@
 """Tests for FieldResolver behavior with input references."""
 
 import pytest
+import json
+import os
 from visivo.models.project import Project
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.inputs.types.dropdown import DropdownInput
@@ -24,9 +26,7 @@ class TestFieldResolverWithInputs:
             source=f"ref({source.name})",
         )
 
-        threshold_input = DropdownInput(
-            name="threshold", label="Threshold", options=["5", "10"]
-        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["5", "10"])
 
         project = Project(
             name="test_project",
@@ -79,7 +79,7 @@ class TestFieldResolverWithInputs:
         assert "'visivo-input-placeholder-string'" in result
         assert "/* replace('visivo-input-placeholder-string', Input(threshold)) */" in result
 
-    def test_field_resolver_resolves_model_refs_in_mixed_expression(self):
+    def test_field_resolver_resolves_model_refs_in_mixed_expression(self, tmpdir):
         """Test that FieldResolver correctly resolves model refs while leaving placeholders intact."""
         source = SourceFactory()
         orders_model = SqlModel(
@@ -96,14 +96,32 @@ class TestFieldResolverWithInputs:
         )
 
         dag = project.dag()
+
+        # Create schema file
+        schema_base = tmpdir.mkdir("schema")
+        model_hash = orders_model.name_hash()
+        schema_dir = schema_base.mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {
+            model_hash: {
+                "id": "INTEGER",
+                "date": "DATE",
+                "amount": "DECIMAL",
+                "user_id": "INTEGER",
+            }
+        }
+        schema_file.write(json.dumps(schema_data))
+
         field_resolver = FieldResolver(
             dag=dag,
-            output_dir="/tmp",
+            output_dir=str(tmpdir),
             native_dialect="duckdb",
         )
 
         # Expression with BOTH model ref and sanitized input placeholder
-        mixed_expression = "CASE WHEN ${ref(orders).amount} > 'visivo-input-placeholder-string' THEN 'high' END"
+        mixed_expression = (
+            "CASE WHEN ${ref(orders).amount} > 'visivo-input-placeholder-string' THEN 'high' END"
+        )
         result = field_resolver.resolve(expression=mixed_expression)
 
         # Model ref should be resolved (qualified with table hash)

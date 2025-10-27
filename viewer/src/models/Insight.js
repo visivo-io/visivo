@@ -12,23 +12,6 @@ function parsePropPath(path) {
 }
 
 /**
- * Get a value from an object using a nested path
- * @param {Object} obj - The object to get from
- * @param {string[]} pathParts - Array of path parts
- * @returns {*} The value at the path
- */
-function getNestedValue(obj, pathParts) {
-  let current = obj;
-  for (const part of pathParts) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    current = current[part];
-  }
-  return current;
-}
-
-/**
  * Set a value in an object using a nested path
  * @param {Object} obj - The object to set in
  * @param {string[]} pathParts - Array of path parts

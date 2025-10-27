@@ -2,13 +2,17 @@ import { chartDataFromInsightData } from './Insight';
 
 const sampleInsightsData = {
   'Expense Breakdown Table Insight': {
-    insight: [
+    data: [
       {
         expense: 'Selling General & Admin Expenses',
         year: 'Sep 2023',
         amount: '24,932.00',
         row: 45,
         category: 'Selling General & Admin Expenses',
+        x_data: null,
+        y_data: null,
+        measure: null,
+        text: null,
       },
       {
         expense: 'R&D Expenses',
@@ -16,39 +20,42 @@ const sampleInsightsData = {
         amount: '29,915.00',
         row: 46,
         category: 'R&D Expenses',
+        x_data: null,
+        y_data: null,
+        measure: null,
+        text: null,
       },
     ],
-    columns: {
-      'columns.x_data': 'x_data',
-      'columns.y_data': 'y_data',
-      'columns.measure': 'measure',
+    props_mapping: {
+      'props.type': 'type_col',
+      'props.measure': 'measure',
+      'props.x': 'x_data',
+      'props.y': 'y_data',
       'props.text': 'text',
-    },
-    props: {
-      type: 'waterfall',
-      measure: 'column(measure)',
-      x: 'column(x_data)',
-      y: 'column(y_data)',
-      text: '?{ cast(thousands_dollars as text) }',
-      increasing: {
-        marker: { color: '#b97a9b' },
-      },
     },
   },
   'Revenue vs Expense Bar Insight': {
-    insight: [
-      { category: 'Revenues', y_data: 383285, year: 'Sep 2023' },
-      { category: 'Total Revenues', y_data: 383285, year: 'Sep 2023' },
+    data: [
+      {
+        category: 'Revenues',
+        y_data: 383285,
+        year: 'Sep 2023',
+        type_col: 'bar',
+        marker_color: '#4a90e2',
+      },
+      {
+        category: 'Total Revenues',
+        y_data: 383285,
+        year: 'Sep 2023',
+        type_col: 'bar',
+        marker_color: '#4a90e2',
+      },
     ],
-    columns: {
-      'columns.category': 'category',
-      'columns.y_data': 'y_data',
-    },
-    props: {
-      type: 'bar',
-      x: 'column(category)',
-      y: 'column(y_data)',
-      marker: { color: '#4a90e2' },
+    props_mapping: {
+      'props.type': 'type_col',
+      'props.x': 'category',
+      'props.y': 'y_data',
+      'props.marker.color': 'marker_color',
     },
   },
 };
@@ -58,38 +65,38 @@ describe('chartDataFromInsightData', () => {
     expect(chartDataFromInsightData(null)).toEqual([]);
   });
 
-  it('skips insights without insight/columns/props', () => {
+  it('skips insights without data or props_mapping', () => {
     const data = {
       invalid: {
-        insight: [{ foo: 1 }],
-        columns: { col: 'foo' },
+        data: [{ foo: 1 }],
+        // Missing props_mapping
       },
     };
     expect(chartDataFromInsightData(data)).toEqual([]);
   });
 
-  it('resolves column() references into arrays of values', () => {
+  it('maps data columns to props using props_mapping', () => {
     const result = chartDataFromInsightData(sampleInsightsData);
     const expenseTrace = result.find(r => r.name === 'Expense Breakdown Table Insight');
     expect(expenseTrace).toBeDefined();
-    expect(expenseTrace.x).toEqual([]); // no x_data field in rows
-    expect(expenseTrace.y).toEqual([]); // no y_data field in rows
-    expect(expenseTrace.measure).toEqual([]); // no measure field in rows
+    expect(expenseTrace.x).toEqual([null, null]); // x_data values
+    expect(expenseTrace.y).toEqual([null, null]); // y_data values
+    expect(expenseTrace.measure).toEqual([null, null]); // measure values
   });
 
-  it('resolves ?{} placeholder with text column', () => {
+  it('maps text column data', () => {
     const result = chartDataFromInsightData(sampleInsightsData);
     const expenseTrace = result.find(r => r.name === 'Expense Breakdown Table Insight');
-    expect(expenseTrace.text).toEqual([]);
+    expect(expenseTrace.text).toEqual([null, null]); // text values
   });
 
   it('handles bar chart columns correctly', () => {
     const result = chartDataFromInsightData(sampleInsightsData);
     const barTrace = result.find(r => r.name === 'Revenue vs Expense Bar Insight');
-    expect(barTrace.type).toBe('bar');
+    expect(barTrace.type).toEqual(['bar', 'bar']); // type is now an array
     expect(barTrace.x).toEqual(['Revenues', 'Total Revenues']);
     expect(barTrace.y).toEqual([383285, 383285]);
-    expect(barTrace.marker.color).toBe('#4a90e2');
+    expect(barTrace.marker.color).toEqual(['#4a90e2', '#4a90e2']); // color is now an array
   });
 
   it('sets insight name correctly', () => {

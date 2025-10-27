@@ -223,7 +223,8 @@ class TestInsightInteractionFieldValuesWithSanitizedInputs:
         # Check sort
         assert "'visivo-input-placeholder-string'" in result["sort"]
         assert (
-            " /* replace('visivo-input-placeholder-string', Input(sort_field) ) */" in result["sort"]
+            " /* replace('visivo-input-placeholder-string', Input(sort_field) ) */"
+            in result["sort"]
         )
 
     def test_mixed_references(self):

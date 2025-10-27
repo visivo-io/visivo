@@ -185,14 +185,10 @@ const createExplorerSlice = (set, get) => ({
         }));
 
       // Get existing source names
-      const existingSourceNames = new Set(
-        sourcesMetadata.sources.map(src => src.name)
-      );
+      const existingSourceNames = new Set(sourcesMetadata.sources.map(src => src.name));
 
       // Find new sources that aren't already in the metadata
-      const newSources = sourcesFromNamedChildren.filter(
-        src => !existingSourceNames.has(src.name)
-      );
+      const newSources = sourcesFromNamedChildren.filter(src => !existingSourceNames.has(src.name));
 
       // If there are new sources, add them to the metadata
       if (newSources.length > 0) {

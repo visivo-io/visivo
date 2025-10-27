@@ -49,14 +49,20 @@ def register_insight_views(app, flask_app, output_dir):
                                 # file_path format: {output_dir}/files/{hash}.parquet
                                 # Extract hash (filename without extension)
                                 filename = os.path.basename(file_path)
-                                file_hash = os.path.splitext(filename)[0]  # Remove .parquet extension
+                                file_hash = os.path.splitext(filename)[
+                                    0
+                                ]  # Remove .parquet extension
                                 file_ref["signed_data_file_url"] = f"/api/files/{file_hash}/"
 
                     insights.append(insight_data)
-                    Logger.instance().debug(f"Loaded insight '{name}' with {len(insight_data.get('files', []))} files")
+                    Logger.instance().debug(
+                        f"Loaded insight '{name}' with {len(insight_data.get('files', []))} files"
+                    )
 
                 except json.JSONDecodeError as e:
-                    Logger.instance().error(f"Invalid JSON in insight file {insight_file}: {str(e)}")
+                    Logger.instance().error(
+                        f"Invalid JSON in insight file {insight_file}: {str(e)}"
+                    )
                     return jsonify({"message": f"Invalid JSON in insight '{name}'"}), 500
                 except Exception as e:
                     Logger.instance().error(f"Error loading insight '{name}': {str(e)}")
@@ -65,7 +71,10 @@ def register_insight_views(app, flask_app, output_dir):
             if missing_insights:
                 Logger.instance().info(f"Missing insight files: {missing_insights}")
                 if not insights:
-                    return jsonify({"message": f"No insight files found for: {missing_insights}"}), 404
+                    return (
+                        jsonify({"message": f"No insight files found for: {missing_insights}"}),
+                        404,
+                    )
 
             return jsonify(insights)
 
