@@ -15,7 +15,7 @@ from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     get_model_name_from_match,
     extract_ref_components,
-    extract_model_names,
+    extract_ref_names,
     replace_refs,
     has_CONTEXT_STRING_REF_PATTERN,
     validate_ref_syntax,
@@ -177,26 +177,26 @@ class TestExtractRefComponents:
 
 
 class TestExtractModelNames:
-    """Test the extract_model_names function."""
+    """Test the extract_ref_names function."""
 
     def test_single_model(self):
         """Test extracting a single model name."""
-        result = extract_model_names("${ref(orders).id}")
+        result = extract_ref_names("${ref(orders).id}")
         assert result == {"orders"}
 
     def test_multiple_models(self):
         """Test extracting multiple unique model names."""
-        result = extract_model_names("${ref(orders).id} = ${ref(users).id}")
+        result = extract_ref_names("${ref(orders).id} = ${ref(users).id}")
         assert result == {"orders", "users"}
 
     def test_duplicate_models(self):
         """Test that duplicate model names are deduplicated."""
-        result = extract_model_names("${ref(orders).id} + ${ref(orders).total}")
+        result = extract_ref_names("${ref(orders).id} + ${ref(orders).total}")
         assert result == {"orders"}
 
     def test_no_models(self):
         """Test extracting from text with no refs."""
-        result = extract_model_names("SELECT * FROM table")
+        result = extract_ref_names("SELECT * FROM table")
         assert result == set()
 
 
@@ -350,7 +350,7 @@ class TestEdgeCases:
     def test_mixed_quotes_in_text(self):
         """Test handling mixed quote styles in same text."""
         text = "${ref('model1')} and ${ref(\"model2\")}"
-        result = extract_model_names(text)
+        result = extract_ref_names(text)
         assert result == {"model1", "model2"}
 
     def test_ref_at_start_of_string(self):

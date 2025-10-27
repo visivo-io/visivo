@@ -2,10 +2,10 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
-from visivo.models.inputs.dropdown import DropdownInput
+from visivo.models.inputs.types.dropdown import DropdownInput
 
 
-Input = Annotated[
+InputField = Annotated[
     Union[DropdownInput,],
     Field(discriminator="type"),
 ]

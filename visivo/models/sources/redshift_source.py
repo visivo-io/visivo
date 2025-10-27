@@ -158,6 +158,11 @@ class RedshiftSource(ServerSource):
             # Re-raise to allow proper error handling in UI
             raise e
 
+    def get_sqlglot_dialect(self):
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        return get_sqlglot_dialect(self.get_dialect())
+
     def introspect(self):
         """Introspect the Redshift database to get schema information."""
         schemas_dict = {}
@@ -235,7 +240,6 @@ class RedshiftSource(ServerSource):
             - metadata: Additional metadata about the schema
         """
         from sqlglot.schema import MappingSchema
-        from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
         try:
             # Initialize result structure

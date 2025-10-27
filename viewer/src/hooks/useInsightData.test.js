@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useInsightsData, fetchInsightsData } from './useInsightsData';
+import { useInsightsData } from './useInsightsData';
 import { useFetchInsights } from '../contexts/QueryContext';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { tableDuckDBExists, insertDuckDBFile } from '../duckdb/queries';
@@ -78,9 +78,15 @@ describe('useInsightsData Hook', () => {
     test('should return store data when hasCompleteData is true', () => {
       const completeStoreData = {
         insight1: {
-          insight: [{ id: 1, name: 'test' }],
-          columns: { id: 'integer' },
-          props: { type: 'table' },
+          id: 'insight1',
+          name: 'insight1',
+          data: [{ id: 1, name: 'test' }],
+          files: [],
+          query: 'SELECT * FROM test',
+          props_mapping: { 'props.x': 'id' },
+          loaded: 1,
+          failed: 0,
+          error: null,
         },
       };
 
@@ -173,9 +179,15 @@ describe('useInsightsData Hook', () => {
     test('should use store data when available', () => {
       const storeData = {
         insight1: {
-          insight: [{ id: 1, value: 'from store' }],
-          columns: { id: 'integer' },
-          props: { type: 'table' },
+          id: 'insight1',
+          name: 'insight1',
+          data: [{ id: 1, value: 'from store' }],
+          files: [],
+          query: 'SELECT * FROM test',
+          props_mapping: { 'props.x': 'id' },
+          loaded: 1,
+          failed: 0,
+          error: null,
         },
       };
 
@@ -200,8 +212,12 @@ describe('useInsightsData Hook', () => {
     test('should detect incomplete data in store', () => {
       const incompleteStoreData = {
         insight1: {
-          insight: [{ id: 1 }],
-          // Missing columns and props
+          id: 'insight1',
+          name: 'insight1',
+          // Missing data field - incomplete
+          files: [],
+          query: 'SELECT * FROM test',
+          props_mapping: { 'props.x': 'id' },
         },
       };
 
@@ -300,140 +316,5 @@ describe('useInsightsData Hook', () => {
 
       expect(result.current.insightsData).toEqual({});
     });
-  });
-});
-
-describe('fetchInsightsData utility function', () => {
-  beforeEach(() => {
-    fetch.mockClear();
-  });
-
-  test('should fetch insights data successfully', async () => {
-    const insights = [
-      {
-        name: 'insight1',
-        signed_data_file_url: 'https://example.com/insight1.json',
-      },
-      {
-        name: 'insight2',
-        signed_data_file_url: 'https://example.com/insight2.json',
-      },
-    ];
-
-    const mockData1 = { data: 'insight1Data' };
-    const mockData2 = { data: 'insight2Data' };
-
-    fetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData1),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData2),
-      });
-
-    const result = await fetchInsightsData(insights);
-
-    expect(result).toEqual({
-      insight1: mockData1,
-      insight2: mockData2,
-    });
-
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(fetch).toHaveBeenCalledWith('https://example.com/insight1.json');
-    expect(fetch).toHaveBeenCalledWith('https://example.com/insight2.json');
-  });
-
-  test('should handle mixed success and failure', async () => {
-    const insights = [
-      {
-        name: 'insight1',
-        signed_data_file_url: 'https://example.com/insight1.json',
-      },
-      {
-        name: 'insight2',
-        signed_data_file_url: 'https://example.com/insight2.json',
-      },
-    ];
-
-    const mockData1 = { data: 'insight1Data' };
-
-    fetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData1),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
-
-    const result = await fetchInsightsData(insights);
-
-    // Only successful requests should be in result
-    expect(result).toEqual({
-      insight1: mockData1,
-    });
-
-    expect(fetch).toHaveBeenCalledTimes(2);
-  });
-
-  test('should handle network errors', async () => {
-    const insights = [
-      {
-        name: 'insight1',
-        signed_data_file_url: 'https://example.com/insight1.json',
-      },
-      {
-        name: 'insight2',
-        signed_data_file_url: 'https://example.com/insight2.json',
-      },
-    ];
-
-    const mockData1 = { data: 'insight1Data' };
-
-    fetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockData1),
-      })
-      .mockRejectedValueOnce(new Error('Network error'));
-
-    const result = await fetchInsightsData(insights);
-
-    expect(result).toEqual({
-      insight1: mockData1,
-    });
-  });
-
-  test('should return empty object for empty insights array', async () => {
-    const result = await fetchInsightsData([]);
-    expect(result).toEqual({});
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  test('should return empty object for null insights', async () => {
-    const result = await fetchInsightsData(null);
-    expect(result).toEqual({});
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
-  test('should handle JSON parsing errors', async () => {
-    const insights = [
-      {
-        name: 'insight1',
-        signed_data_file_url: 'https://example.com/insight1.json',
-      },
-    ];
-
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.reject(new Error('Invalid JSON')),
-    });
-
-    const result = await fetchInsightsData(insights);
-
-    expect(result).toEqual({});
   });
 });
