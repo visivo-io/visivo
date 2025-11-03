@@ -24,6 +24,23 @@ class Input(NamedModel, ParentModel):
     )
     default: Optional[Union[str, int, float, bool, date, List[str]]] = None
 
+    def query_placeholder(self):
+        """
+        Return a placeholder string and comment for use in SQL queries (props only).
+
+        This is used by _sanitize_input_refs to replace input refs in props with
+        a placeholder that the frontend can recognize and substitute.
+
+        For interactions, use field_values_with_js_template_literals() instead,
+        which converts to JS template literals like ${input_name}.
+
+        Returns:
+            tuple: (placeholder_string, comment_string)
+        """
+        placeholder = "'visivo-input-placeholder-string'"
+        comment = f" /* replace('{placeholder}', Input({self.name})) */"
+        return placeholder, comment
+
     def child_items(self):
         """
         Return dependencies for DAG construction.
