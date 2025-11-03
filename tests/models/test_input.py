@@ -47,23 +47,23 @@ def test_dropdown_with_query_options():
     """Test dropdown with query options resolves ${ref(...)} to parquet file"""
     from visivo.models.project import Project
     from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.insight import Insight
-    from visivo.models.props.insight_props import InsightProps
+    from visivo.models.models.sql_model import SqlModel
 
-    # Create a minimal project with just a source and insight
+    # Create a minimal project with just a source and model
     source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    insight = Insight(
-        name="products_insight",
-        props=InsightProps(type="scatter", x="?{x}", y="?{y}"),
+    model = SqlModel(
+        name="products_model",
+        sql="SELECT * FROM products",
+        source="ref(test_source)",
     )
-    project = Project(name="test_project", sources=[source], insights=[insight])
+    project = Project(name="test_project", sources=[source], models=[model])
     dag = project.dag()
 
     # Create input with query-based options
     data = {
         "name": "query_options",
         "label": "query",
-        "options": "?{ select distinct(category) from ${ref(products_insight)} }",
+        "options": "?{ select distinct(category) from ${ref(products_model)} }",
     }
     dropdown = DropdownInput(**data)
 
@@ -75,7 +75,7 @@ def test_dropdown_with_query_options():
     assert "options" in dumped
     assert dumped["is_query"] is True
 
-    # Verify ${ref(products_insight)} was resolved to read_parquet
+    # Verify ${ref(products_model)} was resolved to read_parquet
     assert "READ_PARQUET" in dumped["options"].upper()
     assert "files/" in dumped["options"]
     assert ".parquet" in dumped["options"]
@@ -90,13 +90,12 @@ def test_query_validation_multiple_columns_fails():
     """Test that queries with multiple columns fail validation"""
     from visivo.models.project import Project
     from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.insight import Insight
-    from visivo.models.props.insight_props import InsightProps
+    from visivo.models.models.sql_model import SqlModel
     import pytest
 
     source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    insight = Insight(name="products", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-    project = Project(name="test_project", sources=[source], insights=[insight])
+    model = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
+    project = Project(name="test_project", sources=[source], models=[model])
     dag = project.dag()
 
     # Query with multiple columns should fail
@@ -117,13 +116,12 @@ def test_query_validation_not_select_fails():
     """Test that non-SELECT queries fail validation"""
     from visivo.models.project import Project
     from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.insight import Insight
-    from visivo.models.props.insight_props import InsightProps
+    from visivo.models.models.sql_model import SqlModel
     import pytest
 
     source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    insight = Insight(name="products", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-    project = Project(name="test_project", sources=[source], insights=[insight])
+    model = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
+    project = Project(name="test_project", sources=[source], models=[model])
     dag = project.dag()
 
     # DELETE query should fail
@@ -143,25 +141,22 @@ def test_query_multiple_references_fails():
     """Test that queries with multiple ${ref(...)} fail"""
     from visivo.models.project import Project
     from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.insight import Insight
-    from visivo.models.props.insight_props import InsightProps
+    from visivo.models.models.sql_model import SqlModel
     import pytest
 
     source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    insight1 = Insight(name="products", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-    insight2 = Insight(name="sales", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-    project = Project(name="test_project", sources=[source], insights=[insight1, insight2])
+    model1 = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
+    model2 = SqlModel(name="sales", sql="SELECT * FROM sales", source="ref(test_source)")
+    project = Project(name="test_project", sources=[source], models=[model1, model2])
     dag = project.dag()
 
-    # Query with two references should fail
-    data = {
-        "name": "bad_input",
-        "options": "?{ select category from ${ref(products)} union select category from ${ref(sales)} }",
-    }
-    dropdown = DropdownInput(**data)
-
+    # Query with two references should fail during construction (model_validator)
     with pytest.raises(ValueError) as exc_info:
-        dropdown.model_dump(context={"dag": dag})
+        data = {
+            "name": "bad_input",
+            "options": "?{ select category from ${ref(products)} union select category from ${ref(sales)} }",
+        }
+        dropdown = DropdownInput(**data)
 
     assert "references 2 items" in str(exc_info.value)
     assert "must reference exactly one" in str(exc_info.value)
@@ -177,17 +172,15 @@ def test_query_no_reference_fails():
     project = Project(name="test_project", sources=[source])
     dag = project.dag()
 
-    # Query without any reference should fail
-    data = {
-        "name": "bad_input",
-        "options": "?{ select category from products }",
-    }
-    dropdown = DropdownInput(**data)
-
+    # Query without any reference should fail during construction (model_validator)
     with pytest.raises(ValueError) as exc_info:
-        dropdown.model_dump(context={"dag": dag})
+        data = {
+            "name": "bad_input",
+            "options": "?{ select category from products }",
+        }
+        dropdown = DropdownInput(**data)
 
-    assert "must reference exactly one model or insight" in str(exc_info.value)
+    assert "must reference exactly one model" in str(exc_info.value)
 
 
 def test_query_nonexistent_reference_fails():

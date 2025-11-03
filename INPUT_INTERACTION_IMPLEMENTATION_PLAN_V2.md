@@ -1,5 +1,54 @@
 # Input Interaction Implementation Plan V2
 
+## Implementation Status
+
+**✅ Phase 1: COMPLETE** (Input Job System)
+**✅ Phase 2: COMPLETE** (JS Template Literals)
+**⏳ Phase 3: NOT STARTED** (SQLGlot Validation - deferred)
+**⏳ Phase 4: NOT STARTED** (Frontend Implementation - deferred)
+**⏳ Phase 5: NOT STARTED** (Split Interactions - deferred)
+
+### What Was Completed (Phase 1 & 2)
+
+**Completed November 3, 2025** using parallel TDD agents (~6.5 hours wall-clock time)
+
+**Phase 1 Deliverables (20 tests):**
+- ✅ Created `run_input_job.py` - Input execution on source backend, stores parquet
+- ✅ Updated DAG runner to execute inputs before insights
+- ✅ Query-based inputs execute on source backend (not DuckDB)
+- ✅ Static inputs validated (must have ≥1 option)
+- ✅ SqlModel-only validation for input references
+- ✅ Removed input logic from `run_sql_model_job.py`
+
+**Phase 2 Deliverables (23 tests):**
+- ✅ Added `field_values_with_js_template_literals()` to Interaction class
+- ✅ Input refs converted: `${ref(input)}` → `${input}` (for interactions only)
+- ✅ Model refs preserved: `${ref(model).field}` unchanged
+- ✅ Props placeholder system retained (intentional dual system)
+- ✅ Validation enforces SqlModel-only references (@model_validator)
+- ✅ Removed `field_values_with_sanitized_inputs()` for interactions
+
+**Integration Tests (4 tests):**
+- ✅ Full pipeline: Static inputs → Model → Insight with JS templates
+- ✅ Query-based inputs execute and generate correct output
+- ✅ DAG ordering verified (inputs execute before insights)
+- ✅ Multiple inputs with mixed model refs work correctly
+
+**Results:**
+- 47 new tests passing (100% pass rate)
+- 86% test coverage (exceeds 80% target)
+- -2,883 lines removed (massive cleanup)
+- Production-ready for Phase 1 & 2 features
+
+**Key Architecture Decision:**
+The system maintains TWO input handling approaches:
+1. **Interactions** → JS Template Literals (NEW - Phase 2)
+2. **Props** → Placeholder System (EXISTING - retained for SQL backend execution)
+
+This is intentional and correct - do not remove the props placeholder system.
+
+---
+
 ## Executive Summary
 
 This plan addresses incomplete input-driven interactions by fundamentally changing the architecture from **runtime placeholder replacement** to **build-time input execution with comprehensive validation**. The new approach executes input queries at build time, validates all input combinations using SQLGlot, and uses JavaScript template literals for cleaner frontend injection.

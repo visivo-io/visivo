@@ -1,6 +1,6 @@
 from typing import List, Literal, Optional, Union
 
-from pydantic import Field, model_serializer
+from pydantic import Field, model_serializer, model_validator
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.query_string import QueryString
 from visivo.models.fields import QueryOrStringField
@@ -15,10 +15,87 @@ class DropdownInput(Input):
     )
     multi: bool = Field(False, description="Allow multi-select")
 
-    def query_placeholder(self):
-        placeholder = "'visivo-input-placeholder-string'"
-        comment = f" /* replace('visivo-input-placeholder-string', Input({self.name}) ) */"
-        return placeholder, comment
+    @model_validator(mode="after")
+    def validate_query_references(self):
+        """
+        Validate that query-based options reference exactly one SqlModel (not Insight).
+
+        This is compile-time validation using Pydantic's model_validator to ensure
+        the input can be executed on the source backend during the build phase.
+
+        Runs automatically during model initialization.
+
+        Raises:
+            ValueError: If query doesn't reference exactly one item
+        """
+        # Only validate query-based options
+        if not isinstance(self.options, QueryString):
+            return self
+
+        from visivo.query.patterns import extract_ref_names
+
+        query_value = self.options.get_value()
+        refs = extract_ref_names(query_value)
+
+        # Must reference exactly one item
+        if len(refs) == 0:
+            raise ValueError(
+                f"Input '{self.name}' query must reference exactly one model using ${{ref(model_name)}}.\n"
+                f"Example: ?{{ SELECT DISTINCT category FROM ${{ref(products)}} }}"
+            )
+
+        if len(refs) > 1:
+            raise ValueError(
+                f"Input '{self.name}' query references {len(refs)} items ({', '.join(refs)}) "
+                f"but must reference exactly one model.\n"
+                f"Example: ?{{ SELECT DISTINCT category FROM ${{ref(products)}} }}"
+            )
+
+        # Ref count validation passed
+        return self
+
+    def _validate_query_reference_type(self, dag) -> None:
+        """
+        Helper method to validate reference type when DAG is available.
+
+        Called from serialize_model() where DAG context is guaranteed.
+
+        Raises:
+            ValueError: If query references non-SqlModel items
+        """
+        if not isinstance(self.options, QueryString):
+            return
+
+        from visivo.models.models.sql_model import SqlModel
+        from visivo.query.patterns import extract_ref_names
+
+        query_value = self.options.get_value()
+        refs = extract_ref_names(query_value)
+
+        if not refs:
+            return
+
+        # extract_ref_names returns a set, convert to list to access first element
+        model_name = list(refs)[0]
+
+        # Look up referenced item
+        try:
+            item = dag.get_descendant_by_name(model_name)
+        except (ValueError, AttributeError):
+            raise ValueError(
+                f"Input '{self.name}' references '{model_name}' which was not found in the project.\n"
+                f"Ensure the model '{model_name}' is defined and spelled correctly."
+            )
+
+        # CRITICAL: Must be SqlModel, not Insight
+        # Input queries execute on source backend at build time, so they need direct SQL
+        if not isinstance(item, SqlModel):
+            raise ValueError(
+                f"Input '{self.name}' query can only reference SqlModel objects, not {type(item).__name__}.\n"
+                f"Found reference to: '{model_name}' (type: {type(item).__name__})\n"
+                f"Input queries execute on the source backend at build time and require direct model SQL.\n"
+                f"If you need to reference an insight, create a model from the insight's query instead."
+            )
 
     def _validate_query(self, query_sql: str, dialect: str = "duckdb") -> None:
         """
@@ -159,11 +236,24 @@ class DropdownInput(Input):
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):
+        """
+        Custom serializer that validates query references when DAG is available.
+
+        This is where we can guarantee DAG context exists for reference type checking.
+        """
+        # Validate query reference type if DAG is available
+        dag = None
+        output_dir = ""
+        if info and hasattr(info, "context") and isinstance(info.context, dict):
+            dag = info.context.get("dag")
+            output_dir = info.context.get("output_dir", "")
+            if dag:
+                self._validate_query_reference_type(dag)
+
+        # Continue with standard serialization
         model = serializer(self)
 
         if model.get("options"):
-            dag = info.context.get("dag") if info and info.context else None
-            output_dir = info.context.get("output_dir") if info and info.context else ""
 
             if isinstance(self.options, list):
                 # Static list options

@@ -139,11 +139,12 @@ def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
 
 
 def job(dag, output_dir: str, sql_model: SqlModel):
-    """Create a Job for the SQL model if it's referenced by a dynamic insight or input.
+    """Create a Job for the SQL model if it's referenced by a dynamic insight.
 
     A job with parquet generation is created if this SQL model is:
-    1. Referenced by a dynamic insight (has Input descendants), OR
-    2. Referenced directly by an Input's query-based options
+    - Referenced by a dynamic insight (has Input descendants)
+
+    NOTE: Input-related logic REMOVED - inputs now have their own job system via run_input_job.py
 
     Args:
         dag: The project DAG
@@ -154,13 +155,9 @@ def job(dag, output_dir: str, sql_model: SqlModel):
         Job object with appropriate action (parquet + schema or schema-only)
     """
     from visivo.models.inputs.input import Input
-    from visivo.models.inputs.types.dropdown import DropdownInput
-    from visivo.models.base.query_string import QueryString
-    from visivo.query.patterns import extract_ref_names
 
-    # Find all insights and inputs in the project
+    # Find all insights in the project
     insights = all_descendants_of_type(type=Insight, dag=dag)
-    inputs = all_descendants_of_type(type=Input, dag=dag)
 
     # Get source for the model
     source = get_source_for_model(sql_model, dag, output_dir)
@@ -179,23 +176,7 @@ def job(dag, output_dir: str, sql_model: SqlModel):
                     output_dir=output_dir,
                 )
 
-    # Check if any input references this model directly in query-based options
-    for input_item in inputs:
-        if isinstance(input_item, DropdownInput) and isinstance(input_item.options, QueryString):
-            query_str = str(input_item.options)
-            ref_names = extract_ref_names(query_str)
-            if sql_model.name in ref_names:
-                # This model is referenced by an input query, need parquet file
-                return Job(
-                    item=sql_model,
-                    source=source,
-                    action=model_query_and_schema_action,
-                    sql_model=sql_model,
-                    dag=dag,
-                    output_dir=output_dir,
-                )
-
-    # Not referenced by any dynamic insight or input, run the schema-only action
+    # Not referenced by any dynamic insight, run the schema-only action
     return Job(
         item=sql_model,
         source=source,

@@ -149,7 +149,7 @@ class Insight(NamedModel, ParentModel):
         if not self.interactions:
             return interactions
         for interaction in self.interactions:
-            for field_type, field_value in interaction.field_values_with_sanitized_inputs(
+            for field_type, field_value in interaction.field_values_with_js_template_literals(
                 dag=dag
             ).items():
                 interactions.append((field_type, field_value))

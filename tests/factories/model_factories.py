@@ -26,6 +26,25 @@ from visivo.models.dbt import Dbt
 from visivo.models.relation import Relation
 from visivo.models.metric import Metric
 from visivo.models.dimension import Dimension
+from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.base.query_string import QueryString
+
+
+class InputFactory(factory.Factory):
+    class Meta:
+        model = DropdownInput
+
+    name = "test_input"
+    label = "Test Input"
+    options = ["A", "B", "C"]
+    default = None
+
+    class Params:
+        query_based = factory.Trait(
+            options=factory.LazyAttribute(
+                lambda o: QueryString(value="?{ SELECT x FROM ${ref(data)} }")
+            )
+        )
 
 
 class MetricFactory(factory.Factory):

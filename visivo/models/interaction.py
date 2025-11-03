@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict
 from pydantic import BaseModel, Field
 
 from re import Match
@@ -37,29 +37,50 @@ class InsightInteraction(BaseModel):
                 fields[field_name] = field_value.get_value()
         return fields
 
-    def field_values_with_sanitized_inputs(self, dag: ProjectDag) -> dict:
+    def field_values_with_js_template_literals(self, dag: ProjectDag) -> dict:
+        """
+        Convert input references to JavaScript template literal syntax.
 
-        def replace_only_inputs(text: str) -> str:
-            comments = []
+        Transforms: ${ref(input_name)} → ${input_name}
 
+        This allows clean injection in frontend using JS template literals.
+        Non-input refs (models, dimensions) are left unchanged.
+
+        Examples:
+            - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
+            - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
+
+        Args:
+            dag: Project DAG for looking up references
+
+        Returns:
+            Dict with filter/split/sort keys and converted values
+        """
+
+        def replace_input_refs(text: str) -> str:
             def repl(m: Match) -> str:
                 name = m.group("model_name").strip()
-                prop = m.group("property_path") or ""
-                node = dag.get_descendant_by_name(name)
-                if isinstance(node, Input):
-                    placeholder, comment = node.query_placeholder()
-                    comments.append(comment)
-                    return placeholder
-                return m.group(0)  # return match as is if not input
 
-            expr_sanitized_inputs = CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
-            comment_str = "".join(comments)
-            expr_sanitized_inputs_and_comments = expr_sanitized_inputs + comment_str
-            return expr_sanitized_inputs_and_comments
+                try:
+                    node = dag.get_descendant_by_name(name)
+
+                    if isinstance(node, Input):
+                        # Convert input ref to JS template literal syntax
+                        # ${ref(threshold)} → ${threshold}
+                        return f"${{{name}}}"
+
+                    # Not an input - leave unchanged (model/dimension ref)
+                    return m.group(0)
+                except:
+                    # Ref not found - leave unchanged
+                    return m.group(0)
+
+            return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
 
         fields = {}
         for field_name in ["filter", "split", "sort"]:
             field_value = getattr(self, field_name, None)
             if field_value is not None:
-                fields[field_name] = replace_only_inputs(field_value.get_value())
+                fields[field_name] = replace_input_refs(field_value.get_value())
+
         return fields
