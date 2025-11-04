@@ -155,41 +155,47 @@ class Insight(NamedModel, ParentModel):
                 interactions.append((field_type, field_value))
         return interactions
 
-    def _sanitize_input_refs(self, text: str, dag: ProjectDag) -> str:
-        """Replace ${ref(input)} with placeholders, leave model/metric/dimension refs intact.
+    def _convert_input_refs_to_js_templates(self, text: str, dag: ProjectDag) -> str:
+        """Convert ${ref(input)} to ${input}, leave model/metric/dimension refs intact.
 
-        This method replaces input references with placeholder strings that can be substituted
-        by the frontend. Model, metric, and dimension references are left unchanged for the
-        FieldResolver to handle.
+        This method converts input references to JavaScript template literal syntax for
+        client-side interpolation. Model, metric, and dimension references are left
+        unchanged for the FieldResolver to handle.
+
+        Transforms: ${ref(input_name)} → ${input_name}
 
         Args:
             text: SQL expression that may contain ${ref(...)} patterns
             dag: Project DAG for looking up nodes
 
         Returns:
-            SQL expression with input refs replaced by placeholders, model refs unchanged
+            SQL expression with input refs converted to JS template literals, model refs unchanged
+
+        Examples:
+            - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
+            - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
         """
         from visivo.models.inputs import Input
-        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED
+        from visivo.query.patterns import (
+            CONTEXT_STRING_REF_PATTERN_COMPILED,
+            get_model_name_from_match,
+        )
         from re import Match
 
-        comments = []
-
         def repl(m: Match) -> str:
-            name = m.group("model_name").strip()
+            name = get_model_name_from_match(m)
             try:
                 node = dag.get_descendant_by_name(name)
                 if isinstance(node, Input):
-                    placeholder, comment = node.query_placeholder()
-                    comments.append(comment)
-                    return placeholder
+                    # Convert input ref to JS template literal syntax
+                    # ${ref(threshold)} → ${threshold}
+                    return f"${{{name}}}"
             except (ValueError, AttributeError):
                 # Node not found or error - leave the ref as-is for FieldResolver
                 pass
             return m.group(0)  # Keep non-input refs unchanged
 
-        sanitized = CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
-        return sanitized + "".join(comments)
+        return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
 
     def get_all_query_statements(self, dag):
         query_statements = []
@@ -197,12 +203,12 @@ class Insight(NamedModel, ParentModel):
         query_statements += interaction_query_statements
         if self.props:
             props_statements = self.props.extract_query_strings()
-            # Sanitize input refs in each props statement
-            sanitized_props = []
+            # Convert input refs to JS template literals in each props statement
+            converted_props = []
             for key, value in props_statements:
-                sanitized_value = self._sanitize_input_refs(value, dag)
-                sanitized_props.append((key, sanitized_value))
-            query_statements += sanitized_props
+                converted_value = self._convert_input_refs_to_js_templates(value, dag)
+                converted_props.append((key, converted_value))
+            query_statements += converted_props
         return query_statements
 
     def is_dynamic(self, dag) -> bool:

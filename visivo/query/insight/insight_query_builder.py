@@ -42,6 +42,7 @@ class InsightQueryBuilder:
         self.dag = dag
         self.output_dir = output_dir
         self.insight_hash = insight.name_hash()
+        self.insight_name = insight.name
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
         self.is_dyanmic = insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
@@ -98,7 +99,7 @@ class InsightQueryBuilder:
         """Sets the resolved_query_statements"""
         resolved_query_statements = []
         for key, statement in self.unresolved_query_statements:
-            if key == "filter":
+            if key in ("filter", "sort"):
                 resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
             else:
                 resolved_statement = self.field_resolver.resolve(expression=statement)
@@ -108,13 +109,142 @@ class InsightQueryBuilder:
 
     def _build_main_query(self):
         """
-        Pull all of the _build methods together adding them to a single sqlglot AST. This method should format the query
-        and it should transpile it to duckdb if the query is dynamic because that's where the main query will run in that
-        case. The _build methods should be writing sql in the native source dialect of the insight up till this point.
-        """
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        Build the main query SQL.
 
+        - For DYNAMIC insights: Build SQL string directly to preserve ${input_name} placeholders
+        - For STATIC insights: Use SQLGlot AST for validation and formatting
+
+        Dynamic insights skip SQLGlot AST building because SQLGlot misinterprets ${input_name}
+        as PostgreSQL syntax. Since dynamic queries run in DuckDB WASM (browser), runtime
+        validation is sufficient.
+        """
+        if self.is_dyanmic:
+            # Dynamic query: Skip SQLGlot AST to preserve input placeholders
+            return self._build_dynamic_query_string_directly()
+        else:
+            # Static query: Use SQLGlot AST for validation and formatting
+            native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
+            return self._build_static_query_with_sqlglot(native_dialect)
+
+    def _build_dynamic_query_string_directly(self):
+        """
+        Build SQL query string directly for dynamic insights without using SQLGlot AST.
+
+        This avoids SQLGlot parsing issues with ${input_name} template literals.
+        The resolved_query_statements already have field references resolved by FieldResolver,
+        so we just need to assemble them into a properly formatted SQL string.
+
+        Dynamic insights always query from registered parquet tables (model hashes).
+
+        Returns:
+            Formatted SQL string with ${input_name} placeholders preserved
+        """
+        # Collect SELECT expressions (props)
+        select_clauses = []
+        for key, statement in self.resolved_query_statements:
+            if key.startswith("props."):
+                select_clauses.append(statement)
+
+        if not select_clauses:
+            raise ValueError("Dynamic insight must have at least one prop for SELECT clause")
+
+        # Collect FROM clause - use model hash as table name
+        # Dynamic insights query from registered parquet tables
+        if not self.models:
+            raise ValueError("Dynamic insight must have at least one model")
+
+        # Get model names and hashes for FROM/JOIN
+        model_names = [model.name for model in self.models]
+        name_to_hash = {model.name: model.name_hash() for model in self.models}
+
+        # Build FROM clause and JOINs if multiple models
+        if len(model_names) == 1:
+            from_clause = f'"{name_to_hash[model_names[0]]}"'
+            join_clauses = []
+        else:
+            # Multiple models: use RelationGraph to determine join plan
+            join_plan = self.relation_graph.get_join_plan(model_names)
+            from_model_hash = name_to_hash[join_plan["from_model"]]
+            from_clause = f'"{from_model_hash}"'
+
+            # Build JOIN clauses
+            join_clauses = []
+            for _left, right, condition, join_type in join_plan["joins"]:
+                right_hash = name_to_hash[right]
+                join_type_str = join_type.upper() if join_type else "INNER"
+                join_clauses.append(f'{join_type_str} JOIN "{right_hash}" ON {condition}')
+
+        # Collect WHERE conditions (non-aggregate, non-window filters)
+        where_conditions = []
+        for key, statement in self.resolved_query_statements:
+            if key == "filter":
+                # Parse to check if it's non-aggregate and non-window
+                parsed = parse_expression(statement, "duckdb")
+                if parsed and not has_aggregate_function(parsed) and not has_window_function(
+                    parsed
+                ):
+                    where_conditions.append(statement)
+
+        # Collect GROUP BY expressions
+        # Extract non-aggregated expressions from SELECT clauses
+        group_by_clauses = []
+        for select_clause in select_clauses:
+            # Parse the clause to find non-aggregated expressions
+            parsed = parse_expression(select_clause.split(" AS ")[0], "duckdb")
+            if parsed:
+                non_agg_exprs = find_non_aggregated_expressions(parsed)
+                for expr_str in non_agg_exprs:
+                    if expr_str not in group_by_clauses:
+                        group_by_clauses.append(expr_str)
+
+        # Collect HAVING conditions (aggregate filters)
+        having_conditions = []
+        for key, statement in self.resolved_query_statements:
+            if key == "filter":
+                parsed = parse_expression(statement, "duckdb")
+                if parsed and has_aggregate_function(parsed):
+                    having_conditions.append(statement)
+
+        # Collect ORDER BY (sort interactions)
+        order_by_clauses = []
+        for key, statement in self.resolved_query_statements:
+            if key == "sort":
+                order_by_clauses.append(statement)
+
+        # Assemble query
+        query_parts = ["SELECT"]
+        query_parts.append("  " + ",\n  ".join(select_clauses))
+        query_parts.append(f"FROM {from_clause}")
+
+        if join_clauses:
+            for join_clause in join_clauses:
+                query_parts.append(join_clause)
+
+        if where_conditions:
+            query_parts.append("WHERE")
+            query_parts.append("  " + " AND ".join(where_conditions))
+
+        if group_by_clauses:
+            query_parts.append("GROUP BY")
+            query_parts.append("  " + ", ".join(group_by_clauses))
+
+        if having_conditions:
+            query_parts.append("HAVING")
+            query_parts.append("  " + " AND ".join(having_conditions))
+
+        if order_by_clauses:
+            query_parts.append("ORDER BY")
+            query_parts.append("  " + ", ".join(order_by_clauses))
+
+        return "\n".join(query_parts)
+
+    def _build_static_query_with_sqlglot(self, target_dialect):
+        """
+        Build query using SQLGlot AST for non-dynamic insights.
+
+        This provides validation and proper dialect transpilation for insights
+        without input references.
+        """
         # Build all the query components
         ctes = self._build_ctes()
         select_expressions = self._build_main_select()
@@ -273,7 +403,7 @@ class InsightQueryBuilder:
                 # Strip ASC/DESC from the statement
                 cleaned_statement = strip_sort_order(statement, native_dialect)
 
-                # Parse the cleaned statement
+                # Parse the statement
                 parsed_expr = parse_expression(cleaned_statement, native_dialect)
 
                 if parsed_expr:
@@ -583,8 +713,9 @@ class InsightQueryBuilder:
             "is_dynamic": self.is_dyanmic,
         }
 
-        # VALIDATE POST-QUERY (runs in DuckDB WASM - critical!)
-        if post_query:
+        # Skip validation for dynamic queries since they contain ${input_name} placeholders
+        # that will be filled in by the frontend before execution
+        if post_query and not self.is_dyanmic:
             from visivo.query.sqlglot_utils import validate_query
 
             self.logger.debug(f"Validating post_query for insight: {self.insight_hash}")
@@ -592,7 +723,7 @@ class InsightQueryBuilder:
             validate_query(
                 query_sql=post_query,
                 dialect="duckdb",
-                insight_name=self.insight_hash,
+                insight_name=self.insight_name,
                 query_type="post_query",
                 context=context,
                 raise_on_error=True,  # Fail build on invalid SQL
@@ -606,12 +737,12 @@ class InsightQueryBuilder:
 
             native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
 
-            self.logger.debug(f"Validating pre_query for insight: {self.insight_hash}")
+            self.logger.debug(f"Validating pre_query for insight: {self.insight_name}")
 
             validate_query(
                 query_sql=pre_query,
                 dialect=native_dialect,
-                insight_name=self.insight_hash,
+                insight_name=self.insight_name,
                 query_type="pre_query",
                 context=context,
                 raise_on_error=True,

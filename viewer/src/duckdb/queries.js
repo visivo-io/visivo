@@ -1,4 +1,3 @@
-import { ContextString } from '../utils/contextString';
 import { getTempFilename } from './duckdb';
 import { getParquetCache } from './parquetCache';
 
@@ -129,82 +128,45 @@ export const tableDuckDBExists = async (db, tableName) => {
 };
 
 /**
- * Prepare post query by replacing input placeholders with actual values
+ * Prepare post query by replacing input placeholders with actual values using template literals
  *
- * Handles two formats:
- * 1. Old format: ${ref(input_name)} - directly in query
- * 2. New format: 'visivo-input-placeholder-string' with comment containing Input(name)
+ * Uses JavaScript template literal evaluation to inject input values AS-IS (no quoting).
+ * Values are expected to come from backend input queries which already include proper SQL formatting.
  *
- * @param {Object} insight
- * @param {Object} inputs
- * @returns {String}
+ * @param {Object} insight - Insight object with query containing ${inputName} placeholders
+ * @param {Object} inputs - Object mapping input names to their values (as strings)
+ * @returns {String} - Query with all placeholders replaced by actual values
  */
 export const prepPostQuery = (insight, inputs) => {
-  let query = insight.query;
+  const query = insight.query;
 
-  // Pattern 1: Handle new placeholder format with comments
-  // Matches: 'visivo-input-placeholder-string' /* replace('visivo-input-placeholder-string', Input(input_name)) */
-  // eslint-disable-next-line no-useless-escape
-  const placeholderPattern = new RegExp(
-    "'visivo-input-placeholder-string'\\s*\\/\\*\\s*replace\\('visivo-input-placeholder-string',\\s*Input\\(([^)]+)\\)\\s*\\)\\s*(?:AS\\s+\"[^\"]+\")?\\s*\\*\\/",
-    'g'
-  );
-
-  query = query.replace(placeholderPattern, (match, inputName) => {
-    const trimmedName = inputName.trim();
-    const inputValue = inputs[trimmedName];
-
-    if (inputValue === undefined) {
-      console.warn(`Input '${trimmedName}' not found in inputs store, leaving placeholder`);
-      return match; // Leave as-is if input not found
-    }
-
-    // Format value based on type
-    if (Array.isArray(inputValue)) {
-      if (inputValue.length === 0) {
-        return '(NULL)';
-      }
-      return `(${inputValue.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')})`;
-    } else if (typeof inputValue === 'string') {
-      return `'${inputValue}'`;
-    } else {
-      return String(inputValue);
-    }
-  });
-
-  // Pattern 2: Handle old ${ref(input_name)} format (for backwards compatibility)
-  const contextObj = new ContextString(query);
-  const refs = contextObj.getAllRefs();
-
-  if (refs.length > 0) {
-    refs.forEach(refStr => {
-      const refCtx = new ContextString(refStr);
-      const insightName = refCtx.getReference();
-
-      if (insightName) {
-        const input = inputs[insightName];
-
-        if (input !== undefined) {
-          let value;
-          if (Array.isArray(input)) {
-            if (input.length === 0) {
-              query = query.replace(refStr, '(NULL)');
-            } else {
-              value = `(${input.map(v => (typeof v === 'string' ? `'${v}'` : v)).join(', ')})`;
-              query = query.replace(refStr, value);
-            }
-          } else if (typeof input === 'string') {
-            const value = `'${input}'`;
-            query = query.replace(refStr, value);
-          } else {
-            query = query.replace(refStr, input);
-          }
-        }
-      }
-    });
+  if (!query) {
+    console.warn('Insight has no query');
+    return '';
   }
 
-  return query;
+  try {
+    // Extract input keys and values
+    const inputKeys = Object.keys(inputs);
+    const inputValues = Object.values(inputs);
+
+    // Convert all values to strings AS-IS (no additional quoting)
+    const stringValues = inputValues.map(value => String(value));
+
+    // Create a function that evaluates the query as a template literal
+    // This safely injects values without regex manipulation
+    // eslint-disable-next-line no-new-func
+    const templateFunc = new Function(...inputKeys, `return \`${query}\`;`);
+
+    // Execute the template function with the input values
+    const result = templateFunc(...stringValues);
+
+    console.debug('Query prepared:', result);
+    return result;
+  } catch (error) {
+    console.error('Failed to inject input values into query:', error);
+    throw new Error(`Query preparation failed: ${error.message}`);
+  }
 };
 
 /**

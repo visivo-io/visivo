@@ -5,10 +5,20 @@ import { getParquetCache } from '../duckdb/parquetCache';
 const createInsightSlice = (set, get) => ({
   insights: {},
   inputs: null,
+  inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
   db: null,
   parquetCache: getParquetCache(), // Singleton cache instance
 
   setDB: db => set({ db }),
+
+  // Set options for a specific input
+  setInputOptions: (inputName, options) =>
+    set(state => ({
+      inputOptions: {
+        ...state.inputOptions,
+        [inputName]: options,
+      },
+    })),
 
   // Parquet cache helpers
   isParquetLoaded: nameHash => {

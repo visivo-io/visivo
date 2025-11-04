@@ -20,6 +20,33 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
     source = get_source_for_model(model, dag, output_dir)
 
     insight_query_info = insight.get_query_info(dag, output_dir)
+
+    # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
+    if insight_query_info.post_query:
+        import re
+        from visivo.query.input_validator import (
+            validate_insight_with_inputs,
+            INPUT_PLACEHOLDER_PATTERN,
+        )
+
+        # Check if post_query has input placeholders
+        has_placeholders = bool(re.search(INPUT_PLACEHOLDER_PATTERN, insight_query_info.post_query))
+
+        if has_placeholders:
+            try:
+                # Validate query with all input combinations
+                validate_insight_with_inputs(
+                    insight=insight,
+                    query=insight_query_info.post_query,
+                    dag=dag,
+                    output_dir=output_dir,
+                    dialect=source.type,  # Use source dialect for validation
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Input validation failed for insight '{insight.name}': {str(e)}"
+                ) from e
+
     try:
         start_time = time()
 

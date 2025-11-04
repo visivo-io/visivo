@@ -208,22 +208,3 @@ class TestDropdownValidation:
 
         # Error should be about missing reference, not column
         assert "not found" in str(exc_info.value)
-
-
-class TestDropdownPlaceholderForProps:
-    """Test that query_placeholder() exists for props but interactions use JS template literals."""
-
-    def test_query_placeholder_method_exists_for_props(self):
-        """
-        Verify query_placeholder() exists for props sanitization.
-
-        Props use placeholders: '${ref(input)}' -> 'visivo-input-placeholder-string'
-        Interactions use JS template literals: '${ref(input)}' -> '${input}'
-        """
-        input_obj = DropdownInput(name="test", options=["A", "B"])
-        assert hasattr(input_obj, "query_placeholder"), "query_placeholder needed for props"
-
-        # Verify it returns the expected format
-        placeholder, comment = input_obj.query_placeholder()
-        assert placeholder == "'visivo-input-placeholder-string'"
-        assert "Input(test)" in comment
