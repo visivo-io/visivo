@@ -1,12 +1,40 @@
 import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
 import { ContextString } from '../utils/contextString';
+import { getParquetCache } from '../duckdb/parquetCache';
 
 const createInsightSlice = (set, get) => ({
   insights: {},
   inputs: null,
+  inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
   db: null,
+  parquetCache: getParquetCache(), // Singleton cache instance
 
   setDB: db => set({ db }),
+
+  // Set options for a specific input
+  setInputOptions: (inputName, options) =>
+    set(state => ({
+      inputOptions: {
+        ...state.inputOptions,
+        [inputName]: options,
+      },
+    })),
+
+  // Parquet cache helpers
+  isParquetLoaded: nameHash => {
+    const cache = get().parquetCache;
+    return cache.isLoaded(nameHash);
+  },
+
+  getParquetCacheStats: () => {
+    const cache = get().parquetCache;
+    return cache.getStats();
+  },
+
+  clearParquetCache: () => {
+    const cache = get().parquetCache;
+    cache.clear();
+  },
 
   setInsights: newInsights =>
     set(state => ({
@@ -72,7 +100,7 @@ const createInsightSlice = (set, get) => ({
               },
             }));
           } catch (err) {
-            // Query failed
+            console.error(`Query for ${insightName} failed:`, err);
           }
         }
       }, 0);

@@ -1,15 +1,13 @@
 from typing import Any
 import re
 
-from visivo.models.dag import all_descendants_with_name
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN,
     INLINE_PATH_REGEX,
     CONTEXT_STRING_VALUE_PATTERN,
     get_model_name_from_match,
+    FIELD_REF_PATTERN,
 )
-
-METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
 class ContextString:
@@ -62,10 +60,10 @@ class ContextString:
 
     def get_item(self, dag: Any) -> Any:
         reference = self.get_reference()
-        items = all_descendants_with_name(reference, dag)
-        if len(items) == 0:
+        try:
+            return dag.get_descendant_by_name(reference)
+        except ValueError:
             raise ValueError(f"Invalid context string reference name: '{reference}'.")
-        return items[0]
 
     def get_ref_attr(self) -> str:
         """
@@ -73,7 +71,7 @@ class ContextString:
         Example:
             'year = ${ref(Selected Year)}' -> '${ref(Selected Year)}'
         """
-        match = re.search(METRIC_REF_PATTERN, self.value)
+        match = re.search(FIELD_REF_PATTERN, self.value)
         if not match:
             return None
         return match.group(0)

@@ -171,9 +171,15 @@ The CLI execution path is introspection-free to maintain performance:
 - **New feature development**: Usually requires changes to both Python models and React components
 - **Adding data sources**: Extend `models/sources/` and update parsing logic
 - **UI changes**: Focus on `viewer/src/components/` and related stores
-- **Testing**: Python tests in `tests/`, JavaScript tests alongside components
+- **Testing**: 
+  - Python tests in `tests/`, JavaScript tests alongside components
+  - Always use @visivo/tests/test_utils.py to create factory_boy pydantic models for artifacts
+  - Add new factories and update existing ones to simplify testing suite
+  - Mocking should be avoided in favor of factory objects 
 - **Documentation updates**: 
   - For configuration: Update model docstrings, then regenerate with `python mkdocs/src/write_mkdocs_markdown_files.py`
   - For topics/guides: Edit files in `mkdocs/topics/` or `mkdocs/background/`
   - For CLI: Update Click command help text, docs auto-generate
 - Never run python based integration tests. If you need to run an integration test, ask the user for help and they will run the test and paste the output into the chat.
+- always use generate_ref_field from @visivo/models/base/base_model.py to create references to other objects in pydantics models
+- NEVER EVER EVER write regex to parse SQL. Always use sqlglot to parse SQL. Never create fall back logic for sql parsing if sqlglot fails then it fails. See @claude-docs/SQLGLOT.md if you need to use sqlglot and want a cheat sheet. 

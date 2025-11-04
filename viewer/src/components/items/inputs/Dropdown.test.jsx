@@ -36,46 +36,41 @@ describe('Dropdown Component', () => {
     expect(screen.getByText('Option A')).toBeInTheDocument();
   });
 
-  it('selects multiple options in multi mode', () => {
+  it('displays default value when provided', () => {
     const setInputValue = jest.fn();
     render(
       <Dropdown
         options={options}
-        isMulti
-        defaultValue={['Option A']}
-        name="multiTest"
+        defaultValue="Option A"
+        name="test"
         setInputValue={setInputValue}
       />
     );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
-
-    const removeButton = screen.getByLabelText('Remove Option A');
-    fireEvent.click(removeButton);
-
-    expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
-  it('removes selected option in multi mode', () => {
+  it('can change selection to a different option', () => {
     const setInputValue = jest.fn();
     render(
       <Dropdown
         options={options}
-        isMulti
-        defaultValue={['Option A']}
-        name="multiTest"
+        defaultValue="Option A"
+        name="test"
         setInputValue={setInputValue}
       />
     );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
 
-    const removeButton = screen.getByLabelText('Remove Option A');
-    fireEvent.click(removeButton);
+    // Open dropdown
+    fireEvent.click(screen.getByRole('button'));
 
-    fireEvent.click(removeButton);
+    // Select Option B
+    fireEvent.click(screen.getByText('Option B'));
 
-    expect(screen.queryByText('Option A')).not.toBeInTheDocument();
+    // Option B should now be selected
+    expect(screen.getByText('Option B')).toBeInTheDocument();
   });
 
   it('supports keyboard navigation (ArrowDown + Enter)', () => {

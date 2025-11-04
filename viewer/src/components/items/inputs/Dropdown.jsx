@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaChevronDown, FaTimes } from 'react-icons/fa';
-import { runDuckDBQuery } from '../../../duckdb/queries';
-import { useDuckDB } from '../../../contexts/DuckDBContext';
+import { FaChevronDown } from 'react-icons/fa';
 import DropdownOptions from './DropdownOptions';
 import {
   DropdownButton,
@@ -10,24 +8,20 @@ import {
   LoadingBar,
   LoadingContainer,
   SearchInput,
-  SelectedTag,
 } from '../../styled/DropdownButton';
 
 const Dropdown = ({
   label = '',
   options: rawOptions,
-  isMulti = false,
   defaultValue: rawDefaultValue,
   placeholder = 'Select option...',
   name,
   setInputValue,
   setDefaultInputValue,
-  isQuery = false,
 }) => {
-  const db = useDuckDB();
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState([]);
-  const [selectedItems, setSelectedItems] = useState(isMulti ? [] : null);
+  const [selectedItems, setSelectedItems] = useState(null); // Single-select only
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
@@ -39,40 +33,22 @@ const Dropdown = ({
   );
 
   useEffect(() => {
-    const initializeDropdown = async () => {
+    const initializeDropdown = () => {
       setLoading(true);
-      let opts = [];
 
-      if (isQuery) {
-        const result = await runDuckDBQuery(db, rawOptions, 1000).catch(() => false);
-        const values = result?.getChildAt(0);
-        if (values) {
-          opts = Array.from({ length: values.length }, (_, i) => {
-            const val = values.get(i);
-            return { id: val, label: val };
-          });
-        }
-      } else if (Array.isArray(rawOptions)) {
-        opts = rawOptions.map(option => ({
-          id: option,
-          label: option,
-        }));
-      }
+      // Format pre-computed options from store
+      const opts = Array.isArray(rawOptions)
+        ? rawOptions.map(option => ({
+            id: option,
+            label: option,
+          }))
+        : [];
 
       setOptions(opts);
 
+      // Set default value (single-select only)
       if (rawDefaultValue) {
-        let defVal;
-
-        if (isMulti) {
-          defVal =
-            Array.isArray(rawDefaultValue) && rawDefaultValue.length > 0
-              ? rawDefaultValue.map(d => ({ id: d, label: d }))
-              : [];
-        } else {
-          defVal = { id: rawDefaultValue, label: rawDefaultValue };
-        }
-
+        const defVal = { id: rawDefaultValue, label: rawDefaultValue };
         setSelectedItems(defVal);
 
         if (setDefaultInputValue) {
@@ -84,20 +60,13 @@ const Dropdown = ({
     };
 
     initializeDropdown();
-  }, [db, rawOptions, rawDefaultValue, isQuery, isMulti, name, setDefaultInputValue]);
+  }, [rawOptions, rawDefaultValue, name, setDefaultInputValue]);
 
   useEffect(() => {
     if (name && setInputValue && !loading) {
-      if (isMulti) {
-        setInputValue(
-          name,
-          selectedItems.map(item => item.id)
-        );
-      } else {
-        setInputValue(name, selectedItems?.id);
-      }
+      setInputValue(name, selectedItems?.id);
     }
-  }, [selectedItems, name, isMulti, setInputValue, loading]);
+  }, [selectedItems, name, setInputValue, loading]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -146,39 +115,12 @@ const Dropdown = ({
   };
 
   const toggleSelection = option => {
-    if (isMulti) {
-      setSelectedItems(prev => {
-        const isSelected = prev.some(item => item.id === option.id);
-        if (isSelected) {
-          return prev.filter(item => item.id !== option.id);
-        } else {
-          return [...prev, option];
-        }
-      });
-    } else {
-      setSelectedItems(option);
-      setIsOpen(false);
-    }
-  };
-
-  const removeSelection = optionId => {
-    if (isMulti) {
-      setSelectedItems(prev => prev.filter(item => item.id !== optionId));
-    } else {
-      setSelectedItems(null);
-    }
-  };
-
-  const clearAll = () => {
-    setSelectedItems(isMulti ? [] : null);
+    setSelectedItems(option);
+    setIsOpen(false);
   };
 
   const isSelected = option => {
-    if (isMulti) {
-      return selectedItems.some(item => item.id === option.id);
-    } else {
-      return selectedItems?.id === option.id;
-    }
+    return selectedItems?.id === option.id;
   };
 
   if (loading) {
@@ -206,38 +148,8 @@ const Dropdown = ({
           onKeyDown={handleKeyDown}
         >
           <div className="flex-1 min-w-0">
-            {(isMulti ? selectedItems.length === 0 : !selectedItems) ? (
+            {!selectedItems ? (
               <span className="text-gray-500">{placeholder}</span>
-            ) : isMulti ? (
-              <div className="flex flex-wrap gap-1">
-                {selectedItems.slice(0, 2).map(item => (
-                  <SelectedTag key={item.id}>
-                    {item.label}
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Remove ${item.label}`}
-                      onClick={e => {
-                        e.stopPropagation();
-                        removeSelection(item.id);
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          removeSelection(item.id);
-                        }
-                      }}
-                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors cursor-pointer"
-                    >
-                      <FaTimes className="w-3 h-3" />
-                    </span>
-                  </SelectedTag>
-                ))}
-                {selectedItems.length > 2 && (
-                  <span className="text-sm text-gray-600">+{selectedItems.length - 2} more</span>
-                )}
-              </div>
             ) : (
               <span className="text-gray-900 truncate">{selectedItems.label}</span>
             )}
@@ -265,24 +177,13 @@ const Dropdown = ({
               />
             </div>
 
-            {isMulti && selectedItems.length > 0 && (
-              <div className="p-2 border-b border-gray-200">
-                <button
-                  onClick={clearAll}
-                  className="text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  Clear all selections
-                </button>
-              </div>
-            )}
-
             <DropdownOptions
               options={options}
               filteredOptions={filteredOptions}
               isSelected={isSelected}
               toggleSelection={toggleSelection}
               highlightedIndex={highlightedIndex}
-              isMulti={isMulti}
+              isMulti={false}
               selectedItems={selectedItems}
             />
           </DropdownMenu>

@@ -2,7 +2,7 @@ from typing import Optional, Literal, Set
 from pydantic import Field, ConfigDict, field_validator
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.query.patterns import extract_model_names, validate_ref_syntax, count_model_references
+from visivo.query.patterns import extract_ref_names, validate_ref_syntax, count_model_references
 
 
 class Relation(NamedModel, ParentModel):
@@ -49,7 +49,7 @@ class Relation(NamedModel, ParentModel):
         Returns:
             Set of model names found in the condition
         """
-        return extract_model_names(self.condition)
+        return extract_ref_names(self.condition)
 
     @field_validator("condition")
     @classmethod
@@ -72,7 +72,7 @@ class Relation(NamedModel, ParentModel):
             raise ValueError(error)
 
         # Check we have at least 2 models
-        models = extract_model_names(v)
+        models = extract_ref_names(v)
         if len(models) < 2:
             raise ValueError(
                 f"Relation condition must reference at least two different models. "
@@ -96,7 +96,7 @@ class Relation(NamedModel, ParentModel):
 
         # Extract all model names from the condition
         if self.condition:
-            model_names = extract_model_names(self.condition)
+            model_names = extract_ref_names(self.condition)
 
             # Convert to ref() format for DAG
             for model_name in model_names:

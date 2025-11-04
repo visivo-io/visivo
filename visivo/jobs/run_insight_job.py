@@ -1,41 +1,90 @@
-from visivo.logger.logger import Logger
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.project import Project
-from visivo.models.sources.source import Source
 from visivo.models.insight import Insight
-from visivo.query.insight_aggregator import InsightAggregator
 from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,
     format_message_success,
-    start_message,
 )
 from time import time
-from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.jobs.utils import get_source_for_model
+import json
+import os
 
 
-def action(insight, dag, output_dir):
+def action(insight: Insight, dag: ProjectDag, output_dir):
     """Execute insight job - tokenize insight and generate insight.json file"""
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    insight_directory = f"{output_dir}/insights/{insight.name}"
-    # Tokenize the insight to get pre-query and metadata
-    tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
+    insight_query_info = insight.get_query_info(dag, output_dir)
+
+    # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
+    if insight_query_info.post_query:
+        import re
+        from visivo.query.input_validator import (
+            validate_insight_with_inputs,
+            INPUT_PLACEHOLDER_PATTERN,
+        )
+
+        # Check if post_query has input placeholders
+        has_placeholders = bool(re.search(INPUT_PLACEHOLDER_PATTERN, insight_query_info.post_query))
+
+        if has_placeholders:
+            try:
+                # Validate query with all input combinations
+                validate_insight_with_inputs(
+                    insight=insight,
+                    query=insight_query_info.post_query,
+                    dag=dag,
+                    output_dir=output_dir,
+                    dialect=source.type,  # Use source dialect for validation
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Input validation failed for insight '{insight.name}': {str(e)}"
+                ) from e
+
     try:
         start_time = time()
 
-        # Execute the pre-query to get raw data
-        flat_data = source.read_sql(tokenized_insight.pre_query)
-        # Aggregate data into flat structure and generate insight.json
-        InsightAggregator.aggregate_insight_data(
-            data=flat_data, insight_dir=insight_directory, tokenized_insight=tokenized_insight
-        )
+        files_directory = f"{output_dir}/files"
+        if insight_query_info.pre_query:
+            import polars as pl
+
+            data = source.read_sql(insight_query_info.pre_query)
+            # Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
+            os.makedirs(files_directory, exist_ok=True)
+            parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
+            df = pl.DataFrame(data)
+            df.write_parquet(parquet_path)
+            files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
+        else:
+            models = insight.get_all_dependent_models(dag=dag)
+            files = [
+                {
+                    "name_hash": model.name_hash(),
+                    "signed_data_file_url": f"{files_directory}/{model.name_hash()}.parquet",
+                }
+                for model in models
+                if os.path.exists(f"{files_directory}/{model.name_hash()}.parquet")
+            ]
+
+        # Store insight metadata with file references and post_query
+        insight_data = {
+            "name": insight.name,
+            "files": files,
+            "query": insight_query_info.post_query,
+            "props_mapping": insight_query_info.props_mapping,
+        }
+
+        insight_directory = f"{output_dir}/insights"
+        insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")
+        os.makedirs(insight_directory, exist_ok=True)
+        with open(insight_path, "w") as f:
+            json.dump(insight_data, f, indent=2)
 
         success_message = format_message_success(
             details=f"Updated data for insight \033[4m{insight.name}\033[0m",
@@ -50,19 +99,12 @@ def action(insight, dag, output_dir):
         else:
             message = repr(e)
         failure_message = format_message_failure(
-            details=f"Failed query for insight \033[4m{insight.name}\033[0m",
+            details=f"Failed job for insight \033[4m{insight.name}\033[0m",
             start_time=start_time,
             full_path=None,
             error_msg=message,
         )
         return JobResult(item=insight, success=False, message=failure_message)
-
-
-def _get_tokenized_insight(insight, dag, output_dir):
-    """Get tokenized insight with pre/post queries"""
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    source = get_source_for_model(model, dag, output_dir)
-    return InsightTokenizer(insight=insight, source=source, model=model, dag=dag).tokenize()
 
 
 def _get_source(insight, dag, output_dir):

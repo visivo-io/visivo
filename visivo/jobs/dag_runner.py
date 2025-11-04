@@ -5,7 +5,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.insight import Insight
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.models.dashboard import Dashboard
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.logger.logger import Logger
 from time import time
@@ -14,6 +14,7 @@ import queue
 import sys
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
+from visivo.models.inputs.input import Input
 from visivo.jobs.job import JobResult
 
 from visivo.jobs.run_csv_script_job import job as csv_script_job
@@ -21,6 +22,8 @@ from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
+from visivo.jobs.run_sql_model_job import job as sql_model_job
+from visivo.jobs.run_input_job import job as input_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -136,6 +139,8 @@ class DagRunner:
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Insight):
             return insight_job(insight=item, output_dir=self.output_dir, dag=self.project_dag)
+        elif isinstance(item, Input):
+            return input_job(dag=self.project_dag, output_dir=self.output_dir, input_obj=item)
         elif isinstance(item, CsvScriptModel):
             return csv_script_job(
                 csv_script_model=item, output_dir=self.output_dir, working_dir=self.working_dir
@@ -144,6 +149,8 @@ class DagRunner:
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
+        elif isinstance(item, SqlModel):
+            return sql_model_job(sql_model=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir)
         return None

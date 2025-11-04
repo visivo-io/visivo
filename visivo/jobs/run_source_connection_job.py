@@ -1,5 +1,4 @@
 from visivo.logger.logger import Logger
-from visivo.models.source import SourceTypeEnum
 from visivo.models.sources.source import Source
 from visivo.jobs.job import (
     Job,
