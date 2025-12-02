@@ -50,6 +50,7 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
 
             # Extract referenced model name
             ref_names = extract_ref_names(query_value)
+            # TODO: We should push this validation into pydantic and not check it in the runner. 
             if len(ref_names) == 0:
                 raise ValueError(
                     f"Input '{input_name}' query must reference exactly one model using ${{ref(name)}}."
@@ -62,6 +63,8 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
             model_name = list(ref_names)[0]
 
             # Get the referenced model from DAG
+            
+            #TODO: validation here should also just happen in pydantic with the parent child relationship. 
             try:
                 model = dag.get_descendant_by_name(model_name)
             except (ValueError, AttributeError) as e:

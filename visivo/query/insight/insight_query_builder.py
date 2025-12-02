@@ -11,7 +11,6 @@ from visivo.query.sqlglot_utils import (
     supports_qualify,
     strip_sort_order,
     parse_expression,
-    get_sqlglot_dialect,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.logger.logger import Logger
@@ -49,6 +48,7 @@ class InsightQueryBuilder:
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
         self.default_database = source.database
+        self.native_dialect = source.get_sqlglot_dialect()
         field_resolver = FieldResolver(
             dag=dag, output_dir=output_dir, native_dialect=source.get_sqlglot_dialect()
         )
@@ -123,8 +123,7 @@ class InsightQueryBuilder:
             return self._build_dynamic_query_string_directly()
         else:
             # Static query: Use SQLGlot AST for validation and formatting
-            native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-            return self._build_static_query_with_sqlglot(native_dialect)
+            return self._build_static_query_with_sqlglot()
 
     def _build_dynamic_query_string_directly(self):
         """
@@ -238,7 +237,7 @@ class InsightQueryBuilder:
 
         return "\n".join(query_parts)
 
-    def _build_static_query_with_sqlglot(self, target_dialect):
+    def _build_static_query_with_sqlglot(self):
         """
         Build query using SQLGlot AST for non-dynamic insights.
 
@@ -254,6 +253,7 @@ class InsightQueryBuilder:
         having_clause = self._build_having()
         qualify_clause = self._build_qualify()
         order_by_expressions = self._build_order_by()
+        target_dialect = self.native_dialect
 
         # Start building the SELECT query
         query = exp.Select()
@@ -335,8 +335,6 @@ class InsightQueryBuilder:
         if self.is_dyanmic:
             return ctes
 
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-
         for model in self.models:
             model_hash = model.name_hash()
 
@@ -347,7 +345,7 @@ class InsightQueryBuilder:
 
             # Non-dynamic insights: Use model.sql directly
             cte_sql = model.sql
-            dialect_for_parse = native_dialect
+            dialect_for_parse = self.native_dialect
 
             # Parse the CTE SQL
             cte_query = sqlglot.parse_one(cte_sql, read=dialect_for_parse)
@@ -394,17 +392,16 @@ class InsightQueryBuilder:
         and filter statements striped of "ASC, DESC".
         """
         select_expressions = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         for key, statement in self.resolved_query_statements:
             # Include props and split statements in SELECT
             if key.startswith("props.") or key == "split":
                 # Strip ASC/DESC from the statement
-                cleaned_statement = strip_sort_order(statement, native_dialect)
+                cleaned_statement = strip_sort_order(statement, self.native_dialect)
 
                 # Parse the statement
-                parsed_expr = parse_expression(cleaned_statement, native_dialect)
+                parsed_expr = parse_expression(cleaned_statement, self.native_dialect)
 
                 if parsed_expr:
                     # Generate alias for the expression
@@ -415,7 +412,7 @@ class InsightQueryBuilder:
 
                     # Transpile to target dialect if needed
                     aliased_expr = parsed_expr
-                    if self.is_dyanmic and target_dialect != native_dialect:
+                    if self.is_dyanmic and target_dialect != self.native_dialect:
                         transpiled = aliased_expr.sql(dialect=target_dialect)
                         aliased_expr = parse_expression(transpiled, target_dialect)
 
@@ -459,18 +456,17 @@ class InsightQueryBuilder:
 
         # Build JOIN clauses
         join_nodes = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         for _left_model_name, right_model_name, condition, join_type in joins:
             # Convert right model name to hash for SQL
             right_model_hash = name_to_hash[right_model_name]
 
             # Parse the join condition
-            join_condition = parse_expression(condition, native_dialect)
+            join_condition = parse_expression(condition, self.native_dialect)
 
             # Transpile if dynamic
-            if self.is_dyanmic and target_dialect != native_dialect:
+            if self.is_dyanmic and target_dialect != self.native_dialect:
                 transpiled = join_condition.sql(dialect=target_dialect)
                 join_condition = parse_expression(transpiled, target_dialect)
 
@@ -490,14 +486,13 @@ class InsightQueryBuilder:
         has_aggregate_function() and add those statments to this clause.
         """
         where_conditions = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         for key, statement in self.resolved_query_statements:
             # Only process filter statements
             if key == "filter":
                 # Parse the filter statement
-                parsed_expr = parse_expression(statement, native_dialect)
+                parsed_expr = parse_expression(statement, self.native_dialect)
 
                 if parsed_expr:
                     # Only include in WHERE if it has no aggregates and no window functions
@@ -505,7 +500,7 @@ class InsightQueryBuilder:
                         parsed_expr
                     ):
                         # Transpile if dynamic
-                        if self.is_dyanmic and target_dialect != native_dialect:
+                        if self.is_dyanmic and target_dialect != self.native_dialect:
                             transpiled = parsed_expr.sql(dialect=target_dialect)
                             parsed_expr = parse_expression(transpiled, target_dialect)
 
@@ -532,8 +527,7 @@ class InsightQueryBuilder:
         It will pull out a list of expressions that need to be added to the groupby.
         """
         group_by_expressions = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         # Get the SELECT expressions to analyze
         select_expressions = self._build_main_select()
@@ -544,11 +538,11 @@ class InsightQueryBuilder:
 
             for expr_str in non_agg_exprs:
                 # Parse the expression
-                parsed_expr = parse_expression(expr_str, native_dialect)
+                parsed_expr = parse_expression(expr_str, self.native_dialect)
 
                 if parsed_expr:
                     # Transpile if dynamic
-                    if self.is_dyanmic and target_dialect != native_dialect:
+                    if self.is_dyanmic and target_dialect != self.native_dialect:
                         transpiled = parsed_expr.sql(dialect=target_dialect)
                         parsed_expr = parse_expression(transpiled, target_dialect)
 
@@ -570,20 +564,19 @@ class InsightQueryBuilder:
         those entire statments to this clause.
         """
         having_conditions = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         for key, statement in self.resolved_query_statements:
             # Only process filter statements
             if key == "filter":
                 # Parse the filter statement
-                parsed_expr = parse_expression(statement, native_dialect)
+                parsed_expr = parse_expression(statement, self.native_dialect)
 
                 if parsed_expr:
                     # Only include in HAVING if it has aggregates
                     if has_aggregate_function(parsed_expr):
                         # Transpile if dynamic
-                        if self.is_dyanmic and target_dialect != native_dialect:
+                        if self.is_dyanmic and target_dialect != self.native_dialect:
                             transpiled = parsed_expr.sql(dialect=target_dialect)
                             parsed_expr = parse_expression(transpiled, target_dialect)
 
@@ -612,8 +605,7 @@ class InsightQueryBuilder:
         Find filter statements that have have windows in the resolved sql via sqlglot utils
         has_window_function() and add those statments to this clause.
         """
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         # Check if the target dialect supports QUALIFY
         if not supports_qualify(target_dialect):
@@ -627,13 +619,13 @@ class InsightQueryBuilder:
             # Only process filter statements
             if key == "filter":
                 # Parse the filter statement
-                parsed_expr = parse_expression(statement, native_dialect)
+                parsed_expr = parse_expression(statement, self.native_dialect)
 
                 if parsed_expr:
                     # Only include in QUALIFY if it has window functions
                     if has_window_function(parsed_expr):
                         # Transpile if dynamic
-                        if self.is_dyanmic and target_dialect != native_dialect:
+                        if self.is_dyanmic and target_dialect != self.native_dialect:
                             transpiled = parsed_expr.sql(dialect=target_dialect)
                             parsed_expr = parse_expression(transpiled, target_dialect)
 
@@ -659,18 +651,17 @@ class InsightQueryBuilder:
         functions and add those statments to this clause.
         """
         order_by_expressions = []
-        native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-        target_dialect = "duckdb" if self.is_dyanmic else native_dialect
+        target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
 
         for key, statement in self.resolved_query_statements:
             # Only process sort statements
             if key == "sort":
                 # Parse the sort statement (preserving ASC/DESC)
-                parsed_expr = parse_expression(statement, native_dialect)
+                parsed_expr = parse_expression(statement, self.native_dialect)
 
                 if parsed_expr:
                     # Transpile if dynamic
-                    if self.is_dyanmic and target_dialect != native_dialect:
+                    if self.is_dyanmic and target_dialect != self.native_dialect:
                         transpiled = parsed_expr.sql(dialect=target_dialect)
                         parsed_expr = parse_expression(transpiled, target_dialect)
 
@@ -735,13 +726,11 @@ class InsightQueryBuilder:
         if pre_query and not self.is_dyanmic:
             from visivo.query.sqlglot_utils import validate_query
 
-            native_dialect = get_sqlglot_dialect(self.field_resolver.native_dialect)
-
             self.logger.debug(f"Validating pre_query for insight: {self.insight_name}")
 
             validate_query(
                 query_sql=pre_query,
-                dialect=native_dialect,
+                dialect=self.native_dialect,
                 insight_name=self.insight_name,
                 query_type="pre_query",
                 context=context,
