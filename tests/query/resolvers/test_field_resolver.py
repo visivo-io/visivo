@@ -743,3 +743,130 @@ class TestFieldResolverCaseStatements:
 
         # Should have an alias
         assert " AS " in result
+
+
+class TestFieldResolverSortExpressions:
+    """Test resolution of sort expressions with ASC/DESC modifiers."""
+
+    def test_resolve_sort_expression_preserves_desc(self, tmpdir):
+        """Test that sort expressions with DESC are properly resolved."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"amount": "DECIMAL", "date": "DATE"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve sort expression with DESC - alias=False for sort statements
+        result = resolver.resolve("${ref(orders).amount} DESC", alias=False)
+
+        # Should contain DESC keyword
+        assert "DESC" in result
+        # Should contain the qualified column reference
+        assert "amount" in result
+        # Should NOT have AS (alias=False)
+        assert " AS " not in result
+
+    def test_resolve_sort_expression_preserves_asc(self, tmpdir):
+        """Test that sort expressions with ASC are properly resolved."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"date": "DATE"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve sort expression with ASC
+        result = resolver.resolve("${ref(orders).date} ASC", alias=False)
+
+        # Should contain ASC keyword
+        assert "ASC" in result
+        # Should contain the qualified column reference
+        assert "date" in result
+
+    def test_resolve_sort_expression_aggregate_with_desc(self, tmpdir):
+        """Test that aggregate sort expressions with DESC are properly resolved."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+            metrics=[Metric(name="total_amount", expression="SUM(amount)")],
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve metric reference with DESC
+        result = resolver.resolve("${ref(orders).total_amount} DESC", alias=False)
+
+        # Should contain DESC keyword
+        assert "DESC" in result
+        # Should contain the SUM aggregate
+        assert "SUM" in result.upper() or "sum" in result
+        # Should contain the column reference
+        assert "amount" in result
+
+    def test_resolve_simple_implicit_dimension_with_desc(self, tmpdir):
+        """Test resolving a simple implicit dimension (column) with DESC."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="sales",
+            sql="SELECT * FROM sales_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("sales")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"revenue": "DECIMAL", "month": "VARCHAR"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve implicit dimension with DESC
+        result = resolver.resolve("${ref(sales).revenue} DESC", alias=False)
+
+        # Should contain DESC keyword
+        assert "DESC" in result
+        # Should contain the column reference
+        assert "revenue" in result
+        # Verify it's qualified with model hash
+        assert model_hash in result

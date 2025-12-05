@@ -240,16 +240,46 @@ def identify_column_references(
     model_hash: str, model_schema: Dict, expr_sql: str, dialect: str
 ) -> str:
     """
-    Parses individual SQL expression returning fully expressed column references to model aliases
+    Parses individual SQL expression returning fully expressed column references to model aliases.
+
+    Handles ASC/DESC sort modifiers by preserving them through the qualification process.
+    When an expression like "column DESC" is passed, SQLGlot interprets DESC as an alias
+    (not a sort modifier) when parsed outside of ORDER BY context. This function detects
+    trailing ASC/DESC keywords and re-attaches them after qualifying the underlying expression.
+
     >> Given:
         model_hash = "model"
         model_schema = {model_hash: {"column_a": "INT", "column_b": "TEXT"}}
         expr_sql = 'max(column_a) + count(distinct column_b)'
     >> Returns:
         MAX("model"."column_a") + COUNT(DISTINCT "model"."column_b")
+
+    >> Given (with sort order):
+        expr_sql = 'column_a DESC'
+    >> Returns:
+        "model"."column_a" DESC
     """
+    sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None
+
+    # Detect and extract trailing ASC/DESC before parsing
+    # SQLGlot parses "column DESC" as Alias(column, "DESC") when outside ORDER BY context
+    # so we need to strip ASC/DESC at the string level first
+    sort_order = None
+    expr_sql_stripped = expr_sql.strip()
+    upper_stripped = expr_sql_stripped.upper()
+
+    if upper_stripped.endswith(" DESC"):
+        sort_order = "DESC"
+        expr_sql_stripped = expr_sql_stripped[:-5].strip()
+    elif upper_stripped.endswith(" ASC"):
+        sort_order = "ASC"
+        expr_sql_stripped = expr_sql_stripped[:-4].strip()
+
+    # Parse the expression (without sort order)
+    parsed = parse_one(expr_sql_stripped, read=sqlglot_dialect)
+
     # Build a SELECT query with the expression from the model_hash table
-    query = exp.select(parse_one(expr_sql, read=dialect)).from_(model_hash)
+    query = exp.select(parsed).from_(model_hash)
 
     # Wrap schema in MappingSchema for SQLGlot's qualify function
     schema = MappingSchema(schema=model_schema)
@@ -262,7 +292,13 @@ def identify_column_references(
         # If it's an Alias node, get the underlying expression
         first_expr = first_expr.this
 
-    return first_expr.sql(identify=True)
+    qualified_sql = first_expr.sql(identify=True)
+
+    # Re-attach sort order if it was present in the original expression
+    if sort_order is not None:
+        qualified_sql = f"{qualified_sql} {sort_order}"
+
+    return qualified_sql
 
 
 def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) -> dict:
@@ -345,6 +381,10 @@ def strip_sort_order(expr_str: str, dialect: str = None) -> str:
     Remove ASC/DESC ordering from a SQL expression.
     Useful for using ORDER BY expressions in SELECT or GROUP BY clauses.
 
+    When expressions like "column DESC" are parsed outside of ORDER BY context,
+    SQLGlot interprets DESC as an alias rather than a sort modifier. This function
+    strips trailing ASC/DESC at the string level before parsing to handle this case.
+
     Args:
         expr_str: SQL expression string that may contain ASC/DESC
         dialect: SQLGlot dialect name (optional)
@@ -355,32 +395,17 @@ def strip_sort_order(expr_str: str, dialect: str = None) -> str:
     if not expr_str or not expr_str.strip():
         return expr_str
 
-    try:
-        sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None
+    # Strip trailing ASC/DESC at string level first
+    # SQLGlot parses "column DESC" as Alias(column, "DESC") outside ORDER BY context
+    result = expr_str.strip()
+    upper_result = result.upper()
 
-        # Parse the expression
-        parsed = sqlglot.parse_one(expr_str, dialect=sqlglot_dialect)
+    if upper_result.endswith(" DESC"):
+        result = result[:-5].strip()
+    elif upper_result.endswith(" ASC"):
+        result = result[:-4].strip()
 
-        # Remove any Ordered nodes (which represent ASC/DESC)
-        def remove_ordering(node):
-            # If this is an Ordered node, return its child expression
-            if isinstance(node, exp.Ordered):
-                return node.this
-            return node
-
-        # Transform the tree to remove ordering
-        cleaned = parsed.transform(remove_ordering)
-
-        # Return the SQL without ordering
-        return cleaned.sql(dialect=sqlglot_dialect)
-
-    except Exception:
-        # If parsing fails, try simple string replacement as fallback
-        # Remove common ORDER BY keywords
-        result = expr_str
-        for keyword in [" ASC", " DESC", " asc", " desc"]:
-            result = result.replace(keyword, "")
-        return result.strip()
+    return result
 
 
 def validate_query(

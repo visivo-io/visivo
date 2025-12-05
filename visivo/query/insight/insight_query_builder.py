@@ -1,6 +1,5 @@
 from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.base.project_dag import ProjectDag
-from visivo.query.sqlglot_utils import field_alias_hasher
 
 from visivo.query.resolvers.field_resolver import FieldResolver
 from visivo.query.relation_graph import RelationGraph
@@ -179,8 +178,10 @@ class InsightQueryBuilder:
             if key == "filter":
                 # Parse to check if it's non-aggregate and non-window
                 parsed = parse_expression(statement, "duckdb")
-                if parsed and not has_aggregate_function(parsed) and not has_window_function(
+                if (
                     parsed
+                    and not has_aggregate_function(parsed)
+                    and not has_window_function(parsed)
                 ):
                     where_conditions.append(statement)
 
@@ -404,12 +405,6 @@ class InsightQueryBuilder:
                 parsed_expr = parse_expression(cleaned_statement, self.native_dialect)
 
                 if parsed_expr:
-                    # Generate alias for the expression
-                    # alias = field_alias_hasher(cleaned_statement)
-
-                    # # Create an aliased expression
-                    # aliased_expr = exp.alias_(parsed_expr, alias, quoted=True)
-
                     # Transpile to target dialect if needed
                     aliased_expr = parsed_expr
                     if self.is_dyanmic and target_dialect != self.native_dialect:
@@ -649,6 +644,9 @@ class InsightQueryBuilder:
         """
         Find order_by statements that have aggregates in the resolved sql via
         functions and add those statments to this clause.
+
+        Handles ASC/DESC modifiers by stripping them before parsing (to avoid
+        SQLGlot treating them as aliases) and wrapping the result in exp.Ordered.
         """
         order_by_expressions = []
         target_dialect = "duckdb" if self.is_dyanmic else self.native_dialect
@@ -656,14 +654,31 @@ class InsightQueryBuilder:
         for key, statement in self.resolved_query_statements:
             # Only process sort statements
             if key == "sort":
-                # Parse the sort statement (preserving ASC/DESC)
-                parsed_expr = parse_expression(statement, self.native_dialect)
+                # Extract ASC/DESC from the end of the statement before parsing
+                # SQLGlot treats "column ASC" as Alias(column, "ASC") outside ORDER BY context
+                sort_desc = None  # None = no ordering, False = ASC, True = DESC
+                statement_stripped = statement.strip()
+                upper_statement = statement_stripped.upper()
+
+                if upper_statement.endswith(" DESC"):
+                    sort_desc = True
+                    statement_stripped = statement_stripped[:-5].strip()
+                elif upper_statement.endswith(" ASC"):
+                    sort_desc = False
+                    statement_stripped = statement_stripped[:-4].strip()
+
+                # Parse the sort statement (without ASC/DESC)
+                parsed_expr = parse_expression(statement_stripped, self.native_dialect)
 
                 if parsed_expr:
                     # Transpile if dynamic
                     if self.is_dyanmic and target_dialect != self.native_dialect:
                         transpiled = parsed_expr.sql(dialect=target_dialect)
                         parsed_expr = parse_expression(transpiled, target_dialect)
+
+                    # Wrap in Ordered node if ASC/DESC was specified
+                    if sort_desc is not None:
+                        parsed_expr = exp.Ordered(this=parsed_expr, desc=sort_desc)
 
                     order_by_expressions.append(parsed_expr)
 

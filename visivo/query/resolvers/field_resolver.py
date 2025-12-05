@@ -1,12 +1,9 @@
 import json
 import os
-from hashlib import md5
-from typing import Optional, Union, Dict, Tuple
+from typing import Optional, Dict
 from visivo.models.base.project_dag import ProjectDag
 
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.dimension import Dimension
-from visivo.models.metric import Metric
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
