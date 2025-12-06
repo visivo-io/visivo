@@ -179,7 +179,14 @@ dashboards:
           - width: 6
             chart: ${ref(composite-metric-chart)}
 
+      
       # Input-driven test charts
+      - height: compact
+        items:
+          - input: ${ref(split_threshold)}
+          - input: ${ref(min_x_value)}
+          - input: ${ref(min_avg_y)}
+          - input: ${ref(sort_direction)}
       - height: medium
         items:
           - width: 6

@@ -16,6 +16,27 @@ from visivo.logger.logger import Logger
 import sqlglot
 from sqlglot import exp
 from sqlglot.optimizer import qualify
+import re
+
+# Pattern to match ${input_name} placeholders
+INPUT_PLACEHOLDER_PATTERN = r"\$\{(\w+)\}"
+
+
+def replace_input_placeholders_for_parsing(sql: str) -> str:
+    """
+    Replace ${input_name} placeholders with a safe literal value for SQLGlot parsing.
+
+    SQLGlot misinterprets ${...} syntax (e.g., as STRUCT in DuckDB dialect).
+    This function temporarily replaces placeholders with a numeric literal
+    so SQLGlot can parse the expression to extract column references.
+
+    Args:
+        sql: SQL expression potentially containing ${input_name} placeholders
+
+    Returns:
+        SQL expression with placeholders replaced by '0' (safe for parsing)
+    """
+    return re.sub(INPUT_PLACEHOLDER_PATTERN, "0", sql)
 
 
 class InsightQueryBuilder:
@@ -73,6 +94,22 @@ class InsightQueryBuilder:
             alias = alias.strip("'\"")
             props_map[key] = alias
         return props_map
+
+    @property
+    def split_key(self):
+        """Return the column alias for the split field, if present.
+
+        Used by the frontend to group data by split values and create multiple Plotly traces.
+        """
+        if not self.is_resolved:
+            raise Exception("Need to resolve before accessing split_key")
+        for key, statement in self.resolved_query_statements:
+            if key == "split":
+                # Extract alias after " AS " and strip surrounding quotes
+                alias = statement.split(" AS ")[1]
+                alias = alias.strip("'\"")
+                return alias
+        return None
 
     @property
     def pre_query(self):
@@ -176,21 +213,26 @@ class InsightQueryBuilder:
         where_conditions = []
         for key, statement in self.resolved_query_statements:
             if key == "filter":
-                # Parse to check if it's non-aggregate and non-window
-                parsed = parse_expression(statement, "duckdb")
+                # Replace input placeholders before parsing to avoid SQLGlot misinterpretation
+                safe_statement = replace_input_placeholders_for_parsing(statement)
+                parsed = parse_expression(safe_statement, "duckdb")
                 if (
                     parsed
                     and not has_aggregate_function(parsed)
                     and not has_window_function(parsed)
                 ):
+                    # Use original statement (with placeholders) in final query
                     where_conditions.append(statement)
 
         # Collect GROUP BY expressions
         # Extract non-aggregated expressions from SELECT clauses
         group_by_clauses = []
         for select_clause in select_clauses:
-            # Parse the clause to find non-aggregated expressions
-            parsed = parse_expression(select_clause.split(" AS ")[0], "duckdb")
+            # Replace input placeholders before parsing to avoid SQLGlot misinterpretation
+            # The placeholders are literal values from GROUP BY's perspective
+            expr_part = select_clause.split(" AS ")[0]
+            safe_expr = replace_input_placeholders_for_parsing(expr_part)
+            parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
                 non_agg_exprs = find_non_aggregated_expressions(parsed)
                 for expr_str in non_agg_exprs:
@@ -201,8 +243,11 @@ class InsightQueryBuilder:
         having_conditions = []
         for key, statement in self.resolved_query_statements:
             if key == "filter":
-                parsed = parse_expression(statement, "duckdb")
+                # Replace input placeholders before parsing
+                safe_statement = replace_input_placeholders_for_parsing(statement)
+                parsed = parse_expression(safe_statement, "duckdb")
                 if parsed and has_aggregate_function(parsed):
+                    # Use original statement (with placeholders) in final query
                     having_conditions.append(statement)
 
         # Collect ORDER BY (sort interactions)
@@ -758,6 +803,7 @@ class InsightQueryBuilder:
             "pre_query": pre_query,
             "post_query": post_query,
             "props_mapping": props_mapping,
+            "split_key": self.split_key,
         }
 
         insight_query_info = InsightQueryInfo(**data)
@@ -765,6 +811,7 @@ class InsightQueryBuilder:
         self.logger.debug(f"Post query: {post_query}")
         self.logger.debug(f"Pre query: {pre_query}")
         self.logger.debug(f"props_mapping: {props_mapping}")
+        self.logger.debug(f"split_key: {self.split_key}")
         self.logger.debug(f"Resolved Statements: {self.resolved_query_statements}")
 
         return insight_query_info

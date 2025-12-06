@@ -99,10 +99,33 @@ export function mapQueryResultsToProps(results, propsMapping) {
 }
 
 /**
+ * Group data rows by unique values in a split column
+ * @param {Array<Object>} data - Query results
+ * @param {string} splitKey - Column name to group by
+ * @returns {Object} Map of split values to arrays of rows
+ */
+function groupDataBySplitKey(data, splitKey) {
+  const groups = {};
+
+  for (const row of data) {
+    const splitValue = row[splitKey];
+    const key = splitValue !== null && splitValue !== undefined ? String(splitValue) : 'null';
+
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(row);
+  }
+
+  return groups;
+}
+
+/**
  * Transform insights data into chart-ready format
  *
  * Takes the insightsData object (from Zustand store) and converts it to an array
- * of Plotly-compatible trace objects.
+ * of Plotly-compatible trace objects. If an insight has a split_key, the data
+ * will be grouped by unique split values and multiple traces will be created.
  *
  * @param {Object} insightsData - Map of insight names to insight objects
  * @returns {Array<Object>} Array of Plotly trace objects
@@ -121,7 +144,7 @@ export function chartDataFromInsightData(insightsData) {
       continue;
     }
 
-    const { data, props_mapping } = insightObj;
+    const { data, props_mapping, split_key } = insightObj;
 
     if (!data || data.length === 0) {
       console.warn(`Insight '${insightName}' has no data`);
@@ -133,13 +156,27 @@ export function chartDataFromInsightData(insightsData) {
       continue;
     }
 
-    // Map query results to props
-    const traceProps = mapQueryResultsToProps(data, props_mapping);
+    // Check if this insight has a split interaction
+    if (split_key && data[0] && data[0][split_key] !== undefined) {
+      // Group data by split values
+      const groupedData = groupDataBySplitKey(data, split_key);
 
-    // Add insight name
-    traceProps.name = insightName;
+      for (const [splitValue, groupRows] of Object.entries(groupedData)) {
+        // Map each group to props
+        const traceProps = mapQueryResultsToProps(groupRows, props_mapping);
 
-    traces.push(traceProps);
+        // Set trace name to include split value
+        traceProps.name = `${insightName} - ${splitValue}`;
+        traceProps.legendgroup = splitValue;
+
+        traces.push(traceProps);
+      }
+    } else {
+      // No split - create single trace (existing behavior)
+      const traceProps = mapQueryResultsToProps(data, props_mapping);
+      traceProps.name = insightName;
+      traces.push(traceProps);
+    }
   }
 
   console.debug(`Converted ${traces.length} insights to chart traces`);

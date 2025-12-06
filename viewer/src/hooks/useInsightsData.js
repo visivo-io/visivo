@@ -6,6 +6,26 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 
 /**
+ * Extract input names referenced in a query string
+ * Looks for ${inputName} patterns (template literal syntax)
+ * @param {string} query - SQL query with ${...} placeholders
+ * @param {string[]} knownInputNames - List of known input names to match against
+ * @returns {string[]} - Array of input names found in the query
+ */
+const extractInputDependencies = (query, knownInputNames) => {
+  if (!query || !knownInputNames?.length) return [];
+
+  const dependencies = [];
+  for (const inputName of knownInputNames) {
+    // Check if ${inputName} appears in the query
+    if (query.includes(`\${${inputName}}`)) {
+      dependencies.push(inputName);
+    }
+  }
+  return dependencies;
+};
+
+/**
  * Process a single insight: load files, execute query, store results
  * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
  * @param {Object} insight - Insight object from API
@@ -109,15 +129,55 @@ export const useInsightsData = (projectId, insightNames) => {
     return [...new Set(insightNames)].sort(); // Dedupe and sort
   }, [insightNames]);
 
-  // Check if we already have complete data for all requested insights
+  // Check if we have query metadata for all requested insights
+  // This is used to determine if we can compute input dependencies
+  const hasQueryMetadata = useMemo(() => {
+    if (!stableInsightNames.length) return false;
+    if (!storeInsightData) return false;
+
+    return stableInsightNames.every(name => storeInsightData[name]?.query !== undefined);
+  }, [storeInsightData, stableInsightNames]);
+
+  // Check if we have complete data for all requested insights
+  // This is used to determine the hasAllInsightData return value
   const hasCompleteData = useMemo(() => {
-    if (!stableInsightNames.length) return true;
+    if (!stableInsightNames.length) return true; // No insights = complete
     if (!storeInsightData) return false;
 
     return stableInsightNames.every(
       name => storeInsightData[name]?.data && storeInsightData[name]?.data.length >= 0
     );
   }, [storeInsightData, stableInsightNames]);
+
+  // Compute relevant input values based on which inputs each insight actually uses
+  // This enables selective refetch - only refetch when inputs that matter change
+  const relevantInputValues = useMemo(() => {
+    if (!getInputs) return {};
+    if (!hasQueryMetadata || !storeInsightData) return {};
+
+    const knownInputNames = Object.keys(getInputs);
+    const relevantInputs = {};
+
+    // Check each insight's query for input dependencies
+    for (const insightName of stableInsightNames) {
+      const insight = storeInsightData[insightName];
+      if (insight?.query) {
+        const deps = extractInputDependencies(insight.query, knownInputNames);
+        deps.forEach(inputName => {
+          relevantInputs[inputName] = getInputs[inputName];
+        });
+      }
+    }
+
+    return relevantInputs;
+  }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata]);
+
+  // Create a stable string representation of relevant inputs for the queryKey
+  // On initial load (no query metadata yet), use 'initial' to force first fetch
+  const stableRelevantInputs = useMemo(() => {
+    if (!hasQueryMetadata) return 'initial';
+    return JSON.stringify(relevantInputValues);
+  }, [hasQueryMetadata, relevantInputValues]);
 
   // Main query function
   const queryFn = useCallback(async () => {
@@ -175,10 +235,12 @@ export const useInsightsData = (projectId, insightNames) => {
   }, [db, projectId, stableInsightNames, getInputs]);
 
   // React Query for data fetching
+  // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
+  // This enables selective refetch - only insights using the changed input will refetch
   const { data, isLoading, error } = useQuery({
-    queryKey: ['insights', projectId, stableInsightNames, !!db],
+    queryKey: ['insights', projectId, stableInsightNames, !!db, stableRelevantInputs],
     queryFn,
-    enabled: !!projectId && stableInsightNames.length > 0 && !!db && !hasCompleteData,
+    enabled: !!projectId && stableInsightNames.length > 0 && !!db,
     staleTime: Infinity,
     gcTime: Infinity, // formerly cacheTime
     refetchOnWindowFocus: false,
@@ -196,7 +258,7 @@ export const useInsightsData = (projectId, insightNames) => {
 
   return {
     insightsData: storeInsightData || {},
-    isInsightsLoading: hasCompleteData ? false : isLoading,
+    isInsightsLoading: isLoading,
     hasAllInsightData: hasCompleteData || (data && Object.keys(data).length > 0),
     error,
   };

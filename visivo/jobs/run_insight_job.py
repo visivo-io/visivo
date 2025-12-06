@@ -78,6 +78,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             "files": files,
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,
+            "split_key": insight_query_info.split_key,
         }
 
         insight_directory = f"{output_dir}/insights"

@@ -118,8 +118,8 @@ class TestInsightQueryBuilderWithInputs:
         post_query = builder.post_query
 
         assert post_query is not None
-        # Should contain placeholder for client-side substitution
-        assert "'visivo-input-placeholder-string'" in post_query
+        # Should contain ${inputName} placeholder for client-side substitution
+        assert "${color}" in post_query
 
     def test_props_mapping_with_input_refs(self, tmpdir, create_schema_file):
         """Test that props_mapping is generated correctly even with input refs in props."""
