@@ -226,8 +226,8 @@ class TestInputOptionsLoading:
                 name="category_input", options=["'electronics'", "'books'", "'toys'"]
             )
 
-            # Write options to parquet
-            df = pl.DataFrame({"value": input_obj.options})
+            # Write options to parquet (column must be named 'option')
+            df = pl.DataFrame({"option": input_obj.options})
             parquet_path = input_dir / f"{input_obj.name_hash()}.parquet"
             df.write_parquet(parquet_path)
 
@@ -253,8 +253,9 @@ class TestInputOptionsLoading:
             input_obj = InputFactory(name="query_input", options=["'a'", "'b'"])
 
             # Simulate query execution results (as if query was already executed)
+            # Column must be named 'option' to match expected parquet structure
             query_results = ["'electronics'", "'books'", "'toys'", "'games'"]
-            df = pl.DataFrame({"value": query_results})
+            df = pl.DataFrame({"option": query_results})
             parquet_path = input_dir / f"{input_obj.name_hash()}.parquet"
             df.write_parquet(parquet_path)
 
@@ -284,7 +285,7 @@ class TestValidationIntegration:
             input_dir.mkdir()
 
             input_obj = InputFactory(name="category_input", options=["'electronics'", "'books'"])
-            df = pl.DataFrame({"value": input_obj.options})
+            df = pl.DataFrame({"option": input_obj.options})
             parquet_path = input_dir / f"{input_obj.name_hash()}.parquet"
             df.write_parquet(parquet_path)
 
@@ -340,7 +341,7 @@ class TestValidationIntegration:
             input_dir.mkdir()
 
             input_obj = InputFactory(name="category_input", options=["'electronics'", "'books'"])
-            df = pl.DataFrame({"value": input_obj.options})
+            df = pl.DataFrame({"option": input_obj.options})
             parquet_path = input_dir / f"{input_obj.name_hash()}.parquet"
             df.write_parquet(parquet_path)
 

@@ -5,6 +5,7 @@ from visivo.query.resolvers.field_resolver import FieldResolver
 from visivo.query.relation_graph import RelationGraph
 from visivo.query.sqlglot_utils import (
     find_non_aggregated_expressions,
+    extract_column_references,
     has_window_function,
     has_aggregate_function,
     supports_qualify,
@@ -17,26 +18,147 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.optimizer import qualify
 import re
+from typing import Tuple, Dict
 
 # Pattern to match ${input_name} placeholders
 INPUT_PLACEHOLDER_PATTERN = r"\$\{(\w+)\}"
 
 
-def replace_input_placeholders_for_parsing(sql: str) -> str:
+def get_sample_value_for_input(input_obj, output_dir: str = None) -> str:
     """
-    Replace ${input_name} placeholders with a safe literal value for SQLGlot parsing.
+    Get a type-appropriate sample value from an input for SQLGlot parsing.
+
+    Priority:
+    1. Static options (List[str]): Use first option
+    2. Default value: Use default
+    3. Query-based options with parquet: Load from parquet
+
+    Args:
+        input_obj: The input object (DropdownInput)
+        output_dir: Output directory for loading parquet files
+
+    Returns:
+        A sample value suitable for SQL parsing
+
+    Raises:
+        ValueError: If no sample value can be obtained
+    """
+    from visivo.models.inputs.types.dropdown import DropdownInput
+
+    if isinstance(input_obj, DropdownInput):
+        # Check for static options first
+        if isinstance(input_obj.options, list) and len(input_obj.options) > 0:
+            return str(input_obj.options[0])
+
+        # Check for default value
+        if input_obj.default is not None:
+            return str(input_obj.default)
+
+        # Query-based options - try loading from parquet if available
+        if output_dir:
+            try:
+                from visivo.query.input_validator import get_input_options
+
+                options = get_input_options(input_obj, output_dir)
+                if options:
+                    return options[0]
+            except (FileNotFoundError, ValueError) as e:
+                raise ValueError(
+                    f"Cannot get sample value for input '{input_obj.name}': "
+                    f"Query-based input options not yet available. "
+                    f"Run the input job first or provide static options/default."
+                ) from e
+
+    raise ValueError(
+        f"Cannot get sample value for input '{input_obj.name}': "
+        f"Input must have static options, a default value, or query-based options "
+        f"(with parquet already generated)."
+    )
+
+
+def replace_input_placeholders_for_parsing(
+    sql: str,
+    dag: "ProjectDag" = None,
+    insight: "Insight" = None,
+    output_dir: str = None,
+) -> Tuple[str, Dict[str, str]]:
+    """
+    Replace ${input_name} placeholders with sample values + tracking comments.
 
     SQLGlot misinterprets ${...} syntax (e.g., as STRUCT in DuckDB dialect).
-    This function temporarily replaces placeholders with a numeric literal
-    so SQLGlot can parse the expression to extract column references.
+    This function replaces placeholders with type-appropriate sample values from
+    the actual input definitions, plus SQL comment markers for restoration.
+
+    Marker format: sample_value /* __VISIVO_INPUT:input_name__ */
 
     Args:
         sql: SQL expression potentially containing ${input_name} placeholders
+        dag: Project DAG for looking up input objects
+        insight: The insight object (for finding descendant inputs)
+        output_dir: Output directory for loading parquet files
 
     Returns:
-        SQL expression with placeholders replaced by '0' (safe for parsing)
+        Tuple of (modified_sql, {placeholder_name: sample_value})
+
+    Raises:
+        ValueError: If an input placeholder references an undefined input
     """
-    return re.sub(INPUT_PLACEHOLDER_PATTERN, "0", sql)
+    from visivo.models.dag import all_descendants_of_type
+    from visivo.models.inputs.input import Input
+
+    replacements = {}
+    placeholder_names = set(re.findall(INPUT_PLACEHOLDER_PATTERN, sql))
+
+    if not placeholder_names:
+        return sql, replacements
+
+    # Build mapping of input names to objects from DAG
+    input_map = {}
+    if dag and insight:
+        input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=insight)
+        input_map = {inp.name: inp for inp in input_descendants}
+
+    # Replace each placeholder with sample value + comment marker
+    result_sql = sql
+    for placeholder_name in placeholder_names:
+        if placeholder_name not in input_map:
+            raise ValueError(
+                f"Input placeholder '${{{placeholder_name}}}' references undefined input. "
+                f"Make sure input '{placeholder_name}' is defined in your project."
+            )
+
+        sample_value = get_sample_value_for_input(input_map[placeholder_name], output_dir)
+        replacements[placeholder_name] = sample_value
+
+        # Replace with: sample_value /* __VISIVO_INPUT:input_name__ */
+        marker = f"{sample_value} /* __VISIVO_INPUT:{placeholder_name}__ */"
+        result_sql = re.sub(rf"\$\{{{placeholder_name}\}}", marker, result_sql)
+
+    return result_sql, replacements
+
+
+def restore_input_placeholders(sql: str) -> str:
+    """
+    Restore ${input_name} placeholders from marker comments after SQLGlot processing.
+
+    Finds patterns like: value /* __VISIVO_INPUT:input_name__ */
+    Replaces with: ${input_name}
+
+    Args:
+        sql: SQL string with marker comments
+
+    Returns:
+        SQL string with ${input_name} placeholders restored
+    """
+    # Pattern matches: anything followed by /* __VISIVO_INPUT:name__ */
+    # We need to remove the sample value AND the comment, replace with ${name}
+    pattern = r"[^\s,\)]+\s*/\*\s*__VISIVO_INPUT:(\w+)__\s*\*/"
+
+    def replace_marker(match):
+        input_name = match.group(1)
+        return f"${{{input_name}}}"
+
+    return re.sub(pattern, replace_marker, sql)
 
 
 class InsightQueryBuilder:
@@ -58,6 +180,7 @@ class InsightQueryBuilder:
 
     def __init__(self, insight, dag: ProjectDag, output_dir):
         self.logger = Logger.instance()
+        self.insight = insight  # Store for placeholder replacement
         self.dag = dag
         self.output_dir = output_dir
         self.insight_hash = insight.name_hash()
@@ -213,8 +336,10 @@ class InsightQueryBuilder:
         where_conditions = []
         for key, statement in self.resolved_query_statements:
             if key == "filter":
-                # Replace input placeholders before parsing to avoid SQLGlot misinterpretation
-                safe_statement = replace_input_placeholders_for_parsing(statement)
+                # Replace input placeholders with sample values for SQLGlot parsing
+                safe_statement, _ = replace_input_placeholders_for_parsing(
+                    statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+                )
                 parsed = parse_expression(safe_statement, "duckdb")
                 if (
                     parsed
@@ -225,26 +350,35 @@ class InsightQueryBuilder:
                     where_conditions.append(statement)
 
         # Collect GROUP BY expressions
-        # Extract non-aggregated expressions from SELECT clauses
+        # Extract column references from SELECT clauses (not the whole expression)
+        # For GROUP BY, we only need the actual column references, not containing expressions
+        # like CASE statements. This avoids issues with input placeholders being modified.
         group_by_clauses = []
         for select_clause in select_clauses:
-            # Replace input placeholders before parsing to avoid SQLGlot misinterpretation
-            # The placeholders are literal values from GROUP BY's perspective
+            # Replace input placeholders with sample values for SQLGlot parsing
             expr_part = select_clause.split(" AS ")[0]
-            safe_expr = replace_input_placeholders_for_parsing(expr_part)
+            safe_expr, _ = replace_input_placeholders_for_parsing(
+                expr_part, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+            )
             parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
-                non_agg_exprs = find_non_aggregated_expressions(parsed)
-                for expr_str in non_agg_exprs:
-                    if expr_str not in group_by_clauses:
-                        group_by_clauses.append(expr_str)
+                # Check if expression is aggregated (skip if it is)
+                if has_aggregate_function(parsed):
+                    continue
+                # Extract just the column references for GROUP BY
+                col_refs = extract_column_references(parsed)
+                for col_ref in col_refs:
+                    if col_ref not in group_by_clauses:
+                        group_by_clauses.append(col_ref)
 
         # Collect HAVING conditions (aggregate filters)
         having_conditions = []
         for key, statement in self.resolved_query_statements:
             if key == "filter":
-                # Replace input placeholders before parsing
-                safe_statement = replace_input_placeholders_for_parsing(statement)
+                # Replace input placeholders with sample values for SQLGlot parsing
+                safe_statement, _ = replace_input_placeholders_for_parsing(
+                    statement, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+                )
                 parsed = parse_expression(safe_statement, "duckdb")
                 if parsed and has_aggregate_function(parsed):
                     # Use original statement (with placeholders) in final query

@@ -9,8 +9,420 @@ from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
 from visivo.models.inputs.types.dropdown import DropdownInput
-from visivo.query.insight.insight_query_builder import InsightQueryBuilder
+from visivo.query.insight.insight_query_builder import (
+    InsightQueryBuilder,
+    get_sample_value_for_input,
+    replace_input_placeholders_for_parsing,
+    restore_input_placeholders,
+)
 from tests.factories.model_factories import SourceFactory
+
+
+class TestGetSampleValueForInput:
+    """Tests for get_sample_value_for_input() helper function."""
+
+    def test_static_options_returns_first_option(self):
+        """Test that static options list returns the first option."""
+        input_obj = DropdownInput(name="color", label="Color", options=["red", "blue", "green"])
+        result = get_sample_value_for_input(input_obj)
+        assert result == "red"
+
+    def test_string_options_with_quotes(self):
+        """Test that string options with SQL quotes are returned correctly."""
+        input_obj = DropdownInput(name="name", label="Name", options=["'Alice'", "'Bob'"])
+        result = get_sample_value_for_input(input_obj)
+        assert result == "'Alice'"
+
+    def test_numeric_options_returns_first(self):
+        """Test that numeric options return the first value as string."""
+        input_obj = DropdownInput(name="threshold", label="Threshold", options=["100", "500"])
+        result = get_sample_value_for_input(input_obj)
+        assert result == "100"
+
+    def test_default_value_when_no_options(self):
+        """Test that default value is used when no static options."""
+        input_obj = DropdownInput(
+            name="amount",
+            label="Amount",
+            options="SELECT DISTINCT amount FROM data",
+            default="50",
+        )
+        # Without output_dir for parquet, should fall back to default
+        result = get_sample_value_for_input(input_obj)
+        assert result == "50"
+
+    def test_empty_options_uses_default(self):
+        """Test that empty options list uses default value."""
+        input_obj = DropdownInput(
+            name="status",
+            label="Status",
+            options="SELECT DISTINCT status FROM data",
+            default="'active'",
+        )
+        result = get_sample_value_for_input(input_obj)
+        assert result == "'active'"
+
+    def test_raises_error_when_no_options_or_default(self):
+        """Test that ValueError is raised when no sample value is available."""
+        input_obj = DropdownInput(
+            name="dynamic",
+            label="Dynamic",
+            options="SELECT DISTINCT value FROM data",
+        )
+        with pytest.raises(ValueError) as exc_info:
+            get_sample_value_for_input(input_obj)
+        assert "Cannot get sample value for input 'dynamic'" in str(exc_info.value)
+
+
+class TestReplaceInputPlaceholdersForParsing:
+    """Tests for replace_input_placeholders_for_parsing() function."""
+
+    def test_no_placeholders_returns_unchanged(self):
+        """Test that SQL without placeholders is returned unchanged."""
+        sql = "SELECT * FROM orders WHERE amount > 100"
+        result_sql, replacements = replace_input_placeholders_for_parsing(sql)
+        assert result_sql == sql
+        assert replacements == {}
+
+    def test_single_placeholder_replacement(self):
+        """Test replacement of a single input placeholder."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["100", "500"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference the input in props to create DAG relationship
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'high' ELSE 'low' END}"
+                },
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[threshold_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        sql = "amount > ${threshold}"
+        result_sql, replacements = replace_input_placeholders_for_parsing(
+            sql, dag=dag, insight=insight
+        )
+
+        # Should contain sample value and marker
+        assert "100" in result_sql
+        assert "/* __VISIVO_INPUT:threshold__ */" in result_sql
+        assert replacements == {"threshold": "100"}
+
+    def test_string_placeholder_replacement(self):
+        """Test replacement of string input placeholder."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        color_input = DropdownInput(name="color", label="Color", options=["'red'", "'blue'"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference the input in props to create DAG relationship
+                marker={"color": "?{${ref(color)}}"},
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[color_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        sql = "color = ${color}"
+        result_sql, replacements = replace_input_placeholders_for_parsing(
+            sql, dag=dag, insight=insight
+        )
+
+        # Should contain string sample value and marker
+        assert "'red'" in result_sql
+        assert "/* __VISIVO_INPUT:color__ */" in result_sql
+        assert replacements == {"color": "'red'"}
+
+    def test_multiple_placeholders_replacement(self):
+        """Test replacement of multiple input placeholders."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["100"])
+        color_input = DropdownInput(name="color", label="Color", options=["'red'"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference both inputs in props to create DAG relationships
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN ${ref(color)} ELSE 'gray' END}"
+                },
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[threshold_input, color_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        sql = "amount > ${threshold} AND color = ${color}"
+        result_sql, replacements = replace_input_placeholders_for_parsing(
+            sql, dag=dag, insight=insight
+        )
+
+        # Should contain both markers
+        assert "/* __VISIVO_INPUT:threshold__ */" in result_sql
+        assert "/* __VISIVO_INPUT:color__ */" in result_sql
+        assert replacements == {"threshold": "100", "color": "'red'"}
+
+    def test_raises_error_for_undefined_input(self):
+        """Test that ValueError is raised for undefined input placeholder."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        sql = "amount > ${undefined_input}"
+        with pytest.raises(ValueError) as exc_info:
+            replace_input_placeholders_for_parsing(sql, dag=dag, insight=insight)
+        assert "undefined_input" in str(exc_info.value)
+        assert "undefined input" in str(exc_info.value)
+
+
+class TestRestoreInputPlaceholders:
+    """Tests for restore_input_placeholders() function."""
+
+    def test_no_markers_returns_unchanged(self):
+        """Test that SQL without markers is returned unchanged."""
+        sql = "SELECT * FROM orders WHERE amount > 100"
+        result = restore_input_placeholders(sql)
+        assert result == sql
+
+    def test_single_marker_restoration(self):
+        """Test restoration of a single marker."""
+        sql = "amount > 100 /* __VISIVO_INPUT:threshold__ */"
+        result = restore_input_placeholders(sql)
+        assert result == "amount > ${threshold}"
+
+    def test_string_marker_restoration(self):
+        """Test restoration of a string marker."""
+        sql = "color = 'red' /* __VISIVO_INPUT:color__ */"
+        result = restore_input_placeholders(sql)
+        assert result == "color = ${color}"
+
+    def test_multiple_markers_restoration(self):
+        """Test restoration of multiple markers."""
+        sql = "amount > 100 /* __VISIVO_INPUT:threshold__ */ AND color = 'red' /* __VISIVO_INPUT:color__ */"
+        result = restore_input_placeholders(sql)
+        assert "${threshold}" in result
+        assert "${color}" in result
+        assert "/* __VISIVO_INPUT" not in result
+
+    def test_preserves_other_comments(self):
+        """Test that regular SQL comments are preserved."""
+        sql = "amount > 100 /* __VISIVO_INPUT:threshold__ */ /* regular comment */"
+        result = restore_input_placeholders(sql)
+        assert "${threshold}" in result
+        assert "/* regular comment */" in result
+
+
+class TestRoundTripPlaceholderProcessing:
+    """Tests for round-trip placeholder replacement and restoration."""
+
+    def test_round_trip_numeric_placeholder(self):
+        """Test replace → SQLGlot parse → restore for numeric placeholder."""
+        from sqlglot import parse_one
+
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["100"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference the input in props to create DAG relationship
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'high' ELSE 'low' END}"
+                },
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[threshold_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        original_sql = "amount > ${threshold}"
+
+        # Step 1: Replace placeholders
+        safe_sql, _ = replace_input_placeholders_for_parsing(
+            sql=original_sql, dag=dag, insight=insight
+        )
+        assert "${threshold}" not in safe_sql
+        assert "100" in safe_sql
+
+        # Step 2: Parse with SQLGlot (should not raise)
+        parsed = parse_one(safe_sql, dialect="duckdb")
+        parsed_sql = parsed.sql(dialect="duckdb")
+
+        # Step 3: Restore placeholders
+        restored_sql = restore_input_placeholders(parsed_sql)
+        assert "${threshold}" in restored_sql
+
+    def test_round_trip_string_placeholder(self):
+        """Test replace → SQLGlot parse → restore for string placeholder."""
+        from sqlglot import parse_one
+
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        color_input = DropdownInput(name="color", label="Color", options=["'red'"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference the input in props to create DAG relationship
+                marker={"color": "?{${ref(color)}}"},
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[color_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        original_sql = "color = ${color}"
+
+        # Step 1: Replace placeholders
+        safe_sql, _ = replace_input_placeholders_for_parsing(
+            sql=original_sql, dag=dag, insight=insight
+        )
+        assert "${color}" not in safe_sql
+        assert "'red'" in safe_sql
+
+        # Step 2: Parse with SQLGlot (should not raise)
+        parsed = parse_one(safe_sql, dialect="duckdb")
+        parsed_sql = parsed.sql(dialect="duckdb")
+
+        # Step 3: Restore placeholders
+        restored_sql = restore_input_placeholders(parsed_sql)
+        assert "${color}" in restored_sql
+
+    def test_round_trip_case_expression(self):
+        """Test round-trip for CASE expression with input placeholder."""
+        from sqlglot import parse_one
+
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["100"])
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                # Reference the input in props to create DAG relationship
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'high' ELSE 'low' END}"
+                },
+            ),
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[threshold_input],
+            insights=[insight],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        original_sql = "CASE WHEN amount > ${threshold} THEN 'high' ELSE 'low' END"
+
+        # Step 1: Replace placeholders
+        safe_sql, _ = replace_input_placeholders_for_parsing(
+            sql=original_sql, dag=dag, insight=insight
+        )
+
+        # Step 2: Parse with SQLGlot (should not raise)
+        parsed = parse_one(safe_sql, dialect="duckdb")
+        parsed_sql = parsed.sql(dialect="duckdb")
+
+        # Step 3: Restore placeholders
+        restored_sql = restore_input_placeholders(parsed_sql)
+        assert "${threshold}" in restored_sql
 
 
 class TestInsightQueryBuilderWithInputs:
