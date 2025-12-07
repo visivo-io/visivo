@@ -181,20 +181,28 @@ def generate_input_combinations(inputs: Dict[str, List[str]]) -> List[Dict[str, 
             combo_dict = {name: value for name, value in zip(input_names, combo_values)}
             combinations.append(combo_dict)
     else:
-        # Sample MAX_COMBINATIONS
+        # Large space: sample without materializing all combinations
+        # This avoids OOM for very large combination spaces
         logger.debug(f"Sampling {MAX_COMBINATIONS} combinations from {total_combinations}")
 
-        # Generate all combinations as tuples first
-        all_combos = list(product(*option_lists))
-
-        # Randomly sample MAX_COMBINATIONS
         # Use fixed seed for reproducibility
         random.seed(42)
-        sampled_combos = random.sample(all_combos, MAX_COMBINATIONS)
 
-        # Convert to list of dicts
+        # Generate MAX_COMBINATIONS unique random indices in the product space
+        sampled_indices = set()
+        while len(sampled_indices) < MAX_COMBINATIONS:
+            sampled_indices.add(random.randint(0, total_combinations - 1))
+
+        # Convert indices to combinations using modular arithmetic
+        # This avoids materializing the full Cartesian product
         combinations = []
-        for combo_values in sampled_combos:
+        for idx in sorted(sampled_indices):
+            combo_values = []
+            remaining = idx
+            for options in option_lists:
+                n = len(options)
+                combo_values.append(options[remaining % n])
+                remaining //= n
             combo_dict = {name: value for name, value in zip(input_names, combo_values)}
             combinations.append(combo_dict)
 

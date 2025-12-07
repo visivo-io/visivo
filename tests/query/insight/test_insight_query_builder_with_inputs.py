@@ -489,7 +489,7 @@ class TestInsightQueryBuilderWithInputs:
         builder = InsightQueryBuilder(insight, dag, "/tmp")
 
         # Insight should be marked as dynamic
-        assert builder.is_dyanmic is True
+        assert builder.is_dynamic is True
 
     def test_query_builder_post_query_contains_placeholders(self, tmpdir, create_schema_file):
         """Test that post_query for dynamic insights contains input placeholders."""
@@ -661,7 +661,7 @@ class TestInsightQueryBuilderWithInputs:
         builder = InsightQueryBuilder(insight, dag, str(tmpdir))
 
         # Should not be dynamic
-        assert builder.is_dyanmic is False
+        assert builder.is_dynamic is False
 
         builder.resolve()
         query_info = builder.build()

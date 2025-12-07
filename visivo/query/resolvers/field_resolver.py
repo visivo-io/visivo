@@ -90,7 +90,7 @@ class FieldResolver:
             model_name = model_node.name
             model_hash = model_node.name_hash()
         except ValueError as e:
-            raise ValueError(f"Model '{model_name}' not found in DAG: {e}")
+            raise ValueError(f"Failed to get model info for '{model_node}': {e}")
 
         # Load model schema
         schema = self._load_model_schema(model_name)

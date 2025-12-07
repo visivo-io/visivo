@@ -65,6 +65,27 @@ describe('chartDataFromInsightData', () => {
     expect(chartDataFromInsightData(null)).toEqual([]);
   });
 
+  it('sets trace type from static type field', () => {
+    const insightWithStaticType = {
+      'Static Type Insight': {
+        data: [
+          { x_val: 1, y_val: 10 },
+          { x_val: 2, y_val: 20 },
+        ],
+        props_mapping: {
+          'props.x': 'x_val',
+          'props.y': 'y_val',
+        },
+        type: 'bar', // Static type from insight definition
+      },
+    };
+    const result = chartDataFromInsightData(insightWithStaticType);
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe('bar');
+    expect(result[0].x).toEqual([1, 2]);
+    expect(result[0].y).toEqual([10, 20]);
+  });
+
   it('skips insights without data or props_mapping', () => {
     const data = {
       invalid: {

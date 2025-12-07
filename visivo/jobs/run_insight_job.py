@@ -79,6 +79,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,
             "split_key": insight_query_info.split_key,
+            "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }
 
         insight_directory = f"{output_dir}/insights"

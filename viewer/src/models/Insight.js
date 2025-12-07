@@ -144,7 +144,7 @@ export function chartDataFromInsightData(insightsData) {
       continue;
     }
 
-    const { data, props_mapping, split_key } = insightObj;
+    const { data, props_mapping, split_key, type } = insightObj;
 
     if (!data || data.length === 0) {
       console.warn(`Insight '${insightName}' has no data`);
@@ -165,6 +165,11 @@ export function chartDataFromInsightData(insightsData) {
         // Map each group to props
         const traceProps = mapQueryResultsToProps(groupRows, props_mapping);
 
+        // Set trace type from insight definition
+        if (type) {
+          traceProps.type = type;
+        }
+
         // Set trace name to include split value
         traceProps.name = `${insightName} - ${splitValue}`;
         traceProps.legendgroup = splitValue;
@@ -174,6 +179,12 @@ export function chartDataFromInsightData(insightsData) {
     } else {
       // No split - create single trace (existing behavior)
       const traceProps = mapQueryResultsToProps(data, props_mapping);
+
+      // Set trace type from insight definition
+      if (type) {
+        traceProps.type = type;
+      }
+
       traceProps.name = insightName;
       traces.push(traceProps);
     }
