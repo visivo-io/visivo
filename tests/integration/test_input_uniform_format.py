@@ -49,6 +49,7 @@ class TestInputUniformFormat:
         schema_dir.mkdir(parents=True, exist_ok=True)
 
         import json
+
         schema_file = schema_dir / "schema.json"
         schema_data = {
             model.name_hash(): {
@@ -214,19 +215,23 @@ class TestInputUniformFormat:
 
         # Count occurrences of ${threshold}
         threshold_count = post_query.count("${threshold}")
-        assert threshold_count >= 2, f"Expected at least 2 occurrences of ${{threshold}}, got {threshold_count}"
+        assert (
+            threshold_count >= 2
+        ), f"Expected at least 2 occurrences of ${{threshold}}, got {threshold_count}"
 
         # Should NOT contain any placeholder dict format
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
         assert "{'_0'" not in post_query, "Should not contain {'_0' dict format"
-        assert '"_0"' not in post_query, "Should not contain \"_0\" placeholder"
+        assert '"_0"' not in post_query, 'Should not contain "_0" placeholder'
 
         # Use regex to verify no placeholder patterns exist
         placeholder_pattern = re.compile(r"['\"]_\d+['\"]")
         matches = placeholder_pattern.findall(post_query)
         assert len(matches) == 0, f"Found placeholder patterns: {matches}"
 
-        print(f"✅ Props + Interactions uniform format test passed!\nGenerated query:\n{post_query}")
+        print(
+            f"✅ Props + Interactions uniform format test passed!\nGenerated query:\n{post_query}"
+        )
 
     def test_multiple_inputs_in_props_and_interactions(self, setup_basic_project):
         """Test multiple different inputs across props and interactions."""
@@ -316,7 +321,9 @@ class TestInputUniformFormat:
         assert post_query is not None
         # Should have multiple occurrences in CASE statement
         threshold_count = post_query.count("${threshold}")
-        assert threshold_count >= 2, f"Expected multiple ${threshold} in CASE, got {threshold_count}"
+        assert (
+            threshold_count >= 2
+        ), f"Expected multiple ${threshold} in CASE, got {threshold_count}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
         print(f"✅ CASE statement test passed!\nGenerated query:\n{post_query}")
@@ -548,7 +555,9 @@ class TestInputUniformFormat:
                 type="scatter",
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
-                marker={"color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"},
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                },
             ),
             interactions=[
                 InsightInteraction(filter="?{${ref(orders).amount} > ${ref(threshold)}}"),

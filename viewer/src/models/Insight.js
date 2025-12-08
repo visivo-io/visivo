@@ -1,4 +1,52 @@
 /**
+ * Deep merge source object into target object.
+ * Target values take precedence over source values (source is the base).
+ * This is used to merge static props (base) with dynamic props (override).
+ *
+ * @param {Object} target - Target object (dynamic props)
+ * @param {Object} source - Source object (static props)
+ * @returns {Object} The merged target object
+ */
+function deepMergeStaticProps(target, source) {
+  if (!source || typeof source !== 'object') {
+    return target;
+  }
+
+  for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+
+    // Skip if target already has this key (dynamic props override static)
+    if (key in target) {
+      // If both are objects (not arrays), recursively merge
+      if (
+        typeof target[key] === 'object' &&
+        target[key] !== null &&
+        !Array.isArray(target[key]) &&
+        typeof sourceValue === 'object' &&
+        sourceValue !== null &&
+        !Array.isArray(sourceValue)
+      ) {
+        deepMergeStaticProps(target[key], sourceValue);
+      }
+      // Otherwise, keep target value (dynamic overrides static)
+      continue;
+    }
+
+    // Key doesn't exist in target, add from source
+    if (typeof sourceValue === 'object' && sourceValue !== null && !Array.isArray(sourceValue)) {
+      // Deep clone objects
+      target[key] = {};
+      deepMergeStaticProps(target[key], sourceValue);
+    } else {
+      // Arrays and primitives are copied directly
+      target[key] = sourceValue;
+    }
+  }
+
+  return target;
+}
+
+/**
  * Parse a nested prop path and return the parts
  * Example: "props.marker.colorscale[0]" -> ["props", "marker", "colorscale", "0"]
  * @param {string} path - The prop path
@@ -144,7 +192,7 @@ export function chartDataFromInsightData(insightsData) {
       continue;
     }
 
-    const { data, props_mapping, split_key, type } = insightObj;
+    const { data, props_mapping, split_key, type, static_props } = insightObj;
 
     if (!data || data.length === 0) {
       console.warn(`Insight '${insightName}' has no data`);
@@ -162,8 +210,14 @@ export function chartDataFromInsightData(insightsData) {
       const groupedData = groupDataBySplitKey(data, split_key);
 
       for (const [splitValue, groupRows] of Object.entries(groupedData)) {
-        // Map each group to props
+        // Map each group to props (dynamic props from query results)
         const traceProps = mapQueryResultsToProps(groupRows, props_mapping);
+
+        // Merge static props (non-query props like marker.color: ["red", "green"])
+        // Static props are the base, dynamic props override them
+        if (static_props) {
+          deepMergeStaticProps(traceProps, static_props);
+        }
 
         // Set trace type from insight definition
         if (type) {
@@ -179,6 +233,12 @@ export function chartDataFromInsightData(insightsData) {
     } else {
       // No split - create single trace (existing behavior)
       const traceProps = mapQueryResultsToProps(data, props_mapping);
+
+      // Merge static props (non-query props like marker.color: ["red", "green"])
+      // Static props are the base, dynamic props override them
+      if (static_props) {
+        deepMergeStaticProps(traceProps, static_props);
+      }
 
       // Set trace type from insight definition
       if (type) {

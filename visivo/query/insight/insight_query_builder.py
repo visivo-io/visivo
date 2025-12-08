@@ -258,6 +258,15 @@ class InsightQueryBuilder:
         return None
 
     @property
+    def static_props(self):
+        """Return static (non-query) props from the insight.
+
+        Used by the frontend to apply static Plotly props like marker.color: ["red", "green"]
+        that are not derived from query results.
+        """
+        return self.insight.props.extract_static_props()
+
+    @property
     def pre_query(self):
         if not self.is_resolved:
             raise Exception("Need to resolve before accessing pre_query")
@@ -895,6 +904,7 @@ class InsightQueryBuilder:
             "post_query": post_query,
             "props_mapping": props_mapping,
             "split_key": self.split_key,
+            "static_props": self.static_props,
         }
 
         insight_query_info = InsightQueryInfo(**data)

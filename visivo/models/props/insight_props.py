@@ -98,3 +98,73 @@ class InsightProps(JsonSchemaBase):
         recurse(data, prefix)
 
         return results
+
+    def extract_static_props(self) -> dict:
+        """
+        Extract all static (non-query) props from InsightProps.
+
+        Returns a nested dict structure matching the original props,
+        but only containing static values (no ?{...} patterns).
+        The 'type' prop is excluded as it's handled separately.
+
+        Returns:
+            Dict with static props preserving nested structure.
+
+        Example:
+            >>> props = InsightProps(type="bar", x="?{sum(amount)}", marker={"color": ["red", "green"], "size": 10})
+            >>> props.extract_static_props()
+            {'marker': {'color': ['red', 'green'], 'size': 10}}
+        """
+        pattern = re.compile(QUERY_STRING_VALUE_PATTERN)
+
+        def is_query_string(value: Any) -> bool:
+            """Check if a value is a query string pattern."""
+            return isinstance(value, str) and pattern.match(value) is not None
+
+        def recurse(obj: Any) -> Any:
+            """
+            Recursively filter out query strings.
+            Returns None if the entire subtree should be excluded.
+            """
+            if isinstance(obj, str):
+                # If it's a query string, exclude it
+                if is_query_string(obj):
+                    return None
+                return obj
+
+            elif isinstance(obj, dict):
+                result = {}
+                for key, value in obj.items():
+                    filtered = recurse(value)
+                    if filtered is not None:
+                        result[key] = filtered
+                # Return None if the dict is empty after filtering
+                return result if result else None
+
+            elif isinstance(obj, list):
+                # For arrays, check if ANY element is a query string
+                # If so, exclude the entire array (can't have partial arrays in Plotly)
+                has_query_string = any(is_query_string(item) for item in obj)
+                if has_query_string:
+                    return None
+                # Otherwise, recursively process the list
+                result = []
+                for item in obj:
+                    filtered = recurse(item)
+                    if filtered is not None:
+                        result.append(filtered)
+                return result if result else None
+
+            else:
+                # Primitives (int, float, bool, None) are static
+                return obj
+
+        # Start from the model's dictionary representation
+        data = self.model_dump()
+
+        # Exclude 'type' as it's handled separately
+        data.pop("type", None)
+
+        # Filter and return static props
+        result = recurse(data)
+        return result if result else {}

@@ -78,6 +78,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             "files": files,
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,
+            "static_props": insight_query_info.static_props,  # Non-query props (e.g., marker.color)
             "split_key": insight_query_info.split_key,
             "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }

@@ -73,7 +73,9 @@ class TestTraceQueryBuild:
             print(f"{key}: {value}")
             if "marker.color" in key:
                 assert "${threshold}" in value, f"Should have ${{threshold}}, got: {value}"
-                assert "${ref(threshold)}" not in value, f"Should NOT have ${{ref(threshold)}}, got: {value}"
+                assert (
+                    "${ref(threshold)}" not in value
+                ), f"Should NOT have ${{ref(threshold)}}, got: {value}"
 
         # STEP 2: Create InsightQueryBuilder
         print("\n=== STEP 2: Create InsightQueryBuilder ===")

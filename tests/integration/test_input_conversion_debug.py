@@ -29,7 +29,9 @@ class TestInputConversionDebug:
                 type="scatter",
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
-                marker={"color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"},
+                marker={
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                },
             ),
         )
 
@@ -56,11 +58,17 @@ class TestInputConversionDebug:
         print(f"\nmarker.color statement: {marker_color_stmt}")
 
         # Should have converted ${ref(threshold)} to ${threshold}
-        assert "${threshold}" in marker_color_stmt, f"Should contain ${{threshold}}, got: {marker_color_stmt}"
-        assert "${ref(threshold)}" not in marker_color_stmt, f"Should NOT contain ${{ref(threshold)}}, got: {marker_color_stmt}"
+        assert (
+            "${threshold}" in marker_color_stmt
+        ), f"Should contain ${{threshold}}, got: {marker_color_stmt}"
+        assert (
+            "${ref(threshold)}" not in marker_color_stmt
+        ), f"Should NOT contain ${{ref(threshold)}}, got: {marker_color_stmt}"
 
         # Model refs should still have ref()
-        assert "${ref(orders)" in marker_color_stmt, f"Should still contain ${{ref(orders)}}, got: {marker_color_stmt}"
+        assert (
+            "${ref(orders)" in marker_color_stmt
+        ), f"Should still contain ${{ref(orders)}}, got: {marker_color_stmt}"
 
         print("✅ Input conversion in get_all_query_statements works!")
 
@@ -89,8 +97,11 @@ class TestInputConversionDebug:
 
             # ASSERT
             from visivo.models.inputs import Input
+
             assert isinstance(input_node, Input), f"Should be Input, got {type(input_node)}"
-            assert input_node.name == "threshold", f"Should have name 'threshold', got {input_node.name}"
+            assert (
+                input_node.name == "threshold"
+            ), f"Should have name 'threshold', got {input_node.name}"
 
             print("✅ Input can be found in DAG!")
         except ValueError as e:
@@ -118,7 +129,9 @@ class TestInputConversionDebug:
         dag = project.dag()
 
         # ACT - Test conversion directly
-        test_expr = "CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END"
+        test_expr = (
+            "CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END"
+        )
         converted = insight._convert_input_refs_to_js_templates(test_expr, dag)
 
         # ASSERT
@@ -126,7 +139,11 @@ class TestInputConversionDebug:
         print(f"Converted: {converted}")
 
         assert "${threshold}" in converted, f"Should contain ${{threshold}}, got: {converted}"
-        assert "${ref(threshold)}" not in converted, f"Should NOT contain ${{ref(threshold)}}, got: {converted}"
-        assert "${ref(orders).amount}" in converted, f"Should still have ${{ref(orders).amount}}, got: {converted}"
+        assert (
+            "${ref(threshold)}" not in converted
+        ), f"Should NOT contain ${{ref(threshold)}}, got: {converted}"
+        assert (
+            "${ref(orders).amount}" in converted
+        ), f"Should still have ${{ref(orders).amount}}, got: {converted}"
 
         print("✅ Direct conversion method works!")

@@ -34,7 +34,7 @@ const extractInputDependencies = (query, knownInputNames) => {
  */
 const processInsight = async (db, insight, inputs) => {
   try {
-    const { id, name, files, query, props_mapping, split_key, type } = insight;
+    const { id, name, files, query, props_mapping, split_key, type, static_props } = insight;
     const insightName = id || name;
 
     console.debug(`Processing insight '${insightName}'`);
@@ -79,6 +79,7 @@ const processInsight = async (db, insight, inputs) => {
         files,
         query,
         props_mapping,
+        static_props, // Non-query props (e.g., marker.color: ["red", "green"])
         split_key,
         type, // Trace type (bar, scatter, etc.)
         loaded: loaded.length,
@@ -98,6 +99,7 @@ const processInsight = async (db, insight, inputs) => {
         files: insight.files || [],
         query: insight.query || null,
         props_mapping: insight.props_mapping || {},
+        static_props: insight.static_props || {},
         split_key: insight.split_key || null,
         type: insight.type || null,
         loaded: 0,

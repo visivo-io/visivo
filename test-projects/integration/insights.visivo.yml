@@ -115,9 +115,9 @@ insights:
       x: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'Group A' ELSE 'Group B' END }
       y: ?{ AVG(${ref(local_test_table).y}) }
       marker:
-        color: ["#713B57", "#D25946"]
+        color: ["red", "green"]
     interactions:
-      - filter: ?{ AVG(${ref(local_test_table).y}) > ${ref(min_avg_y)} }
+      - filter: ?{ ${ref(local_test_table).y} > ${ref(min_avg_y)} }
 
   # Test Sort Order with Input
   - name: sort-input-test-insight
