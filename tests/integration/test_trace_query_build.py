@@ -80,7 +80,7 @@ class TestTraceQueryBuild:
         # STEP 2: Create InsightQueryBuilder
         print("\n=== STEP 2: Create InsightQueryBuilder ===")
         builder = InsightQueryBuilder(insight, dag, output_dir)
-        print(f"Is dynamic: {builder.is_dyanmic}")
+        print(f"Is dynamic: {builder.is_dynamic}")
         print(f"Unresolved statements: {len(builder.unresolved_query_statements)}")
 
         # Check unresolved statements
