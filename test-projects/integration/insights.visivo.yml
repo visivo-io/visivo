@@ -146,6 +146,6 @@ insights:
       marker:
         color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#4F494C' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= ${ref(split_threshold)} THEN 'Above Threshold' ELSE 'Below Threshold' END }
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'Above Threshold' ELSE 'Below Threshold' END }
       - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
       - sort: ?{${ref(local_test_table).x} ${ref(sort_direction)}}
