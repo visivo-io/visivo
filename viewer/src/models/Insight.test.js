@@ -126,4 +126,132 @@ describe('chartDataFromInsightData', () => {
     expect(names).toContain('Expense Breakdown Table Insight');
     expect(names).toContain('Revenue vs Expense Bar Insight');
   });
+
+  describe('split_key functionality', () => {
+    it('creates multiple traces when split_key is present', () => {
+      const insightWithSplit = {
+        'Split Insight': {
+          data: [
+            { x_val: 1, y_val: 10, category: 'High' },
+            { x_val: 2, y_val: 20, category: 'High' },
+            { x_val: 3, y_val: 5, category: 'Low' },
+            { x_val: 4, y_val: 8, category: 'Low' },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          split_key: 'category',
+          type: 'scatter',
+        },
+      };
+      const result = chartDataFromInsightData(insightWithSplit);
+
+      // Should create 2 traces (one for High, one for Low)
+      expect(result.length).toBe(2);
+
+      const highTrace = result.find(r => r.name === 'High');
+      const lowTrace = result.find(r => r.name === 'Low');
+
+      expect(highTrace).toBeDefined();
+      expect(lowTrace).toBeDefined();
+
+      // Verify data is grouped correctly
+      expect(highTrace.x).toEqual([1, 2]);
+      expect(highTrace.y).toEqual([10, 20]);
+      expect(lowTrace.x).toEqual([3, 4]);
+      expect(lowTrace.y).toEqual([5, 8]);
+    });
+
+    it('sets sourceInsight property for split traces', () => {
+      const insightWithSplit = {
+        'My Split Insight': {
+          data: [
+            { x_val: 1, y_val: 10, group: 'A' },
+            { x_val: 2, y_val: 20, group: 'B' },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          split_key: 'group',
+          type: 'bar',
+        },
+      };
+      const result = chartDataFromInsightData(insightWithSplit);
+
+      expect(result.length).toBe(2);
+      // All split traces should have sourceInsight set to the original insight name
+      result.forEach(trace => {
+        expect(trace.sourceInsight).toBe('My Split Insight');
+      });
+    });
+
+    it('sets legendgroup to split value', () => {
+      const insightWithSplit = {
+        'Legend Insight': {
+          data: [
+            { x_val: 1, y_val: 10, status: 'Active' },
+            { x_val: 2, y_val: 20, status: 'Inactive' },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          split_key: 'status',
+          type: 'scatter',
+        },
+      };
+      const result = chartDataFromInsightData(insightWithSplit);
+
+      const activeTrace = result.find(r => r.legendgroup === 'Active');
+      const inactiveTrace = result.find(r => r.legendgroup === 'Inactive');
+
+      expect(activeTrace).toBeDefined();
+      expect(inactiveTrace).toBeDefined();
+    });
+
+    it('does not set sourceInsight for non-split traces', () => {
+      const insightWithoutSplit = {
+        'Regular Insight': {
+          data: [
+            { x_val: 1, y_val: 10 },
+            { x_val: 2, y_val: 20 },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          type: 'scatter',
+        },
+      };
+      const result = chartDataFromInsightData(insightWithoutSplit);
+
+      expect(result.length).toBe(1);
+      expect(result[0].sourceInsight).toBeUndefined();
+      expect(result[0].name).toBe('Regular Insight');
+    });
+
+    it('handles null split values gracefully', () => {
+      const insightWithNullSplit = {
+        'Null Split Insight': {
+          data: [
+            { x_val: 1, y_val: 10, group: 'A' },
+            { x_val: 2, y_val: 20, group: null },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          split_key: 'group',
+          type: 'scatter',
+        },
+      };
+      const result = chartDataFromInsightData(insightWithNullSplit);
+
+      expect(result.length).toBe(2);
+      const nullTrace = result.find(r => r.name === 'null');
+      expect(nullTrace).toBeDefined();
+    });
+  });
 });

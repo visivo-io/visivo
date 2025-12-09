@@ -329,10 +329,10 @@ class InsightQueryBuilder:
         Returns:
             Formatted SQL string with ${input_name} placeholders preserved
         """
-        # Collect SELECT expressions (props)
+        # Collect SELECT expressions (props and split)
         select_clauses = []
         for key, statement in self.resolved_query_statements:
-            if key.startswith("props."):
+            if key.startswith("props.") or key == "split":
                 select_clauses.append(statement)
 
         if not select_clauses:

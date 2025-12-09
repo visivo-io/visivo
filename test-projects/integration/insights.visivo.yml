@@ -86,7 +86,7 @@ insights:
       marker:
         color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#D25946' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= ${ref(split_threshold)} THEN 'High Y Values' ELSE 'Low Y Values' END }
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'High Y Values' ELSE 'Low Y Values' END }
       - sort: ?{${ref(local_test_table).x} desc}
 
   # Test Non-Aggregate Filter with Input

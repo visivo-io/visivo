@@ -224,8 +224,9 @@ export function chartDataFromInsightData(insightsData) {
           traceProps.type = type;
         }
 
-        // Set trace name to include split value
-        traceProps.name = `${insightName} - ${splitValue}`;
+        // Set trace name to split value only (for cleaner legend display)
+        traceProps.name = splitValue;
+        traceProps.sourceInsight = insightName; // Track original insight name for filtering
         traceProps.legendgroup = splitValue;
 
         traces.push(traceProps);
