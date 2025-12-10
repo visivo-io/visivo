@@ -460,6 +460,7 @@ class InsightQueryBuilder:
         """
         # Build all the query components
         ctes = self._build_ctes()
+        self.logger.info(f"[DEBUG] _build_static_query: Got {len(ctes)} CTEs")
         select_expressions = self._build_main_select()
         from_table, joins = self._build_from_and_joins()
         where_clause = self._build_where_clause()
@@ -476,6 +477,9 @@ class InsightQueryBuilder:
         if ctes:
             # Attach CTEs directly to the query
             query.set("with", exp.With(expressions=ctes))
+            self.logger.info(
+                f"[DEBUG] _build_static_query: Added WITH clause with {len(ctes)} CTEs"
+            )
 
         # Add SELECT expressions
         if select_expressions:
@@ -545,11 +549,20 @@ class InsightQueryBuilder:
         """
         ctes = []
 
+        self.logger.info(
+            f"[DEBUG] _build_ctes for '{self.insight_name}': "
+            f"is_dynamic={self.is_dynamic}, num_models={len(self.models)}"
+        )
+
         # Dynamic insights don't need CTEs - tables are already registered with model_hash names
         if self.is_dynamic:
             return ctes
 
         for model in self.models:
+            self.logger.info(
+                f"[DEBUG] _build_ctes: Processing model '{model.name}', "
+                f"type={type(model).__name__}, has_sql={hasattr(model, 'sql')}"
+            )
             model_hash = model.name_hash()
 
             # Load schema for this model to expand SELECT *
@@ -597,7 +610,11 @@ class InsightQueryBuilder:
                 this=cte_query, alias=exp.TableAlias(this=exp.Identifier(this=model_hash))
             )
             ctes.append(cte)
+            self.logger.info(
+                f"[DEBUG] _build_ctes: Built CTE for model '{model.name}' with hash '{model_hash}'"
+            )
 
+        self.logger.info(f"[DEBUG] _build_ctes: Returning {len(ctes)} CTEs")
         return ctes
 
     def _build_main_select(self):
