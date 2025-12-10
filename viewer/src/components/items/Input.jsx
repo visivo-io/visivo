@@ -11,17 +11,6 @@ const Input = ({ input, itemWidth, project }) => {
   // Load options from parquet (or use static options)
   const options = useInputOptions(input, project?.id);
 
-  // Debug logging
-  console.log('Input component render:', {
-    inputName: input?.name,
-    inputNameHash: input?.name_hash,
-    inputOptions: input?.options,
-    projectId: project?.id,
-    resolvedOptions: options,
-    optionsType: typeof options,
-    optionsIsArray: Array.isArray(options),
-  });
-
   if (!input) return null;
 
   return (
