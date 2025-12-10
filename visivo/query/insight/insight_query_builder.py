@@ -187,10 +187,6 @@ class InsightQueryBuilder:
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
         self.is_dynamic = insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
-        self.logger.info(
-            f"[DEBUG] InsightQueryBuilder '{insight.name}': "
-            f"is_dynamic={self.is_dynamic}, models={[m.name for m in self.models]}"
-        )
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
         self.default_database = source.database
@@ -460,7 +456,6 @@ class InsightQueryBuilder:
         """
         # Build all the query components
         ctes = self._build_ctes()
-        self.logger.info(f"[DEBUG] _build_static_query: Got {len(ctes)} CTEs")
         select_expressions = self._build_main_select()
         from_table, joins = self._build_from_and_joins()
         where_clause = self._build_where_clause()
@@ -477,9 +472,6 @@ class InsightQueryBuilder:
         if ctes:
             # Attach CTEs directly to the query
             query.set("with", exp.With(expressions=ctes))
-            self.logger.info(
-                f"[DEBUG] _build_static_query: Added WITH clause with {len(ctes)} CTEs"
-            )
 
         # Add SELECT expressions
         if select_expressions:
@@ -520,10 +512,6 @@ class InsightQueryBuilder:
                 query = query.order_by(order_expr, copy=False)
 
         # Final qualification with default database and schema
-        has_with_before = query.args.get("with") is not None
-        self.logger.info(
-            f"[DEBUG] _build_static_query: Before qualify - has_with={has_with_before}"
-        )
         try:
             query = qualify.qualify(
                 query,
@@ -531,15 +519,9 @@ class InsightQueryBuilder:
                 db=self.default_schema,
                 dialect=target_dialect,
             )
-            has_with_after = query.args.get("with") is not None
-            self.logger.info(
-                f"[DEBUG] _build_static_query: After qualify - has_with={has_with_after}"
-            )
-        except Exception as e:
+        except Exception:
             # If qualification fails, continue with unqualified query
-            self.logger.info(
-                f"[DEBUG] _build_static_query: qualify failed with {type(e).__name__}: {e}"
-            )
+            pass
 
         # Generate formatted SQL string
         formatted_sql = query.sql(dialect=target_dialect, pretty=True)
@@ -559,20 +541,11 @@ class InsightQueryBuilder:
         """
         ctes = []
 
-        self.logger.info(
-            f"[DEBUG] _build_ctes for '{self.insight_name}': "
-            f"is_dynamic={self.is_dynamic}, num_models={len(self.models)}"
-        )
-
         # Dynamic insights don't need CTEs - tables are already registered with model_hash names
         if self.is_dynamic:
             return ctes
 
         for model in self.models:
-            self.logger.info(
-                f"[DEBUG] _build_ctes: Processing model '{model.name}', "
-                f"type={type(model).__name__}, has_sql={hasattr(model, 'sql')}"
-            )
             model_hash = model.name_hash()
 
             # Load schema for this model to expand SELECT *
@@ -620,11 +593,7 @@ class InsightQueryBuilder:
                 this=cte_query, alias=exp.TableAlias(this=exp.Identifier(this=model_hash))
             )
             ctes.append(cte)
-            self.logger.info(
-                f"[DEBUG] _build_ctes: Built CTE for model '{model.name}' with hash '{model_hash}'"
-            )
 
-        self.logger.info(f"[DEBUG] _build_ctes: Returning {len(ctes)} CTEs")
         return ctes
 
     def _build_main_select(self):
