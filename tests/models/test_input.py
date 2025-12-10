@@ -44,21 +44,7 @@ def test_dropdown_with_static_options():
 
 
 def test_dropdown_with_query_options():
-    """Test dropdown with query options resolves ${ref(...)} to parquet file"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.models.sql_model import SqlModel
-
-    # Create a minimal project with just a source and model
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    model = SqlModel(
-        name="products_model",
-        sql="SELECT * FROM products",
-        source="ref(test_source)",
-    )
-    project = Project(name="test_project", sources=[source], models=[model])
-    dag = project.dag()
-
+    """Test dropdown with query options serializes the query string and adds name_hash"""
     # Create input with query-based options
     data = {
         "name": "query_options",
@@ -67,74 +53,40 @@ def test_dropdown_with_query_options():
     }
     dropdown = DropdownInput(**data)
 
-    # Serialize with DAG context
-    dumped = dropdown.model_dump(context={"dag": dag})
+    # Serialize (no DAG context needed anymore)
+    dumped = dropdown.model_dump()
 
     # Verify the input was created correctly
     assert dropdown.name == "query_options"
+
+    # Options should be the query string (QueryString serializes via its schema)
     assert "options" in dumped
-    assert dumped["is_query"] is True
+    assert "${ref(products_model)}" in dumped["options"]
+    assert "select distinct(category)" in dumped["options"]
 
-    # Verify ${ref(products_model)} was resolved to read_parquet
-    assert "READ_PARQUET" in dumped["options"].upper()
-    assert "files/" in dumped["options"]
-    assert ".parquet" in dumped["options"]
-
-    # Verify it's a valid DuckDB query with SELECT DISTINCT
-    assert "SELECT" in dumped["options"].upper()
-    assert "DISTINCT" in dumped["options"].upper()
-    assert "category" in dumped["options"].lower()
+    # name_hash should be present for viewer to fetch parquet file
+    assert "name_hash" in dumped
+    assert dumped["name_hash"] == dropdown.name_hash()
 
 
-def test_query_validation_multiple_columns_fails():
-    """Test that queries with multiple columns fail validation"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.models.sql_model import SqlModel
-    import pytest
+def test_query_options_serialize_without_dag():
+    """Test that query options serialize without needing DAG context.
 
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    model = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
-    project = Project(name="test_project", sources=[source], models=[model])
-    dag = project.dag()
-
-    # Query with multiple columns should fail
+    Query validation (column count, SELECT statement, etc.) now happens
+    in the run phase via run_input_job.py, not at serialization time.
+    """
+    # Query with multiple columns should serialize fine (validation happens at run time)
     data = {
-        "name": "bad_input",
+        "name": "multi_column_input",
         "options": "?{ select category, name from ${ref(products)} }",
     }
     dropdown = DropdownInput(**data)
+    dumped = dropdown.model_dump()
 
-    with pytest.raises(ValueError) as exc_info:
-        dropdown.model_dump(context={"dag": dag})
-
-    assert "must return exactly one column" in str(exc_info.value)
-    assert "found 2 columns" in str(exc_info.value)
-
-
-def test_query_validation_not_select_fails():
-    """Test that non-SELECT queries fail validation"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.models.sql_model import SqlModel
-    import pytest
-
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    model = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
-    project = Project(name="test_project", sources=[source], models=[model])
-    dag = project.dag()
-
-    # DELETE query should fail
-    data = {
-        "name": "bad_input",
-        "options": "?{ delete from ${ref(products)} }",
-    }
-    dropdown = DropdownInput(**data)
-
-    with pytest.raises(ValueError) as exc_info:
-        dropdown.model_dump(context={"dag": dag})
-
-    assert "must be a SELECT statement" in str(exc_info.value)
+    # Should serialize the query string as-is
+    assert "options" in dumped
+    assert "category, name" in dumped["options"]
+    assert "name_hash" in dumped
 
 
 def test_query_multiple_references_fails():
@@ -183,51 +135,38 @@ def test_query_no_reference_fails():
     assert "must reference exactly one model" in str(exc_info.value)
 
 
-def test_query_nonexistent_reference_fails():
-    """Test that queries referencing non-existent items fail"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    import pytest
+def test_query_reference_serializes_without_validation():
+    """Test that query options with any reference serialize without DAG validation.
 
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    project = Project(name="test_project", sources=[source])
-    dag = project.dag()
-
-    # Reference to non-existent item should fail
+    Reference validation (existence, type) now happens in the run phase
+    via run_input_job.py, not at serialization time.
+    """
+    # Reference to nonexistent item should serialize fine (validation at run time)
     data = {
-        "name": "bad_input",
+        "name": "test_input",
         "options": "?{ select category from ${ref(nonexistent)} }",
     }
     dropdown = DropdownInput(**data)
+    dumped = dropdown.model_dump()
 
-    with pytest.raises(ValueError) as exc_info:
-        dropdown.model_dump(context={"dag": dag})
+    # Should serialize the query string as-is
+    assert "options" in dumped
+    assert "${ref(nonexistent)}" in dumped["options"]
+    assert "name_hash" in dumped
 
-    assert "'nonexistent' which was not found" in str(exc_info.value)
 
-
-def test_query_with_model_reference():
-    """Test that query-based options work with model references too"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.models.sql_model import SqlModel
-
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    model = SqlModel(name="products_model", sql="SELECT * FROM products", source="ref(test_source)")
-    project = Project(name="test_project", sources=[source], models=[model])
-    dag = project.dag()
-
+def test_static_options_include_name_hash():
+    """Test that static options also include name_hash for consistency"""
     data = {
         "name": "category_filter",
-        "options": "?{ select distinct category from ${ref(products_model)} }",
+        "options": ["Option A", "Option B", "Option C"],
     }
     dropdown = DropdownInput(**data)
-    dumped = dropdown.model_dump(context={"dag": dag})
+    dumped = dropdown.model_dump()
 
-    assert dumped["is_query"] is True
-    assert "READ_PARQUET" in dumped["options"].upper()
-    # Verify the model's hash appears in the parquet file path
-    assert model.name_hash() in dumped["options"]
+    assert dumped["options"] == ["Option A", "Option B", "Option C"]
+    assert "name_hash" in dumped
+    assert dumped["name_hash"] == dropdown.name_hash()
 
 
 def test_child_items_includes_query_refs():

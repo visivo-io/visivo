@@ -21,6 +21,10 @@ export const fetchInputOptions = async (projectId, inputHash) => {
   }
 };
 
+// Counter for unique temp file names
+let tempFileCounter = 0;
+const getTempFilename = () => `input_temp_${Date.now()}_${tempFileCounter++}`;
+
 /**
  * Load input options from parquet file URL using DuckDB
  *
@@ -35,10 +39,22 @@ export const loadInputOptions = async (db, url) => {
   try {
     console.debug(`Loading input options from ${url}`);
 
-    // Query the parquet file directly - DuckDB can read from HTTP URLs
+    // Fetch the parquet file (same pattern as loadParquetFromURL in queries.js)
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch parquet file: ${response.status} ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Register file in DuckDB
+    const tempFile = getTempFilename() + '.parquet';
+    await db.registerFileBuffer(tempFile, uint8Array);
+
     const conn = await db.connect();
     try {
-      const result = await conn.query(`SELECT option FROM read_parquet('${url}')`);
+      const result = await conn.query(`SELECT option FROM read_parquet('${tempFile}')`);
 
       // Extract the 'option' column
       const optionColumn = result.getChild('option');
@@ -57,6 +73,7 @@ export const loadInputOptions = async (db, url) => {
       return options;
     } finally {
       await conn.close();
+      await db.dropFile(tempFile);
     }
   } catch (error) {
     console.error(`Failed to load input options from ${url}:`, error);

@@ -23,7 +23,7 @@ inputs:
     label: "Minimum X Value"
     type: dropdown
     default: "2"
-    options: ["0", "2", "4", "6"]
+    options: ?{select distinct x FROM ${ref(local_test_table)} }
 
   # Input for aggregate filter testing
   - name: min_avg_y

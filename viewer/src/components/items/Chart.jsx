@@ -73,9 +73,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       const insightData = chartDataFromInsightData(insightsData);
       // Use sourceInsight for split traces (which have modified names), fall back to name for non-split
       data.push(
-        ...insightData.filter(
-          insight => (insight.sourceInsight || insight.name) === insightName
-        )
+        ...insightData.filter(insight => (insight.sourceInsight || insight.name) === insightName)
       );
     }
 

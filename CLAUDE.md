@@ -183,3 +183,4 @@ The CLI execution path is introspection-free to maintain performance:
 - Never run python based integration tests. If you need to run an integration test, ask the user for help and they will run the test and paste the output into the chat.
 - always use generate_ref_field from @visivo/models/base/base_model.py to create references to other objects in pydantics models
 - NEVER EVER EVER write regex to parse SQL. Always use sqlglot to parse SQL. Never create fall back logic for sql parsing if sqlglot fails then it fails. See @claude-docs/SQLGLOT.md if you need to use sqlglot and want a cheat sheet. 
+- Don't run yarn deploy unless absolutely required or asked to. When trying to test frontend changes run `visivo serve` in an integration project and then in @viewer/ run `yarn dev` which will spin up a dev server on localhost:3000 where you can check on errors

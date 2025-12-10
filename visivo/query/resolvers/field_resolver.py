@@ -4,6 +4,8 @@ from typing import Optional, Dict
 from visivo.models.base.project_dag import ProjectDag
 
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.metric import Metric
+from visivo.models.dimension import Dimension
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
@@ -158,6 +160,15 @@ class FieldResolver:
                 try:
                     # set the field node to the descenant of the model
                     field_node = self.dag.get_descendant_by_name(field_name_stripped)
+
+                    # Only Metrics and Dimensions are valid for model-scoped field references.
+                    # Other named nodes (Inputs, Insights, etc.) with the same name should
+                    # fall through to implicit dimension lookup in the schema.
+                    if not isinstance(field_node, (Metric, Dimension)):
+                        raise ValueError(
+                            f"Found node '{field_name_stripped}' but it's a "
+                            f"{type(field_node).__name__}, not a Metric or Dimension"
+                        )
                 except ValueError:
                     # No model found check to see if there's a matching implicit dimension in the schema
                     model_hash = model_node.name_hash()
