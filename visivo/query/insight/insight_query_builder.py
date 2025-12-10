@@ -520,6 +520,10 @@ class InsightQueryBuilder:
                 query = query.order_by(order_expr, copy=False)
 
         # Final qualification with default database and schema
+        has_with_before = query.args.get("with") is not None
+        self.logger.info(
+            f"[DEBUG] _build_static_query: Before qualify - has_with={has_with_before}"
+        )
         try:
             query = qualify.qualify(
                 query,
@@ -527,9 +531,15 @@ class InsightQueryBuilder:
                 db=self.default_schema,
                 dialect=target_dialect,
             )
-        except Exception:
+            has_with_after = query.args.get("with") is not None
+            self.logger.info(
+                f"[DEBUG] _build_static_query: After qualify - has_with={has_with_after}"
+            )
+        except Exception as e:
             # If qualification fails, continue with unqualified query
-            pass
+            self.logger.info(
+                f"[DEBUG] _build_static_query: qualify failed with {type(e).__name__}: {e}"
+            )
 
         # Generate formatted SQL string
         formatted_sql = query.sql(dialect=target_dialect, pretty=True)
