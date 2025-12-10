@@ -97,17 +97,12 @@ class Insight(NamedModel, ParentModel):
         """
         from visivo.query.patterns import extract_ref_names
 
-        logger = Logger.instance()
         children = []
 
         # Extract all ${ref(model_name).field} references from props
         if self.props:
             props_str = str(self.props.model_dump())
             model_names = extract_ref_names(props_str)
-            logger.info(
-                f"[DEBUG] Insight '{self.name}' child_items: "
-                f"props_str_len={len(props_str)}, model_names={model_names}"
-            )
 
             # Convert model names to ref() format for DAG
             for model_name in model_names:
