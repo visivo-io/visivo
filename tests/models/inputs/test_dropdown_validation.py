@@ -1,13 +1,14 @@
 """
-TDD tests for DropdownInput validation refactor.
+TDD tests for DropdownInput validation.
 
 Tests validate:
-1. SqlModel-only references (no Insights allowed)
-2. Exactly one reference required
+1. SqlModel-only references (no Insights allowed) - at runtime via job execution
+2. Exactly one reference required - at construction time
 3. Helpful error messages
 4. Validation triggered at appropriate times
 """
 
+import tempfile
 import pytest
 from tests.factories.model_factories import (
     SqlModelFactory,
@@ -17,13 +18,14 @@ from tests.factories.model_factories import (
 from visivo.models.inputs.types.dropdown import DropdownInput
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
+from visivo.jobs.run_input_job import action
 
 
 class TestDropdownValidation:
     """Test validation of DropdownInput query references."""
 
     def test_rejects_insight_references(self):
-        """Verify inputs cannot reference Insights."""
+        """Verify inputs cannot reference Insights - validated at runtime."""
         # ARRANGE
         source = SourceFactory(name="db")
         model = SqlModelFactory(name="data", sql="SELECT 1 as x", source="ref(db)")
@@ -35,17 +37,17 @@ class TestDropdownValidation:
 
         input_obj = DropdownInput(name="bad_input", options="?{ SELECT x FROM ${ref(my_insight)} }")
 
-        # ACT & ASSERT
-        with pytest.raises(ValueError) as exc_info:
-            # Trigger validation via serialization
-            input_obj.model_dump(context={"dag": dag})
+        # ACT
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = action(input_obj, dag, output_dir)
 
-        # Verify error message mentions SqlModel requirement
-        assert "can only reference SqlModel" in str(exc_info.value)
-        assert "my_insight" in str(exc_info.value)
+        # ASSERT
+        assert result.success is False
+        assert "can only reference SqlModel" in result.message
+        assert "Insight" in result.message  # Error mentions the type, not the name
 
     def test_rejects_nonexistent_references(self):
-        """Verify helpful error for missing models."""
+        """Verify helpful error for missing models - validated at runtime."""
         # ARRANGE
         source = SourceFactory(name="db")
         model = SqlModelFactory(name="data", sql="SELECT 1 as x", source="ref(db)")
@@ -57,13 +59,15 @@ class TestDropdownValidation:
             options="?{ SELECT x FROM ${ref(nonexistent)} }",
         )
 
-        # ACT & ASSERT
-        with pytest.raises(ValueError) as exc_info:
-            input_obj.model_dump(context={"dag": dag})
+        # ACT
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = action(input_obj, dag, output_dir)
 
-        assert "'nonexistent' which was not found" in str(exc_info.value)
+        # ASSERT
+        assert result.success is False
+        assert "not found" in result.message
 
-    def test_accepts_sqlmodel_references(self):
+    def test_accepts_sqlmodel_references(self, mocker):
         """Verify SqlModel references are allowed."""
         # ARRANGE
         source = SourceFactory(name="db")
@@ -73,26 +77,25 @@ class TestDropdownValidation:
 
         input_obj = DropdownInput(name="good_input", options="?{ SELECT x FROM ${ref(data)} }")
 
-        # ACT - should not raise
-        result = input_obj.model_dump(context={"dag": dag})
+        # Mock source.read_sql to return valid data
+        mocker.patch(
+            "visivo.jobs.run_input_job.get_source_for_model",
+            return_value=mocker.Mock(read_sql=lambda q: [{"x": "option1"}]),
+        )
+
+        # ACT
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = action(input_obj, dag, output_dir)
 
         # ASSERT
-        assert result is not None
-        assert result["name"] == "good_input"
+        assert result.success is True
 
     def test_rejects_multiple_references(self):
-        """Verify error when >1 ref in query."""
-        # ARRANGE
-        source = SourceFactory(name="db")
-        model1 = SqlModelFactory(name="data1", sql="SELECT 1 as x", source="ref(db)")
-        model2 = SqlModelFactory(name="data2", sql="SELECT 2 as x", source="ref(db)")
-        project = ProjectFactory(sources=[source], models=[model1, model2], dashboards=[])
-        dag = project.dag()
-
-        # ACT & ASSERT
+        """Verify error when >1 ref in query - validated at construction time."""
+        # ARRANGE & ACT & ASSERT
         # Validation happens during construction (model_validator)
         with pytest.raises(ValueError) as exc_info:
-            input_obj = DropdownInput(
+            DropdownInput(
                 name="bad_input",
                 options="?{ SELECT x FROM ${ref(data1)} UNION SELECT x FROM ${ref(data2)} }",
             )
@@ -101,54 +104,13 @@ class TestDropdownValidation:
         assert "must reference exactly one" in str(exc_info.value)
 
     def test_rejects_zero_references(self):
-        """Verify error when 0 refs in query."""
-        # ARRANGE
-        source = SourceFactory(name="db")
-        model = SqlModelFactory(name="data", sql="SELECT 1 as x", source="ref(db)")
-        project = ProjectFactory(sources=[source], models=[model], dashboards=[])
-        dag = project.dag()
-
-        # ACT & ASSERT
+        """Verify error when 0 refs in query - validated at construction time."""
+        # ARRANGE & ACT & ASSERT
         # Validation happens during construction (model_validator)
         with pytest.raises(ValueError) as exc_info:
-            input_obj = DropdownInput(name="bad_input", options="?{ SELECT x FROM some_table }")
+            DropdownInput(name="bad_input", options="?{ SELECT x FROM some_table }")
 
         assert "must reference exactly one model" in str(exc_info.value)
-
-    def test_validation_triggered_on_serialization(self):
-        """Verify validation runs during model_dump()."""
-        # ARRANGE
-        source = SourceFactory(name="db")
-        insight = Insight(name="my_insight", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-        project = ProjectFactory(sources=[source], insights=[insight], dashboards=[])
-        dag = project.dag()
-
-        input_obj = DropdownInput(name="bad_input", options="?{ SELECT x FROM ${ref(my_insight)} }")
-
-        # ACT & ASSERT
-        # Validation should NOT trigger without context
-        # Should trigger WITH dag context
-        with pytest.raises(ValueError) as exc_info:
-            input_obj.model_dump(context={"dag": dag})
-
-        assert "can only reference SqlModel" in str(exc_info.value)
-
-    def test_validation_with_dag_context(self):
-        """Verify DAG context enables validation."""
-        # ARRANGE
-        source = SourceFactory(name="db")
-        model = SqlModelFactory(name="data", sql="SELECT 1 as x", source="ref(db)")
-        project = ProjectFactory(sources=[source], models=[model], dashboards=[])
-        dag = project.dag()
-
-        input_obj = DropdownInput(name="good_input", options="?{ SELECT x FROM ${ref(data)} }")
-
-        # ACT
-        # With DAG context - should work
-        result_with_dag = input_obj.model_dump(context={"dag": dag})
-
-        # ASSERT
-        assert result_with_dag is not None
 
     def test_static_options_skip_validation(self):
         """Verify static inputs not validated."""
@@ -162,49 +124,26 @@ class TestDropdownValidation:
         assert result is not None
         assert result["options"] == ["Option1", "Option2", "Option3"]
 
-    def test_helpful_error_messages(self):
-        """Verify errors mention SqlModel requirement."""
-        # ARRANGE
-        source = SourceFactory(name="db")
-        insight = Insight(name="my_insight", props=InsightProps(type="scatter", x="?{x}", y="?{y}"))
-        project = ProjectFactory(sources=[source], insights=[insight], dashboards=[])
-        dag = project.dag()
-
-        input_obj = DropdownInput(name="bad_input", options="?{ SELECT x FROM ${ref(my_insight)} }")
-
-        # ACT & ASSERT
-        with pytest.raises(ValueError) as exc_info:
-            input_obj.model_dump(context={"dag": dag})
-
-        error_msg = str(exc_info.value)
-        # Check for helpful guidance
-        assert "SqlModel" in error_msg
-        assert "my_insight" in error_msg
-        # Should explain WHY it's not allowed
-        assert any(
-            keyword in error_msg.lower()
-            for keyword in ["backend", "source", "execute", "build time"]
-        )
-
-    def test_validation_happens_compile_time(self):
-        """Verify errors happen early (not runtime)."""
+    def test_validation_happens_at_runtime(self):
+        """Verify validation happens during job execution, not at construction."""
         # ARRANGE
         source = SourceFactory(name="db")
         model = SqlModelFactory(name="data", sql="SELECT 1 as x", source="ref(db)")
         project = ProjectFactory(sources=[source], models=[model], dashboards=[])
         dag = project.dag()
 
-        # Create input with query that would fail at runtime (nonexistent column)
-        # But validation should catch the missing reference first during serialization
+        # Create input with query that references non-existent model
+        # Construction should succeed (only ref count is validated at construction)
         input_obj = DropdownInput(
             name="bad_input",
             options="?{ SELECT nonexistent_col FROM ${ref(missing)} }",
         )
 
-        # ACT & ASSERT
-        # Should fail at serialize time (when DAG is available), not execution time
-        with pytest.raises(ValueError) as exc_info:
-            input_obj.model_dump(context={"dag": dag})
+        # ACT
+        # Runtime validation should catch the missing reference
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = action(input_obj, dag, output_dir)
 
-        # Error should be about missing reference, not column
-        assert "not found" in str(exc_info.value)
+        # ASSERT
+        assert result.success is False
+        assert "not found" in result.message

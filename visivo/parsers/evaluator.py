@@ -105,7 +105,7 @@ def evaluate_expression(
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
             return all(evaluate_node(value) for value in node.values)
         if isinstance(node, ast.Constant):
-            return node.n
+            return node.value
         if isinstance(node, ast.List):
             return list(map(lambda a: evaluate_node(a), node.elts))
         elif isinstance(node, ast.BinOp):
