@@ -182,6 +182,7 @@ tasks:
       cd test-projects/integration
       # Test that visivo serve starts without errors
       timeout 10 visivo serve -s local-duckdb || exit_code=$?
+      rwx-breakpoint
       # timeout returns 124 if it times out (expected behavior)
       if [ "${exit_code:-0}" -ne 0 ] && [ "${exit_code:-0}" -ne 124 ]; then
         echo "visivo serve failed with exit code $exit_code"
