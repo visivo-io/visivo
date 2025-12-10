@@ -187,6 +187,10 @@ class InsightQueryBuilder:
         self.unresolved_query_statements = insight.get_all_query_statements(dag)
         self.is_dynamic = insight.is_dynamic(dag)
         self.models = insight.get_all_dependent_models(dag)
+        self.logger.info(
+            f"[DEBUG] InsightQueryBuilder '{insight.name}': "
+            f"is_dynamic={self.is_dynamic}, models={[m.name for m in self.models]}"
+        )
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
         self.default_database = source.database
