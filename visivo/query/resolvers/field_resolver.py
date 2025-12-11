@@ -10,7 +10,12 @@ from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
 )
-from visivo.query.sqlglot_utils import identify_column_references, field_alias_hasher
+from visivo.query.sqlglot_utils import (
+    identify_column_references,
+    field_alias_hasher,
+    get_sqlglot_dialect,
+)
+from sqlglot import exp
 from visivo.logger.logger import Logger
 
 
@@ -223,6 +228,10 @@ class FieldResolver:
         hashed_alias = field_alias_hasher(resolved_sql)
         resolved_strip_alias = resolved_sql.split(" AS ")[0]
         if alias:
-            return f'{resolved_strip_alias} AS "{hashed_alias}"'
+            # Use SQLGlot to generate dialect-appropriate alias quoting
+            sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+            alias_identifier = exp.Identifier(this=hashed_alias, quoted=True)
+            alias_sql = alias_identifier.sql(dialect=sqlglot_dialect)
+            return f"{resolved_strip_alias} AS {alias_sql}"
         else:
             return resolved_strip_alias

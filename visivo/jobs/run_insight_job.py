@@ -8,6 +8,7 @@ from visivo.jobs.job import (
     format_message_failure,
     format_message_success,
 )
+from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
 from visivo.jobs.utils import get_source_for_model
 import json
@@ -101,11 +102,33 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             message = e.message
         else:
             message = repr(e)
+
+        # Log failed query to file for debugging
+        query_file = None
+        if insight_query_info and insight_query_info.pre_query:
+            error_location = extract_error_location(message)
+            query_file = log_failed_query(
+                output_dir=output_dir,
+                item_name=insight.name,
+                item_type="insight",
+                query=insight_query_info.pre_query,
+                error_msg=message,
+                error_location=error_location,
+            )
+
+        # Format error with location and query file reference
+        error_location = extract_error_location(message)
+        error_display = message
+        if error_location:
+            error_display = f"{message}\n        at {error_location}"
+        if query_file:
+            error_display = f"{error_display}\n        query saved to: {query_file}"
+
         failure_message = format_message_failure(
             details=f"Failed job for insight \033[4m{insight.name}\033[0m",
             start_time=start_time,
             full_path=None,
-            error_msg=message,
+            error_msg=error_display,
         )
         return JobResult(item=insight, success=False, message=failure_message)
 

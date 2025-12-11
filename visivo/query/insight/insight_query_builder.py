@@ -394,7 +394,8 @@ class InsightQueryBuilder:
             parsed = parse_expression(safe_expr, "duckdb")
             if parsed:
                 # Use find_non_aggregated_expressions to get full expressions for GROUP BY
-                non_agg_exprs = find_non_aggregated_expressions(parsed)
+                # Pass duckdb dialect for dynamic queries (they run in browser DuckDB WASM)
+                non_agg_exprs = find_non_aggregated_expressions(parsed, dialect="duckdb")
                 for expr_sql in non_agg_exprs:
                     # Restore ${input} placeholders for JS runtime injection
                     restored_expr = restore_input_placeholders(expr_sql)
@@ -713,7 +714,8 @@ class InsightQueryBuilder:
 
         for select_expr in select_expressions:
             # Find non-aggregated expressions in each SELECT expression
-            non_agg_exprs = find_non_aggregated_expressions(select_expr)
+            # Pass dialect for proper identifier quoting (e.g., backticks for BigQuery)
+            non_agg_exprs = find_non_aggregated_expressions(select_expr, dialect=target_dialect)
 
             for expr_str in non_agg_exprs:
                 # Parse the expression

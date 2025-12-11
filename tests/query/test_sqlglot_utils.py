@@ -16,6 +16,7 @@ from visivo.query.sqlglot_utils import (
     parse_expression,
     has_aggregate_function,
     has_window_function,
+    find_non_aggregated_expressions,
 )
 
 
@@ -256,6 +257,169 @@ class TestHasAggregateFunction:
         """Test arithmetic expression is not aggregate."""
         expr = parse_expression("price * quantity", dialect="duckdb")
         assert has_aggregate_function(expr) is False
+
+
+class TestIdentifyColumnReferencesDialects:
+    """Tests for dialect-specific identifier quoting in identify_column_references."""
+
+    def test_bigquery_uses_backticks(self):
+        """Test that BigQuery dialect uses backticks for identifiers."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "INT", "date": "DATE"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="amount",
+            dialect="bigquery",
+        )
+
+        # BigQuery uses backticks for identifiers
+        assert "`model_abc`.`amount`" in result
+        # Should NOT use double quotes
+        assert '"model_abc"' not in result
+
+    def test_bigquery_aggregate_with_backticks(self):
+        """Test that BigQuery uses backticks for aggregate expressions."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "DECIMAL"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="SUM(amount)",
+            dialect="bigquery",
+        )
+
+        # BigQuery uses backticks
+        assert "`model_abc`.`amount`" in result
+        assert "SUM" in result.upper()
+
+    def test_bigquery_case_expression(self):
+        """Test that BigQuery uses backticks in CASE expressions."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"status": "VARCHAR", "amount": "DECIMAL"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="CASE WHEN status = 'active' THEN amount ELSE 0 END",
+            dialect="bigquery",
+        )
+
+        # BigQuery uses backticks
+        assert "`model_abc`.`status`" in result
+        assert "`model_abc`.`amount`" in result
+        # Should NOT use double quotes for identifiers
+        assert '"model_abc"' not in result
+
+    def test_postgres_uses_double_quotes(self):
+        """Test that PostgreSQL dialect uses double quotes for identifiers."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="amount",
+            dialect="postgresql",
+        )
+
+        # PostgreSQL uses double quotes
+        assert '"model_abc"."amount"' in result
+        # Should NOT use backticks
+        assert "`model_abc`" not in result
+
+    def test_snowflake_uses_double_quotes(self):
+        """Test that Snowflake dialect uses double quotes for identifiers."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="amount",
+            dialect="snowflake",
+        )
+
+        # Snowflake uses double quotes
+        assert '"model_abc"."amount"' in result
+
+    def test_bigquery_with_sort_order(self):
+        """Test that BigQuery preserves sort order with backticks."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"date": "DATE"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="date DESC",
+            dialect="bigquery",
+        )
+
+        # BigQuery uses backticks and preserves sort order
+        assert "`model_abc`.`date`" in result
+        assert "DESC" in result
+
+
+class TestFindNonAggregatedExpressionsDialects:
+    """Tests for dialect-specific identifier quoting in find_non_aggregated_expressions."""
+
+    def test_bigquery_uses_backticks_in_group_by(self):
+        """Test that BigQuery dialect uses backticks for GROUP BY expressions."""
+        # Parse a CASE expression that would need to go in GROUP BY
+        expr = parse_expression(
+            "CASE WHEN `model_hash`.`status` = 'active' THEN 'yes' ELSE 'no' END",
+            dialect="bigquery",
+        )
+
+        result = find_non_aggregated_expressions(expr, dialect="bigquery")
+
+        # Should have at least one expression
+        assert len(result) > 0
+        # All expressions should use backticks, not double quotes
+        for expr_sql in result:
+            assert "`" in expr_sql
+            assert '"model_hash"' not in expr_sql
+
+    def test_postgres_uses_double_quotes_in_group_by(self):
+        """Test that PostgreSQL dialect uses double quotes for GROUP BY expressions."""
+        expr = parse_expression(
+            '"model_hash"."column" + 1',
+            dialect="postgres",
+        )
+
+        result = find_non_aggregated_expressions(expr, dialect="postgresql")
+
+        # Should have at least one expression
+        assert len(result) > 0
+        # All expressions should use double quotes
+        for expr_sql in result:
+            assert '"' in expr_sql or "model_hash" in expr_sql
+
+    def test_aggregate_not_in_group_by(self):
+        """Test that aggregate expressions are not included in GROUP BY."""
+        expr = parse_expression(
+            "SUM(`model_hash`.`amount`)",
+            dialect="bigquery",
+        )
+
+        result = find_non_aggregated_expressions(expr, dialect="bigquery")
+
+        # Aggregates should not be in GROUP BY
+        assert len(result) == 0
+
+    def test_mixed_aggregate_and_column(self):
+        """Test expression with both aggregate and non-aggregate parts."""
+        expr = parse_expression(
+            "CASE WHEN `model_hash`.`status` = 'active' THEN SUM(`model_hash`.`amount`) ELSE 0 END",
+            dialect="bigquery",
+        )
+
+        result = find_non_aggregated_expressions(expr, dialect="bigquery")
+
+        # Should include the status column reference but not the amount (inside aggregate)
+        assert any("`status`" in expr_sql for expr_sql in result)
 
 
 class TestHasWindowFunction:

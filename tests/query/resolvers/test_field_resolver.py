@@ -745,6 +745,129 @@ class TestFieldResolverCaseStatements:
         assert " AS " in result
 
 
+class TestFieldResolverDialectQuoting:
+    """Test dialect-specific identifier quoting in resolved expressions."""
+
+    def test_bigquery_uses_backticks_for_alias(self, tmpdir):
+        """Test that BigQuery dialect uses backticks for aliases in resolved expressions."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="bigquery")
+
+        # Resolve expression
+        result = resolver.resolve("${ref(orders).amount}")
+
+        # BigQuery uses backticks for aliases
+        assert " AS `" in result
+        # Should NOT use double quotes for aliases
+        assert ' AS "' not in result
+
+    def test_bigquery_uses_backticks_for_column_references(self, tmpdir):
+        """Test that BigQuery dialect uses backticks for column references."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"amount": "DECIMAL", "date": "DATE"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="bigquery")
+
+        # Resolve expression
+        result = resolver.resolve("${ref(orders).amount}")
+
+        # BigQuery uses backticks for identifiers
+        assert "`" in result
+        # The column reference should use backticks, not double quotes
+        assert f"`{model_hash}`" in result or f"`amount`" in result
+
+    def test_postgres_uses_double_quotes_for_alias(self, tmpdir):
+        """Test that PostgreSQL dialect uses double quotes for aliases in resolved expressions."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="postgresql")
+
+        # Resolve expression
+        result = resolver.resolve("${ref(orders).amount}")
+
+        # PostgreSQL uses double quotes for aliases
+        assert ' AS "' in result
+        # Should NOT use backticks
+        assert " AS `" not in result
+
+    def test_bigquery_case_expression_uses_backticks(self, tmpdir):
+        """Test that CASE expressions use backticks for BigQuery."""
+        # Setup DAG
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"status": "VARCHAR", "amount": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="bigquery")
+
+        # Resolve CASE expression
+        case_expr = (
+            "CASE WHEN ${ref(orders).status} = 'active' THEN ${ref(orders).amount} ELSE 0 END"
+        )
+        result = resolver.resolve(case_expr)
+
+        # BigQuery uses backticks for identifiers
+        assert "`" in result
+        # Should contain CASE structure
+        assert "CASE" in result.upper()
+
+
 class TestFieldResolverSortExpressions:
     """Test resolution of sort expressions with ASC/DESC modifiers."""
 

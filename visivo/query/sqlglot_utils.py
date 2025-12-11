@@ -113,18 +113,22 @@ def has_window_function(expr: exp.Expression) -> bool:
     return False
 
 
-def find_non_aggregated_expressions(expr: exp.Expression) -> List[str]:
+def find_non_aggregated_expressions(expr: exp.Expression, dialect: str = None) -> List[str]:
     """
     Find all column references that are not inside aggregate functions.
     These columns need to be included in GROUP BY.
 
     Args:
         expr: SQLGlot AST expression
+        dialect: SQLGlot dialect name for proper identifier quoting (optional)
 
     Returns:
         List of column expressions that are not aggregated
     """
     non_aggregated = set()
+
+    # Get SQLGlot dialect for proper identifier quoting
+    sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None
 
     # Find all column references
     for column in expr.find_all(exp.Column):
@@ -155,7 +159,8 @@ def find_non_aggregated_expressions(expr: exp.Expression) -> List[str]:
                 column_expr = parent
                 parent = parent.parent
 
-            non_aggregated.add(column_expr.sql())
+            # Generate SQL with dialect-appropriate identifier quoting
+            non_aggregated.add(column_expr.sql(dialect=sqlglot_dialect))
 
     return list(non_aggregated)
 
@@ -292,7 +297,7 @@ def identify_column_references(
         # If it's an Alias node, get the underlying expression
         first_expr = first_expr.this
 
-    qualified_sql = first_expr.sql(identify=True)
+    qualified_sql = first_expr.sql(dialect=sqlglot_dialect, identify=True)
 
     # Re-attach sort order if it was present in the original expression
     if sort_order is not None:
