@@ -1,4 +1,5 @@
 from flask import jsonify, request
+from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.source_metadata import (
     check_source_connection,
@@ -15,7 +16,8 @@ def register_source_views(app, flask_app, output_dir):
     @app.route("/api/project/sources_metadata/", methods=["GET"])
     def sources_metadata():
         try:
-            metadata = gather_source_metadata(flask_app._project.sources)
+            # Use source_manager to include both cached and published sources
+            metadata = gather_source_metadata(flask_app.source_manager.get_sources_list())
             return jsonify(metadata)
         except Exception as e:
             Logger.instance().error(f"Error gathering source metadata: {str(e)}")
@@ -25,7 +27,10 @@ def register_source_views(app, flask_app, output_dir):
     def test_connection(source_name):
         """Test connection to a specific source."""
         try:
-            result = check_source_connection(flask_app._project.sources, source_name)
+            # Use source_manager to include both cached and published sources
+            result = check_source_connection(
+                flask_app.source_manager.get_sources_list(), source_name
+            )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
             return jsonify(result)
@@ -37,7 +42,8 @@ def register_source_views(app, flask_app, output_dir):
     def list_source_databases(source_name):
         """List databases for a specific source."""
         try:
-            result = get_source_databases(flask_app._project.sources, source_name)
+            # Use source_manager to include both cached and published sources
+            result = get_source_databases(flask_app.source_manager.get_sources_list(), source_name)
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
             return jsonify(result)
@@ -51,7 +57,10 @@ def register_source_views(app, flask_app, output_dir):
     def list_database_schemas(source_name, database_name):
         """List schemas for a specific database."""
         try:
-            result = get_database_schemas(flask_app._project.sources, source_name, database_name)
+            # Use source_manager to include both cached and published sources
+            result = get_database_schemas(
+                flask_app.source_manager.get_sources_list(), source_name, database_name
+            )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
             return jsonify(result)
@@ -65,7 +74,10 @@ def register_source_views(app, flask_app, output_dir):
     def list_database_tables(source_name, database_name):
         """List tables for a database (no schema)."""
         try:
-            result = get_schema_tables(flask_app._project.sources, source_name, database_name)
+            # Use source_manager to include both cached and published sources
+            result = get_schema_tables(
+                flask_app.source_manager.get_sources_list(), source_name, database_name
+            )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
             return jsonify(result)
@@ -80,8 +92,12 @@ def register_source_views(app, flask_app, output_dir):
     def list_schema_tables(source_name, database_name, schema_name):
         """List tables for a specific schema."""
         try:
+            # Use source_manager to include both cached and published sources
             result = get_schema_tables(
-                flask_app._project.sources, source_name, database_name, schema_name
+                flask_app.source_manager.get_sources_list(),
+                source_name,
+                database_name,
+                schema_name,
             )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
@@ -97,8 +113,12 @@ def register_source_views(app, flask_app, output_dir):
     def list_table_columns(source_name, database_name, table_name):
         """List columns for a table (no schema)."""
         try:
+            # Use source_manager to include both cached and published sources
             result = get_table_columns(
-                flask_app._project.sources, source_name, database_name, table_name
+                flask_app.source_manager.get_sources_list(),
+                source_name,
+                database_name,
+                table_name,
             )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
@@ -114,8 +134,13 @@ def register_source_views(app, flask_app, output_dir):
     def list_schema_table_columns(source_name, database_name, schema_name, table_name):
         """List columns for a table in a specific schema."""
         try:
+            # Use source_manager to include both cached and published sources
             result = get_table_columns(
-                flask_app._project.sources, source_name, database_name, table_name, schema_name
+                flask_app.source_manager.get_sources_list(),
+                source_name,
+                database_name,
+                table_name,
+                schema_name,
             )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
@@ -141,3 +166,98 @@ def register_source_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error testing source connection: {str(e)}")
             return jsonify({"status": "connection_failed", "error": str(e)}), 500
+
+    # ========== New SourceManager-based endpoints ==========
+
+    @app.route("/api/sources/", methods=["GET"])
+    def list_all_sources():
+        """List all sources (cached + published) with status."""
+        try:
+            sources = flask_app.source_manager.get_all_sources_with_status()
+            return jsonify({"sources": sources})
+        except Exception as e:
+            Logger.instance().error(f"Error listing sources: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/sources/<source_name>/", methods=["GET"])
+    def get_source(source_name):
+        """Get source configuration with status information."""
+        try:
+            result = flask_app.source_manager.get_source_with_status(source_name)
+            if not result:
+                return jsonify({"error": f"Source '{source_name}' not found"}), 404
+            return jsonify(result)
+        except Exception as e:
+            Logger.instance().error(f"Error getting source: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/sources/<source_name>/save/", methods=["POST"])
+    def save_source(source_name):
+        """Save a source configuration to cache (draft state)."""
+        try:
+            source_config = request.get_json(silent=True)
+            if not source_config:
+                return jsonify({"error": "Source configuration is required"}), 400
+
+            # Ensure name matches URL parameter
+            source_config["name"] = source_name
+
+            source = flask_app.source_manager.save_from_config(source_config)
+            status = flask_app.source_manager.get_status(source_name)
+            return (
+                jsonify(
+                    {
+                        "message": "Source saved to cache",
+                        "source": source_name,
+                        "status": status.value if status else None,
+                    }
+                ),
+                200,
+            )
+        except ValidationError as e:
+            Logger.instance().debug(f"Source validation failed: {e}")
+            first_error = e.errors()[0]
+            return (
+                jsonify(
+                    {
+                        "error": f"Invalid source configuration: {first_error['loc']}: {first_error['msg']}"
+                    }
+                ),
+                400,
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error saving source: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/sources/<source_name>/", methods=["DELETE"])
+    def delete_cached_source(source_name):
+        """Delete source from cache (revert to published version)."""
+        try:
+            deleted = flask_app.source_manager.delete_from_cache(source_name)
+            if deleted:
+                return jsonify({"message": f"Source '{source_name}' removed from cache"}), 200
+            else:
+                return jsonify({"message": f"Source '{source_name}' not in cache"}), 200
+        except Exception as e:
+            Logger.instance().error(f"Error deleting cached source: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/sources/<source_name>/validate/", methods=["POST"])
+    def validate_source(source_name):
+        """Validate a source configuration without saving it."""
+        try:
+            source_config = request.get_json(silent=True)
+            if not source_config:
+                return jsonify({"error": "Source configuration is required"}), 400
+
+            # Ensure name matches URL parameter
+            source_config["name"] = source_name
+
+            result = flask_app.source_manager.validate_config(source_config)
+            if result.get("valid"):
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 400
+        except Exception as e:
+            Logger.instance().error(f"Error validating source: {str(e)}")
+            return jsonify({"error": str(e)}), 500
