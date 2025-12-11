@@ -8,7 +8,7 @@ from sqlglot.schema import MappingSchema
 from sqlglot.dialects import Dialects
 from sqlglot.optimizer import optimize
 from typing import List, Set, Optional, Tuple, Dict
-from hashlib import md5
+from visivo.models.base.named_model import alpha_hash
 from sqlglot.optimizer import qualify
 
 
@@ -335,7 +335,7 @@ def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) ->
 
 
 def field_alias_hasher(expression) -> str:
-    return "m" + md5(expression.encode("utf-8")).hexdigest()[:16]
+    return alpha_hash(expression, length=14)
 
 
 def supports_qualify(dialect: str) -> bool:

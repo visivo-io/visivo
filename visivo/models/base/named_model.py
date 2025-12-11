@@ -10,6 +10,33 @@ from visivo.query.patterns import get_model_name_from_match
 NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
 
 
+def alpha_hash(text: str, length: int = 28) -> str:
+    """
+    Generate an alphabetical-only hash (a-z) from the input text.
+    Uses MD5 and converts to base26 encoding.
+
+    This produces only lowercase letters, making it safe for use as SQL identifiers
+    in databases like MySQL, Snowflake, and BigQuery that don't allow digits
+    in identifiers even when quoted.
+
+    Args:
+        text: Input string to hash
+        length: Desired length of output (default 28 chars for ~128 bits of entropy)
+
+    Returns:
+        Lowercase alphabetical string prefixed with 'm'
+    """
+    hash_bytes = hashlib.md5(text.encode()).digest()
+    hash_int = int.from_bytes(hash_bytes, "big")
+
+    result = []
+    for _ in range(length):
+        result.append(chr(ord("a") + (hash_int % 26)))
+        hash_int //= 26
+
+    return "m" + "".join(result)
+
+
 class NamedModel(BaseModel):
     def id(self):
         if self.name is not None:
@@ -27,9 +54,7 @@ class NamedModel(BaseModel):
 
     def name_hash(self) -> Optional[str]:
         if self.name:
-            # Prefix with 'm' to ensure hash starts with a letter, not a digit
-            # This makes it a valid SQL identifier without requiring quotes
-            return "m" + hashlib.md5(self.name.encode()).hexdigest()
+            return alpha_hash(self.name)
         return None
 
     @classmethod

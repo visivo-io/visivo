@@ -1,10 +1,10 @@
 import json
 import os
 import glob
-import hashlib
 from flask import jsonify, request, send_file
 
 from visivo.logger.logger import Logger
+from visivo.models.base.named_model import alpha_hash
 from visivo.utils import get_utc_now
 from visivo.server.services.query_service import execute_query_on_source
 
@@ -18,7 +18,7 @@ def register_trace_views(app, flask_app, output_dir):
             trace_dirs = glob.glob(f"{output_dir}/traces/*/")
             for trace_dir in trace_dirs:
                 trace_name = os.path.basename(os.path.normpath(trace_dir))
-                trace_name_hash = hashlib.md5(trace_name.encode()).hexdigest()
+                trace_name_hash = alpha_hash(trace_name)
                 if trace_name_hash == hash:
                     data_file = os.path.join(trace_dir, "data.json")
                     if os.path.exists(data_file):
@@ -41,7 +41,7 @@ def register_trace_views(app, flask_app, output_dir):
             # Return traces with hash-based data URLs
             traces = []
             for name in trace_names:
-                name_hash = hashlib.md5(name.encode()).hexdigest()
+                name_hash = alpha_hash(name)
                 traces.append(
                     {
                         "name": name,

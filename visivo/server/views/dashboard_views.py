@@ -1,9 +1,9 @@
-import hashlib
 import os
 
 from flask import Response, jsonify, request, send_from_directory
 
 from visivo.logger.logger import Logger
+from visivo.models.base.named_model import alpha_hash
 
 
 def register_dashboard_views(app, flask_app, output_dir):
@@ -11,7 +11,7 @@ def register_dashboard_views(app, flask_app, output_dir):
     def get_dashboard_api(dashboard_name):
         """API endpoint for dashboard data"""
         try:
-            dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+            dashboard_name_hash = alpha_hash(dashboard_name)
             thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
             thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
 

@@ -1,9 +1,9 @@
-import hashlib
 import json
 import os
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
+from visivo.models.base.named_model import alpha_hash
 
 
 def register_insight_views(app, flask_app, output_dir):
@@ -21,8 +21,8 @@ def register_insight_views(app, flask_app, output_dir):
             missing_insights = []
 
             for name in insight_names:
-                # Prefix with 'm' to match backend name_hash() method
-                name_hash = "m" + hashlib.md5(name.encode()).hexdigest()
+                # Use alpha_hash to match backend name_hash() method
+                name_hash = alpha_hash(name)
                 insight_file = os.path.join(output_dir, "insights", f"{name_hash}.json")
 
                 if not os.path.exists(insight_file):
@@ -96,8 +96,8 @@ def register_insight_views(app, flask_app, output_dir):
                 return jsonify({"message": "name field is required in request body"}), 400
 
             name = data["name"]
-            # Prefix with 'm' to match backend name_hash() method
-            name_hash = "m" + hashlib.md5(name.encode()).hexdigest()
+            # Use alpha_hash to match backend name_hash() method
+            name_hash = alpha_hash(name)
 
             Logger.instance().debug(f"Computed hash for '{name}': {name_hash}")
             return jsonify({"name": name, "name_hash": name_hash})
