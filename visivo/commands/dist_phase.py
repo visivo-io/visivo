@@ -82,7 +82,7 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             os.makedirs(f"{dist_dir}/data/dashboards", exist_ok=True)
             for dashboard in project_json["dashboards"]:
                 dashboard_name = dashboard["name"]
-                dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+                dashboard_name_hash = alpha_hash(dashboard_name)
                 thumbnail_path = os.path.join(
                     dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png"
                 )
