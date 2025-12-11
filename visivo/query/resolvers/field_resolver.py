@@ -14,6 +14,7 @@ from visivo.query.sqlglot_utils import (
     identify_column_references,
     field_alias_hasher,
     get_sqlglot_dialect,
+    normalize_identifier_for_dialect,
 )
 from sqlglot import exp
 from visivo.logger.logger import Logger
@@ -228,9 +229,14 @@ class FieldResolver:
         hashed_alias = field_alias_hasher(resolved_sql)
         resolved_strip_alias = resolved_sql.split(" AS ")[0]
         if alias:
-            # Use SQLGlot to generate dialect-appropriate alias quoting
+            # Use dialect-aware identifier normalization for proper case handling
+            # Snowflake: uppercase (matches unquoted storage)
+            # PostgreSQL: lowercase (matches unquoted storage)
+            # Others: preserve case
             sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
-            alias_identifier = exp.Identifier(this=hashed_alias, quoted=True)
+            alias_identifier = normalize_identifier_for_dialect(
+                hashed_alias, self.native_dialect, quoted=True
+            )
             alias_sql = alias_identifier.sql(dialect=sqlglot_dialect)
             return f"{resolved_strip_alias} AS {alias_sql}"
         else:

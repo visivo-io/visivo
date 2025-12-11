@@ -35,6 +35,43 @@ def get_sqlglot_dialect(visivo_dialect: str) -> str:
             raise NotImplementedError(f"Dialect {visivo_dialect} not found in SQLglot map.")
 
 
+def normalize_identifier_for_dialect(
+    identifier: str, dialect: str, quoted: bool = True
+) -> exp.Identifier:
+    """
+    Create a properly-cased identifier for the target dialect.
+
+    Different SQL dialects have different case-folding rules for identifiers:
+    - Snowflake: unquoted identifiers are stored as UPPERCASE
+    - PostgreSQL: unquoted identifiers are stored as lowercase
+    - MySQL/BigQuery/DuckDB: case is generally preserved
+
+    When we quote identifiers, the case must match how the database stores them.
+    For Snowflake, quoted lowercase "column" won't match stored COLUMN.
+
+    Args:
+        identifier: The identifier string (table name, column name, alias)
+        dialect: Visivo dialect name (e.g., "snowflake", "postgresql", "mysql")
+        quoted: Whether to quote the identifier (default True)
+
+    Returns:
+        exp.Identifier with proper casing for the dialect
+    """
+    sqlglot_dialect = get_sqlglot_dialect(dialect) if dialect else None
+
+    if sqlglot_dialect == "snowflake":
+        # Snowflake stores unquoted identifiers as UPPERCASE
+        normalized = identifier.upper()
+    elif sqlglot_dialect == "postgres":
+        # PostgreSQL stores unquoted identifiers as lowercase
+        normalized = identifier.lower()
+    else:
+        # MySQL, BigQuery, DuckDB - preserve case
+        normalized = identifier
+
+    return exp.Identifier(this=normalized, quoted=quoted)
+
+
 def parse_expression(statement: str, dialect: str = None) -> Optional[exp.Expression]:
     """
     Parse a SQL statement or expression into an AST.
@@ -296,6 +333,15 @@ def identify_column_references(
     if isinstance(first_expr, exp.Alias):
         # If it's an Alias node, get the underlying expression
         first_expr = first_expr.this
+
+    # For Snowflake, uppercase all identifiers before generating SQL.
+    # Snowflake stores unquoted column names as uppercase (X, Y), but our schema
+    # uses lowercase (x, y). SQLGlot's qualify.qualify() quotes identifiers, so
+    # we need to uppercase them to match Snowflake's case-sensitive quoted lookup.
+    if sqlglot_dialect == "snowflake":
+        for identifier in first_expr.find_all(exp.Identifier):
+            if identifier.this:
+                identifier.args["this"] = identifier.this.upper()
 
     qualified_sql = first_expr.sql(dialect=sqlglot_dialect, identify=True)
 

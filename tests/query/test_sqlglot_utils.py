@@ -5,6 +5,7 @@ This module tests SQL utility functions including:
 - identify_column_references: Column qualification with sort order preservation
 - classify_statement: SQL statement classification (aggregate, vanilla, window)
 - strip_sort_order: ASC/DESC removal from expressions
+- normalize_identifier_for_dialect: Dialect-aware identifier case normalization
 - Other SQL parsing utilities
 """
 
@@ -17,6 +18,7 @@ from visivo.query.sqlglot_utils import (
     has_aggregate_function,
     has_window_function,
     find_non_aggregated_expressions,
+    normalize_identifier_for_dialect,
 )
 
 
@@ -330,8 +332,12 @@ class TestIdentifyColumnReferencesDialects:
         # Should NOT use backticks
         assert "`model_abc`" not in result
 
-    def test_snowflake_uses_double_quotes(self):
-        """Test that Snowflake dialect uses double quotes for identifiers."""
+    def test_snowflake_uses_double_quotes_uppercase(self):
+        """Test that Snowflake dialect uses UPPERCASE double-quoted identifiers.
+
+        Snowflake stores unquoted identifiers as UPPERCASE, so our quoted
+        identifiers must also be uppercase to match when accessed.
+        """
         model_hash = "model_abc"
         model_schema = {model_hash: {"amount": "INT"}}
 
@@ -342,8 +348,8 @@ class TestIdentifyColumnReferencesDialects:
             dialect="snowflake",
         )
 
-        # Snowflake uses double quotes
-        assert '"model_abc"."amount"' in result
+        # Snowflake uses double quotes with UPPERCASE identifiers
+        assert '"MODEL_ABC"."AMOUNT"' in result
 
     def test_bigquery_with_sort_order(self):
         """Test that BigQuery preserves sort order with backticks."""
@@ -451,3 +457,83 @@ class TestHasWindowFunction:
         """Test simple column is not window function."""
         expr = parse_expression("column_name", dialect="duckdb")
         assert has_window_function(expr) is False
+
+
+class TestNormalizeIdentifierForDialect:
+    """Tests for dialect-aware identifier case normalization.
+
+    Different SQL dialects have different case-folding rules:
+    - Snowflake: unquoted identifiers stored as UPPERCASE
+    - PostgreSQL: unquoted identifiers stored as lowercase
+    - MySQL/BigQuery/DuckDB: case is generally preserved
+    """
+
+    def test_snowflake_uppercases_identifier(self):
+        """Test that Snowflake dialect uppercases identifiers."""
+        result = normalize_identifier_for_dialect("my_column", "snowflake")
+        assert result.this == "MY_COLUMN"
+        assert result.args.get("quoted") is True
+
+    def test_snowflake_uppercases_mixed_case(self):
+        """Test that Snowflake uppercases mixed case identifiers."""
+        result = normalize_identifier_for_dialect("MyColumn", "snowflake")
+        assert result.this == "MYCOLUMN"
+
+    def test_postgres_lowercases_identifier(self):
+        """Test that PostgreSQL dialect lowercases identifiers."""
+        result = normalize_identifier_for_dialect("MY_COLUMN", "postgresql")
+        assert result.this == "my_column"
+        assert result.args.get("quoted") is True
+
+    def test_postgres_lowercases_mixed_case(self):
+        """Test that PostgreSQL lowercases mixed case identifiers."""
+        result = normalize_identifier_for_dialect("MyColumn", "postgresql")
+        assert result.this == "mycolumn"
+
+    def test_mysql_preserves_case(self):
+        """Test that MySQL dialect preserves case."""
+        result = normalize_identifier_for_dialect("MyColumn", "mysql")
+        assert result.this == "MyColumn"
+        assert result.args.get("quoted") is True
+
+    def test_bigquery_preserves_case(self):
+        """Test that BigQuery dialect preserves case."""
+        result = normalize_identifier_for_dialect("MyColumn", "bigquery")
+        assert result.this == "MyColumn"
+        assert result.args.get("quoted") is True
+
+    def test_duckdb_preserves_case(self):
+        """Test that DuckDB dialect preserves case."""
+        result = normalize_identifier_for_dialect("MyColumn", "duckdb")
+        assert result.this == "MyColumn"
+        assert result.args.get("quoted") is True
+
+    def test_unquoted_option(self):
+        """Test that quoted=False produces unquoted identifier."""
+        result = normalize_identifier_for_dialect("my_column", "duckdb", quoted=False)
+        assert result.this == "my_column"
+        assert result.args.get("quoted") is False
+
+    def test_snowflake_sql_output(self):
+        """Test that Snowflake identifier generates correct SQL."""
+        result = normalize_identifier_for_dialect("my_column", "snowflake")
+        sql = result.sql(dialect="snowflake")
+        assert sql == '"MY_COLUMN"'
+
+    def test_bigquery_sql_output(self):
+        """Test that BigQuery identifier generates correct SQL with backticks."""
+        result = normalize_identifier_for_dialect("my_column", "bigquery")
+        sql = result.sql(dialect="bigquery")
+        assert sql == "`my_column`"
+
+    def test_mysql_sql_output(self):
+        """Test that MySQL identifier generates correct SQL with backticks."""
+        result = normalize_identifier_for_dialect("my_column", "mysql")
+        sql = result.sql(dialect="mysql")
+        assert sql == "`my_column`"
+
+    def test_postgres_sql_output(self):
+        """Test that PostgreSQL identifier generates correct SQL."""
+        result = normalize_identifier_for_dialect("MY_COLUMN", "postgresql")
+        sql = result.sql(dialect="postgres")
+        assert sql == '"my_column"'

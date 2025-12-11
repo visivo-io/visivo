@@ -10,6 +10,7 @@ from visivo.query.sqlglot_utils import (
     supports_qualify,
     strip_sort_order,
     parse_expression,
+    normalize_identifier_for_dialect,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.logger.logger import Logger
@@ -512,17 +513,11 @@ class InsightQueryBuilder:
             for order_expr in order_by_expressions:
                 query = query.order_by(order_expr, copy=False)
 
-        # Final qualification with default database and schema
-        try:
-            query = qualify.qualify(
-                query,
-                catalog=self.default_database,
-                db=self.default_schema,
-                dialect=target_dialect,
-            )
-        except Exception:
-            # If qualification fails, continue with unqualified query
-            pass
+        # Note: We do NOT call qualify.qualify() on the main query here because:
+        # 1. Column references are already fully qualified by identify_column_references()
+        # 2. CTE aliases are local table aliases that don't need database/schema qualification
+        # 3. Calling qualify() causes double-qualification and case mismatches in Snowflake
+        #    (Snowflake uppercases unquoted identifiers, but our column refs are lowercase quoted)
 
         # Generate formatted SQL string
         formatted_sql = query.sql(dialect=target_dialect, pretty=True)
@@ -589,9 +584,22 @@ class InsightQueryBuilder:
                     # If qualification fails, use the original query
                     pass
 
+            # For Snowflake, uppercase all alias identifiers in the CTE
+            # This ensures CTE column aliases like "AS new_x" become "AS NEW_X"
+            # which matches Snowflake's unquoted identifier storage (UPPERCASE)
+            if dialect_for_parse == "snowflake":
+                for alias_node in cte_query.find_all(exp.Alias):
+                    if alias_node.alias:
+                        alias_node.set(
+                            "alias", exp.Identifier(this=alias_node.alias.upper(), quoted=True)
+                        )
+
             # Create the CTE with the model_hash as the alias
+            # For Snowflake, uppercase the identifier to match column references
+            cte_alias = model_hash.upper() if dialect_for_parse == "snowflake" else model_hash
             cte = exp.CTE(
-                this=cte_query, alias=exp.TableAlias(this=exp.Identifier(this=model_hash))
+                this=cte_query,
+                alias=exp.TableAlias(this=exp.Identifier(this=cte_alias, quoted=True)),
             )
             ctes.append(cte)
 
@@ -637,10 +645,16 @@ class InsightQueryBuilder:
         # Create name->hash mapping for SQL generation (SQL uses hashes as table aliases)
         name_to_hash = {model.name: model.name_hash() for model in self.models}
 
+        # Determine target dialect for identifier normalization
+        target_dialect = "duckdb" if self.is_dynamic else self.native_dialect
+
         # If only one model, just return FROM with that model's hash
+        # Use normalized identifiers for consistent case handling across dialects
         if len(model_names) == 1:
             model_hash = name_to_hash[model_names[0]]
-            from_table = exp.Table(this=exp.Identifier(this=model_hash))
+            from_table = exp.Table(
+                this=normalize_identifier_for_dialect(model_hash, target_dialect, quoted=True)
+            )
             return from_table, []
 
         # Get the join plan from RelationGraph (pass names, get names back)
@@ -651,12 +665,13 @@ class InsightQueryBuilder:
         # Convert from_model name to hash for SQL
         from_model_hash = name_to_hash[from_model_name]
 
-        # Build FROM clause using hash
-        from_table = exp.Table(this=exp.Identifier(this=from_model_hash))
+        # Build FROM clause using normalized identifier for consistent case handling
+        from_table = exp.Table(
+            this=normalize_identifier_for_dialect(from_model_hash, target_dialect, quoted=True)
+        )
 
         # Build JOIN clauses
         join_nodes = []
-        target_dialect = "duckdb" if self.is_dynamic else self.native_dialect
 
         for _left_model_name, right_model_name, condition, join_type in joins:
             # Convert right model name to hash for SQL
@@ -666,9 +681,13 @@ class InsightQueryBuilder:
             join_condition = parse_expression(condition, self.native_dialect)
             join_condition = self._transpile_if_dynamic(join_condition, target_dialect)
 
-            # Create the join node using hash as table alias
+            # Create the join node using normalized identifier for consistent case handling
             join_node = exp.Join(
-                this=exp.Table(this=exp.Identifier(this=right_model_hash)),
+                this=exp.Table(
+                    this=normalize_identifier_for_dialect(
+                        right_model_hash, target_dialect, quoted=True
+                    )
+                ),
                 on=join_condition,
                 kind=join_type.upper() if join_type else "INNER",
             )
