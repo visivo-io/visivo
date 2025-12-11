@@ -15,6 +15,8 @@ from tests.factories.model_factories import (
 )
 from tests.support.utils import temp_folder
 import polars as pl
+from sqlglot import parse_one
+from sqlglot.optimizer import qualify
 
 
 class TestRunInputJob:
@@ -281,3 +283,86 @@ class TestRunInputJob:
         assert result is not None
         assert result.success is False
         assert "FAILURE" in result.message or "error" in result.message.lower()
+
+
+class TestSQLGlotQualifySubqueryAlias:
+    """Test that SQLGlot qualify.qualify() adds aliases to subqueries.
+
+    MySQL requires derived tables (subqueries in FROM clause) to have aliases.
+    SQLGlot's qualify.qualify() automatically adds these aliases.
+
+    Error without alias:
+        (pymysql.err.OperationalError) (1248, 'Every derived table must have its own alias')
+        [SQL: select distinct x FROM (SELECT * FROM test_table)]
+
+    After qualify:
+        SELECT DISTINCT `_q_0`.`x` FROM (SELECT * FROM `test_table`) AS `_q_0`
+    """
+
+    def test_mysql_subquery_gets_alias(self):
+        """Verify qualify.qualify() adds alias to MySQL subquery."""
+        # This is the exact query pattern that fails without alias
+        sql = "select distinct x FROM (SELECT * FROM test_table)"
+
+        # Parse and qualify with MySQL dialect
+        parsed = parse_one(sql, read="mysql")
+        qualified = qualify.qualify(parsed, dialect="mysql")
+        result = qualified.sql(dialect="mysql")
+
+        # Should have alias like `_q_0`
+        assert "AS `_q_" in result or "AS _q_" in result
+
+    def test_postgres_subquery_gets_alias(self):
+        """Verify qualify.qualify() adds alias to PostgreSQL subquery."""
+        sql = "select distinct x FROM (SELECT * FROM test_table)"
+
+        parsed = parse_one(sql, read="postgres")
+        qualified = qualify.qualify(parsed, dialect="postgres")
+        result = qualified.sql(dialect="postgres")
+
+        # Should have alias
+        assert 'AS "_q_' in result or "AS _q_" in result
+
+    def test_bigquery_subquery_gets_alias(self):
+        """Verify qualify.qualify() adds alias to BigQuery subquery."""
+        sql = "select distinct x FROM (SELECT * FROM test_table)"
+
+        parsed = parse_one(sql, read="bigquery")
+        qualified = qualify.qualify(parsed, dialect="bigquery")
+        result = qualified.sql(dialect="bigquery")
+
+        # Should have alias
+        assert "AS `_q_" in result or "AS _q_" in result
+
+    def test_snowflake_subquery_gets_alias(self):
+        """Verify qualify.qualify() adds alias to Snowflake subquery."""
+        sql = "select distinct x FROM (SELECT * FROM test_table)"
+
+        parsed = parse_one(sql, read="snowflake")
+        qualified = qualify.qualify(parsed, dialect="snowflake")
+        result = qualified.sql(dialect="snowflake")
+
+        # Should have alias - Snowflake uppercases to "_Q_0"
+        assert 'AS "_Q_' in result or 'AS "_q_' in result or "AS _q_" in result
+
+    def test_duckdb_subquery_gets_alias(self):
+        """Verify qualify.qualify() adds alias to DuckDB subquery."""
+        sql = "select distinct x FROM (SELECT * FROM test_table)"
+
+        parsed = parse_one(sql, read="duckdb")
+        qualified = qualify.qualify(parsed, dialect="duckdb")
+        result = qualified.sql(dialect="duckdb")
+
+        # Should have alias
+        assert 'AS "_q_' in result or "AS _q_" in result
+
+    def test_already_aliased_subquery_preserved(self):
+        """Verify already-aliased subqueries are preserved."""
+        sql = "select distinct x FROM (SELECT * FROM test_table) AS my_alias"
+
+        parsed = parse_one(sql, read="mysql")
+        qualified = qualify.qualify(parsed, dialect="mysql")
+        result = qualified.sql(dialect="mysql")
+
+        # Original alias should be preserved
+        assert "my_alias" in result.lower()

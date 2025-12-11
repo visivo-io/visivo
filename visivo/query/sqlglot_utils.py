@@ -320,11 +320,23 @@ def identify_column_references(
     # Parse the expression (without sort order)
     parsed = parse_one(expr_sql_stripped, read=sqlglot_dialect)
 
+    # For Snowflake, uppercase the model hash for the table reference
+    # This ensures column qualifiers like "model_hash"."column" match the CTE alias casing
+    # Snowflake stores unquoted identifiers as UPPERCASE, so we must use uppercase everywhere
+    table_ref = model_hash.upper() if sqlglot_dialect == "snowflake" else model_hash
+
     # Build a SELECT query with the expression from the model_hash table
-    query = exp.select(parsed).from_(model_hash)
+    query = exp.select(parsed).from_(table_ref)
+
+    # Build schema for qualify - if Snowflake, we need uppercase table key to match table_ref
+    if sqlglot_dialect == "snowflake":
+        # Create schema with uppercase table key
+        schema_for_qualify = {table_ref: model_schema.get(model_hash, {})}
+    else:
+        schema_for_qualify = model_schema
 
     # Wrap schema in MappingSchema for SQLGlot's qualify function
-    schema = MappingSchema(schema=model_schema)
+    schema = MappingSchema(schema=schema_for_qualify)
     qualified = qualify.qualify(query, qualify_columns=True, schema=schema)
 
     # Get the first expression and strip any alias

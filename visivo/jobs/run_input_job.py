@@ -11,6 +11,8 @@ from time import time
 from typing import Optional
 
 import polars as pl
+from sqlglot import parse_one
+from sqlglot.optimizer import qualify
 
 from visivo.jobs.job import Job, JobResult, format_message_failure, format_message_success
 from visivo.jobs.utils import get_source_for_model
@@ -19,6 +21,7 @@ from visivo.models.inputs.types.dropdown import DropdownInput
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.source import Source
 from visivo.query.patterns import extract_ref_names, replace_refs
+from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
 
 def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
@@ -93,6 +96,19 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
                 return f"${{ref({model_ref_name})}}"
 
             resolved_query = replace_refs(query_value, replace_with_subquery)
+
+            # Use SQLGlot qualify to add subquery aliases and proper identifier quoting
+            # This fixes MySQL's "every derived table must have its own alias" requirement
+            # SQLGlot's qualify.qualify() automatically adds aliases like AS _q_0 to subqueries
+            try:
+                sqlglot_dialect = get_sqlglot_dialect(source.get_dialect())
+                parsed = parse_one(resolved_query, read=sqlglot_dialect)
+                qualified = qualify.qualify(parsed, dialect=sqlglot_dialect)
+                resolved_query = qualified.sql(dialect=sqlglot_dialect)
+            except Exception:
+                # If SQLGlot can't process it, use the original query
+                # This allows fallback for edge cases while still fixing the common case
+                pass
 
             # Execute query on source
             data = source.read_sql(resolved_query)
