@@ -40,7 +40,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
                     query=insight_query_info.post_query,
                     dag=dag,
                     output_dir=output_dir,
-                    dialect=source.type,  # Use source dialect for validation
+                    dialect=source.get_sqlglot_dialect(),  # Use source dialect for validation
                 )
             except Exception as e:
                 raise ValueError(
