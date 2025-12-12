@@ -96,30 +96,9 @@ class TestInputUniformFormat:
         # ACT
         dag = project.dag()
 
-        # DEBUG: Check what get_all_query_statements returns
-        query_statements = insight.get_all_query_statements(dag)
-        print(f"\n=== Query statements from get_all_query_statements ===")
-        for key, stmt in query_statements:
-            print(f"{key}: {stmt}")
-
         builder = InsightQueryBuilder(insight, dag, setup["output_dir"])
-
-        # DEBUG: Check unresolved statements
-        print(f"\n=== Unresolved query statements ===")
-        for key, stmt in builder.unresolved_query_statements:
-            print(f"{key}: {stmt}")
-
         builder.resolve()
-
-        # DEBUG: Check resolved statements
-        print(f"\n=== Resolved query statements ===")
-        for key, stmt in builder.resolved_query_statements:
-            print(f"{key}: {stmt}")
-
         post_query = builder.post_query
-
-        print(f"\n=== Generated post_query ===")
-        print(post_query)
 
         # ASSERT - Should use ${threshold} format
         assert post_query is not None, "post_query should not be None"
@@ -127,8 +106,6 @@ class TestInputUniformFormat:
         # Should NOT contain old placeholder format
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
         assert "{'_0'" not in post_query, "Should not contain {'_0' dict format"
-
-        print(f"✅ Props-only test passed!\nGenerated query:\n{post_query}")
 
     def test_interactions_only_with_input_generates_dollar_format(self, setup_basic_project):
         """Test that interaction-only input refs generate ${input_name} format."""
@@ -166,8 +143,6 @@ class TestInputUniformFormat:
         assert "${min_value}" in post_query, "Should contain ${min_value} format"
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
         assert "{'_0'" not in post_query, "Should not contain {'_0' dict format"
-
-        print(f"✅ Interactions-only test passed!\nGenerated query:\n{post_query}")
 
     def test_props_and_interactions_both_use_uniform_format(self, setup_basic_project):
         """
@@ -229,10 +204,6 @@ class TestInputUniformFormat:
         matches = placeholder_pattern.findall(post_query)
         assert len(matches) == 0, f"Found placeholder patterns: {matches}"
 
-        print(
-            f"✅ Props + Interactions uniform format test passed!\nGenerated query:\n{post_query}"
-        )
-
     def test_multiple_inputs_in_props_and_interactions(self, setup_basic_project):
         """Test multiple different inputs across props and interactions."""
         # ARRANGE
@@ -284,8 +255,6 @@ class TestInputUniformFormat:
         assert "'_2'" not in post_query, "Should not contain '_2'"
         assert "{'_" not in post_query, "Should not contain placeholder dict"
 
-        print(f"✅ Multiple inputs test passed!\nGenerated query:\n{post_query}")
-
     def test_input_in_case_statement_in_props(self, setup_basic_project):
         """Test input reference inside CASE statement in props."""
         # ARRANGE
@@ -326,8 +295,6 @@ class TestInputUniformFormat:
         ), f"Expected multiple ${threshold} in CASE, got {threshold_count}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
-        print(f"✅ CASE statement test passed!\nGenerated query:\n{post_query}")
-
     def test_input_in_split_interaction(self, setup_basic_project):
         """Test input in split interaction generates correct format."""
         # ARRANGE
@@ -366,8 +333,6 @@ class TestInputUniformFormat:
         assert post_query is not None
         assert "${threshold}" in post_query, "Split should contain ${threshold}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
-
-        print(f"✅ Split interaction test passed!\nGenerated query:\n{post_query}")
 
     def test_mixed_refs_models_and_inputs(self, setup_basic_project):
         """Test that model refs and input refs coexist correctly."""
@@ -416,8 +381,6 @@ class TestInputUniformFormat:
         # No placeholders
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
-        print(f"✅ Mixed refs test passed!\nGenerated query:\n{post_query}")
-
     def test_input_in_aggregate_filter_having(self, setup_basic_project):
         """Test input reference in HAVING clause (aggregate filter)."""
         # ARRANGE
@@ -457,8 +420,6 @@ class TestInputUniformFormat:
         assert "${min_total}" in post_query, "Should contain ${min_total} in HAVING"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
-        print(f"✅ HAVING clause test passed!\nGenerated query:\n{post_query}")
-
     def test_input_in_sort_expression(self, setup_basic_project):
         """Test input in sort interaction."""
         # ARRANGE
@@ -495,8 +456,6 @@ class TestInputUniformFormat:
         assert post_query is not None
         assert "${sort_field}" in post_query, "Should contain ${sort_field}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
-
-        print(f"✅ Sort interaction test passed!\nGenerated query:\n{post_query}")
 
     def test_complex_expression_with_multiple_input_refs(self, setup_basic_project):
         """Test complex expression with the same input referenced multiple times."""
@@ -536,8 +495,6 @@ class TestInputUniformFormat:
         multiplier_count = post_query.count("${multiplier}")
         assert multiplier_count >= 2, f"Expected multiple ${multiplier}, got {multiplier_count}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
-
-        print(f"✅ Multiple same-input refs test passed!\nGenerated query:\n{post_query}")
 
     def test_input_validator_format(self, setup_basic_project):
         """
@@ -589,5 +546,3 @@ class TestInputUniformFormat:
         internal_placeholder_pattern = re.compile(r"['\"]_\d+['\"]|visivo-input-placeholder")
         internal_matches = internal_placeholder_pattern.findall(post_query)
         assert len(internal_matches) == 0, f"Found internal placeholders: {internal_matches}"
-
-        print(f"✅ InputValidator format test passed!\nGenerated query:\n{post_query}")

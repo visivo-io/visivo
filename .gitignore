@@ -28,6 +28,8 @@ mkdocs_build/
 test-projects/*/dist
 visivo/dist
 node_modules
+htmlcov/
+.coverage
 
 .report.json
 .qodo

@@ -66,47 +66,30 @@ class TestTraceQueryBuild:
         }
         schema_file.write_text(json.dumps(schema_data))
 
-        # STEP 1: Check unresolved query statements
-        print("\n=== STEP 1: Unresolved Query Statements ===")
+        # Check unresolved query statements
         unresolved = insight.get_all_query_statements(dag)
         for key, value in unresolved:
-            print(f"{key}: {value}")
             if "marker.color" in key:
                 assert "${threshold}" in value, f"Should have ${{threshold}}, got: {value}"
                 assert (
                     "${ref(threshold)}" not in value
                 ), f"Should NOT have ${{ref(threshold)}}, got: {value}"
 
-        # STEP 2: Create InsightQueryBuilder
-        print("\n=== STEP 2: Create InsightQueryBuilder ===")
+        # Create InsightQueryBuilder
         builder = InsightQueryBuilder(insight, dag, output_dir)
-        print(f"Is dynamic: {builder.is_dynamic}")
-        print(f"Unresolved statements: {len(builder.unresolved_query_statements)}")
 
         # Check unresolved statements
         for key, value in builder.unresolved_query_statements:
             if "marker.color" in key:
-                print(f"\nUnresolved {key}: {value}")
                 assert "${threshold}" in value, f"Should still have ${{threshold}}, got: {value}"
 
-        # STEP 3: Resolve
-        print("\n=== STEP 3: Resolve (FieldResolver) ===")
+        # Resolve
         builder.resolve()
 
-        # Check resolved statements
-        for key, value in builder.resolved_query_statements:
-            if "marker.color" in key:
-                print(f"\nResolved {key}: {value}")
-                # This is where the bug appears - after FieldResolver
-
-        # STEP 4: Build query
-        print("\n=== STEP 4: Build Final Query ===")
+        # Build query
         post_query = builder.post_query
-        print(f"\nFinal post_query:\n{post_query}")
 
-        # Check for the bug
-        if "'_0'" in post_query or '"_0"' in post_query or "{'_0'" in post_query:
-            print("\n❌ BUG DETECTED: Dict placeholder format found!")
-            print("This should be ${threshold} not {'_0': ...}")
-        else:
-            print("\n✅ No dict placeholder format found")
+        # Check for the bug - should not have placeholder format
+        assert "'_0'" not in post_query, "Dict placeholder format found!"
+        assert '"_0"' not in post_query, "Dict placeholder format found!"
+        assert "{'_0'" not in post_query, "Dict placeholder format found!"

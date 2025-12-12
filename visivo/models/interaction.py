@@ -71,7 +71,7 @@ class InsightInteraction(BaseModel):
 
                     # Not an input - leave unchanged (model/dimension ref)
                     return m.group(0)
-                except:
+                except (ValueError, AttributeError):
                     # Ref not found - leave unchanged
                     return m.group(0)
 

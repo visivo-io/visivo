@@ -147,6 +147,5 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     assert "/url" == url
     assert "Processing trace uploads and record creations..." in stdout
     assert "Deployment completed in" in stdout
-    print(stdout)
     assert stdout.count("Skipping") == 0
     assert stdout.count("[4/4]") == 2

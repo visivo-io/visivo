@@ -50,8 +50,6 @@ class TestInputInteractionPipeline:
         assert df.shape[0] == 3, f"Expected 3 options, got {df.shape[0]}"
         assert set(df["option"].to_list()) == {"10", "20", "30"}, "Options don't match"
 
-        print("✅ Static input execution test passed!")
-
     def test_js_template_literal_conversion(self):
         """Phase 2: Verify ${ref(input)} converts to ${input} in interactions."""
         # ARRANGE
@@ -79,8 +77,6 @@ class TestInputInteractionPipeline:
         assert "${ref(threshold)}" not in filter_value, "Old ref() syntax should be converted"
         # Model refs should remain unchanged
         assert "${ref(data).x}" in filter_value, "Model ref should remain unchanged"
-
-        print("✅ JS template literal conversion test passed!")
 
     def test_dag_execution_order(self):
         """DAG Integration: Verify insights depend on inputs in the DAG."""
@@ -114,8 +110,6 @@ class TestInputInteractionPipeline:
         # Create the input job
         input_job_obj = input_job(dag, output_dir, input_obj)
         assert input_job_obj is not None, "Input job not created"
-
-        print("✅ DAG execution order test passed!")
 
     def test_multiple_inputs_mixed_refs(self):
         """Verify multiple input refs and model refs coexist correctly."""
@@ -161,5 +155,3 @@ class TestInputInteractionPipeline:
         assert "${max_value}" in filter_value, "Input ref should be JS template"
         assert "${ref(min_value)}" not in filter_value, "Old input ref syntax present"
         assert "${ref(max_value)}" not in filter_value, "Old input ref syntax present"
-
-        print("✅ Multiple inputs test passed!")

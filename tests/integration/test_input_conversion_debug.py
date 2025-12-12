@@ -55,7 +55,6 @@ class TestInputConversionDebug:
                 break
 
         assert marker_color_stmt is not None, "marker.color statement not found"
-        print(f"\nmarker.color statement: {marker_color_stmt}")
 
         # Should have converted ${ref(threshold)} to ${threshold}
         assert (
@@ -69,8 +68,6 @@ class TestInputConversionDebug:
         assert (
             "${ref(orders)" in marker_color_stmt
         ), f"Should still contain ${{ref(orders)}}, got: {marker_color_stmt}"
-
-        print("✅ Input conversion in get_all_query_statements works!")
 
     def test_dag_can_find_input_by_name(self):
         """Verify that inputs are properly added to the DAG and can be found by name."""
@@ -91,9 +88,6 @@ class TestInputConversionDebug:
         # ACT - Try to find input in DAG
         try:
             input_node = dag.get_descendant_by_name("threshold")
-            print(f"\nFound input node: {input_node}")
-            print(f"Node type: {type(input_node)}")
-            print(f"Node name: {input_node.name}")
 
             # ASSERT
             from visivo.models.inputs import Input
@@ -102,8 +96,6 @@ class TestInputConversionDebug:
             assert (
                 input_node.name == "threshold"
             ), f"Should have name 'threshold', got {input_node.name}"
-
-            print("✅ Input can be found in DAG!")
         except ValueError as e:
             pytest.fail(f"Input not found in DAG: {e}")
 
@@ -135,9 +127,6 @@ class TestInputConversionDebug:
         converted = insight._convert_input_refs_to_js_templates(test_expr, dag)
 
         # ASSERT
-        print(f"\nOriginal: {test_expr}")
-        print(f"Converted: {converted}")
-
         assert "${threshold}" in converted, f"Should contain ${{threshold}}, got: {converted}"
         assert (
             "${ref(threshold)}" not in converted
@@ -145,5 +134,3 @@ class TestInputConversionDebug:
         assert (
             "${ref(orders).amount}" in converted
         ), f"Should still have ${{ref(orders).amount}}, got: {converted}"
-
-        print("✅ Direct conversion method works!")
