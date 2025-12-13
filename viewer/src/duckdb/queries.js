@@ -189,7 +189,7 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
 
   // Check if table already exists in DuckDB
   if (!force && (await tableDuckDBExists(db, nameHash))) {
-    cache.markLoaded(nameHash, url);
+    cache.markLoaded(nameHash);
     console.debug(`Parquet file ${nameHash} already exists in DuckDB`);
     return;
   }
@@ -197,7 +197,6 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
   // Use cache to prevent duplicate concurrent fetches
   return cache.getOrFetch(nameHash, async () => {
     try {
-      cache.markLoading(nameHash, url);
       console.debug(`Loading parquet file from ${url} as table '${nameHash}'`);
 
       // Fetch the parquet file
@@ -231,10 +230,9 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
         await db.dropFile(tempFile);
       }
 
-      cache.markLoaded(nameHash, url);
+      cache.markLoaded(nameHash);
     } catch (error) {
       console.error(`Error loading parquet file from ${url}:`, error);
-      cache.markError(nameHash, url, error);
       throw error;
     }
   });
