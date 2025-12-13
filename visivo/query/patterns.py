@@ -45,6 +45,7 @@ PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 # property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
 # property_path is optional - will be None if not present
 CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
+FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
 # ============================================================================
@@ -151,7 +152,7 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
     return results
 
 
-def extract_model_names(text: str) -> Set[str]:
+def extract_ref_names(text: str) -> Set[str]:
     """
     Extract unique model names from ref() patterns in text.
 
@@ -162,7 +163,7 @@ def extract_model_names(text: str) -> Set[str]:
         Set of unique model names
 
     Example:
-        >>> extract_model_names("${ref(orders).id} = ${ref(users).id}")
+        >>> extract_ref_names("${ref(orders).id} = ${ref(users).id}")
         {'orders', 'users'}
     """
     return {model for model, _ in extract_ref_components(text)}
@@ -247,4 +248,4 @@ def count_model_references(text: str) -> int:
     Returns:
         Number of unique models referenced
     """
-    return len(extract_model_names(text))
+    return len(extract_ref_names(text))

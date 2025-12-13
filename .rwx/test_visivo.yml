@@ -114,6 +114,7 @@ tasks:
       python validate_run_results.py --source remote-snowflake
     env:
       STACKTRACE: true
+      DEBUG: true
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
@@ -127,6 +128,7 @@ tasks:
       python validate_run_results.py --source remote-bigquery
     env:
       STACKTRACE: true
+      DEBUG: true
       BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
       BIGQUERY_PROJECT: ${{ secrets.BIGQUERY_PROJECT }}
     filter: [test-projects/integration]
@@ -171,6 +173,7 @@ tasks:
       python validate_run_results.py --source local-duckdb
     env:
       STACKTRACE: true
+      DEBUG: true
     filter: [test-projects/integration]
 
   - key: test-serve-command
@@ -189,6 +192,7 @@ tasks:
       echo "visivo serve started successfully"
     env:
       STACKTRACE: true
+      DEBUG: true
     filter: [test-projects/integration]
 
   - key: postgres-packages
@@ -214,6 +218,8 @@ tasks:
       PG_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5434
+      STACKTRACE: true
+      DEBUG: true
     filter:
       - test-projects/integration
       - tests/setup/populate_ci_postgres.sql
@@ -239,6 +245,8 @@ tasks:
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true
+      STACKTRACE: true
+      DEBUG: true
     filter:
       - test-projects/integration
       - tests/setup/populate_ci_mysql.sql

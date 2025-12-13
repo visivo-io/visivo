@@ -1,4 +1,3 @@
-import hashlib
 import yaml
 import json
 import os
@@ -8,6 +7,7 @@ import click
 import datetime
 import sys
 from visivo.logger.logger import Logger
+from visivo.models.base.named_model import alpha_hash
 from visivo.models.base.query_string import QueryString
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
@@ -78,7 +78,7 @@ def get_dashboards_dir(output_dir):
 
 def sanitize_filename(name):
     """Generate a hash of the name for safe filenames"""
-    return hashlib.md5(name.encode()).hexdigest()
+    return alpha_hash(name)
 
 
 def yml_to_dict(relative_path):

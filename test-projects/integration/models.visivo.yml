@@ -1,6 +1,28 @@
+relations:
+  - name: local_to_local
+    condition: ${ref(local_test_table).x} = ${ref(another_local_test_table).x}
+
+metrics: 
+  - name: composite_metric
+    expression: ${ref(local_test_table).x_sum} + ${ref(another_local_test_table).new_y_sum}
+
 models:
   - name: local_test_table
     sql: "SELECT * FROM test_table"
+    metrics:
+      - name: x_sum
+        expression: "SUM(x)"
+    dimensions:
+      - name: x_rounded
+        expression: "ROUND(x, 2)"
+  - name: another_local_test_table
+    sql: "SELECT x*y+y as new_x, y*x as new_y, x FROM test_table"
+    metrics:
+      - name: new_y_sum
+        expression: "SUM(new_y)"
+    dimensions:
+      - name: new_x_rounded
+        expression: "ROUND(new_x, 2)"
   - name: second_local_test_table
     sql: "SELECT * FROM second_test_table"
   - name: join_table

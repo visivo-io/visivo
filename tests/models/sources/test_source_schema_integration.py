@@ -569,10 +569,6 @@ class TestSourceSchemaIntegration:
             assert metadata["source_type"] == "csv"
             assert metadata["total_tables"] >= 0  # Should have at least the CSV view
 
-            # Debug: Print what tables we found
-            print(f"CSV schema tables: {list(schema['tables'].keys())}")
-            print(f"CSV metadata: {metadata}")
-
             # The CSV source should create a view with the source name
             if "test_csv" in schema["tables"]:
                 csv_table = schema["tables"]["test_csv"]
@@ -624,10 +620,6 @@ class TestSourceSchemaIntegration:
             assert metadata["source_type"] == "xls"
             assert metadata["total_tables"] >= 0  # Should have at least the Excel view
 
-            # Debug: Print what tables we found
-            print(f"Excel schema tables: {list(schema['tables'].keys())}")
-            print(f"Excel metadata: {metadata}")
-
             # The Excel source should create a view with the source name
             if "test_excel" in schema["tables"]:
                 excel_table = schema["tables"]["test_excel"]
@@ -670,7 +662,6 @@ class TestSourceSchemaIntegration:
 
             # Verify structure
             assert isinstance(schema, dict)
-            print(f"Filtered CSV schema tables: {list(schema['tables'].keys())}")
 
             # Should either contain our table or be empty if filtering is working
             assert len(schema["tables"]) <= 1

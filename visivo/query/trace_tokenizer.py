@@ -12,7 +12,7 @@ from visivo.models.trace_columns import TraceColumns
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 from visivo.query.sqlglot_utils import (
     parse_expression,
-    find_non_aggregated_columns,
+    find_non_aggregated_expressions,
     get_sqlglot_dialect,
 )
 import re
@@ -154,7 +154,7 @@ class TraceTokenizer:
             expr = parse_expression(statement, self.sqlglot_dialect)
             if expr:
                 # Get all non-aggregated columns from this expression
-                non_agg_columns = find_non_aggregated_columns(expr)
+                non_agg_columns = find_non_aggregated_expressions(expr)
                 if non_agg_columns:
                     # Add the entire expression if it contains non-aggregated columns
                     # and is not itself an aggregate

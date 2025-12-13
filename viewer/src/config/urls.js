@@ -17,6 +17,7 @@ const URL_PATTERNS = {
     insightData: '/api/insights/{hash}/',
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
+    inputData: '/data/inputs/{hash}.parquet',
 
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
@@ -44,10 +45,11 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     tracesQuery: '/data/traces.json',
     traceData: '/data/traces/{hash}.json',
-    insightsQuery: '/api/insights.json',
-    insightData: '/api/insights/{hash}.json',
+    insightsQuery: '/data/insights.json',
+    insightData: '/data/insights/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
+    inputData: '/data/inputs/{hash}.parquet',
 
     // Interactive endpoints not available in dist
     worksheet: null,

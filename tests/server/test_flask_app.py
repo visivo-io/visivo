@@ -597,13 +597,13 @@ def test_get_job_status_invalid_id(client):
 def test_serve_insight_data_by_hash(client, output_dir):
     """Test serve insight data hash found"""
     insight_name = "my_insight"
-    insight_dir = Path(output_dir) / "insights" / insight_name
+    insight_hash = hashlib.md5(insight_name.encode()).hexdigest()
+
+    insight_dir = Path(output_dir) / "insights"
     insight_dir.mkdir(parents=True, exist_ok=True)
 
-    insight_file = insight_dir / "insight.json"
+    insight_file = insight_dir / f"{insight_hash}.json"
     insight_file.write_text(json.dumps({"hello": "world"}))
-
-    insight_hash = hashlib.md5(insight_name.encode()).hexdigest()
 
     resp = client.get(f"/api/insights/{insight_hash}/")
     assert resp.status_code == 200

@@ -6,9 +6,10 @@ SQL-compliant identifiers, which is essential when building queries with models
 that have spaces or special characters in their names.
 """
 
-import hashlib
 import re
 from typing import Dict
+
+from visivo.models.base.named_model import alpha_hash
 
 
 class ModelNameSanitizer:
@@ -41,8 +42,9 @@ class ModelNameSanitizer:
             sanitized = model_name
         else:
             # Otherwise, create a hash-based name
-            # Use first 8 chars of MD5 to keep it short but unique enough
-            hash_suffix = hashlib.md5(model_name.encode()).hexdigest()[:8]
+            # Use 7 base26 chars (similar entropy to 8 hex chars)
+            # Strip the 'm' prefix since we add our own prefix
+            hash_suffix = alpha_hash(model_name, length=7)[1:]
 
             # Try to preserve some readability by taking first valid chars
             clean_prefix = re.sub(r"[^a-zA-Z0-9]", "", model_name)[:10]

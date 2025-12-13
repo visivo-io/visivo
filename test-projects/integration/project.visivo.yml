@@ -3,11 +3,41 @@ name: project
 includes:
   - path: models.visivo.yml
   - path: traces.visivo.yml
+  - path: insights.visivo.yml
   - path: visivo-io/example-include.git@main
 
 defaults:
   source_name: local-duckdb
   alert_name: slack
+
+inputs:
+  # Input for split testing
+  - name: split_threshold
+    label: "Split Threshold"
+    type: dropdown
+    default: "5"
+    options: ["3", "5", "7"]
+
+  # Input for non-aggregate filter testing
+  - name: min_x_value
+    label: "Minimum X Value"
+    type: dropdown
+    default: "2"
+    options: ?{select distinct x FROM ${ref(local_test_table)} }
+
+  # Input for aggregate filter testing
+  - name: min_avg_y
+    label: "Minimum Average Y"
+    type: dropdown
+    default: "5"
+    options: ["0", "5", "10"]
+
+  # Input for sort order testing
+  - name: sort_direction
+    label: "Sort Direction"
+    type: dropdown
+    default: "ASC"
+    options: ["ASC", "DESC"]
 
 alerts:
   - name: slack
@@ -31,6 +61,7 @@ sources:
     username: postgres
     password: "{{ env_var('PG_PASSWORD') }}"
     port: 5434
+
   - name: local-mysql
     database: visivo
     type: mysql
@@ -38,6 +69,7 @@ sources:
     username: root
     password: "{{ env_var('MYSQL_PASSWORD') }}"
     port: 3306
+
   - name: remote-snowflake
     type: snowflake
     database: JARED_DEV
@@ -47,6 +79,7 @@ sources:
     warehouse: DEV
     password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
     role: PROD
+    
   - name: remote-bigquery
     type: bigquery
     database: test
@@ -66,7 +99,110 @@ charts:
       autosize: false
       width: 500
       height: 500
+  # New charts using insights
+  - name: simple-scatter-chart
+    insights:
+      - ${ ref(simple-scatter-insight) }
+    layout:
+      title:
+        text: "Simple Scatter with Insights"
+  - name: composite-metric-chart
+    insights: 
+      - ${ref(composite-scatter-insight)}
+  - name: fibonacci-split-chart
+    insights:
+      - ${ ref(fibonacci-split-insight) }
+    layout:
+      title:
+        text: "Fibonacci with Split Interaction"
+  - name: aggregated-bar-chart
+    insights:
+      - ${ ref(aggregated-bar-insight) }
+    layout:
+      title:
+        text: "Aggregated Bar Chart"
+
+  # Input-driven test charts
+  - name: split-input-test-chart
+    insights:
+      - ${ ref(split-input-test-insight) }
+    layout:
+      title:
+        text: "Split Interaction Test (Input-Driven)"
+
+  - name: filter-nonaggregate-input-test-chart
+    insights:
+      - ${ ref(filter-nonaggregate-input-test-insight) }
+    layout:
+      title:
+        text: "Non-Aggregate Filter Test (Input-Driven)"
+
+  - name: filter-aggregate-input-test-chart
+    insights:
+      - ${ ref(filter-aggregate-input-test-insight) }
+    layout:
+      title:
+        text: "Aggregate Filter Test (Input-Driven)"
+
+  - name: sort-input-test-chart
+    insights:
+      - ${ ref(sort-input-test-insight) }
+    layout:
+      title:
+        text: "Sort Order Test (Input-Driven)"
+
+  - name: combined-interactions-test-chart
+    insights:
+      - ${ ref(combined-interactions-test-insight) }
+    layout:
+      title:
+        text: "Combined Interactions Test"
+
 dashboards:
+  - name: Insights Dashboard
+    level: 0
+    tags:
+      - "insights"
+      - "interactive"
+    rows:
+      # Original insights (no inputs)
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(simple-scatter-chart) }
+          - width: 6
+            chart: ${ ref(fibonacci-split-chart) }
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(aggregated-bar-chart) }
+          - width: 6
+            chart: ${ref(composite-metric-chart)}
+
+      
+      # Input-driven test charts
+      - height: compact
+        items:
+          - input: ${ref(split_threshold)}
+          - input: ${ref(min_x_value)}
+          - input: ${ref(min_avg_y)}
+          - input: ${ref(sort_direction)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(split-input-test-chart) }
+          - width: 6
+            chart: ${ ref(filter-nonaggregate-input-test-chart) }
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(filter-aggregate-input-test-chart) }
+          - width: 6
+            chart: ${ ref(sort-input-test-chart) }
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ ref(combined-interactions-test-chart) }
   - name: Table Dashboard
     level: 1
     tags:

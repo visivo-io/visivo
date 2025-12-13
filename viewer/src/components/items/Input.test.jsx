@@ -6,12 +6,14 @@ jest.mock('./inputs/Dropdown', () => ({ label }) => <div data-testid="dropdown">
 
 const mockSetInputValue = jest.fn();
 const mockSetDefaultInputValue = jest.fn();
+const mockInputOptions = {};
 jest.mock('../../stores/store', () => ({
   __esModule: true,
   default: fn =>
     fn({
       setInputValue: mockSetInputValue,
       setDefaultInputValue: mockSetDefaultInputValue,
+      inputOptions: mockInputOptions,
     }),
 }));
 

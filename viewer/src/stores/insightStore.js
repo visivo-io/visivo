@@ -4,9 +4,19 @@ import { ContextString } from '../utils/contextString';
 const createInsightSlice = (set, get) => ({
   insights: {},
   inputs: null,
+  inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
   db: null,
 
   setDB: db => set({ db }),
+
+  // Set options for a specific input
+  setInputOptions: (inputName, options) =>
+    set(state => ({
+      inputOptions: {
+        ...state.inputOptions,
+        [inputName]: options,
+      },
+    })),
 
   setInsights: newInsights =>
     set(state => ({
@@ -72,7 +82,7 @@ const createInsightSlice = (set, get) => ({
               },
             }));
           } catch (err) {
-            // Query failed
+            console.error(`Query for ${insightName} failed:`, err);
           }
         }
       }, 0);

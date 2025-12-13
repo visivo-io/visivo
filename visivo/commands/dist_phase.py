@@ -1,5 +1,6 @@
 from visivo.utils import DIST_PATH
 from visivo.logger.logger import Logger
+from visivo.models.base.named_model import alpha_hash
 import traceback
 
 
@@ -49,7 +50,6 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             shutil.copyfile(f"{output_dir}/explorer.json", f"{dist_dir}/data/explorer.json")
 
         # Generate traces.json for dist mode
-        import hashlib
 
         trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
         traces_list = []
@@ -59,7 +59,7 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             trace_name = os.path.basename(os.path.normpath(trace_dir))
             if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
                 # Create hash-based filename for trace data
-                trace_name_hash = hashlib.md5(trace_name.encode()).hexdigest()
+                trace_name_hash = alpha_hash(trace_name)
                 shutil.copyfile(
                     f"{output_dir}/traces/{trace_name}/data.json",
                     f"{dist_dir}/data/traces/{trace_name_hash}.json",
@@ -82,7 +82,7 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             os.makedirs(f"{dist_dir}/data/dashboards", exist_ok=True)
             for dashboard in project_json["dashboards"]:
                 dashboard_name = dashboard["name"]
-                dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+                dashboard_name_hash = alpha_hash(dashboard_name)
                 thumbnail_path = os.path.join(
                     dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png"
                 )
