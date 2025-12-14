@@ -1,6 +1,8 @@
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
 from visivo.models.trace import Trace
+from visivo.models.insight import Insight
+from visivo.models.inputs.input import Input
 import click
 import requests
 import math
@@ -212,6 +214,123 @@ async def create_dashboard_records(
             raise
 
 
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+async def create_insight_records(batch, project_id, json_headers, host, progress):
+    """
+    Asynchronously creates insight records on the server.
+    """
+    body = list(
+        map(
+            lambda data_file_upload: {
+                "name": data_file_upload["name"],
+                "name_hash": data_file_upload["name_hash"],
+                "project_id": project_id,
+                "data_file_id": data_file_upload["id"],
+            },
+            batch,
+        )
+    )
+    async with semaphore_3:
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                url = f"{host}/api/insights/"
+                response = await client.post(url, json=body, headers=json_headers)
+                response.raise_for_status()
+                progress["completed"] += 1
+                Logger.instance().success(
+                    f"\t{len(batch)} insights created [{progress['completed']}/{progress['total']}]"
+                )
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} insights: {repr(e)} - Response: {e.response.text}"
+            )
+            raise
+        except Exception as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} insights: {repr(e)}"
+            )
+            raise
+
+
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+async def create_input_records(batch, project_id, json_headers, host, progress):
+    """
+    Asynchronously creates input records on the server.
+    """
+    body = list(
+        map(
+            lambda data_file_upload: {
+                "name": data_file_upload["name"],
+                "name_hash": data_file_upload["name_hash"],
+                "project_id": project_id,
+                "data_file_id": data_file_upload["id"],
+            },
+            batch,
+        )
+    )
+    async with semaphore_3:
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                url = f"{host}/api/inputs/"
+                response = await client.post(url, json=body, headers=json_headers)
+                response.raise_for_status()
+                progress["completed"] += 1
+                Logger.instance().success(
+                    f"\t{len(batch)} inputs created [{progress['completed']}/{progress['total']}]"
+                )
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} inputs: {repr(e)} - Response: {e.response.text}"
+            )
+            raise
+        except Exception as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} inputs: {repr(e)}"
+            )
+            raise
+
+
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+async def create_model_file_records(batch, project_id, json_headers, host, progress):
+    """
+    Asynchronously creates model file records on the server.
+    """
+    body = list(
+        map(
+            lambda data_file_upload: {
+                "name": data_file_upload["name"],
+                "name_hash": data_file_upload["name_hash"],
+                "project_id": project_id,
+                "data_file_id": data_file_upload["id"],
+            },
+            batch,
+        )
+    )
+    async with semaphore_3:
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                url = f"{host}/api/model-files/"
+                response = await client.post(url, json=body, headers=json_headers)
+                response.raise_for_status()
+                progress["completed"] += 1
+                Logger.instance().success(
+                    f"\t{len(batch)} model files created [{progress['completed']}/{progress['total']}]"
+                )
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} model files: {repr(e)} - Response: {e.response.text}"
+            )
+            raise
+        except Exception as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} model files: {repr(e)}"
+            )
+            raise
+
+
 async def process_traces_async(traces, output_dir, project_id, form_headers, json_headers, host):
     """
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
@@ -358,6 +477,285 @@ async def process_dashboards_async(
         raise click.ClickException("Failed to create dashboard records.")
 
 
+async def process_insights_async(
+    insights, output_dir, project_id, form_headers, json_headers, host
+):
+    """
+    Coordinates the asynchronous upload of insight JSON files and creation of insight records.
+    """
+    batch_size = 20
+
+    # Build list of insight files that exist
+    insight_files = []
+    for insight in insights:
+        insight_hash = insight.name_hash()
+        insight_path = f"{output_dir}/insights/{insight_hash}.json"
+        if os.path.exists(insight_path):
+            insight_files.append(
+                {
+                    "name": insight.name,
+                    "name_hash": insight_hash,
+                    "file_path": f"insights/{insight_hash}.json",
+                }
+            )
+
+    if not insight_files:
+        return
+
+    total_operations = len(insight_files)
+    total_operations += 3 * math.ceil(len(insight_files) / batch_size)
+    progress = {"completed": 0, "total": total_operations}
+
+    # Create file records
+    tasks = []
+    for i in range(0, len(insight_files), batch_size):
+        batch = insight_files[i : i + batch_size]
+        file_names = [f["file_path"].split("/")[-1] for f in batch]
+        task = start_files(file_names, "insight", form_headers, host, progress)
+        tasks.append(task)
+    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(r, Exception) for r in data_file_ids):
+        raise click.ClickException("Failed to create insight files.")
+
+    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
+
+    # Upload files
+    tasks = []
+    for i, data_file_upload in enumerate(data_file_uploads):
+        insight_file = insight_files[i]
+        task = upload_file(
+            insight_file["name"],
+            data_file_upload["upload_url"],
+            insight_file["file_path"],
+            output_dir,
+            form_headers,
+            progress,
+        )
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to upload insight data.")
+
+    # Finish files
+    data_file_ids_list = [item["id"] for item in data_file_uploads]
+    tasks = []
+    for i in range(0, len(data_file_ids_list), batch_size):
+        batch = data_file_ids_list[i : i + batch_size]
+        task = finish_files(batch, "insight", form_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish insight files.")
+
+    # Create insight records - merge insight metadata with file upload info
+    for i, upload in enumerate(data_file_uploads):
+        upload["name"] = insight_files[i]["name"]
+        upload["name_hash"] = insight_files[i]["name_hash"]
+
+    tasks = []
+    for i in range(0, len(data_file_uploads), batch_size):
+        batch = data_file_uploads[i : i + batch_size]
+        task = create_insight_records(batch, project_id, json_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to create insight records.")
+
+
+async def process_inputs_async(inputs, output_dir, project_id, form_headers, json_headers, host):
+    """
+    Coordinates the asynchronous upload of input parquet files and creation of input records.
+    """
+    batch_size = 20
+
+    # Build list of input files that exist
+    input_files = []
+    for input_obj in inputs:
+        input_hash = input_obj.name_hash()
+        input_path = f"{output_dir}/inputs/{input_hash}.parquet"
+        if os.path.exists(input_path):
+            input_files.append(
+                {
+                    "name": input_obj.name,
+                    "name_hash": input_hash,
+                    "file_path": f"inputs/{input_hash}.parquet",
+                }
+            )
+
+    if not input_files:
+        return
+
+    total_operations = len(input_files)
+    total_operations += 3 * math.ceil(len(input_files) / batch_size)
+    progress = {"completed": 0, "total": total_operations}
+
+    # Create file records
+    tasks = []
+    for i in range(0, len(input_files), batch_size):
+        batch = input_files[i : i + batch_size]
+        file_names = [f["file_path"].split("/")[-1] for f in batch]
+        task = start_files(file_names, "input", form_headers, host, progress)
+        tasks.append(task)
+    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(r, Exception) for r in data_file_ids):
+        raise click.ClickException("Failed to create input files.")
+
+    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
+
+    # Upload files
+    tasks = []
+    for i, data_file_upload in enumerate(data_file_uploads):
+        input_file = input_files[i]
+        task = upload_file(
+            input_file["name"],
+            data_file_upload["upload_url"],
+            input_file["file_path"],
+            output_dir,
+            form_headers,
+            progress,
+        )
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to upload input data.")
+
+    # Finish files
+    data_file_ids_list = [item["id"] for item in data_file_uploads]
+    tasks = []
+    for i in range(0, len(data_file_ids_list), batch_size):
+        batch = data_file_ids_list[i : i + batch_size]
+        task = finish_files(batch, "input", form_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish input files.")
+
+    # Create input records - merge input metadata with file upload info
+    for i, upload in enumerate(data_file_uploads):
+        upload["name"] = input_files[i]["name"]
+        upload["name_hash"] = input_files[i]["name_hash"]
+
+    tasks = []
+    for i in range(0, len(data_file_uploads), batch_size):
+        batch = data_file_uploads[i : i + batch_size]
+        task = create_input_records(batch, project_id, json_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to create input records.")
+
+
+async def process_model_files_async(
+    model_files, output_dir, project_id, form_headers, json_headers, host
+):
+    """
+    Coordinates the asynchronous upload of model parquet files and creation of model file records.
+    """
+    batch_size = 20
+
+    if not model_files:
+        return
+
+    total_operations = len(model_files)
+    total_operations += 3 * math.ceil(len(model_files) / batch_size)
+    progress = {"completed": 0, "total": total_operations}
+
+    # Create file records
+    tasks = []
+    for i in range(0, len(model_files), batch_size):
+        batch = model_files[i : i + batch_size]
+        file_names = [f["file_path"].split("/")[-1] for f in batch]
+        task = start_files(file_names, "model file", form_headers, host, progress)
+        tasks.append(task)
+    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(r, Exception) for r in data_file_ids):
+        raise click.ClickException("Failed to create model files.")
+
+    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
+
+    # Upload files
+    tasks = []
+    for i, data_file_upload in enumerate(data_file_uploads):
+        model_file = model_files[i]
+        task = upload_file(
+            model_file["name"],
+            data_file_upload["upload_url"],
+            model_file["file_path"],
+            output_dir,
+            form_headers,
+            progress,
+        )
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to upload model file data.")
+
+    # Finish files
+    data_file_ids_list = [item["id"] for item in data_file_uploads]
+    tasks = []
+    for i in range(0, len(data_file_ids_list), batch_size):
+        batch = data_file_ids_list[i : i + batch_size]
+        task = finish_files(batch, "model file", form_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish model files.")
+
+    # Create model file records - merge model metadata with file upload info
+    for i, upload in enumerate(data_file_uploads):
+        upload["name"] = model_files[i]["name"]
+        upload["name_hash"] = model_files[i]["name_hash"]
+
+    tasks = []
+    for i in range(0, len(data_file_uploads), batch_size):
+        batch = data_file_uploads[i : i + batch_size]
+        task = create_model_file_records(batch, project_id, json_headers, host, progress)
+        tasks.append(task)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to create model file records.")
+
+
+def collect_model_files_for_insights(insights, dag, output_dir):
+    """
+    Collect parquet files needed by insights for client-side DuckDB queries.
+
+    There are two types of parquet files:
+    1. Static insight result files: Pre-computed query results stored at
+       files/{insight.name_hash()}.parquet - these need to be uploaded so the
+       client can load them via DuckDB.
+    2. Model files for dynamic insights: Model parquet files at
+       files/{model.name_hash()}.parquet - only needed for insights with
+       Input dependencies that require client-side queries on model data.
+    """
+    model_files = {}
+
+    for insight in insights:
+        if insight.is_dynamic(dag):
+            # Dynamic insights need model parquet files for client-side queries
+            for model in insight.get_all_dependent_models(dag):
+                model_hash = model.name_hash()
+                parquet_path = f"{output_dir}/files/{model_hash}.parquet"
+                if os.path.exists(parquet_path):
+                    model_files[model_hash] = {
+                        "name": model.name,
+                        "name_hash": model_hash,
+                        "file_path": f"files/{model_hash}.parquet",
+                    }
+        else:
+            # Static insights have pre-computed result files that need to be uploaded
+            insight_hash = insight.name_hash()
+            parquet_path = f"{output_dir}/files/{insight_hash}.parquet"
+            if os.path.exists(parquet_path):
+                model_files[insight_hash] = {
+                    "name": insight.name,
+                    "name_hash": insight_hash,
+                    "file_path": f"files/{insight_hash}.parquet",
+                }
+
+    return list(model_files.values())
+
+
 def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -465,6 +863,69 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
         )
         send_progress(
             f"Thumbnail uploads completed in {time() - process_thumbnails_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Process insights
+        Logger.instance().info(f"")
+        send_progress("Processing insight uploads...", "info")
+        process_insights_start_time = time()
+        insights = all_descendants_of_type(type=Insight, dag=dag)
+        if insights:
+            asyncio.run(
+                process_insights_async(
+                    insights=insights,
+                    output_dir=output_dir,
+                    project_id=project_id,
+                    form_headers=form_headers,
+                    json_headers=json_headers,
+                    host=host,
+                )
+            )
+        send_progress(
+            f"Insight uploads completed in {time() - process_insights_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Process inputs
+        Logger.instance().info(f"")
+        send_progress("Processing input uploads...", "info")
+        process_inputs_start_time = time()
+        inputs = project.inputs if hasattr(project, "inputs") and project.inputs else []
+        if inputs:
+            asyncio.run(
+                process_inputs_async(
+                    inputs=inputs,
+                    output_dir=output_dir,
+                    project_id=project_id,
+                    form_headers=form_headers,
+                    json_headers=json_headers,
+                    host=host,
+                )
+            )
+        send_progress(
+            f"Input uploads completed in {time() - process_inputs_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Process model files (for insights)
+        Logger.instance().info(f"")
+        send_progress("Processing model file uploads...", "info")
+        process_model_files_start_time = time()
+        model_files = collect_model_files_for_insights(insights, dag, output_dir)
+        if model_files:
+            asyncio.run(
+                process_model_files_async(
+                    model_files=model_files,
+                    output_dir=output_dir,
+                    project_id=project_id,
+                    form_headers=form_headers,
+                    json_headers=json_headers,
+                    host=host,
+                )
+            )
+        send_progress(
+            f"Model file uploads completed in {time() - process_model_files_start_time:.2f} seconds",
             "info",
         )
 

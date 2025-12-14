@@ -2,12 +2,14 @@ import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
 import { fetchInsights as defaultFetchInsights } from '../api/insights';
+import { fetchInputOptions as defaultFetchInputOptions } from '../api/inputs';
 
 // Default query functions
 const defaultQueries = {
   fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
   fetchInsights: defaultFetchInsights,
+  fetchInputOptions: defaultFetchInputOptions,
 };
 
 // Create context
@@ -21,13 +23,21 @@ const QueryContext = createContext(defaultQueries);
  * @param {Function} props.fetchTraces - Custom traces fetch function
  * @param {Function} props.fetchInsights - Custom insights fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
+ * @param {Function} props.fetchInputOptions - Custom input options fetch function
  * @param {ReactNode} props.children
  */
-export function QueryProvider({ fetchTraces, fetchInsights, fetchDashboard, children }) {
+export function QueryProvider({
+  fetchTraces,
+  fetchInsights,
+  fetchDashboard,
+  fetchInputOptions,
+  children,
+}) {
   const queries = {
     fetchTraces: fetchTraces || defaultFetchTraces,
     fetchInsights: fetchInsights || defaultFetchInsights,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
+    fetchInputOptions: fetchInputOptions || defaultFetchInputOptions,
   };
 
   return <QueryContext.Provider value={queries}>{children}</QueryContext.Provider>;
@@ -70,4 +80,13 @@ export function useFetchInsights() {
 export function useFetchDashboard() {
   const { fetchDashboard } = useQueries();
   return fetchDashboard;
+}
+
+/**
+ * Hook to get the fetchInputOptions function
+ * @returns {Function} fetchInputOptions function
+ */
+export function useFetchInputOptions() {
+  const { fetchInputOptions } = useQueries();
+  return fetchInputOptions;
 }

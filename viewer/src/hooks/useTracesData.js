@@ -17,6 +17,7 @@ export const useTracesData = (projectId, traceNames) => {
   const { data: traces, isLoading } = useQuery({
     queryKey: ['trace', projectId, memoizedTraceNames],
     queryFn: () => fetchTraces(projectId, memoizedTraceNames),
+    enabled: memoizedTraceNames?.length > 0,
   });
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import useStore from '../stores/store';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import { fetchInputOptions, loadInputOptions } from '../api/inputs';
+import { useFetchInputOptions } from '../contexts/QueryContext';
+import { loadInputOptions } from '../api/inputs';
 
 /**
  * Hook to load input options from parquet files on-demand.
@@ -15,6 +16,7 @@ import { fetchInputOptions, loadInputOptions } from '../api/inputs';
  */
 export const useInputOptions = (input, projectId) => {
   const db = useDuckDB(); // Use context like useInsightsData does
+  const fetchInputOptions = useFetchInputOptions(); // Use context for environment-specific fetch
   const inputOptions = useStore(state => state.inputOptions);
   const setInputOptions = useStore(state => state.setInputOptions);
   const setInputValue = useStore(state => state.setInputValue);
@@ -57,7 +59,7 @@ export const useInputOptions = (input, projectId) => {
     };
 
     loadOptions();
-  }, [input, db, inputOptions, projectId, setInputOptions, setInputValue]);
+  }, [input, db, inputOptions, projectId, setInputOptions, setInputValue, fetchInputOptions]);
 
   // Return options from store or fallback to serialized (for static inputs)
   return inputOptions[input?.name] || input?.options;
