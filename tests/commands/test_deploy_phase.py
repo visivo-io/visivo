@@ -2,7 +2,12 @@ import os
 import json
 
 import click
-from tests.factories.model_factories import ProjectFactory, TraceFactory, InputFactory, InsightFactory
+from tests.factories.model_factories import (
+    ProjectFactory,
+    TraceFactory,
+    InputFactory,
+    InsightFactory,
+)
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.deploy_phase import deploy_phase
 from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
@@ -164,8 +169,12 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     project_dict = json.loads(project.model_dump_json())
 
     # Manually add insights and inputs to the dict for YAML serialization
-    project_dict["insights"] = [{"name": "test_insight", "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"}}]
-    project_dict["inputs"] = [{"name": "test_input", "type": "dropdown", "options": ["A", "B", "C"]}]
+    project_dict["insights"] = [
+        {"name": "test_insight", "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"}}
+    ]
+    project_dict["inputs"] = [
+        {"name": "test_input", "type": "dropdown", "options": ["A", "B", "C"]}
+    ]
 
     data_file_starts = [
         {
