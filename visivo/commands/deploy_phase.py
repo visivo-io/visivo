@@ -293,9 +293,9 @@ async def create_input_records(batch, project_id, json_headers, host, progress):
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_model_file_records(batch, project_id, json_headers, host, progress):
+async def create_semantic_model_records(batch, project_id, json_headers, host, progress):
     """
-    Asynchronously creates model file records on the server.
+    Asynchronously creates semantic model records on the server.
     """
     body = list(
         map(
@@ -311,22 +311,22 @@ async def create_model_file_records(batch, project_id, json_headers, host, progr
     async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
-                url = f"{host}/api/model-files/"
+                url = f"{host}/api/semantic-models/"
                 response = await client.post(url, json=body, headers=json_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\t{len(batch)} model files created [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(batch)} semantic models created [{progress['completed']}/{progress['total']}]"
                 )
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} model files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} semantic models: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} model files: {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} semantic models: {repr(e)}"
             )
             raise
 
@@ -645,42 +645,42 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         raise click.ClickException("Failed to create input records.")
 
 
-async def process_model_files_async(
-    model_files, output_dir, project_id, form_headers, json_headers, host
+async def process_semantic_models_async(
+    semantic_models, output_dir, project_id, form_headers, json_headers, host
 ):
     """
-    Coordinates the asynchronous upload of model parquet files and creation of model file records.
+    Coordinates the asynchronous upload of semantic model parquet files and creation of records.
     """
     batch_size = 20
 
-    if not model_files:
+    if not semantic_models:
         return
 
-    total_operations = len(model_files)
-    total_operations += 3 * math.ceil(len(model_files) / batch_size)
+    total_operations = len(semantic_models)
+    total_operations += 3 * math.ceil(len(semantic_models) / batch_size)
     progress = {"completed": 0, "total": total_operations}
 
     # Create file records
     tasks = []
-    for i in range(0, len(model_files), batch_size):
-        batch = model_files[i : i + batch_size]
+    for i in range(0, len(semantic_models), batch_size):
+        batch = semantic_models[i : i + batch_size]
         file_names = [f["file_path"].split("/")[-1] for f in batch]
-        task = start_files(file_names, "model file", form_headers, host, progress)
+        task = start_files(file_names, "semantic model", form_headers, host, progress)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(r, Exception) for r in data_file_ids):
-        raise click.ClickException("Failed to create model files.")
+        raise click.ClickException("Failed to create semantic models.")
 
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
     # Upload files
     tasks = []
     for i, data_file_upload in enumerate(data_file_uploads):
-        model_file = model_files[i]
+        semantic_model = semantic_models[i]
         task = upload_file(
-            model_file["name"],
+            semantic_model["name"],
             data_file_upload["upload_url"],
-            model_file["file_path"],
+            semantic_model["file_path"],
             output_dir,
             form_headers,
             progress,
@@ -688,35 +688,35 @@ async def process_model_files_async(
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to upload model file data.")
+        raise click.ClickException("Failed to upload semantic model data.")
 
     # Finish files
     data_file_ids_list = [item["id"] for item in data_file_uploads]
     tasks = []
     for i in range(0, len(data_file_ids_list), batch_size):
         batch = data_file_ids_list[i : i + batch_size]
-        task = finish_files(batch, "model file", form_headers, host, progress)
+        task = finish_files(batch, "semantic model", form_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish model files.")
+        raise click.ClickException("Failed to finish semantic models.")
 
-    # Create model file records - merge model metadata with file upload info
+    # Create semantic model records - merge model metadata with file upload info
     for i, upload in enumerate(data_file_uploads):
-        upload["name"] = model_files[i]["name"]
-        upload["name_hash"] = model_files[i]["name_hash"]
+        upload["name"] = semantic_models[i]["name"]
+        upload["name_hash"] = semantic_models[i]["name_hash"]
 
     tasks = []
     for i in range(0, len(data_file_uploads), batch_size):
         batch = data_file_uploads[i : i + batch_size]
-        task = create_model_file_records(batch, project_id, json_headers, host, progress)
+        task = create_semantic_model_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create model file records.")
+        raise click.ClickException("Failed to create semantic model records.")
 
 
-def collect_model_files_for_insights(insights, dag, output_dir):
+def collect_semantic_models_for_insights(insights, dag, output_dir):
     """
     Collect parquet files needed by insights for client-side DuckDB queries.
 
@@ -724,11 +724,11 @@ def collect_model_files_for_insights(insights, dag, output_dir):
     1. Static insight result files: Pre-computed query results stored at
        files/{insight.name_hash()}.parquet - these need to be uploaded so the
        client can load them via DuckDB.
-    2. Model files for dynamic insights: Model parquet files at
+    2. Semantic model files for dynamic insights: Model parquet files at
        files/{model.name_hash()}.parquet - only needed for insights with
        Input dependencies that require client-side queries on model data.
     """
-    model_files = {}
+    semantic_models = {}
 
     for insight in insights:
         if insight.is_dynamic(dag):
@@ -737,7 +737,7 @@ def collect_model_files_for_insights(insights, dag, output_dir):
                 model_hash = model.name_hash()
                 parquet_path = f"{output_dir}/files/{model_hash}.parquet"
                 if os.path.exists(parquet_path):
-                    model_files[model_hash] = {
+                    semantic_models[model_hash] = {
                         "name": model.name,
                         "name_hash": model_hash,
                         "file_path": f"files/{model_hash}.parquet",
@@ -747,13 +747,13 @@ def collect_model_files_for_insights(insights, dag, output_dir):
             insight_hash = insight.name_hash()
             parquet_path = f"{output_dir}/files/{insight_hash}.parquet"
             if os.path.exists(parquet_path):
-                model_files[insight_hash] = {
+                semantic_models[insight_hash] = {
                     "name": insight.name,
                     "name_hash": insight_hash,
                     "file_path": f"files/{insight_hash}.parquet",
                 }
 
-    return list(model_files.values())
+    return list(semantic_models.values())
 
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None):
@@ -908,15 +908,15 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
             "info",
         )
 
-        # Process model files (for insights)
+        # Process semantic models (for insights)
         Logger.instance().info(f"")
-        send_progress("Processing model file uploads...", "info")
-        process_model_files_start_time = time()
-        model_files = collect_model_files_for_insights(insights, dag, output_dir)
-        if model_files:
+        send_progress("Processing semantic model uploads...", "info")
+        process_semantic_models_start_time = time()
+        semantic_models = collect_semantic_models_for_insights(insights, dag, output_dir)
+        if semantic_models:
             asyncio.run(
-                process_model_files_async(
-                    model_files=model_files,
+                process_semantic_models_async(
+                    semantic_models=semantic_models,
                     output_dir=output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
@@ -925,7 +925,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
                 )
             )
         send_progress(
-            f"Model file uploads completed in {time() - process_model_files_start_time:.2f} seconds",
+            f"Semantic model uploads completed in {time() - process_semantic_models_start_time:.2f} seconds",
             "info",
         )
 
