@@ -21,7 +21,7 @@ init_mysql() {
 
 init_clickhouse() {
     echo "Initializing ClickHouse..."
-    curl -s 'http://localhost:8123/' --data-binary @"$PROJECT_DIR/tests/setup/populate_ci_clickhouse.sql"
+    docker exec -i visivo-clickhouse-1 clickhouse-client --user default --password clickhouse --multiquery < "$PROJECT_DIR/tests/setup/populate_ci_clickhouse.sql"
     echo "ClickHouse initialized."
 }
 

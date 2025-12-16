@@ -3,6 +3,12 @@ from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
 from pydantic import Field
 
+# Import clickhouse_sqlalchemy to register the dialect with SQLAlchemy
+try:
+    import clickhouse_sqlalchemy  # noqa: F401
+except ImportError:
+    pass  # clickhouse_sqlalchemy not available
+
 ClickhouseType = Literal["clickhouse"]
 
 

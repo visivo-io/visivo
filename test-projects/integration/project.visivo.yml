@@ -73,10 +73,11 @@ sources:
   - name: local-clickhouse
     type: clickhouse
     host: localhost
-    port: 9000
+    port: 18123
+    protocol: http
     database: visivo
     username: default
-    password: ""
+    password: clickhouse
 
   - name: remote-snowflake
     type: snowflake
