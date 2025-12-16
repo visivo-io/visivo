@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchInsights } from '../api/insights';
+import { useFetchInsights } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
@@ -34,8 +34,8 @@ const extractInputDependencies = (query, knownInputNames) => {
  */
 const processInsight = async (db, insight, inputs) => {
   try {
-    const { id, name, files, query, props_mapping, split_key, type, static_props } = insight;
-    const insightName = id || name;
+    const { name, files, query, props_mapping, split_key, type, static_props } = insight;
+    const insightName = name;
 
     console.debug(`Processing insight '${insightName}'`);
 
@@ -73,7 +73,6 @@ const processInsight = async (db, insight, inputs) => {
     // Step 5: Return structured data
     return {
       [insightName]: {
-        id: insightName,
         name: insightName,
         data: processedRows,
         files,
@@ -88,12 +87,11 @@ const processInsight = async (db, insight, inputs) => {
       },
     };
   } catch (error) {
-    const insightName = insight.id || insight.name;
+    const insightName = insight.name;
     console.error(`Failed to process insight '${insightName}':`, error);
 
     return {
       [insightName]: {
-        id: insightName,
         name: insightName,
         data: [],
         files: insight.files || [],
@@ -125,6 +123,7 @@ const processInsight = async (db, insight, inputs) => {
  */
 export const useInsightsData = (projectId, insightNames) => {
   const db = useDuckDB();
+  const fetchInsights = useFetchInsights();
   const setInsights = useStore(state => state.setInsights);
   const storeInsightData = useStore(state => state.insights);
   const getInputs = useStore(state => state.inputs);
@@ -227,7 +226,6 @@ export const useInsightsData = (projectId, insightNames) => {
         console.error(`Failed to process insight '${insightName}':`, result.reason);
         // Add error state for this insight
         mergedData[insightName] = {
-          id: insightName,
           name: insightName,
           data: [],
           error: result.reason.message || String(result.reason),
@@ -238,7 +236,7 @@ export const useInsightsData = (projectId, insightNames) => {
     console.debug(`Successfully processed ${Object.keys(mergedData).length} insights`);
 
     return mergedData;
-  }, [db, projectId, stableInsightNames, getInputs]);
+  }, [db, projectId, stableInsightNames, getInputs, fetchInsights]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change

@@ -29,6 +29,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   );
 
   const traceNames = chart.traces.map(trace => trace.name);
+  const hasTraces = traceNames.length > 0;
   const tracesData = useTracesData(project.id, traceNames);
 
   const insightNames = useMemo(() => {
@@ -43,7 +44,10 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     hasInsights ? insightNames : []
   );
 
-  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
+  // For insight-only charts (no traces), don't wait for tracesData
+  // For trace-based charts, wait for tracesData to load
+  const isTracesLoading = hasTraces && !tracesData;
+  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading);
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -101,7 +105,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
         <Menu hovering={hovering && cohortSelectVisible}>
           <MenuItem>
             <CohortSelect
-              tracesData={tracesData}
+              tracesData={tracesData || {}}
               onChange={onSelectedCohortChange}
               selector={chart.selector}
               parentName={chart.name}

@@ -6,6 +6,7 @@ from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.trace_props import TraceProps
+from visivo.models.props.insight_props import InsightProps
 from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
@@ -152,6 +153,15 @@ class ScatterTracePropsFactory(factory.Factory):
     y = "?{y}"
 
 
+class InsightPropsFactory(factory.Factory):
+    class Meta:
+        model = InsightProps
+
+    type = "scatter"
+    x = "?{x}"
+    y = "?{y}"
+
+
 class SurfaceTracePropsFactory(factory.Factory):
     class Meta:
         model = TraceProps
@@ -216,11 +226,7 @@ class InsightFactory(factory.Factory):
         model = Insight
 
     name = "insight"
-    model = factory.SubFactory(SqlModelFactory)
-    props = factory.SubFactory(ScatterTracePropsFactory)
-
-    class Params:
-        model_ref = factory.Trait(model="ref(model_name)")
+    props = factory.SubFactory(InsightPropsFactory)
 
 
 class JobFactory(factory.Factory):

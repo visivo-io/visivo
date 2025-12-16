@@ -6,41 +6,35 @@ import { getUrl } from '../contexts/URLContext';
  * @returns {boolean} True if valid
  */
 const validateInsightStructure = insight => {
-  if (!insight.id && !insight.name) {
-    console.warn('Insight missing id/name:', insight);
+  if (!insight.name) {
+    console.warn('Insight missing name:', insight);
     return false;
   }
 
   // Check for new structure (files, query, props_mapping)
   if (!insight.files || !Array.isArray(insight.files)) {
-    console.warn(`Insight '${insight.id || insight.name}' missing files array:`, insight);
+    console.warn(`Insight '${insight.name}' missing files array:`, insight);
     return false;
   }
 
   if (!insight.query) {
-    console.warn(`Insight '${insight.id || insight.name}' missing query:`, insight);
+    console.warn(`Insight '${insight.name}' missing query:`, insight);
     return false;
   }
 
   if (!insight.props_mapping || typeof insight.props_mapping !== 'object') {
-    console.warn(
-      `Insight '${insight.id || insight.name}' missing or invalid props_mapping:`,
-      insight
-    );
+    console.warn(`Insight '${insight.name}' missing or invalid props_mapping:`, insight);
     return false;
   }
 
   // Validate file structure
   for (const file of insight.files) {
     if (!file.name_hash) {
-      console.warn(`File missing name_hash in insight '${insight.id || insight.name}':`, file);
+      console.warn(`File missing name_hash in insight '${insight.name}':`, file);
       return false;
     }
     if (!file.signed_data_file_url) {
-      console.warn(
-        `File missing signed_data_file_url in insight '${insight.id || insight.name}':`,
-        file
-      );
+      console.warn(`File missing signed_data_file_url in insight '${insight.name}':`, file);
       return false;
     }
   }
@@ -102,7 +96,7 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
       const validInsights = insights.filter(insight => {
         const isValid = validateInsightStructure(insight);
         if (!isValid) {
-          console.error(`Invalid insight structure for '${insight.id || insight.name}'`);
+          console.error(`Invalid insight structure for '${insight.name}'`);
         }
         return isValid;
       });
@@ -119,7 +113,7 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
 
       console.debug(
         `Successfully fetched ${validInsights.length} insights:`,
-        validInsights.map(i => i.id || i.name)
+        validInsights.map(i => i.name)
       );
 
       return validInsights;
