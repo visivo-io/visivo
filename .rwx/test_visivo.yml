@@ -262,10 +262,10 @@ tasks:
     use: [clickhouse-packages, visivo-install]
     background-processes:
       - key: clickhouse
-        run: docker run -p 8123:8123 -p 9000:9000 --ulimit nofile=262144:262144 index.docker.io/clickhouse/clickhouse-server:latest
-        ready-check: curl -s http://localhost:8123/ping
+        run: docker run -p 18123:8123 -p 19000:9000 --ulimit nofile=262144:262144 -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=clickhouse -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 index.docker.io/clickhouse/clickhouse-server:latest
+        ready-check: curl -s http://localhost:18123/ping
     run: |
-      curl -s 'http://localhost:8123/' --data-binary @tests/setup/populate_ci_clickhouse.sql
+      curl -s 'http://localhost:18123/?user=default&password=clickhouse' --data-binary @tests/setup/populate_ci_clickhouse.sql
       cd test-projects/integration
       visivo run -s local-clickhouse --threads 1
       python validate_run_results.py --source local-clickhouse
