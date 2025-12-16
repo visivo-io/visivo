@@ -330,5 +330,5 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     assert "Processing trace uploads and record creations..." in stdout
     assert "Processing insight uploads..." in stdout
     assert "Processing input uploads..." in stdout
-    assert "Processing model file uploads..." in stdout
+    assert "Processing model uploads..." in stdout
     assert "Deployment completed in" in stdout
