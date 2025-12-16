@@ -64,7 +64,7 @@ tasks:
 
   - key: archive-ci-stage
     if: ${{ init.archive }}
-    use: [install-visivo, github-cli, sanitize-stage-name]
+    use: [install-visivo, code, github-cli, sanitize-stage-name]
     run: |
       visivo archive -s ${SANITIZED_STAGE_NAME}-mint --host https://app.development.visivo.io
       gh pr comment ${{ init.pr-num }} --body "Archived stage associated with PR"
