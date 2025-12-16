@@ -12,6 +12,7 @@ from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.sources.duckdb_source import DuckdbSource
+from visivo.models.sources.clickhouse_source import ClickhouseSource
 
 
 def get_model_discriminator_value(value: Any) -> str:
@@ -39,6 +40,7 @@ SourceField = Annotated[
         Annotated[DuckdbSource, Tag("duckdb")],
         Annotated[CSVFileSource, Tag("csv")],
         Annotated[ExcelFileSource, Tag("xls")],
+        Annotated[ClickhouseSource, Tag("clickhouse")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
@@ -56,6 +58,7 @@ SourceRefField = Annotated[
         Annotated[DuckdbSource, Tag("duckdb")],
         Annotated[CSVFileSource, Tag("csv")],
         Annotated[ExcelFileSource, Tag("xls")],
+        Annotated[ClickhouseSource, Tag("clickhouse")],
     ],
     Discriminator(get_model_discriminator_value),
 ]

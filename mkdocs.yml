@@ -119,6 +119,8 @@ nav:
                   - reference/configuration/Destinations/EmailDestination/index.md
               - ConsoleDestination:
                   - reference/configuration/Destinations/ConsoleDestination/index.md
+          - Dimension:
+              - reference/configuration/Dimension/index.md
           - Include:
               - reference/configuration/Include/index.md
           - Inputs:
@@ -126,12 +128,8 @@ nav:
                   - reference/configuration/Inputs/DropdownInput/index.md
           - Insight:
               - reference/configuration/Insight/index.md
-              - InsightColumns:
-                  - reference/configuration/Insight/InsightColumns/index.md
               - InsightInteraction:
                   - reference/configuration/Insight/InsightInteraction/index.md
-              - Model:
-                  - reference/configuration/Insight/Model/index.md
               - Props:
                   - Area: &id001
                       - reference/configuration/Insight/Props/Scatter/index.md
@@ -231,6 +229,8 @@ nav:
                       - reference/configuration/Insight/Props/Volume/index.md
                   - Waterfall:
                       - reference/configuration/Insight/Props/Waterfall/index.md
+          - Metric:
+              - reference/configuration/Metric/index.md
           - Models:
               - SqlModel:
                   - reference/configuration/Models/SqlModel/index.md
@@ -238,6 +238,8 @@ nav:
                   - reference/configuration/Models/CsvScriptModel/index.md
               - LocalMergeModel:
                   - reference/configuration/Models/LocalMergeModel/index.md
+          - Relation:
+              - reference/configuration/Relation/index.md
           - Selector:
               - reference/configuration/Selector/index.md
           - Sources:
@@ -263,6 +265,8 @@ nav:
                   - reference/configuration/Sources/CSVFileSource/index.md
               - ExcelFileSource:
                   - reference/configuration/Sources/ExcelFileSource/index.md
+              - ClickhouseSource:
+                  - reference/configuration/Sources/ClickhouseSource/index.md
           - Table:
               - reference/configuration/Table/index.md
               - TableColumnDefinition:
