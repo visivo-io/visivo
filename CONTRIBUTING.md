@@ -14,6 +14,7 @@ Visivo consists of two main components:
 - Node.js 20+
 - Poetry (Python package manager)
 - Yarn (JavaScript package manager)
+- Docker and Docker Compose (for integration testing with databases)
 
 ## 🐍 CLI Development
 
@@ -57,6 +58,109 @@ Test your changes using the test projects:
 cd test-projects/integration
 timeout 30 DEBUG=true STACKTRACE=true visivo run
 ```
+
+## 🗄️ Integration Testing with Databases
+
+Visivo supports multiple database sources. For local development and integration testing, you can run PostgreSQL, MySQL, and ClickHouse using Docker.
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- Database CLI tools (optional, for manual inspection):
+  - `psql` for PostgreSQL
+  - `mysql` for MySQL
+  - `curl` for ClickHouse
+
+### Starting Local Databases
+
+```bash
+cd visivo
+
+# Start all databases
+docker-compose up -d
+
+# Or start specific databases
+docker-compose up -d postgres
+docker-compose up -d mysql
+docker-compose up -d clickhouse
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f clickhouse
+```
+
+### Initializing Test Data
+
+The databases auto-initialize with test data on first start. If you need to re-initialize or the auto-init didn't work:
+
+```bash
+# Initialize all databases
+./scripts/init-local-databases.sh
+
+# Or initialize specific databases
+./scripts/init-local-databases.sh postgres
+./scripts/init-local-databases.sh mysql
+./scripts/init-local-databases.sh clickhouse
+```
+
+### Running Integration Tests
+
+```bash
+cd test-projects/integration
+
+# Test against DuckDB (default, no setup required)
+visivo run -s local-duckdb
+
+# Test against PostgreSQL
+PG_PASSWORD=postgres visivo run -s local-postgres --threads 1
+
+# Test against MySQL
+MYSQL_PASSWORD=mysql visivo run -s local-mysql --threads 1
+
+# Test against ClickHouse
+visivo run -s local-clickhouse --threads 1
+
+# Validate results
+python validate_run_results.py --source local-clickhouse
+```
+
+### Database Connection Details
+
+| Database | Host | Port | User | Password | Database |
+|----------|------|------|------|----------|----------|
+| PostgreSQL | localhost | 5434 | postgres | postgres | postgres |
+| MySQL | localhost | 3306 | root | mysql | visivo |
+| ClickHouse | localhost | 18123 (HTTP) | default | clickhouse | visivo |
+
+> **Note:** For local development, ClickHouse uses the HTTP protocol (port 18123). The native protocol (port 19000) is also available but HTTP is recommended for simplicity.
+
+### Stopping Databases
+
+```bash
+# Stop all databases (preserves data)
+docker-compose stop
+
+# Stop and remove containers (clears data)
+docker-compose down
+
+# Stop and remove containers + volumes (full cleanup)
+docker-compose down -v
+```
+
+### Adding a New Database Source
+
+When adding support for a new database:
+
+1. Create the source class in `visivo/models/sources/`
+2. Register it in `visivo/models/sources/fields.py`
+3. Add unit tests in `tests/models/sources/`
+4. Create a CI setup script in `tests/setup/populate_ci_<database>.sql`
+5. Add the source to `test-projects/integration/project.visivo.yml`
+6. Add the service to `docker-compose.yml`
+7. Add the CI test task to `.rwx/test_visivo.yml`
+8. Run `python mkdocs/src/write_mkdocs_markdown_files.py` to generate docs
 
 ## 🎨 Viewer Development
 

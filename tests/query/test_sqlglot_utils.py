@@ -367,6 +367,55 @@ class TestIdentifyColumnReferencesDialects:
         assert "`model_abc`.`date`" in result
         assert "DESC" in result
 
+    def test_clickhouse_uses_double_quotes(self):
+        """Test that ClickHouse dialect uses double quotes for identifiers."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="amount",
+            dialect="clickhouse",
+        )
+
+        # ClickHouse uses double quotes
+        assert '"model_abc"."amount"' in result
+        # Should NOT use backticks
+        assert "`model_abc`" not in result
+
+    def test_clickhouse_aggregate_with_double_quotes(self):
+        """Test that ClickHouse uses double quotes for aggregate expressions."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"amount": "DECIMAL"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="SUM(amount)",
+            dialect="clickhouse",
+        )
+
+        # ClickHouse uses double quotes
+        assert '"model_abc"."amount"' in result
+        assert "SUM" in result.upper()
+
+    def test_clickhouse_with_sort_order(self):
+        """Test that ClickHouse preserves sort order with double quotes."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"date": "DATE"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="date DESC",
+            dialect="clickhouse",
+        )
+
+        # ClickHouse uses double quotes and preserves sort order
+        assert '"model_abc"."date"' in result
+        assert "DESC" in result
+
 
 class TestFindNonAggregatedExpressionsDialects:
     """Tests for dialect-specific identifier quoting in find_non_aggregated_expressions."""
@@ -537,3 +586,22 @@ class TestNormalizeIdentifierForDialect:
         result = normalize_identifier_for_dialect("MY_COLUMN", "postgresql")
         sql = result.sql(dialect="postgres")
         assert sql == '"my_column"'
+
+    def test_clickhouse_preserves_case(self):
+        """Test that ClickHouse dialect preserves case."""
+        result = normalize_identifier_for_dialect("MyColumn", "clickhouse")
+        assert result.this == "MyColumn"
+        assert result.args.get("quoted") is True
+
+    def test_clickhouse_sql_output(self):
+        """Test that ClickHouse identifier generates correct SQL with double quotes."""
+        result = normalize_identifier_for_dialect("my_column", "clickhouse")
+        sql = result.sql(dialect="clickhouse")
+        assert sql == '"my_column"'
+
+    def test_clickhouse_mixed_case_preserved(self):
+        """Test that ClickHouse preserves mixed case identifiers."""
+        result = normalize_identifier_for_dialect("MyMixedCase", "clickhouse")
+        assert result.this == "MyMixedCase"
+        sql = result.sql(dialect="clickhouse")
+        assert sql == '"MyMixedCase"'

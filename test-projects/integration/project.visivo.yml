@@ -70,6 +70,15 @@ sources:
     password: "{{ env_var('MYSQL_PASSWORD') }}"
     port: 3306
 
+  - name: local-clickhouse
+    type: clickhouse
+    host: localhost
+    port: 18123
+    protocol: http
+    database: visivo
+    username: default
+    password: clickhouse
+
   - name: remote-snowflake
     type: snowflake
     database: JARED_DEV

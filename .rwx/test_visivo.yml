@@ -251,6 +251,24 @@ tasks:
       - test-projects/integration
       - tests/setup/populate_ci_mysql.sql
 
+  - key: test-clickhouse
+    docker: true
+    use: [visivo-install]
+    background-processes:
+      - key: clickhouse
+        run: docker run --name clickhouse -p 18123:8123 -p 19000:9000 --ulimit nofile=262144:262144 -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=clickhouse -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 index.docker.io/clickhouse/clickhouse-server:latest
+        ready-check: docker exec clickhouse clickhouse-client --user default --password clickhouse -q "SELECT 1"
+    run: |
+      docker exec -i clickhouse clickhouse-client --user default --password clickhouse --multiquery < tests/setup/populate_ci_clickhouse.sql
+      cd test-projects/integration
+      visivo run -s local-clickhouse --threads 1
+      python validate_run_results.py --source local-clickhouse
+    env:
+      STACKTRACE: true
+      DEBUG: true
+    filter:
+      - test-projects/integration
+      - tests/setup/populate_ci_clickhouse.sql
 
   - key: dbt-dependencies
     use: [code, poetry]

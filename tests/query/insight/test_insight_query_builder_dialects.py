@@ -8,6 +8,7 @@ correct identifier quoting and case handling:
 - BigQuery: backtick-quoted identifiers (case preserved)
 - MySQL: backtick-quoted identifiers (case preserved)
 - DuckDB: double-quoted identifiers (case preserved)
+- ClickHouse: double-quoted identifiers (case preserved)
 """
 
 import pytest
@@ -147,6 +148,39 @@ class TestDuckDBIdentifierQuoting:
         assert sql == '"mwzyeppkbehppwkakfujyloyjgsha"'
 
 
+class TestClickHouseIdentifierQuoting:
+    """Tests for ClickHouse double-quote handling.
+
+    ClickHouse uses double quotes for identifier quoting and preserves case.
+    Similar to DuckDB in quoting behavior.
+    """
+
+    def test_normalize_for_clickhouse_preserves_case(self):
+        """Test that normalizing for ClickHouse preserves case."""
+        result = normalize_identifier_for_dialect("MyColumn", "clickhouse", quoted=True)
+        assert result.this == "MyColumn"
+        assert result.args.get("quoted") is True
+
+    def test_clickhouse_identifier_uses_double_quotes(self):
+        """Test that ClickHouse identifier generates double quotes in SQL."""
+        identifier = normalize_identifier_for_dialect("my_column", "clickhouse")
+        sql = identifier.sql(dialect="clickhouse")
+        assert sql == '"my_column"'
+
+    def test_clickhouse_table_reference(self):
+        """Test that table references for ClickHouse use double quotes."""
+        identifier = normalize_identifier_for_dialect("mwzyeppkbehppwkakfujyloyjgsha", "clickhouse")
+        sql = identifier.sql(dialect="clickhouse")
+        assert sql == '"mwzyeppkbehppwkakfujyloyjgsha"'
+
+    def test_clickhouse_mixed_case_preserved(self):
+        """Test that mixed case is preserved for ClickHouse."""
+        identifier = normalize_identifier_for_dialect("MyMixedCaseColumn", "clickhouse")
+        assert identifier.this == "MyMixedCaseColumn"
+        sql = identifier.sql(dialect="clickhouse")
+        assert sql == '"MyMixedCaseColumn"'
+
+
 class TestIdentifierConsistency:
     """Tests to ensure identifier consistency across query components.
 
@@ -197,3 +231,19 @@ class TestIdentifierConsistency:
         # And both should use backticks
         assert cte_identifier.sql(dialect="mysql") == f"`{model_hash}`"
         assert column_identifier.sql(dialect="mysql") == f"`{column_alias}`"
+
+    def test_clickhouse_case_preserved(self):
+        """Test that all ClickHouse identifiers preserve case consistently."""
+        model_hash = "mwzyeppkbehppwkakfujyloyjgsha"
+        column_alias = "mhkxejuqfzwbqgm"
+
+        # Both should preserve case for ClickHouse
+        cte_identifier = normalize_identifier_for_dialect(model_hash, "clickhouse")
+        column_identifier = normalize_identifier_for_dialect(column_alias, "clickhouse")
+
+        assert cte_identifier.this == model_hash
+        assert column_identifier.this == column_alias
+
+        # And both should use double quotes
+        assert cte_identifier.sql(dialect="clickhouse") == f'"{model_hash}"'
+        assert column_identifier.sql(dialect="clickhouse") == f'"{column_alias}"'
