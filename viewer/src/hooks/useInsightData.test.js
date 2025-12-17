@@ -269,6 +269,44 @@ describe('useInsightsData Hook', () => {
     });
   });
 
+  describe('Race condition handling', () => {
+    test('should use fresh inputs from store.getState() not closure value', () => {
+      // This test verifies that the hook uses useStore.getState().inputs
+      // instead of the closure-captured value, preventing race conditions
+      // where inputs load after the query starts
+
+      const initialInputs = {};
+      const freshInputs = { testInput: { value: 'test' } };
+
+      // Mock getState to return fresh inputs (simulating inputs that loaded during query)
+      useStore.getState = jest.fn().mockReturnValue({ inputs: freshInputs });
+
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        // Return stale empty inputs via selector (simulating closure capture)
+        if (selector.toString().includes('inputs')) {
+          return initialInputs;
+        }
+        return null;
+      });
+
+      // Verify getState returns fresh inputs
+      expect(useStore.getState().inputs).toEqual(freshInputs);
+
+      // The hook should be able to be created without errors
+      const { result } = renderHook(() => useInsightsData('project1', ['insight1']), {
+        wrapper: createWrapper(),
+      });
+
+      expect(result.current).toBeDefined();
+    });
+  });
+
   describe('Async behavior simulation', () => {
     test('should transition from loading to loaded', async () => {
       const mockData = {

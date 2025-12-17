@@ -195,17 +195,18 @@ export const prepPostQuery = (insight, inputs) => {
 export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
   const cache = getParquetCache();
 
-  // Check if already loaded (unless forcing reload)
-  if (!force && cache.isLoaded(nameHash)) {
-    console.debug(`Parquet file ${nameHash} already loaded from cache`);
-    return;
-  }
-
-  // Check if table already exists in DuckDB
+  // ALWAYS verify table exists in DuckDB - don't trust in-memory cache alone
+  // The cache can become stale if DuckDB instance is re-initialized
   if (!force && (await tableDuckDBExists(db, nameHash))) {
     cache.markLoaded(nameHash, url);
     console.debug(`Parquet file ${nameHash} already exists in DuckDB`);
     return;
+  }
+
+  // Clear stale cache entry if table doesn't exist but cache thought it was loaded
+  if (cache.isLoaded(nameHash)) {
+    console.debug(`Parquet file ${nameHash} was in cache but not in DuckDB - clearing stale entry`);
+    cache.clearLoaded(nameHash);
   }
 
   // Use cache to prevent duplicate concurrent fetches

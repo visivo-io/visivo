@@ -1,6 +1,10 @@
 /**
  * Minimal Parquet File Cache
  * Tracks loaded files and prevents duplicate concurrent fetches.
+ *
+ * IMPORTANT: This is an in-memory cache that can become stale if the DuckDB
+ * instance is re-initialized. Always verify table existence in DuckDB before
+ * trusting this cache.
  */
 const loadedFiles = new Set();
 const pendingFetches = new Map();
@@ -10,8 +14,16 @@ export const parquetCache = {
 
   markLoaded: nameHash => loadedFiles.add(nameHash),
 
+  clearLoaded: nameHash => loadedFiles.delete(nameHash),
+
+  clearAll: () => {
+    loadedFiles.clear();
+    pendingFetches.clear();
+  },
+
   getOrFetch: async (nameHash, fetchFn) => {
-    if (loadedFiles.has(nameHash)) return;
+    // Don't skip based on loadedFiles here - caller should verify with DuckDB first
+    // This cache is primarily for preventing duplicate concurrent fetches
     if (pendingFetches.has(nameHash)) return pendingFetches.get(nameHash);
 
     const promise = fetchFn().finally(() => pendingFetches.delete(nameHash));

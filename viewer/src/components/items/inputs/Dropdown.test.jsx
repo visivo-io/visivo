@@ -27,25 +27,19 @@ describe('Dropdown Component', () => {
     expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
-  it('selects single option and closes menu', () => {
+  it('selects single option and calls setInputValue', () => {
     const setInputValue = jest.fn();
     render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
     fireEvent.click(screen.getByRole('button'));
 
     fireEvent.click(screen.getByText('Option A'));
-    expect(screen.getByText('Option A')).toBeInTheDocument();
+
+    // setInputValue should be called with the selected option
+    expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
   });
 
-  it('displays default value when provided', () => {
-    const setInputValue = jest.fn();
-    render(
-      <Dropdown
-        options={options}
-        defaultValue="Option A"
-        name="test"
-        setInputValue={setInputValue}
-      />
-    );
+  it('displays selectedValue from props (not managing its own default)', () => {
+    render(<Dropdown options={options} selectedValue="Option A" name="test" />);
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
   });
@@ -53,12 +47,7 @@ describe('Dropdown Component', () => {
   it('can change selection to a different option', () => {
     const setInputValue = jest.fn();
     render(
-      <Dropdown
-        options={options}
-        defaultValue="Option A"
-        name="test"
-        setInputValue={setInputValue}
-      />
+      <Dropdown options={options} selectedValue="Option A" name="test" setInputValue={setInputValue} />
     );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
@@ -69,12 +58,13 @@ describe('Dropdown Component', () => {
     // Select Option B
     fireEvent.click(screen.getByText('Option B'));
 
-    // Option B should now be selected
-    expect(screen.getByText('Option B')).toBeInTheDocument();
+    // setInputValue should be called with the new selection
+    expect(setInputValue).toHaveBeenCalledWith('test', 'Option B');
   });
 
   it('supports keyboard navigation (ArrowDown + Enter)', () => {
-    render(<Dropdown options={options} />);
+    const setInputValue = jest.fn();
+    render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
     const button = screen.getByRole('button');
 
     fireEvent.keyDown(button, { key: 'ArrowDown' });
@@ -83,6 +73,51 @@ describe('Dropdown Component', () => {
     fireEvent.keyDown(button, { key: 'ArrowDown' });
     fireEvent.keyDown(button, { key: 'Enter' });
 
-    expect(screen.getByText('Option A')).toBeInTheDocument();
+    // setInputValue should be called after keyboard selection
+    expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
+  });
+
+  describe('display-only behavior', () => {
+    it('does NOT call setInputValue on initial render (display only)', () => {
+      // Dropdown should NOT set defaults - that's handled by useInputOptions hook
+      const setInputValue = jest.fn();
+
+      render(
+        <Dropdown options={options} selectedValue="Option A" name="test" setInputValue={setInputValue} />
+      );
+
+      // setInputValue should NOT be called on render (no default setting)
+      expect(setInputValue).not.toHaveBeenCalled();
+    });
+
+    it('calls setInputValue ONLY on user selection', () => {
+      const setInputValue = jest.fn();
+
+      render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
+
+      // Initial render - setInputValue NOT called
+      expect(setInputValue).not.toHaveBeenCalled();
+
+      // User selects an option
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByText('Option A'));
+
+      // Now setInputValue should be called once
+      expect(setInputValue).toHaveBeenCalledTimes(1);
+      expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
+    });
+
+    it('re-renders correctly when selectedValue prop changes', () => {
+      const { rerender } = render(
+        <Dropdown options={options} selectedValue="Option A" name="test" />
+      );
+
+      expect(screen.getByText('Option A')).toBeInTheDocument();
+
+      // Simulate store update (parent passes new selectedValue)
+      rerender(<Dropdown options={options} selectedValue="Option B" name="test" />);
+
+      expect(screen.getByText('Option B')).toBeInTheDocument();
+    });
   });
 });

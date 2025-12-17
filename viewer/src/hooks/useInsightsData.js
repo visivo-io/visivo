@@ -7,22 +7,35 @@ import useStore from '../stores/store';
 
 /**
  * Extract input names referenced in a query string
- * Looks for ${inputName} patterns (template literal syntax)
+ * Looks for ${inputName.accessor} patterns (template literal syntax)
  * @param {string} query - SQL query with ${...} placeholders
- * @param {string[]} knownInputNames - List of known input names to match against
- * @returns {string[]} - Array of input names found in the query
+ * @param {string[]} knownInputNames - Optional list of known input names to match against
+ * @returns {string[]} - Array of unique input names found in the query
  */
-const extractInputDependencies = (query, knownInputNames) => {
-  if (!query || !knownInputNames?.length) return [];
+const extractInputDependencies = (query, knownInputNames = null) => {
+  if (!query) return [];
 
-  const dependencies = [];
-  for (const inputName of knownInputNames) {
-    // Check if ${inputName} appears in the query
-    if (query.includes(`\${${inputName}}`)) {
-      dependencies.push(inputName);
+  // If knownInputNames provided, use the old matching logic
+  if (knownInputNames?.length) {
+    const dependencies = [];
+    for (const inputName of knownInputNames) {
+      // Check if ${inputName} appears in the query (as prefix of ${inputName.accessor})
+      if (query.includes(`\${${inputName}`)) {
+        dependencies.push(inputName);
+      }
     }
+    return dependencies;
   }
-  return dependencies;
+
+  // Otherwise, extract input names directly from query using regex
+  // Matches ${inputName.accessor} patterns
+  const regex = /\$\{(\w+)\.\w+\}/g;
+  const matches = query.matchAll(regex);
+  const inputNames = new Set();
+  for (const match of matches) {
+    inputNames.add(match[1]);
+  }
+  return [...inputNames];
 };
 
 /**
@@ -38,6 +51,36 @@ const processInsight = async (db, insight, inputs) => {
     const insightName = name;
 
     console.debug(`Processing insight '${insightName}'`);
+
+    // Check for required inputs BEFORE loading parquet files
+    // Extract input names from the query (e.g., ${sort_direction.value} -> sort_direction)
+    const requiredInputs = extractInputDependencies(query);
+
+    // Check if all required inputs are present
+    const missingInputs = requiredInputs.filter(inputName => !inputs[inputName]);
+
+    if (missingInputs.length > 0) {
+      console.debug(
+        `Insight '${insightName}' waiting for inputs: ${missingInputs.join(', ')}`
+      );
+      // Return metadata without data - will be re-processed when inputs are ready
+      return {
+        [insightName]: {
+          name: insightName,
+          data: null, // null indicates waiting for inputs (vs [] which is empty result)
+          files,
+          query,
+          props_mapping,
+          static_props,
+          split_key,
+          type,
+          loaded: 0,
+          failed: 0,
+          error: null,
+          pendingInputs: missingInputs, // Track which inputs we're waiting for
+        },
+      };
+    }
 
     // Step 1: Load parquet files (with caching)
     const { loaded, failed } = await loadInsightParquetFiles(db, files);
@@ -84,6 +127,7 @@ const processInsight = async (db, insight, inputs) => {
         loaded: loaded.length,
         failed: failed.length,
         error: null,
+        pendingInputs: null, // Clear pending state
       },
     };
   } catch (error) {
@@ -103,6 +147,7 @@ const processInsight = async (db, insight, inputs) => {
         loaded: 0,
         failed: insight.files?.length || 0,
         error: error.message || String(error),
+        pendingInputs: null,
       },
     };
   }
@@ -145,14 +190,40 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Check if we have complete data for all requested insights
   // This is used to determine the hasAllInsightData return value
+  // data: null means waiting for inputs, data: [] means empty result (which is complete)
   const hasCompleteData = useMemo(() => {
     if (!stableInsightNames.length) return true; // No insights = complete
     if (!storeInsightData) return false;
 
     return stableInsightNames.every(
-      name => storeInsightData[name]?.data && storeInsightData[name]?.data.length >= 0
+      name =>
+        storeInsightData[name]?.data !== null &&
+        storeInsightData[name]?.data !== undefined &&
+        !storeInsightData[name]?.pendingInputs?.length
     );
   }, [storeInsightData, stableInsightNames]);
+
+  // Check if any insights are waiting for inputs that are now available
+  // This triggers a refetch when inputs become ready
+  const pendingInsightInputsReady = useMemo(() => {
+    if (!storeInsightData || !getInputs) return false;
+
+    for (const insightName of stableInsightNames) {
+      const insight = storeInsightData[insightName];
+      if (insight?.pendingInputs?.length) {
+        // Check if all pending inputs are now available
+        const allReady = insight.pendingInputs.every(inputName => getInputs[inputName]);
+        if (allReady) {
+          console.debug(
+            `Insight '${insightName}' has all required inputs ready:`,
+            insight.pendingInputs
+          );
+          return true; // At least one insight is now ready to process
+        }
+      }
+    }
+    return false;
+  }, [storeInsightData, getInputs, stableInsightNames]);
 
   // Compute relevant input values based on which inputs each insight actually uses
   // This enables selective refetch - only refetch when inputs that matter change
@@ -208,12 +279,13 @@ export const useInsightsData = (projectId, insightNames) => {
 
     console.debug(`Fetched ${insights.length} insights from API`);
 
-    // Get current inputs from store
-    const inputs = getInputs || {};
+    // Get FRESH inputs from store (not closure value) to avoid race condition
+    // This ensures we always have the latest inputs at query execution time
+    const freshInputs = useStore.getState().inputs || {};
 
     // Step 2: Process each insight in parallel
     const results = await Promise.allSettled(
-      insights.map(insight => processInsight(db, insight, inputs))
+      insights.map(insight => processInsight(db, insight, freshInputs))
     );
 
     // Step 3: Merge results
@@ -236,13 +308,22 @@ export const useInsightsData = (projectId, insightNames) => {
     console.debug(`Successfully processed ${Object.keys(mergedData).length} insights`);
 
     return mergedData;
-  }, [db, projectId, stableInsightNames, getInputs, fetchInsights]);
+    // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
+    // The queryKey still changes when inputs change (via stableRelevantInputs/pendingInsightInputsReady)
+  }, [db, projectId, stableInsightNames, fetchInsights]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
-  // This enables selective refetch - only insights using the changed input will refetch
+  // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   const { data, isLoading, error } = useQuery({
-    queryKey: ['insights', projectId, stableInsightNames, !!db, stableRelevantInputs],
+    queryKey: [
+      'insights',
+      projectId,
+      stableInsightNames,
+      !!db,
+      stableRelevantInputs,
+      pendingInsightInputsReady,
+    ],
     queryFn,
     enabled: !!projectId && stableInsightNames.length > 0 && !!db,
     staleTime: Infinity,
@@ -263,7 +344,9 @@ export const useInsightsData = (projectId, insightNames) => {
   return {
     insightsData: storeInsightData || {},
     isInsightsLoading: isLoading,
-    hasAllInsightData: hasCompleteData || (data && Object.keys(data).length > 0),
+    // Only report hasAllInsightData=true when we have complete data without pending inputs
+    // Don't use `data` fallback as it may contain insights with pendingInputs
+    hasAllInsightData: hasCompleteData,
     error,
   };
 };

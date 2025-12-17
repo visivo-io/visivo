@@ -1,9 +1,11 @@
 import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
-import { ContextString } from '../utils/contextString';
 
 /**
  * Compute accessor values for a single-select input.
  * Single-select inputs have only a `.value` accessor.
+ *
+ * Values are returned as-is without any quoting.
+ * Users must handle SQL quoting in their queries if needed.
  *
  * @param {string|number} selectedValue - The selected value
  * @returns {Object} - Accessor object { value: string }
@@ -12,14 +14,15 @@ const computeSingleSelectAccessors = selectedValue => {
   if (selectedValue === null || selectedValue === undefined) {
     return { value: null };
   }
-  // Quote strings for SQL, leave numbers as-is
-  const value = typeof selectedValue === 'string' ? `'${selectedValue}'` : selectedValue;
-  return { value };
+  return { value: selectedValue };
 };
 
 /**
  * Compute accessor values for a multi-select input.
  * Multi-select inputs have .values, .min, .max, .first, .last accessors.
+ *
+ * Values are returned as-is without any quoting.
+ * Users must handle SQL quoting in their queries if needed.
  *
  * @param {Array} selectedValues - Array of selected values
  * @returns {Object} - Accessor object { values, min, max, first, last }
@@ -29,9 +32,8 @@ const computeMultiSelectAccessors = selectedValues => {
     return { values: null, min: null, max: null, first: null, last: null };
   }
 
-  // Quote strings for SQL IN clause, leave numbers as-is
-  const quotedValues = selectedValues.map(v => (typeof v === 'string' ? `'${v}'` : v));
-  const values = quotedValues.join(',');
+  // Join values as-is, no quoting
+  const values = selectedValues.join(',');
 
   // Extract numeric values for min/max
   const numericValues = selectedValues.filter(v => typeof v === 'number' || !isNaN(Number(v)));
@@ -51,6 +53,7 @@ const createInsightSlice = (set, get) => ({
   inputs: {}, // Store for input accessor objects: { inputName: { value: 'quoted' } or { values, min, max, first, last } }
   inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
   inputData: {}, // Store for full input data from JSON: { inputName: { type, structure, results, ... } }
+  inputsInitialized: {}, // Track which inputs have been initialized: { inputName: true }
   db: null,
 
   setDB: db => set({ db }),
@@ -92,6 +95,7 @@ const createInsightSlice = (set, get) => ({
   /**
    * Set input value with accessor structure.
    * Automatically computes the appropriate accessor values based on input type.
+   * Only triggers query refresh if the input was already initialized (user selection change).
    *
    * @param {string} inputName - Name of the input
    * @param {string|number|Array} rawValue - Raw selected value(s)
@@ -107,56 +111,90 @@ const createInsightSlice = (set, get) => ({
 
       const newInputs = { ...state.inputs, [inputName]: accessors };
 
-      setTimeout(async () => {
-        const { insights, db } = get();
+      // Only trigger query refresh if the input was already initialized
+      // This prevents premature query execution during initial load
+      const wasAlreadyInitialized = state.inputsInitialized[inputName];
 
-        // Find insights that depend on this input
-        const dependentInsights = Object.entries(insights)
-          .filter(([_, insight]) =>
-            insight.interactions?.some(i => {
-              if (!ContextString.isContextString(i.filter)) return true;
-              const ctx = new ContextString(i.filter);
-              return ctx.getReference() === inputName;
-            })
-          )
-          .map(([name]) => name);
+      if (wasAlreadyInitialized) {
+        setTimeout(async () => {
+          const { insights, db } = get();
 
-        for (const insightName of dependentInsights) {
-          const insight = insights[insightName];
-          let post_query = prepPostQuery(insight, newInputs);
-          try {
-            const result = await runDuckDBQuery(db, post_query, 3, 300);
-            const processedRows =
-              result.toArray().map(row => {
-                const rowData = row.toJSON();
-                return Object.fromEntries(
-                  Object.entries(rowData).map(([key, value]) => [
-                    key,
-                    typeof value === 'bigint' ? value.toString() : value,
-                  ])
-                );
-              }) || [];
-
-            set(s => ({
-              insights: {
-                ...s.insights,
-                [insightName]: {
-                  ...s.insights[insightName],
-                  insight: processedRows,
-                },
-              },
-            }));
-          } catch (err) {
-            console.error(`Query for ${insightName} failed:`, err);
+          // Guard against db not being initialized yet
+          if (!db) {
+            console.debug(`Skipping insight refresh: DuckDB not initialized`);
+            return;
           }
-        }
-      }, 0);
 
-      return { inputs: newInputs };
+          // Get fresh inputs after state update
+          const currentInputs = get().inputs;
+
+          // Find insights that depend on this input by checking their query
+          // Note: insights have .query property (set by useInsightsData)
+          const dependentInsights = Object.entries(insights)
+            .filter(([_, insight]) => {
+              const query = insight?.query || '';
+              // Check if query references this input with accessor syntax
+              return query.includes(`\${${inputName}.`);
+            })
+            .map(([name]) => name);
+
+          console.debug(
+            `Input '${inputName}' changed. Refreshing ${dependentInsights.length} dependent insights:`,
+            dependentInsights
+          );
+
+          for (const insightName of dependentInsights) {
+            const insight = insights[insightName];
+            try {
+              // prepPostQuery expects { query: ... }
+              const preparedQuery = prepPostQuery({ query: insight.query }, currentInputs);
+              console.debug(`Executing query for insight '${insightName}':`, preparedQuery);
+
+              const result = await runDuckDBQuery(db, preparedQuery, 3, 300);
+              const processedRows =
+                result.toArray().map(row => {
+                  const rowData = row.toJSON();
+                  return Object.fromEntries(
+                    Object.entries(rowData).map(([key, value]) => [
+                      key,
+                      typeof value === 'bigint' ? value.toString() : value,
+                    ])
+                  );
+                }) || [];
+
+              console.debug(`Query for insight '${insightName}' returned ${processedRows.length} rows`);
+
+              // Update with .data field (not .insight) to match useInsightsData structure
+              set(s => ({
+                insights: {
+                  ...s.insights,
+                  [insightName]: {
+                    ...s.insights[insightName],
+                    data: processedRows,
+                  },
+                },
+              }));
+            } catch (err) {
+              console.error(`Query for ${insightName} failed:`, err);
+            }
+          }
+        }, 0);
+      }
+
+      // Mark as initialized (for future calls to trigger refresh)
+      return {
+        inputs: newInputs,
+        inputsInitialized: { ...state.inputsInitialized, [inputName]: true },
+      };
     }),
 
   /**
-   * Set default input value (same as setInputValue but without triggering query refresh)
+   * Set default input value and mark as initialized.
+   * Does NOT trigger query refresh - used for initial default values.
+   *
+   * @param {string} inputName - Name of the input
+   * @param {string|number|Array} rawValue - Raw default value(s)
+   * @param {string} inputType - 'single-select' or 'multi-select' (default: 'single-select')
    */
   setDefaultInputValue: (inputName, rawValue, inputType = 'single-select') =>
     set(state => {
@@ -165,7 +203,10 @@ const createInsightSlice = (set, get) => ({
           ? computeMultiSelectAccessors(Array.isArray(rawValue) ? rawValue : [rawValue])
           : computeSingleSelectAccessors(rawValue);
 
-      return { inputs: { ...state.inputs, [inputName]: accessors } };
+      return {
+        inputs: { ...state.inputs, [inputName]: accessors },
+        inputsInitialized: { ...state.inputsInitialized, [inputName]: true },
+      };
     }),
 });
 

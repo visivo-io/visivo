@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown } from 'react-icons/fa';
 import DropdownOptions from './DropdownOptions';
 import {
@@ -10,63 +10,63 @@ import {
   SearchInput,
 } from '../../styled/DropdownButton';
 
+/**
+ * Dropdown component for single-select inputs.
+ *
+ * This component is DISPLAY ONLY for the current selection.
+ * It does NOT set default values - that is handled by useInputOptions hook.
+ * It ONLY calls setInputValue when the user actively selects a new option.
+ *
+ * @param {string} label - Label to display above the dropdown
+ * @param {Array} options - Array of option strings
+ * @param {string} selectedValue - Current selected value from store (for display)
+ * @param {string} placeholder - Placeholder text when nothing selected
+ * @param {string} name - Input name for store updates
+ * @param {function} setInputValue - Callback for user selection changes ONLY
+ */
 const Dropdown = ({
   label = '',
   options: rawOptions,
-  defaultValue: rawDefaultValue,
+  selectedValue,
   placeholder = 'Select option...',
   name,
   setInputValue,
-  setDefaultInputValue,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState([]);
-  const [selectedItems, setSelectedItems] = useState(null); // Single-select only
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  // Derive selectedItems from selectedValue prop (display only)
+  const selectedItems = useMemo(() => {
+    if (selectedValue) {
+      return { id: selectedValue, label: selectedValue };
+    }
+    return null;
+  }, [selectedValue]);
+
   const filteredOptions = options.filter(option =>
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Initialize options when rawOptions change
   useEffect(() => {
-    const initializeDropdown = () => {
-      setLoading(true);
+    setLoading(true);
 
-      // Format pre-computed options from store
-      const opts = Array.isArray(rawOptions)
-        ? rawOptions.map(option => ({
-            id: option,
-            label: option,
-          }))
-        : [];
+    // Format pre-computed options from store
+    const opts = Array.isArray(rawOptions)
+      ? rawOptions.map(option => ({
+          id: option,
+          label: option,
+        }))
+      : [];
 
-      setOptions(opts);
-
-      // Set default value (single-select only)
-      if (rawDefaultValue) {
-        const defVal = { id: rawDefaultValue, label: rawDefaultValue };
-        setSelectedItems(defVal);
-
-        if (setDefaultInputValue) {
-          setDefaultInputValue(name, rawDefaultValue);
-        }
-      }
-
-      setLoading(false);
-    };
-
-    initializeDropdown();
-  }, [rawOptions, rawDefaultValue, name, setDefaultInputValue]);
-
-  useEffect(() => {
-    if (name && setInputValue && !loading) {
-      setInputValue(name, selectedItems?.id);
-    }
-  }, [selectedItems, name, setInputValue, loading]);
+    setOptions(opts);
+    setLoading(false);
+  }, [rawOptions]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -115,7 +115,10 @@ const Dropdown = ({
   };
 
   const toggleSelection = option => {
-    setSelectedItems(option);
+    // User actively selected an option - notify store
+    if (setInputValue && name) {
+      setInputValue(name, option.id);
+    }
     setIsOpen(false);
   };
 
