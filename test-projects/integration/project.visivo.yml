@@ -11,38 +11,105 @@ defaults:
   alert_name: slack
 
 inputs:
-  # Input for split testing
+  # ===== SINGLE-SELECT INPUTS (all display types) =====
+
+  # Single-select: Dropdown (default display)
   - name: split_threshold
-    label: "Split Threshold"
+    label: "Split Threshold (Dropdown)"
     type: single-select
     options: ["3", "5", "7"]
     display:
+      type: dropdown
       default:
         value: "5"
 
-  # Input for non-aggregate filter testing
+  # Single-select: Query-based dropdown
   - name: min_x_value
-    label: "Minimum X Value"
+    label: "Min X Value (Query Dropdown)"
     type: single-select
     options: ?{select distinct x FROM ${ref(local_test_table)} }
+    display:
+      type: dropdown
 
-  # Input for aggregate filter testing
+  # Single-select: Radio buttons
   - name: min_avg_y
-    label: "Minimum Average Y"
+    label: "Min Average Y (Radio)"
     type: single-select
     options: ["0", "5", "10"]
     display:
+      type: radio
       default:
         value: "5"
 
-  # Input for sort order testing
+  # Single-select: Tabs
   - name: sort_direction
-    label: "Sort Direction"
+    label: "Sort Direction (Tabs)"
     type: single-select
     options: ["ASC", "DESC"]
     display:
+      type: tabs
       default:
         value: "ASC"
+
+  # Single-select: Toggle (exactly 2 options required)
+  - name: show_markers
+    label: "Show Markers (Toggle)"
+    type: single-select
+    options: ["lines", "markers+lines"]
+    display:
+      type: toggle
+      default:
+        value: "markers+lines"
+
+  # ===== MULTI-SELECT INPUTS (all display types) =====
+
+  # Multi-select: Dropdown
+  - name: selected_categories
+    label: "Categories (Dropdown)"
+    type: multi-select
+    options: ["Category A", "Category B", "Category C", "Category D"]
+    display:
+      type: dropdown
+      default:
+        values: ["Category A", "Category B"]
+
+  # Multi-select: Checkboxes
+  - name: selected_groups
+    label: "Groups (Checkboxes)"
+    type: multi-select
+    options: ["Group 1", "Group 2", "Group 3"]
+    display:
+      type: checkboxes
+      default:
+        values: all
+
+  # Multi-select: Chips
+  - name: selected_tags
+    label: "Tags (Chips)"
+    type: multi-select
+    options: ["High", "Medium", "Low", "Critical"]
+    display:
+      type: chips
+      default:
+        values: ["High", "Medium"]
+
+  # Multi-select: Range slider (for numeric values)
+  - name: x_value_range
+    label: "X Value Range (Slider)"
+    type: multi-select
+    options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    display:
+      type: range-slider
+      default:
+        values: ["3", "4", "5", "6", "7"]
+
+  # Multi-select: Query-based checkboxes
+  - name: selected_x_values
+    label: "X Values (Query Checkboxes)"
+    type: multi-select
+    options: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} }
+    display:
+      type: checkboxes
 
 alerts:
   - name: slack
@@ -172,6 +239,40 @@ charts:
       title:
         text: "Combined Interactions Test"
 
+  # ===== INPUT DISPLAY SHOWCASE CHARTS =====
+
+  # Toggle display chart
+  - name: toggle-mode-chart
+    insights:
+      - ${ ref(toggle-mode-insight) }
+    layout:
+      title:
+        text: "Toggle Input: Dynamic Mode"
+
+  # Range slider chart
+  - name: range-slider-chart
+    insights:
+      - ${ ref(range-slider-insight) }
+    layout:
+      title:
+        text: "Range Slider: Filter by Min/Max"
+
+  # Checkboxes chart
+  - name: checkboxes-filter-chart
+    insights:
+      - ${ ref(checkboxes-filter-insight) }
+    layout:
+      title:
+        text: "Checkboxes: Multi-Value Filter"
+
+  # Chips chart
+  - name: chips-split-chart
+    insights:
+      - ${ ref(chips-split-insight) }
+    layout:
+      title:
+        text: "Chips: Dynamic Split Labels"
+
 dashboards:
   - name: Insights Dashboard
     level: 0
@@ -217,6 +318,44 @@ dashboards:
         items:
           - width: 12
             chart: ${ ref(combined-interactions-test-chart) }
+
+      # ===== INPUT DISPLAY SHOWCASE SECTION =====
+      - height: compact
+        items:
+          - markdown: |
+              ## Input Display Types Showcase
+              All frontend input display types with their corresponding charts
+
+      # Single-select display types row
+      - height: compact
+        items:
+          - input: ${ref(show_markers)}
+          - input: ${ref(selected_tags)}
+          - input: ${ref(x_value_range)}
+          - input: ${ref(selected_x_values)}
+
+      # Charts using the new inputs
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(toggle-mode-chart) }
+          - width: 6
+            chart: ${ ref(range-slider-chart) }
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(checkboxes-filter-chart) }
+          - width: 6
+            chart: ${ ref(chips-split-chart) }
+
+      # Additional multi-select inputs showcase
+      - height: compact
+        items:
+          - markdown: |
+              ## Additional Multi-Select Inputs
+          - input: ${ref(selected_categories)}
+          - input: ${ref(selected_groups)}
+
   - name: Table Dashboard
     level: 1
     tags:

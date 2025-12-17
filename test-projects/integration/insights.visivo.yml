@@ -149,3 +149,63 @@ insights:
       - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold).value} THEN 'Above Threshold' ELSE 'Below Threshold' END }
       - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value).value}}
       - sort: ?{${ref(local_test_table).x} ${ref(sort_direction).value}}
+
+  # ===== INPUT DISPLAY SHOWCASE INSIGHTS =====
+
+  # Toggle input test - dynamic mode switching
+  - name: toggle-mode-insight
+    description: "Scatter plot with dynamic mode from toggle input"
+    props:
+      type: scatter
+      mode: ?{${ref(show_markers).value}}
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      line:
+        color: "#713B57"
+        width: 2
+      marker:
+        size: 10
+        color: "#D25946"
+    interactions:
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select range slider test - filter by range
+  - name: range-slider-insight
+    description: "Bar chart filtered by range slider min/max"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: "#4F494C"
+    interactions:
+      - filter: ?{${ref(local_test_table).x} >= ${ref(x_value_range).min} AND ${ref(local_test_table).x} <= ${ref(x_value_range).max}}
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select checkboxes test - filter by selected values
+  - name: checkboxes-filter-insight
+    description: "Scatter plot filtered by checkbox selections"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        size: 12
+        color: "#191D33"
+    interactions:
+      - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN ('${ref(selected_x_values).values}')}
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select chips test - dynamic split based on first/last accessors
+  - name: chips-split-insight
+    description: "Bar chart with split using chips input first/last values"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: ?{ CASE WHEN ${ref(local_test_table).x} <= 5 THEN '#713B57' ELSE '#D25946' END }
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= 5 THEN '${ref(selected_tags).first}' ELSE '${ref(selected_tags).last}' END }
+      - sort: ?{${ref(local_test_table).x} ASC}

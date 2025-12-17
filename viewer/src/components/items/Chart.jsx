@@ -39,7 +39,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const hasInsights = chart.insights && chart.insights.length > 0;
 
-  const { insightsData, isInsightsLoading } = useInsightsData(
+  const { insightsData, isInsightsLoading, hasAllInsightData } = useInsightsData(
     project.id,
     hasInsights ? insightNames : []
   );
@@ -47,7 +47,10 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   // For insight-only charts (no traces), don't wait for tracesData
   // For trace-based charts, wait for tracesData to load
   const isTracesLoading = hasTraces && !tracesData;
-  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading);
+  // For insights, also check hasAllInsightData to handle pendingInputs case
+  // (query might be "complete" but data is null while waiting for inputs)
+  const isInsightsWaiting = hasInsights && !hasAllInsightData;
+  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading) || isInsightsWaiting;
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);

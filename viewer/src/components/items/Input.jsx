@@ -1,74 +1,122 @@
-import Dropdown from './inputs/Dropdown';
+import React, { useCallback, useMemo } from 'react';
 import useStore from '../../stores/store';
 import { useInputOptions } from '../../hooks/useInputOptions';
 
-// Legacy type constant for backwards compatibility
-export const DROPDOWN = 'dropdown';
+// Input display components
+import Dropdown from './inputs/Dropdown';
+import MultiSelectDropdown from './inputs/MultiSelectDropdown';
+import RadioInput from './inputs/RadioInput';
+import ToggleInput from './inputs/ToggleInput';
+import TabsInput from './inputs/TabsInput';
+import CheckboxesInput from './inputs/CheckboxesInput';
+import ChipsInput from './inputs/ChipsInput';
+import RangeSliderInput from './inputs/RangeSliderInput';
 
-// New input type constants
+// Input type constants
 export const SINGLE_SELECT = 'single-select';
 export const MULTI_SELECT = 'multi-select';
 
+/**
+ * Input component that renders the appropriate display component
+ * based on input type and display.type configuration.
+ *
+ * Default values are set by the useInputOptions hook (which loads from JSON).
+ * This component reads the current value from the store and passes it to the display component.
+ * Display components only call setInputValue when the user actively selects a new option.
+ */
 const Input = ({ input, itemWidth, project }) => {
   const setInputValue = useStore(state => state.setInputValue);
-  const setDefaultInputValue = useStore(state => state.setDefaultInputValue);
+  const inputs = useStore(state => state.inputs);
 
-  // Load options from JSON (or use static options)
+  // Load options from JSON (this also sets defaults via setDefaultInputValue)
   const options = useInputOptions(input, project?.id);
 
+  // Determine input type and multi-select status
+  const inputType = input?.type;
+  const isMulti = inputType === MULTI_SELECT;
+  const displayType = input?.display?.type || 'dropdown';
+
+  // Memoized wrapper for setInputValue that passes the input type
+  const handleSetInputValue = useCallback(
+    (name, value) => {
+      setInputValue(name, value, isMulti ? MULTI_SELECT : SINGLE_SELECT);
+    },
+    [setInputValue, isMulti]
+  );
+
+  // Get current selected value(s) from store (for display)
+  // Store format: { inputName: { value: ... } } or { inputName: { values, min, max, first, last } }
+  const { selectedValue, selectedValues } = useMemo(() => {
+    const accessor = inputs[input?.name];
+    if (!accessor) return { selectedValue: null, selectedValues: null };
+
+    if (isMulti) {
+      // For multi-select, parse values from comma-separated string
+      const valuesStr = accessor.values;
+      const parsedValues = valuesStr ? valuesStr.split(',') : [];
+      return {
+        selectedValue: accessor.first,
+        selectedValues: parsedValues,
+      };
+    } else {
+      // For single-select, return value directly
+      return {
+        selectedValue: accessor.value,
+        selectedValues: null,
+      };
+    }
+  }, [inputs, input?.name, isMulti]);
+
+  // Early return checks (after all hooks)
   if (!input) return null;
 
-  // Determine display type and input type
-  const displayType = input.display?.type || 'dropdown';
-  const inputType = input.type || DROPDOWN;
+  // Only render for valid input types
+  const shouldRender = inputType === SINGLE_SELECT || inputType === MULTI_SELECT;
+  if (!shouldRender) return null;
 
-  // Determine if multi-select based on input type or legacy 'multi' flag
-  const isMulti = inputType === MULTI_SELECT || input?.multi === true;
-
-  // Wrapper for setInputValue that passes the input type
-  const handleSetInputValue = (name, value) => {
-    setInputValue(name, value, isMulti ? MULTI_SELECT : SINGLE_SELECT);
+  // Common props for all display components
+  const commonProps = {
+    label: input?.label,
+    options,
+    name: input.name,
+    setInputValue: handleSetInputValue,
   };
 
-  // Wrapper for setDefaultInputValue that passes the input type
-  const handleSetDefaultInputValue = (name, value) => {
-    setDefaultInputValue(name, value, isMulti ? MULTI_SELECT : SINGLE_SELECT);
-  };
-
-  // Get default value from display config or input config
-  const defaultValue = input.display?.default?.value || input?.default;
-
-  // Render the appropriate component based on type
-  const renderInputComponent = () => {
-    // For now, all types use Dropdown - can be extended for other display types
-    // (radio, toggle, tabs, checkboxes, slider, etc.)
-    switch (displayType) {
-      case 'dropdown':
-      default:
-        return (
-          <Dropdown
-            label={input?.label}
-            options={options}
-            isMulti={isMulti}
-            defaultValue={defaultValue}
-            name={input.name}
-            isQuery={input?.is_query}
-            setInputValue={handleSetInputValue}
-            setDefaultInputValue={handleSetDefaultInputValue}
-          />
-        );
+  // Render the appropriate display component based on type and display config
+  const renderDisplayComponent = () => {
+    if (isMulti) {
+      // Multi-select display types
+      switch (displayType) {
+        case 'checkboxes':
+          return <CheckboxesInput {...commonProps} selectedValues={selectedValues} />;
+        case 'chips':
+        case 'tags':
+          return <ChipsInput {...commonProps} selectedValues={selectedValues} />;
+        case 'range-slider':
+          return <RangeSliderInput {...commonProps} selectedValues={selectedValues} />;
+        case 'dropdown':
+        default:
+          return <MultiSelectDropdown {...commonProps} selectedValues={selectedValues} />;
+      }
+    } else {
+      // Single-select display types
+      switch (displayType) {
+        case 'radio':
+          return <RadioInput {...commonProps} selectedValue={selectedValue} />;
+        case 'toggle':
+          return <ToggleInput {...commonProps} selectedValue={selectedValue} />;
+        case 'tabs':
+          return <TabsInput {...commonProps} selectedValue={selectedValue} />;
+        case 'dropdown':
+        default:
+          return <Dropdown {...commonProps} selectedValue={selectedValue} />;
+      }
     }
   };
 
-  // Support old 'dropdown' type and new 'single-select'/'multi-select' types
-  const shouldRender =
-    inputType === DROPDOWN || inputType === SINGLE_SELECT || inputType === MULTI_SELECT;
-
-  if (!shouldRender) return null;
-
   return (
     <div className={`grow-${itemWidth} p-2 m-auto flex`}>
-      <div className="m-auto justify-center">{renderInputComponent()}</div>
+      <div className="m-auto justify-center">{renderDisplayComponent()}</div>
     </div>
   );
 };

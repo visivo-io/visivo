@@ -63,35 +63,3 @@ export const loadInputData = async url => {
   }
 };
 
-/**
- * Load input options from JSON file (legacy API for backwards compatibility)
- *
- * @deprecated Use loadInputData instead for full input structure
- * @param {any} db - DuckDB instance (no longer used, kept for API compatibility)
- * @param {string} url - URL to the JSON file
- * @returns {Promise<string[]>} - Array of option values (as strings)
- */
-export const loadInputOptions = async (db, url) => {
-  try {
-    const data = await loadInputData(url);
-
-    // Extract options based on structure
-    if (data.structure === 'options' && data.results?.options) {
-      return data.results.options.map(String);
-    } else if (data.structure === 'range' && data.results?.range) {
-      // Generate options from range
-      const { start, end, step } = data.results.range;
-      const options = [];
-      for (let val = start; val <= end; val += step) {
-        options.push(String(val));
-      }
-      return options;
-    }
-
-    console.warn(`Unknown input structure: ${data.structure}`);
-    return [];
-  } catch (error) {
-    console.error(`Failed to load input options from ${url}:`, error);
-    throw new Error(`Failed to load input options: ${error.message}`);
-  }
-};
