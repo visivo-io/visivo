@@ -1,7 +1,7 @@
 """Tests for dag_runner Input job creation."""
 
 import pytest
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.project import Project
 from tests.factories.model_factories import SourceFactory
 from tests.support.utils import temp_folder
@@ -14,7 +14,7 @@ class TestDagRunnerInputJobs:
         """Verify Input items get run_input_job assigned."""
         # ARRANGE
         source = SourceFactory()
-        input_obj = DropdownInput(name="test_input", type="dropdown", options=["A", "B", "C"])
+        input_obj = SingleSelectInput(name="test_input", options=["A", "B", "C"])
         project = Project(name="test_project", sources=[source], inputs=[input_obj], dashboards=[])
         dag = project.dag()
         output_dir = temp_folder()

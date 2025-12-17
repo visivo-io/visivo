@@ -14,30 +14,35 @@ inputs:
   # Input for split testing
   - name: split_threshold
     label: "Split Threshold"
-    type: dropdown
-    default: "5"
+    type: single-select
     options: ["3", "5", "7"]
+    display:
+      default:
+        value: "5"
 
   # Input for non-aggregate filter testing
   - name: min_x_value
     label: "Minimum X Value"
-    type: dropdown
-    default: "2"
+    type: single-select
     options: ?{select distinct x FROM ${ref(local_test_table)} }
 
   # Input for aggregate filter testing
   - name: min_avg_y
     label: "Minimum Average Y"
-    type: dropdown
-    default: "5"
+    type: single-select
     options: ["0", "5", "10"]
+    display:
+      default:
+        value: "5"
 
   # Input for sort order testing
   - name: sort_direction
     label: "Sort Direction"
-    type: dropdown
-    default: "ASC"
+    type: single-select
     options: ["ASC", "DESC"]
+    display:
+      default:
+        value: "ASC"
 
 alerts:
   - name: slack

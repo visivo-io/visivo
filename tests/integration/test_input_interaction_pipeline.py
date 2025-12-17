@@ -2,15 +2,15 @@
 Integration tests for Input-Interaction pipeline (Phases 1 + 2).
 
 Tests verify:
-1. Input jobs execute and generate parquet files
+1. Input jobs execute and generate JSON files
 2. Insight dependencies include inputs (DAG integration)
 3. JS template literal conversion in interactions (Phase 2)
 4. Mixed refs (models unchanged, inputs converted)
 """
 
 import pytest
+import json
 from pathlib import Path
-import polars as pl
 
 from tests.factories.model_factories import (
     SourceFactory,
@@ -29,11 +29,11 @@ class TestInputInteractionPipeline:
     """Integration tests for Input + Interaction pipeline."""
 
     def test_static_input_job_execution(self):
-        """Phase 1: Verify static input job executes and generates parquet files."""
+        """Phase 1: Verify static input job executes and generates JSON files."""
         # ARRANGE
         output_dir = temp_folder()
         source = SourceFactory()
-        input_obj = InputFactory(name="threshold", options=["10", "20", "30"], default="10")
+        input_obj = InputFactory(name="threshold", options=["10", "20", "30"])
         project = ProjectFactory(sources=[source], inputs=[input_obj])
         dag = project.dag()
 
@@ -43,15 +43,17 @@ class TestInputInteractionPipeline:
         # ASSERT - Input Job Success
         assert input_result.success, f"Input job failed: {input_result.message}"
 
-        input_parquet = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.parquet"
-        assert input_parquet.exists(), "Input parquet not created"
+        input_json = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        assert input_json.exists(), "Input JSON not created"
 
-        df = pl.read_parquet(input_parquet)
-        assert df.shape[0] == 3, f"Expected 3 options, got {df.shape[0]}"
-        assert set(df["option"].to_list()) == {"10", "20", "30"}, "Options don't match"
+        with open(input_json, "r") as f:
+            data = json.load(f)
+        assert data["type"] == "single-select", f"Expected single-select, got {data['type']}"
+        assert data["structure"] == "options", f"Expected options structure"
+        assert set(data["results"]["options"]) == {"10", "20", "30"}, "Options don't match"
 
     def test_js_template_literal_conversion(self):
-        """Phase 2: Verify ${ref(input)} converts to ${input} in interactions."""
+        """Phase 2: Verify ${ref(input).accessor} converts to ${input.accessor} in interactions."""
         # ARRANGE
         source = SourceFactory()
         model = SqlModelFactory(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
@@ -59,7 +61,7 @@ class TestInputInteractionPipeline:
         insight = Insight(
             name="filtered",
             props=InsightProps(type="scatter", x="?{${ref(data).x}}"),
-            interactions=[{"filter": "?{${ref(data).x} > ${ref(threshold)}}"}],
+            interactions=[{"filter": "?{${ref(data).x} > ${ref(threshold).value}}"}],
         )
         project = ProjectFactory(
             sources=[source], models=[model], inputs=[input_obj], insights=[insight]
@@ -73,8 +75,8 @@ class TestInputInteractionPipeline:
         # ASSERT - Input refs converted to JS template literals
         filter_value = js_values.get("filter")
         assert filter_value is not None, "Filter value not found"
-        assert "${threshold}" in filter_value, "JS template literal not created"
-        assert "${ref(threshold)}" not in filter_value, "Old ref() syntax should be converted"
+        assert "${threshold.value}" in filter_value, "JS template literal not created"
+        assert "${ref(threshold).value}" not in filter_value, "Old ref() syntax should be converted"
         # Model refs should remain unchanged
         assert "${ref(data).x}" in filter_value, "Model ref should remain unchanged"
 
@@ -88,7 +90,7 @@ class TestInputInteractionPipeline:
         insight = Insight(
             name="filtered",
             props=InsightProps(type="scatter", x="?{${ref(data).x}}"),
-            interactions=[{"filter": "?{${ref(data).x} = ${ref(filter_value)}}"}],
+            interactions=[{"filter": "?{${ref(data).x} = ${ref(filter_value).value}}"}],
         )
         project = ProjectFactory(
             sources=[source], models=[model], inputs=[input_obj], insights=[insight]
@@ -98,7 +100,7 @@ class TestInputInteractionPipeline:
         # ACT - Get DAG dependencies
         insight_children = insight.child_items()
 
-        # ASSERT - Insight depends on input
+        # ASSERT - Insight depends on input (accessor syntax still creates ref dependency)
         assert "ref(filter_value)" in insight_children, "Insight doesn't depend on input"
         assert "ref(data)" in insight_children, "Insight doesn't depend on model"
 
@@ -128,7 +130,7 @@ class TestInputInteractionPipeline:
             ),
             interactions=[
                 {
-                    "filter": "?{${ref(data).value} > ${ref(min_value)} AND ${ref(data).value} < ${ref(max_value)}}"
+                    "filter": "?{${ref(data).value} > ${ref(min_value).value} AND ${ref(data).value} < ${ref(max_value).value}}"
                 }
             ],
         )
@@ -150,8 +152,8 @@ class TestInputInteractionPipeline:
         assert filter_value is not None, "Filter value not found"
         # Model refs should remain unchanged
         assert "${ref(data).value}" in filter_value, "Model ref should remain unchanged"
-        # Input refs should be converted to JS template literals
-        assert "${min_value}" in filter_value, "Input ref should be JS template"
-        assert "${max_value}" in filter_value, "Input ref should be JS template"
-        assert "${ref(min_value)}" not in filter_value, "Old input ref syntax present"
-        assert "${ref(max_value)}" not in filter_value, "Old input ref syntax present"
+        # Input refs should be converted to JS template literals with accessor
+        assert "${min_value.value}" in filter_value, "Input ref should be JS template with accessor"
+        assert "${max_value.value}" in filter_value, "Input ref should be JS template with accessor"
+        assert "${ref(min_value).value}" not in filter_value, "Old input ref syntax present"
+        assert "${ref(max_value).value}" not in filter_value, "Old input ref syntax present"
