@@ -124,8 +124,10 @@ nav:
           - Include:
               - reference/configuration/Include/index.md
           - Inputs:
-              - DropdownInput:
-                  - reference/configuration/Inputs/DropdownInput/index.md
+              - SingleSelectInput:
+                  - reference/configuration/Inputs/SingleSelectInput/index.md
+              - MultiSelectInput:
+                  - reference/configuration/Inputs/MultiSelectInput/index.md
           - Insight:
               - reference/configuration/Insight/index.md
               - InsightInteraction:

@@ -5,7 +5,7 @@ from visivo.models.props.insight_props import InsightProps
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.insight import Insight
 from visivo.models.interaction import InsightInteraction
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.project import Project
 from tests.factories.model_factories import SourceFactory
 
@@ -18,7 +18,7 @@ class TestInsightChildItems:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input_obj = DropdownInput(name="threshold", type="dropdown", options=["10", "20", "30"])
+        input_obj = SingleSelectInput(name="threshold", options=["10", "20", "30"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -75,8 +75,8 @@ class TestInsightChildItems:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input1 = DropdownInput(name="min_value", type="dropdown", options=["1", "5", "10"])
-        input2 = DropdownInput(name="max_value", type="dropdown", options=["50", "100", "200"])
+        input1 = SingleSelectInput(name="min_value", options=["1", "5", "10"])
+        input2 = SingleSelectInput(name="max_value", options=["50", "100", "200"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(type="scatter", x="?{ ${ref(data).x} }", y="?{ ${ref(data).y} }"),
@@ -112,7 +112,7 @@ class TestInsightChildItems:
         source = SourceFactory()
         model1 = SqlModel(name="orders", sql="SELECT 1 as amount", source=f"ref({source.name})")
         model2 = SqlModel(name="customers", sql="SELECT 1 as id", source=f"ref({source.name})")
-        input_obj = DropdownInput(name="region", type="dropdown", options=["US", "EU", "APAC"])
+        input_obj = SingleSelectInput(name="region", options=["US", "EU", "APAC"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -166,9 +166,9 @@ class TestInsightChildItems:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input_filter = DropdownInput(name="filter_val", type="dropdown", options=["A", "B"])
-        input_split = DropdownInput(name="split_val", type="dropdown", options=["X", "Y"])
-        input_sort = DropdownInput(name="sort_val", type="dropdown", options=["asc", "desc"])
+        input_filter = SingleSelectInput(name="filter_val", options=["A", "B"])
+        input_split = SingleSelectInput(name="split_val", options=["X", "Y"])
+        input_sort = SingleSelectInput(name="sort_val", options=["asc", "desc"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(type="scatter", x="?{ ${ref(data).x} }", y="?{ ${ref(data).y} }"),
@@ -206,7 +206,7 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x, 2 as y", source=f"ref({source.name})")
-        input_obj = DropdownInput(name="threshold", type="dropdown", options=["5", "10", "15"])
+        input_obj = SingleSelectInput(name="threshold", options=["5", "10", "15"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -289,8 +289,8 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="sales", sql="SELECT 1 as revenue", source=f"ref({source.name})")
-        input_color = DropdownInput(name="bar_color", type="dropdown", options=["red", "blue"])
-        input_opacity = DropdownInput(name="opacity_val", type="dropdown", options=["0.5", "1.0"])
+        input_color = SingleSelectInput(name="bar_color", options=["red", "blue"])
+        input_opacity = SingleSelectInput(name="opacity_val", options=["0.5", "1.0"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -341,8 +341,8 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as value", source=f"ref({source.name})")
-        input_threshold = DropdownInput(name="threshold", type="dropdown", options=["10", "20"])
-        input_marker_size = DropdownInput(name="point_size", type="dropdown", options=["5", "10"])
+        input_threshold = SingleSelectInput(name="threshold", options=["10", "20"])
+        input_marker_size = SingleSelectInput(name="point_size", options=["5", "10"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -387,8 +387,8 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input_min = DropdownInput(name="min_val", type="dropdown", options=["1", "5"])
-        input_max = DropdownInput(name="max_val", type="dropdown", options=["50", "100"])
+        input_min = SingleSelectInput(name="min_val", options=["1", "5"])
+        input_max = SingleSelectInput(name="max_val", options=["50", "100"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -428,7 +428,7 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as value", source=f"ref({source.name})")
-        input_multiplier = DropdownInput(name="multiplier", type="dropdown", options=["2", "3"])
+        input_multiplier = SingleSelectInput(name="multiplier", options=["2", "3"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(
@@ -500,12 +500,8 @@ class TestInsightPropsInputRefs:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input_line_width = DropdownInput(
-            name="line_width", type="dropdown", options=["1", "2", "3"]
-        )
-        input_line_color = DropdownInput(
-            name="line_color", type="dropdown", options=["red", "blue"]
-        )
+        input_line_width = SingleSelectInput(name="line_width", options=["1", "2", "3"])
+        input_line_color = SingleSelectInput(name="line_color", options=["red", "blue"])
         insight = Insight(
             name="test_insight",
             props=InsightProps(

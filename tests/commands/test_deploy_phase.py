@@ -173,7 +173,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
         {"name": "test_insight", "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"}}
     ]
     project_dict["inputs"] = [
-        {"name": "test_input", "type": "dropdown", "options": ["A", "B", "C"]}
+        {"name": "test_input", "type": "single-select", "options": ["A", "B", "C"]}
     ]
 
     data_file_starts = [
@@ -200,7 +200,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     ]
     input_file_starts = [
         {
-            "name": f"{input_obj.name_hash()}.parquet",
+            "name": f"{input_obj.name_hash()}.json",
             "id": "id5",
             "upload_url": "http://google/upload/id5",
         },
@@ -225,11 +225,11 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     with open(insight_path, "w") as f:
         json.dump({"name": insight.name, "query": "SELECT * FROM test"}, f)
 
-    # Create input parquet file (just a dummy file for testing)
+    # Create input JSON file
     os.makedirs(os.path.join(output_dir, "inputs"), exist_ok=True)
-    input_path = os.path.join(output_dir, "inputs", f"{input_obj.name_hash()}.parquet")
-    with open(input_path, "wb") as f:
-        f.write(b"PAR1dummy parquet data")
+    input_path = os.path.join(output_dir, "inputs", f"{input_obj.name_hash()}.json")
+    with open(input_path, "w") as f:
+        json.dump({"type": "single-select", "options": ["A", "B", "C"]}, f)
 
     tmp = temp_yml_file(dict=project_dict, name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)

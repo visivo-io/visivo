@@ -130,11 +130,13 @@ export const tableDuckDBExists = async (db, tableName) => {
 /**
  * Prepare post query by replacing input placeholders with actual values using template literals
  *
- * Uses JavaScript template literal evaluation to inject input values AS-IS (no quoting).
- * Values are expected to come from backend input queries which already include proper SQL formatting.
+ * Uses JavaScript template literal evaluation to inject input values.
+ * Supports both flat values (legacy) and nested accessor objects:
+ * - Flat: { inputName: 'value' } - for ${inputName}
+ * - Nested: { inputName: { value: "'quoted'" } } - for ${inputName.value}
  *
- * @param {Object} insight - Insight object with query containing ${inputName} placeholders
- * @param {Object} inputs - Object mapping input names to their values (as strings)
+ * @param {Object} insight - Insight object with query containing ${inputName} or ${inputName.accessor} placeholders
+ * @param {Object} inputs - Object mapping input names to their values (string or accessor object)
  * @returns {String} - Query with all placeholders replaced by actual values
  */
 export const prepPostQuery = (insight, inputs) => {
@@ -147,11 +149,23 @@ export const prepPostQuery = (insight, inputs) => {
 
   try {
     // Extract input keys and values
-    const inputKeys = Object.keys(inputs);
-    const inputValues = Object.values(inputs);
+    const inputKeys = Object.keys(inputs || {});
+    const inputValues = Object.values(inputs || {});
 
-    // Convert all values to strings AS-IS (no additional quoting)
-    const stringValues = inputValues.map(value => String(value));
+    // Keep objects as-is for accessor syntax (${input.value}), convert primitives to strings
+    // This allows template literals like ${region.value} to work with nested objects
+    const processedValues = inputValues.map(value => {
+      if (value === null || value === undefined) {
+        return 'NULL';
+      }
+      if (typeof value === 'object') {
+        // For accessor objects, ensure null accessors return 'NULL'
+        return Object.fromEntries(
+          Object.entries(value).map(([k, v]) => [k, v === null || v === undefined ? 'NULL' : v])
+        );
+      }
+      return String(value);
+    });
 
     // Create a function that evaluates the query as a template literal
     // This safely injects values without regex manipulation
@@ -159,7 +173,7 @@ export const prepPostQuery = (insight, inputs) => {
     const templateFunc = new Function(...inputKeys, `return \`${query}\`;`);
 
     // Execute the template function with the input values
-    const result = templateFunc(...stringValues);
+    const result = templateFunc(...processedValues);
 
     console.debug('Query prepared:', result);
     return result;

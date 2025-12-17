@@ -249,3 +249,131 @@ def count_model_references(text: str) -> int:
         Number of unique models referenced
     """
     return len(extract_ref_names(text))
+
+
+# ============================================================================
+# Input Accessor Patterns - ${ref(input_name).accessor} syntax
+# ============================================================================
+
+# Input accessor pattern: ${ref(input_name).accessor}
+# Used for referencing input values in insight filters
+# Captures: (1) input_name, (2) accessor
+# Examples:
+#   ${ref(region).value} - single-select value
+#   ${ref(categories).values} - multi-select values array
+#   ${ref(price_range).min} - minimum of selected values
+#   ${ref(price_range).max} - maximum of selected values
+INPUT_ACCESSOR_PATTERN = r"\$\{ref\((\w+)\)\.(\w+)\}"
+INPUT_ACCESSOR_PATTERN_COMPILED = re.compile(INPUT_ACCESSOR_PATTERN)
+
+# Pattern for frontend/post_query format (simplified, without ref() wrapper):
+#   ${region.value} - value of single-select input
+#   ${categories.values} - multi-select values array
+#   ${price_range.min} - minimum of selected values
+# This format is used in post_query for frontend JS template literal injection
+INPUT_FRONTEND_PATTERN = r"\$\{(\w+)\.(\w+)\}"
+INPUT_FRONTEND_PATTERN_COMPILED = re.compile(INPUT_FRONTEND_PATTERN)
+
+# Valid accessors for single-select inputs
+SINGLE_SELECT_ACCESSORS = {"value"}
+
+# Valid accessors for multi-select inputs
+MULTI_SELECT_ACCESSORS = {"values", "min", "max", "first", "last"}
+
+# All valid input accessors
+ALL_INPUT_ACCESSORS = SINGLE_SELECT_ACCESSORS | MULTI_SELECT_ACCESSORS
+
+
+def extract_input_accessors(text: str) -> List[Tuple[str, str]]:
+    """
+    Extract all input accessor references from a text string (YAML/ref format).
+
+    Args:
+        text: Text containing ${ref(input_name).accessor} patterns
+
+    Returns:
+        List of tuples (input_name, accessor)
+
+    Examples:
+        >>> extract_input_accessors("region = ${ref(region).value}")
+        [('region', 'value')]
+        >>> extract_input_accessors("price BETWEEN ${ref(price_range).min} AND ${ref(price_range).max}")
+        [('price_range', 'min'), ('price_range', 'max')]
+    """
+    return INPUT_ACCESSOR_PATTERN_COMPILED.findall(text)
+
+
+def extract_frontend_input_accessors(text: str) -> List[Tuple[str, str]]:
+    """
+    Extract all input accessor references from frontend/post_query format.
+
+    Args:
+        text: Text containing ${input_name.accessor} patterns (without ref wrapper)
+
+    Returns:
+        List of tuples (input_name, accessor)
+
+    Examples:
+        >>> extract_frontend_input_accessors("region = ${region.value}")
+        [('region', 'value')]
+        >>> extract_frontend_input_accessors("price BETWEEN ${price_range.min} AND ${price_range.max}")
+        [('price_range', 'min'), ('price_range', 'max')]
+    """
+    return INPUT_FRONTEND_PATTERN_COMPILED.findall(text)
+
+
+def extract_input_names_from_accessors(text: str) -> Set[str]:
+    """
+    Extract unique input names from accessor patterns in text.
+
+    Args:
+        text: Text containing ${ref(input_name).accessor} patterns
+
+    Returns:
+        Set of unique input names
+
+    Example:
+        >>> extract_input_names_from_accessors("${ref(region).value} AND ${ref(price).min}")
+        {'region', 'price'}
+    """
+    return {input_name for input_name, _ in extract_input_accessors(text)}
+
+
+def has_input_accessor_pattern(text: str) -> bool:
+    """
+    Check if text contains any input accessor patterns.
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains ${ref(input_name).accessor} patterns
+    """
+    return bool(INPUT_ACCESSOR_PATTERN_COMPILED.search(text))
+
+
+def replace_input_accessors(text: str, replacer_func) -> str:
+    """
+    Replace input accessor patterns in text using a custom replacer function.
+
+    Args:
+        text: Text containing ${ref(input_name).accessor} patterns
+        replacer_func: Function that takes (input_name, accessor) and returns replacement string
+
+    Returns:
+        Text with all input accessor patterns replaced
+
+    Example:
+        >>> replace_input_accessors(
+        ...     "${ref(region).value}",
+        ...     lambda name, acc: f"inputs.{name}.{acc}"
+        ... )
+        "inputs.region.value"
+    """
+
+    def replace_match(match):
+        input_name = match.group(1)
+        accessor = match.group(2)
+        return replacer_func(input_name, accessor)
+
+    return INPUT_ACCESSOR_PATTERN_COMPILED.sub(replace_match, text)

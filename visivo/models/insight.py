@@ -157,13 +157,13 @@ class Insight(NamedModel, ParentModel):
         return interactions
 
     def _convert_input_refs_to_js_templates(self, text: str, dag: ProjectDag) -> str:
-        """Convert ${ref(input)} to ${input}, leave model/metric/dimension refs intact.
+        """Convert ${ref(input).accessor} to ${input.accessor}, leave model/metric/dimension refs intact.
 
         This method converts input references to JavaScript template literal syntax for
         client-side interpolation. Model, metric, and dimension references are left
         unchanged for the FieldResolver to handle.
 
-        Transforms: ${ref(input_name)} → ${input_name}
+        Transforms: ${ref(input_name).accessor} → ${input_name.accessor}
 
         Args:
             text: SQL expression that may contain ${ref(...)} patterns
@@ -173,7 +173,7 @@ class Insight(NamedModel, ParentModel):
             SQL expression with input refs converted to JS template literals, model refs unchanged
 
         Examples:
-            - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
+            - "x > ${ref(threshold).value}" → "x > ${threshold.value}" (if threshold is an input)
             - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
         """
         from visivo.models.inputs import Input
@@ -185,12 +185,14 @@ class Insight(NamedModel, ParentModel):
 
         def repl(m: Match) -> str:
             name = get_model_name_from_match(m)
+            # Get property_path (accessor like .value, .min, .max, etc.)
+            property_path = m.group("property_path") or ""
             try:
                 node = dag.get_descendant_by_name(name)
                 if isinstance(node, Input):
-                    # Convert input ref to JS template literal syntax
-                    # ${ref(threshold)} → ${threshold}
-                    return f"${{{name}}}"
+                    # Convert input ref to JS template literal syntax with accessor
+                    # ${ref(threshold).value} → ${threshold.value}
+                    return f"${{{name}{property_path}}}"
             except (ValueError, AttributeError):
                 # Node not found or error - leave the ref as-is for FieldResolver
                 pass
