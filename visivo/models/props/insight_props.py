@@ -107,6 +107,10 @@ class InsightProps(JsonSchemaBase):
         but only containing static values (no ?{...} patterns).
         The 'type' prop is excluded as it's handled separately.
 
+        Note: Props with ${ref(input).accessor} patterns ARE included here as static props.
+        They will be converted to ${input.accessor} format during compile (in InsightQueryBuilder)
+        and processed by the frontend at runtime.
+
         Returns:
             Dict with static props preserving nested structure.
 
@@ -114,6 +118,10 @@ class InsightProps(JsonSchemaBase):
             >>> props = InsightProps(type="bar", x="?{sum(amount)}", marker={"color": ["red", "green"], "size": 10})
             >>> props.extract_static_props()
             {'marker': {'color': ['red', 'green'], 'size': 10}}
+
+            >>> props = InsightProps(type="scatter", mode="${ref(show_markers).value}")
+            >>> props.extract_static_props()
+            {'mode': '${ref(show_markers).value}'}  # Converted later to ${show_markers.value}
         """
         pattern = re.compile(QUERY_STRING_VALUE_PATTERN)
 

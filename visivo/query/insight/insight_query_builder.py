@@ -342,8 +342,34 @@ class InsightQueryBuilder:
 
         Used by the frontend to apply static Plotly props like marker.color: ["red", "green"]
         that are not derived from query results.
+
+        Input refs like ${ref(input).accessor} are converted to ${input.accessor} for
+        frontend JS template literal injection.
         """
-        return self.insight.props.extract_static_props()
+        raw_static_props = self.insight.props.extract_static_props()
+        return self._convert_input_refs_in_props(raw_static_props)
+
+    def _convert_input_refs_in_props(self, obj):
+        """
+        Recursively convert ${ref(input).accessor} to ${input.accessor} in props.
+
+        This converts YAML-format input references to JS template literal format
+        for frontend runtime injection.
+
+        Args:
+            obj: A dict, list, or primitive value from props
+
+        Returns:
+            The same structure with input refs converted
+        """
+        if isinstance(obj, str):
+            return self.insight._convert_input_refs_to_js_templates(obj, self.dag)
+        elif isinstance(obj, dict):
+            return {k: self._convert_input_refs_in_props(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_input_refs_in_props(item) for item in obj]
+        else:
+            return obj
 
     @property
     def pre_query(self):

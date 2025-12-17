@@ -652,3 +652,145 @@ class TestInsightQueryBuilderWithInputs:
         # post_query should be simple SELECT from insight hash
         assert query_info.post_query is not None
         assert insight.name_hash() in query_info.post_query
+
+    def test_static_props_converts_input_refs_to_js_templates(self, tmpdir, create_schema_file):
+        """Test that input refs in static_props are converted from ${ref(input).accessor} to ${input.accessor}."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        mode_input = SingleSelectInput(
+            name="show_markers", label="Show Markers", options=["markers", "lines"]
+        )
+
+        # Input ref in static prop (not query string)
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                mode="${ref(show_markers).value}",  # Input ref in static prop
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[mode_input],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        create_schema_file(orders_model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+
+        # Check that static_props converts the input ref pattern
+        static_props = builder.static_props
+
+        # Should have mode with converted input ref
+        assert "mode" in static_props
+        # Original pattern ${ref(show_markers).value} should be converted to ${show_markers.value}
+        assert static_props["mode"] == "${show_markers.value}"
+        assert "${ref(" not in static_props["mode"]
+
+    def test_static_props_converts_nested_input_refs(self, tmpdir, create_schema_file):
+        """Test that nested input refs in static_props are converted correctly."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        size_input = SingleSelectInput(
+            name="marker_size", label="Marker Size", options=["10", "20"]
+        )
+
+        # Input ref in nested static prop
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                marker={
+                    "size": "${ref(marker_size).value}",  # Input ref in nested prop
+                    "color": "blue",  # Static value
+                },
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[size_input],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        create_schema_file(orders_model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+
+        # Check that static_props converts nested input refs
+        static_props = builder.static_props
+
+        # Should have marker with converted input ref for size
+        assert "marker" in static_props
+        assert "size" in static_props["marker"]
+        assert static_props["marker"]["size"] == "${marker_size.value}"
+        assert static_props["marker"]["color"] == "blue"
+
+    def test_static_props_in_query_info(self, tmpdir, create_schema_file):
+        """Test that static_props with converted input refs flows into InsightQueryInfo."""
+        source = SourceFactory()
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source=f"ref({source.name})",
+        )
+
+        mode_input = SingleSelectInput(
+            name="display_mode", label="Display Mode", options=["markers", "lines"]
+        )
+
+        insight = Insight(
+            name="test_insight",
+            props=InsightProps(
+                type="scatter",
+                x="?{${ref(orders).date}}",
+                y="?{${ref(orders).amount}}",
+                mode="${ref(display_mode).value}",  # Input ref in static prop
+            ),
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model],
+            inputs=[mode_input],
+            insights=[insight],
+            dashboards=[],
+        )
+
+        dag = project.dag()
+        create_schema_file(orders_model, str(tmpdir))
+        builder = InsightQueryBuilder(insight, dag, str(tmpdir))
+        builder.resolve()
+
+        # Build InsightQueryInfo
+        query_info = builder.build()
+
+        # static_props in query_info should have converted input refs
+        assert query_info.static_props is not None
+        assert "mode" in query_info.static_props
+        assert query_info.static_props["mode"] == "${display_mode.value}"
