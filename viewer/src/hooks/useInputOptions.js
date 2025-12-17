@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 import useStore from '../stores/store';
 import { useFetchInputOptions } from '../contexts/QueryContext';
 import { loadInputData } from '../api/inputs';
+import {
+  isDateExpression,
+  isStepUnit,
+  resolveDateRangeToOptions,
+} from '../utils/dateExpressions';
 
 /**
  * Hook to load input options from JSON files on-demand.
@@ -47,8 +52,33 @@ export const useInputOptions = (input, projectId) => {
           options = data.results.options.map(String);
         } else if (data.structure === 'range' && data.results?.range) {
           const { start, end, step } = data.results.range;
-          for (let val = start; val <= end; val += step) {
-            options.push(String(val));
+
+          // Check if this is a date-based range (date expressions or date-range display type)
+          const isDateRange =
+            isDateExpression(start) ||
+            isDateExpression(end) ||
+            isStepUnit(step) ||
+            data.results?.display?.type === 'date-range';
+
+          if (isDateRange) {
+            // Generate date range options
+            options = resolveDateRangeToOptions(start, end, step);
+          } else {
+            // Numeric range generation
+            const numStart = typeof start === 'number' ? start : parseFloat(start);
+            const numEnd = typeof end === 'number' ? end : parseFloat(end);
+            const numStep = typeof step === 'number' ? step : parseFloat(step);
+
+            if (!isNaN(numStart) && !isNaN(numEnd) && !isNaN(numStep) && numStep > 0) {
+              for (let val = numStart; val <= numEnd; val += numStep) {
+                options.push(String(val));
+              }
+              // Ensure end value is included if not on step boundary
+              const lastVal = parseFloat(options[options.length - 1]);
+              if (lastVal < numEnd) {
+                options.push(String(numEnd));
+              }
+            }
           }
         }
 
@@ -57,12 +87,42 @@ export const useInputOptions = (input, projectId) => {
 
         // Extract and set default from JSON (this is the ONLY place defaults are set)
         // Priority: JSON display.default > input object default > first option
-        const defaultValue =
-          data.results?.display?.default?.value ||
-          data.results?.display?.default?.values || // multi-select
-          input.display?.default?.value ||
-          input.default ||
-          options[0];
+        let defaultValue;
+
+        // Handle range-based defaults (start/end)
+        if (data.structure === 'range' && data.results?.display?.default) {
+          const rangeDefault = data.results.display.default;
+          if (rangeDefault.start !== undefined && rangeDefault.end !== undefined) {
+            // Resolve date expressions in range defaults
+            let startVal = isDateExpression(rangeDefault.start)
+              ? resolveDateRangeToOptions(rangeDefault.start, rangeDefault.start, '1 day')[0]
+              : rangeDefault.start;
+            let endVal = isDateExpression(rangeDefault.end)
+              ? resolveDateRangeToOptions(rangeDefault.end, rangeDefault.end, '1 day')[0]
+              : rangeDefault.end;
+
+            // Find all options within the default range
+            defaultValue = options.filter(opt => {
+              const val = opt;
+              return val >= String(startVal) && val <= String(endVal);
+            });
+
+            // If no options in range, fall back to full range
+            if (defaultValue.length === 0) {
+              defaultValue = options;
+            }
+          }
+        }
+
+        // Fall back to standard default handling
+        if (defaultValue === undefined) {
+          defaultValue =
+            data.results?.display?.default?.value ||
+            data.results?.display?.default?.values || // multi-select list-based
+            input.display?.default?.value ||
+            input.default ||
+            options[0];
+        }
 
         if (defaultValue !== undefined && defaultValue !== null) {
           // Use type from loaded JSON data, fallback to input object

@@ -209,3 +209,82 @@ insights:
     interactions:
       - split: ?{ CASE WHEN ${ref(local_test_table).y} >= 5 THEN '${ref(selected_tags).first}' ELSE '${ref(selected_tags).last}' END }
       - sort: ?{${ref(local_test_table).x} ASC}
+
+  # ===== DATE-BASED INSIGHTS (testing new date inputs) =====
+
+  # Autocomplete single-select test - filter to selected date
+  - name: autocomplete-date-insight
+    description: "Line chart filtered to a single date selected via autocomplete"
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{${ref(daily_metrics).day_num}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 10
+        color: "#713B57"
+      line:
+        color: "#4F494C"
+        width: 2
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} <= '${ref(autocomplete_date).value}'}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}
+
+  # Slider single-select test - filter by day number
+  - name: slider-day-insight
+    description: "Bar chart filtered by slider-selected day number"
+    props:
+      type: bar
+      x: ?{${ref(daily_metrics).day_num}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        color: ?{ CASE WHEN ${ref(daily_metrics).day_num} <= ${ref(slider_day_num).value} THEN '#713B57' ELSE '#D25946' END }
+    interactions:
+      - filter: ?{${ref(daily_metrics).day_num} <= ${ref(slider_day_num).value}}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}
+
+  # Date range multi-select test - filter by date range
+  - name: date-range-filter-insight
+    description: "Line chart filtered by date range picker"
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{${ref(daily_metrics).formatted_date}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 8
+        color: "#191D33"
+      line:
+        color: "#713B57"
+        shape: spline
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(static_date_range).first}' AND ${ref(daily_metrics).formatted_date} <= '${ref(static_date_range).last}'}
+      - sort: ?{${ref(daily_metrics).formatted_date} ASC}
+
+  # Date range with aggregation - bar chart by category
+  - name: date-range-category-insight
+    description: "Aggregated bar chart by category within date range"
+    props:
+      type: bar
+      x: ?{${ref(daily_metrics).category}}
+      y: ?{${ref(daily_metrics).total_value}}
+      marker:
+        color: ["#713B57", "#4F494C", "#D25946"]
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(static_date_range).first}' AND ${ref(daily_metrics).formatted_date} <= '${ref(static_date_range).last}'}
+
+  # Week selector test - filter by week start
+  - name: week-selector-insight
+    description: "Scatter plot showing data from selected week onwards"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(daily_metrics).day_num}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 12
+        color: "#D25946"
+        symbol: "diamond"
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(week_selector).value}'}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}
