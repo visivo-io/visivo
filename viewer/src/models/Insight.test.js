@@ -259,6 +259,7 @@ describe('chartDataFromInsightData', () => {
     });
   });
 
+  /* eslint-disable no-template-curly-in-string */
   describe('input refs in static_props', () => {
     it('processes input refs in static_props', () => {
       const insightWithInputRefs = {
@@ -340,8 +341,10 @@ describe('chartDataFromInsightData', () => {
       expect(result[0].marker.color).toBe('red');
     });
   });
+  /* eslint-enable no-template-curly-in-string */
 });
 
+/* eslint-disable no-template-curly-in-string */
 describe('processInputRefsInProps', () => {
   it('returns props unchanged when no inputs provided', () => {
     const props = { mode: '${input.value}' };
@@ -443,3 +446,4 @@ describe('extractInputDependenciesFromProps', () => {
     expect(extractInputDependenciesFromProps(props)).toEqual(['dynamic']);
   });
 });
+/* eslint-enable no-template-curly-in-string */
