@@ -157,7 +157,7 @@ insights:
     description: "Scatter plot with dynamic mode from toggle input"
     props:
       type: scatter
-      mode: ?{${ref(show_markers).value}}
+      mode: ${ref(show_markers).value}
       x: ?{${ref(local_test_table).x}}
       y: ?{${ref(local_test_table).y}}
       line:

@@ -1,4 +1,8 @@
-import { chartDataFromInsightData } from './Insight';
+import {
+  chartDataFromInsightData,
+  processInputRefsInProps,
+  extractInputDependenciesFromProps,
+} from './Insight';
 
 const sampleInsightsData = {
   'Expense Breakdown Table Insight': {
@@ -253,5 +257,189 @@ describe('chartDataFromInsightData', () => {
       const nullTrace = result.find(r => r.name === 'null');
       expect(nullTrace).toBeDefined();
     });
+  });
+
+  describe('input refs in static_props', () => {
+    it('processes input refs in static_props', () => {
+      const insightWithInputRefs = {
+        'Input Ref Insight': {
+          data: [
+            { x_val: 1, y_val: 10 },
+            { x_val: 2, y_val: 20 },
+          ],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          static_props: {
+            mode: '${show_markers.value}',
+          },
+          type: 'scatter',
+        },
+      };
+
+      const inputs = {
+        show_markers: { value: 'markers+lines' },
+      };
+
+      const result = chartDataFromInsightData(insightWithInputRefs, inputs);
+
+      expect(result.length).toBe(1);
+      expect(result[0].mode).toBe('markers+lines');
+    });
+
+    it('handles missing inputs gracefully', () => {
+      const insightWithInputRefs = {
+        'Missing Input Insight': {
+          data: [{ x_val: 1, y_val: 10 }],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          static_props: {
+            mode: '${missing_input.value}',
+          },
+          type: 'scatter',
+        },
+      };
+
+      // No inputs provided
+      const result = chartDataFromInsightData(insightWithInputRefs, {});
+
+      expect(result.length).toBe(1);
+      // Should keep original value when input not available
+      expect(result[0].mode).toBe('${missing_input.value}');
+    });
+
+    it('handles nested input refs in static_props', () => {
+      const insightWithNestedInputRefs = {
+        'Nested Input Ref Insight': {
+          data: [{ x_val: 1, y_val: 10 }],
+          props_mapping: {
+            'props.x': 'x_val',
+            'props.y': 'y_val',
+          },
+          static_props: {
+            marker: {
+              size: '${marker_size.value}',
+              color: 'red',
+            },
+          },
+          type: 'scatter',
+        },
+      };
+
+      const inputs = {
+        marker_size: { value: 12 },
+      };
+
+      const result = chartDataFromInsightData(insightWithNestedInputRefs, inputs);
+
+      expect(result.length).toBe(1);
+      expect(result[0].marker.size).toBe(12);
+      expect(result[0].marker.color).toBe('red');
+    });
+  });
+});
+
+describe('processInputRefsInProps', () => {
+  it('returns props unchanged when no inputs provided', () => {
+    const props = { mode: '${input.value}' };
+    expect(processInputRefsInProps(props, {})).toEqual({ mode: '${input.value}' });
+  });
+
+  it('returns props unchanged when props is null', () => {
+    expect(processInputRefsInProps(null, { input: { value: 'test' } })).toBeNull();
+  });
+
+  it('replaces single input ref with actual value', () => {
+    const props = { mode: '${show_markers.value}' };
+    const inputs = { show_markers: { value: 'markers' } };
+    expect(processInputRefsInProps(props, inputs)).toEqual({ mode: 'markers' });
+  });
+
+  it('replaces numeric input ref with number type', () => {
+    const props = { size: '${marker_size.value}' };
+    const inputs = { marker_size: { value: 10 } };
+    const result = processInputRefsInProps(props, inputs);
+    expect(result.size).toBe(10);
+    expect(typeof result.size).toBe('number');
+  });
+
+  it('handles nested objects', () => {
+    const props = {
+      marker: {
+        size: '${size_input.value}',
+        color: 'blue',
+      },
+    };
+    const inputs = { size_input: { value: 8 } };
+    const result = processInputRefsInProps(props, inputs);
+    expect(result.marker.size).toBe(8);
+    expect(result.marker.color).toBe('blue');
+  });
+
+  it('handles arrays', () => {
+    const props = {
+      colors: ['red', '${color_input.value}', 'blue'],
+    };
+    const inputs = { color_input: { value: 'green' } };
+    const result = processInputRefsInProps(props, inputs);
+    expect(result.colors).toEqual(['red', 'green', 'blue']);
+  });
+
+  it('handles multiple accessors', () => {
+    const props = {
+      min: '${range.min}',
+      max: '${range.max}',
+    };
+    const inputs = { range: { min: 0, max: 100 } };
+    const result = processInputRefsInProps(props, inputs);
+    expect(result.min).toBe(0);
+    expect(result.max).toBe(100);
+  });
+});
+
+describe('extractInputDependenciesFromProps', () => {
+  it('returns empty array for null props', () => {
+    expect(extractInputDependenciesFromProps(null)).toEqual([]);
+  });
+
+  it('returns empty array for props without input refs', () => {
+    const props = { mode: 'markers', color: 'red' };
+    expect(extractInputDependenciesFromProps(props)).toEqual([]);
+  });
+
+  it('extracts single input name', () => {
+    const props = { mode: '${show_markers.value}' };
+    expect(extractInputDependenciesFromProps(props)).toEqual(['show_markers']);
+  });
+
+  it('extracts multiple unique input names', () => {
+    const props = {
+      min: '${range.min}',
+      max: '${range.max}',
+      mode: '${display.value}',
+    };
+    const result = extractInputDependenciesFromProps(props);
+    expect(result).toContain('range');
+    expect(result).toContain('display');
+    expect(result.length).toBe(2); // 'range' appears twice but should be deduplicated
+  });
+
+  it('extracts from nested objects', () => {
+    const props = {
+      marker: {
+        size: '${size_input.value}',
+      },
+    };
+    expect(extractInputDependenciesFromProps(props)).toEqual(['size_input']);
+  });
+
+  it('extracts from arrays', () => {
+    const props = {
+      values: ['static', '${dynamic.value}'],
+    };
+    expect(extractInputDependenciesFromProps(props)).toEqual(['dynamic']);
   });
 });

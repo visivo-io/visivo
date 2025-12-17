@@ -6,35 +6,80 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 
 /**
- * Extract input names referenced in a query string
+ * Extract input names from a string containing ${inputName.accessor} patterns
+ * @param {string} text - Text with ${...} placeholders
+ * @returns {Set<string>} - Set of unique input names found
+ */
+const extractInputNamesFromString = text => {
+  if (!text) return new Set();
+  const regex = /\$\{(\w+)\.\w+\}/g;
+  const matches = text.matchAll(regex);
+  const inputNames = new Set();
+  for (const match of matches) {
+    inputNames.add(match[1]);
+  }
+  return inputNames;
+};
+
+/**
+ * Extract input names from a nested object structure (like static_props)
+ * @param {*} obj - Object/array/string to scan
+ * @returns {Set<string>} - Set of unique input names found
+ */
+const extractInputNamesFromObject = obj => {
+  const inputNames = new Set();
+
+  const scan = value => {
+    if (typeof value === 'string') {
+      for (const name of extractInputNamesFromString(value)) {
+        inputNames.add(name);
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach(item => scan(item));
+    } else if (typeof value === 'object' && value !== null) {
+      Object.values(value).forEach(val => scan(val));
+    }
+  };
+
+  scan(obj);
+  return inputNames;
+};
+
+/**
+ * Extract input names referenced in a query string and/or static_props
  * Looks for ${inputName.accessor} patterns (template literal syntax)
  * @param {string} query - SQL query with ${...} placeholders
+ * @param {Object} staticProps - Static props object that may contain input refs
  * @param {string[]} knownInputNames - Optional list of known input names to match against
- * @returns {string[]} - Array of unique input names found in the query
+ * @returns {string[]} - Array of unique input names found
  */
-const extractInputDependencies = (query, knownInputNames = null) => {
-  if (!query) return [];
-
+const extractInputDependencies = (query, staticProps = null, knownInputNames = null) => {
   // If knownInputNames provided, use the old matching logic
   if (knownInputNames?.length) {
     const dependencies = [];
+    const textToSearch = (query || '') + JSON.stringify(staticProps || {});
     for (const inputName of knownInputNames) {
-      // Check if ${inputName} appears in the query (as prefix of ${inputName.accessor})
-      if (query.includes(`\${${inputName}`)) {
+      // Check if ${inputName} appears (as prefix of ${inputName.accessor})
+      if (textToSearch.includes(`\${${inputName}`)) {
         dependencies.push(inputName);
       }
     }
     return dependencies;
   }
 
-  // Otherwise, extract input names directly from query using regex
-  // Matches ${inputName.accessor} patterns
-  const regex = /\$\{(\w+)\.\w+\}/g;
-  const matches = query.matchAll(regex);
+  // Otherwise, extract input names directly using regex
   const inputNames = new Set();
-  for (const match of matches) {
-    inputNames.add(match[1]);
+
+  // Extract from query
+  for (const name of extractInputNamesFromString(query)) {
+    inputNames.add(name);
   }
+
+  // Extract from static_props
+  for (const name of extractInputNamesFromObject(staticProps)) {
+    inputNames.add(name);
+  }
+
   return [...inputNames];
 };
 
@@ -53,8 +98,8 @@ const processInsight = async (db, insight, inputs) => {
     console.debug(`Processing insight '${insightName}'`);
 
     // Check for required inputs BEFORE loading parquet files
-    // Extract input names from the query (e.g., ${sort_direction.value} -> sort_direction)
-    const requiredInputs = extractInputDependencies(query);
+    // Extract input names from the query and static_props (e.g., ${sort_direction.value} -> sort_direction)
+    const requiredInputs = extractInputDependencies(query, static_props);
 
     // Check if all required inputs are present
     const missingInputs = requiredInputs.filter(inputName => !inputs[inputName]);
@@ -234,11 +279,11 @@ export const useInsightsData = (projectId, insightNames) => {
     const knownInputNames = Object.keys(getInputs);
     const relevantInputs = {};
 
-    // Check each insight's query for input dependencies
+    // Check each insight's query and static_props for input dependencies
     for (const insightName of stableInsightNames) {
       const insight = storeInsightData[insightName];
-      if (insight?.query) {
-        const deps = extractInputDependencies(insight.query, knownInputNames);
+      if (insight?.query || insight?.static_props) {
+        const deps = extractInputDependencies(insight.query, insight.static_props, knownInputNames);
         deps.forEach(inputName => {
           relevantInputs[inputName] = getInputs[inputName];
         });

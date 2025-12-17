@@ -1,4 +1,117 @@
 /**
+ * Process input references in props, replacing ${input.accessor} patterns with actual values.
+ *
+ * Input refs use JavaScript template literal syntax: ${inputName.accessor}
+ * where accessor can be: value, values, min, max, first, last
+ *
+ * @param {*} props - Props object (can be nested object, array, or primitive)
+ * @param {Object} inputs - Map of input names to input objects with accessor values
+ * @returns {*} Props with input refs replaced with actual values
+ *
+ * Example:
+ *   props: { mode: "${show_markers.value}" }
+ *   inputs: { show_markers: { value: "markers" } }
+ *   returns: { mode: "markers" }
+ */
+export function processInputRefsInProps(props, inputs) {
+  if (!props || !inputs || Object.keys(inputs).length === 0) {
+    return props;
+  }
+
+  /**
+   * Process a single value, replacing ${input.accessor} patterns
+   */
+  function processValue(value) {
+    if (typeof value === 'string' && value.includes('${')) {
+      // Check if this is an input ref pattern
+      const inputRefPattern = /^\$\{(\w+)\.(\w+)\}$/;
+      const match = value.match(inputRefPattern);
+
+      if (match) {
+        const [, inputName, accessor] = match;
+        const input = inputs[inputName];
+
+        if (input && input[accessor] !== undefined) {
+          const result = input[accessor];
+          // Return the actual type (number, string, array, etc.)
+          return result;
+        }
+        // Input not found or accessor not available - return original
+        console.warn(`Input ref ${value} could not be resolved`);
+        return value;
+      }
+
+      // For more complex templates with embedded refs (e.g., "prefix_${input.value}_suffix")
+      // Use regex replacement
+      const embeddedPattern = /\$\{(\w+)\.(\w+)\}/g;
+      let hasMatch = false;
+      const replaced = value.replace(embeddedPattern, (fullMatch, inputName, accessor) => {
+        hasMatch = true;
+        const input = inputs[inputName];
+        if (input && input[accessor] !== undefined) {
+          return String(input[accessor]);
+        }
+        console.warn(`Embedded input ref ${fullMatch} could not be resolved`);
+        return fullMatch;
+      });
+
+      if (hasMatch) {
+        // Try to convert to number if the result looks numeric
+        const num = Number(replaced);
+        return !isNaN(num) && replaced.trim() !== '' ? num : replaced;
+      }
+
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(item => processValue(item));
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      const result = {};
+      for (const [key, val] of Object.entries(value)) {
+        result[key] = processValue(val);
+      }
+      return result;
+    }
+
+    return value;
+  }
+
+  return processValue(props);
+}
+
+/**
+ * Extract input names referenced in static_props
+ * Looks for ${inputName.accessor} patterns
+ * @param {Object} props - Static props object
+ * @returns {string[]} - Array of unique input names found in props
+ */
+export function extractInputDependenciesFromProps(props) {
+  if (!props) return [];
+
+  const inputNames = new Set();
+  const pattern = /\$\{(\w+)\.\w+\}/g;
+
+  function scanValue(value) {
+    if (typeof value === 'string') {
+      const matches = value.matchAll(pattern);
+      for (const match of matches) {
+        inputNames.add(match[1]);
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach(item => scanValue(item));
+    } else if (typeof value === 'object' && value !== null) {
+      Object.values(value).forEach(val => scanValue(val));
+    }
+  }
+
+  scanValue(props);
+  return [...inputNames];
+}
+
+/**
  * Deep merge source object into target object.
  * Target values take precedence over source values (source is the base).
  * This is used to merge static props (base) with dynamic props (override).
@@ -175,10 +288,14 @@ function groupDataBySplitKey(data, splitKey) {
  * of Plotly-compatible trace objects. If an insight has a split_key, the data
  * will be grouped by unique split values and multiple traces will be created.
  *
+ * Input refs in static_props (like ${input.value}) are replaced with actual values
+ * if inputs are provided.
+ *
  * @param {Object} insightsData - Map of insight names to insight objects
+ * @param {Object} inputs - Optional map of input names to input objects with accessor values
  * @returns {Array<Object>} Array of Plotly trace objects
  */
-export function chartDataFromInsightData(insightsData) {
+export function chartDataFromInsightData(insightsData, inputs = {}) {
   if (!insightsData) {
     console.warn('No insightsData provided');
     return [];
@@ -204,6 +321,9 @@ export function chartDataFromInsightData(insightsData) {
       continue;
     }
 
+    // Process static_props to replace input refs with actual values
+    const processedStaticProps = static_props ? processInputRefsInProps(static_props, inputs) : null;
+
     // Check if this insight has a split interaction
     if (split_key && data[0] && data[0][split_key] !== undefined) {
       // Group data by split values
@@ -215,8 +335,8 @@ export function chartDataFromInsightData(insightsData) {
 
         // Merge static props (non-query props like marker.color: ["red", "green"])
         // Static props are the base, dynamic props override them
-        if (static_props) {
-          deepMergeStaticProps(traceProps, static_props);
+        if (processedStaticProps) {
+          deepMergeStaticProps(traceProps, processedStaticProps);
         }
 
         // Set trace type from insight definition
@@ -237,8 +357,8 @@ export function chartDataFromInsightData(insightsData) {
 
       // Merge static props (non-query props like marker.color: ["red", "green"])
       // Static props are the base, dynamic props override them
-      if (static_props) {
-        deepMergeStaticProps(traceProps, static_props);
+      if (processedStaticProps) {
+        deepMergeStaticProps(traceProps, processedStaticProps);
       }
 
       // Set trace type from insight definition

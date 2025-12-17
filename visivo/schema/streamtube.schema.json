@@ -85,7 +85,7 @@
     },
     "query-string": {
       "type": "string",
-      "description": "A string that will pull the value from the traces query results.",
+      "description": "A string that will pull the value from the traces query results or inject an input value.",
       "oneOf": [
         {
           "pattern": "^\\?\\{.*\\}$",
@@ -98,6 +98,10 @@
         {
           "pattern": "^column\\(.*\\)(?:\\[-?\\d+\\])?$",
           "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a positive or negative number"
+        },
+        {
+          "pattern": "^\\$\\{.*\\}$",
+          "description": "String in the format ${ x } for input references like ${ref(input).value} or ${input.value}"
         }
       ]
     }
