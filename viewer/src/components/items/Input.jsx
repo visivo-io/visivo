@@ -11,6 +11,9 @@ import TabsInput from './inputs/TabsInput';
 import CheckboxesInput from './inputs/CheckboxesInput';
 import ChipsInput from './inputs/ChipsInput';
 import RangeSliderInput from './inputs/RangeSliderInput';
+import AutocompleteInput from './inputs/AutocompleteInput';
+import SliderInput from './inputs/SliderInput';
+import DateRangeInput from './inputs/DateRangeInput';
 
 // Input type constants
 export const SINGLE_SELECT = 'single-select';
@@ -94,6 +97,8 @@ const Input = ({ input, itemWidth, project }) => {
           return <ChipsInput {...commonProps} selectedValues={selectedValues} />;
         case 'range-slider':
           return <RangeSliderInput {...commonProps} selectedValues={selectedValues} />;
+        case 'date-range':
+          return <DateRangeInput {...commonProps} selectedValues={selectedValues} />;
         case 'dropdown':
         default:
           return <MultiSelectDropdown {...commonProps} selectedValues={selectedValues} />;
@@ -107,6 +112,10 @@ const Input = ({ input, itemWidth, project }) => {
           return <ToggleInput {...commonProps} selectedValue={selectedValue} />;
         case 'tabs':
           return <TabsInput {...commonProps} selectedValue={selectedValue} />;
+        case 'autocomplete':
+          return <AutocompleteInput {...commonProps} selectedValue={selectedValue} />;
+        case 'slider':
+          return <SliderInput {...commonProps} selectedValue={selectedValue} />;
         case 'dropdown':
         default:
           return <Dropdown {...commonProps} selectedValue={selectedValue} />;

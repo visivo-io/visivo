@@ -111,6 +111,66 @@ inputs:
     display:
       type: checkboxes
 
+  # ===== DATE-BASED INPUTS (new display types) =====
+
+  # Single-select: Autocomplete (for large option sets)
+  - name: autocomplete_date
+    label: "Select Date (Autocomplete)"
+    type: single-select
+    options: ?{SELECT DISTINCT strftime(date, '%Y-%m-%d') as formatted_date FROM ${ref(daily_metrics)} ORDER BY formatted_date}
+    display:
+      type: autocomplete
+      default:
+        value: "2024-01-15"
+
+  # Single-select: Slider (for numeric/date ranges)
+  - name: slider_day_num
+    label: "Day Number (Slider)"
+    type: single-select
+    options: ["1", "5", "10", "15", "20", "25", "30"]
+    display:
+      type: slider
+      default:
+        value: "15"
+
+  # Multi-select: Date Range with date expressions
+  - name: date_range_filter
+    label: "Date Range (Calendar)"
+    type: multi-select
+    range:
+      start: "today - 30 days"
+      end: "today"
+      step: "1 day"
+    display:
+      type: date-range
+      default:
+        start: "today - 7 days"
+        end: "today"
+
+  # Multi-select: Date Range with static dates for testing
+  - name: static_date_range
+    label: "January Date Range"
+    type: multi-select
+    range:
+      start: "2024-01-01"
+      end: "2024-01-31"
+      step: "1 day"
+    display:
+      type: date-range
+      default:
+        start: "2024-01-10"
+        end: "2024-01-20"
+
+  # Single-select: Autocomplete with week-based dates
+  - name: week_selector
+    label: "Select Week Start (Autocomplete)"
+    type: single-select
+    options: ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"]
+    display:
+      type: autocomplete
+      default:
+        value: "2024-01-01"
+
 alerts:
   - name: slack
     destinations:
@@ -273,6 +333,48 @@ charts:
       title:
         text: "Chips: Dynamic Split Labels"
 
+  # ===== DATE-BASED CHARTS (new display types) =====
+
+  # Autocomplete chart
+  - name: autocomplete-date-chart
+    insights:
+      - ${ ref(autocomplete-date-insight) }
+    layout:
+      title:
+        text: "Autocomplete: Date Filter"
+
+  # Slider chart
+  - name: slider-day-chart
+    insights:
+      - ${ ref(slider-day-insight) }
+    layout:
+      title:
+        text: "Slider: Day Number Filter"
+
+  # Date range chart
+  - name: date-range-filter-chart
+    insights:
+      - ${ ref(date-range-filter-insight) }
+    layout:
+      title:
+        text: "Date Range: Time Series Filter"
+
+  # Date range category chart
+  - name: date-range-category-chart
+    insights:
+      - ${ ref(date-range-category-insight) }
+    layout:
+      title:
+        text: "Date Range: Category Aggregation"
+
+  # Week selector chart
+  - name: week-selector-chart
+    insights:
+      - ${ ref(week-selector-insight) }
+    layout:
+      title:
+        text: "Week Selector: Autocomplete Filter"
+
 dashboards:
   - name: Insights Dashboard
     level: 0
@@ -280,7 +382,11 @@ dashboards:
       - "insights"
       - "interactive"
     rows:
-      # Original insights (no inputs)
+      # ===== SECTION 1: Original insights (no inputs) =====
+      - height: compact
+        items:
+          - markdown: |
+              ## Basic Insights (No Input Controls)
       - height: medium
         items:
           - width: 6
@@ -294,53 +400,91 @@ dashboards:
           - width: 6
             chart: ${ref(composite-metric-chart)}
 
-      
-      # Input-driven test charts
+      # ===== SECTION 2: Input-Controlled Charts =====
+      # Each input is directly above its related chart
       - height: compact
         items:
-          - input: ${ref(split_threshold)}
-          - input: ${ref(min_x_value)}
-          - input: ${ref(min_avg_y)}
-          - input: ${ref(sort_direction)}
+          - markdown: |
+              ## Input-Controlled Charts
+              Each input controls the chart directly below it
+
+      # Split Threshold -> Split Input Test Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(split_threshold)}
+          - width: 6
+            input: ${ref(min_x_value)}
       - height: medium
         items:
           - width: 6
             chart: ${ ref(split-input-test-chart) }
           - width: 6
             chart: ${ ref(filter-nonaggregate-input-test-chart) }
+
+      # Min Avg Y (Radio) -> Aggregate Filter | Sort Direction -> Sort Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(min_avg_y)}
+          - width: 6
+            input: ${ref(sort_direction)}
       - height: medium
         items:
           - width: 6
             chart: ${ ref(filter-aggregate-input-test-chart) }
           - width: 6
             chart: ${ ref(sort-input-test-chart) }
+
+      # Combined inputs control combined chart
+      - height: compact
+        items:
+          - width: 4
+            input: ${ref(split_threshold)}
+          - width: 4
+            input: ${ref(min_x_value)}
+          - width: 4
+            input: ${ref(sort_direction)}
       - height: medium
         items:
           - width: 12
             chart: ${ ref(combined-interactions-test-chart) }
 
-      # ===== INPUT DISPLAY SHOWCASE SECTION =====
+      # ===== SECTION 3: Display Type Showcase =====
       - height: compact
         items:
           - markdown: |
-              ## Input Display Types Showcase
-              All frontend input display types with their corresponding charts
+              ## Single-Select Display Types
+              Toggle, Radio, Tabs, Dropdown - each input above its chart
 
-      # Single-select display types row
+      # Toggle -> Toggle Mode Chart
       - height: compact
         items:
-          - input: ${ref(show_markers)}
-          - input: ${ref(selected_tags)}
-          - input: ${ref(x_value_range)}
-          - input: ${ref(selected_x_values)}
-
-      # Charts using the new inputs
+          - width: 6
+            input: ${ref(show_markers)}
+          - width: 6
+            input: ${ref(x_value_range)}
       - height: medium
         items:
           - width: 6
             chart: ${ ref(toggle-mode-chart) }
           - width: 6
             chart: ${ ref(range-slider-chart) }
+
+      # Multi-select displays
+      - height: compact
+        items:
+          - markdown: |
+              ## Multi-Select Display Types
+              Checkboxes, Chips, Range Slider
+
+      # Checkboxes & Chips
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(selected_x_values)}
+          - width: 6
+            input: ${ref(selected_tags)}
       - height: medium
         items:
           - width: 6
@@ -348,11 +492,56 @@ dashboards:
           - width: 6
             chart: ${ ref(chips-split-chart) }
 
-      # Additional multi-select inputs showcase
+      # ===== SECTION 4: DATE-BASED INPUTS (New Display Types) =====
       - height: compact
         items:
           - markdown: |
-              ## Additional Multi-Select Inputs
+              ## Date-Based Inputs (New Display Types)
+              Autocomplete, Slider, and Date Range inputs
+
+      # Autocomplete -> Autocomplete Date Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(autocomplete_date)}
+          - width: 6
+            input: ${ref(slider_day_num)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(autocomplete-date-chart) }
+          - width: 6
+            chart: ${ ref(slider-day-chart) }
+
+      # Date Range -> Date Range Charts
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(static_date_range)}
+          - width: 6
+            input: ${ref(week_selector)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(date-range-filter-chart) }
+          - width: 6
+            chart: ${ ref(week-selector-chart) }
+
+      # Date Range Category Chart (uses same static_date_range input)
+      - height: compact
+        items:
+          - width: 12
+            input: ${ref(static_date_range)}
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ ref(date-range-category-chart) }
+
+      # Additional inputs (unused showcase)
+      - height: compact
+        items:
+          - markdown: |
+              ## Additional Multi-Select Inputs (Showcase)
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
 
