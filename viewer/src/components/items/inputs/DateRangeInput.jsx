@@ -1,7 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { FaCalendarAlt, FaTimes } from 'react-icons/fa';
+import { FaCalendarAlt, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { DropdownLabel } from '../../styled/DropdownButton';
-import { format, parseISO, isValid, isBefore, isAfter, isSameDay } from 'date-fns';
+import {
+  format,
+  parseISO,
+  isValid,
+  isBefore,
+  isAfter,
+  isSameDay,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  addMonths,
+  subMonths,
+  getDay,
+} from 'date-fns';
 
 /**
  * DateRangeInput - Multi-select input displayed as a date range picker.
@@ -22,6 +35,8 @@ const DateRangeInput = ({
   const [dateOptions, setDateOptions] = useState([]);
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [isEndOpen, setIsEndOpen] = useState(false);
+  const [startViewMonth, setStartViewMonth] = useState(new Date());
+  const [endViewMonth, setEndViewMonth] = useState(new Date());
   const startRef = useRef(null);
   const endRef = useRef(null);
 
@@ -38,6 +53,16 @@ const DateRangeInput = ({
       : [];
     setDateOptions(dates);
   }, [rawOptions]);
+
+  // Initialize view months when dateOptions change
+  useEffect(() => {
+    if (dateOptions.length > 0) {
+      const firstDate = dateOptions[0].date;
+      const lastDate = dateOptions[dateOptions.length - 1].date;
+      setStartViewMonth(firstDate);
+      setEndViewMonth(lastDate);
+    }
+  }, [dateOptions]);
 
   // Derive start and end dates from selectedValues
   const { startDate, endDate } = useMemo(() => {
@@ -134,64 +159,142 @@ const DateRangeInput = ({
     return format(date, 'MMM d, yyyy');
   };
 
-  // Group dates by month for calendar display
-  const groupedDates = useMemo(() => {
-    const groups = {};
-    dateOptions.forEach(opt => {
-      const monthKey = format(opt.date, 'yyyy-MM');
-      if (!groups[monthKey]) {
-        groups[monthKey] = {
-          label: format(opt.date, 'MMMM yyyy'),
-          dates: [],
-        };
-      }
-      groups[monthKey].dates.push(opt);
-    });
-    return Object.values(groups);
+  // Create a set of available date ISO strings for quick lookup
+  const availableDatesSet = useMemo(() => {
+    return new Set(dateOptions.map(opt => opt.iso));
   }, [dateOptions]);
 
-  const renderDatePicker = (isOpen, onSelect, selectedDate, otherDate, isStart) => {
+  // Get the date range bounds from available options
+  const { minDate, maxDate } = useMemo(() => {
+    if (dateOptions.length === 0) return { minDate: null, maxDate: null };
+    return {
+      minDate: dateOptions[0].date,
+      maxDate: dateOptions[dateOptions.length - 1].date,
+    };
+  }, [dateOptions]);
+
+  // Generate calendar grid for a given month
+  const generateCalendarDays = viewMonth => {
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = endOfMonth(viewMonth);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    // Add padding for days before the first day of month (to align with weekday columns)
+    const startPadding = getDay(monthStart); // 0 = Sunday, 6 = Saturday
+    const paddedDays = [];
+
+    // Add empty slots for padding
+    for (let i = 0; i < startPadding; i++) {
+      paddedDays.push({ date: null, iso: null, isPadding: true });
+    }
+
+    // Add actual days
+    days.forEach(date => {
+      const iso = format(date, 'yyyy-MM-dd');
+      paddedDays.push({
+        date,
+        iso,
+        isPadding: false,
+        isAvailable: availableDatesSet.has(iso),
+      });
+    });
+
+    return paddedDays;
+  };
+
+  const renderDatePicker = (isOpen, onSelect, selectedDate, otherDate, viewMonth, setViewMonth) => {
     if (!isOpen) return null;
 
-    return (
-      <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto min-w-[200px]">
-        {groupedDates.map((group, groupIdx) => (
-          <div key={groupIdx}>
-            <div className="px-3 py-2 bg-gray-50 text-xs font-medium text-gray-500 sticky top-0">
-              {group.label}
-            </div>
-            <div className="grid grid-cols-7 gap-1 p-2">
-              {group.dates.map((opt, idx) => {
-                const isSelected = selectedDate && isSameDay(opt.date, selectedDate);
-                const isInRange =
-                  startDate &&
-                  endDate &&
-                  isAfter(opt.date, startDate) &&
-                  isBefore(opt.date, endDate);
-                const isOtherEnd = otherDate && isSameDay(opt.date, otherDate);
+    const calendarDays = generateCalendarDays(viewMonth);
+    // Allow navigation if we're not at the first/last month with available dates
+    const canGoPrev = minDate && isAfter(startOfMonth(viewMonth), startOfMonth(minDate));
+    const canGoNext = maxDate && isBefore(endOfMonth(viewMonth), endOfMonth(maxDate));
 
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => onSelect(opt)}
-                    className={`
-                      w-8 h-8 text-xs rounded-full flex items-center justify-center
-                      transition-colors cursor-pointer
-                      ${isSelected ? 'bg-blue-600 text-white' : ''}
-                      ${isInRange && !isSelected ? 'bg-blue-100 text-blue-700' : ''}
-                      ${isOtherEnd && !isSelected ? 'bg-blue-200 text-blue-700' : ''}
-                      ${!isSelected && !isInRange && !isOtherEnd ? 'hover:bg-gray-100 text-gray-700' : ''}
-                    `}
-                  >
-                    {format(opt.date, 'd')}
-                  </button>
-                );
-              })}
+    return (
+      <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[280px]">
+        {/* Month/Year Navigation Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setViewMonth(subMonths(viewMonth, 1))}
+            disabled={!canGoPrev}
+            className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+              !canGoPrev ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+            }`}
+            aria-label="Previous month"
+          >
+            <FaChevronLeft className="w-3 h-3 text-gray-600" />
+          </button>
+
+          <span className="text-sm font-medium text-gray-700">
+            {format(viewMonth, 'MMMM yyyy')}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setViewMonth(addMonths(viewMonth, 1))}
+            disabled={!canGoNext}
+            className={`p-1 rounded hover:bg-gray-100 transition-colors ${
+              !canGoNext ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+            }`}
+            aria-label="Next month"
+          >
+            <FaChevronRight className="w-3 h-3 text-gray-600" />
+          </button>
+        </div>
+
+        {/* Weekday Headers */}
+        <div className="grid grid-cols-7 gap-1 px-2 pt-2">
+          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+            <div key={day} className="w-8 h-6 text-xs text-gray-400 text-center font-medium">
+              {day}
             </div>
-          </div>
-        ))}
-        {groupedDates.length === 0 && (
+          ))}
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1 p-2">
+          {calendarDays.map((day, idx) => {
+            if (day.isPadding) {
+              return <div key={`pad-${idx}`} className="w-8 h-8" />;
+            }
+
+            const isSelected = selectedDate && isSameDay(day.date, selectedDate);
+            const isInRange =
+              startDate &&
+              endDate &&
+              isAfter(day.date, startDate) &&
+              isBefore(day.date, endDate);
+            const isOtherEnd = otherDate && isSameDay(day.date, otherDate);
+            const isDisabled = !day.isAvailable;
+
+            return (
+              <button
+                key={day.iso}
+                type="button"
+                onClick={() => {
+                  if (!isDisabled) {
+                    onSelect({ date: day.date, iso: day.iso });
+                  }
+                }}
+                disabled={isDisabled}
+                className={`
+                  w-8 h-8 text-xs rounded-full flex items-center justify-center
+                  transition-colors
+                  ${isSelected ? 'bg-blue-600 text-white' : ''}
+                  ${isInRange && !isSelected ? 'bg-blue-100 text-blue-700' : ''}
+                  ${isOtherEnd && !isSelected ? 'bg-blue-200 text-blue-700' : ''}
+                  ${isDisabled ? 'text-gray-300 cursor-not-allowed' : 'cursor-pointer'}
+                  ${!isSelected && !isInRange && !isOtherEnd && !isDisabled ? 'hover:bg-gray-100 text-gray-700' : ''}
+                `}
+              >
+                {format(day.date, 'd')}
+              </button>
+            );
+          })}
+        </div>
+
+        {dateOptions.length === 0 && (
           <div className="p-4 text-sm text-gray-500 text-center">No dates available</div>
         )}
       </div>
@@ -233,7 +336,7 @@ const DateRangeInput = ({
               </span>
             </div>
           </button>
-          {renderDatePicker(isStartOpen, handleStartSelect, startDate, endDate, true)}
+          {renderDatePicker(isStartOpen, handleStartSelect, startDate, endDate, startViewMonth, setStartViewMonth)}
         </div>
 
         <span className="text-gray-400">to</span>
@@ -260,7 +363,7 @@ const DateRangeInput = ({
               </span>
             </div>
           </button>
-          {renderDatePicker(isEndOpen, handleEndSelect, endDate, startDate, false)}
+          {renderDatePicker(isEndOpen, handleEndSelect, endDate, startDate, endViewMonth, setEndViewMonth)}
         </div>
 
         {/* Clear Button */}

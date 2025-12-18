@@ -208,4 +208,108 @@ describe('DateRangeInput', () => {
     // Should not call setInputValue because name is undefined
     expect(setInputValue).not.toHaveBeenCalled();
   });
+
+  it('shows month navigation buttons in picker', () => {
+    render(<DateRangeInput {...defaultProps} />);
+
+    // Open start picker
+    const buttons = screen.getAllByRole('button');
+    const startButton = buttons.find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+
+    // Should show navigation buttons
+    expect(screen.getByLabelText('Previous month')).toBeInTheDocument();
+    expect(screen.getByLabelText('Next month')).toBeInTheDocument();
+  });
+
+  it('navigates to next month when next button is clicked', () => {
+    const props = {
+      ...defaultProps,
+      options: [
+        '2024-06-01',
+        '2024-06-02',
+        '2024-07-01',
+        '2024-07-02',
+      ],
+      selectedValues: ['2024-06-01'],
+    };
+    render(<DateRangeInput {...props} />);
+
+    // Open start picker
+    const buttons = screen.getAllByRole('button');
+    const startButton = buttons.find(btn => btn.textContent?.includes('Jun 1, 2024'));
+    fireEvent.click(startButton);
+
+    // Should show June 2024
+    expect(screen.getByText('June 2024')).toBeInTheDocument();
+
+    // Click next month
+    fireEvent.click(screen.getByLabelText('Next month'));
+
+    // Should now show July 2024
+    expect(screen.getByText('July 2024')).toBeInTheDocument();
+  });
+
+  it('navigates to previous month when previous button is clicked', () => {
+    const props = {
+      ...defaultProps,
+      options: [
+        '2024-05-01',
+        '2024-05-02',
+        '2024-06-01',
+        '2024-06-02',
+      ],
+      selectedValues: ['2024-06-01', '2024-06-02'],
+    };
+    render(<DateRangeInput {...props} />);
+
+    // Open end picker - find button containing end date
+    const buttons = screen.getAllByRole('button');
+    const endButton = buttons.find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(endButton);
+
+    // Should show June 2024 (last date's month)
+    expect(screen.getByText('June 2024')).toBeInTheDocument();
+
+    // Click previous month
+    fireEvent.click(screen.getByLabelText('Previous month'));
+
+    // Should now show May 2024
+    expect(screen.getByText('May 2024')).toBeInTheDocument();
+  });
+
+  it('shows weekday headers in calendar', () => {
+    render(<DateRangeInput {...defaultProps} />);
+
+    // Open start picker
+    const buttons = screen.getAllByRole('button');
+    const startButton = buttons.find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+
+    // Should show weekday headers
+    expect(screen.getByText('Su')).toBeInTheDocument();
+    expect(screen.getByText('Mo')).toBeInTheDocument();
+    expect(screen.getByText('Tu')).toBeInTheDocument();
+    expect(screen.getByText('We')).toBeInTheDocument();
+    expect(screen.getByText('Th')).toBeInTheDocument();
+    expect(screen.getByText('Fr')).toBeInTheDocument();
+    expect(screen.getByText('Sa')).toBeInTheDocument();
+  });
+
+  it('disables dates not in options', () => {
+    render(<DateRangeInput {...defaultProps} />);
+
+    // Open start picker
+    const buttons = screen.getAllByRole('button');
+    const startButton = buttons.find(btn => btn.textContent?.includes('Jun 2, 2024'));
+    fireEvent.click(startButton);
+
+    // June 10 is not in options (which are June 1-5), so it should be disabled
+    const day10Button = screen.getByRole('button', { name: '10' });
+    expect(day10Button).toBeDisabled();
+
+    // June 3 is in options, so it should not be disabled
+    const day3Button = screen.getByRole('button', { name: '3' });
+    expect(day3Button).not.toBeDisabled();
+  });
 });
