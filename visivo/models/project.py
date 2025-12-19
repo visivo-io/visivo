@@ -4,13 +4,8 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
-<<<<<<< HEAD
 from visivo.models.inputs.fields import InputField
 from visivo.models.inputs.input import Input
-=======
-from visivo.models.inputs.input import InputField
-from visivo.models.inputs.base import Input
->>>>>>> 1a8e94a9 (Refactor file names to be consistent)
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel

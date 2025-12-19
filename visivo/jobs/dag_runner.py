@@ -5,11 +5,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.insight import Insight
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
-<<<<<<< HEAD
 from visivo.models.models.sql_model import SqlModel
-=======
-from visivo.models.models.sql_model import SqlModel 
->>>>>>> 6b6853ba (WIP)
 from visivo.models.project import Project
 from visivo.logger.logger import Logger
 from time import time
@@ -154,26 +150,7 @@ class DagRunner:
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, SqlModel):
-<<<<<<< HEAD
             return sql_model_job(sql_model=item, output_dir=self.output_dir, dag=self.project_dag)
-=======
-            is_model_consumed_and_dynamic = False
-            for insight in get_all_items
-                dependent_models = get_all_dependent_models(self.project_dag)
-                if hasattr(item, "name"):
-                    item_name = item.name
-                else:
-                    item_name = getattr(item, "id", lambda: None)()
-                if item in dependent_models or (item_name and any(
-                        model for model in dependent_models if getattr(model, "name", None) == item_name
-                    )):
-                    if insight.is_dynamic(self.project_dag):
-                        is_model_consumed_and_dynamic = True
-                        break
-            if is_model_consumed_and_dynamic:
-                all_dynamic_insights = True
-            
->>>>>>> 6b6853ba (WIP)
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir)
         return None
