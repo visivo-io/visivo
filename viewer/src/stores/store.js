@@ -8,6 +8,7 @@ import createProjectSlice from './projectStore';
 import createSelectorSlice from './selectorStore';
 import createInsightSlice from './insightStore';
 import createWorksheetSlice from './worksheetStore';
+import createSourceSlice from './sourceStore';
 
 const useStore = create(
   devtools((...a) => ({
@@ -17,6 +18,7 @@ const useStore = create(
     ...createSelectorSlice(...a),
     ...createInsightSlice(...a),
     ...createWorksheetSlice(...a),
+    ...createSourceSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: state => ({ scrollPositions: state.scrollPositions }),

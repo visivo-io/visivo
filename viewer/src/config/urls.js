@@ -34,6 +34,13 @@ const URL_PATTERNS = {
 
     editorsInstalled: '/api/editors/installed/',
     editorsOpen: '/api/editors/open/',
+
+    // Source management endpoints
+    sourcesList: '/api/sources/',
+    sourceDetail: '/api/sources/{name}/',
+    sourceSave: '/api/sources/{name}/save/',
+    sourceValidate: '/api/sources/{name}/validate/',
+    sourceTestConnection: '/api/sources/test-connection/',
   },
 
   dist: {
@@ -66,6 +73,13 @@ const URL_PATTERNS = {
     traceQuery: null,
     editorsInstalled: null,
     editorsOpen: null,
+
+    // Source management endpoints (not available in dist)
+    sourcesList: null,
+    sourceDetail: null,
+    sourceSave: null,
+    sourceValidate: null,
+    sourceTestConnection: null,
   },
 };
 
