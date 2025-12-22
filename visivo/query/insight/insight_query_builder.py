@@ -507,6 +507,29 @@ class InsightQueryBuilder:
                     if restored_expr not in group_by_clauses:
                         group_by_clauses.append(restored_expr)
 
+        # Also collect GROUP BY expressions from ORDER BY clauses
+        # Sort expressions may reference non-aggregated columns not in SELECT
+        for key, statement in self.resolved_query_statements:
+            if key == "sort":
+                # Strip ASC/DESC before parsing
+                sort_expr = statement.strip()
+                if sort_expr.upper().endswith(" DESC"):
+                    sort_expr = sort_expr[:-5].strip()
+                elif sort_expr.upper().endswith(" ASC"):
+                    sort_expr = sort_expr[:-4].strip()
+
+                # Replace input placeholders for SQLGlot parsing
+                safe_expr, _ = replace_input_placeholders_for_parsing(
+                    sort_expr, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+                )
+                parsed = parse_expression(safe_expr, "duckdb")
+                if parsed:
+                    non_agg_exprs = find_non_aggregated_expressions(parsed, dialect="duckdb")
+                    for expr_sql in non_agg_exprs:
+                        restored_expr = restore_input_placeholders(expr_sql)
+                        if restored_expr not in group_by_clauses:
+                            group_by_clauses.append(restored_expr)
+
         # Collect HAVING conditions (aggregate filters)
         having_conditions = []
         for key, statement in self.resolved_query_statements:
@@ -850,6 +873,30 @@ class InsightQueryBuilder:
                     expr_sql = parsed_expr.sql()
                     if not any(e.sql() == expr_sql for e in group_by_expressions):
                         group_by_expressions.append(parsed_expr)
+
+        # Also include non-aggregated expressions from ORDER BY clauses
+        # Sort expressions may reference non-aggregated columns not in SELECT
+        for key, statement in self.resolved_query_statements:
+            if key == "sort":
+                # Strip ASC/DESC before parsing
+                sort_expr = statement.strip()
+                if sort_expr.upper().endswith(" DESC"):
+                    sort_expr = sort_expr[:-5].strip()
+                elif sort_expr.upper().endswith(" ASC"):
+                    sort_expr = sort_expr[:-4].strip()
+
+                parsed_sort = parse_expression(sort_expr, self.native_dialect)
+                if parsed_sort:
+                    non_agg_exprs = find_non_aggregated_expressions(
+                        parsed_sort, dialect=target_dialect
+                    )
+                    for expr_str in non_agg_exprs:
+                        parsed_expr = parse_expression(expr_str, self.native_dialect)
+                        if parsed_expr:
+                            parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
+                            expr_sql = parsed_expr.sql()
+                            if not any(e.sql() == expr_sql for e in group_by_expressions):
+                                group_by_expressions.append(parsed_expr)
 
         # Return None if no grouping needed
         if not group_by_expressions:
