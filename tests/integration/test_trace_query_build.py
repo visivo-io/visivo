@@ -39,7 +39,7 @@ class TestTraceQueryBuild:
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
                 marker={
-                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold).value} THEN 'green' ELSE 'red' END}"
                 },
             ),
         )
@@ -70,10 +70,12 @@ class TestTraceQueryBuild:
         unresolved = insight.get_all_query_statements(dag)
         for key, value in unresolved:
             if "marker.color" in key:
-                assert "${threshold}" in value, f"Should have ${{threshold}}, got: {value}"
                 assert (
-                    "${ref(threshold)}" not in value
-                ), f"Should NOT have ${{ref(threshold)}}, got: {value}"
+                    "${threshold.value}" in value
+                ), f"Should have ${{threshold.value}}, got: {value}"
+                assert (
+                    "${ref(threshold).value}" not in value
+                ), f"Should NOT have ${{ref(threshold).value}}, got: {value}"
 
         # Create InsightQueryBuilder
         builder = InsightQueryBuilder(insight, dag, output_dir)
@@ -81,7 +83,9 @@ class TestTraceQueryBuild:
         # Check unresolved statements
         for key, value in builder.unresolved_query_statements:
             if "marker.color" in key:
-                assert "${threshold}" in value, f"Should still have ${{threshold}}, got: {value}"
+                assert (
+                    "${threshold.value}" in value
+                ), f"Should still have ${{threshold.value}}, got: {value}"
 
         # Resolve
         builder.resolve()

@@ -8,7 +8,7 @@ import FilterBar from './FilterBar';
 import useStore from '../../stores/store';
 import { throttle } from 'lodash';
 import { useSearchParams } from 'react-router-dom';
-import { DROPDOWN } from '../items/Input';
+import { SINGLE_SELECT, MULTI_SELECT } from '../items/Input';
 
 function Project(props) {
   const [searchParams] = useSearchParams();
@@ -70,7 +70,8 @@ function Project(props) {
           if (item?.input) {
             const input = item.input;
             switch (input.type) {
-              case DROPDOWN:
+              case SINGLE_SELECT:
+              case MULTI_SELECT:
                 if (input?.default) {
                   setDefaultInputValue(input.name, input.default);
                 }

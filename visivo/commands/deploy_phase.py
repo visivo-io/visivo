@@ -564,7 +564,7 @@ async def process_insights_async(
 
 async def process_inputs_async(inputs, output_dir, project_id, form_headers, json_headers, host):
     """
-    Coordinates the asynchronous upload of input parquet files and creation of input records.
+    Coordinates the asynchronous upload of input JSON files and creation of input records.
     """
     batch_size = 20
 
@@ -572,13 +572,13 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     input_files = []
     for input_obj in inputs:
         input_hash = input_obj.name_hash()
-        input_path = f"{output_dir}/inputs/{input_hash}.parquet"
+        input_path = f"{output_dir}/inputs/{input_hash}.json"
         if os.path.exists(input_path):
             input_files.append(
                 {
                     "name": input_obj.name,
                     "name_hash": input_hash,
-                    "file_path": f"inputs/{input_hash}.parquet",
+                    "file_path": f"inputs/{input_hash}.json",
                 }
             )
 

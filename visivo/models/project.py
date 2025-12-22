@@ -242,7 +242,15 @@ class Project(NamedModel, ParentModel):
             if isinstance(obj, dict):
                 obj["path"] = path
                 for key, value in obj.items():
-                    if key not in ["props", "defaults", "layout", "columns"]:
+                    if key not in [
+                        "props",
+                        "defaults",
+                        "layout",
+                        "columns",
+                        "display",
+                        "default",
+                        "range",
+                    ]:
                         new_path = f"{path}.{key}" if path else key
                         set_path_recursively(value, new_path)
             elif isinstance(obj, list):

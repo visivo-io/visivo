@@ -84,9 +84,9 @@ insights:
       x: ?{${ref(local_test_table).x}}
       y: ?{${ref(local_test_table).y}}
       marker:
-        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#D25946' END }
+        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold).value} THEN '#713B57' ELSE '#D25946' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'High Y Values' ELSE 'Low Y Values' END }
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold).value} THEN 'High Y Values' ELSE 'Low Y Values' END }
       - sort: ?{${ref(local_test_table).x} desc}
 
   # Test Non-Aggregate Filter with Input
@@ -104,7 +104,7 @@ insights:
         color: "#713B57"
         width: 2
     interactions:
-      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
+      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value).value}}
       - sort: ?{${ref(local_test_table).x} ASC}
 
   # Test Aggregate Filter with Input
@@ -117,7 +117,7 @@ insights:
       marker:
         color: ["red", "green"]
     interactions:
-      - filter: ?{ ${ref(local_test_table).y} > ${ref(min_avg_y)} }
+      - filter: ?{ ${ref(local_test_table).y} > ${ref(min_avg_y).value} }
 
   # Test Sort Order with Input
   - name: sort-input-test-insight
@@ -134,7 +134,7 @@ insights:
         size: 8
         color: "#D25946"
     interactions:
-      - sort: ?{${ref(another_local_test_table).new_x} ${ref(sort_direction)}}
+      - sort: ?{${ref(another_local_test_table).new_x} ${ref(sort_direction).value}}
 
   # Combined Test - All Interactions with Inputs
   - name: combined-interactions-test-insight
@@ -144,8 +144,148 @@ insights:
       x: ?{${ref(local_test_table).x}}
       y: ?{${ref(local_test_table).y}}
       marker:
-        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#4F494C' END }
+        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold).value} THEN '#713B57' ELSE '#4F494C' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'Above Threshold' ELSE 'Below Threshold' END }
-      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
-      - sort: ?{${ref(local_test_table).x} ${ref(sort_direction)}}
+      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold).value} THEN 'Above Threshold' ELSE 'Below Threshold' END }
+      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value).value}}
+      - sort: ?{${ref(local_test_table).x} ${ref(sort_direction).value}}
+
+  # ===== INPUT DISPLAY SHOWCASE INSIGHTS =====
+
+  # Toggle input test - dynamic mode switching
+  - name: toggle-mode-insight
+    description: "Scatter plot with dynamic mode from toggle input"
+    props:
+      type: scatter
+      mode: ${ref(show_markers).value}
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      line:
+        color: "#713B57"
+        width: 2
+      marker:
+        size: 10
+        color: "#D25946"
+    interactions:
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select range slider test - filter by range
+  - name: range-slider-insight
+    description: "Bar chart filtered by range slider min/max"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: "#4F494C"
+    interactions:
+      - filter: ?{${ref(local_test_table).x} >= ${ref(x_value_range).min} AND ${ref(local_test_table).x} <= ${ref(x_value_range).max}}
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select checkboxes test - filter by selected values
+  - name: checkboxes-filter-insight
+    description: "Scatter plot filtered by checkbox selections"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        size: 12
+        color: "#191D33"
+    interactions:
+      - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(selected_x_values).values})}
+      #- sort: ?{${ref(local_test_table).x} ASC}
+
+  # Multi-select chips test - dynamic split based on first/last accessors
+  - name: chips-split-insight
+    description: "Bar chart with split using chips input first/last values"
+    props:
+      type: bar
+      x: ?{${ref(local_test_table).x}}
+      y: ?{${ref(local_test_table).y}}
+      marker:
+        color: ?{ CASE WHEN ${ref(local_test_table).x} <= 5 THEN '#713B57' ELSE '#D25946' END }
+    interactions:
+      - split: ?{ CASE WHEN ${ref(local_test_table).y} >= 5 THEN '${ref(selected_tags).first}' ELSE '${ref(selected_tags).last}' END }
+      - sort: ?{${ref(local_test_table).x} ASC}
+
+  # ===== DATE-BASED INSIGHTS (testing new date inputs) =====
+
+  # Autocomplete single-select test - filter to selected date
+  - name: autocomplete-date-insight
+    description: "Line chart filtered to a single date selected via autocomplete"
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{${ref(daily_metrics).formatted_date}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 10
+        color: "#713B57"
+      line:
+        color: "#4F494C"
+        width: 2
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} <= '${ref(autocomplete_date).value}'}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}
+
+  # Slider single-select test - filter by day number
+  - name: slider-day-insight
+    description: "Bar chart filtered by slider-selected day number"
+    props:
+      type: bar
+      x: ?{${ref(daily_metrics).day_num}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        color: ?{ CASE WHEN ${ref(daily_metrics).day_num} <= ${ref(slider_day_num).value} THEN '#713B57' ELSE '#D25946' END }
+    interactions:
+      - filter: ?{${ref(daily_metrics).day_num} <= ${ref(slider_day_num).value}}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}
+
+  # Date range multi-select test - filter by date range
+  - name: date-range-filter-insight
+    description: "Line chart filtered by date range picker"
+    props:
+      type: scatter
+      mode: lines+markers
+      x: ?{${ref(daily_metrics).formatted_date}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 8
+        color: "#191D33"
+      line:
+        color: "#713B57"
+        shape: spline
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(static_date_range).first}' AND ${ref(daily_metrics).formatted_date} <= '${ref(static_date_range).last}'}
+      - sort: ?{${ref(daily_metrics).formatted_date} ASC}
+
+  # Date range with aggregation - bar chart by category
+  - name: date-range-category-insight
+    description: "Aggregated bar chart by category within date range"
+    props:
+      type: bar
+      x: ?{${ref(daily_metrics).category}}
+      y: ?{${ref(daily_metrics).total_value}}
+      marker:
+        color: ["#713B57", "#4F494C", "#D25946"]
+    interactions:
+      - filter: ?{${ref(daily_metrics).date} between '${ref(static_date_range).min}'::date AND '${ref(static_date_range).max}'::date}
+      - filter: ?{${ref(daily_metrics).category} in ( ${ref(selected_categories).values} ) }
+
+  # Week selector test - filter by week start
+  - name: week-selector-insight
+    description: "Scatter plot showing data from selected week onwards"
+    props:
+      type: scatter
+      mode: markers
+      x: ?{${ref(daily_metrics).day_num}}
+      y: ?{${ref(daily_metrics).value}}
+      marker:
+        size: 12
+        color: "#D25946"
+        symbol: "diamond"
+    interactions:
+      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(week_selector).value}'}
+      - sort: ?{${ref(daily_metrics).day_num} ASC}

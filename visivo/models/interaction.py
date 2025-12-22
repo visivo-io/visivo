@@ -41,13 +41,13 @@ class InsightInteraction(BaseModel):
         """
         Convert input references to JavaScript template literal syntax.
 
-        Transforms: ${ref(input_name)} → ${input_name}
+        Transforms: ${ref(input_name).accessor} → ${input_name.accessor}
 
         This allows clean injection in frontend using JS template literals.
         Non-input refs (models, dimensions) are left unchanged.
 
         Examples:
-            - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
+            - "x > ${ref(threshold).value}" → "x > ${threshold.value}" (if threshold is an input)
             - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
 
         Args:
@@ -60,14 +60,16 @@ class InsightInteraction(BaseModel):
         def replace_input_refs(text: str) -> str:
             def repl(m: Match) -> str:
                 name = m.group("model_name").strip()
+                # Get property_path (accessor like .value, .min, .max, etc.)
+                property_path = m.group("property_path") or ""
 
                 try:
                     node = dag.get_descendant_by_name(name)
 
                     if isinstance(node, Input):
-                        # Convert input ref to JS template literal syntax
-                        # ${ref(threshold)} → ${threshold}
-                        return f"${{{name}}}"
+                        # Convert input ref to JS template literal syntax with accessor
+                        # ${ref(threshold).value} → ${threshold.value}
+                        return f"${{{name}{property_path}}}"
 
                     # Not an input - leave unchanged (model/dimension ref)
                     return m.group(0)
