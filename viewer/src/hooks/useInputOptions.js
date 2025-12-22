@@ -130,7 +130,7 @@ export const useInputOptions = (input, projectId) => {
           setDefaultInputValue(input.name, defaultValue, inputType);
         }
       } catch (error) {
-        console.error(`useInputOptions: Failed to load options for input '${input.name}':`, error);
+        // Failed to load options - component will use fallback
       }
     };
 
@@ -197,7 +197,7 @@ export const useInputData = (input, projectId) => {
           setDefaultInputValue(input.name, defaultValue, inputType);
         }
       } catch (error) {
-        console.error(`useInputData: Failed to load data for input '${input.name}':`, error);
+        // Failed to load data - component will use fallback
       }
     };
 

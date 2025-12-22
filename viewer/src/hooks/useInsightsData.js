@@ -95,8 +95,6 @@ const processInsight = async (db, insight, inputs) => {
     const { name, files, query, props_mapping, split_key, type, static_props } = insight;
     const insightName = name;
 
-    console.debug(`Processing insight '${insightName}'`);
-
     // Check for required inputs BEFORE loading parquet files
     // Extract input names from the query and static_props (e.g., ${sort_direction.value} -> sort_direction)
     const requiredInputs = extractInputDependencies(query, static_props);
@@ -105,9 +103,6 @@ const processInsight = async (db, insight, inputs) => {
     const missingInputs = requiredInputs.filter(inputName => !inputs[inputName]);
 
     if (missingInputs.length > 0) {
-      console.debug(
-        `Insight '${insightName}' waiting for inputs: ${missingInputs.join(', ')}`
-      );
       // Return metadata without data - will be re-processed when inputs are ready
       return {
         [insightName]: {
@@ -130,17 +125,8 @@ const processInsight = async (db, insight, inputs) => {
     // Step 1: Load parquet files (with caching)
     const { loaded, failed } = await loadInsightParquetFiles(db, files);
 
-    if (failed.length > 0) {
-      console.error(`Failed to load ${failed.length} files for insight '${insightName}':`, failed);
-      // Continue anyway - partial data might be better than none
-    }
-
-    console.debug(`Loaded ${loaded.length} parquet files for insight '${insightName}'`);
-
     // Step 2: Prepare post_query with input substitution
     const preparedQuery = prepPostQuery({ query }, inputs);
-
-    console.debug(`Executing query for insight '${insightName}':`, preparedQuery);
 
     // Step 3: Execute query in DuckDB
     const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
@@ -177,7 +163,6 @@ const processInsight = async (db, insight, inputs) => {
     };
   } catch (error) {
     const insightName = insight.name;
-    console.error(`Failed to process insight '${insightName}':`, error);
 
     return {
       [insightName]: {
@@ -259,10 +244,6 @@ export const useInsightsData = (projectId, insightNames) => {
         // Check if all pending inputs are now available
         const allReady = insight.pendingInputs.every(inputName => getInputs[inputName]);
         if (allReady) {
-          console.debug(
-            `Insight '${insightName}' has all required inputs ready:`,
-            insight.pendingInputs
-          );
           return true; // At least one insight is now ready to process
         }
       }
@@ -303,26 +284,19 @@ export const useInsightsData = (projectId, insightNames) => {
   // Main query function
   const queryFn = useCallback(async () => {
     if (!db) {
-      console.warn('DuckDB not initialized');
       return {};
     }
 
     if (!stableInsightNames.length) {
-      console.debug('No insights to fetch');
       return {};
     }
-
-    console.debug(`Fetching ${stableInsightNames.length} insights:`, stableInsightNames);
 
     // Step 1: Fetch insight metadata from API
     const insights = await fetchInsights(projectId, stableInsightNames);
 
     if (!insights?.length) {
-      console.warn('No insights returned from API');
       return {};
     }
-
-    console.debug(`Fetched ${insights.length} insights from API`);
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
     // This ensures we always have the latest inputs at query execution time
@@ -340,7 +314,6 @@ export const useInsightsData = (projectId, insightNames) => {
         Object.assign(mergedData, result.value);
       } else {
         const insightName = stableInsightNames[index];
-        console.error(`Failed to process insight '${insightName}':`, result.reason);
         // Add error state for this insight
         mergedData[insightName] = {
           name: insightName,
@@ -349,8 +322,6 @@ export const useInsightsData = (projectId, insightNames) => {
         };
       }
     });
-
-    console.debug(`Successfully processed ${Object.keys(mergedData).length} insights`);
 
     return mergedData;
     // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
@@ -381,7 +352,6 @@ export const useInsightsData = (projectId, insightNames) => {
   // Update store when data arrives
   useEffect(() => {
     if (data && Object.keys(data).length > 0) {
-      console.debug('Updating store with insights data:', Object.keys(data));
       setInsights(data);
     }
   }, [data, setInsights]);

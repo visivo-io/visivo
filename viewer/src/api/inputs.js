@@ -8,16 +8,10 @@ import { getUrl } from '../contexts/URLContext';
  * @returns {Promise<string>} - URL to the JSON file containing input options
  */
 export const fetchInputOptions = async (projectId, inputHash) => {
-  try {
-    // In dist mode: /data/inputs/{hash}.json
-    // In server mode: /data/inputs/{hash}.json
-    const url = getUrl('inputData', { hash: inputHash });
-    console.debug(`Input options URL for ${inputHash}: ${url}`);
-    return url;
-  } catch (error) {
-    console.error(`Failed to fetch input options URL for ${inputHash}:`, error);
-    throw error;
-  }
+  // In dist mode: /data/inputs/{hash}.json
+  // In server mode: /data/inputs/{hash}.json
+  const url = getUrl('inputData', { hash: inputHash });
+  return url;
 };
 
 /**
@@ -46,20 +40,12 @@ export const fetchInputOptions = async (projectId, inputHash) => {
  * @returns {Promise<InputData>} - Parsed input data
  */
 export const loadInputData = async url => {
-  try {
-    console.debug(`Loading input data from ${url}`);
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch input JSON: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.debug(`Loaded input data: ${data.input_name}, type: ${data.type}`);
-    return data;
-  } catch (error) {
-    console.error(`Failed to load input data from ${url}:`, error);
-    throw new Error(`Failed to load input data: ${error.message}`);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch input JSON: ${response.status} ${response.statusText}`);
   }
+
+  const data = await response.json();
+  return data;
 };
 

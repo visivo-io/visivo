@@ -242,7 +242,6 @@ export function tryResolveDateExpression(value) {
   try {
     return resolveDateExpression(value);
   } catch (e) {
-    console.warn(`Failed to resolve date expression: ${value}`, e);
     return value;
   }
 }
@@ -376,7 +375,6 @@ export function resolveDateRangeToOptions(start, end, step) {
       : parseISO(String(end));
 
   if (!isValid(startDate) || !isValid(endDate)) {
-    console.warn('Invalid start or end date for range');
     return [];
   }
 
@@ -393,7 +391,6 @@ export function resolveDateRangeToOptions(start, end, step) {
     if (!isNaN(numStep)) {
       stepSpec = { value: numStep, unit: 'day' };
     } else {
-      console.warn('Invalid step format, defaulting to 1 day');
       stepSpec = { value: 1, unit: 'day' };
     }
   }

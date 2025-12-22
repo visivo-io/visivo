@@ -7,34 +7,28 @@ import { getUrl } from '../contexts/URLContext';
  */
 const validateInsightStructure = insight => {
   if (!insight.name) {
-    console.warn('Insight missing name:', insight);
     return false;
   }
 
   // Check for new structure (files, query, props_mapping)
   if (!insight.files || !Array.isArray(insight.files)) {
-    console.warn(`Insight '${insight.name}' missing files array:`, insight);
     return false;
   }
 
   if (!insight.query) {
-    console.warn(`Insight '${insight.name}' missing query:`, insight);
     return false;
   }
 
   if (!insight.props_mapping || typeof insight.props_mapping !== 'object') {
-    console.warn(`Insight '${insight.name}' missing or invalid props_mapping:`, insight);
     return false;
   }
 
   // Validate file structure
   for (const file of insight.files) {
     if (!file.name_hash) {
-      console.warn(`File missing name_hash in insight '${insight.name}':`, file);
       return false;
     }
     if (!file.signed_data_file_url) {
-      console.warn(`File missing signed_data_file_url in insight '${insight.name}':`, file);
       return false;
     }
   }
@@ -55,7 +49,6 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
   // In dist mode, this will fetch /data/insights.json
 
   if (!names || names.length === 0) {
-    console.warn('fetchInsights called with empty names array');
     return [];
   }
 
@@ -76,8 +69,6 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
   let lastError;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      console.debug(`Fetching insights (attempt ${attempt + 1}/${retries}):`, names);
-
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -93,36 +84,17 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
       let insights = Array.isArray(data) ? data : [data];
 
       // Validate each insight
-      const validInsights = insights.filter(insight => {
-        const isValid = validateInsightStructure(insight);
-        if (!isValid) {
-          console.error(`Invalid insight structure for '${insight.name}'`);
-        }
-        return isValid;
-      });
+      const validInsights = insights.filter(insight => validateInsightStructure(insight));
 
       if (validInsights.length === 0) {
         throw new Error('No valid insights returned from server');
       }
 
-      if (validInsights.length < insights.length) {
-        console.warn(
-          `${insights.length - validInsights.length} insights failed validation and were excluded`
-        );
-      }
-
-      console.debug(
-        `Successfully fetched ${validInsights.length} insights:`,
-        validInsights.map(i => i.name)
-      );
-
       return validInsights;
     } catch (error) {
       lastError = error;
-      console.error(`Fetch attempt ${attempt + 1} failed:`, error);
 
       if (attempt < retries - 1) {
-        console.debug(`Retrying in ${retryDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
     }

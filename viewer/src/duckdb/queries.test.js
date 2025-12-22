@@ -161,11 +161,8 @@ describe('prepPostQuery - Template Literal Injection', () => {
     it('returns empty string when query is missing', () => {
       const insight = {};
       const inputs = { category: "'electronics'" };
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
       const result = prepPostQuery(insight, inputs);
       expect(result).toBe('');
-      expect(consoleSpy).toHaveBeenCalledWith('Insight has no query');
-      consoleSpy.mockRestore();
     });
 
     it('handles empty inputs object', () => {

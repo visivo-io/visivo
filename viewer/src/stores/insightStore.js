@@ -121,7 +121,6 @@ const createInsightSlice = (set, get) => ({
 
           // Guard against db not being initialized yet
           if (!db) {
-            console.debug(`Skipping insight refresh: DuckDB not initialized`);
             return;
           }
 
@@ -138,17 +137,11 @@ const createInsightSlice = (set, get) => ({
             })
             .map(([name]) => name);
 
-          console.debug(
-            `Input '${inputName}' changed. Refreshing ${dependentInsights.length} dependent insights:`,
-            dependentInsights
-          );
-
           for (const insightName of dependentInsights) {
             const insight = insights[insightName];
             try {
               // prepPostQuery expects { query: ... }
               const preparedQuery = prepPostQuery({ query: insight.query }, currentInputs);
-              console.debug(`Executing query for insight '${insightName}':`, preparedQuery);
 
               const result = await runDuckDBQuery(db, preparedQuery, 3, 300);
               const processedRows =
@@ -162,8 +155,6 @@ const createInsightSlice = (set, get) => ({
                   );
                 }) || [];
 
-              console.debug(`Query for insight '${insightName}' returned ${processedRows.length} rows`);
-
               // Update with .data field (not .insight) to match useInsightsData structure
               set(s => ({
                 insights: {
@@ -175,7 +166,7 @@ const createInsightSlice = (set, get) => ({
                 },
               }));
             } catch (err) {
-              console.error(`Query for ${insightName} failed:`, err);
+              // Query failed - continue with remaining insights
             }
           }
         }, 0);
