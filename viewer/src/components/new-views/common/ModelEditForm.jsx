@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../stores/store';
-import SourceSelector from './SourceSelector';
+import RefSelector from './RefSelector';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -12,7 +12,6 @@ import SourceSelector from './SourceSelector';
  */
 const ModelEditForm = ({ model, onSave, onCancel }) => {
   const saveModel = useStore(state => state.saveModel);
-  const sources = useStore(state => state.sources);
   const fetchSources = useStore(state => state.fetchSources);
 
   const isCreate = !model;
@@ -20,7 +19,7 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
   // Form state
   const [name, setName] = useState('');
   const [sql, setSql] = useState('');
-  const [source, setSource] = useState(null);
+  const [source, setSource] = useState(null); // Stored as ref(name) format
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -29,6 +28,7 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
     if (model) {
       setName(model.name || '');
       setSql(model.sql || model.config?.sql || '');
+      // Source comes from API already in ref() format (or null)
       setSource(model.source || model.config?.source || null);
     } else {
       setName('');
@@ -37,12 +37,10 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
     }
   }, [model]);
 
-  // Fetch sources on mount if not loaded
+  // Fetch sources on mount to populate RefSelector
   useEffect(() => {
-    if (sources.length === 0) {
-      fetchSources();
-    }
-  }, [sources.length, fetchSources]);
+    fetchSources();
+  }, [fetchSources]);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -55,9 +53,9 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
       sql: sql.trim(),
     };
 
-    // Add source reference if selected
+    // Add source reference if selected (already in ref() format from RefSelector)
     if (source) {
-      config.source = `ref(${source})`;
+      config.source = source;
     }
 
     try {
@@ -132,8 +130,15 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         </p>
       </div>
 
-      {/* Source selector */}
-      <SourceSelector value={source} onChange={setSource} sources={sources} label="Data Source" />
+      {/* Source selector - uses RefSelector for proper ref() serialization */}
+      <RefSelector
+        value={source}
+        onChange={setSource}
+        objectType="source"
+        label="Data Source"
+        placeholder="No source (use default)"
+        helperText="Select a source to run the SQL query against, or leave empty to use the default source."
+      />
 
       {/* Action buttons */}
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
