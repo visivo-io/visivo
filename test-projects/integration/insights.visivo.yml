@@ -194,8 +194,8 @@ insights:
         size: 12
         color: "#191D33"
     interactions:
-      - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN ('${ref(selected_x_values).values}')}
-      - sort: ?{${ref(local_test_table).x} ASC}
+      - filter: ?{CAST(${ref(local_test_table).x} AS VARCHAR) IN (${ref(selected_x_values).values})}
+      #- sort: ?{${ref(local_test_table).x} ASC}
 
   # Multi-select chips test - dynamic split based on first/last accessors
   - name: chips-split-insight
@@ -272,6 +272,7 @@ insights:
         color: ["#713B57", "#4F494C", "#D25946"]
     interactions:
       - filter: ?{${ref(daily_metrics).date} between '${ref(static_date_range).min}'::date AND '${ref(static_date_range).max}'::date}
+      - filter: ?{${ref(daily_metrics).category} in ( ${ref(selected_categories).values} ) }
 
   # Week selector test - filter by week start
   - name: week-selector-insight

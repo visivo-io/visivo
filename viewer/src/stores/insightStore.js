@@ -39,10 +39,22 @@ const computeSingleSelectAccessors = selectedValue => {
 };
 
 /**
+ * Escape a string value for SQL by quoting and escaping internal single quotes.
+ * @param {*} v - Value to escape
+ * @returns {string} - SQL-safe quoted string (e.g., "'O''Reilly'")
+ */
+const escapeForSql = v => {
+  if (v === null || v === undefined) return 'NULL';
+  const str = String(v);
+  return `'${str.replace(/'/g, "''")}'`;
+};
+
+/**
  * Compute accessor values for a multi-select input.
  * Multi-select inputs have .values, .min, .max, .first, .last accessors.
  *
- * .values returns raw comma-separated values (no SQL quoting - users handle quoting in YAML).
+ * .values returns a pre-quoted SQL list for use in IN clauses.
+ * e.g., ["Category A", "O'Reilly"] => "'Category A','O''Reilly'"
  * .min/.max work for both numeric values and ISO date strings (YYYY-MM-DD).
  * .first/.last return raw values.
  *
@@ -54,8 +66,8 @@ const computeMultiSelectAccessors = selectedValues => {
     return { values: null, min: null, max: null, first: null, last: null };
   }
 
-  // Join values as-is (no quoting - users handle SQL quoting in their YAML queries)
-  const values = selectedValues.join(',');
+  // Build pre-quoted SQL list for .values accessor
+  const values = selectedValues.map(v => escapeForSql(v)).join(',');
 
   // Compute min/max - works for both numbers and ISO date strings
   let min = null;
@@ -82,7 +94,7 @@ const computeMultiSelectAccessors = selectedValues => {
   }
 
   return {
-    values, // Raw comma-separated: "val1,val2"
+    values, // Pre-quoted SQL list: "'val1','val2'"
     min,
     max,
     first: selectedValues[0],
@@ -93,6 +105,7 @@ const computeMultiSelectAccessors = selectedValues => {
 const createInsightSlice = (set, get) => ({
   insights: {},
   inputs: {}, // Store for input accessor objects: { inputName: { value: 'quoted' } or { values, min, max, first, last } }
+  inputSelectedValues: {}, // Raw selected values for UI display: { inputName: value | [values] }
   inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
   inputData: {}, // Store for full input data from JSON: { inputName: { type, structure, results, ... } }
   inputsInitialized: {}, // Track which inputs have been initialized: { inputName: true }
@@ -221,6 +234,7 @@ const createInsightSlice = (set, get) => ({
       // Mark as initialized (for future calls to trigger refresh)
       return {
         inputs: newInputs,
+        inputSelectedValues: { ...state.inputSelectedValues, [inputName]: rawValue },
         inputsInitialized: { ...state.inputsInitialized, [inputName]: true },
       };
     }),
@@ -242,6 +256,7 @@ const createInsightSlice = (set, get) => ({
 
       return {
         inputs: { ...state.inputs, [inputName]: accessors },
+        inputSelectedValues: { ...state.inputSelectedValues, [inputName]: rawValue },
         inputsInitialized: { ...state.inputsInitialized, [inputName]: true },
       };
     }),

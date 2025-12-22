@@ -234,10 +234,14 @@ def validate_insight_with_inputs(
                 # Multi-select - compute realistic accessor values
                 options = inputs_dict[input_name]
 
-                # .values is raw comma-separated (users handle SQL quoting in YAML)
-                # Use first 2 options as sample (or all if fewer)
+                # .values is a pre-quoted SQL list for use in IN clauses
+                # e.g., ["Category A", "Category B"] => "'Category A','Category B'"
+                # Single quotes in values are escaped by doubling (SQL standard)
                 sample_options = options[:2] if len(options) >= 2 else options
-                accessor_values[input_name]["values"] = ",".join(sample_options)
+                quoted_options = [
+                    "'" + str(opt).replace("'", "''") + "'" for opt in sample_options
+                ]
+                accessor_values[input_name]["values"] = ",".join(quoted_options)
 
                 # Use first/last options for .first/.last accessors
                 accessor_values[input_name]["first"] = options[0] if options else value
