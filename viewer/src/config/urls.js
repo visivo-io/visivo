@@ -41,6 +41,12 @@ const URL_PATTERNS = {
     sourceSave: '/api/sources/{name}/save/',
     sourceValidate: '/api/sources/{name}/validate/',
     sourceTestConnection: '/api/sources/test-connection/',
+
+    // Model management endpoints
+    modelsList: '/api/models/',
+    modelDetail: '/api/models/{name}/',
+    modelSave: '/api/models/{name}/save/',
+    modelValidate: '/api/models/{name}/validate/',
   },
 
   dist: {
@@ -80,6 +86,12 @@ const URL_PATTERNS = {
     sourceSave: null,
     sourceValidate: null,
     sourceTestConnection: null,
+
+    // Model management endpoints (not available in dist)
+    modelsList: null,
+    modelDetail: null,
+    modelSave: null,
+    modelValidate: null,
   },
 };
 

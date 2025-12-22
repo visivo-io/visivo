@@ -1,4 +1,5 @@
 import StorageIcon from '@mui/icons-material/Storage';
+import ViewInArIcon from '@mui/icons-material/ViewInAr';
 
 /**
  * Centralized object type definitions
@@ -30,6 +31,24 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-teal-50 border-teal-200',
       nodeSelected: 'bg-teal-100 border-teal-400',
+    },
+  },
+  {
+    value: 'model',
+    label: 'Models',
+    singularLabel: 'Model',
+    icon: ViewInArIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-indigo-100',
+      text: 'text-indigo-800',
+      border: 'border-indigo-200',
+      bgHover: 'hover:bg-indigo-50',
+      bgSelected: 'bg-indigo-100',
+      borderSelected: 'border-indigo-300',
+      // For nodes/pills
+      node: 'bg-indigo-50 border-indigo-200',
+      nodeSelected: 'bg-indigo-100 border-indigo-400',
     },
   },
 ];

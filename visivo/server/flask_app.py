@@ -7,6 +7,7 @@ from visivo.logger.logger import Logger
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.telemetry.middleware import init_telemetry_middleware
 from visivo.server.managers.source_manager import SourceManager
+from visivo.server.managers.model_manager import ModelManager
 
 
 class FlaskApp:
@@ -29,6 +30,9 @@ class FlaskApp:
         self.source_manager = SourceManager()
         self.source_manager.load(project)
 
+        self.model_manager = ModelManager()
+        self.model_manager.load(project)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -45,5 +49,6 @@ class FlaskApp:
             Serializer(project=value).dereference().model_dump_json(exclude_none=True)
         )
         self._project = value
-        # Reload source manager with new project (preserves cached objects)
+        # Reload object managers with new project (preserves cached objects)
         self.source_manager.load(value)
+        self.model_manager.load(value)
