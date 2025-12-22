@@ -154,6 +154,17 @@ class TestObjectManager:
 
         assert status == ObjectStatus.MODIFIED
 
+    def test_get_status_returns_published_when_cached_equals_published(self):
+        """Test that get_status() returns PUBLISHED when cached equals published."""
+        manager = ConcreteObjectManager()
+        # Same object in both - should be considered PUBLISHED, not MODIFIED
+        manager._cached_objects["test"] = {"name": "test", "value": 123}
+        manager._published_objects["test"] = {"name": "test", "value": 123}
+
+        status = manager.get_status("test")
+
+        assert status == ObjectStatus.PUBLISHED
+
     def test_get_status_returns_published_for_published_only(self):
         """Test that get_status() returns PUBLISHED for objects only in published."""
         manager = ConcreteObjectManager()
@@ -268,6 +279,6 @@ class TestObjectManager:
 
     def test_object_status_enum_values(self):
         """Test ObjectStatus enum values."""
-        assert ObjectStatus.NEW.value == "New"
-        assert ObjectStatus.MODIFIED.value == "Modified"
-        assert ObjectStatus.PUBLISHED.value == "Published"
+        assert ObjectStatus.NEW.value == "new"
+        assert ObjectStatus.MODIFIED.value == "modified"
+        assert ObjectStatus.PUBLISHED.value == "published"

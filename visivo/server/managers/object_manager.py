@@ -9,9 +9,9 @@ T = TypeVar("T")
 class ObjectStatus(str, Enum):
     """Status of an object in the manager."""
 
-    NEW = "New"  # In cached_objects only (not yet published)
-    MODIFIED = "Modified"  # In both cached and published (cached differs)
-    PUBLISHED = "Published"  # In published_objects only (no cached changes)
+    NEW = "new"  # In cached_objects only (not yet published)
+    MODIFIED = "modified"  # In both cached and published (cached differs)
+    PUBLISHED = "published"  # In published_objects only (no cached changes)
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -130,6 +130,9 @@ class ObjectManager(ABC, Generic[T]):
         """
         Determine the status of an object by name.
 
+        Compares actual object values, not just presence in dictionaries.
+        If cached object equals published object, returns PUBLISHED.
+
         Args:
             name: The name of the object
 
@@ -142,10 +145,40 @@ class ObjectManager(ABC, Generic[T]):
         if in_cached and not in_published:
             return ObjectStatus.NEW
         elif in_cached and in_published:
+            # Compare actual values to determine if truly modified
+            cached_obj = self._cached_objects[name]
+            published_obj = self._published_objects[name]
+            if self._objects_equal(cached_obj, published_obj):
+                return ObjectStatus.PUBLISHED
             return ObjectStatus.MODIFIED
         elif in_published and not in_cached:
             return ObjectStatus.PUBLISHED
         return None
+
+    def _objects_equal(self, obj1: T, obj2: T) -> bool:
+        """
+        Compare two objects for equality.
+
+        Uses model_dump() for Pydantic models, otherwise uses direct comparison.
+
+        Args:
+            obj1: First object
+            obj2: Second object
+
+        Returns:
+            True if objects are equal, False otherwise
+        """
+        if obj1 is None and obj2 is None:
+            return True
+        if obj1 is None or obj2 is None:
+            return False
+
+        # For Pydantic models, compare serialized dictionaries
+        if hasattr(obj1, "model_dump") and hasattr(obj2, "model_dump"):
+            return obj1.model_dump(exclude_none=True) == obj2.model_dump(exclude_none=True)
+
+        # Fallback to direct comparison
+        return obj1 == obj2
 
     def delete_from_cache(self, name: str) -> bool:
         """

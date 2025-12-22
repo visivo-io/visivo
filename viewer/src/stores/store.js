@@ -8,7 +8,10 @@ import createProjectSlice from './projectStore';
 import createSelectorSlice from './selectorStore';
 import createInsightSlice from './insightStore';
 import createWorksheetSlice from './worksheetStore';
-import createSourceSlice from './sourceStore';
+import createSourceSlice, { ObjectStatus } from './sourceStore';
+
+// Re-export ObjectStatus for convenience
+export { ObjectStatus };
 
 const useStore = create(
   devtools((...a) => ({

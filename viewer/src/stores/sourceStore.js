@@ -1,5 +1,12 @@
 import * as sourcesApi from '../api/sources';
 
+// Object status constants (matches backend ObjectStatus enum)
+export const ObjectStatus = {
+  NEW: 'new',
+  MODIFIED: 'modified',
+  PUBLISHED: 'published',
+};
+
 /**
  * Source Store Slice
  *

@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Available source types matching backend Pydantic models
-const SOURCE_TYPES = [
+export const SOURCE_TYPES = [
   { value: 'postgresql', label: 'PostgreSQL' },
   { value: 'mysql', label: 'MySQL' },
   { value: 'snowflake', label: 'Snowflake' },

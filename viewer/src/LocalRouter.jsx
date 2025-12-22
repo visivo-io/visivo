@@ -11,6 +11,8 @@ import Lineage from './components/lineage/Lineage';
 import Explorer from './components/explorer/Explorer';
 import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
+import { LineageNew } from './components/new-views/lineage';
+import { EditorNew } from './components/new-views/editor';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // Set global URL config early for router loaders
@@ -58,6 +60,23 @@ const LocalRouter = createBrowserRouter(
           loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
+          }}
+        />
+        {/* Hidden new views - accessible via URL only, not in navigation */}
+        <Route
+          id="lineage-new"
+          path="/lineage-new"
+          element={<LineageNew />}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/lineage-new">Lineage (New)</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="editor-new"
+          path="/editor-new"
+          element={<EditorNew />}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/editor-new">Editor (New)</BreadcrumbLink>,
           }}
         />
         <Route

@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
-import useStore from '../../stores/store';
+import useStore, { ObjectStatus } from '../../stores/store';
 import AddIcon from '@mui/icons-material/Add';
 import StorageIcon from '@mui/icons-material/Storage';
 
-// Status indicator colors
+// Status indicator colors (matches ObjectStatus enum)
 const STATUS_COLORS = {
-  new: 'bg-green-500',
-  modified: 'bg-amber-500',
-  published: '', // No indicator
+  [ObjectStatus.NEW]: 'bg-green-500',
+  [ObjectStatus.MODIFIED]: 'bg-amber-500',
+  [ObjectStatus.PUBLISHED]: '', // No indicator
 };
 
 const StatusDot = ({ status }) => {
-  if (!status || status === 'published') return null;
+  if (!status || status === ObjectStatus.PUBLISHED) return null;
 
   return (
     <span
@@ -19,7 +19,7 @@ const StatusDot = ({ status }) => {
         inline-block w-2 h-2 rounded-full ml-2
         ${STATUS_COLORS[status] || ''}
       `}
-      title={status === 'new' ? 'New (unsaved)' : 'Modified'}
+      title={status === ObjectStatus.NEW ? 'New (unsaved)' : 'Modified'}
     />
   );
 };
