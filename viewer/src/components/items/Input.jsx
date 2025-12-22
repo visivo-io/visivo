@@ -29,7 +29,7 @@ export const MULTI_SELECT = 'multi-select';
  */
 const Input = ({ input, itemWidth, project }) => {
   const setInputValue = useStore(state => state.setInputValue);
-  const inputs = useStore(state => state.inputs);
+  const inputSelectedValues = useStore(state => state.inputSelectedValues);
 
   // Load options from JSON (this also sets defaults via setDefaultInputValue)
   const options = useInputOptions(input, project?.id);
@@ -48,27 +48,28 @@ const Input = ({ input, itemWidth, project }) => {
   );
 
   // Get current selected value(s) from store (for display)
-  // Store format: { inputName: { value: ... } } or { inputName: { values, min, max, first, last } }
+  // Uses inputSelectedValues (raw values) not inputs (accessor objects)
   const { selectedValue, selectedValues } = useMemo(() => {
-    const accessor = inputs[input?.name];
-    if (!accessor) return { selectedValue: null, selectedValues: null };
+    const rawValue = inputSelectedValues?.[input?.name];
+    if (rawValue === undefined || rawValue === null) {
+      return { selectedValue: null, selectedValues: null };
+    }
 
     if (isMulti) {
-      // For multi-select, parse values from comma-separated string
-      const valuesStr = accessor.values;
-      const parsedValues = valuesStr ? valuesStr.split(',') : [];
+      // For multi-select, ensure we have an array
+      const valuesArray = Array.isArray(rawValue) ? rawValue : [rawValue];
       return {
-        selectedValue: accessor.first,
-        selectedValues: parsedValues,
+        selectedValue: valuesArray[0] || null,
+        selectedValues: valuesArray,
       };
     } else {
       // For single-select, return value directly
       return {
-        selectedValue: accessor.value,
+        selectedValue: rawValue,
         selectedValues: null,
       };
     }
-  }, [inputs, input?.name, isMulti]);
+  }, [inputSelectedValues, input?.name, isMulti]);
 
   // Early return checks (after all hooks)
   if (!input) return null;

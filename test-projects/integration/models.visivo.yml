@@ -91,6 +91,6 @@ models:
         expression: "strftime(date, '%Y-%m-%d')"
     metrics:
       - name: total_value
-        expression: "SUM(value)"
+        expression: "Count(value)"
       - name: avg_value
         expression: "AVG(value)"

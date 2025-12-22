@@ -158,8 +158,8 @@ inputs:
     display:
       type: date-range
       default:
-        start: "2024-01-10"
-        end: "2024-01-20"
+        start: "2024-01-01"
+        end: "2024-01-05"
 
   # Single-select: Autocomplete with week-based dates
   - name: week_selector
