@@ -144,7 +144,7 @@ const EditorNew = () => {
   const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length;
 
   return (
-    <div className="flex h-[calc(100vh-56px)]">
+    <div className="flex h-[calc(100vh-48px)]">
       {/* Left sidebar - Filter, Search, and list */}
       <div
         className={`w-80 bg-white border-r border-gray-200 flex flex-col ${isPanelOpen ? 'mr-96' : ''} transition-all duration-200`}
@@ -242,7 +242,7 @@ const EditorNew = () => {
 
       {/* Edit Panel (right side) */}
       {isPanelOpen && (
-        <div className="fixed top-14 right-0 bottom-0 z-20">
+        <div className="fixed top-12 right-0 bottom-0 z-20">
           <EditPanel
             source={editingSource}
             model={editingModel}

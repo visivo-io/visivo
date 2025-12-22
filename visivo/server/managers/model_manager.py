@@ -83,20 +83,25 @@ class ModelManager(ObjectManager[SqlModel]):
 
         status = self.get_status(name)
 
-        # Extract source name from source field
-        source_name = None
+        # Extract source value from source field
+        # Can be: ContextString, ref string, or inline source object
+        source_value = None
         if model.source:
-            if isinstance(model.source, str):
-                # Handle ref(source_name) format
-                source_name = model.source
+            if hasattr(model.source, "value"):
+                # ContextString object - get the raw value like ${ref(name)}
+                source_value = model.source.value
+            elif isinstance(model.source, str):
+                # Plain string (ref format or name)
+                source_value = model.source
             elif hasattr(model.source, "name"):
-                source_name = model.source.name
+                # Inline source object
+                source_value = model.source.name
 
         return {
             "name": name,
             "status": status.value if status else None,
             "sql": model.sql,
-            "source": source_name,
+            "source": source_value,
             "config": model.model_dump(exclude_none=True),
         }
 
@@ -118,20 +123,28 @@ class ModelManager(ObjectManager[SqlModel]):
                 # Include deleted objects with info from published version
                 if name in self._published_objects:
                     model = self._published_objects[name]
-                    # Extract source name from source field
-                    source_name = None
+                    # Extract source value from source field
+                    # Can be: ContextString, ref string, or inline source object
+                    source_value = None
                     if model.source:
-                        if isinstance(model.source, str):
-                            source_name = model.source
+                        if hasattr(model.source, "value"):
+                            # ContextString object - get the raw value like ${ref(name)}
+                            source_value = model.source.value
+                        elif isinstance(model.source, str):
+                            # Plain string (ref format or name)
+                            source_value = model.source
                         elif hasattr(model.source, "name"):
-                            source_name = model.source.name
-                    result.append({
-                        "name": name,
-                        "status": ObjectStatus.DELETED.value,
-                        "sql": model.sql,
-                        "source": source_name,
-                        "config": model.model_dump(exclude_none=True),
-                    })
+                            # Inline source object
+                            source_value = model.source.name
+                    result.append(
+                        {
+                            "name": name,
+                            "status": ObjectStatus.DELETED.value,
+                            "sql": model.sql,
+                            "source": source_value,
+                            "config": model.model_dump(exclude_none=True),
+                        }
+                    )
                 continue
 
             model_info = self.get_model_with_status(name)

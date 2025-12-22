@@ -158,7 +158,7 @@ const LineageNew = () => {
           ...model.config,
           name: model.name,
           sql: model.sql || model.config?.sql,
-          source: `ref(${sourceName})`,
+          source: `\${ref(${sourceName})}`,
         };
         await saveModel(modelName, updatedConfig);
         await fetchModels();
@@ -234,7 +234,7 @@ const LineageNew = () => {
   const isLoading = sourcesLoading || modelsLoading;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
+    <div className="flex flex-col h-[calc(100vh-48px)]">
       {/* Selector input bar */}
       <div className="flex flex-row gap-2 px-2 py-2 bg-white border-b border-gray-200">
         <input
@@ -304,8 +304,6 @@ const LineageNew = () => {
             fitView
             fitViewOptions={{ padding: 0.2 }}
             style={{ background: '#f8fafc' }}
-            connectionLineType="smoothstep"
-            connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
             deleteKeyCode={['Backspace', 'Delete']}
           >
             <Background color="#e2e8f0" gap={16} />
@@ -329,7 +327,7 @@ const LineageNew = () => {
 
         {/* Edit Panel (right side) */}
         {isPanelOpen && (
-          <div className="fixed top-14 right-0 bottom-0 z-20">
+          <div className="fixed top-12 right-0 bottom-0 z-20">
             <EditPanel
               source={editingSource}
               model={editingModel}

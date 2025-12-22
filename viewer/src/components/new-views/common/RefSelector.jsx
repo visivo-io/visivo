@@ -3,14 +3,20 @@ import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypes';
 
 /**
- * Extract name from a ref string: ref(name) -> name
+ * Extract name from a ref string: ${ref(name)} or ref(name) -> name
  * Also handles raw names (returns as-is)
  */
 const parseRefValue = value => {
   if (!value) return null;
   if (typeof value !== 'string') return null;
 
-  // Match ref(name) pattern
+  // Match ${ref(name)} pattern (context string format - preferred)
+  const contextRefMatch = value.match(/^\$\{ref\(\s*([^)]+)\s*\)\}$/);
+  if (contextRefMatch) {
+    return contextRefMatch[1].trim();
+  }
+
+  // Match ref(name) pattern (legacy format)
   const refMatch = value.match(/^ref\(\s*([^)]+)\s*\)$/);
   if (refMatch) {
     return refMatch[1].trim();
@@ -21,11 +27,11 @@ const parseRefValue = value => {
 };
 
 /**
- * Format a name as ref(name)
+ * Format a name as ${ref(name)} (context string format)
  */
 const formatRefValue = name => {
   if (!name) return null;
-  return `ref(${name})`;
+  return `\${ref(${name})}`
 };
 
 /**

@@ -114,7 +114,7 @@ const Home = () => {
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <PublishModal />
-      <div className={'pt-14'}>
+      <div className={'pt-12'}>
         {isProject && (
           <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
             <Breadcrumbs />

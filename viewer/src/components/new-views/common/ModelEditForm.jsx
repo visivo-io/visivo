@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import RefSelector from './RefSelector';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -141,19 +142,32 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         <label htmlFor="model-sql" className="block text-sm font-medium text-gray-700">
           SQL Query
         </label>
-        <textarea
-          id="model-sql"
-          value={sql}
-          onChange={e => setSql(e.target.value)}
-          placeholder="SELECT * FROM table_name"
-          rows={8}
-          className={`
-            block w-full px-3 py-2 text-sm font-mono
-            border border-gray-300 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-            resize-y
-          `}
-        />
+        <div className="border border-gray-300 rounded-md overflow-hidden">
+          <Editor
+            height={Math.max(160, (sql.split('\n').length + 1) * 19)}
+            language="sql"
+            theme="vs-dark"
+            value={sql}
+            onChange={value => setSql(value || '')}
+            options={{
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 13,
+              automaticLayout: true,
+              wordWrap: 'on',
+              padding: { top: 12, bottom: 12, left: 8, right: 8 },
+              lineNumbers: 'on',
+              glyphMargin: false,
+              folding: false,
+              lineDecorationsWidth: 12,
+              lineNumbersMinChars: 3,
+              scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto',
+              },
+            }}
+          />
+        </div>
         <p className="text-xs text-gray-500">
           Write the SQL query that will generate your model's data.
         </p>
@@ -233,10 +247,8 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
                 <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
                 Saving...
               </>
-            ) : isCreate ? (
-              'Create Model'
             ) : (
-              'Save Changes'
+              'Save'
             )}
           </Button>
         </div>

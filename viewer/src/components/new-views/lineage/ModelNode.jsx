@@ -77,13 +77,13 @@ const ModelNode = ({ data, selected }) => {
         <button
           onClick={handleEditClick}
           className={`
-            ml-2 p-1 rounded-full
-            ${colors.bg} hover:opacity-80
+            ml-1 p-0.5 rounded
+            hover:bg-gray-100
             transition-colors
           `}
           title="Edit model"
         >
-          <EditIcon fontSize="small" className={colors.text} />
+          <EditIcon style={{ fontSize: 16 }} className={colors.text} />
         </button>
       )}
 
