@@ -1,6 +1,20 @@
 import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
 
 /**
+ * Yield control back to the main thread to avoid blocking the UI.
+ * Uses requestAnimationFrame for better scheduling than setTimeout.
+ */
+const yieldToMain = () => {
+  return new Promise(resolve => {
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+};
+
+/**
  * Compute accessor values for a single-select input.
  * Single-select inputs have only a `.value` accessor.
  *
@@ -116,7 +130,8 @@ const createInsightSlice = (set, get) => ({
       const wasAlreadyInitialized = state.inputsInitialized[inputName];
 
       if (wasAlreadyInitialized) {
-        setTimeout(async () => {
+        // Use requestAnimationFrame to schedule work without blocking
+        requestAnimationFrame(async () => {
           const { insights, db } = get();
 
           // Guard against db not being initialized yet
@@ -138,6 +153,9 @@ const createInsightSlice = (set, get) => ({
             .map(([name]) => name);
 
           for (const insightName of dependentInsights) {
+            // Yield between each query to avoid blocking the main thread
+            await yieldToMain();
+
             const insight = insights[insightName];
             try {
               // prepPostQuery expects { query: ... }
@@ -169,7 +187,7 @@ const createInsightSlice = (set, get) => ({
               // Query failed - continue with remaining insights
             }
           }
-        }, 0);
+        });
       }
 
       // Mark as initialized (for future calls to trigger refresh)

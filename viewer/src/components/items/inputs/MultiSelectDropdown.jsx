@@ -167,13 +167,19 @@ const MultiSelectDropdown = ({
                     className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full"
                   >
                     {item.label}
-                    <button
-                      type="button"
+                    <span
+                      role="button"
+                      tabIndex={-1}
                       onClick={e => removeItem(e, item)}
-                      className="ml-1 hover:text-blue-600"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          removeItem(e, item);
+                        }
+                      }}
+                      className="ml-1 hover:text-blue-600 cursor-pointer"
                     >
                       <FaTimes className="w-2 h-2" />
-                    </button>
+                    </span>
                   </span>
                 ))}
                 {selectedItems.length > 3 && (

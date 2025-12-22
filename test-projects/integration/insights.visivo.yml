@@ -218,7 +218,7 @@ insights:
     props:
       type: scatter
       mode: lines+markers
-      x: ?{${ref(daily_metrics).day_num}}
+      x: ?{${ref(daily_metrics).formatted_date}}
       y: ?{${ref(daily_metrics).value}}
       marker:
         size: 10
