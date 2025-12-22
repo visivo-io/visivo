@@ -72,14 +72,18 @@ models:
 
   # Date-based model for testing date inputs and expressions
   - name: daily_metrics
+    source: ${ref(local-duckdb)}
     sql: |
       SELECT
         date_trunc('day', TIMESTAMP '2024-01-01' + INTERVAL (x) DAY) AS date,
         x as day_num,
         y as value,
-        CASE WHEN x % 3 = 0 THEN 'Category A'
-             WHEN x % 3 = 1 THEN 'Category B'
-             ELSE 'Category C' END as category
+        CASE 
+          WHEN x % 4 = 0 THEN 'Category A'
+          WHEN x % 3 = 0 THEN 'Category B'
+          WHEN x % 2 = 0 THEN 'Category C'
+          ELSE 'Category D' 
+        END as category
       FROM test_table
       WHERE x <= 30
     dimensions:

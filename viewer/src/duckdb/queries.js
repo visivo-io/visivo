@@ -130,6 +130,9 @@ export const tableDuckDBExists = async (db, tableName) => {
  * - Flat: { inputName: 'value' } - for ${inputName}
  * - Nested: { inputName: { value: "'quoted'" } } - for ${inputName.value}
  *
+ * Null accessor values are injected as SQL NULL keyword (not the string 'NULL').
+ * This causes queries with null accessors to return no rows, matching PRD behavior.
+ *
  * @param {Object} insight - Insight object with query containing ${inputName} or ${inputName.accessor} placeholders
  * @param {Object} inputs - Object mapping input names to their values (string or accessor object)
  * @returns {String} - Query with all placeholders replaced by actual values
@@ -148,15 +151,16 @@ export const prepPostQuery = (insight, inputs) => {
 
     // Keep objects as-is for accessor syntax (${input.value}), convert primitives to strings
     // This allows template literals like ${region.value} to work with nested objects
+    // For null values in accessor objects, keep them as null - they'll become 'undefined'
+    // in the template literal output, which we'll then replace with SQL NULL keyword
     const processedValues = inputValues.map(value => {
       if (value === null || value === undefined) {
         return 'NULL';
       }
       if (typeof value === 'object') {
-        // For accessor objects, ensure null accessors return 'NULL'
-        return Object.fromEntries(
-          Object.entries(value).map(([k, v]) => [k, v === null || v === undefined ? 'NULL' : v])
-        );
+        // For accessor objects, keep null values as-is (don't convert to string 'NULL')
+        // They will output 'undefined' in template literal which we replace with NULL below
+        return value;
       }
       return String(value);
     });
@@ -167,7 +171,11 @@ export const prepPostQuery = (insight, inputs) => {
     const templateFunc = new Function(...inputKeys, `return \`${query}\`;`);
 
     // Execute the template function with the input values
-    const result = templateFunc(...processedValues);
+    let result = templateFunc(...processedValues);
+
+    // Replace 'null' (from null accessor values in JS) with SQL NULL keyword
+    // This ensures null accessors inject NULL without quotes (not the string 'NULL')
+    result = result.replace(/\bnull\b/g, 'NULL');
 
     return result;
   } catch (error) {
