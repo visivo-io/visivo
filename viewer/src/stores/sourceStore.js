@@ -5,6 +5,7 @@ export const ObjectStatus = {
   NEW: 'new',
   MODIFIED: 'modified',
   PUBLISHED: 'published',
+  DELETED: 'deleted',
 };
 
 /**
@@ -39,17 +40,25 @@ const createSourceSlice = (set, get) => ({
       const result = await sourcesApi.saveSource(name, config);
       // Refresh sources list to get updated status
       await get().fetchSources();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };
     }
   },
 
-  // Delete source from cache (revert to published)
+  // Mark source for deletion (will be removed from YAML on publish)
   deleteSource: async name => {
     try {
       await sourcesApi.deleteSource(name);
       await get().fetchSources();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

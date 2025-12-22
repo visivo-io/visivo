@@ -31,7 +31,14 @@ const router = createMemoryRouter(routes, {
 });
 
 test('renders error message', async () => {
-  useStore.mockImplementation(cb => cb({ isNewProject: false }));
+  useStore.mockImplementation(cb =>
+    cb({
+      isNewProject: false,
+      hasUnpublishedChanges: false,
+      checkPublishStatus: jest.fn(),
+      openPublishModal: jest.fn(),
+    })
+  );
 
   render(
     <QueryClientProvider client={queryClient}>

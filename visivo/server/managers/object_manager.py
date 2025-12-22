@@ -12,6 +12,7 @@ class ObjectStatus(str, Enum):
     NEW = "new"  # In cached_objects only (not yet published)
     MODIFIED = "modified"  # In both cached and published (cached differs)
     PUBLISHED = "published"  # In published_objects only (no cached changes)
+    DELETED = "deleted"  # Marked for deletion (None in cache, exists in published)
 
 
 class ObjectManager(ABC, Generic[T]):
@@ -132,6 +133,7 @@ class ObjectManager(ABC, Generic[T]):
 
         Compares actual object values, not just presence in dictionaries.
         If cached object equals published object, returns PUBLISHED.
+        If cached object is None (marked for deletion), returns DELETED.
 
         Args:
             name: The name of the object
@@ -142,16 +144,21 @@ class ObjectManager(ABC, Generic[T]):
         in_cached = name in self._cached_objects
         in_published = name in self._published_objects
 
-        if in_cached and not in_published:
-            return ObjectStatus.NEW
-        elif in_cached and in_published:
-            # Compare actual values to determine if truly modified
+        if in_cached:
             cached_obj = self._cached_objects[name]
-            published_obj = self._published_objects[name]
-            if self._objects_equal(cached_obj, published_obj):
-                return ObjectStatus.PUBLISHED
-            return ObjectStatus.MODIFIED
-        elif in_published and not in_cached:
+            # Check if marked for deletion (None in cache)
+            if cached_obj is None:
+                # Only return DELETED if it exists in published (something to delete)
+                return ObjectStatus.DELETED if in_published else None
+            elif not in_published:
+                return ObjectStatus.NEW
+            else:
+                # Compare actual values to determine if truly modified
+                published_obj = self._published_objects[name]
+                if self._objects_equal(cached_obj, published_obj):
+                    return ObjectStatus.PUBLISHED
+                return ObjectStatus.MODIFIED
+        elif in_published:
             return ObjectStatus.PUBLISHED
         return None
 
@@ -233,6 +240,10 @@ class ObjectManager(ABC, Generic[T]):
         Check if there are any unpublished changes.
 
         Returns:
-            True if cache has objects, False otherwise
+            True if any cached object has status NEW, MODIFIED, or DELETED
         """
-        return len(self._cached_objects) > 0
+        for name in self._cached_objects:
+            status = self.get_status(name)
+            if status in (ObjectStatus.NEW, ObjectStatus.MODIFIED, ObjectStatus.DELETED):
+                return True
+        return False

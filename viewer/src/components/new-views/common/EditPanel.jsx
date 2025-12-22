@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { getTypeByValue } from './objectTypes';
 
 /**
@@ -23,7 +24,7 @@ import { getTypeByValue } from './objectTypes';
  * - onSave: Callback after successful save
  */
 const EditPanel = ({ source, model, objectType = 'source', isCreate, onClose, onSave }) => {
-  const { saveSource, testConnection, connectionStatus, clearConnectionStatus } = useStore();
+  const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } = useStore();
 
   // Determine which object we're editing
   const currentObjectType = model ? 'model' : objectType;
@@ -38,6 +39,8 @@ const EditPanel = ({ source, model, objectType = 'source', isCreate, onClose, on
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Initialize form when source changes (for source editing)
   useEffect(() => {
@@ -138,8 +141,23 @@ const EditPanel = ({ source, model, objectType = 'source', isCreate, onClose, on
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    const result = await deleteSource(source.name);
+    setDeleting(false);
+
+    if (result.success) {
+      await checkPublishStatus();
+      onClose();
+    } else {
+      setSaveError(result.error || 'Failed to delete source');
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const currentConnectionStatus = connectionStatus[name || 'new'];
   const isEditMode = (!!source || !!model) && !isCreate;
+  const isNewObject = source?.status === ObjectStatus.NEW;
 
   // Generate title based on object type
   const getTitle = () => {
@@ -279,30 +297,73 @@ const EditPanel = ({ source, model, objectType = 'source', isCreate, onClose, on
 
       {/* Footer Actions - Fixed at bottom (only for sources, models have their own buttons) */}
       {!isModel && (
-        <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200 bg-gray-50">
-          <ButtonOutline
-            type="button"
-            onClick={handleTestConnection}
-            disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
-            className="text-sm"
-          >
-            Test Connection
-          </ButtonOutline>
+        <div className="border-t border-gray-200 bg-gray-50">
+          {/* Delete Confirmation */}
+          {showDeleteConfirm && isEditMode && (
+            <div className="px-4 py-3 bg-red-50 border-b border-red-200">
+              <p className="text-sm text-red-700 mb-2">
+                {isNewObject
+                  ? 'Are you sure you want to delete this source? This will discard your unsaved changes.'
+                  : 'Are you sure you want to delete this source? This will mark it for deletion and remove it from YAML when you publish.'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Confirm Delete'}
+                </button>
+              </div>
+            </div>
+          )}
 
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
+          <div className="flex justify-between items-center px-4 py-3">
+            <div className="flex gap-2">
+              <ButtonOutline
+                type="button"
+                onClick={handleTestConnection}
+                disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
+                className="text-sm"
+              >
+                Test Connection
+              </ButtonOutline>
+
+              {/* Delete button - only in edit mode */}
+              {isEditMode && !showDeleteConfirm && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+                  title="Delete source"
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </button>
               )}
-            </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}

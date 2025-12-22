@@ -67,16 +67,24 @@ def register_model_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/models/<model_name>/", methods=["DELETE"])
-    def delete_cached_model(model_name):
-        """Delete model from cache (revert to published version)."""
+    def delete_model(model_name):
+        """Mark a model for deletion (will be removed from YAML on publish)."""
         try:
-            deleted = flask_app.model_manager.delete_from_cache(model_name)
-            if deleted:
-                return jsonify({"message": f"Model '{model_name}' removed from cache"}), 200
+            marked = flask_app.model_manager.mark_for_deletion(model_name)
+            if marked:
+                return (
+                    jsonify(
+                        {
+                            "message": f"Model '{model_name}' marked for deletion",
+                            "status": "deleted",
+                        }
+                    ),
+                    200,
+                )
             else:
-                return jsonify({"message": f"Model '{model_name}' not in cache"}), 200
+                return jsonify({"error": f"Model '{model_name}' not found"}), 404
         except Exception as e:
-            Logger.instance().error(f"Error deleting cached model: {str(e)}")
+            Logger.instance().error(f"Error deleting model: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/models/<model_name>/validate/", methods=["POST"])

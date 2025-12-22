@@ -31,17 +31,25 @@ const createModelSlice = (set, get) => ({
       const result = await modelsApi.saveModel(name, config);
       // Refresh models list to get updated status
       await get().fetchModels();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };
     }
   },
 
-  // Delete model from cache (revert to published)
+  // Mark model for deletion (will be removed from YAML on publish)
   deleteModel: async name => {
     try {
       await modelsApi.deleteModel(name);
       await get().fetchModels();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };

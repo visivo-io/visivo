@@ -47,6 +47,11 @@ const URL_PATTERNS = {
     modelDetail: '/api/models/{name}/',
     modelSave: '/api/models/{name}/save/',
     modelValidate: '/api/models/{name}/validate/',
+
+    // Publish management endpoints
+    publishStatus: '/api/publish/status/',
+    publishPending: '/api/publish/pending/',
+    publish: '/api/publish/',
   },
 
   dist: {
@@ -92,6 +97,11 @@ const URL_PATTERNS = {
     modelDetail: null,
     modelSave: null,
     modelValidate: null,
+
+    // Publish management endpoints (not available in dist)
+    publishStatus: null,
+    publishPending: null,
+    publish: null,
   },
 };
 

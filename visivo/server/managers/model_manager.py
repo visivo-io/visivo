@@ -104,6 +104,8 @@ class ModelManager(ObjectManager[SqlModel]):
         """
         Get all models (cached + published) with status info.
 
+        Includes models marked for deletion with DELETED status.
+
         Returns:
             List of dictionaries with model info and status
         """
@@ -111,8 +113,25 @@ class ModelManager(ObjectManager[SqlModel]):
         all_names = set(self._cached_objects.keys()) | set(self._published_objects.keys())
 
         for name in sorted(all_names):
-            # Skip objects marked for deletion (None values in cache)
+            # Handle objects marked for deletion (None values in cache)
             if name in self._cached_objects and self._cached_objects[name] is None:
+                # Include deleted objects with info from published version
+                if name in self._published_objects:
+                    model = self._published_objects[name]
+                    # Extract source name from source field
+                    source_name = None
+                    if model.source:
+                        if isinstance(model.source, str):
+                            source_name = model.source
+                        elif hasattr(model.source, "name"):
+                            source_name = model.source.name
+                    result.append({
+                        "name": name,
+                        "status": ObjectStatus.DELETED.value,
+                        "sql": model.sql,
+                        "source": source_name,
+                        "config": model.model_dump(exclude_none=True),
+                    })
                 continue
 
             model_info = self.get_model_with_status(name)

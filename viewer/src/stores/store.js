@@ -10,6 +10,7 @@ import createInsightSlice from './insightStore';
 import createWorksheetSlice from './worksheetStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
 import createModelSlice from './modelStore';
+import createPublishSlice from './publishStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -24,6 +25,7 @@ const useStore = create(
     ...createWorksheetSlice(...a),
     ...createSourceSlice(...a),
     ...createModelSlice(...a),
+    ...createPublishSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: state => ({ scrollPositions: state.scrollPositions }),

@@ -116,6 +116,8 @@ class SourceManager(ObjectManager[Source]):
         """
         Get all sources (cached + published) with status info.
 
+        Includes sources marked for deletion with DELETED status.
+
         Returns:
             List of dictionaries with source info and status
         """
@@ -123,8 +125,17 @@ class SourceManager(ObjectManager[Source]):
         all_names = set(self._cached_objects.keys()) | set(self._published_objects.keys())
 
         for name in sorted(all_names):
-            # Skip objects marked for deletion (None values in cache)
+            # Handle objects marked for deletion (None values in cache)
             if name in self._cached_objects and self._cached_objects[name] is None:
+                # Include deleted objects with info from published version
+                if name in self._published_objects:
+                    source = self._published_objects[name]
+                    result.append({
+                        "name": name,
+                        "status": ObjectStatus.DELETED.value,
+                        "type": source.type if hasattr(source, "type") else None,
+                        "config": source.model_dump(exclude_none=True),
+                    })
                 continue
 
             source_info = self.get_source_with_status(name)

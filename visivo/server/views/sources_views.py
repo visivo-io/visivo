@@ -230,16 +230,24 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/sources/<source_name>/", methods=["DELETE"])
-    def delete_cached_source(source_name):
-        """Delete source from cache (revert to published version)."""
+    def delete_source(source_name):
+        """Mark a source for deletion (will be removed from YAML on publish)."""
         try:
-            deleted = flask_app.source_manager.delete_from_cache(source_name)
-            if deleted:
-                return jsonify({"message": f"Source '{source_name}' removed from cache"}), 200
+            marked = flask_app.source_manager.mark_for_deletion(source_name)
+            if marked:
+                return (
+                    jsonify(
+                        {
+                            "message": f"Source '{source_name}' marked for deletion",
+                            "status": "deleted",
+                        }
+                    ),
+                    200,
+                )
             else:
-                return jsonify({"message": f"Source '{source_name}' not in cache"}), 200
+                return jsonify({"error": f"Source '{source_name}' not found"}), 404
         except Exception as e:
-            Logger.instance().error(f"Error deleting cached source: {str(e)}")
+            Logger.instance().error(f"Error deleting source: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/sources/<source_name>/validate/", methods=["POST"])

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../stores/store';
 import RefSelector from './RefSelector';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { Button, ButtonOutline } from '../../styled/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -12,6 +15,8 @@ import RefSelector from './RefSelector';
  */
 const ModelEditForm = ({ model, onSave, onCancel }) => {
   const saveModel = useStore(state => state.saveModel);
+  const deleteModel = useStore(state => state.deleteModel);
+  const checkPublishStatus = useStore(state => state.checkPublishStatus);
   const fetchSources = useStore(state => state.fetchSources);
 
   const isCreate = !model;
@@ -22,6 +27,8 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
   const [source, setSource] = useState(null); // Stored as ref(name) format
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Initialize form with model data
   useEffect(() => {
@@ -72,7 +79,29 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const result = await deleteModel(model.name);
+      if (result.success) {
+        await checkPublishStatus();
+        onCancel();
+      } else {
+        setError(result.error || 'Failed to delete model');
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to delete model');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const isValid = name.trim() && sql.trim();
+  const isNewObject = model?.status === 'new';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -140,33 +169,77 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         helperText="Select a source to run the SQL query against, or leave empty to use the default source."
       />
 
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && !isCreate && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-700 mb-2">
+            {isNewObject
+              ? 'Are you sure you want to delete this model? This will discard your unsaved changes.'
+              : 'Are you sure you want to delete this model? This will mark it for deletion and remove it from YAML when you publish.'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={deleting}
+              className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Action buttons */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className={`
-            px-4 py-2 text-sm font-medium
-            text-gray-700 bg-white border border-gray-300 rounded-md
-            hover:bg-gray-50
-            disabled:opacity-50 disabled:cursor-not-allowed
-          `}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={!isValid || saving}
-          className={`
-            px-4 py-2 text-sm font-medium
-            text-white bg-indigo-600 rounded-md
-            hover:bg-indigo-700
-            disabled:opacity-50 disabled:cursor-not-allowed
-          `}
-        >
-          {saving ? 'Saving...' : isCreate ? 'Create Model' : 'Save Changes'}
-        </button>
+      <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
+        {/* Delete button - only in edit mode */}
+        <div>
+          {!isCreate && !showDeleteConfirm && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+              title="Delete model"
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <ButtonOutline
+            type="button"
+            onClick={onCancel}
+            disabled={saving || deleting}
+            className="text-sm"
+          >
+            Cancel
+          </ButtonOutline>
+          <Button
+            type="submit"
+            disabled={!isValid || saving || deleting}
+            className="text-sm"
+          >
+            {saving ? (
+              <>
+                <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                Saving...
+              </>
+            ) : isCreate ? (
+              'Create Model'
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );
