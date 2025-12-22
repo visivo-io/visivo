@@ -15,6 +15,13 @@ const yieldToMain = () => {
 };
 
 /**
+ * Check if a value looks like an ISO date string (YYYY-MM-DD format).
+ * @param {*} v - Value to check
+ * @returns {boolean} - True if value matches ISO date format
+ */
+const isIsoDateString = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+
+/**
  * Compute accessor values for a single-select input.
  * Single-select inputs have only a `.value` accessor.
  *
@@ -35,8 +42,9 @@ const computeSingleSelectAccessors = selectedValue => {
  * Compute accessor values for a multi-select input.
  * Multi-select inputs have .values, .min, .max, .first, .last accessors.
  *
- * Values are returned as-is without any quoting.
- * Users must handle SQL quoting in their queries if needed.
+ * .values returns raw comma-separated values (no SQL quoting - users handle quoting in YAML).
+ * .min/.max work for both numeric values and ISO date strings (YYYY-MM-DD).
+ * .first/.last return raw values.
  *
  * @param {Array} selectedValues - Array of selected values
  * @returns {Object} - Accessor object { values, min, max, first, last }
@@ -46,17 +54,37 @@ const computeMultiSelectAccessors = selectedValues => {
     return { values: null, min: null, max: null, first: null, last: null };
   }
 
-  // Join values as-is, no quoting
+  // Join values as-is (no quoting - users handle SQL quoting in their YAML queries)
   const values = selectedValues.join(',');
 
-  // Extract numeric values for min/max
+  // Compute min/max - works for both numbers and ISO date strings
+  let min = null;
+  let max = null;
+
+  // Check if all values are numeric
   const numericValues = selectedValues.filter(v => typeof v === 'number' || !isNaN(Number(v)));
-  const parsedNumerics = numericValues.map(v => (typeof v === 'number' ? v : Number(v)));
+
+  if (numericValues.length === selectedValues.length && numericValues.length > 0) {
+    // All values are numeric - use Math.min/max
+    const parsed = numericValues.map(v => (typeof v === 'number' ? v : Number(v)));
+    min = Math.min(...parsed);
+    max = Math.max(...parsed);
+  } else {
+    // Check if all values are ISO date strings
+    const dateValues = selectedValues.filter(isIsoDateString);
+
+    if (dateValues.length === selectedValues.length && dateValues.length > 0) {
+      // All values are date strings - sort lexicographically (works for ISO dates)
+      const sorted = [...dateValues].sort();
+      min = sorted[0];
+      max = sorted[sorted.length - 1];
+    }
+  }
 
   return {
-    values,
-    min: parsedNumerics.length > 0 ? Math.min(...parsedNumerics) : null,
-    max: parsedNumerics.length > 0 ? Math.max(...parsedNumerics) : null,
+    values, // Raw comma-separated: "val1,val2"
+    min,
+    max,
     first: selectedValues[0],
     last: selectedValues[selectedValues.length - 1],
   };

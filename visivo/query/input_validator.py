@@ -231,12 +231,23 @@ def validate_insight_with_inputs(
             if input_type == "single-select":
                 accessor_values[input_name]["value"] = value
             else:
-                # Multi-select - compute all accessors
-                accessor_values[input_name]["values"] = f"'{value}'"
-                accessor_values[input_name]["min"] = value
-                accessor_values[input_name]["max"] = value
-                accessor_values[input_name]["first"] = value
-                accessor_values[input_name]["last"] = value
+                # Multi-select - compute realistic accessor values
+                options = inputs_dict[input_name]
+
+                # .values is raw comma-separated (users handle SQL quoting in YAML)
+                # Use first 2 options as sample (or all if fewer)
+                sample_options = options[:2] if len(options) >= 2 else options
+                accessor_values[input_name]["values"] = ",".join(sample_options)
+
+                # Use first/last options for .first/.last accessors
+                accessor_values[input_name]["first"] = options[0] if options else value
+                accessor_values[input_name]["last"] = options[-1] if options else value
+
+                # Use sorted options for .min/.max to get actual min/max values
+                # Sorting works for both numeric strings and ISO date strings
+                sorted_options = sorted(options)
+                accessor_values[input_name]["min"] = sorted_options[0] if sorted_options else value
+                accessor_values[input_name]["max"] = sorted_options[-1] if sorted_options else value
 
         # Inject values into query
         query_with_values = inject_input_accessor_values(query, accessor_values)

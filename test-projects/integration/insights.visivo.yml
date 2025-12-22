@@ -271,7 +271,7 @@ insights:
       marker:
         color: ["#713B57", "#4F494C", "#D25946"]
     interactions:
-      - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(static_date_range).first}' AND ${ref(daily_metrics).formatted_date} <= '${ref(static_date_range).last}'}
+      - filter: ?{${ref(daily_metrics).date} between '${ref(static_date_range).min}'::date AND '${ref(static_date_range).max}'::date}
 
   # Week selector test - filter by week start
   - name: week-selector-insight

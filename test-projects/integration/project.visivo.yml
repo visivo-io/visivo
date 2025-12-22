@@ -153,7 +153,7 @@ inputs:
     type: multi-select
     range:
       start: "2024-01-01"
-      end: "2024-01-31"
+      end: "2025-01-31"
       step: "1 day"
     display:
       type: date-range
