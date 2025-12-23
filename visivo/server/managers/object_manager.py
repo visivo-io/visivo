@@ -1,7 +1,11 @@
+import re
 from abc import ABC, abstractmethod
 from enum import Enum
 from threading import Lock
-from typing import Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
+from visivo.models.base.context_string import ContextString
+from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
 
 T = TypeVar("T")
 
@@ -247,3 +251,55 @@ class ObjectManager(ABC, Generic[T]):
             if status in (ObjectStatus.NEW, ObjectStatus.MODIFIED, ObjectStatus.DELETED):
                 return True
         return False
+
+    def _serialize_object(
+        self, name: str, obj: T, status: Optional[ObjectStatus]
+    ) -> Dict[str, Any]:
+        """
+        Serialize an object with consistent structure.
+
+        Provides a standard format for API responses:
+        - name: Object identifier
+        - status: Object state (new, modified, published, deleted)
+        - child_item_names: List of dependency names (from child_items())
+        - config: Full Pydantic model dump
+
+        Args:
+            name: The object's name/identifier
+            obj: The object to serialize
+            status: The object's current status
+
+        Returns:
+            Dictionary with consistent structure for API response
+        """
+        child_names = []
+        if hasattr(obj, "child_items"):
+            for child in obj.child_items():
+                if hasattr(child, "name") and child.name:
+                    # Child is an object with a name attribute
+                    child_names.append(child.name)
+                elif isinstance(child, ContextString):
+                    # Child is a ContextString like ${ref(source_name)}
+                    ref_name = child.get_reference()
+                    if ref_name:
+                        child_names.append(ref_name)
+                elif isinstance(child, str):
+                    # Child could be a ref string in two formats:
+                    # 1. ${ref(source_name)} - context string format
+                    # 2. ref(source_name) - simple ref format
+                    ref_names = extract_ref_names(child)
+                    if ref_names:
+                        child_names.extend(ref_names)
+                    else:
+                        # Try simple ref() format: ref(name)
+                        match = re.match(REF_FUNCTION_PATTERN, child)
+                        if match:
+                            model_name = match.group("model_name").strip("'\"")
+                            child_names.append(model_name)
+
+        return {
+            "name": name,
+            "status": status.value if status else None,
+            "child_item_names": child_names,
+            "config": obj.model_dump(exclude_none=True),
+        }

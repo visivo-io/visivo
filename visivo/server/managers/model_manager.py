@@ -21,22 +21,6 @@ class ModelManager(ObjectManager[SqlModel]):
         super().__init__()
         self._model_adapter = TypeAdapter(SqlModel)
 
-    def _get_child_item_names(self, model: SqlModel) -> List[str]:
-        """
-        Extract names from model's child_items (sources it depends on).
-
-        Args:
-            model: The SqlModel to get child item names from
-
-        Returns:
-            List of child item names (typically source names)
-        """
-        names = []
-        for child in model.child_items():
-            if hasattr(child, "name") and child.name:
-                names.append(child.name)
-        return names
-
     def validate_object(self, obj_data: dict) -> SqlModel:
         """
         Validate model configuration using Pydantic.
@@ -98,29 +82,7 @@ class ModelManager(ObjectManager[SqlModel]):
             return None
 
         status = self.get_status(name)
-
-        # Extract source value from source field
-        # Can be: ContextString, ref string, or inline source object
-        source_value = None
-        if model.source:
-            if hasattr(model.source, "value"):
-                # ContextString object - get the raw value like ${ref(name)}
-                source_value = model.source.value
-            elif isinstance(model.source, str):
-                # Plain string (ref format or name)
-                source_value = model.source
-            elif hasattr(model.source, "name"):
-                # Inline source object
-                source_value = model.source.name
-
-        return {
-            "name": name,
-            "status": status.value if status else None,
-            "sql": model.sql,
-            "source": source_value,
-            "child_item_names": self._get_child_item_names(model),
-            "config": model.model_dump(exclude_none=True),
-        }
+        return self._serialize_object(name, model, status)
 
     def get_all_models_with_status(self) -> List[Dict[str, Any]]:
         """
@@ -140,29 +102,7 @@ class ModelManager(ObjectManager[SqlModel]):
                 # Include deleted objects with info from published version
                 if name in self._published_objects:
                     model = self._published_objects[name]
-                    # Extract source value from source field
-                    # Can be: ContextString, ref string, or inline source object
-                    source_value = None
-                    if model.source:
-                        if hasattr(model.source, "value"):
-                            # ContextString object - get the raw value like ${ref(name)}
-                            source_value = model.source.value
-                        elif isinstance(model.source, str):
-                            # Plain string (ref format or name)
-                            source_value = model.source
-                        elif hasattr(model.source, "name"):
-                            # Inline source object
-                            source_value = model.source.name
-                    result.append(
-                        {
-                            "name": name,
-                            "status": ObjectStatus.DELETED.value,
-                            "sql": model.sql,
-                            "source": source_value,
-                            "child_item_names": self._get_child_item_names(model),
-                            "config": model.model_dump(exclude_none=True),
-                        }
-                    )
+                    result.append(self._serialize_object(name, model, ObjectStatus.DELETED))
                 continue
 
             model_info = self.get_model_with_status(name)

@@ -59,7 +59,7 @@ export function useLineageDag() {
         type: 'sourceNode',
         data: {
           name: source.name,
-          type: source.type,
+          type: source.config?.type,
           status: source.status,
           source: source,
           objectType: 'source',
@@ -75,8 +75,8 @@ export function useLineageDag() {
         type: 'modelNode',
         data: {
           name: model.name,
-          sql: model.sql,
-          source: model.source,
+          sql: model.config?.sql,
+          source: model.config?.source,
           status: model.status,
           model: model,
           objectType: 'model',

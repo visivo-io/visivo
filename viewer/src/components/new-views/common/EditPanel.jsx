@@ -46,9 +46,9 @@ const EditPanel = ({ source, model, objectType = 'source', isCreate, onClose, on
   useEffect(() => {
     if (source && !isModel) {
       // Edit mode - populate from existing source
-      // API returns: { name, status, type, config: { name, type, ...props } }
+      // API returns: { name, status, child_item_names, config: { name, type, ...props } }
       setName(source.name || '');
-      setSourceType(source.type || '');
+      setSourceType(source.config?.type || '');
 
       // Extract form values from the nested config object
       // The config object contains the full source including name and type

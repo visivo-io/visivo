@@ -35,9 +35,9 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
   useEffect(() => {
     if (model) {
       setName(model.name || '');
-      setSql(model.sql || model.config?.sql || '');
+      setSql(model.config?.sql || '');
       // Source comes from API already in ref() format (or null)
-      setSource(model.source || model.config?.source || null);
+      setSource(model.config?.source || null);
     } else {
       setName('');
       setSql('');

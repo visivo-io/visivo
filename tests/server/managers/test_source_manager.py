@@ -155,8 +155,8 @@ class TestSourceManager:
 
         assert result["name"] == "cached_src"
         assert result["status"] == ObjectStatus.NEW.value
-        assert result["type"] == "sqlite"
-        assert "config" in result
+        assert result["config"]["type"] == "sqlite"
+        assert "child_item_names" in result
 
     def test_get_source_with_status_published(self):
         """Test get_source_with_status for published source."""
@@ -210,8 +210,8 @@ class TestSourceManager:
         assert "published" in names
         assert "cached" in names
 
-    def test_get_all_sources_with_status_excludes_deleted(self):
-        """Test get_all_sources_with_status excludes marked-for-deletion."""
+    def test_get_all_sources_with_status_includes_deleted_with_status(self):
+        """Test get_all_sources_with_status includes deleted items with DELETED status."""
         manager = SourceManager()
         source = SourceFactory.build(name="to_delete")
         manager._published_objects["to_delete"] = source
@@ -220,7 +220,9 @@ class TestSourceManager:
         result = manager.get_all_sources_with_status()
 
         names = [r["name"] for r in result]
-        assert "to_delete" not in names
+        assert "to_delete" in names
+        deleted_item = next(r for r in result if r["name"] == "to_delete")
+        assert deleted_item["status"] == ObjectStatus.DELETED.value
 
     def test_get_sources_list(self):
         """Test get_sources_list returns list of Source objects."""

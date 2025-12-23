@@ -105,12 +105,7 @@ class SourceManager(ObjectManager[Source]):
             return None
 
         status = self.get_status(name)
-        return {
-            "name": name,
-            "status": status.value if status else None,
-            "type": source.type if hasattr(source, "type") else None,
-            "config": source.model_dump(exclude_none=True),
-        }
+        return self._serialize_object(name, source, status)
 
     def get_all_sources_with_status(self) -> List[Dict[str, Any]]:
         """
@@ -130,12 +125,7 @@ class SourceManager(ObjectManager[Source]):
                 # Include deleted objects with info from published version
                 if name in self._published_objects:
                     source = self._published_objects[name]
-                    result.append({
-                        "name": name,
-                        "status": ObjectStatus.DELETED.value,
-                        "type": source.type if hasattr(source, "type") else None,
-                        "config": source.model_dump(exclude_none=True),
-                    })
+                    result.append(self._serialize_object(name, source, ObjectStatus.DELETED))
                 continue
 
             source_info = self.get_source_with_status(name)
