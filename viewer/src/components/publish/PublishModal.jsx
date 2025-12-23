@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 import useStore, { ObjectStatus } from '../../stores/store';
-import { getTypeByValue } from '../new-views/common/objectTypes';
+import { getTypeByValue } from '../new-views/common/objectTypeConfigs';
 
 const StatusBadge = ({ status }) => {
   const colorMap = {

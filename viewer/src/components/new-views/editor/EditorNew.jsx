@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import useStore from '../../../stores/store';
 import SourceSearch from './SourceSearch';
-import { EditPanel, CreateButton, ObjectList, ObjectTypeFilter, getTypeByValue, DEFAULT_COLORS } from '../common';
+import EditPanel from '../common/EditPanel';
+import CreateButton from '../common/CreateButton';
+import ObjectList from '../common/ObjectList';
+import ObjectTypeFilter from '../common/ObjectTypeFilter';
+import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
  * EditorNew - New editor view for sources and models

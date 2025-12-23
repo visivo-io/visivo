@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckIcon from '@mui/icons-material/Check';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { OBJECT_TYPES, DEFAULT_COLORS } from './objectTypes';
+import { OBJECT_TYPES, DEFAULT_COLORS } from './objectTypeConfigs';
 
 /**
  * ObjectTypeFilter - Dropdown multiselect for filtering by object type

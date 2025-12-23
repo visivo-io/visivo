@@ -1,6 +1,6 @@
 import React from 'react';
 import { ObjectStatus } from '../../../stores/store';
-import { getTypeByValue, DEFAULT_COLORS } from './objectTypes';
+import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 
 /**
  * StatusDot - Visual indicator for object status

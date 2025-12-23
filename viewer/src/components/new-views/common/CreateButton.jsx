@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import { getEnabledTypes } from './objectTypes';
+import { getEnabledTypes } from './objectTypeConfigs';
 
 /**
  * CreateButton - Floating action button with object type menu

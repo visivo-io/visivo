@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { ObjectStatus } from '../../../stores/store';
 import EditIcon from '@mui/icons-material/Edit';
-import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypes';
+import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
  * ModelNode - Custom React Flow node for models

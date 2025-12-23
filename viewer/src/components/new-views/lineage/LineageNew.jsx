@@ -4,7 +4,8 @@ import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
-import { EditPanel, CreateButton } from '../common';
+import EditPanel from '../common/EditPanel';
+import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 import { MdOutlineZoomOutMap } from 'react-icons/md';
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import useStore from '../../../stores/store';
-import { getTypeByValue, DEFAULT_COLORS } from './objectTypes';
+import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 
 /**
  * Extract name from a ref string: ${ref(name)} or ref(name) -> name

@@ -9,7 +9,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { getTypeByValue } from './objectTypes';
+import { getTypeByValue } from './objectTypeConfigs';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources and models

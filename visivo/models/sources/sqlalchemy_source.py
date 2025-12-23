@@ -251,11 +251,6 @@ class SqlalchemySource(Source, ABC):
 
         return get_sqlglot_dialect(self.get_dialect())
 
-    def get_sqlglot_dialect(self):
-        from visivo.query.sqlglot_utils import get_sqlglot_dialect
-
-        return get_sqlglot_dialect(self.get_dialect())
-
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """
         Build SQLGlot schema for this source.
