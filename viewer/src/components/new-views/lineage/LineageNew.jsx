@@ -9,37 +9,142 @@ import { Button } from '../../styled/Button';
 import { MdOutlineZoomOutMap } from 'react-icons/md';
 
 /**
- * Parse selector for sources and models
- * Supports: name, +name+, comma-separated list
+ * Build adjacency lists from edges for graph traversal
  */
-const parseSelector = (selector, sources, models) => {
-  if (!selector.trim()) {
-    // Return all node IDs
-    const sourceIds = (sources || []).map(s => `source-${s.name}`);
-    const modelIds = (models || []).map(m => `model-${m.name}`);
-    return new Set([...sourceIds, ...modelIds]);
+const buildAdjacencyLists = edges => {
+  const children = {}; // node -> [downstream nodes]
+  const parents = {};  // node -> [upstream nodes]
+
+  edges.forEach(edge => {
+    if (!children[edge.source]) children[edge.source] = [];
+    if (!parents[edge.target]) parents[edge.target] = [];
+    children[edge.source].push(edge.target);
+    parents[edge.target].push(edge.source);
+  });
+
+  return { children, parents };
+};
+
+/**
+ * Get all descendants (downstream) of a node, optionally limited by generations
+ */
+const getDescendants = (startNode, children, generations = Infinity) => {
+  const descendants = new Set();
+  const queue = [{ node: startNode, depth: 0 }];
+
+  while (queue.length > 0) {
+    const { node, depth } = queue.shift();
+    if (depth > generations) continue;
+    if (!descendants.has(node)) {
+      descendants.add(node);
+      if (depth < generations) {
+        const nodeChildren = children[node] || [];
+        nodeChildren.forEach(child => queue.push({ node: child, depth: depth + 1 }));
+      }
+    }
   }
 
-  const sourceNames = new Set((sources || []).map(s => s.name));
-  const modelNames = new Set((models || []).map(m => m.name));
+  return descendants;
+};
+
+/**
+ * Get all ancestors (upstream) of a node, optionally limited by generations
+ */
+const getAncestors = (startNode, parents, generations = Infinity) => {
+  const ancestors = new Set();
+  const queue = [{ node: startNode, depth: 0 }];
+
+  while (queue.length > 0) {
+    const { node, depth } = queue.shift();
+    if (depth > generations) continue;
+    if (!ancestors.has(node)) {
+      ancestors.add(node);
+      if (depth < generations) {
+        const nodeParents = parents[node] || [];
+        nodeParents.forEach(parent => queue.push({ node: parent, depth: depth + 1 }));
+      }
+    }
+  }
+
+  return ancestors;
+};
+
+/**
+ * Parse selector for sources and models
+ * Supports dbt-style selectors:
+ * - name: just that node
+ * - +name: node and all ancestors (upstream)
+ * - name+: node and all descendants (downstream)
+ * - +name+: node and all ancestors and descendants
+ * - 2+name: node and 2 generations of ancestors
+ * - name+3: node and 3 generations of descendants
+ * - comma-separated list of any of the above
+ */
+const parseSelector = (selector, nodes, edges) => {
+  const allNodeIds = new Set(nodes.map(n => n.id));
+
+  if (!selector.trim()) {
+    return allNodeIds;
+  }
+
+  const { children, parents } = buildAdjacencyLists(edges);
   const terms = selector.split(',').map(term => term.trim());
   const selected = new Set();
 
   terms.forEach(term => {
-    // Remove + modifiers and extract the name (and optional prefix)
-    let name = term.replace(/^\d*\+/, '').replace(/\+\d*$/, '');
+    // Parse the selector term: [n]+name[+[n]]
+    // eslint-disable-next-line no-useless-escape
+    const match = term.match(/^(?:(\d*)(\+))?([^\+]+)(?:(\+)(\d*)?)?$/);
 
-    // Check if it already has a prefix
-    if (name.startsWith('source-') || name.startsWith('model-')) {
-      selected.add(name);
-    } else {
-      // Try to match as source or model name
-      if (sourceNames.has(name)) {
-        selected.add(`source-${name}`);
-      }
-      if (modelNames.has(name)) {
-        selected.add(`model-${name}`);
-      }
+    if (!match) return;
+
+    const ancestorDigits = match[1];
+    const hasAncestorPlus = match[2] === '+';
+    let nodeName = match[3];
+    const hasDescendantPlus = match[4] === '+';
+    const descendantDigits = match[5];
+
+    // Resolve the node ID - try with prefixes if not already prefixed
+    let nodeId = null;
+    if (allNodeIds.has(nodeName)) {
+      nodeId = nodeName;
+    } else if (allNodeIds.has(`source-${nodeName}`)) {
+      nodeId = `source-${nodeName}`;
+    } else if (allNodeIds.has(`model-${nodeName}`)) {
+      nodeId = `model-${nodeName}`;
+    }
+
+    if (!nodeId) return;
+
+    // Determine ancestor generations
+    let ancestorGen = 0;
+    if (hasAncestorPlus) {
+      ancestorGen = ancestorDigits === '' || ancestorDigits === undefined
+        ? Infinity
+        : parseInt(ancestorDigits, 10);
+    }
+
+    // Determine descendant generations
+    let descendantGen = 0;
+    if (hasDescendantPlus) {
+      descendantGen = descendantDigits === '' || descendantDigits === undefined
+        ? Infinity
+        : parseInt(descendantDigits, 10);
+    }
+
+    // Add the node itself
+    selected.add(nodeId);
+
+    // Add ancestors if specified
+    if (ancestorGen > 0) {
+      const ancestors = getAncestors(nodeId, parents, ancestorGen);
+      ancestors.forEach(n => selected.add(n));
+    }
+
+    // Add descendants if specified
+    if (descendantGen > 0) {
+      const descendants = getDescendants(nodeId, children, descendantGen);
+      descendants.forEach(n => selected.add(n));
     }
   });
 
@@ -83,10 +188,10 @@ const LineageNew = () => {
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
 
-  // Parse selector and filter nodes
+  // Parse selector and filter nodes (uses DAG nodes/edges for graph traversal)
   const selectedIds = useMemo(
-    () => parseSelector(selector, sources, models),
-    [selector, sources, models]
+    () => parseSelector(selector, dagNodes, dagEdges),
+    [selector, dagNodes, dagEdges]
   );
 
   // Filter and add onEdit handler to each node's data
