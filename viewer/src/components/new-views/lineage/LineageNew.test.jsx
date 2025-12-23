@@ -209,8 +209,8 @@ describe('LineageNew', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-      expect(screen.getByText('Editing source: db')).toBeInTheDocument();
     });
+    expect(screen.getByText('Editing source: db')).toBeInTheDocument();
   });
 
   it('closes edit panel when close button is clicked', async () => {

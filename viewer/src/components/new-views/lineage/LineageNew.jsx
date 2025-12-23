@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, addEdge, applyEdgeChanges } from 'react-flow-renderer';
+import ReactFlow, { Background, Controls, MiniMap } from 'react-flow-renderer';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
 import SourceNode from './SourceNode';
@@ -158,7 +158,6 @@ const parseSelector = (selector, nodes, edges) => {
  */
 const LineageNew = () => {
   // Sources
-  const sources = useStore(state => state.sources);
   const fetchSources = useStore(state => state.fetchSources);
   const sourcesLoading = useStore(state => state.sourcesLoading);
   const sourcesError = useStore(state => state.sourcesError);

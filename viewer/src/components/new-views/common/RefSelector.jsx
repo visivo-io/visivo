@@ -138,16 +138,6 @@ const RefSelector = ({
     }
   };
 
-  // Handle multi-select change
-  const handleMultiChange = e => {
-    const selectedOptions = Array.from(e.target.selectedOptions, opt => opt.value);
-    if (selectedOptions.length === 0) {
-      onChange(null);
-    } else {
-      onChange(formatMultiRefValue(selectedOptions));
-    }
-  };
-
   // Handle checkbox toggle (for multi-select with checkboxes)
   const handleCheckboxToggle = name => {
     const newSelection = selectedValues.includes(name)

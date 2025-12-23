@@ -16,6 +16,8 @@ class TestFlaskSourceEndpoints:
         self.mock_source.type = "postgresql"
         self.mock_source.database = "test_db"
         self.mock_project.sources = [self.mock_source]
+        self.mock_project.models = []  # Required for ModelManager.load()
+        self.mock_project.defaults = None  # Required for telemetry middleware
         # Store the sources list for assertions
         self.sources_list = [self.mock_source]
 
@@ -160,9 +162,7 @@ class TestFlaskSourceEndpoints:
             data = json.loads(response.data)
             assert data["schema"] is None
             assert len(data["tables"]) == 2
-            mock_get_tables.assert_called_once_with(
-                self.sources_list, "test_source", "test_db"
-            )
+            mock_get_tables.assert_called_once_with(self.sources_list, "test_source", "test_db")
 
     def test_list_schema_tables_with_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas/<schema>/tables."""

@@ -132,7 +132,6 @@ const EditorNew = () => {
   }, [fetchSources, fetchModels]);
 
   const isPanelOpen = editingSource || editingModel || isCreating;
-  const selectedName = editingSource?.name || editingModel?.name;
   const isLoading = sourcesLoading || modelsLoading;
 
   // Get type colors for consistent theming

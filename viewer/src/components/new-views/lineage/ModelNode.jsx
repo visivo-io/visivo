@@ -10,7 +10,7 @@ import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
  */
 const ModelNode = ({ data, selected }) => {
   const [hovered, setHovered] = useState(false);
-  const { name, sql, source, status, onEdit } = data;
+  const { name, source, status, onEdit } = data;
 
   // Get type colors and icon
   const typeConfig = getTypeByValue('model');

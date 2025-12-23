@@ -136,8 +136,8 @@ describe('EditorNew', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-      expect(screen.getByText('Editing source: test_source')).toBeInTheDocument();
     });
+    expect(screen.getByText('Editing source: test_source')).toBeInTheDocument();
   });
 
   it('opens edit panel when model is selected', async () => {
@@ -155,8 +155,8 @@ describe('EditorNew', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-      expect(screen.getByText('Editing model: test_model')).toBeInTheDocument();
     });
+    expect(screen.getByText('Editing model: test_model')).toBeInTheDocument();
   });
 
   it('filters sources by search query', async () => {
