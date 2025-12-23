@@ -30,6 +30,7 @@ def compile_phase(
     output_dir: str,
     dbt_profile: str = None,
     dbt_target: str = None,
+    no_deprecation_warnings: bool = False,
 ):
     # Track parse project
     parse_start = time()
@@ -37,6 +38,14 @@ def compile_phase(
     project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
     parse_duration = round(time() - parse_start, 2)
     Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
+
+    # Run deprecation checks (non-blocking)
+    if not no_deprecation_warnings:
+        from visivo.models.deprecations import DeprecationChecker
+
+        checker = DeprecationChecker()
+        warnings = checker.check_all(project)
+        checker.report(warnings)
 
     # Collect project metrics for telemetry
     _collect_compile_telemetry(project)

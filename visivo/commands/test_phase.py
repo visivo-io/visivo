@@ -5,9 +5,17 @@ from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase
 
 
-def test_phase(output_dir: str, default_source: str, working_dir: str):
+def test_phase(
+    output_dir: str,
+    default_source: str,
+    working_dir: str,
+    no_deprecation_warnings: bool = False,
+):
     project = compile_phase(
-        default_source=default_source, working_dir=working_dir, output_dir=output_dir
+        default_source=default_source,
+        working_dir=working_dir,
+        output_dir=output_dir,
+        no_deprecation_warnings=no_deprecation_warnings,
     )
     Logger.instance().debug("Testing project")
 

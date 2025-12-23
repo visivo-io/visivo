@@ -15,6 +15,7 @@ from visivo.commands.options import (
     dbt_target,
     skip_compile,
     new,
+    no_deprecation_warnings,
 )
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
@@ -35,6 +36,7 @@ from visivo.logger.logger import Logger
 @dbt_profile
 @dbt_target
 @new
+@no_deprecation_warnings
 @click.pass_context
 def serve(
     ctx,
@@ -50,6 +52,7 @@ def serve(
     new,
     project_dir,
     pd,
+    no_deprecation_warnings,
 ):
     start_time = time()
     logger = Logger.instance()
@@ -89,6 +92,14 @@ def serve(
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
         )
+
+        # Run deprecation checks
+        if not no_deprecation_warnings:
+            from visivo.models.deprecations import DeprecationChecker
+
+            checker = DeprecationChecker()
+            warnings = checker.check_all(project)
+            checker.report(warnings)
 
     # Start the development server
     server, on_change, on_ready = serve_phase(

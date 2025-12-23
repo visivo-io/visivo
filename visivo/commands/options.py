@@ -212,3 +212,13 @@ def deployment_root(function):
         required=False,
     )(function)
     return function
+
+
+def no_deprecation_warnings(function):
+    click.option(
+        "--no-deprecation-warnings",
+        help="Suppress deprecation warnings",
+        is_flag=True,
+        default=False,
+    )(function)
+    return function
