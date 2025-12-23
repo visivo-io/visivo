@@ -55,16 +55,16 @@ class DeprecationChecker:
             return
 
         logger = Logger.instance()
-        logger.warning("=" * 60)
-        logger.warning("DEPRECATION WARNINGS")
-        logger.warning("=" * 60)
+        logger.warn("=" * 60)
+        logger.warn("DEPRECATION WARNINGS")
+        logger.warn("=" * 60)
 
         for w in warnings:
             location_str = f"\n   Location: {w.location}" if w.location else ""
-            logger.warning(
+            logger.warn(
                 f"\n[DEPRECATED] {w.feature} (removal: v{w.removal_version})\n"
                 f"   {w.message}\n"
                 f"   Migration: {w.migration}{location_str}"
             )
 
-        logger.warning("=" * 60)
+        logger.warn("=" * 60)

@@ -20,6 +20,7 @@ def serve_phase(
     project,
     server_url,
     new=False,
+    no_deprecation_warnings=False,
 ):
 
     app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
@@ -34,6 +35,7 @@ def serve_phase(
                 default_source=default_source,
                 working_dir=working_dir,
                 output_dir=output_dir,
+                no_deprecation_warnings=no_deprecation_warnings,
             )
 
             changed_dag_filter = project.dag().get_diff_dag_filter(
@@ -53,6 +55,7 @@ def serve_phase(
                 skip_compile=True,  # Don't recompile on changes, passing in just compiled one.
                 project=project,
                 server_url=server_url,
+                no_deprecation_warnings=no_deprecation_warnings,
             )
             app.project = runner.project
             if one_shot:
@@ -86,6 +89,7 @@ def serve_phase(
                 skip_compile=skip_compile,
                 project=project,
                 server_url=server_url,
+                no_deprecation_warnings=no_deprecation_warnings,
             )
             if one_shot:
                 Logger.instance().info("Closing server...")

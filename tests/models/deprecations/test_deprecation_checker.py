@@ -95,8 +95,8 @@ class TestDeprecationChecker:
             mock_instance = mock_logger.instance.return_value
             checker.report(warnings)
 
-            # Verify warning method was called multiple times
-            assert mock_instance.warning.call_count >= 3
+            # Verify warn method was called multiple times (header, warnings, footer)
+            assert mock_instance.warn.call_count >= 3
 
     def test_deprecation_checker_has_expected_checkers(self):
         """Test that DeprecationChecker has the expected checkers registered."""

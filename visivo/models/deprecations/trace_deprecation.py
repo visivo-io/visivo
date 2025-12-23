@@ -6,6 +6,7 @@ from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
 )
+from visivo.models.trace import Trace
 
 if TYPE_CHECKING:
     from visivo.models.project import Project
@@ -19,7 +20,7 @@ class TraceDeprecation(BaseDeprecationChecker):
     powerful client-side data processing with interactions.
     """
 
-    REMOVAL_VERSION = "0.6.0"
+    REMOVAL_VERSION = "2.0.0"
     FEATURE_NAME = "Trace"
     MIGRATION_GUIDE = "Convert to Insight. Use 'interactions' for client-side processing."
 
@@ -35,15 +36,11 @@ class TraceDeprecation(BaseDeprecationChecker):
         """
         warnings = []
 
-        if not hasattr(project, "traces") or not project.traces:
-            return warnings
+        # Use the project DAG to find all Trace nodes
+        traces = project.dag().get_nodes_by_types([Trace], True)
 
-        for trace in project.traces:
-            # Skip refs - only check actual trace objects
-            if isinstance(trace, str):
-                continue
-
-            trace_name = getattr(trace, "name", None) or getattr(trace, "path", "unnamed")
+        for trace in traces:
+            trace_name = getattr(trace, "name", None) or "unnamed"
             trace_path = getattr(trace, "path", None) or ""
 
             warnings.append(

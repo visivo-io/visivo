@@ -93,14 +93,6 @@ def serve(
             dbt_target=dbt_target,
         )
 
-        # Run deprecation checks
-        if not no_deprecation_warnings:
-            from visivo.models.deprecations import DeprecationChecker
-
-            checker = DeprecationChecker()
-            warnings = checker.check_all(project)
-            checker.report(warnings)
-
     # Start the development server
     server, on_change, on_ready = serve_phase(
         output_dir=output_dir,
@@ -112,6 +104,7 @@ def serve(
         project=project,
         server_url=server_url,
         new=new,
+        no_deprecation_warnings=no_deprecation_warnings,
     )
 
     logger.info(f"Initial build completed in {round(time() - start_time, 2)}s")

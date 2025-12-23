@@ -1,7 +1,7 @@
 """Deprecation checker for raw ref(name) syntax."""
 
 import re
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Any
 
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
@@ -22,7 +22,7 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
     more flexibility for field references.
     """
 
-    REMOVAL_VERSION = "0.5.0"
+    REMOVAL_VERSION = "2.0.0"
     FEATURE_NAME = "Raw ref() syntax"
     MIGRATION_GUIDE = "Replace ref(name) with ${ref(name)} format."
 
@@ -39,91 +39,30 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
         warnings = []
         bare_ref_pattern = re.compile(REF_PROPERTY_PATTERN)
 
-        # Walk through all project objects looking for bare ref patterns
-        for item in self._get_all_items(project):
-            item_warnings = self._check_item(item, bare_ref_pattern)
-            warnings.extend(item_warnings)
+        # Dump entire project to dict and recursively check all string values
+        project_data = project.model_dump(exclude_none=True)
+        self._check_recursive(project_data, bare_ref_pattern, warnings, "project")
 
         return warnings
 
-    def _get_all_items(self, project: "Project") -> list:
-        """Get all items from the project that might contain refs."""
-        items = []
-
-        # Models (common place for bare refs in source field)
-        if hasattr(project, "models") and project.models:
-            items.extend(project.models)
-
-        # Traces
-        if hasattr(project, "traces") and project.traces:
-            items.extend(project.traces)
-
-        # Charts
-        if hasattr(project, "charts") and project.charts:
-            items.extend(project.charts)
-
-        # Dashboards
-        if hasattr(project, "dashboards") and project.dashboards:
-            items.extend(project.dashboards)
-
-        # Tables
-        if hasattr(project, "tables") and project.tables:
-            items.extend(project.tables)
-
-        # Selectors
-        if hasattr(project, "selectors") and project.selectors:
-            items.extend(project.selectors)
-
-        # Insights
-        if hasattr(project, "insights") and project.insights:
-            items.extend(project.insights)
-
-        # Alerts
-        if hasattr(project, "alerts") and project.alerts:
-            items.extend(project.alerts)
-
-        return items
-
-    def _check_item(self, item, pattern: re.Pattern) -> List[DeprecationWarning]:
-        """Check a single item for bare ref patterns."""
-        warnings = []
-
-        # Check if the item itself is a bare ref string
-        if isinstance(item, str) and pattern.match(item):
-            warnings.append(self._create_warning(item, getattr(item, "path", None)))
-            return warnings
-
-        # For Pydantic models, check their field values
-        if hasattr(item, "model_dump"):
-            self._check_dict_recursive(
-                item.model_dump(exclude_none=True),
-                pattern,
-                warnings,
-                getattr(item, "path", None),
-            )
-
-        return warnings
-
-    def _check_dict_recursive(
+    def _check_recursive(
         self,
-        data: dict,
+        data: Any,
         pattern: re.Pattern,
         warnings: List[DeprecationWarning],
-        location: str = None,
+        path: str,
     ) -> None:
-        """Recursively check a dictionary for bare ref patterns."""
+        """Recursively check data structure for bare ref patterns."""
         if isinstance(data, dict):
             for key, value in data.items():
-                if isinstance(value, str) and pattern.match(value):
-                    loc = f"{location}.{key}" if location else key
-                    warnings.append(self._create_warning(value, loc))
-                elif isinstance(value, dict):
-                    self._check_dict_recursive(value, pattern, warnings, location)
-                elif isinstance(value, list):
-                    for idx, item in enumerate(value):
-                        self._check_dict_recursive(item, pattern, warnings, location)
+                new_path = f"{path}.{key}"
+                self._check_recursive(value, pattern, warnings, new_path)
+        elif isinstance(data, list):
+            for idx, item in enumerate(data):
+                new_path = f"{path}[{idx}]"
+                self._check_recursive(item, pattern, warnings, new_path)
         elif isinstance(data, str) and pattern.match(data):
-            warnings.append(self._create_warning(data, location))
+            warnings.append(self._create_warning(data, path))
 
     def _create_warning(self, ref_value: str, location: str = None) -> DeprecationWarning:
         """Create a deprecation warning for a bare ref."""
