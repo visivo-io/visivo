@@ -21,6 +21,22 @@ class ModelManager(ObjectManager[SqlModel]):
         super().__init__()
         self._model_adapter = TypeAdapter(SqlModel)
 
+    def _get_child_item_names(self, model: SqlModel) -> List[str]:
+        """
+        Extract names from model's child_items (sources it depends on).
+
+        Args:
+            model: The SqlModel to get child item names from
+
+        Returns:
+            List of child item names (typically source names)
+        """
+        names = []
+        for child in model.child_items():
+            if hasattr(child, "name") and child.name:
+                names.append(child.name)
+        return names
+
     def validate_object(self, obj_data: dict) -> SqlModel:
         """
         Validate model configuration using Pydantic.
@@ -102,6 +118,7 @@ class ModelManager(ObjectManager[SqlModel]):
             "status": status.value if status else None,
             "sql": model.sql,
             "source": source_value,
+            "child_item_names": self._get_child_item_names(model),
             "config": model.model_dump(exclude_none=True),
         }
 
@@ -142,6 +159,7 @@ class ModelManager(ObjectManager[SqlModel]):
                             "status": ObjectStatus.DELETED.value,
                             "sql": model.sql,
                             "source": source_value,
+                            "child_item_names": self._get_child_item_names(model),
                             "config": model.model_dump(exclude_none=True),
                         }
                     )

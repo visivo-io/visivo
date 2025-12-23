@@ -3,35 +3,6 @@ import dagre from 'dagre';
 import useStore from '../../../stores/store';
 
 /**
- * Extract source name from source field
- * Handles: ${ref(name)}, ref(name), string name, or object with name property
- */
-function extractSourceName(sourceField) {
-  if (!sourceField) return null;
-
-  if (typeof sourceField === 'string') {
-    // Handle ${ref(source_name)} format (context string - preferred)
-    const contextRefMatch = sourceField.match(/^\$\{ref\(([^)]+)\)\}$/);
-    if (contextRefMatch) {
-      return contextRefMatch[1];
-    }
-
-    // Handle ref(source_name) format (legacy)
-    const refMatch = sourceField.match(/^ref\(([^)]+)\)$/);
-    if (refMatch) {
-      return refMatch[1];
-    }
-    return sourceField;
-  }
-
-  if (sourceField.name) {
-    return sourceField.name;
-  }
-
-  return null;
-}
-
-/**
  * Compute layout using dagre (left-to-right)
  */
 function computeLayout(nodes, edges) {
@@ -69,38 +40,9 @@ function computeLayout(nodes, edges) {
 }
 
 /**
- * useSourceDag - Hook for building source-only DAG
- * For backward compatibility, exports as default
- */
-export default function useSourceDag() {
-  const sources = useStore(state => state.sources);
-
-  const dag = useMemo(() => {
-    const nodes = (sources || []).map(source => ({
-      id: `source-${source.name}`,
-      type: 'sourceNode',
-      data: {
-        name: source.name,
-        type: source.type,
-        status: source.status,
-        source: source,
-        objectType: 'source',
-      },
-      position: { x: 0, y: 0 }, // Will be set by layout
-    }));
-
-    const edges = [];
-    const layoutNodes = computeLayout(nodes, edges);
-
-    return { nodes: layoutNodes, edges };
-  }, [sources]);
-
-  return dag;
-}
-
-/**
  * useLineageDag - Hook for building full DAG with sources and models
  * Uses dagre for automatic left-to-right layout
+ * Uses child_item_names from backend for relationships
  */
 export function useLineageDag() {
   const sources = useStore(state => state.sources);
@@ -142,16 +84,15 @@ export function useLineageDag() {
         position: { x: 0, y: 0 }, // Will be set by layout
       });
 
-      // Create edge from source to model if source is specified
-      const sourceName = extractSourceName(model.source);
-      if (sourceName) {
+      // Create edges from model's child_item_names (sources it depends on)
+      const childNames = model.child_item_names || [];
+      childNames.forEach(childName => {
         edges.push({
-          id: `edge-${sourceName}-${model.name}`,
-          source: `source-${sourceName}`,
+          id: `edge-${childName}-${model.name}`,
+          source: `source-${childName}`,
           target: `model-${model.name}`,
-          // No style = default React Flow edge color (like original lineage)
         });
-      }
+      });
     });
 
     // Compute layout with dagre
@@ -162,3 +103,5 @@ export function useLineageDag() {
 
   return dag;
 }
+
+export default useLineageDag;

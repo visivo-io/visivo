@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import ReactFlow, { Background, Controls, MiniMap, addEdge, applyEdgeChanges } from 'react-flow-renderer';
 import useStore from '../../../stores/store';
-import { useLineageDag } from './useSourceDag';
+import { useLineageDag } from './useLineageDag';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
 import { EditPanel, CreateButton } from '../common';
