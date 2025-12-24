@@ -8,12 +8,13 @@ import { FaUserCircle } from 'react-icons/fa';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { FiAlertCircle } from 'react-icons/fi';
+import { HiOutlineCloudUpload } from 'react-icons/hi';
 import TumblerNavItem from './TumblerNavItem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { useMediaQuery, useTheme } from '@mui/material';
 
-const TopNav = ({ onDeployClick }) => {
+const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -51,6 +52,19 @@ const TopNav = ({ onDeployClick }) => {
           />
         </div>
         <div className="flex items-center gap-5 sm:gap-8">
+          {hasUnpublishedChanges && (
+            <Tooltip content="Publish changes to YAML files" placement="bottom" trigger="hover">
+              <button
+                onClick={onPublishClick}
+                className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
+              >
+                <div className="flex items-center space-x-1">
+                  {!isMobile ? <span>Publish</span> : null}
+                  <HiOutlineCloudUpload className="w-5 h-5 ml-1" />
+                </div>
+              </button>
+            </Tooltip>
+          )}
           <button
             onClick={onDeployClick}
             className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] cursor-pointer"

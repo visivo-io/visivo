@@ -9,7 +9,8 @@ import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
-import { useState } from 'react';
+import PublishModal from './publish/PublishModal';
+import { useState, useEffect } from 'react';
 
 const Home = () => {
   const error = useLoaderData();
@@ -19,6 +20,14 @@ const Home = () => {
   const [isDeployOpen, setIsDeployOpen] = useState(false);
 
   const isNewProject = useStore(state => state.isNewProject);
+  const hasUnpublishedChanges = useStore(state => state.hasUnpublishedChanges);
+  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const openPublishModal = useStore(state => state.openPublishModal);
+
+  // Check publish status on mount
+  useEffect(() => {
+    checkPublishStatus();
+  }, [checkPublishStatus]);
 
   if (isNewProject === undefined) {
     return (
@@ -92,11 +101,20 @@ const Home = () => {
     setIsDeployOpen(!isDeployOpen);
   };
 
+  const onPublishClick = () => {
+    openPublishModal();
+  };
+
   return (
     <div className="visivo-home min-h-screen bg-gray-50">
-      <TopNav onDeployClick={onDeployClick} />
+      <TopNav
+        onDeployClick={onDeployClick}
+        onPublishClick={onPublishClick}
+        hasUnpublishedChanges={hasUnpublishedChanges}
+      />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
-      <div className={'pt-14'}>
+      <PublishModal />
+      <div className={'pt-12'}>
         {isProject && (
           <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
             <Breadcrumbs />

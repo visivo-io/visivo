@@ -6,6 +6,8 @@ from visivo.server.views import register_views
 from visivo.logger.logger import Logger
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.telemetry.middleware import init_telemetry_middleware
+from visivo.server.managers.source_manager import SourceManager
+from visivo.server.managers.model_manager import ModelManager
 
 
 class FlaskApp:
@@ -24,6 +26,13 @@ class FlaskApp:
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
+        # Initialize object managers
+        self.source_manager = SourceManager()
+        self.source_manager.load(project)
+
+        self.model_manager = ModelManager()
+        self.model_manager.load(project)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -40,3 +49,6 @@ class FlaskApp:
             Serializer(project=value).dereference().model_dump_json(exclude_none=True)
         )
         self._project = value
+        # Reload object managers with new project (preserves cached objects)
+        self.source_manager.load(value)
+        self.model_manager.load(value)

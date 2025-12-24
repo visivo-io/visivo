@@ -16,6 +16,10 @@ class TestFlaskSourceEndpoints:
         self.mock_source.type = "postgresql"
         self.mock_source.database = "test_db"
         self.mock_project.sources = [self.mock_source]
+        self.mock_project.models = []  # Required for ModelManager.load()
+        self.mock_project.defaults = None  # Required for telemetry middleware
+        # Store the sources list for assertions
+        self.sources_list = [self.mock_source]
 
         # Create temp directory
         import tempfile
@@ -43,6 +47,9 @@ class TestFlaskSourceEndpoints:
                 # Create FlaskApp instance
                 self.flask_app = FlaskApp(output_dir=self.temp_dir, project=self.mock_project)
 
+        # Mock the source_manager.get_sources_list() to return our mock sources
+        self.flask_app.source_manager.get_sources_list = Mock(return_value=self.sources_list)
+
         self.client = self.flask_app.app.test_client()
 
     def teardown_method(self):
@@ -61,7 +68,7 @@ class TestFlaskSourceEndpoints:
             assert response.status_code == 200
             data = json.loads(response.data)
             assert data["status"] == "connected"
-            mock_test.assert_called_once_with(self.mock_project.sources, "test_source")
+            mock_test.assert_called_once_with(self.sources_list, "test_source")
 
     def test_test_connection_not_found(self):
         """Test connection test for non-existent source."""
@@ -155,9 +162,7 @@ class TestFlaskSourceEndpoints:
             data = json.loads(response.data)
             assert data["schema"] is None
             assert len(data["tables"]) == 2
-            mock_get_tables.assert_called_once_with(
-                self.mock_project.sources, "test_source", "test_db"
-            )
+            mock_get_tables.assert_called_once_with(self.sources_list, "test_source", "test_db")
 
     def test_list_schema_tables_with_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas/<schema>/tables."""
@@ -178,7 +183,7 @@ class TestFlaskSourceEndpoints:
             assert data["schema"] == "public"
             assert len(data["tables"]) == 2
             mock_get_tables.assert_called_once_with(
-                self.mock_project.sources, "test_source", "test_db", "public"
+                self.sources_list, "test_source", "test_db", "public"
             )
 
     def test_list_table_columns_no_schema(self):
@@ -205,7 +210,7 @@ class TestFlaskSourceEndpoints:
             assert len(data["columns"]) == 2
             assert data["columns"][0]["name"] == "id"
             mock_get_cols.assert_called_once_with(
-                self.mock_project.sources, "test_source", "test_db", "users"
+                self.sources_list, "test_source", "test_db", "users"
             )
 
     def test_list_table_columns_with_schema(self):
@@ -232,7 +237,7 @@ class TestFlaskSourceEndpoints:
             assert data["table"] == "users"
             assert len(data["columns"]) == 2
             mock_get_cols.assert_called_once_with(
-                self.mock_project.sources, "test_source", "test_db", "users", "public"
+                self.sources_list, "test_source", "test_db", "users", "public"
             )
 
     def test_test_source_connection_success(self):
@@ -347,7 +352,7 @@ class TestFlaskSourceEndpoints:
             data = json.loads(response.data)
             assert len(data["sources"]) == 1
             assert data["sources"][0]["name"] == "test_source"
-            mock_gather.assert_called_once_with(self.mock_project.sources)
+            mock_gather.assert_called_once_with(self.sources_list)
 
     def test_sources_metadata_error(self):
         """Test sources_metadata error handling."""
@@ -396,7 +401,7 @@ class TestFlaskSourceEndpoints:
                 response = self.client.get(f"/api/project/sources/{source_name}/test-connection/")
 
                 assert response.status_code == 200
-                mock_test.assert_called_with(self.mock_project.sources, source_name)
+                mock_test.assert_called_with(self.sources_list, source_name)
 
     def test_multiple_path_parameters(self):
         """Test endpoints with multiple path parameters."""
@@ -414,5 +419,5 @@ class TestFlaskSourceEndpoints:
 
             assert response.status_code == 200
             mock_get_tables.assert_called_once_with(
-                self.mock_project.sources, "my_source", "my_db", "my_schema"
+                self.sources_list, "my_source", "my_db", "my_schema"
             )

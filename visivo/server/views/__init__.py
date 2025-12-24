@@ -4,7 +4,9 @@ from visivo.server.views.dashboard_views import register_dashboard_views
 from visivo.server.views.data_views import register_data_views
 from visivo.server.views.editor_views import register_editor_views
 from visivo.server.views.insight_views import register_insight_views
+from visivo.server.views.model_views import register_model_views
 from visivo.server.views.project_views import register_project_views
+from visivo.server.views.publish_views import register_publish_views
 from visivo.server.views.sources_views import register_source_views
 from visivo.server.views.trace_views import register_trace_views
 from visivo.server.views.worksheet_views import register_worksheet_views
@@ -19,5 +21,7 @@ def register_views(app, flask_app, output_dir):
     register_trace_views(app, flask_app, output_dir)
     register_insight_views(app, flask_app, output_dir)
     register_source_views(app, flask_app, output_dir)
+    register_model_views(app, flask_app, output_dir)
+    register_publish_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)
