@@ -9,6 +9,7 @@ from visivo.commands.options import (
     dbt_target,
     skip_compile,
     port,
+    no_deprecation_warnings,
 )
 
 
@@ -22,6 +23,7 @@ from visivo.commands.options import (
 @dbt_target
 @skip_compile
 @port
+@no_deprecation_warnings
 def run(
     output_dir,
     working_dir,
@@ -32,6 +34,7 @@ def run(
     dbt_target,
     skip_compile,
     port,
+    no_deprecation_warnings,
 ):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
@@ -63,6 +66,7 @@ def run(
         dbt_target=dbt_target,
         skip_compile=skip_compile,
         project=project,
+        no_deprecation_warnings=no_deprecation_warnings,
     )
 
     Logger.instance().success("Done")

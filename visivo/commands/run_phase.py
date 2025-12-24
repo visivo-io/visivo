@@ -25,6 +25,7 @@ def run_phase(
     skip_compile: bool = False,
     project: Project = None,
     server_url: str = None,
+    no_deprecation_warnings: bool = False,
 ):
     from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
@@ -58,6 +59,7 @@ def run_phase(
             output_dir=output_dir,
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
+            no_deprecation_warnings=no_deprecation_warnings,
         )
 
     if not dag_filter or dag_filter == "":

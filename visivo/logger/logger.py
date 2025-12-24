@@ -45,6 +45,12 @@ class Logger:
         elif self.spinner:
             self.spinner.succeed(text=str(message))
 
+    def warn(self, message: str):
+        if self.echo:
+            self.echo(message)
+        elif self.spinner:
+            self.spinner.warn(text=str(message))
+
     def error(self, message: str):
         if self.echo:
             self.echo(message)

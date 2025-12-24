@@ -15,6 +15,7 @@ from visivo.commands.options import (
     dbt_target,
     skip_compile,
     new,
+    no_deprecation_warnings,
 )
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
@@ -35,6 +36,7 @@ from visivo.logger.logger import Logger
 @dbt_profile
 @dbt_target
 @new
+@no_deprecation_warnings
 @click.pass_context
 def serve(
     ctx,
@@ -50,6 +52,7 @@ def serve(
     new,
     project_dir,
     pd,
+    no_deprecation_warnings,
 ):
     start_time = time()
     logger = Logger.instance()
@@ -101,6 +104,7 @@ def serve(
         project=project,
         server_url=server_url,
         new=new,
+        no_deprecation_warnings=no_deprecation_warnings,
     )
 
     logger.info(f"Initial build completed in {round(time() - start_time, 2)}s")
