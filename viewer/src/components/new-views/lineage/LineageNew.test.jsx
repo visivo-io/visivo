@@ -68,6 +68,9 @@ jest.mock('../common/EditPanel', () => ({ source, model, isCreate, onClose }) =>
 describe('LineageNew', () => {
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
+  const mockFetchDimensions = jest.fn();
+  const mockFetchMetrics = jest.fn();
+  const mockFetchRelations = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -79,6 +82,15 @@ describe('LineageNew', () => {
     fetchModels: mockFetchModels,
     saveModel: mockSaveModel,
     modelsLoading: false,
+    dimensions: [],
+    fetchDimensions: mockFetchDimensions,
+    dimensionsLoading: false,
+    metrics: [],
+    fetchMetrics: mockFetchMetrics,
+    metricsLoading: false,
+    relations: [],
+    fetchRelations: mockFetchRelations,
+    relationsLoading: false,
   };
 
   const emptyDagData = {
@@ -104,11 +116,14 @@ describe('LineageNew', () => {
     expect(screen.getByText('Click the + button to create your first source or model')).toBeInTheDocument();
   });
 
-  it('fetches sources and models on mount', () => {
+  it('fetches all object types on mount', () => {
     render(<LineageNew />);
 
     expect(mockFetchSources).toHaveBeenCalled();
     expect(mockFetchModels).toHaveBeenCalled();
+    expect(mockFetchDimensions).toHaveBeenCalled();
+    expect(mockFetchMetrics).toHaveBeenCalled();
+    expect(mockFetchRelations).toHaveBeenCalled();
   });
 
   it('displays loading state', () => {

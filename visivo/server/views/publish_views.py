@@ -14,6 +14,9 @@ def register_publish_views(app, flask_app, output_dir):
             has_changes = (
                 flask_app.source_manager.has_unpublished_changes()
                 or flask_app.model_manager.has_unpublished_changes()
+                or flask_app.dimension_manager.has_unpublished_changes()
+                or flask_app.metric_manager.has_unpublished_changes()
+                or flask_app.relation_manager.has_unpublished_changes()
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -50,6 +53,39 @@ def register_publish_views(app, flask_app, output_dir):
                         "status": status.value,
                     }
                     pending.append(model_info)
+
+            # Get dimensions with changes
+            for name, dimension in flask_app.dimension_manager.cached_objects.items():
+                status = flask_app.dimension_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    dimension_info = {
+                        "name": name,
+                        "type": "dimension",
+                        "status": status.value,
+                    }
+                    pending.append(dimension_info)
+
+            # Get metrics with changes
+            for name, metric in flask_app.metric_manager.cached_objects.items():
+                status = flask_app.metric_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    metric_info = {
+                        "name": name,
+                        "type": "metric",
+                        "status": status.value,
+                    }
+                    pending.append(metric_info)
+
+            # Get relations with changes
+            for name, relation in flask_app.relation_manager.cached_objects.items():
+                status = flask_app.relation_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    relation_info = {
+                        "name": name,
+                        "type": "relation",
+                        "status": status.value,
+                    }
+                    pending.append(relation_info)
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -94,6 +130,51 @@ def register_publish_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
+            # Process dimensions
+            for name, dimension in flask_app.dimension_manager.cached_objects.items():
+                status = flask_app.dimension_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=dimension,
+                        status=status,
+                        published_obj=flask_app.dimension_manager.published_objects.get(name),
+                        type_key="dimensions",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process metrics
+            for name, metric in flask_app.metric_manager.cached_objects.items():
+                status = flask_app.metric_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=metric,
+                        status=status,
+                        published_obj=flask_app.metric_manager.published_objects.get(name),
+                        type_key="metrics",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process relations
+            for name, relation in flask_app.relation_manager.cached_objects.items():
+                status = flask_app.relation_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=relation,
+                        status=status,
+                        published_obj=flask_app.relation_manager.published_objects.get(name),
+                        type_key="relations",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
             if not named_children:
                 return jsonify({"message": "No changes to publish", "published_count": 0})
 
@@ -105,6 +186,9 @@ def register_publish_views(app, flask_app, output_dir):
             # Clear caches after successful write
             flask_app.source_manager.clear_cache()
             flask_app.model_manager.clear_cache()
+            flask_app.dimension_manager.clear_cache()
+            flask_app.metric_manager.clear_cache()
+            flask_app.relation_manager.clear_cache()
 
             # Trigger project reload via hot reload server if available
             if flask_app.hot_reload_server:

@@ -8,6 +8,9 @@ from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.telemetry.middleware import init_telemetry_middleware
 from visivo.server.managers.source_manager import SourceManager
 from visivo.server.managers.model_manager import ModelManager
+from visivo.server.managers.dimension_manager import DimensionManager
+from visivo.server.managers.metric_manager import MetricManager
+from visivo.server.managers.relation_manager import RelationManager
 
 
 class FlaskApp:
@@ -33,6 +36,15 @@ class FlaskApp:
         self.model_manager = ModelManager()
         self.model_manager.load(project)
 
+        self.dimension_manager = DimensionManager()
+        self.dimension_manager.load(project)
+
+        self.metric_manager = MetricManager()
+        self.metric_manager.load(project)
+
+        self.relation_manager = RelationManager()
+        self.relation_manager.load(project)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -52,3 +64,6 @@ class FlaskApp:
         # Reload object managers with new project (preserves cached objects)
         self.source_manager.load(value)
         self.model_manager.load(value)
+        self.dimension_manager.load(value)
+        self.metric_manager.load(value)
+        self.relation_manager.load(value)

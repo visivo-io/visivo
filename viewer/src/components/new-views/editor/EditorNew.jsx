@@ -8,7 +8,7 @@ import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
- * EditorNew - New editor view for sources and models
+ * EditorNew - New editor view for sources, models, dimensions, metrics, and relations
  * Completely independent of namedChildren/editorStore
  */
 const EditorNew = () => {
@@ -24,6 +24,24 @@ const EditorNew = () => {
   const modelsLoading = useStore(state => state.modelsLoading);
   const modelsError = useStore(state => state.modelsError);
 
+  // Dimensions
+  const dimensions = useStore(state => state.dimensions);
+  const fetchDimensions = useStore(state => state.fetchDimensions);
+  const dimensionsLoading = useStore(state => state.dimensionsLoading);
+  const dimensionsError = useStore(state => state.dimensionsError);
+
+  // Metrics
+  const metrics = useStore(state => state.metrics);
+  const fetchMetrics = useStore(state => state.fetchMetrics);
+  const metricsLoading = useStore(state => state.metricsLoading);
+  const metricsError = useStore(state => state.metricsError);
+
+  // Relations
+  const relations = useStore(state => state.relations);
+  const fetchRelations = useStore(state => state.fetchRelations);
+  const relationsLoading = useStore(state => state.relationsLoading);
+  const relationsError = useStore(state => state.relationsError);
+
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,22 +49,31 @@ const EditorNew = () => {
   // Editing state
   const [editingSource, setEditingSource] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
+  const [editingDimension, setEditingDimension] = useState(null);
+  const [editingMetric, setEditingMetric] = useState(null);
+  const [editingRelation, setEditingRelation] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
 
-  // Fetch sources and models on mount
+  // Fetch all object types on mount
   useEffect(() => {
     fetchSources();
     fetchModels();
-  }, [fetchSources, fetchModels]);
+    fetchDimensions();
+    fetchMetrics();
+    fetchRelations();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
   // Compute object type counts
   const typeCounts = useMemo(() => {
     return {
       source: sources?.length || 0,
       model: models?.length || 0,
+      dimension: dimensions?.length || 0,
+      metric: metrics?.length || 0,
+      relation: relations?.length || 0,
     };
-  }, [sources, models]);
+  }, [sources, models, dimensions, metrics, relations]);
 
   // Filter sources by type and search query
   const filteredSources = useMemo(() => {
@@ -96,43 +123,146 @@ const EditorNew = () => {
     return filtered;
   }, [models, selectedTypes, searchQuery]);
 
+  // Filter dimensions by type and search query
+  const filteredDimensions = useMemo(() => {
+    if (!dimensions) return [];
+
+    // If types are selected and dimension is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('dimension')) {
+      return [];
+    }
+
+    let filtered = dimensions;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        dimension =>
+          dimension.name.toLowerCase().includes(query) ||
+          (dimension.config?.expression && dimension.config.expression.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [dimensions, selectedTypes, searchQuery]);
+
+  // Filter metrics by type and search query
+  const filteredMetrics = useMemo(() => {
+    if (!metrics) return [];
+
+    // If types are selected and metric is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('metric')) {
+      return [];
+    }
+
+    let filtered = metrics;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        metric =>
+          metric.name.toLowerCase().includes(query) ||
+          (metric.config?.expression && metric.config.expression.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [metrics, selectedTypes, searchQuery]);
+
+  // Filter relations by type and search query
+  const filteredRelations = useMemo(() => {
+    if (!relations) return [];
+
+    // If types are selected and relation is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('relation')) {
+      return [];
+    }
+
+    let filtered = relations;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        relation =>
+          relation.name.toLowerCase().includes(query) ||
+          (relation.config?.condition && relation.config.condition.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [relations, selectedTypes, searchQuery]);
+
+  // Clear all editing states helper
+  const clearAllEditing = useCallback(() => {
+    setEditingSource(null);
+    setEditingModel(null);
+    setEditingDimension(null);
+    setEditingMetric(null);
+    setEditingRelation(null);
+  }, []);
+
   // Handle source selection
   const handleSourceSelect = useCallback(source => {
+    clearAllEditing();
     setEditingSource(source);
-    setEditingModel(null);
     setIsCreating(false);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle model selection
   const handleModelSelect = useCallback(model => {
+    clearAllEditing();
     setEditingModel(model);
-    setEditingSource(null);
     setIsCreating(false);
-  }, []);
+  }, [clearAllEditing]);
+
+  // Handle dimension selection
+  const handleDimensionSelect = useCallback(dimension => {
+    clearAllEditing();
+    setEditingDimension(dimension);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
+  // Handle metric selection
+  const handleMetricSelect = useCallback(metric => {
+    clearAllEditing();
+    setEditingMetric(metric);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
+  // Handle relation selection
+  const handleRelationSelect = useCallback(relation => {
+    clearAllEditing();
+    setEditingRelation(relation);
+    setIsCreating(false);
+  }, [clearAllEditing]);
 
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
-    setEditingSource(null);
-    setEditingModel(null);
+    clearAllEditing();
     setIsCreating(true);
     setCreateObjectType(objectType);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
-    setEditingSource(null);
-    setEditingModel(null);
+    clearAllEditing();
     setIsCreating(false);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle save - refresh data and close panel
   const handleSave = useCallback(async () => {
     await fetchSources();
     await fetchModels();
-  }, [fetchSources, fetchModels]);
+    await fetchDimensions();
+    await fetchMetrics();
+    await fetchRelations();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
-  const isPanelOpen = editingSource || editingModel || isCreating;
-  const isLoading = sourcesLoading || modelsLoading;
+  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -143,8 +273,19 @@ const EditorNew = () => {
   const modelColors = modelTypeConfig?.colors || DEFAULT_COLORS;
   const ModelIcon = modelTypeConfig?.icon;
 
-  const hasNoObjects = !sources?.length && !models?.length;
-  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length;
+  const dimensionTypeConfig = getTypeByValue('dimension');
+  const DimensionIcon = dimensionTypeConfig?.icon;
+
+  const metricTypeConfig = getTypeByValue('metric');
+  const MetricIcon = metricTypeConfig?.icon;
+
+  const relationTypeConfig = getTypeByValue('relation');
+  const RelationIcon = relationTypeConfig?.icon;
+
+  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length;
+  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length;
+
+  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError;
 
   return (
     <div className="flex h-[calc(100vh-48px)]">
@@ -174,9 +315,9 @@ const EditorNew = () => {
         )}
 
         {/* Error state */}
-        {(sourcesError || modelsError) && (
+        {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            Error: {sourcesError || modelsError}
+            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError}
           </div>
         )}
 
@@ -202,6 +343,39 @@ const EditorNew = () => {
                 onSelect={handleModelSelect}
                 title="Models"
                 objectType="model"
+              />
+            )}
+
+            {/* Dimensions List */}
+            {filteredDimensions.length > 0 && (
+              <ObjectList
+                objects={filteredDimensions}
+                selectedName={editingDimension?.name}
+                onSelect={handleDimensionSelect}
+                title="Dimensions"
+                objectType="dimension"
+              />
+            )}
+
+            {/* Metrics List */}
+            {filteredMetrics.length > 0 && (
+              <ObjectList
+                objects={filteredMetrics}
+                selectedName={editingMetric?.name}
+                onSelect={handleMetricSelect}
+                title="Metrics"
+                objectType="metric"
+              />
+            )}
+
+            {/* Relations List */}
+            {filteredRelations.length > 0 && (
+              <ObjectList
+                objects={filteredRelations}
+                selectedName={editingRelation?.name}
+                onSelect={handleRelationSelect}
+                title="Relations"
+                objectType="relation"
               />
             )}
           </div>
@@ -233,9 +407,24 @@ const EditorNew = () => {
                   <ModelIcon className={`w-6 h-6 ${modelColors.text}`} />
                 </div>
               )}
+              {DimensionIcon && (
+                <div className={`w-12 h-12 rounded-full ${dimensionTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
+                  <DimensionIcon className={`w-6 h-6 ${dimensionTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                </div>
+              )}
+              {MetricIcon && (
+                <div className={`w-12 h-12 rounded-full ${metricTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
+                  <MetricIcon className={`w-6 h-6 ${metricTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                </div>
+              )}
+              {RelationIcon && (
+                <div className={`w-12 h-12 rounded-full ${relationTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
+                  <RelationIcon className={`w-6 h-6 ${relationTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                </div>
+              )}
             </div>
             <div className="text-lg mb-2">Select an object to edit</div>
-            <div className="text-sm">or click the + button to create a new source or model</div>
+            <div className="text-sm">or click the + button to create a new object</div>
           </div>
         )}
 
@@ -249,6 +438,9 @@ const EditorNew = () => {
           <EditPanel
             source={editingSource}
             model={editingModel}
+            dimension={editingDimension}
+            metric={editingMetric}
+            relation={editingRelation}
             objectType={createObjectType}
             isCreate={isCreating}
             onClose={handlePanelClose}

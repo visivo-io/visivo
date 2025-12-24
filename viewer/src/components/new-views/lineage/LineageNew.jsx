@@ -4,6 +4,9 @@ import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
+import DimensionNode from './DimensionNode';
+import MetricNode from './MetricNode';
+import RelationNode from './RelationNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
@@ -113,6 +116,12 @@ const parseSelector = (selector, nodes, edges) => {
       nodeId = `source-${nodeName}`;
     } else if (allNodeIds.has(`model-${nodeName}`)) {
       nodeId = `model-${nodeName}`;
+    } else if (allNodeIds.has(`dimension-${nodeName}`)) {
+      nodeId = `dimension-${nodeName}`;
+    } else if (allNodeIds.has(`metric-${nodeName}`)) {
+      nodeId = `metric-${nodeName}`;
+    } else if (allNodeIds.has(`relation-${nodeName}`)) {
+      nodeId = `relation-${nodeName}`;
     }
 
     if (!nodeId) return;
@@ -153,7 +162,7 @@ const parseSelector = (selector, nodes, edges) => {
 };
 
 /**
- * LineageNew - New lineage view for sources and models
+ * LineageNew - New lineage view for sources, models, dimensions, metrics, and relations
  * Supports drag-to-connect edges between sources and models
  */
 const LineageNew = () => {
@@ -168,22 +177,49 @@ const LineageNew = () => {
   const saveModel = useStore(state => state.saveModel);
   const modelsLoading = useStore(state => state.modelsLoading);
 
+  // Dimensions
+  const fetchDimensions = useStore(state => state.fetchDimensions);
+  const dimensionsLoading = useStore(state => state.dimensionsLoading);
+
+  // Metrics
+  const fetchMetrics = useStore(state => state.fetchMetrics);
+  const metricsLoading = useStore(state => state.metricsLoading);
+
+  // Relations
+  const fetchRelations = useStore(state => state.fetchRelations);
+  const relationsLoading = useStore(state => state.relationsLoading);
+
   // Selector/filter state
   const [selector, setSelector] = useState('');
 
   // Editing state
   const [editingSource, setEditingSource] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
+  const [editingDimension, setEditingDimension] = useState(null);
+  const [editingMetric, setEditingMetric] = useState(null);
+  const [editingRelation, setEditingRelation] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
 
   const reactFlowInstance = useRef(null);
 
-  // Fetch sources and models on mount
+  // Fetch all object types on mount
   useEffect(() => {
     fetchSources();
     fetchModels();
-  }, [fetchSources, fetchModels]);
+    fetchDimensions();
+    fetchMetrics();
+    fetchRelations();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
+
+  // Clear all editing states helper
+  const clearAllEditing = useCallback(() => {
+    setEditingSource(null);
+    setEditingModel(null);
+    setEditingDimension(null);
+    setEditingMetric(null);
+    setEditingRelation(null);
+  }, []);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -203,18 +239,23 @@ const LineageNew = () => {
         data: {
           ...node.data,
           onEdit: obj => {
+            clearAllEditing();
             if (node.data.objectType === 'model') {
               setEditingModel(obj);
-              setEditingSource(null);
-            } else {
+            } else if (node.data.objectType === 'source') {
               setEditingSource(obj);
-              setEditingModel(null);
+            } else if (node.data.objectType === 'dimension') {
+              setEditingDimension(obj);
+            } else if (node.data.objectType === 'metric') {
+              setEditingMetric(obj);
+            } else if (node.data.objectType === 'relation') {
+              setEditingRelation(obj);
             }
             setIsCreating(false);
           },
         },
       }));
-  }, [dagNodes, selectedIds]);
+  }, [dagNodes, selectedIds, clearAllEditing]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
@@ -228,6 +269,9 @@ const LineageNew = () => {
     () => ({
       sourceNode: SourceNode,
       modelNode: ModelNode,
+      dimensionNode: DimensionNode,
+      metricNode: MetricNode,
+      relationNode: RelationNode,
     }),
     []
   );
@@ -235,15 +279,20 @@ const LineageNew = () => {
   // Handle node click - set selector to focus on this node
   const handleNodeClick = useCallback((event, node) => {
     setSelector(`+${node.id}+`);
+    clearAllEditing();
     if (node.data.objectType === 'model') {
       setEditingModel(node.data.model);
-      setEditingSource(null);
-    } else {
+    } else if (node.data.objectType === 'source') {
       setEditingSource(node.data.source);
-      setEditingModel(null);
+    } else if (node.data.objectType === 'dimension') {
+      setEditingDimension(node.data.dimension);
+    } else if (node.data.objectType === 'metric') {
+      setEditingMetric(node.data.metric);
+    } else if (node.data.objectType === 'relation') {
+      setEditingRelation(node.data.relation);
     }
     setIsCreating(false);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
@@ -307,24 +356,25 @@ const LineageNew = () => {
 
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
-    setEditingSource(null);
-    setEditingModel(null);
+    clearAllEditing();
     setIsCreating(true);
     setCreateObjectType(objectType);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
-    setEditingSource(null);
-    setEditingModel(null);
+    clearAllEditing();
     setIsCreating(false);
-  }, []);
+  }, [clearAllEditing]);
 
   // Handle save - refresh data and close panel
   const handleSave = useCallback(async () => {
     await fetchSources();
     await fetchModels();
-  }, [fetchSources, fetchModels]);
+    await fetchDimensions();
+    await fetchMetrics();
+    await fetchRelations();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
   // Fit view when selection changes
   useEffect(() => {
@@ -335,8 +385,8 @@ const LineageNew = () => {
     }
   }, [nodes.length, selectedIds]);
 
-  const isPanelOpen = editingSource || editingModel || isCreating;
-  const isLoading = sourcesLoading || modelsLoading;
+  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
@@ -419,8 +469,21 @@ const LineageNew = () => {
                 const objectType = node.data?.objectType;
                 if (status === 'new') return '#22c55e';
                 if (status === 'modified') return '#f59e0b';
-                // Different base color for models vs sources
-                return objectType === 'model' ? '#6366f1' : '#94a3b8';
+                // Different base color for different object types
+                switch (objectType) {
+                  case 'source':
+                    return '#14b8a6'; // teal
+                  case 'model':
+                    return '#6366f1'; // indigo
+                  case 'dimension':
+                    return '#a855f7'; // purple
+                  case 'metric':
+                    return '#f97316'; // orange
+                  case 'relation':
+                    return '#06b6d4'; // cyan
+                  default:
+                    return '#94a3b8'; // gray
+                }
               }}
               style={{ background: '#f1f5f9' }}
             />
@@ -436,6 +499,9 @@ const LineageNew = () => {
             <EditPanel
               source={editingSource}
               model={editingModel}
+              dimension={editingDimension}
+              metric={editingMetric}
+              relation={editingRelation}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}
