@@ -10,159 +10,9 @@ import RelationNode from './RelationNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
-import { MdOutlineZoomOutMap } from 'react-icons/md';
 
 /**
- * Build adjacency lists from edges for graph traversal
- */
-const buildAdjacencyLists = edges => {
-  const children = {}; // node -> [downstream nodes]
-  const parents = {};  // node -> [upstream nodes]
-
-  edges.forEach(edge => {
-    if (!children[edge.source]) children[edge.source] = [];
-    if (!parents[edge.target]) parents[edge.target] = [];
-    children[edge.source].push(edge.target);
-    parents[edge.target].push(edge.source);
-  });
-
-  return { children, parents };
-};
-
-/**
- * Get all descendants (downstream) of a node, optionally limited by generations
- */
-const getDescendants = (startNode, children, generations = Infinity) => {
-  const descendants = new Set();
-  const queue = [{ node: startNode, depth: 0 }];
-
-  while (queue.length > 0) {
-    const { node, depth } = queue.shift();
-    if (depth > generations) continue;
-    if (!descendants.has(node)) {
-      descendants.add(node);
-      if (depth < generations) {
-        const nodeChildren = children[node] || [];
-        nodeChildren.forEach(child => queue.push({ node: child, depth: depth + 1 }));
-      }
-    }
-  }
-
-  return descendants;
-};
-
-/**
- * Get all ancestors (upstream) of a node, optionally limited by generations
- */
-const getAncestors = (startNode, parents, generations = Infinity) => {
-  const ancestors = new Set();
-  const queue = [{ node: startNode, depth: 0 }];
-
-  while (queue.length > 0) {
-    const { node, depth } = queue.shift();
-    if (depth > generations) continue;
-    if (!ancestors.has(node)) {
-      ancestors.add(node);
-      if (depth < generations) {
-        const nodeParents = parents[node] || [];
-        nodeParents.forEach(parent => queue.push({ node: parent, depth: depth + 1 }));
-      }
-    }
-  }
-
-  return ancestors;
-};
-
-/**
- * Parse selector for sources and models
- * Supports dbt-style selectors:
- * - name: just that node
- * - +name: node and all ancestors (upstream)
- * - name+: node and all descendants (downstream)
- * - +name+: node and all ancestors and descendants
- * - 2+name: node and 2 generations of ancestors
- * - name+3: node and 3 generations of descendants
- * - comma-separated list of any of the above
- */
-const parseSelector = (selector, nodes, edges) => {
-  const allNodeIds = new Set(nodes.map(n => n.id));
-
-  if (!selector.trim()) {
-    return allNodeIds;
-  }
-
-  const { children, parents } = buildAdjacencyLists(edges);
-  const terms = selector.split(',').map(term => term.trim());
-  const selected = new Set();
-
-  terms.forEach(term => {
-    // Parse the selector term: [n]+name[+[n]]
-    // eslint-disable-next-line no-useless-escape
-    const match = term.match(/^(?:(\d*)(\+))?([^\+]+)(?:(\+)(\d*)?)?$/);
-
-    if (!match) return;
-
-    const ancestorDigits = match[1];
-    const hasAncestorPlus = match[2] === '+';
-    let nodeName = match[3];
-    const hasDescendantPlus = match[4] === '+';
-    const descendantDigits = match[5];
-
-    // Resolve the node ID - try with prefixes if not already prefixed
-    let nodeId = null;
-    if (allNodeIds.has(nodeName)) {
-      nodeId = nodeName;
-    } else if (allNodeIds.has(`source-${nodeName}`)) {
-      nodeId = `source-${nodeName}`;
-    } else if (allNodeIds.has(`model-${nodeName}`)) {
-      nodeId = `model-${nodeName}`;
-    } else if (allNodeIds.has(`dimension-${nodeName}`)) {
-      nodeId = `dimension-${nodeName}`;
-    } else if (allNodeIds.has(`metric-${nodeName}`)) {
-      nodeId = `metric-${nodeName}`;
-    } else if (allNodeIds.has(`relation-${nodeName}`)) {
-      nodeId = `relation-${nodeName}`;
-    }
-
-    if (!nodeId) return;
-
-    // Determine ancestor generations
-    let ancestorGen = 0;
-    if (hasAncestorPlus) {
-      ancestorGen = ancestorDigits === '' || ancestorDigits === undefined
-        ? Infinity
-        : parseInt(ancestorDigits, 10);
-    }
-
-    // Determine descendant generations
-    let descendantGen = 0;
-    if (hasDescendantPlus) {
-      descendantGen = descendantDigits === '' || descendantDigits === undefined
-        ? Infinity
-        : parseInt(descendantDigits, 10);
-    }
-
-    // Add the node itself
-    selected.add(nodeId);
-
-    // Add ancestors if specified
-    if (ancestorGen > 0) {
-      const ancestors = getAncestors(nodeId, parents, ancestorGen);
-      ancestors.forEach(n => selected.add(n));
-    }
-
-    // Add descendants if specified
-    if (descendantGen > 0) {
-      const descendants = getDescendants(nodeId, children, descendantGen);
-      descendants.forEach(n => selected.add(n));
-    }
-  });
-
-  return selected;
-};
-
-/**
- * LineageNew - New lineage view for sources, models, dimensions, metrics, and relations
+ * LineageNew - Lineage view for sources, models, dimensions, metrics, and relations
  * Supports drag-to-connect edges between sources and models
  */
 const LineageNew = () => {
@@ -189,9 +39,6 @@ const LineageNew = () => {
   const fetchRelations = useStore(state => state.fetchRelations);
   const relationsLoading = useStore(state => state.relationsLoading);
 
-  // Selector/filter state
-  const [selector, setSelector] = useState('');
-
   // Editing state
   const [editingSource, setEditingSource] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
@@ -200,6 +47,7 @@ const LineageNew = () => {
   const [editingRelation, setEditingRelation] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
+  const [selector, setSelector] = useState('');
 
   const reactFlowInstance = useRef(null);
 
@@ -224,38 +72,168 @@ const LineageNew = () => {
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
 
-  // Parse selector and filter nodes (uses DAG nodes/edges for graph traversal)
+  // Parse selector string into matching node IDs
+  const parseSelector = useCallback((selectorStr, nodes, edges) => {
+    if (!selectorStr.trim()) {
+      return new Set(nodes.map(n => n.id));
+    }
+
+    // Build adjacency lists for graph traversal
+    const buildAdjacencyLists = () => {
+      const children = {};
+      const parents = {};
+      nodes.forEach(n => {
+        children[n.id] = [];
+        parents[n.id] = [];
+      });
+      edges.forEach(e => {
+        if (children[e.source]) children[e.source].push(e.target);
+        if (parents[e.target]) parents[e.target].push(e.source);
+      });
+      return { children, parents };
+    };
+
+    const { children, parents } = buildAdjacencyLists();
+
+    // Get all descendants of a node
+    const getDescendants = (nodeId) => {
+      const result = new Set();
+      const queue = [nodeId];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        (children[current] || []).forEach(child => {
+          if (!result.has(child)) {
+            result.add(child);
+            queue.push(child);
+          }
+        });
+      }
+      return result;
+    };
+
+    // Get all ancestors of a node
+    const getAncestors = (nodeId) => {
+      const result = new Set();
+      const queue = [nodeId];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        (parents[current] || []).forEach(parent => {
+          if (!result.has(parent)) {
+            result.add(parent);
+            queue.push(parent);
+          }
+        });
+      }
+      return result;
+    };
+
+    const selected = new Set();
+    const parts = selectorStr.split(',').map(p => p.trim()).filter(Boolean);
+
+    parts.forEach(part => {
+      // Check for +name+ pattern (ancestors and descendants)
+      const plusMatch = part.match(/^\+(.+)\+$/);
+      if (plusMatch) {
+        const name = plusMatch[1];
+        nodes.forEach(n => {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+            selected.add(n.id);
+            getDescendants(n.id).forEach(d => selected.add(d));
+            getAncestors(n.id).forEach(a => selected.add(a));
+          }
+        });
+        return;
+      }
+
+      // Check for name+ pattern (node and descendants)
+      const suffixMatch = part.match(/^(.+)\+$/);
+      if (suffixMatch) {
+        const name = suffixMatch[1];
+        nodes.forEach(n => {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+            selected.add(n.id);
+            getDescendants(n.id).forEach(d => selected.add(d));
+          }
+        });
+        return;
+      }
+
+      // Check for +name pattern (node and ancestors)
+      const prefixMatch = part.match(/^\+(.+)$/);
+      if (prefixMatch) {
+        const name = prefixMatch[1];
+        nodes.forEach(n => {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+            selected.add(n.id);
+            getAncestors(n.id).forEach(a => selected.add(a));
+          }
+        });
+        return;
+      }
+
+      // Plain name - just select matching nodes
+      nodes.forEach(n => {
+        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}`) {
+          selected.add(n.id);
+        }
+      });
+    });
+
+    return selected;
+  }, []);
+
+  // Compute which nodes to show based on selector
   const selectedIds = useMemo(
     () => parseSelector(selector, dagNodes, dagEdges),
-    [selector, dagNodes, dagEdges]
+    [selector, dagNodes, dagEdges, parseSelector]
   );
 
-  // Filter and add onEdit handler to each node's data
+  // Filter and add onEdit handler + isEditing state to each node's data
   const nodes = useMemo(() => {
     return dagNodes
       .filter(node => selectedIds.has(node.id))
-      .map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onEdit: obj => {
-            clearAllEditing();
-            if (node.data.objectType === 'model') {
-              setEditingModel(obj);
-            } else if (node.data.objectType === 'source') {
-              setEditingSource(obj);
-            } else if (node.data.objectType === 'dimension') {
-              setEditingDimension(obj);
-            } else if (node.data.objectType === 'metric') {
-              setEditingMetric(obj);
-            } else if (node.data.objectType === 'relation') {
-              setEditingRelation(obj);
-            }
-            setIsCreating(false);
+      .map(node => {
+        // Determine if this node is currently being edited
+        let isEditing = false;
+        const objectType = node.data.objectType;
+        const nodeName = node.data.name;
+
+        if (objectType === 'source' && editingSource?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'model' && editingModel?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'dimension' && editingDimension?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'metric' && editingMetric?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'relation' && editingRelation?.name === nodeName) {
+          isEditing = true;
+        }
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            isEditing,
+            onEdit: obj => {
+              clearAllEditing();
+              if (objectType === 'model') {
+                setEditingModel(obj);
+              } else if (objectType === 'source') {
+                setEditingSource(obj);
+              } else if (objectType === 'dimension') {
+                setEditingDimension(obj);
+              } else if (objectType === 'metric') {
+                setEditingMetric(obj);
+              } else if (objectType === 'relation') {
+                setEditingRelation(obj);
+              }
+              setIsCreating(false);
+            },
           },
-        },
-      }));
-  }, [dagNodes, selectedIds, clearAllEditing]);
+        };
+      });
+  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
@@ -276,9 +254,8 @@ const LineageNew = () => {
     []
   );
 
-  // Handle node click - set selector to focus on this node
+  // Handle node click - open edit panel for the clicked node
   const handleNodeClick = useCallback((event, node) => {
-    setSelector(`+${node.id}+`);
     clearAllEditing();
     if (node.data.objectType === 'model') {
       setEditingModel(node.data.model);
@@ -344,16 +321,6 @@ const LineageNew = () => {
     [models, saveModel, fetchModels]
   );
 
-  // Zoom to fit all visible nodes
-  const handleZoomToExtents = useCallback(() => {
-    if (reactFlowInstance.current) {
-      reactFlowInstance.current.fitView({
-        padding: 0.2,
-        duration: 500,
-      });
-    }
-  }, []);
-
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
     clearAllEditing();
@@ -376,35 +343,11 @@ const LineageNew = () => {
     await fetchRelations();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
-  // Fit view when selection changes
-  useEffect(() => {
-    if (reactFlowInstance.current && nodes.length > 0) {
-      setTimeout(() => {
-        reactFlowInstance.current.fitView({ padding: 0.2, duration: 300 });
-      }, 100);
-    }
-  }, [nodes.length, selectedIds]);
-
   const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
-      {/* Selector input bar */}
-      <div className="flex flex-row gap-2 px-2 py-2 bg-white border-b border-gray-200">
-        <input
-          type="text"
-          value={selector}
-          onChange={e => setSelector(e.target.value)}
-          placeholder="e.g., 'source_name', 'model_name', or '+name+'"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        />
-        <Button onClick={() => setSelector('')}>Clear</Button>
-        <Button onClick={handleZoomToExtents}>
-          <MdOutlineZoomOutMap />
-        </Button>
-      </div>
-
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* DAG area */}

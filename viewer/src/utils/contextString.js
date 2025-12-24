@@ -15,6 +15,107 @@ const METRIC_REF_PATTERN = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?
 
 const METRIC_REF_PATTERN_GLOBAL = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?/g;
 
+/**
+ * Pattern to match ${ref(name)} or ${ref(name).property} with flexible whitespace
+ * Captures: [0] = full match, [1] = name (may have whitespace), [2] = property (optional)
+ * Handles variations like:
+ *   ${ref(name)}
+ *   ${ ref(name) }
+ *   ${ref( name )}
+ *   ${ ref( name ).property }
+ */
+export const REF_PATTERN = /\$\{\s*ref\(\s*([^)]+?)\s*\)(?:\s*\.\s*([^}\s]+))?\s*\}/g;
+
+/**
+ * Parse text into segments of plain text and refs
+ * Returns array of { type: 'text'|'ref', content, name?, property?, start, end }
+ * Handles whitespace variations in refs and normalizes the captured name
+ */
+export const parseTextWithRefs = text => {
+  if (!text) return [];
+
+  const segments = [];
+  let lastIndex = 0;
+  const regex = new RegExp(REF_PATTERN.source, 'g');
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before this ref
+    if (match.index > lastIndex) {
+      segments.push({
+        type: 'text',
+        content: text.slice(lastIndex, match.index),
+        start: lastIndex,
+        end: match.index,
+      });
+    }
+
+    // Add the ref - normalize name by trimming whitespace and quotes
+    const name = match[1].trim().replace(/^['"]|['"]$/g, '');
+    const property = match[2]?.trim() || null;
+    segments.push({
+      type: 'ref',
+      content: match[0],
+      name,
+      property,
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    segments.push({
+      type: 'text',
+      content: text.slice(lastIndex),
+      start: lastIndex,
+      end: text.length,
+    });
+  }
+
+  return segments;
+};
+
+/**
+ * Check if a position in text is inside a ${} block
+ * Used to determine whether to wrap new refs with ${}
+ */
+export const isInsideDollarBrace = (text, position) => {
+  if (!text || position < 0) return false;
+
+  // Find the last ${ before position and track brace depth
+  let depth = 0;
+  for (let i = 0; i < position && i < text.length; i++) {
+    if (text[i] === '$' && text[i + 1] === '{') {
+      depth++;
+      i++; // Skip the {
+    } else if (text[i] === '}' && depth > 0) {
+      depth--;
+    }
+  }
+
+  return depth > 0;
+};
+
+/**
+ * Format a ref string in the canonical form (no extra whitespace)
+ * Always outputs: ref(name) or ref(name).property
+ */
+export const formatRef = (name, property = null) => {
+  const cleanName = name.trim();
+  return property ? `ref(${cleanName}).${property.trim()}` : `ref(${cleanName})`;
+};
+
+/**
+ * Format a complete ref expression with ${} wrapper
+ * Always outputs: ${ref(name)} or ${ref(name).property}
+ */
+export const formatRefExpression = (name, property = null) => {
+  return `\${${formatRef(name, property)}}`;
+};
+
 export class ContextString {
   constructor(value) {
     this.value = value;

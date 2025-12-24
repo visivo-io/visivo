@@ -1,37 +1,29 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle } from 'react-flow-renderer';
 import { ObjectStatus } from '../../../stores/store';
-import EditIcon from '@mui/icons-material/Edit';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
  * ModelNode - Custom React Flow node for models
- * Shows model name with status indicator and edit button on hover
+ * Shows model name with status indicator. Click node to edit.
  */
 const ModelNode = ({ data, selected }) => {
-  const [hovered, setHovered] = useState(false);
-  const { name, source, status, onEdit } = data;
+  const { name, source, status, isEditing } = data;
+  const isHighlighted = selected || isEditing;
 
   // Get type colors and icon
   const typeConfig = getTypeByValue('model');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
-  const handleEditClick = e => {
-    e.stopPropagation();
-    onEdit && onEdit(data.model);
-  };
-
   return (
     <div
       className={`
         relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm
+        rounded-lg border-2 shadow-sm cursor-pointer
         transition-all duration-150
-        ${selected ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
+        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
       `}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       {/* Target handle (for source connections) */}
       <Handle
@@ -62,30 +54,15 @@ const ModelNode = ({ data, selected }) => {
       )}
 
       {/* Icon */}
-      {Icon && <Icon fontSize="small" className={selected ? colors.text : 'text-gray-500'} />}
+      {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
       {/* Name and source */}
       <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${selected ? colors.text : 'text-gray-800'}`}>
+        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
           {name}
         </span>
         {source && <span className="text-xs text-gray-400">source: {source}</span>}
       </div>
-
-      {/* Edit button (visible on hover) */}
-      {hovered && (
-        <button
-          onClick={handleEditClick}
-          className={`
-            ml-1 p-0.5 rounded
-            hover:bg-gray-100
-            transition-colors
-          `}
-          title="Edit model"
-        >
-          <EditIcon style={{ fontSize: 16 }} className={colors.text} />
-        </button>
-      )}
 
       {/* Source handle (for future connections to traces/downstream) */}
       <Handle

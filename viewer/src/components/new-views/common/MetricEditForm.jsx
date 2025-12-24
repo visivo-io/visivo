@@ -3,6 +3,7 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import RefTextArea from './RefTextArea';
 
 /**
  * MetricEditForm - Form component for editing/creating metrics
@@ -18,7 +19,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
 
   // Form state
   const [name, setName] = useState('');
-  const [sql, setSql] = useState('');
+  const [expression, setExpression] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -34,12 +35,12 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
     if (metric) {
       // Edit mode - populate from existing metric
       setName(metric.name || '');
-      setSql(metric.config?.sql || '');
+      setExpression(metric.config?.expression || '');
       setDescription(metric.config?.description || '');
     } else if (isCreate) {
       // Create mode - reset form
       setName('');
-      setSql('');
+      setExpression('');
       setDescription('');
     }
     setErrors({});
@@ -56,8 +57,8 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
         'Name must start with a letter and contain only letters, numbers, underscores, and hyphens';
     }
 
-    if (!sql.trim()) {
-      newErrors.sql = 'SQL expression is required';
+    if (!expression.trim()) {
+      newErrors.expression = 'Expression is required';
     }
 
     setErrors(newErrors);
@@ -72,7 +73,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
 
     const config = {
       name,
-      sql,
+      expression,
       description: description || undefined,
     };
 
@@ -141,37 +142,17 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
           {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
         </div>
 
-        {/* SQL Expression */}
-        <div className="relative">
-          <textarea
-            id="metricSql"
-            value={sql}
-            onChange={e => setSql(e.target.value)}
-            placeholder=" "
-            rows={4}
-            className={`
-              block w-full px-3 py-2.5 text-sm text-gray-900 font-mono
-              bg-white rounded-md border appearance-none
-              focus:outline-none focus:ring-2 focus:border-primary-500
-              peer placeholder-transparent resize-y
-              ${errors.sql ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-            `}
-          />
-          <label
-            htmlFor="metricSql"
-            className={`
-              absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-              bg-white px-1 left-2
-              peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-              peer-placeholder-shown:top-3
-              peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-              ${errors.sql ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-            `}
-          >
-            SQL Expression<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          {errors.sql && <p className="mt-1 text-xs text-red-500">{errors.sql}</p>}
-        </div>
+        {/* Expression */}
+        <RefTextArea
+          value={expression}
+          onChange={setExpression}
+          label="Expression"
+          required
+          error={errors.expression}
+          allowedTypes={['model', 'metric', 'dimension']}
+          rows={4}
+          helperText="SQL aggregate expression for this metric. Use the + button to insert references."
+        />
 
         {/* Description (optional) */}
         <div className="relative">

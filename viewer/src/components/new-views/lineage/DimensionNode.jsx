@@ -1,37 +1,29 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle } from 'react-flow-renderer';
 import { ObjectStatus } from '../../../stores/store';
-import EditIcon from '@mui/icons-material/Edit';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
  * DimensionNode - Custom React Flow node for dimensions
- * Shows dimension name with status indicator and edit button on hover
+ * Shows dimension name with status indicator. Click node to edit.
  */
 const DimensionNode = ({ data, selected }) => {
-  const [hovered, setHovered] = useState(false);
-  const { name, sql, status, onEdit } = data;
+  const { name, sql, status, isEditing } = data;
+  const isHighlighted = selected || isEditing;
 
   // Get type colors and icon
   const typeConfig = getTypeByValue('dimension');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
-  const handleEditClick = e => {
-    e.stopPropagation();
-    onEdit && onEdit(data.dimension);
-  };
-
   return (
     <div
       className={`
         relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm
+        rounded-lg border-2 shadow-sm cursor-pointer
         transition-all duration-150
-        ${selected ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
+        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
       `}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
       {/* Target handle (connects from models) */}
       <Handle
@@ -62,11 +54,11 @@ const DimensionNode = ({ data, selected }) => {
       )}
 
       {/* Icon */}
-      {Icon && <Icon fontSize="small" className={selected ? colors.text : 'text-gray-500'} />}
+      {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
       {/* Name and SQL preview */}
       <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${selected ? colors.text : 'text-gray-800'}`}>
+        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
           {name}
         </span>
         {sql && (
@@ -75,21 +67,6 @@ const DimensionNode = ({ data, selected }) => {
           </span>
         )}
       </div>
-
-      {/* Edit button (visible on hover) */}
-      {hovered && (
-        <button
-          onClick={handleEditClick}
-          className={`
-            ml-1 p-0.5 rounded
-            hover:bg-gray-100
-            transition-colors
-          `}
-          title="Edit dimension"
-        >
-          <EditIcon style={{ fontSize: 16 }} className={colors.text} />
-        </button>
-      )}
 
       {/* Source handle (for future connections) */}
       <Handle
