@@ -8,6 +8,10 @@ import RefTextArea from './RefTextArea';
 /**
  * DimensionEditForm - Form component for editing/creating dimensions
  *
+ * Dimensions can be either:
+ * 1. Model-scoped: Attached to a specific model, plain SQL expression (no refs)
+ * 2. Project-level (multi-model): Standalone, can use refs to reference models/dimensions
+ *
  * Props:
  * - dimension: Dimension object to edit (null for create mode)
  * - isCreate: Whether in create mode
@@ -15,12 +19,13 @@ import RefTextArea from './RefTextArea';
  * - onSave: Callback after successful save
  */
 const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
-  const { saveDimension, deleteDimension, checkPublishStatus } = useStore();
+  const { saveDimension, deleteDimension, checkPublishStatus, models, saveModel, fetchModels } = useStore();
 
   // Form state
   const [name, setName] = useState('');
   const [expression, setExpression] = useState('');
   const [description, setDescription] = useState('');
+  const [parentModel, setParentModel] = useState(''); // Empty string = project-level (multi-model)
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -29,6 +34,7 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
 
   const isEditMode = !!dimension && !isCreate;
   const isNewObject = dimension?.status === ObjectStatus.NEW;
+  const isModelScoped = !!parentModel;
 
   // Initialize form when dimension changes
   useEffect(() => {
@@ -37,11 +43,13 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
       setName(dimension.name || '');
       setExpression(dimension.config?.expression || '');
       setDescription(dimension.config?.description || '');
+      setParentModel(dimension.parentModel || '');
     } else if (isCreate) {
       // Create mode - reset form
       setName('');
       setExpression('');
       setDescription('');
+      setParentModel('');
     }
     setErrors({});
     setSaveError(null);
@@ -59,6 +67,12 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
 
     if (!expression.trim()) {
       newErrors.expression = 'Expression is required';
+    } else if (isModelScoped) {
+      // Model-scoped dimensions cannot contain ref() expressions
+      const refPattern = /\$\{\s*ref\s*\(/;
+      if (refPattern.test(expression)) {
+        newErrors.expression = 'Model-scoped dimensions cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
+      }
     }
 
     setErrors(newErrors);
@@ -71,22 +85,73 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
     setSaving(true);
     setSaveError(null);
 
-    const config = {
-      name,
-      expression,
-      description: description || undefined,
-    };
+    try {
+      if (isModelScoped) {
+        // Save as model-scoped dimension - update the parent model
+        const model = models.find(m => m.name === parentModel);
+        if (!model) {
+          setSaveError(`Model "${parentModel}" not found`);
+          setSaving(false);
+          return;
+        }
 
-    const result = await saveDimension(name, config);
+        // Build updated dimensions list
+        const existingDimensions = model.config?.dimensions || [];
+        const newDimension = {
+          name,
+          expression,
+          description: description || undefined,
+        };
+
+        // Replace or add the dimension
+        const dimensionIndex = existingDimensions.findIndex(d => d.name === name);
+        let updatedDimensions;
+        if (dimensionIndex >= 0) {
+          updatedDimensions = [...existingDimensions];
+          updatedDimensions[dimensionIndex] = newDimension;
+        } else {
+          updatedDimensions = [...existingDimensions, newDimension];
+        }
+
+        // Update the model with new dimensions
+        const updatedConfig = {
+          ...model.config,
+          name: model.name,
+          sql: model.sql || model.config?.sql,
+          dimensions: updatedDimensions,
+        };
+
+        const result = await saveModel(parentModel, updatedConfig);
+        await fetchModels();
+
+        if (result?.success) {
+          onSave && onSave(newDimension);
+          onClose();
+        } else {
+          setSaveError(result?.error || 'Failed to save dimension to model');
+        }
+      } else {
+        // Save as project-level dimension
+        const config = {
+          name,
+          expression,
+          description: description || undefined,
+        };
+
+        const result = await saveDimension(name, config);
+
+        if (result?.success) {
+          onSave && onSave(config);
+          onClose();
+        } else {
+          setSaveError(result?.error || 'Failed to save dimension');
+        }
+      }
+    } catch (error) {
+      setSaveError(error.message || 'Failed to save dimension');
+    }
 
     setSaving(false);
-
-    if (result?.success) {
-      onSave && onSave(config);
-      onClose();
-    } else {
-      setSaveError(result?.error || 'Failed to save dimension');
-    }
   };
 
   const handleDelete = async () => {
@@ -108,6 +173,40 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
+        {/* Parent Model selector */}
+        <div className="relative">
+          <select
+            id="parentModel"
+            value={parentModel}
+            onChange={e => {
+              setParentModel(e.target.value);
+              // Clear expression errors when switching modes
+              if (errors.expression) {
+                setErrors(prev => ({ ...prev, expression: null }));
+              }
+            }}
+            className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+          >
+            <option value="">Multi-model (project-level)</option>
+            {models.map(model => (
+              <option key={model.name} value={model.name}>
+                {model.name}
+              </option>
+            ))}
+          </select>
+          <label
+            htmlFor="parentModel"
+            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
+          >
+            Parent Model
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            {isModelScoped
+              ? 'This dimension will be scoped to the selected model and use plain SQL.'
+              : 'This dimension can reference multiple models using ${ref(model_name)}.'}
+          </p>
+        </div>
+
         {/* Name field */}
         <div className="relative">
           <input
@@ -142,17 +241,55 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
           {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
         </div>
 
-        {/* Expression */}
-        <RefTextArea
-          value={expression}
-          onChange={setExpression}
-          label="Expression"
-          required
-          error={errors.expression}
-          allowedTypes={['model', 'dimension']}
-          rows={4}
-          helperText="SQL expression for this dimension. Use the + button to insert references."
-        />
+        {/* Expression - different UI based on model scope */}
+        {isModelScoped ? (
+          /* Model-scoped: plain SQL textarea */
+          <div className="relative">
+            <textarea
+              id="dimensionExpression"
+              value={expression}
+              onChange={e => setExpression(e.target.value)}
+              placeholder=" "
+              rows={4}
+              className={`
+                block w-full px-3 py-2.5 text-sm text-gray-900
+                bg-white rounded-md border appearance-none
+                focus:outline-none focus:ring-2 focus:border-primary-500
+                peer placeholder-transparent resize-y font-mono
+                ${errors.expression ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
+              `}
+            />
+            <label
+              htmlFor="dimensionExpression"
+              className={`
+                absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                bg-white px-1 left-2
+                peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
+                peer-placeholder-shown:top-3
+                peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
+                ${errors.expression ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
+              `}
+            >
+              Expression<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            {errors.expression && <p className="mt-1 text-xs text-red-500">{errors.expression}</p>}
+            <p className="mt-1 text-xs text-gray-500">
+              Plain SQL expression referencing columns from the parent model.
+            </p>
+          </div>
+        ) : (
+          /* Project-level: RefTextArea with ref support */
+          <RefTextArea
+            value={expression}
+            onChange={setExpression}
+            label="Expression"
+            required
+            error={errors.expression}
+            allowedTypes={['model', 'dimension']}
+            rows={4}
+            helperText="SQL expression for this dimension. Use the + button to insert references."
+          />
+        )}
 
         {/* Description (optional) */}
         <div className="relative">
