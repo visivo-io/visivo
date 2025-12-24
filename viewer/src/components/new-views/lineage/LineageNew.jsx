@@ -348,6 +348,25 @@ const LineageNew = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
+      {/* Selector input bar */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setSelector('')}
+          disabled={!selector}
+        >
+          Clear
+        </Button>
+        <input
+          type="text"
+          value={selector}
+          onChange={e => setSelector(e.target.value)}
+          placeholder="e.g., 'source_name', 'model_name', or '+name+'"
+          className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+      </div>
+
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* DAG area */}

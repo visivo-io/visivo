@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import LineageNew from './LineageNew';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
@@ -163,6 +164,91 @@ describe('LineageNew', () => {
     expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
     expect(screen.getByTestId('node-model-users')).toBeInTheDocument();
     expect(screen.getByTestId('edge-edge-1')).toBeInTheDocument();
+  });
+
+  it('has selector input for filtering nodes', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [
+        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', objectType: 'model' } },
+      ],
+      edges: [],
+    });
+
+    render(<LineageNew />);
+
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('');
+  });
+
+  it('clears selector when Clear button is clicked', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [
+        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
+      ],
+      edges: [],
+    });
+
+    const user = userEvent.setup();
+    render(<LineageNew />);
+
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
+
+    // Type something in the selector
+    await user.type(input, 'source-db');
+    expect(input.value).toBe('source-db');
+
+    // Click clear
+    fireEvent.click(screen.getByText('Clear'));
+
+    expect(input.value).toBe('');
+  });
+
+  it('shows no matching objects message when selector matches nothing', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [
+        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
+      ],
+      edges: [],
+    });
+
+    const user = userEvent.setup();
+    render(<LineageNew />);
+
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
+
+    // Type a selector that doesn't match anything
+    await user.type(input, 'nonexistent');
+
+    expect(screen.getByText('No matching objects')).toBeInTheDocument();
+    expect(screen.getByText('Try a different selector or click Clear')).toBeInTheDocument();
+  });
+
+  it('filters nodes based on selector', async () => {
+    useLineageDag.mockReturnValue({
+      nodes: [
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model' } },
+      ],
+      edges: [],
+    });
+
+    const user = userEvent.setup();
+    render(<LineageNew />);
+
+    // Both nodes should be visible initially
+    expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
+    expect(screen.getByTestId('node-model-users')).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
+
+    // Type a selector to filter to just the source
+    await user.type(input, 'db');
+
+    // Only source-db should be visible
+    expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
+    expect(screen.queryByTestId('node-model-users')).not.toBeInTheDocument();
   });
 
   it('opens edit panel when node is clicked', async () => {
