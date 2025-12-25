@@ -15,13 +15,24 @@ class TestPublishViews:
         app = Flask(__name__)
         app.config["TESTING"] = True
 
-        # Create mock flask_app with source_manager and model_manager
+        # Create mock flask_app with all managers
         flask_app = Mock()
         flask_app.source_manager = Mock()
         flask_app.model_manager = Mock()
+        flask_app.dimension_manager = Mock()
+        flask_app.metric_manager = Mock()
+        flask_app.relation_manager = Mock()
         flask_app.project = Mock()
         flask_app.project.project_file_path = "/tmp/project.yaml"
         flask_app.hot_reload_server = None
+
+        # Default to no unpublished changes and empty cached_objects for new managers
+        flask_app.dimension_manager.has_unpublished_changes.return_value = False
+        flask_app.dimension_manager.cached_objects = {}
+        flask_app.metric_manager.has_unpublished_changes.return_value = False
+        flask_app.metric_manager.cached_objects = {}
+        flask_app.relation_manager.has_unpublished_changes.return_value = False
+        flask_app.relation_manager.cached_objects = {}
 
         register_publish_views(app, flask_app, "/tmp/output")
 

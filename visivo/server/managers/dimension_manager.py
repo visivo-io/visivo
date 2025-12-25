@@ -3,9 +3,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.dimension import Dimension
-from visivo.models.models.sql_model import SqlModel
-from visivo.models.project import Project
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -38,28 +37,19 @@ class DimensionManager(ObjectManager[Dimension]):
         """
         return self._dimension_adapter.validate_python(obj_data)
 
-    def extract_from_project(self, project: Project) -> None:
+    def extract_from_dag(self, dag) -> None:
         """
-        Extract Dimension objects from a Project and populate published_objects.
+        Extract Dimension objects from a ProjectDag and populate published_objects.
 
-        Extracts both project-level dimensions and model-scoped dimensions.
+        Finds all dimensions (project-level and model-scoped) in the DAG.
 
         Args:
-            project: The Project instance to extract dimensions from
+            dag: The ProjectDag to extract dimensions from
         """
         self._published_objects.clear()
-
-        # Extract project-level dimensions
-        for dimension in project.dimensions:
-            if isinstance(dimension, Dimension) and dimension.name:
+        for dimension in all_descendants_of_type(type=Dimension, dag=dag):
+            if dimension.name:
                 self._published_objects[dimension.name] = dimension
-
-        # Extract model-scoped dimensions
-        for model in project.models:
-            if isinstance(model, SqlModel):
-                for dimension in model.dimensions:
-                    if isinstance(dimension, Dimension) and dimension.name:
-                        self._published_objects[dimension.name] = dimension
 
     def save_from_config(self, config: dict) -> Dimension:
         """

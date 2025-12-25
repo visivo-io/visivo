@@ -173,6 +173,7 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
             error={errors.condition}
             allowedTypes={['model']}
             rows={4}
+            /* eslint-disable-next-line no-template-curly-in-string */
             helperText="Join condition using ${ref(model).field} syntax. Must reference at least two models."
           />
 

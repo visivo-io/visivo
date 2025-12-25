@@ -8,7 +8,7 @@ import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
  * Shows relation name with status indicator. Click node to edit.
  */
 const RelationNode = ({ data, selected }) => {
-  const { name, model, sql_on, status, isEditing } = data;
+  const { name, model, status, isEditing } = data;
   const isHighlighted = selected || isEditing;
 
   // Get type colors and icon

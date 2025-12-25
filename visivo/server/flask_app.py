@@ -29,21 +29,23 @@ class FlaskApp:
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
-        # Initialize object managers
+        # Initialize object managers with DAG for efficient loading
+        dag = project.dag()
+
         self.source_manager = SourceManager()
-        self.source_manager.load(project)
+        self.source_manager.load(dag)
 
         self.model_manager = ModelManager()
-        self.model_manager.load(project)
+        self.model_manager.load(dag)
 
         self.dimension_manager = DimensionManager()
-        self.dimension_manager.load(project)
+        self.dimension_manager.load(dag)
 
         self.metric_manager = MetricManager()
-        self.metric_manager.load(project)
+        self.metric_manager.load(dag)
 
         self.relation_manager = RelationManager()
-        self.relation_manager.load(project)
+        self.relation_manager.load(dag)
 
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
@@ -61,9 +63,10 @@ class FlaskApp:
             Serializer(project=value).dereference().model_dump_json(exclude_none=True)
         )
         self._project = value
-        # Reload object managers with new project (preserves cached objects)
-        self.source_manager.load(value)
-        self.model_manager.load(value)
-        self.dimension_manager.load(value)
-        self.metric_manager.load(value)
-        self.relation_manager.load(value)
+        # Reload object managers with new project DAG (preserves cached objects)
+        dag = value.dag()
+        self.source_manager.load(dag)
+        self.model_manager.load(dag)
+        self.dimension_manager.load(dag)
+        self.metric_manager.load(dag)
+        self.relation_manager.load(dag)

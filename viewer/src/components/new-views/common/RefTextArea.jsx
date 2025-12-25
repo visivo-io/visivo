@@ -6,15 +6,18 @@ import {
   isInsideDollarBrace,
   formatRef,
   formatRefExpression,
+  parseTextWithRefs,
 } from '../../../utils/contextString';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from '@mui/icons-material/Edit';
 
 /**
  * RefTextArea - A Monaco-based SQL editor for expressions with ref() syntax
  *
  * Features:
- * - Always shows Monaco Editor with dark theme (consistent with SQL editor)
+ * - Display mode shows refs as colored pills with SQL in monospace
+ * - Edit mode uses Monaco Editor with dark theme
  * - + button inline with label to insert references
  * - Smart ${} wrapping - only adds when needed
  *
@@ -28,6 +31,7 @@ import SearchIcon from '@mui/icons-material/Search';
  * - disabled: Whether the field is disabled
  * - rows: Number of rows (approximate height)
  * - helperText: Helper text shown below the editor
+ * - hideAddButton: Whether to hide the add button (for model-scoped items)
  */
 const RefTextArea = ({
   value = '',
@@ -39,7 +43,9 @@ const RefTextArea = ({
   disabled = false,
   rows = 4,
   helperText,
+  hideAddButton = false,
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState(null);
@@ -47,7 +53,10 @@ const RefTextArea = ({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Get objects from store for each allowed type
+  // Parse value into segments for display mode
+  const parsedSegments = useMemo(() => parseTextWithRefs(value), [value]);
+
+  // Get objects from store for each allowed type (used for both selector and display)
   const sources = useStore(state => state.sources);
   const models = useStore(state => state.models);
   const dimensions = useStore(state => state.dimensions);
@@ -90,6 +99,15 @@ const RefTextArea = ({
 
     return objects;
   }, [allowedTypes, sources, models, dimensions, metrics, relations]);
+
+  // Helper to find object type by name (for display mode pills)
+  const getObjectTypeByName = useCallback(
+    name => {
+      const obj = availableObjects.find(o => o.name === name);
+      return obj?.type || null;
+    },
+    [availableObjects]
+  );
 
   // Filter objects by search query and selected type
   const filteredObjects = useMemo(() => {
@@ -197,8 +215,65 @@ const RefTextArea = ({
   // Calculate editor height based on rows
   const editorHeight = Math.max(80, rows * 20);
 
-  // Check if we should show the add button (hide when cursor is inside ${})
-  const showAddButton = !isInsideDollarBrace(value, cursorPosition ?? value.length);
+  // Check if we should show the add button
+  // Hide when: hideAddButton prop is true, or cursor is inside ${}
+  const showAddButton =
+    !hideAddButton && !isInsideDollarBrace(value, cursorPosition ?? value.length);
+
+  // Enter edit mode
+  const enterEditMode = useCallback(() => {
+    if (!disabled) {
+      setIsEditing(true);
+    }
+  }, [disabled]);
+
+  // Exit edit mode on blur (with small delay for click handling)
+  const handleEditorBlur = useCallback(() => {
+    // Small delay to allow click events to fire first
+    setTimeout(() => {
+      if (!showSelector) {
+        setIsEditing(false);
+      }
+    }, 150);
+  }, [showSelector]);
+
+  // Render a ref pill for display mode
+  const renderRefPill = (name, property, key) => {
+    const type = getObjectTypeByName(name);
+    const typeConfig = type ? getTypeByValue(type) : null;
+    const colors = typeConfig?.colors || DEFAULT_COLORS;
+    const TypeIcon = typeConfig?.icon;
+
+    return (
+      <span
+        key={key}
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text}`}
+      >
+        {TypeIcon && <TypeIcon style={{ fontSize: 12 }} />}
+        <span>{name}</span>
+        {property && <span className="opacity-70">.{property}</span>}
+      </span>
+    );
+  };
+
+  // Render display mode content with pills
+  const renderDisplayContent = () => {
+    if (!value) {
+      return <span className="text-gray-400 italic">Click to edit...</span>;
+    }
+
+    return parsedSegments.map((segment, index) => {
+      if (segment.type === 'ref') {
+        return renderRefPill(segment.name, segment.property, index);
+      }
+      // Text segments - render in monospace
+      return (
+        <span key={index} className="font-mono text-sm text-gray-800">
+          {segment.content}
+        </span>
+      );
+    });
+  };
 
   return (
     <div className="space-y-1" ref={containerRef}>
@@ -209,53 +284,83 @@ const RefTextArea = ({
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
           </label>
-          {showAddButton && (
-            <button
-              type="button"
-              onClick={() => setShowSelector(!showSelector)}
-              disabled={disabled}
-              className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
-              title="Insert reference"
-            >
-              <AddIcon fontSize="small" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {showAddButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(true);
+                  setShowSelector(!showSelector);
+                }}
+                disabled={disabled}
+                className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
+                title="Insert reference"
+              >
+                <AddIcon fontSize="small" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Monaco Editor */}
+      {/* Editor / Display area */}
       <div className="relative">
-        <div
-          className={`
-            border rounded-md overflow-hidden
-            ${error ? 'border-red-500' : 'border-gray-300'}
-            focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500
-          `}
-        >
-          <Editor
-            height={editorHeight}
-            language="sql"
-            theme="vs-dark"
-            value={value}
-            onChange={handleEditorChange}
-            onMount={handleEditorMount}
-            options={{
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 13,
-              automaticLayout: true,
-              wordWrap: 'on',
-              padding: { top: 12, bottom: 12, left: 8, right: 8 },
-              lineNumbers: 'on',
-              glyphMargin: false,
-              folding: false,
-              lineDecorationsWidth: 12,
-              lineNumbersMinChars: 3,
-              scrollbar: { vertical: 'auto', horizontal: 'auto' },
-              readOnly: disabled,
-            }}
-          />
-        </div>
+        {isEditing ? (
+          /* Monaco Editor for edit mode */
+          <div
+            className={`
+              border rounded-md overflow-hidden
+              ${error ? 'border-red-500' : 'border-gray-300'}
+              focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500
+            `}
+            onBlur={handleEditorBlur}
+          >
+            <Editor
+              height={editorHeight}
+              language="sql"
+              theme="vs-dark"
+              value={value}
+              onChange={handleEditorChange}
+              onMount={handleEditorMount}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 13,
+                automaticLayout: true,
+                wordWrap: 'on',
+                padding: { top: 12, bottom: 12, left: 8, right: 8 },
+                lineNumbers: 'on',
+                glyphMargin: false,
+                folding: false,
+                lineDecorationsWidth: 12,
+                lineNumbersMinChars: 3,
+                scrollbar: { vertical: 'auto', horizontal: 'auto' },
+                readOnly: disabled,
+              }}
+            />
+          </div>
+        ) : (
+          /* Display mode with pills */
+          <div
+            onClick={enterEditMode}
+            className={`
+              min-h-[60px] p-3 rounded-md cursor-text
+              border ${error ? 'border-red-500' : 'border-gray-300'}
+              bg-gray-50 hover:bg-gray-100 transition-colors
+              flex flex-wrap items-center gap-1
+              ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            {renderDisplayContent()}
+            {!disabled && (
+              <EditIcon
+                fontSize="small"
+                className="ml-auto text-gray-400 opacity-0 group-hover:opacity-100"
+                style={{ fontSize: 14 }}
+              />
+            )}
+          </div>
+        )}
 
         {/* Object Selector Popover */}
         {showSelector && (

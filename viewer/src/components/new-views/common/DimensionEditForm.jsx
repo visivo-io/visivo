@@ -237,6 +237,7 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
           <p className="mt-1 text-xs text-gray-500">
             {isModelScoped
               ? 'This dimension will be scoped to the selected model and use plain SQL.'
+              /* eslint-disable-next-line no-template-curly-in-string */
               : 'This dimension can reference multiple models using ${ref(model_name)}.'}
           </p>
         </div>
@@ -249,6 +250,7 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
           required
           error={errors.expression}
           allowedTypes={isModelScoped ? [] : ['model', 'dimension']}
+          hideAddButton={isModelScoped}
           rows={4}
           helperText={isModelScoped
             ? 'Plain SQL expression referencing columns from the parent model.'

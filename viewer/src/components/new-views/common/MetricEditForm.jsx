@@ -237,6 +237,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
           <p className="mt-1 text-xs text-gray-500">
             {isModelScoped
               ? 'This metric will be scoped to the selected model and use plain SQL.'
+              /* eslint-disable-next-line no-template-curly-in-string */
               : 'This metric can reference multiple models using ${ref(model_name)}.'}
           </p>
         </div>
@@ -249,6 +250,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
           required
           error={errors.expression}
           allowedTypes={isModelScoped ? [] : ['model', 'metric', 'dimension']}
+          hideAddButton={isModelScoped}
           rows={4}
           helperText={isModelScoped
             ? 'SQL aggregate expression (e.g., SUM, COUNT, AVG) referencing columns from the parent model.'

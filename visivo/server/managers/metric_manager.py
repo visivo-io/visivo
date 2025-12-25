@@ -3,9 +3,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.metric import Metric
-from visivo.models.models.sql_model import SqlModel
-from visivo.models.project import Project
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -38,28 +37,19 @@ class MetricManager(ObjectManager[Metric]):
         """
         return self._metric_adapter.validate_python(obj_data)
 
-    def extract_from_project(self, project: Project) -> None:
+    def extract_from_dag(self, dag) -> None:
         """
-        Extract Metric objects from a Project and populate published_objects.
+        Extract Metric objects from a ProjectDag and populate published_objects.
 
-        Extracts both project-level metrics and model-scoped metrics.
+        Finds all metrics (project-level and model-scoped) in the DAG.
 
         Args:
-            project: The Project instance to extract metrics from
+            dag: The ProjectDag to extract metrics from
         """
         self._published_objects.clear()
-
-        # Extract project-level metrics
-        for metric in project.metrics:
-            if isinstance(metric, Metric) and metric.name:
+        for metric in all_descendants_of_type(type=Metric, dag=dag):
+            if metric.name:
                 self._published_objects[metric.name] = metric
-
-        # Extract model-scoped metrics
-        for model in project.models:
-            if isinstance(model, SqlModel):
-                for metric in model.metrics:
-                    if isinstance(metric, Metric) and metric.name:
-                        self._published_objects[metric.name] = metric
 
     def save_from_config(self, config: dict) -> Metric:
         """

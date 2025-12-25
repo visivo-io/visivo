@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
-from visivo.models.project import Project
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.sources.fields import SourceField
 from visivo.models.sources.source import Source
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
@@ -43,16 +43,18 @@ class SourceManager(ObjectManager[Source]):
             raise ValueError("Validated object is not a Source instance")
         return source
 
-    def extract_from_project(self, project: Project) -> None:
+    def extract_from_dag(self, dag) -> None:
         """
-        Extract sources from a Project and populate published_objects.
+        Extract sources from a ProjectDag and populate published_objects.
+
+        Finds all sources in the DAG.
 
         Args:
-            project: The Project instance to extract sources from
+            dag: The ProjectDag to extract sources from
         """
         self._published_objects.clear()
-        for source in project.sources:
-            if isinstance(source, Source) and source.name:
+        for source in all_descendants_of_type(type=Source, dag=dag):
+            if source.name:
                 self._published_objects[source.name] = source
 
     def save_from_config(self, config: dict) -> Source:
