@@ -29,13 +29,15 @@ const EditPanel = ({ source, model, dimension, metric, relation, objectType = 's
   // Determine which object we're editing
   const currentObjectType = model
     ? 'model'
-    : dimension
-      ? 'dimension'
-      : metric
-        ? 'metric'
-        : relation
-          ? 'relation'
-          : objectType;
+    : source
+      ? 'source'
+      : dimension
+        ? 'dimension'
+        : metric
+          ? 'metric'
+          : relation
+            ? 'relation'
+            : objectType;
 
   const typeConfig = getTypeByValue(currentObjectType);
   const TypeIcon = typeConfig?.icon;

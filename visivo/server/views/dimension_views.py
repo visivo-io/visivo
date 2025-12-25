@@ -10,7 +10,18 @@ def register_dimension_views(app, flask_app, output_dir):
     def list_all_dimensions():
         """List all dimensions (cached + published) with status."""
         try:
-            dimensions = flask_app.dimension_manager.get_all_dimensions_with_status()
+            # Get cached models to include their model-scoped dimensions
+            cached_models = list(flask_app.model_manager.cached_objects.values())
+            # Build model statuses dict
+            model_statuses = {}
+            for model_name in flask_app.model_manager.cached_objects.keys():
+                status = flask_app.model_manager.get_status(model_name)
+                if status:
+                    model_statuses[model_name] = status
+
+            dimensions = flask_app.dimension_manager.get_all_dimensions_with_status(
+                cached_models=cached_models, model_statuses=model_statuses
+            )
             return jsonify({"dimensions": dimensions})
         except Exception as e:
             Logger.instance().error(f"Error listing dimensions: {str(e)}")

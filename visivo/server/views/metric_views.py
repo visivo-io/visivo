@@ -10,7 +10,18 @@ def register_metric_views(app, flask_app, output_dir):
     def list_all_metrics():
         """List all metrics (cached + published) with status."""
         try:
-            metrics = flask_app.metric_manager.get_all_metrics_with_status()
+            # Get cached models to include their model-scoped metrics
+            cached_models = list(flask_app.model_manager.cached_objects.values())
+            # Build model statuses dict
+            model_statuses = {}
+            for model_name in flask_app.model_manager.cached_objects.keys():
+                status = flask_app.model_manager.get_status(model_name)
+                if status:
+                    model_statuses[model_name] = status
+
+            metrics = flask_app.metric_manager.get_all_metrics_with_status(
+                cached_models=cached_models, model_statuses=model_statuses
+            )
             return jsonify({"metrics": metrics})
         except Exception as e:
             Logger.instance().error(f"Error listing metrics: {str(e)}")

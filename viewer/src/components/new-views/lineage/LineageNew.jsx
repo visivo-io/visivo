@@ -50,6 +50,7 @@ const LineageNew = () => {
   const [selector, setSelector] = useState('');
 
   const reactFlowInstance = useRef(null);
+  const hasFitView = useRef(false);
 
   // Fetch all object types on mount
   useEffect(() => {
@@ -241,6 +242,17 @@ const LineageNew = () => {
       edge => selectedIds.has(edge.source) && selectedIds.has(edge.target)
     );
   }, [dagEdges, selectedIds]);
+
+  // Fit view when nodes are first loaded
+  useEffect(() => {
+    if (nodes.length > 0 && reactFlowInstance.current && !hasFitView.current) {
+      // Small delay to ensure nodes are rendered
+      setTimeout(() => {
+        reactFlowInstance.current.fitView({ padding: 0.2 });
+        hasFitView.current = true;
+      }, 100);
+    }
+  }, [nodes.length]);
 
   // Node types for React Flow
   const nodeTypes = useMemo(

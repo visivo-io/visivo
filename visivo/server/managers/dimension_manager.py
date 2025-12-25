@@ -95,16 +95,24 @@ class DimensionManager(ObjectManager[Dimension]):
         status = self.get_status(name)
         return self._serialize_object(name, dimension, status)
 
-    def get_all_dimensions_with_status(self) -> List[Dict[str, Any]]:
+    def get_all_dimensions_with_status(
+        self, cached_models: List = None, model_statuses: Dict[str, ObjectStatus] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get all dimensions (cached + published) with status info.
 
         Includes dimensions marked for deletion with DELETED status.
+        If cached_models is provided, also includes model-scoped dimensions from those models.
+
+        Args:
+            cached_models: Optional list of cached SqlModel objects to extract model-scoped dimensions from
+            model_statuses: Optional dict mapping model names to their ObjectStatus
 
         Returns:
             List of dictionaries with dimension info and status
         """
         result = []
+        seen_names = set()
         all_names = set(self._cached_objects.keys()) | set(self._published_objects.keys())
 
         for name in sorted(all_names):
@@ -114,11 +122,39 @@ class DimensionManager(ObjectManager[Dimension]):
                 if name in self._published_objects:
                     dimension = self._published_objects[name]
                     result.append(self._serialize_object(name, dimension, ObjectStatus.DELETED))
+                seen_names.add(name)
                 continue
 
             dimension_info = self.get_dimension_with_status(name)
             if dimension_info:
                 result.append(dimension_info)
+                seen_names.add(name)
+
+        # Include model-scoped dimensions from cached models
+        if cached_models:
+            for model in cached_models:
+                if model is None:
+                    continue
+                model_name = model.name if hasattr(model, "name") else None
+                if not model_name:
+                    continue
+
+                # Get the model's status for the dimensions
+                model_status = (
+                    model_statuses.get(model_name, ObjectStatus.MODIFIED)
+                    if model_statuses
+                    else ObjectStatus.MODIFIED
+                )
+
+                for dimension in model.dimensions:
+                    if isinstance(dimension, Dimension) and dimension.name:
+                        if dimension.name not in seen_names:
+                            dimension_info = self._serialize_object(
+                                dimension.name, dimension, model_status
+                            )
+                            dimension_info["parentModel"] = model_name
+                            result.append(dimension_info)
+                            seen_names.add(dimension.name)
 
         return result
 

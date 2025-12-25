@@ -3,50 +3,19 @@ import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 import {
-  parseTextWithRefs,
   isInsideDollarBrace,
   formatRef,
   formatRefExpression,
 } from '../../../utils/contextString';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import EditIcon from '@mui/icons-material/Edit';
-import CloseIcon from '@mui/icons-material/Close';
 
 /**
- * RefPill - Renders a ref as an interactive pill
- */
-const RefPill = ({ name, property, objectType, onClick, onDelete }) => {
-  const typeConfig = getTypeByValue(objectType);
-  const colors = typeConfig?.colors || DEFAULT_COLORS;
-  const TypeIcon = typeConfig?.icon;
-
-  return (
-    <span
-      className={`
-        inline-flex items-center gap-1 px-2 py-0.5 mx-0.5
-        rounded-full text-xs font-medium cursor-pointer
-        ${colors.bg} ${colors.text}
-        hover:opacity-80 transition-opacity
-        border ${colors.border}
-      `}
-      onClick={onClick}
-      title={`Click to change: ${name}${property ? '.' + property : ''}`}
-    >
-      {TypeIcon && <TypeIcon style={{ fontSize: 14 }} />}
-      <span className="max-w-[120px] truncate">{name}</span>
-      {property && <span className="opacity-70">.{property}</span>}
-    </span>
-  );
-};
-
-/**
- * RefTextArea - A textarea component for editing expressions with ref() syntax
+ * RefTextArea - A Monaco-based SQL editor for expressions with ref() syntax
  *
  * Features:
- * - Display mode shows refs as interactive pills
- * - Edit mode uses Monaco Editor for raw text editing
- * - Click on pills to change the referenced object
+ * - Always shows Monaco Editor with dark theme (consistent with SQL editor)
+ * - + button inline with label to insert references
  * - Smart ${} wrapping - only adds when needed
  *
  * Props:
@@ -71,11 +40,9 @@ const RefTextArea = ({
   rows = 4,
   helperText,
 }) => {
-  const [isEditMode, setIsEditMode] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState(null);
-  const [editingRef, setEditingRef] = useState(null); // { name, property, start, end }
   const [cursorPosition, setCursorPosition] = useState(null);
   const editorRef = useRef(null);
   const containerRef = useRef(null);
@@ -124,15 +91,6 @@ const RefTextArea = ({
     return objects;
   }, [allowedTypes, sources, models, dimensions, metrics, relations]);
 
-  // Find object type by name
-  const getObjectType = useCallback(
-    name => {
-      const obj = availableObjects.find(o => o.name === name);
-      return obj?.type || 'model';
-    },
-    [availableObjects]
-  );
-
   // Filter objects by search query and selected type
   const filteredObjects = useMemo(() => {
     let filtered = availableObjects;
@@ -161,30 +119,14 @@ const RefTextArea = ({
     return groups;
   }, [filteredObjects]);
 
-  // Parse value into segments
-  const segments = useMemo(() => parseTextWithRefs(value), [value]);
-
-  // Handle clicking on a pill to edit it
-  const handlePillClick = useCallback((segment, e) => {
-    e.stopPropagation();
-    setEditingRef(segment);
-    setSearchQuery('');
-    setSelectedType(null);
-    setShowSelector(true);
-  }, []);
-
-  // Insert or replace ref
+  // Insert ref at cursor position
   const insertRef = useCallback(
     (objectName, property = null) => {
       // Use centralized formatting utilities for consistent output
       const refString = formatRef(objectName, property);
       const fullRefString = formatRefExpression(objectName, property);
 
-      if (editingRef) {
-        // Replace existing ref with canonical format
-        const newValue = value.slice(0, editingRef.start) + fullRefString + value.slice(editingRef.end);
-        onChange(newValue);
-      } else if (cursorPosition !== null) {
+      if (cursorPosition !== null) {
         // Insert at cursor position
         const insertPosition = cursorPosition;
 
@@ -210,10 +152,9 @@ const RefTextArea = ({
       // Close selector and clear state
       setShowSelector(false);
       setSearchQuery('');
-      setEditingRef(null);
       setCursorPosition(null);
     },
-    [value, onChange, editingRef, cursorPosition]
+    [value, onChange, cursorPosition]
   );
 
   // Handle Monaco editor mount
@@ -239,14 +180,12 @@ const RefTextArea = ({
   const closeSelector = () => {
     setShowSelector(false);
     setSearchQuery('');
-    setEditingRef(null);
   };
 
-  // Handle click outside to close edit mode
+  // Handle click outside to close selector
   useEffect(() => {
     const handleClickOutside = e => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsEditMode(false);
         setShowSelector(false);
       }
     };
@@ -257,153 +196,66 @@ const RefTextArea = ({
 
   // Calculate editor height based on rows
   const editorHeight = Math.max(80, rows * 20);
-  const displayHeight = Math.max(60, rows * 16);
 
   // Check if we should show the add button (hide when cursor is inside ${})
   const showAddButton = !isInsideDollarBrace(value, cursorPosition ?? value.length);
 
   return (
     <div className="space-y-1" ref={containerRef}>
-      {/* Label */}
+      {/* Label with inline + button */}
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
-          {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          {showAddButton && (
+            <button
+              type="button"
+              onClick={() => setShowSelector(!showSelector)}
+              disabled={disabled}
+              className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
+              title="Insert reference"
+            >
+              <AddIcon fontSize="small" />
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Editor Container */}
+      {/* Monaco Editor */}
       <div className="relative">
-        {!isEditMode ? (
-          /* Display Mode - Show text with pills */
-          <div
-            className={`
-              relative p-3 rounded-md border cursor-text
-              ${error ? 'border-red-500' : 'border-gray-300'}
-              ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'}
-              focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500
-            `}
-            style={{ minHeight: displayHeight }}
-            onClick={() => !disabled && setIsEditMode(true)}
-          >
-            {/* Rendered content with pills */}
-            <div className="text-sm text-gray-900 leading-relaxed whitespace-pre-wrap break-words pr-8">
-              {segments.length === 0 ? (
-                <span className="text-gray-400 italic">
-                  {helperText || 'Click to edit...'}
-                </span>
-              ) : (
-                segments.map((segment, index) => {
-                  if (segment.type === 'ref') {
-                    return (
-                      <RefPill
-                        key={index}
-                        name={segment.name}
-                        property={segment.property}
-                        objectType={getObjectType(segment.name)}
-                        onClick={e => handlePillClick(segment, e)}
-                      />
-                    );
-                  }
-                  return <span key={index}>{segment.content}</span>;
-                })
-              )}
-            </div>
-
-            {/* Add Ref Button - hidden when cursor is inside ${} */}
-            {showAddButton && (
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  setCursorPosition(value.length); // Insert at end when in display mode
-                  setEditingRef(null);
-                  setShowSelector(true);
-                }}
-                disabled={disabled}
-                className={`
-                  absolute top-2 right-2 p-1
-                  rounded-md
-                  bg-gray-100 hover:bg-gray-200
-                  text-gray-500 hover:text-gray-700
-                  transition-colors
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                `}
-                title="Insert reference"
-              >
-                <AddIcon fontSize="small" />
-              </button>
-            )}
-
-            {/* Edit button hint */}
-            <div className="absolute bottom-1 right-2 text-xs text-gray-400">
-              Click to edit
-            </div>
-          </div>
-        ) : (
-          /* Edit Mode - Monaco Editor */
-          <div
-            className={`
-              border rounded-md overflow-hidden
-              ${error ? 'border-red-500' : 'border-gray-300'}
-              focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500
-            `}
-          >
-            <Editor
-              height={editorHeight}
-              language="sql"
-              theme="vs-dark"
-              value={value}
-              onChange={handleEditorChange}
-              onMount={handleEditorMount}
-              options={{
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                fontSize: 13,
-                automaticLayout: true,
-                wordWrap: 'on',
-                padding: { top: 8, bottom: 8, left: 8, right: 40 },
-                lineNumbers: 'off',
-                glyphMargin: false,
-                folding: false,
-                lineDecorationsWidth: 0,
-                lineNumbersMinChars: 0,
-                scrollbar: { vertical: 'auto', horizontal: 'hidden' },
-                readOnly: disabled,
-                renderLineHighlight: 'none',
-                overviewRulerLanes: 0,
-                hideCursorInOverviewRuler: true,
-                overviewRulerBorder: false,
-              }}
-            />
-
-            {/* Action buttons */}
-            <div className="absolute top-2 right-2 flex gap-1 z-10">
-              {showAddButton && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingRef(null);
-                    setShowSelector(!showSelector);
-                  }}
-                  disabled={disabled}
-                  className="p-1.5 rounded-md shadow-sm bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
-                  title="Insert reference"
-                >
-                  <AddIcon fontSize="small" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsEditMode(false)}
-                className="p-1.5 rounded-md shadow-sm bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
-                title="Done editing"
-              >
-                <CloseIcon fontSize="small" />
-              </button>
-            </div>
-          </div>
-        )}
+        <div
+          className={`
+            border rounded-md overflow-hidden
+            ${error ? 'border-red-500' : 'border-gray-300'}
+            focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500
+          `}
+        >
+          <Editor
+            height={editorHeight}
+            language="sql"
+            theme="vs-dark"
+            value={value}
+            onChange={handleEditorChange}
+            onMount={handleEditorMount}
+            options={{
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 13,
+              automaticLayout: true,
+              wordWrap: 'on',
+              padding: { top: 12, bottom: 12, left: 8, right: 8 },
+              lineNumbers: 'on',
+              glyphMargin: false,
+              folding: false,
+              lineDecorationsWidth: 12,
+              lineNumbersMinChars: 3,
+              scrollbar: { vertical: 'auto', horizontal: 'auto' },
+              readOnly: disabled,
+            }}
+          />
+        </div>
 
         {/* Object Selector Popover */}
         {showSelector && (
@@ -416,15 +268,6 @@ const RefTextArea = ({
           >
             {/* Header */}
             <div className="p-3 border-b border-gray-200">
-              {editingRef && (
-                <div className="flex items-center gap-2 mb-2 text-sm">
-                  <EditIcon fontSize="small" className="text-gray-500" />
-                  <span className="text-gray-600">
-                    Change: <span className="font-medium text-primary-600">{editingRef.name}</span>
-                  </span>
-                </div>
-              )}
-
               {/* Search Input */}
               <div className="relative">
                 <SearchIcon
@@ -503,10 +346,9 @@ const RefTextArea = ({
                           key={`${type}-${obj.name}`}
                           type="button"
                           onClick={() => insertRef(obj.name)}
-                          className={`w-full px-3 py-2 flex items-center gap-2
+                          className="w-full px-3 py-2 flex items-center gap-2
                             text-left hover:bg-gray-50 transition-colors
-                            border-b border-gray-100 last:border-b-0
-                            ${editingRef?.name === obj.name ? 'bg-primary-50' : ''}`}
+                            border-b border-gray-100 last:border-b-0"
                         >
                           {TypeIcon && <TypeIcon fontSize="small" className={colors.text} />}
                           <div className="flex-1 min-w-0">
@@ -539,7 +381,7 @@ const RefTextArea = ({
       </div>
 
       {/* Helper Text */}
-      {helperText && !error && !isEditMode && segments.length > 0 && (
+      {helperText && !error && (
         <p className="text-xs text-gray-500">{helperText}</p>
       )}
 

@@ -95,16 +95,24 @@ class MetricManager(ObjectManager[Metric]):
         status = self.get_status(name)
         return self._serialize_object(name, metric, status)
 
-    def get_all_metrics_with_status(self) -> List[Dict[str, Any]]:
+    def get_all_metrics_with_status(
+        self, cached_models: List = None, model_statuses: Dict[str, ObjectStatus] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get all metrics (cached + published) with status info.
 
         Includes metrics marked for deletion with DELETED status.
+        If cached_models is provided, also includes model-scoped metrics from those models.
+
+        Args:
+            cached_models: Optional list of cached SqlModel objects to extract model-scoped metrics from
+            model_statuses: Optional dict mapping model names to their ObjectStatus
 
         Returns:
             List of dictionaries with metric info and status
         """
         result = []
+        seen_names = set()
         all_names = set(self._cached_objects.keys()) | set(self._published_objects.keys())
 
         for name in sorted(all_names):
@@ -114,11 +122,37 @@ class MetricManager(ObjectManager[Metric]):
                 if name in self._published_objects:
                     metric = self._published_objects[name]
                     result.append(self._serialize_object(name, metric, ObjectStatus.DELETED))
+                seen_names.add(name)
                 continue
 
             metric_info = self.get_metric_with_status(name)
             if metric_info:
                 result.append(metric_info)
+                seen_names.add(name)
+
+        # Include model-scoped metrics from cached models
+        if cached_models:
+            for model in cached_models:
+                if model is None:
+                    continue
+                model_name = model.name if hasattr(model, "name") else None
+                if not model_name:
+                    continue
+
+                # Get the model's status for the metrics
+                model_status = (
+                    model_statuses.get(model_name, ObjectStatus.MODIFIED)
+                    if model_statuses
+                    else ObjectStatus.MODIFIED
+                )
+
+                for metric in model.metrics:
+                    if isinstance(metric, Metric) and metric.name:
+                        if metric.name not in seen_names:
+                            metric_info = self._serialize_object(metric.name, metric, model_status)
+                            metric_info["parentModel"] = model_name
+                            result.append(metric_info)
+                            seen_names.add(metric.name)
 
         return result
 
