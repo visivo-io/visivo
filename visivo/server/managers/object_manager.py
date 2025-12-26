@@ -301,5 +301,5 @@ class ObjectManager(ABC, Generic[T]):
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,
-            "config": obj.model_dump(exclude_none=True),
+            "config": obj.model_dump(mode="json", exclude_none=True),
         }
