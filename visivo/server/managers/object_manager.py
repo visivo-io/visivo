@@ -65,13 +65,13 @@ class ObjectManager(ABC, Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def extract_from_project(self, project) -> None:
+    def extract_from_dag(self, dag) -> None:
         """
-        Extract objects of this type from a Project instance
+        Extract objects of this type from a ProjectDag
         and populate published_objects.
 
         Args:
-            project: The Project instance to extract from
+            dag: The ProjectDag to extract objects from
         """
         raise NotImplementedError
 
@@ -86,16 +86,16 @@ class ObjectManager(ABC, Generic[T]):
         with self._lock:
             self._cached_objects[name] = obj
 
-    def load(self, project) -> None:
+    def load(self, dag) -> None:
         """
-        Load published objects from project.
+        Load published objects from project DAG.
 
-        This clears existing published objects and reloads from the project.
+        This clears existing published objects and reloads from the DAG.
 
         Args:
-            project: The Project instance to load from
+            dag: The ProjectDag to load from
         """
-        self.extract_from_project(project)
+        self.extract_from_dag(dag)
 
     def get(self, name: str) -> Optional[T]:
         """
@@ -301,5 +301,5 @@ class ObjectManager(ABC, Generic[T]):
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,
-            "config": obj.model_dump(exclude_none=True),
+            "config": obj.model_dump(mode="json", exclude_none=True),
         }

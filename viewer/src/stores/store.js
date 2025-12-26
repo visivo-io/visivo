@@ -10,6 +10,9 @@ import createInsightSlice from './insightStore';
 import createWorksheetSlice from './worksheetStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
 import createModelSlice from './modelStore';
+import createDimensionSlice from './dimensionStore';
+import createMetricSlice from './metricStore';
+import createRelationSlice from './relationStore';
 import createPublishSlice from './publishStore';
 
 // Re-export ObjectStatus for convenience
@@ -25,6 +28,9 @@ const useStore = create(
     ...createWorksheetSlice(...a),
     ...createSourceSlice(...a),
     ...createModelSlice(...a),
+    ...createDimensionSlice(...a),
+    ...createMetricSlice(...a),
+    ...createRelationSlice(...a),
     ...createPublishSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',

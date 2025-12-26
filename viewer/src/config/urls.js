@@ -48,6 +48,24 @@ const URL_PATTERNS = {
     modelSave: '/api/models/{name}/save/',
     modelValidate: '/api/models/{name}/validate/',
 
+    // Dimension management endpoints
+    dimensionsList: '/api/dimensions/',
+    dimensionDetail: '/api/dimensions/{name}/',
+    dimensionSave: '/api/dimensions/{name}/save/',
+    dimensionValidate: '/api/dimensions/{name}/validate/',
+
+    // Metric management endpoints
+    metricsList: '/api/metrics/',
+    metricDetail: '/api/metrics/{name}/',
+    metricSave: '/api/metrics/{name}/save/',
+    metricValidate: '/api/metrics/{name}/validate/',
+
+    // Relation management endpoints
+    relationsList: '/api/relations/',
+    relationDetail: '/api/relations/{name}/',
+    relationSave: '/api/relations/{name}/save/',
+    relationValidate: '/api/relations/{name}/validate/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
@@ -97,6 +115,24 @@ const URL_PATTERNS = {
     modelDetail: null,
     modelSave: null,
     modelValidate: null,
+
+    // Dimension management endpoints (not available in dist)
+    dimensionsList: null,
+    dimensionDetail: null,
+    dimensionSave: null,
+    dimensionValidate: null,
+
+    // Metric management endpoints (not available in dist)
+    metricsList: null,
+    metricDetail: null,
+    metricSave: null,
+    metricValidate: null,
+
+    // Relation management endpoints (not available in dist)
+    relationsList: null,
+    relationDetail: null,
+    relationSave: null,
+    relationValidate: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,

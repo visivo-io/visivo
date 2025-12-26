@@ -2,6 +2,7 @@ import pytest
 import json
 from unittest.mock import Mock, patch
 from visivo.server.flask_app import FlaskApp
+from tests.factories.model_factories import ProjectFactory, SourceFactory
 
 
 class TestFlaskSourceEndpoints:
@@ -9,17 +10,10 @@ class TestFlaskSourceEndpoints:
 
     def setup_method(self):
         """Set up test fixtures."""
-        # Create mock project with sources
-        self.mock_project = Mock()
-        self.mock_source = Mock()
-        self.mock_source.name = "test_source"
-        self.mock_source.type = "postgresql"
-        self.mock_source.database = "test_db"
-        self.mock_project.sources = [self.mock_source]
-        self.mock_project.models = []  # Required for ModelManager.load()
-        self.mock_project.defaults = None  # Required for telemetry middleware
+        # Create real project with factories (has working dag() method)
+        self.project = ProjectFactory.build()
         # Store the sources list for assertions
-        self.sources_list = [self.mock_source]
+        self.sources_list = self.project.sources
 
         # Create temp directory
         import tempfile
@@ -45,9 +39,9 @@ class TestFlaskSourceEndpoints:
                 mock_worksheet_repo.return_value = Mock()
 
                 # Create FlaskApp instance
-                self.flask_app = FlaskApp(output_dir=self.temp_dir, project=self.mock_project)
+                self.flask_app = FlaskApp(output_dir=self.temp_dir, project=self.project)
 
-        # Mock the source_manager.get_sources_list() to return our mock sources
+        # Mock the source_manager.get_sources_list() to return our sources
         self.flask_app.source_manager.get_sources_list = Mock(return_value=self.sources_list)
 
         self.client = self.flask_app.app.test_client()

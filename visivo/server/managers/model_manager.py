@@ -3,8 +3,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import TypeAdapter, ValidationError
 
 from visivo.logger.logger import Logger
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.project import Project
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -36,18 +36,18 @@ class ModelManager(ObjectManager[SqlModel]):
         """
         return self._model_adapter.validate_python(obj_data)
 
-    def extract_from_project(self, project: Project) -> None:
+    def extract_from_dag(self, dag) -> None:
         """
-        Extract SqlModel objects from a Project and populate published_objects.
+        Extract SqlModel objects from a ProjectDag and populate published_objects.
 
         Only extracts SqlModel instances (not CsvScriptModel or LocalMergeModel).
 
         Args:
-            project: The Project instance to extract models from
+            dag: The ProjectDag to extract models from
         """
         self._published_objects.clear()
-        for model in project.models:
-            if isinstance(model, SqlModel) and model.name:
+        for model in all_descendants_of_type(type=SqlModel, dag=dag):
+            if model.name:
                 self._published_objects[model.name] = model
 
     def save_from_config(self, config: dict) -> SqlModel:

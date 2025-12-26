@@ -29,6 +29,9 @@ jest.mock('../common/EditPanel', () => ({ source, model, isCreate, onClose }) =>
 describe('EditorNew', () => {
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
+  const mockFetchDimensions = jest.fn();
+  const mockFetchMetrics = jest.fn();
+  const mockFetchRelations = jest.fn();
 
   const defaultStoreState = {
     sources: [],
@@ -39,6 +42,18 @@ describe('EditorNew', () => {
     fetchModels: mockFetchModels,
     modelsLoading: false,
     modelsError: null,
+    dimensions: [],
+    fetchDimensions: mockFetchDimensions,
+    dimensionsLoading: false,
+    dimensionsError: null,
+    metrics: [],
+    fetchMetrics: mockFetchMetrics,
+    metricsLoading: false,
+    metricsError: null,
+    relations: [],
+    fetchRelations: mockFetchRelations,
+    relationsLoading: false,
+    relationsError: null,
   };
 
   beforeEach(() => {
@@ -55,14 +70,17 @@ describe('EditorNew', () => {
     render(<EditorNew />);
 
     expect(screen.getByText('Select an object to edit')).toBeInTheDocument();
-    expect(screen.getByText('or click the + button to create a new source or model')).toBeInTheDocument();
+    expect(screen.getByText('or click the + button to create a new object')).toBeInTheDocument();
   });
 
-  it('fetches sources and models on mount', () => {
+  it('fetches sources, models, dimensions, metrics, and relations on mount', () => {
     render(<EditorNew />);
 
     expect(mockFetchSources).toHaveBeenCalled();
     expect(mockFetchModels).toHaveBeenCalled();
+    expect(mockFetchDimensions).toHaveBeenCalled();
+    expect(mockFetchMetrics).toHaveBeenCalled();
+    expect(mockFetchRelations).toHaveBeenCalled();
   });
 
   it('displays loading state', () => {

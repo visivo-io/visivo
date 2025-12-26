@@ -72,24 +72,26 @@ class TestSourceManager:
         with pytest.raises(Exception):
             manager.validate_object(config)
 
-    def test_extract_from_project_populates_published(self):
-        """Test extract_from_project populates published_objects."""
+    def test_extract_from_dag_populates_published(self):
+        """Test extract_from_dag populates published_objects."""
         manager = SourceManager()
         project = ProjectFactory.build()
+        dag = project.dag()
 
-        manager.extract_from_project(project)
+        manager.extract_from_dag(dag)
 
         assert len(manager.published_objects) == len(project.sources)
         for source in project.sources:
             assert source.name in manager.published_objects
 
-    def test_extract_from_project_clears_existing(self):
-        """Test extract_from_project clears existing published_objects."""
+    def test_extract_from_dag_clears_existing(self):
+        """Test extract_from_dag clears existing published_objects."""
         manager = SourceManager()
         manager._published_objects["old"] = SourceFactory.build(name="old")
         project = ProjectFactory.build()
+        dag = project.dag()
 
-        manager.extract_from_project(project)
+        manager.extract_from_dag(dag)
 
         assert "old" not in manager.published_objects
 
@@ -297,7 +299,8 @@ class TestSourceManager:
 
         # Load project
         project = ProjectFactory.build()
-        manager.load(project)
+        dag = project.dag()
+        manager.load(dag)
 
         # Cached object should still exist
         assert "cached_only" in manager.cached_objects
@@ -308,7 +311,7 @@ class TestSourceManager:
 
         # Initial load
         project1 = ProjectFactory.build()
-        manager.load(project1)
+        manager.load(project1.dag())
         initial_published_count = len(manager.published_objects)
 
         # User makes cached change
@@ -317,7 +320,7 @@ class TestSourceManager:
 
         # Hot reload with updated project
         project2 = ProjectFactory.build()
-        manager.load(project2)
+        manager.load(project2.dag())
 
         # Cached change should persist
         assert "user_change" in manager.cached_objects
