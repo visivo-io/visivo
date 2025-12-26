@@ -11,6 +11,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 /**
  * RefTextArea - A Monaco-based SQL editor for expressions with ref() syntax
@@ -50,11 +51,21 @@ const RefTextArea = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState(null);
   const [cursorPosition, setCursorPosition] = useState(null);
+  const [replaceRefSegment, setReplaceRefSegment] = useState(null); // Ref segment being replaced
   const editorRef = useRef(null);
   const containerRef = useRef(null);
+  const keepEditModeRef = useRef(false); // Ref to track if we should stay in edit mode after operations
 
   // Parse value into segments for display mode
   const parsedSegments = useMemo(() => parseTextWithRefs(value), [value]);
+
+  // Find which ref segment the cursor is currently inside (if any)
+  const currentRefAtCursor = useMemo(() => {
+    if (cursorPosition === null) return null;
+    return parsedSegments.find(
+      segment => segment.type === 'ref' && cursorPosition >= segment.start && cursorPosition <= segment.end
+    );
+  }, [parsedSegments, cursorPosition]);
 
   // Get objects from store for each allowed type (used for both selector and display)
   const sources = useStore(state => state.sources);
@@ -137,14 +148,23 @@ const RefTextArea = ({
     return groups;
   }, [filteredObjects]);
 
-  // Insert ref at cursor position
+  // Insert or replace ref at cursor position
   const insertRef = useCallback(
     (objectName, property = null) => {
       // Use centralized formatting utilities for consistent output
       const refString = formatRef(objectName, property);
       const fullRefString = formatRefExpression(objectName, property);
 
-      if (cursorPosition !== null) {
+      // Keep edit mode active after this operation
+      keepEditModeRef.current = true;
+
+      // If we're in replace mode, replace the entire ref segment
+      if (replaceRefSegment) {
+        const newValue =
+          value.slice(0, replaceRefSegment.start) + fullRefString + value.slice(replaceRefSegment.end);
+        onChange(newValue);
+        setReplaceRefSegment(null);
+      } else if (cursorPosition !== null) {
         // Insert at cursor position
         const insertPosition = cursorPosition;
 
@@ -167,13 +187,25 @@ const RefTextArea = ({
         }
       }
 
-      // Close selector and clear state
+      // Close selector and clear state but keep editing
       setShowSelector(false);
       setSearchQuery('');
-      setCursorPosition(null);
+
+      // Reset keepEditMode flag after a short delay
+      setTimeout(() => {
+        keepEditModeRef.current = false;
+      }, 200);
     },
-    [value, onChange, cursorPosition]
+    [value, onChange, cursorPosition, replaceRefSegment]
   );
+
+  // Start replacing a ref - opens selector in replace mode
+  const startReplaceRef = useCallback(() => {
+    if (currentRefAtCursor) {
+      setReplaceRefSegment(currentRefAtCursor);
+      setShowSelector(true);
+    }
+  }, [currentRefAtCursor]);
 
   // Handle Monaco editor mount
   const handleEditorMount = editor => {
@@ -198,6 +230,7 @@ const RefTextArea = ({
   const closeSelector = () => {
     setShowSelector(false);
     setSearchQuery('');
+    setReplaceRefSegment(null);
   };
 
   // Handle click outside to close selector
@@ -216,9 +249,12 @@ const RefTextArea = ({
   const editorHeight = Math.max(80, rows * 20);
 
   // Check if we should show the add button
-  // Hide when: hideAddButton prop is true, or cursor is inside ${}
+  // Hide when: hideAddButton prop is true, or cursor is inside ${}, or cursor is on a ref
   const showAddButton =
-    !hideAddButton && !isInsideDollarBrace(value, cursorPosition ?? value.length);
+    !hideAddButton && !isInsideDollarBrace(value, cursorPosition ?? value.length) && !currentRefAtCursor;
+
+  // Show swap button when cursor is on a ref (in edit mode)
+  const showSwapButton = isEditing && currentRefAtCursor && !hideAddButton;
 
   // Enter edit mode
   const enterEditMode = useCallback(() => {
@@ -231,7 +267,8 @@ const RefTextArea = ({
   const handleEditorBlur = useCallback(() => {
     // Small delay to allow click events to fire first
     setTimeout(() => {
-      if (!showSelector) {
+      // Don't exit edit mode if selector is open or we just did an insert/replace
+      if (!showSelector && !keepEditModeRef.current) {
         setIsEditing(false);
       }
     }, 150);
@@ -277,29 +314,44 @@ const RefTextArea = ({
 
   return (
     <div className="space-y-1" ref={containerRef}>
-      {/* Label with inline + button */}
+      {/* Label with inline buttons - fixed height container to prevent layout shift */}
       {label && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between h-6">
           <label className="block text-sm font-medium text-gray-700">
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
           </label>
-          <div className="flex items-center gap-1">
-            {showAddButton && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(true);
-                  setShowSelector(!showSelector);
-                }}
-                disabled={disabled}
-                className="p-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
-                title="Insert reference"
-              >
-                <AddIcon fontSize="small" />
-              </button>
-            )}
-          </div>
+          {/* Fixed-size button container - always present to prevent layout shift */}
+          {!hideAddButton && (
+            <div className="flex items-center justify-center" style={{ width: 24, height: 24 }}>
+              {showSwapButton ? (
+                <button
+                  type="button"
+                  onClick={startReplaceRef}
+                  disabled={disabled}
+                  className="flex items-center justify-center rounded bg-blue-100 hover:bg-blue-200 text-blue-600 hover:text-blue-800 transition-colors"
+                  style={{ width: 22, height: 22 }}
+                  title={`Switch reference: ${currentRefAtCursor?.name}`}
+                >
+                  <SwapHorizIcon style={{ fontSize: 14 }} />
+                </button>
+              ) : showAddButton ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setShowSelector(!showSelector);
+                  }}
+                  disabled={disabled}
+                  className="flex items-center justify-center rounded bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
+                  style={{ width: 22, height: 22 }}
+                  title="Insert reference"
+                >
+                  <AddIcon style={{ fontSize: 14 }} />
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
       )}
 
@@ -373,6 +425,15 @@ const RefTextArea = ({
           >
             {/* Header */}
             <div className="p-3 border-b border-gray-200">
+              {/* Replace mode indicator */}
+              {replaceRefSegment && (
+                <div className="mb-2 px-2 py-1.5 bg-blue-50 text-blue-700 text-xs rounded flex items-center gap-1">
+                  <SwapHorizIcon style={{ fontSize: 14 }} />
+                  <span>
+                    Replace <strong>{replaceRefSegment.name}</strong> with:
+                  </span>
+                </div>
+              )}
               {/* Search Input */}
               <div className="relative">
                 <SearchIcon
@@ -383,7 +444,7 @@ const RefTextArea = ({
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search objects..."
+                  placeholder={replaceRefSegment ? 'Search for replacement...' : 'Search objects...'}
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md
                     focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   autoFocus
