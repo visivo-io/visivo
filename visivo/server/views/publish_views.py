@@ -218,12 +218,15 @@ def _build_child_info(name, obj, status, published_obj, type_key, project_file_p
     }
     writer_status = status_map.get(status, "Unchanged")
 
+    # Fields that should not be written to YAML files (internal tracking fields)
+    exclude_fields = {"path", "file_path"}
+
     # Determine file paths
     if status == ObjectStatus.NEW:
         # New objects go to the project file
         file_path = project_file_path
         new_file_path = project_file_path
-        config = obj.model_dump(exclude_none=True) if obj else {}
+        config = obj.model_dump(exclude_none=True, exclude=exclude_fields) if obj else {}
     elif status == ObjectStatus.DELETED:
         # Deleted objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
@@ -233,7 +236,7 @@ def _build_child_info(name, obj, status, published_obj, type_key, project_file_p
         # Modified objects use path from published version
         file_path = _get_file_path(published_obj, project_file_path)
         new_file_path = file_path
-        config = obj.model_dump(exclude_none=True) if obj else {}
+        config = obj.model_dump(exclude_none=True, exclude=exclude_fields) if obj else {}
 
     return {
         "status": writer_status,

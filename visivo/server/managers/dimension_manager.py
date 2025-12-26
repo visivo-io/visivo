@@ -83,7 +83,13 @@ class DimensionManager(ObjectManager[Dimension]):
             return None
 
         status = self.get_status(name)
-        return self._serialize_object(name, dimension, status)
+        result = self._serialize_object(name, dimension, status)
+
+        # Include parent model if this is a nested dimension
+        if hasattr(dimension, "_parent_name") and dimension._parent_name:
+            result["parentModel"] = dimension._parent_name
+
+        return result
 
     def get_all_dimensions_with_status(
         self, cached_models: List = None, model_statuses: Dict[str, ObjectStatus] = None
@@ -111,7 +117,11 @@ class DimensionManager(ObjectManager[Dimension]):
                 # Include deleted objects with info from published version
                 if name in self._published_objects:
                     dimension = self._published_objects[name]
-                    result.append(self._serialize_object(name, dimension, ObjectStatus.DELETED))
+                    deleted_info = self._serialize_object(name, dimension, ObjectStatus.DELETED)
+                    # Include parent model if this is a nested dimension
+                    if hasattr(dimension, "_parent_name") and dimension._parent_name:
+                        deleted_info["parentModel"] = dimension._parent_name
+                    result.append(deleted_info)
                 seen_names.add(name)
                 continue
 

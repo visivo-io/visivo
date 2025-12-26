@@ -83,7 +83,13 @@ class MetricManager(ObjectManager[Metric]):
             return None
 
         status = self.get_status(name)
-        return self._serialize_object(name, metric, status)
+        result = self._serialize_object(name, metric, status)
+
+        # Include parent model if this is a nested metric
+        if hasattr(metric, "_parent_name") and metric._parent_name:
+            result["parentModel"] = metric._parent_name
+
+        return result
 
     def get_all_metrics_with_status(
         self, cached_models: List = None, model_statuses: Dict[str, ObjectStatus] = None
@@ -111,7 +117,11 @@ class MetricManager(ObjectManager[Metric]):
                 # Include deleted objects with info from published version
                 if name in self._published_objects:
                     metric = self._published_objects[name]
-                    result.append(self._serialize_object(name, metric, ObjectStatus.DELETED))
+                    deleted_info = self._serialize_object(name, metric, ObjectStatus.DELETED)
+                    # Include parent model if this is a nested metric
+                    if hasattr(metric, "_parent_name") and metric._parent_name:
+                        deleted_info["parentModel"] = metric._parent_name
+                    result.append(deleted_info)
                 seen_names.add(name)
                 continue
 
