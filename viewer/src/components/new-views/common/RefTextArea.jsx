@@ -231,6 +231,10 @@ const RefTextArea = ({
     setShowSelector(false);
     setSearchQuery('');
     setReplaceRefSegment(null);
+    // Reset the keep edit mode flag after a short delay to allow blur to be handled
+    setTimeout(() => {
+      keepEditModeRef.current = false;
+    }, 200);
   };
 
   // Handle click outside to close selector
@@ -238,6 +242,10 @@ const RefTextArea = ({
     const handleClickOutside = e => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowSelector(false);
+        // Reset the keep edit mode flag
+        setTimeout(() => {
+          keepEditModeRef.current = false;
+        }, 200);
       }
     };
 
@@ -265,14 +273,14 @@ const RefTextArea = ({
 
   // Exit edit mode on blur (with small delay for click handling)
   const handleEditorBlur = useCallback(() => {
-    // Small delay to allow click events to fire first
+    // Small delay to allow click events to fire first (onMouseDown sets keepEditModeRef)
     setTimeout(() => {
-      // Don't exit edit mode if selector is open or we just did an insert/replace
-      if (!showSelector && !keepEditModeRef.current) {
+      // Don't exit edit mode if keepEditModeRef is true (button was clicked)
+      if (!keepEditModeRef.current) {
         setIsEditing(false);
       }
     }, 150);
-  }, [showSelector]);
+  }, []);
 
   // Render a ref pill for display mode
   const renderRefPill = (name, property, key) => {
@@ -327,6 +335,9 @@ const RefTextArea = ({
               {showSwapButton ? (
                 <button
                   type="button"
+                  onMouseDown={() => {
+                    keepEditModeRef.current = true;
+                  }}
                   onClick={startReplaceRef}
                   disabled={disabled}
                   className="flex items-center justify-center rounded bg-blue-100 hover:bg-blue-200 text-blue-600 hover:text-blue-800 transition-colors"
@@ -338,6 +349,9 @@ const RefTextArea = ({
               ) : showAddButton ? (
                 <button
                   type="button"
+                  onMouseDown={() => {
+                    keepEditModeRef.current = true;
+                  }}
                   onClick={() => {
                     setIsEditing(true);
                     setShowSelector(!showSelector);
