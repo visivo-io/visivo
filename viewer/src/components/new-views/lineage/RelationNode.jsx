@@ -4,15 +4,15 @@ import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
- * ModelNode - Custom React Flow node for models
- * Shows model name with status indicator. Click node to edit.
+ * RelationNode - Custom React Flow node for relations
+ * Shows relation name with status indicator. Click node to edit.
  */
-const ModelNode = ({ data, selected }) => {
-  const { name, source, status, isEditing } = data;
+const RelationNode = ({ data, selected }) => {
+  const { name, model, status, isEditing } = data;
   const isHighlighted = selected || isEditing;
 
   // Get type colors and icon
-  const typeConfig = getTypeByValue('model');
+  const typeConfig = getTypeByValue('relation');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
@@ -25,12 +25,12 @@ const ModelNode = ({ data, selected }) => {
         ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
       `}
     >
-      {/* Target handle (for source connections) */}
+      {/* Target handle (connects from models) */}
       <Handle
         type="target"
         position="left"
         style={{
-          background: '#6366f1', // indigo-500 for model connections
+          background: '#94a3b8',
           width: 8,
           height: 8,
           border: '2px solid white',
@@ -56,20 +56,24 @@ const ModelNode = ({ data, selected }) => {
       {/* Icon */}
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
-      {/* Name and source */}
+      {/* Name and model reference */}
       <div className="flex flex-col min-w-0">
         <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
           {name}
         </span>
-        {source && <span className="text-xs text-gray-400">source: {source}</span>}
+        {model && (
+          <span className="text-xs text-gray-400 truncate max-w-[150px]" title={`→ ${model}`}>
+            → {model}
+          </span>
+        )}
       </div>
 
-      {/* Source handle (for future connections to traces/downstream) */}
+      {/* Source handle (for future connections) */}
       <Handle
         type="source"
         position="right"
         style={{
-          background: '#6366f1', // indigo-500 for model connections
+          background: '#94a3b8',
           width: 8,
           height: 8,
           border: '2px solid white',
@@ -79,4 +83,4 @@ const ModelNode = ({ data, selected }) => {
   );
 };
 
-export default ModelNode;
+export default RelationNode;

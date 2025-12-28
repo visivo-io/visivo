@@ -11,16 +11,16 @@ class ConcreteObjectManager(ObjectManager[dict]):
             raise ValueError("Object must have a 'name' field")
         return obj_data
 
-    def extract_from_project(self, project) -> None:
-        """Extract objects from a mock project."""
+    def extract_from_dag(self, dag) -> None:
+        """Extract objects from a mock DAG."""
         self._published_objects.clear()
-        for obj in getattr(project, "objects", []):
+        for obj in getattr(dag, "objects", []):
             if isinstance(obj, dict) and "name" in obj:
                 self._published_objects[obj["name"]] = obj
 
 
-class MockProject:
-    """Mock project for testing."""
+class MockDag:
+    """Mock DAG for testing."""
 
     def __init__(self, objects=None):
         self.objects = objects or []
@@ -58,11 +58,11 @@ class TestObjectManager:
         assert manager.cached_objects["test"] == obj2
 
     def test_load_populates_published_objects(self):
-        """Test that load() populates published_objects from project."""
+        """Test that load() populates published_objects from DAG."""
         manager = ConcreteObjectManager()
-        project = MockProject(objects=[{"name": "obj1", "value": 1}, {"name": "obj2", "value": 2}])
+        dag = MockDag(objects=[{"name": "obj1", "value": 1}, {"name": "obj2", "value": 2}])
 
-        manager.load(project)
+        manager.load(dag)
 
         assert len(manager.published_objects) == 2
         assert "obj1" in manager.published_objects
@@ -72,9 +72,9 @@ class TestObjectManager:
         """Test that load() clears existing published_objects."""
         manager = ConcreteObjectManager()
         manager._published_objects["old"] = {"name": "old"}
-        project = MockProject(objects=[{"name": "new"}])
+        dag = MockDag(objects=[{"name": "new"}])
 
-        manager.load(project)
+        manager.load(dag)
 
         assert "old" not in manager.published_objects
         assert "new" in manager.published_objects

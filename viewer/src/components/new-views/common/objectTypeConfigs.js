@@ -1,5 +1,8 @@
 import StorageIcon from '@mui/icons-material/Storage';
 import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import CategoryIcon from '@mui/icons-material/Category';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 
 /**
  * Centralized object type definitions
@@ -49,6 +52,60 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-indigo-50 border-indigo-200',
       nodeSelected: 'bg-indigo-100 border-indigo-400',
+    },
+  },
+  {
+    value: 'dimension',
+    label: 'Dimensions',
+    singularLabel: 'Dimension',
+    icon: CategoryIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-purple-100',
+      text: 'text-purple-800',
+      border: 'border-purple-200',
+      bgHover: 'hover:bg-purple-50',
+      bgSelected: 'bg-purple-100',
+      borderSelected: 'border-purple-300',
+      // For nodes/pills
+      node: 'bg-purple-50 border-purple-200',
+      nodeSelected: 'bg-purple-100 border-purple-400',
+    },
+  },
+  {
+    value: 'metric',
+    label: 'Metrics',
+    singularLabel: 'Metric',
+    icon: AnalyticsIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-orange-100',
+      text: 'text-orange-800',
+      border: 'border-orange-200',
+      bgHover: 'hover:bg-orange-50',
+      bgSelected: 'bg-orange-100',
+      borderSelected: 'border-orange-300',
+      // For nodes/pills
+      node: 'bg-orange-50 border-orange-200',
+      nodeSelected: 'bg-orange-100 border-orange-400',
+    },
+  },
+  {
+    value: 'relation',
+    label: 'Relations',
+    singularLabel: 'Relation',
+    icon: AccountTreeIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-cyan-100',
+      text: 'text-cyan-800',
+      border: 'border-cyan-200',
+      bgHover: 'hover:bg-cyan-50',
+      bgSelected: 'bg-cyan-100',
+      borderSelected: 'border-cyan-300',
+      // For nodes/pills
+      node: 'bg-cyan-50 border-cyan-200',
+      nodeSelected: 'bg-cyan-100 border-cyan-400',
     },
   },
 ];
