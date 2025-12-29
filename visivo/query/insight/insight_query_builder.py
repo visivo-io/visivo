@@ -395,7 +395,10 @@ class InsightQueryBuilder:
         """Sets the resolved_query_statements"""
         resolved_query_statements = []
         for key, statement in self.unresolved_query_statements:
-            if key in ("filter", "sort"):
+            if key == "sort":
+                # Sort expressions need special handling to preserve ASC/DESC modifiers
+                resolved_statement = self.field_resolver.resolve_sort(expression=statement)
+            elif key == "filter":
                 resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
             else:
                 resolved_statement = self.field_resolver.resolve(expression=statement)

@@ -110,6 +110,9 @@ inputs:
     options: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} }
     display:
       type: checkboxes
+      default: 
+        values: all
+
 
   # ===== DATE-BASED INPUTS (new display types) =====
 

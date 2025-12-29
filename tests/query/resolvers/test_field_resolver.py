@@ -892,14 +892,14 @@ class TestFieldResolverSortExpressions:
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
-        # Resolve sort expression with DESC - alias=False for sort statements
-        result = resolver.resolve("${ref(orders).amount} DESC", alias=False)
+        # Resolve sort expression with DESC using resolve_sort()
+        result = resolver.resolve_sort("${ref(orders).amount} DESC")
 
         # Should contain DESC keyword
         assert "DESC" in result
         # Should contain the qualified column reference
         assert "amount" in result
-        # Should NOT have AS (alias=False)
+        # Should NOT have AS (sort expressions don't have aliases)
         assert " AS " not in result
 
     def test_resolve_sort_expression_preserves_asc(self, tmpdir):
@@ -923,8 +923,8 @@ class TestFieldResolverSortExpressions:
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
-        # Resolve sort expression with ASC
-        result = resolver.resolve("${ref(orders).date} ASC", alias=False)
+        # Resolve sort expression with ASC using resolve_sort()
+        result = resolver.resolve_sort("${ref(orders).date} ASC")
 
         # Should contain ASC keyword
         assert "ASC" in result
@@ -953,8 +953,8 @@ class TestFieldResolverSortExpressions:
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
-        # Resolve metric reference with DESC
-        result = resolver.resolve("${ref(orders).total_amount} DESC", alias=False)
+        # Resolve metric reference with DESC using resolve_sort()
+        result = resolver.resolve_sort("${ref(orders).total_amount} DESC")
 
         # Should contain DESC keyword
         assert "DESC" in result
@@ -984,8 +984,8 @@ class TestFieldResolverSortExpressions:
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
-        # Resolve implicit dimension with DESC
-        result = resolver.resolve("${ref(sales).revenue} DESC", alias=False)
+        # Resolve implicit dimension with DESC using resolve_sort()
+        result = resolver.resolve_sort("${ref(sales).revenue} DESC")
 
         # Should contain DESC keyword
         assert "DESC" in result

@@ -15,6 +15,7 @@ from visivo.query.sqlglot_utils import (
     field_alias_hasher,
     get_sqlglot_dialect,
     normalize_identifier_for_dialect,
+    parse_expression,
 )
 from sqlglot import exp
 from visivo.logger.logger import Logger
@@ -120,6 +121,150 @@ class FieldResolver:
             raise ValueError(
                 f"Failed to qualify expression '{expression}' for model '{model_name}': {e}"
             )
+
+    def _strip_trailing_alias(self, sql: str) -> str:
+        """
+        Strip trailing alias from SQL expression using SQLGlot.
+
+        This properly handles CAST(x AS type) syntax which contains ' AS ' but is NOT an alias.
+        Only strips the alias if the root expression is an Alias node.
+
+        Args:
+            sql: SQL expression that may have a trailing alias (e.g., '"x" AS "alias"')
+
+        Returns:
+            SQL expression without trailing alias (e.g., '"x"')
+        """
+        # If expression contains ${} placeholders, SQLGlot can't parse it
+        # Use regex to check for trailing alias pattern
+        if "${" in sql:
+            # Expression has placeholders - use a safe regex for trailing alias
+            # Match: ... AS "identifier" at the end
+            import re
+
+            trailing_alias_pattern = r'\s+AS\s+"[^"]+"\s*$'
+            match = re.search(trailing_alias_pattern, sql, re.IGNORECASE)
+            if match:
+                return sql[: match.start()]
+            return sql
+
+        # Try to parse with SQLGlot
+        try:
+            sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+            parsed = parse_expression(sql, self.native_dialect)
+            if parsed and isinstance(parsed, exp.Alias):
+                # Root is an alias - return just the aliased expression
+                return parsed.this.sql(dialect=sqlglot_dialect)
+        except Exception:
+            # Parsing failed - return as-is
+            pass
+
+        return sql
+
+    def _replace_template_patterns_with_placeholders(self, text: str) -> tuple[str, dict]:
+        """
+        Replace ${...} patterns with SQLGlot-parseable placeholders using string operations.
+
+        Args:
+            text: String containing ${...} patterns
+
+        Returns:
+            Tuple of (text with placeholders, dict mapping placeholders to original patterns)
+        """
+        placeholders = {}
+        result = []
+        i = 0
+        counter = 0
+
+        while i < len(text):
+            if text[i : i + 2] == "${":
+                # Find matching closing brace
+                start = i
+                depth = 0
+                while i < len(text):
+                    if text[i] == "{":
+                        depth += 1
+                    elif text[i] == "}":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    i += 1
+
+                original = text[start : i + 1]
+                placeholder = f"__PH{counter}__"
+                placeholders[placeholder] = original
+                result.append(placeholder)
+                counter += 1
+                i += 1
+            else:
+                result.append(text[i])
+                i += 1
+
+        return "".join(result), placeholders
+
+    def resolve_sort(self, expression: str) -> str:
+        """
+        Resolve a sort expression, preserving ASC/DESC modifiers.
+
+        Sort expressions like "${ref(model).field} DESC" need special handling because
+        parse_expression() doesn't understand ORDER BY modifiers and may misinterpret
+        them as aliases.
+
+        Uses SQLGlot's ORDER BY node to properly parse and extract modifiers.
+
+        Args:
+            expression: Sort expression that may end with ASC/DESC
+
+        Returns:
+            Resolved expression with ASC/DESC preserved
+        """
+        from sqlglot import parse_one
+
+        # If no refs to resolve, return as-is
+        if "${" not in expression:
+            return expression
+
+        # Replace ${...} patterns with placeholders using string operations
+        placeholder_expr, placeholders = self._replace_template_patterns_with_placeholders(
+            expression
+        )
+
+        # Parse with SQLGlot using ORDER BY context to properly interpret modifiers
+        try:
+            sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+            parsed = parse_one(f"SELECT 1 ORDER BY {placeholder_expr}", dialect=sqlglot_dialect)
+
+            # Extract the Ordered expression from the parsed query
+            order_clause = parsed.args.get("order")
+            if order_clause and order_clause.expressions:
+                order_expr = order_clause.expressions[0]
+
+                # Extract sort modifiers from the Ordered node
+                is_desc = order_expr.args.get("desc", False)
+                nulls_first = order_expr.args.get("nulls_first")
+
+                # Get the inner expression SQL and restore original patterns
+                inner_expr_sql = order_expr.this.sql(dialect=sqlglot_dialect)
+                for placeholder, original in placeholders.items():
+                    inner_expr_sql = inner_expr_sql.replace(placeholder, original)
+
+                # Resolve the expression (handles ${ref(...)} patterns)
+                resolved_inner = self.resolve(inner_expr_sql, alias=False)
+
+                # Reconstruct using SQLGlot's Ordered node for proper SQL generation
+                ordered_node = exp.Ordered(
+                    this=parse_expression(resolved_inner, self.native_dialect),
+                    desc=is_desc,
+                    nulls_first=nulls_first,
+                )
+                return ordered_node.sql(dialect=sqlglot_dialect)
+
+        except Exception:
+            # SQLGlot couldn't parse - fall back to resolving without modifiers
+            pass
+
+        # Fallback: resolve normally (may lose modifiers if SQLGlot fails)
+        return self.resolve(expression, alias=False)
 
     def resolve(self, expression: str, alias=True) -> str:
         """
@@ -227,7 +372,9 @@ class FieldResolver:
         #      This might make sense to do if we start validating the run queries on compile rather than
         #      during the run like we do currently.
         hashed_alias = field_alias_hasher(resolved_sql)
-        resolved_strip_alias = resolved_sql.split(" AS ")[0]
+        # Use SQLGlot-based alias stripping to properly handle CAST(x AS type) syntax
+        # The naive .split(" AS ")[0] approach incorrectly truncates expressions containing " AS "
+        resolved_strip_alias = self._strip_trailing_alias(resolved_sql)
         if alias:
             # Use dialect-aware identifier normalization for proper case handling
             # Snowflake: uppercase (matches unquoted storage)
