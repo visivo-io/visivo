@@ -116,6 +116,41 @@ export const formatRefExpression = (name, property = null) => {
   return `\${${formatRef(name, property)}}`;
 };
 
+/**
+ * Format an environment variable reference
+ * Always outputs: ${env.VAR_NAME}
+ */
+export const formatEnvVar = varName => {
+  return `\${env.${varName.trim()}}`;
+};
+
+/**
+ * Pattern to match ${env.VAR_NAME} with flexible whitespace
+ */
+export const ENV_VAR_PATTERN = /\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}/g;
+
+/**
+ * Check if a string contains env var references
+ */
+export const hasEnvVarRef = text => {
+  if (!text) return false;
+  return new RegExp(ENV_VAR_PATTERN.source).test(text);
+};
+
+/**
+ * Extract env var names from text
+ */
+export const extractEnvVarNames = text => {
+  if (!text) return [];
+  const regex = new RegExp(ENV_VAR_PATTERN.source, 'g');
+  const names = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    names.push(match[1]);
+  }
+  return names;
+};
+
 export class ContextString {
   constructor(value) {
     this.value = value;

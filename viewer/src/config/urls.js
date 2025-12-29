@@ -70,6 +70,9 @@ const URL_PATTERNS = {
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
     publish: '/api/publish/',
+
+    // Environment variable endpoints
+    envVars: '/api/project/env_vars/',
   },
 
   dist: {
@@ -138,6 +141,9 @@ const URL_PATTERNS = {
     publishStatus: null,
     publishPending: null,
     publish: null,
+
+    // Environment variable endpoints (not available in dist)
+    envVars: null,
   },
 };
 

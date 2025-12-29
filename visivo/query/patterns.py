@@ -52,6 +52,11 @@ FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 # Context String Patterns - ${ } general syntax
 # ============================================================================
 
+# Environment variable pattern: ${env.VAR_NAME}
+# Captures: variable name (alphanumeric and underscore, must start with letter or underscore)
+# Example: ${env.DB_PASSWORD} or ${ env.API_KEY }
+ENV_VAR_CONTEXT_PATTERN = r"\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}"
+
 # Inline path pattern: ${path.to.property}
 # Example: ${user.name} or ${data[0].value}
 INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"

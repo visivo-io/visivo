@@ -236,3 +236,39 @@ def register_project_views(app, flask_app, output_dir):
         write_project_file(project, project_dir)
 
         return jsonify({"message": "Project finalized"})
+
+    @app.route("/api/project/env_vars/", methods=["GET"])
+    def get_env_vars():
+        """
+        Get list of available environment variables for context strings.
+
+        Returns variable names only (not values) from the .env file in the
+        project's working directory. This endpoint is used by the UI to allow
+        users to insert ${env.VAR_NAME} references in edit fields.
+        """
+        try:
+            env_vars = []
+
+            # Get the working directory from the project
+            working_dir = None
+            if flask_app._project and hasattr(flask_app._project, "project_file_path"):
+                project_file_path = flask_app._project.project_file_path
+                if project_file_path:
+                    working_dir = Path(project_file_path).parent
+
+            if working_dir:
+                env_file = working_dir / ".env"
+                if env_file.exists():
+                    with open(env_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            # Skip empty lines and comments
+                            if line and not line.startswith("#") and "=" in line:
+                                var_name = line.split("=")[0].strip()
+                                if var_name:  # Skip empty var names
+                                    env_vars.append(var_name)
+
+            return jsonify({"env_vars": sorted(set(env_vars)), "count": len(set(env_vars))})
+        except Exception as e:
+            Logger.instance().error(f"Error getting env vars: {str(e)}")
+            return jsonify({"error": str(e)}), 500

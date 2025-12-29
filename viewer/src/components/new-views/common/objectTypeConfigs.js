@@ -3,6 +3,7 @@ import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import CategoryIcon from '@mui/icons-material/Category';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 
 /**
  * Centralized object type definitions
@@ -106,6 +107,25 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-cyan-50 border-cyan-200',
       nodeSelected: 'bg-cyan-100 border-cyan-400',
+    },
+  },
+  {
+    value: 'env',
+    label: 'Environment Variables',
+    singularLabel: 'Environment Variable',
+    icon: VpnKeyIcon,
+    enabled: true,
+    isReadOnly: true, // Cannot create/edit env vars via UI
+    colors: {
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-800',
+      border: 'border-emerald-200',
+      bgHover: 'hover:bg-emerald-50',
+      bgSelected: 'bg-emerald-100',
+      borderSelected: 'border-emerald-300',
+      // For nodes/pills
+      node: 'bg-emerald-50 border-emerald-200',
+      nodeSelected: 'bg-emerald-100 border-emerald-400',
     },
   },
 ];

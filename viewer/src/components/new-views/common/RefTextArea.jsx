@@ -6,8 +6,10 @@ import {
   isInsideDollarBrace,
   formatRef,
   formatRefExpression,
+  formatEnvVar,
   parseTextWithRefs,
 } from '../../../utils/contextString';
+import { getEnvVars } from '../../../api/project';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
@@ -74,6 +76,20 @@ const RefTextArea = ({
   const metrics = useStore(state => state.metrics);
   const relations = useStore(state => state.relations);
 
+  // State for environment variables (fetched from API)
+  const [envVars, setEnvVars] = useState([]);
+
+  // Fetch env vars when component mounts or allowedTypes includes 'env'
+  useEffect(() => {
+    if (allowedTypes.includes('env')) {
+      getEnvVars().then(data => {
+        if (data && data.env_vars) {
+          setEnvVars(data.env_vars);
+        }
+      });
+    }
+  }, [allowedTypes]);
+
   // Build list of available objects based on allowed types
   const availableObjects = useMemo(() => {
     const objects = [];
@@ -108,8 +124,19 @@ const RefTextArea = ({
       });
     }
 
+    // Add environment variables
+    if (allowedTypes.includes('env')) {
+      envVars.forEach(varName => {
+        objects.push({
+          name: varName,
+          type: 'env',
+          config: { description: `Environment variable: ${varName}` },
+        });
+      });
+    }
+
     return objects;
-  }, [allowedTypes, sources, models, dimensions, metrics, relations]);
+  }, [allowedTypes, sources, models, dimensions, metrics, relations, envVars]);
 
   // Helper to find object type by name (for display mode pills)
   const getObjectTypeByName = useCallback(
@@ -150,10 +177,18 @@ const RefTextArea = ({
 
   // Insert or replace ref at cursor position
   const insertRef = useCallback(
-    (objectName, property = null) => {
-      // Use centralized formatting utilities for consistent output
-      const refString = formatRef(objectName, property);
-      const fullRefString = formatRefExpression(objectName, property);
+    (objectName, objectType = null, property = null) => {
+      // Use different formatting for env vars vs regular refs
+      let refString, fullRefString;
+      if (objectType === 'env') {
+        // Environment variables use ${env.VAR_NAME} format
+        fullRefString = formatEnvVar(objectName);
+        refString = `env.${objectName}`; // For insertion inside ${}
+      } else {
+        // Regular refs use ${ref(name)} format
+        refString = formatRef(objectName, property);
+        fullRefString = formatRefExpression(objectName, property);
+      }
 
       // Keep edit mode active after this operation
       keepEditModeRef.current = true;
@@ -170,7 +205,7 @@ const RefTextArea = ({
 
         // Check if we're already inside a ${}
         if (isInsideDollarBrace(value, insertPosition)) {
-          // Just insert ref() without ${}
+          // Just insert ref() or env.VAR without ${}
           const newValue = value.slice(0, insertPosition) + refString + value.slice(insertPosition);
           onChange(newValue);
         } else {
@@ -525,7 +560,7 @@ const RefTextArea = ({
                         <button
                           key={`${type}-${obj.name}`}
                           type="button"
-                          onClick={() => insertRef(obj.name)}
+                          onClick={() => insertRef(obj.name, obj.type)}
                           className="w-full px-3 py-2 flex items-center gap-2
                             text-left hover:bg-gray-50 transition-colors
                             border-b border-gray-100 last:border-b-0"

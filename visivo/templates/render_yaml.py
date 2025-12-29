@@ -1,9 +1,16 @@
 import time
 import datetime
+import re
+import warnings
 from dateutil import parser
 import jinja2
 import os
 import json
+
+from visivo.parsers.env_var_resolver import resolve_env_vars
+
+# Pattern to detect deprecated {{ env_var('VAR_NAME') }} syntax
+DEPRECATED_ENV_VAR_PATTERN = re.compile(r"\{\{\s*env_var\s*\(['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
 
 
 def env_var(key):
@@ -121,15 +128,46 @@ FUNCTIONS = {
 }
 
 
-def render_yaml(template_string: str):
+def check_deprecated_env_var_syntax(content: str, file_path: str = None) -> None:
+    """
+    Check for deprecated env_var() Jinja syntax and emit deprecation warnings.
+
+    Args:
+        content: YAML content to check
+        file_path: Optional file path for context in warning message
+    """
+    matches = DEPRECATED_ENV_VAR_PATTERN.findall(content)
+    for var_name in matches:
+        location = f" in {file_path}" if file_path else ""
+        warnings.warn(
+            f"Deprecated: {{{{ env_var('{var_name}') }}}} syntax{location}. "
+            f"Use ${{{{env.{var_name}}}}} instead.",
+            DeprecationWarning,
+            stacklevel=4,  # Point to the caller of load_yaml_file
+        )
+
+
+def render_yaml(template_string: str, file_path: str = None):
     """
     Renders a YAML template string using Jinja2 and a set of predefined functions.
 
+    Also resolves ${env.VAR_NAME} context strings to environment variable values.
+
     Args:
         template_string (str): The YAML template string to render.
+        file_path (str): Optional file path for context in error/warning messages.
 
     Returns:
         str: The rendered YAML string.
     """
+    # Check for deprecated env_var() syntax and warn
+    check_deprecated_env_var_syntax(template_string, file_path)
+
+    # Render Jinja2 template (handles legacy {{ env_var('VAR') }} syntax)
     template = jinja2.Template(template_string)
-    return template.render(FUNCTIONS)
+    rendered = template.render(FUNCTIONS)
+
+    # Resolve ${env.VAR_NAME} context strings
+    rendered = resolve_env_vars(rendered, file_path)
+
+    return rendered
