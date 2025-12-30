@@ -7,8 +7,6 @@ import jinja2
 import os
 import json
 
-from visivo.parsers.env_var_resolver import resolve_env_vars
-
 # Pattern to detect deprecated {{ env_var('VAR_NAME') }} syntax
 DEPRECATED_ENV_VAR_PATTERN = re.compile(r"\{\{\s*env_var\s*\(['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
 
@@ -151,7 +149,12 @@ def render_yaml(template_string: str, file_path: str = None):
     """
     Renders a YAML template string using Jinja2 and a set of predefined functions.
 
-    Also resolves ${env.VAR_NAME} context strings to environment variable values.
+    NOTE: ${env.VAR_NAME} context strings are NOT resolved here. They are preserved
+    through parsing and resolved at runtime when values are actually used (e.g., when
+    connecting to a database). This allows the UI to display and edit env var syntax.
+
+    Legacy {{ env_var('VAR') }} Jinja syntax is still resolved at parse time for
+    backward compatibility.
 
     Args:
         template_string (str): The YAML template string to render.
@@ -163,11 +166,11 @@ def render_yaml(template_string: str, file_path: str = None):
     # Check for deprecated env_var() syntax and warn
     check_deprecated_env_var_syntax(template_string, file_path)
 
-    # Render Jinja2 template (handles legacy {{ env_var('VAR') }} syntax)
+    # Render Jinja2 template (handles legacy {{ env_var('VAR') }} syntax at parse time)
     template = jinja2.Template(template_string)
     rendered = template.render(FUNCTIONS)
 
-    # Resolve ${env.VAR_NAME} context strings
-    rendered = resolve_env_vars(rendered, file_path)
+    # NOTE: ${env.VAR_NAME} syntax is NOT resolved here - it's preserved and
+    # resolved at runtime by EnvVarString.resolve() when the value is needed
 
     return rendered
