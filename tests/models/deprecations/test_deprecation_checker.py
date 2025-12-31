@@ -103,5 +103,6 @@ class TestDeprecationChecker:
         checker = DeprecationChecker()
 
         checker_names = [c.__class__.__name__ for c in checker.checkers]
+        assert "EnvVarSyntaxDeprecation" in checker_names
         assert "RefSyntaxDeprecation" in checker_names
         assert "TraceDeprecation" in checker_names

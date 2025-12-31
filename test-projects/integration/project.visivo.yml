@@ -59,7 +59,7 @@ sources:
     type: postgresql
     host: localhost
     username: postgres
-    password: "{{ env_var('PG_PASSWORD') }}"
+    password: ${ env.PG_PASSWORD }
     port: 5434
 
   - name: local-mysql

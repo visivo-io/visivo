@@ -1,7 +1,6 @@
 import time
 import datetime
 import re
-import warnings
 from dateutil import parser
 import jinja2
 import os
@@ -9,6 +8,21 @@ import json
 
 # Pattern to detect deprecated {{ env_var('VAR_NAME') }} syntax
 DEPRECATED_ENV_VAR_PATTERN = re.compile(r"\{\{\s*env_var\s*\(['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
+
+# Module-level storage for deprecation warnings found during parsing
+_env_var_deprecation_warnings = []
+
+
+def clear_env_var_deprecation_warnings():
+    """Clear all collected env var deprecation warnings."""
+    _env_var_deprecation_warnings.clear()
+
+
+def get_env_var_deprecation_warnings():
+    """Get collected env var deprecation warnings and clear the list."""
+    warnings = list(_env_var_deprecation_warnings)
+    _env_var_deprecation_warnings.clear()
+    return warnings
 
 
 def env_var(key):
@@ -128,7 +142,10 @@ FUNCTIONS = {
 
 def check_deprecated_env_var_syntax(content: str, file_path: str = None) -> None:
     """
-    Check for deprecated env_var() Jinja syntax and emit deprecation warnings.
+    Check for deprecated env_var() Jinja syntax and collect warnings.
+
+    Warnings are stored in a module-level list and retrieved by the
+    EnvVarSyntaxDeprecation checker after parsing completes.
 
     Args:
         content: YAML content to check
@@ -136,12 +153,11 @@ def check_deprecated_env_var_syntax(content: str, file_path: str = None) -> None
     """
     matches = DEPRECATED_ENV_VAR_PATTERN.findall(content)
     for var_name in matches:
-        location = f" in {file_path}" if file_path else ""
-        warnings.warn(
-            f"Deprecated: {{{{ env_var('{var_name}') }}}} syntax{location}. "
-            f"Use ${{{{env.{var_name}}}}} instead.",
-            DeprecationWarning,
-            stacklevel=4,  # Point to the caller of load_yaml_file
+        _env_var_deprecation_warnings.append(
+            {
+                "var_name": var_name,
+                "file_path": file_path,
+            }
         )
 
 

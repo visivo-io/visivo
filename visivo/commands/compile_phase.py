@@ -32,6 +32,11 @@ def compile_phase(
     dbt_target: str = None,
     no_deprecation_warnings: bool = False,
 ):
+    # Clear any accumulated deprecation warnings from previous compile cycles
+    from visivo.templates.render_yaml import clear_env_var_deprecation_warnings
+
+    clear_env_var_deprecation_warnings()
+
     # Track parse project
     parse_start = time()
     Logger.instance().debug("    Running parse project phase...")

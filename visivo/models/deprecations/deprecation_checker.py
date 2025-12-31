@@ -7,6 +7,7 @@ from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
 )
+from visivo.models.deprecations.env_var_syntax_deprecation import EnvVarSyntaxDeprecation
 from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
 from visivo.models.deprecations.trace_deprecation import TraceDeprecation
 
@@ -25,6 +26,7 @@ class DeprecationChecker:
     def __init__(self):
         """Initialize the deprecation checker with all checkers."""
         self.checkers: List[BaseDeprecationChecker] = [
+            EnvVarSyntaxDeprecation(),
             RefSyntaxDeprecation(),
             TraceDeprecation(),
         ]
