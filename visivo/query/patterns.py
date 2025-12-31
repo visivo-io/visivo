@@ -44,8 +44,29 @@ PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 # The model_name capture handles both quoted 'model' and unquoted model
 # property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
 # property_path is optional - will be None if not present
+# DEPRECATED: Use REFS_CONTEXT_PATTERN instead
 CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
 FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+
+
+# ============================================================================
+# New Refs Syntax - ${refs.name.property} (consistent with ${env.VAR})
+# ============================================================================
+
+# Name pattern for refs: alphanumeric, underscore, and hyphen
+# Must start with letter or underscore
+# Examples: orders, my_model, my-model
+REFS_NAME_PATTERN = r"[a-zA-Z_][a-zA-Z0-9_-]*"
+
+# Property path after name (optional): .property, [0], .nested.path
+# Examples: .id, .data[0].value, [0]
+REFS_PROPERTY_PATH_PATTERN = r"(?:(?:\.[a-zA-Z_][a-zA-Z0-9_-]*|\[\d+\])+)?"
+
+# Full refs context pattern: ${refs.name} or ${refs.name.property}
+# Captures: refs_name (group 1), refs_property (group 2, optional)
+# Examples: ${refs.orders}, ${refs.orders.id}, ${refs.my-model.data[0]}
+REFS_CONTEXT_PATTERN = rf"\${{\s*refs\.(?P<refs_name>{REFS_NAME_PATTERN})(?P<refs_property>{REFS_PROPERTY_PATH_PATTERN})\s*}}"
+REFS_CONTEXT_PATTERN_COMPILED = re.compile(REFS_CONTEXT_PATTERN)
 
 
 # ============================================================================
@@ -254,3 +275,117 @@ def count_model_references(text: str) -> int:
         Number of unique models referenced
     """
     return len(extract_ref_names(text))
+
+
+# ============================================================================
+# New Refs Syntax Helpers - ${refs.name.property}
+# ============================================================================
+
+
+def extract_refs_components(text: str) -> List[Tuple[str, Optional[str]]]:
+    """
+    Extract all refs.name.property components from a text string.
+
+    Args:
+        text: Text containing ${refs.name.property} patterns
+
+    Returns:
+        List of tuples (name, property_path) where property_path may be None
+
+    Examples:
+        >>> extract_refs_components("${refs.orders.user_id} = ${refs.users.id}")
+        [('orders', 'user_id'), ('users', 'id')]
+    """
+    results = []
+    for match in REFS_CONTEXT_PATTERN_COMPILED.finditer(text):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property")
+        # Strip leading dot from property path
+        if property_path and property_path.startswith("."):
+            property_path = property_path[1:]
+        # Convert empty string to None
+        property_path = property_path if property_path else None
+        results.append((name, property_path))
+    return results
+
+
+def extract_refs_names(text: str) -> Set[str]:
+    """
+    Extract unique names from ${refs.name} patterns in text.
+
+    Args:
+        text: Text containing ${refs.name} patterns
+
+    Returns:
+        Set of unique names
+
+    Example:
+        >>> extract_refs_names("${refs.orders.id} = ${refs.users.id}")
+        {'orders', 'users'}
+    """
+    return {name for name, _ in extract_refs_components(text)}
+
+
+def has_refs_pattern(text: str) -> bool:
+    """
+    Check if text contains any ${refs.name} patterns.
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains ${refs.name} patterns
+    """
+    return bool(REFS_CONTEXT_PATTERN_COMPILED.search(text))
+
+
+def normalize_ref_to_refs(text: str) -> str:
+    """
+    Convert legacy ${ref(name).property} syntax to new ${refs.name.property} syntax.
+
+    Args:
+        text: Text containing legacy ref() patterns
+
+    Returns:
+        Text with all ${ref()} patterns converted to ${refs.} patterns
+
+    Examples:
+        >>> normalize_ref_to_refs("${ref(orders).id}")
+        "${refs.orders.id}"
+        >>> normalize_ref_to_refs("${ref(my-model)}")
+        "${refs.my-model}"
+    """
+
+    def replacer(model_name: str, property_path: Optional[str]) -> str:
+        if property_path:
+            return f"${{refs.{model_name}.{property_path}}}"
+        return f"${{refs.{model_name}}}"
+
+    return replace_refs(text, replacer)
+
+
+def normalize_refs_to_ref(text: str) -> str:
+    """
+    Convert new ${refs.name.property} syntax to legacy ${ref(name).property} syntax.
+
+    This is used during the transition period to normalize for internal processing.
+
+    Args:
+        text: Text containing ${refs.name} patterns
+
+    Returns:
+        Text with all ${refs.} patterns converted to ${ref()} patterns
+
+    Examples:
+        >>> normalize_refs_to_ref("${refs.orders.id}")
+        "${ref(orders).id}"
+        >>> normalize_refs_to_ref("${refs.my-model}")
+        "${ref(my-model)}"
+    """
+
+    def replace_match(match):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property") or ""
+        return f"${{ref({name}){property_path}}}"
+
+    return REFS_CONTEXT_PATTERN_COMPILED.sub(replace_match, text)

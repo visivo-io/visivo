@@ -14,7 +14,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 /**
- * RefTextArea - A Monaco-based SQL editor for expressions with ref() syntax
+ * RefTextArea - A Monaco-based SQL editor for expressions with refs syntax
+ *
+ * Uses the new ${refs.name} syntax (e.g., ${refs.orders.id})
+ * Also supports legacy ${ref(name)} syntax for reading
  *
  * Features:
  * - Display mode shows refs as colored pills with SQL in monospace

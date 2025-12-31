@@ -6,6 +6,7 @@ from visivo.logger.logger import Logger
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
+    MigrationAction,
 )
 from visivo.models.deprecations.env_var_syntax_deprecation import EnvVarSyntaxDeprecation
 from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
@@ -70,3 +71,22 @@ class DeprecationChecker:
             )
 
         logger.warn("=" * 60)
+
+    def get_all_migrations(self, working_dir: str) -> List[MigrationAction]:
+        """
+        Collect migrations from all checkers that support automatic migration.
+
+        This method scans files directly rather than requiring a parsed project,
+        allowing migration to work even on projects with syntax errors.
+
+        Args:
+            working_dir: The directory to scan for YAML files
+
+        Returns:
+            List of all migration actions from all checkers
+        """
+        all_migrations = []
+        for checker in self.checkers:
+            if checker.can_migrate():
+                all_migrations.extend(checker.get_migrations_from_files(working_dir))
+        return all_migrations
