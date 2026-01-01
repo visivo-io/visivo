@@ -172,7 +172,7 @@ models:
   - name: Orders 2024
     sql: SELECT * FROM orders
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -203,7 +203,7 @@ models:
   - name: orders
     sql: SELECT * FROM orders
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -226,7 +226,7 @@ charts:
     traces:
       - ${ ref(Indicator Trace) }
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -266,7 +266,7 @@ charts:
         props:
           x: ${ref(Simple Line).props.x}
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -300,7 +300,7 @@ charts:
     traces:
       - ${ ref(Fibonacci Waterfall) }
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -324,7 +324,7 @@ models:
   - name: derived_model
     source: ref(My Model)
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -348,7 +348,7 @@ traces:
   - name: funnel_trace
     model: ${ ref(test table) }
 """
-            yaml_path = os.path.join(tmpdir, "project.yml")
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
             with open(yaml_path, "w") as f:
                 f.write(yaml_content)
 
@@ -361,3 +361,22 @@ traces:
             ref_migration = migrations[0]
             assert "ref 'test table'" in ref_migration.description
             assert "${refs.test-table}" in ref_migration.new_text
+
+    def test_get_migrations_requires_project_file(self):
+        """Test that migrations are skipped if no project.visivo.yml exists."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a YAML file with invalid names but NOT named project.visivo.yml
+            yaml_content = """
+sources:
+  - name: My Source
+    database: test.db
+"""
+            yaml_path = os.path.join(tmpdir, "models.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 0 migrations because there's no project.visivo.yml
+            assert len(migrations) == 0

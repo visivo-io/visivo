@@ -1,5 +1,6 @@
 """Deprecation checker for invalid name formats."""
 
+import os
 import re
 from typing import TYPE_CHECKING, List, Dict, Set
 
@@ -142,7 +143,14 @@ class NameFormatDeprecation(BaseDeprecationChecker):
         - Lowercase
         - Replace special characters with hyphen
         - Also updates all references to renamed items
+
+        Only runs in valid Visivo project folders (containing project.visivo.yml).
         """
+        # Check if this is a valid Visivo project folder
+        project_file = os.path.join(working_dir, "project.visivo.yml")
+        if not os.path.exists(project_file):
+            return []
+
         migrations = []
         # Track name renames: old_name -> normalized_name
         name_renames: Dict[str, str] = {}
