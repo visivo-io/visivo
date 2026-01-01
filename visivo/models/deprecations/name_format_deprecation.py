@@ -1,7 +1,7 @@
 """Deprecation checker for invalid name formats."""
 
 import re
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Dict, Set
 
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
@@ -22,6 +22,30 @@ NAME_FIELD_UNQUOTED_PATTERN = re.compile(
     r'^(\s*)(- )?name:\s*([^"\'\n#][^\n#]*?)\s*$', re.MULTILINE
 )
 NAME_FIELD_QUOTED_PATTERN = re.compile(r'^(\s*)(- )?name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE)
+
+
+def build_ref_pattern(name: str) -> re.Pattern:
+    """
+    Build a pattern to find all references to a given name.
+
+    Matches:
+    - ${ref(Name)} or ${ ref(Name) } or ${ref('Name')} or ${ref("Name")}
+    - ${refs.Name} (if name has no spaces)
+    - ref(Name) or ref('Name') or ref("Name") (bare ref)
+    """
+    # Escape special regex characters in the name
+    escaped = re.escape(name)
+
+    # Pattern for ${ref(Name)} with optional quotes and whitespace
+    context_ref = rf'\$\{{\s*ref\(\s*["\']?{escaped}["\']?\s*\)[^}}]*\}}'
+
+    # Pattern for bare ref(Name) with optional quotes
+    bare_ref = rf'(?<!\$\{{)\bref\(\s*["\']?{escaped}["\']?\s*\)'
+
+    # Combine patterns
+    combined = rf"({context_ref}|{bare_ref})"
+
+    return re.compile(combined)
 
 
 class NameFormatDeprecation(BaseDeprecationChecker):
@@ -109,10 +133,14 @@ class NameFormatDeprecation(BaseDeprecationChecker):
 
         Converts names to valid format:
         - Lowercase
-        - Replace special characters with underscore
+        - Replace special characters with hyphen
+        - Also updates all references to renamed items
         """
         migrations = []
+        # Track name renames: old_name -> normalized_name
+        name_renames: Dict[str, str] = {}
 
+        # First pass: collect all invalid names and their normalized versions
         for file_path in list_all_ymls_in_dir(working_dir):
             try:
                 with open(file_path, "r") as f:
@@ -124,11 +152,18 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                     list_prefix = match.group(2) or ""
                     name_value = match.group(3).strip()
 
-                    migration = self._create_migration_action(
-                        file_path, match.group(0), indent, list_prefix, name_value
-                    )
-                    if migration:
-                        migrations.append(migration)
+                    if not is_valid_name(name_value):
+                        normalized = normalize_name(name_value)
+                        if normalized != name_value:
+                            name_renames[name_value] = normalized
+                            migrations.append(
+                                MigrationAction(
+                                    file_path=str(file_path),
+                                    old_text=match.group(0),
+                                    new_text=f"{indent}{list_prefix}name: {normalized}",
+                                    description=f"'{name_value}' -> '{normalized}'",
+                                )
+                            )
 
                 # Find quoted name: "value" or name: 'value' patterns
                 for match in NAME_FIELD_QUOTED_PATTERN.finditer(content):
@@ -136,43 +171,79 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                     list_prefix = match.group(2) or ""
                     name_value = match.group(4)  # Group 3 is the quote char
 
-                    migration = self._create_migration_action(
-                        file_path, match.group(0), indent, list_prefix, name_value
-                    )
-                    if migration:
-                        migrations.append(migration)
+                    if not is_valid_name(name_value):
+                        normalized = normalize_name(name_value)
+                        if normalized != name_value:
+                            name_renames[name_value] = normalized
+                            migrations.append(
+                                MigrationAction(
+                                    file_path=str(file_path),
+                                    old_text=match.group(0),
+                                    new_text=f"{indent}{list_prefix}name: {normalized}",
+                                    description=f"'{name_value}' -> '{normalized}'",
+                                )
+                            )
 
             except Exception:
                 # Skip files that can't be read
                 continue
 
+        # Second pass: find all references to renamed items and update them
+        if name_renames:
+            for file_path in list_all_ymls_in_dir(working_dir):
+                try:
+                    with open(file_path, "r") as f:
+                        content = f.read()
+
+                    for old_name, new_name in name_renames.items():
+                        ref_pattern = build_ref_pattern(old_name)
+                        for match in ref_pattern.finditer(content):
+                            old_ref = match.group(0)
+                            # Convert to new refs syntax: ${refs.new_name}
+                            # Check if this ref has a property path
+                            new_ref = self._build_new_ref(old_ref, old_name, new_name)
+                            if new_ref and new_ref != old_ref:
+                                migrations.append(
+                                    MigrationAction(
+                                        file_path=str(file_path),
+                                        old_text=old_ref,
+                                        new_text=new_ref,
+                                        description=f"ref '{old_name}' -> '${{refs.{new_name}}}'",
+                                    )
+                                )
+
+                except Exception:
+                    # Skip files that can't be read
+                    continue
+
         return migrations
 
-    def _create_migration_action(
-        self,
-        file_path: str,
-        old_text: str,
-        indent: str,
-        list_prefix: str,
-        name_value: str,
-    ) -> MigrationAction:
-        """Create a migration action for a name field if needed."""
-        # Skip if already valid
-        if is_valid_name(name_value):
-            return None
+    def _build_new_ref(self, old_ref: str, old_name: str, new_name: str) -> str:
+        """
+        Convert an old ref pattern to the new ${refs.name} syntax.
 
-        # Normalize the name
-        normalized = normalize_name(name_value)
-
-        # Skip if normalization produces the same result
-        if normalized == name_value:
-            return None
-
-        new_text = f"{indent}{list_prefix}name: {normalized}"
-
-        return MigrationAction(
-            file_path=str(file_path),
-            old_text=old_text,
-            new_text=new_text,
-            description=f"'{name_value}' -> '{normalized}'",
+        Handles:
+        - ${ref(Name)} -> ${refs.new_name}
+        - ${ref(Name).property} -> ${refs.new_name.property}
+        - ref(Name) -> ${refs.new_name}
+        """
+        # Check if this is a context ref ${ref(...)}
+        context_pattern = re.compile(
+            rf'\$\{{\s*ref\(\s*["\']?{re.escape(old_name)}["\']?\s*\)(?P<props>[^}}]*)\}}'
         )
+        context_match = context_pattern.match(old_ref)
+        if context_match:
+            props = context_match.group("props") or ""
+            # Strip whitespace from props (the old syntax might have spaces)
+            props = props.strip()
+            # props might be ".property" or empty
+            if props:
+                return f"${{refs.{new_name}{props}}}"
+            return f"${{refs.{new_name}}}"
+
+        # Check if this is a bare ref ref(...)
+        bare_pattern = re.compile(rf'ref\(\s*["\']?{re.escape(old_name)}["\']?\s*\)')
+        if bare_pattern.match(old_ref):
+            return f"${{refs.{new_name}}}"
+
+        return None

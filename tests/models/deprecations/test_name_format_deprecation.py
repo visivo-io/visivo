@@ -211,3 +211,129 @@ models:
             migrations = checker.get_migrations_from_files(tmpdir)
 
             assert len(migrations) == 0
+
+    def test_get_migrations_updates_references(self):
+        """Test that references to renamed items are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+traces:
+  - name: Indicator Trace
+    model:
+      sql: SELECT 1 as value
+
+charts:
+  - name: indicator_chart
+    traces:
+      - ${ ref(Indicator Trace) }
+"""
+            yaml_path = os.path.join(tmpdir, "project.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: rename + reference update
+            assert len(migrations) == 2
+
+            # Check name migration
+            name_migration = next(
+                (m for m in migrations if "'Indicator Trace'" in m.description), None
+            )
+            assert name_migration is not None
+            assert "indicator-trace" in name_migration.new_text
+
+            # Check reference migration
+            ref_migration = next(
+                (m for m in migrations if "ref 'Indicator Trace'" in m.description), None
+            )
+            assert ref_migration is not None
+            assert "${refs.indicator-trace}" in ref_migration.new_text
+
+    def test_get_migrations_updates_references_with_properties(self):
+        """Test that references with property paths are migrated correctly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+traces:
+  - name: Simple Line
+    model:
+      sql: SELECT x, y FROM test
+
+charts:
+  - name: test_chart
+    traces:
+      - name: derived
+        props:
+          x: ${ref(Simple Line).props.x}
+"""
+            yaml_path = os.path.join(tmpdir, "project.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: rename + reference update
+            assert len(migrations) == 2
+
+            # Check reference migration preserves property path
+            ref_migration = next(
+                (m for m in migrations if "ref 'Simple Line'" in m.description), None
+            )
+            assert ref_migration is not None
+            assert "${refs.simple-line.props.x}" in ref_migration.new_text
+
+    def test_get_migrations_handles_multiple_references(self):
+        """Test that multiple references to the same name are all migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+traces:
+  - name: Fibonacci Waterfall
+    model:
+      sql: SELECT x, y FROM fib
+
+charts:
+  - name: chart_1
+    traces:
+      - ${ ref(Fibonacci Waterfall) }
+  - name: chart_2
+    traces:
+      - ${ ref(Fibonacci Waterfall) }
+"""
+            yaml_path = os.path.join(tmpdir, "project.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 3 migrations: 1 name rename + 2 reference updates
+            assert len(migrations) == 3
+
+            ref_migrations = [m for m in migrations if "ref 'Fibonacci Waterfall'" in m.description]
+            assert len(ref_migrations) == 2
+
+    def test_get_migrations_handles_bare_refs(self):
+        """Test that bare ref() syntax is also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+models:
+  - name: My Model
+    sql: SELECT 1
+
+  - name: derived_model
+    source: ref(My Model)
+"""
+            yaml_path = os.path.join(tmpdir, "project.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: rename + bare ref update
+            assert len(migrations) == 2
+
+            ref_migration = next((m for m in migrations if "ref 'My Model'" in m.description), None)
+            assert ref_migration is not None
+            assert "${refs.my-model}" in ref_migration.new_text
