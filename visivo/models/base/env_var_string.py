@@ -9,15 +9,12 @@ import os
 import re
 from typing import Any, List
 
+from visivo.models.base.pattern_string import PatternString
 from visivo.query.patterns import ENV_VAR_CONTEXT_PATTERN
 from visivo.parsers.env_var_resolver import MissingEnvVarError
 
 
-# Compiled pattern for performance
-_ENV_VAR_PATTERN_COMPILED = re.compile(ENV_VAR_CONTEXT_PATTERN)
-
-
-class EnvVarString:
+class EnvVarString(PatternString):
     """
     Deferred environment variable resolution.
 
@@ -25,22 +22,9 @@ class EnvVarString:
     Supports embedded env vars like "prefix-${env.REGION}-suffix".
     """
 
-    def __init__(self, value: str):
-        self.value = value
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return f"EnvVarString({self.value!r})"
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, EnvVarString):
-            return self.value == other.value
-        return False
-
-    def __hash__(self) -> int:
-        return hash(self.value)
+    PATTERN = re.compile(ENV_VAR_CONTEXT_PATTERN)
+    PATTERN_NAME = "environment variable"
+    PATTERN_EXAMPLE = "${env.VAR}"
 
     def get_env_var_names(self) -> List[str]:
         """
@@ -54,7 +38,7 @@ class EnvVarString:
             >>> evs.get_env_var_names()
             ['HOST', 'PORT']
         """
-        return _ENV_VAR_PATTERN_COMPILED.findall(self.value)
+        return self.PATTERN.findall(self.value)
 
     def resolve(self, raise_on_missing: bool = True) -> str:
         """
@@ -87,7 +71,7 @@ class EnvVarString:
                 return match.group(0)  # Keep original if not raising
             return value
 
-        return _ENV_VAR_PATTERN_COMPILED.sub(replace_env_var, self.value)
+        return self.PATTERN.sub(replace_env_var, self.value)
 
     def is_fully_set(self) -> bool:
         """
@@ -109,29 +93,4 @@ class EnvVarString:
         Returns:
             True if value contains env var syntax.
         """
-        if isinstance(value, cls):
-            return True
-        if isinstance(value, str):
-            return bool(_ENV_VAR_PATTERN_COMPILED.search(value))
-        return False
-
-    @classmethod
-    def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
-        """Pydantic v2 schema definition for EnvVarString type."""
-        from pydantic_core import core_schema
-
-        def validate_and_create(value: Any) -> "EnvVarString":
-            if isinstance(value, cls):
-                return value
-            str_value = str(value)
-            if not _ENV_VAR_PATTERN_COMPILED.search(str_value):
-                raise ValueError(
-                    f"EnvVarString must contain ${{env.VAR}} pattern, got: {str_value}"
-                )
-            return cls(str_value)
-
-        return core_schema.no_info_after_validator_function(
-            validate_and_create,
-            core_schema.str_schema(),
-            serialization=core_schema.plain_serializer_function_ser_schema(str),
-        )
+        return cls.contains_pattern(value)
