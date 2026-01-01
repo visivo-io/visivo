@@ -380,3 +380,116 @@ sources:
 
             # Should have 0 migrations because there's no project.visivo.yml
             assert len(migrations) == 0
+
+    def test_get_migrations_updates_trace_name_references(self):
+        """Test that trace_name fields referencing renamed items are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+traces:
+  - name: Fibonacci Waterfall
+    model:
+      sql: SELECT x, y FROM fib
+
+tables:
+  - name: my_table
+    column_defs:
+      - trace_name: Fibonacci Waterfall
+        columns:
+          - key: x
+            header: X Value
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + trace_name update
+            assert len(migrations) == 2
+
+            # Check name migration
+            name_migration = next(
+                (
+                    m
+                    for m in migrations
+                    if "'Fibonacci Waterfall'" in m.description
+                    and "trace_name" not in m.description
+                ),
+                None,
+            )
+            assert name_migration is not None
+            assert "fibonacci-waterfall" in name_migration.new_text
+
+            # Check trace_name migration
+            trace_name_migration = next(
+                (m for m in migrations if "trace_name" in m.description), None
+            )
+            assert trace_name_migration is not None
+            assert "trace_name: fibonacci-waterfall" in trace_name_migration.new_text
+
+    def test_get_migrations_updates_quoted_trace_name(self):
+        """Test that quoted trace_name fields are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+traces:
+  - name: "My Trace Name"
+    model:
+      sql: SELECT 1
+
+tables:
+  - name: my_table
+    column_defs:
+      - trace_name: "My Trace Name"
+        columns:
+          - key: x
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + trace_name update
+            assert len(migrations) == 2
+
+            trace_name_migration = next(
+                (m for m in migrations if "trace_name" in m.description), None
+            )
+            assert trace_name_migration is not None
+            assert "my-trace-name" in trace_name_migration.new_text
+
+    def test_get_migrations_updates_insight_name_references(self):
+        """Test that insight_name fields referencing renamed items are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+insights:
+  - name: My Insight
+    props:
+      type: scatter
+      x: ?{x}
+      y: ?{y}
+
+tables:
+  - name: my_table
+    column_defs:
+      - insight_name: My Insight
+        columns:
+          - key: x
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + insight_name update
+            assert len(migrations) == 2
+
+            insight_name_migration = next(
+                (m for m in migrations if "insight_name" in m.description), None
+            )
+            assert insight_name_migration is not None
+            assert "insight_name: my-insight" in insight_name_migration.new_text

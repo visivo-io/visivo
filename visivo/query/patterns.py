@@ -254,19 +254,28 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
 
 def extract_ref_names(text: str) -> Set[str]:
     """
-    Extract unique model names from ref() patterns in text.
+    Extract unique model names from both ref() and refs. patterns in text.
+
+    Supports both syntaxes:
+    - Legacy: ${ref(model)} or ${ref(model).property}
+    - New: ${refs.model} or ${refs.model.property}
 
     Args:
-        text: Text containing ${ref(model)} patterns
+        text: Text containing ${ref(model)} or ${refs.model} patterns
 
     Returns:
         Set of unique model names
 
     Example:
-        >>> extract_ref_names("${ref(orders).id} = ${ref(users).id}")
+        >>> extract_ref_names("${ref(orders).id} = ${refs.users.id}")
         {'orders', 'users'}
     """
-    return {model for model, _ in extract_ref_components(text)}
+    # Get names from legacy ref() syntax
+    legacy_names = {model for model, _ in extract_ref_components(text)}
+    # Get names from new refs. syntax
+    new_names = extract_refs_names(text)
+    # Return combined set
+    return legacy_names | new_names
 
 
 def replace_refs(text: str, replacer_func) -> str:
@@ -318,7 +327,11 @@ def has_CONTEXT_STRING_REF_PATTERN(text: str) -> bool:
 
 def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
     """
-    Validate that all ${ } patterns in text contain valid ref() calls.
+    Validate that all ${ } patterns in text contain valid ref() or refs. calls.
+
+    Accepts both:
+    - Legacy syntax: ${ref(name)} or ${ref(name).property}
+    - New syntax: ${refs.name} or ${refs.name.property}
 
     Args:
         text: Text to validate
@@ -331,9 +344,9 @@ def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
 
     for match in re.finditer(dollar_pattern, text):
         content = match.group(0)
-        # Check if it contains ref()
-        if "ref(" not in content:
-            return False, f"Invalid context string: {content} - missing ref() function"
+        # Check if it contains ref() or refs.
+        if "ref(" not in content and "refs." not in content:
+            return False, f"Invalid context string: {content} - missing ref() or refs. syntax"
 
     return True, None
 

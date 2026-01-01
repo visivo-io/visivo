@@ -15,16 +15,24 @@ def migrate_phase(working_dir: str, dry_run: bool = True):
     Execute migration of deprecated syntax in YAML files.
 
     Process:
-    1. Find all YAML files in working directory
-    2. Collect all migrations from all deprecation checkers
-    3. Group migrations by file
-    4. Apply or preview migrations
+    1. Check for project.visivo.yml file
+    2. Find all YAML files in working directory
+    3. Collect all migrations from all deprecation checkers
+    4. Group migrations by file
+    5. Apply or preview migrations
 
     Args:
         working_dir: The directory to scan for YAML files
         dry_run: If True, only report what would change without modifying files
     """
     logger = Logger.instance()
+
+    # Check for project.visivo.yml file
+    project_file = os.path.join(working_dir, "project.visivo.yml")
+    if not os.path.exists(project_file):
+        logger.error("No project.visivo.yml file found in the current directory.")
+        logger.error("The migrate command must be run from a Visivo project folder.")
+        return
 
     if dry_run:
         logger.info("Running in dry-run mode. Use --apply to make changes.")

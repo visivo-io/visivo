@@ -87,23 +87,28 @@ class Dimension(NamedModel, ParentModel):
         For standalone dimensions (project-level), this extracts model/dimension references from the expression.
 
         Returns:
-            List of ref() strings for dependencies
+            List of reference strings for dependencies (using ${refs.name} format)
         """
         children = []
 
         # Check if this is a nested dimension (has a parent_name set)
         if hasattr(self, "_parent_name") and self._parent_name:
             # Nested dimension - reference the parent model only
-            children.append(f"ref({self._parent_name})")
+            children.append(f"${{refs.{self._parent_name}}}")
         else:
             # Standalone dimension - extract references from expression
-            from visivo.query.patterns import extract_ref_components
+            # Supports both legacy ${ref(name)} and new ${refs.name} syntax
+            from visivo.query.patterns import extract_ref_components, extract_refs_components
 
             if self.expression:
+                # Extract from legacy ${ref(name)} syntax
                 ref_components = extract_ref_components(self.expression)
+                for name, field_name in ref_components:
+                    children.append(f"${{refs.{name}}}")
 
-                # Convert to ref() format for DAG
-                for model_or_dim_name, field_name in ref_components:
-                    children.append(f"ref({model_or_dim_name})")
+                # Extract from new ${refs.name} syntax
+                refs_components = extract_refs_components(self.expression)
+                for name, property_path in refs_components:
+                    children.append(f"${{refs.{name}}}")
 
         return children

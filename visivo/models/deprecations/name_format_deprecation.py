@@ -17,12 +17,32 @@ if TYPE_CHECKING:
 
 
 # Pattern to find name fields in YAML files
-# Matches: name: value or name: "value" or name: 'value'
-# Handles both quoted and unquoted names
+# Matches: name: value (unquoted) - value must start with non-quote/non-space char
 NAME_FIELD_UNQUOTED_PATTERN = re.compile(
-    r'^(\s*)(- )?name:\s*([^"\'\n#][^\n#]*?)\s*$', re.MULTILINE
+    r'^(\s*)(- )?name:\s+([^"\'\s#][^\n#]*?)\s*$', re.MULTILINE
 )
+# Matches: name: "value" or name: 'value' (quoted)
 NAME_FIELD_QUOTED_PATTERN = re.compile(r'^(\s*)(- )?name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE)
+
+# Pattern to find trace_name fields in YAML files (used in column_defs)
+# Matches: trace_name: value (unquoted) - value must start with non-quote/non-space char
+TRACE_NAME_FIELD_UNQUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?trace_name:\s+([^"\'\s#][^\n#]*?)\s*$', re.MULTILINE
+)
+# Matches: trace_name: "value" or trace_name: 'value' (quoted)
+TRACE_NAME_FIELD_QUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?trace_name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE
+)
+
+# Pattern to find insight_name fields in YAML files (used in column_defs)
+# Matches: insight_name: value (unquoted) - value must start with non-quote/non-space char
+INSIGHT_NAME_FIELD_UNQUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?insight_name:\s+([^"\'\s#][^\n#]*?)\s*$', re.MULTILINE
+)
+# Matches: insight_name: "value" or insight_name: 'value' (quoted)
+INSIGHT_NAME_FIELD_QUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?insight_name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE
+)
 
 # Pattern to find all ref() calls and extract the name
 # Matches: ${ref(Name)}, ${ ref(Name) }, ${ref('Name')}, ${ref("Name")}, ref(Name)
@@ -225,7 +245,7 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                                     file_path=str(file_path),
                                     old_text=old_ref,
                                     new_text=new_ref,
-                                    description=f"ref '{old_name}' -> '${{refs.{new_name}}}'",
+                                    description=f"ref '{old_name}' -> ref '{new_name}'",
                                 )
                             )
 
@@ -250,7 +270,7 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                                         file_path=str(file_path),
                                         old_text=old_ref,
                                         new_text=new_ref,
-                                        description=f"ref '{ref_name}' -> '${{refs.{normalized}}}'",
+                                        description=f"ref '{ref_name}' -> ref '{normalized}'",
                                     )
                                 )
                         # Add to name_renames to avoid duplicate processing
@@ -259,6 +279,131 @@ class NameFormatDeprecation(BaseDeprecationChecker):
             except Exception:
                 # Skip files that can't be read
                 continue
+
+        # Third pass: update trace_name and insight_name fields that reference renamed items
+        for file_path in list_all_ymls_in_dir(working_dir):
+            try:
+                with open(file_path, "r") as f:
+                    content = f.read()
+
+                # Update trace_name fields
+                migrations.extend(
+                    self._migrate_reference_field(
+                        content,
+                        file_path,
+                        name_renames,
+                        "trace_name",
+                        TRACE_NAME_FIELD_UNQUOTED_PATTERN,
+                        TRACE_NAME_FIELD_QUOTED_PATTERN,
+                    )
+                )
+
+                # Update insight_name fields
+                migrations.extend(
+                    self._migrate_reference_field(
+                        content,
+                        file_path,
+                        name_renames,
+                        "insight_name",
+                        INSIGHT_NAME_FIELD_UNQUOTED_PATTERN,
+                        INSIGHT_NAME_FIELD_QUOTED_PATTERN,
+                    )
+                )
+
+            except Exception:
+                # Skip files that can't be read
+                continue
+
+        return migrations
+
+    def _migrate_reference_field(
+        self,
+        content: str,
+        file_path: str,
+        name_renames: Dict[str, str],
+        field_name: str,
+        unquoted_pattern: re.Pattern,
+        quoted_pattern: re.Pattern,
+    ) -> List[MigrationAction]:
+        """
+        Migrate a reference field (like trace_name or insight_name) that references renamed items.
+
+        Args:
+            content: File content
+            file_path: Path to the file
+            name_renames: Dict mapping old names to new names
+            field_name: The field name (e.g., "trace_name", "insight_name")
+            unquoted_pattern: Pattern for unquoted field values
+            quoted_pattern: Pattern for quoted field values
+
+        Returns:
+            List of migration actions
+        """
+        migrations = []
+
+        # Check unquoted patterns
+        for match in unquoted_pattern.finditer(content):
+            indent = match.group(1)
+            list_prefix = match.group(2) or ""
+            ref_value = match.group(3).strip()
+
+            # Check if this references a renamed item
+            if ref_value in name_renames:
+                new_value = name_renames[ref_value]
+                migrations.append(
+                    MigrationAction(
+                        file_path=str(file_path),
+                        old_text=match.group(0),
+                        new_text=f"{indent}{list_prefix}{field_name}: {new_value}",
+                        description=f"{field_name} '{ref_value}' -> '{new_value}'",
+                    )
+                )
+            # Also handle cases where the reference itself has an invalid name format
+            # (might be defined in includes)
+            elif not is_valid_name(ref_value):
+                normalized = normalize_name(ref_value)
+                if normalized != ref_value:
+                    # Add to name_renames so we track it
+                    name_renames[ref_value] = normalized
+                    migrations.append(
+                        MigrationAction(
+                            file_path=str(file_path),
+                            old_text=match.group(0),
+                            new_text=f"{indent}{list_prefix}{field_name}: {normalized}",
+                            description=f"{field_name} '{ref_value}' -> '{normalized}'",
+                        )
+                    )
+
+        # Check quoted patterns
+        for match in quoted_pattern.finditer(content):
+            indent = match.group(1)
+            list_prefix = match.group(2) or ""
+            ref_value = match.group(4)  # Group 3 is the quote char
+
+            # Check if this references a renamed item
+            if ref_value in name_renames:
+                new_value = name_renames[ref_value]
+                migrations.append(
+                    MigrationAction(
+                        file_path=str(file_path),
+                        old_text=match.group(0),
+                        new_text=f"{indent}{list_prefix}{field_name}: {new_value}",
+                        description=f"{field_name} '{ref_value}' -> '{new_value}'",
+                    )
+                )
+            # Also handle cases where the reference itself has an invalid name format
+            elif not is_valid_name(ref_value):
+                normalized = normalize_name(ref_value)
+                if normalized != ref_value:
+                    name_renames[ref_value] = normalized
+                    migrations.append(
+                        MigrationAction(
+                            file_path=str(file_path),
+                            old_text=match.group(0),
+                            new_text=f"{indent}{list_prefix}{field_name}: {normalized}",
+                            description=f"{field_name} '{ref_value}' -> '{normalized}'",
+                        )
+                    )
 
         return migrations
 

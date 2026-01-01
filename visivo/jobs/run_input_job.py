@@ -56,7 +56,7 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
             # TODO: We should push this validation into pydantic and not check it in the runner.
             if len(ref_names) == 0:
                 raise ValueError(
-                    f"Input '{input_name}' query must reference exactly one model using ${{ref(name)}}."
+                    f"Input '{input_name}' query must reference exactly one model using ${{refs.name}}."
                 )
             if len(ref_names) > 1:
                 raise ValueError(

@@ -40,7 +40,7 @@ def test_nested_metric_references_parent_model():
 
     # Verify child_items returns ref to parent
     children = nested_metric.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["${refs.orders}"]
 
     # Verify edge exists from metric to model in DAG (nested metric depends on parent model)
     assert dag.has_edge(nested_metric, model)
@@ -76,7 +76,7 @@ def test_nested_dimension_references_parent_model():
 
     # Verify child_items returns ref to parent
     children = nested_dimension.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["${refs.orders}"]
 
     # Verify edge exists from dimension to model in DAG (nested dimension depends on parent model)
     assert dag.has_edge(nested_dimension, model)
@@ -115,7 +115,7 @@ def test_standalone_metric_extracts_model_references():
 
     # Verify child_items extracts model reference
     children = standalone_metric.child_items()
-    assert set(children) == {"ref(orders)"}
+    assert set(children) == {"${refs.orders}"}
 
     # Verify edge exists from metric to model (metric depends on model)
     assert dag.has_edge(standalone_metric, orders_model)
@@ -157,7 +157,7 @@ def test_standalone_dimension_extracts_model_references():
 
     # Verify child_items extracts model reference
     children = standalone_dimension.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["${refs.orders}"]
 
     # Verify edge exists from dimension to model (dimension depends on model)
     assert dag.has_edge(standalone_dimension, orders_model)
@@ -198,7 +198,7 @@ def test_relation_extracts_model_references():
 
     # Verify child_items extracts both model references
     children = relation.child_items()
-    assert set(children) == {"ref(orders)", "ref(users)"}
+    assert set(children) == {"${refs.orders}", "${refs.users}"}
 
     # Verify edges exist from relation to both models (relation depends on both models)
     assert dag.has_edge(relation, orders_model)
@@ -225,7 +225,7 @@ def test_nested_metric_cannot_use_ref_syntax():
             dashboards=[],
         )
 
-    assert "cannot use ref() syntax" in str(exc_info.value)
+    assert "cannot use ref() or refs. syntax" in str(exc_info.value)
     assert "bad_metric" in str(exc_info.value)
     assert "orders" in str(exc_info.value)
 
@@ -250,7 +250,7 @@ def test_nested_dimension_cannot_use_ref_syntax():
             dashboards=[],
         )
 
-    assert "cannot use ref() syntax" in str(exc_info.value)
+    assert "cannot use ref() or refs. syntax" in str(exc_info.value)
     assert "bad_dimension" in str(exc_info.value)
     assert "orders" in str(exc_info.value)
 
@@ -295,10 +295,121 @@ def test_mixed_nested_and_standalone_metrics():
 
     # Verify standalone metric references the model
     standalone_children = standalone_metric.child_items()
-    assert set(standalone_children) == {"ref(orders)"}
+    assert set(standalone_children) == {"${refs.orders}"}
 
     # Verify edges (nested metrics depend on their parent model)
     assert dag.has_edge(orders_model.metrics[0], orders_model)
     assert dag.has_edge(orders_model.metrics[1], orders_model)
     # Standalone metric depends on the model
     assert dag.has_edge(standalone_metric, orders_model)
+
+
+def test_standalone_metric_with_refs_syntax():
+    """Test that standalone metrics work with new ${refs.name} syntax."""
+    source = SourceFactory()
+    orders_model = SqlModel(
+        name="orders",
+        sql="SELECT * FROM orders",
+        source=f"ref({source.name})",
+    )
+
+    # Standalone metric using new ${refs.name} syntax
+    standalone_metric = Metric(
+        name="total_revenue",
+        expression="SUM(${refs.orders.amount})",
+    )
+
+    project = Project(
+        name="test_project",
+        sources=[source],
+        models=[orders_model],
+        metrics=[standalone_metric],
+        dashboards=[],
+    )
+
+    dag = project.dag()
+
+    # Verify DAG is valid
+    assert networkx.is_directed_acyclic_graph(dag)
+
+    # Verify child_items extracts model reference from refs syntax
+    children = standalone_metric.child_items()
+    assert set(children) == {"${refs.orders}"}
+
+    # Verify edge exists from metric to model
+    assert dag.has_edge(standalone_metric, orders_model)
+
+
+def test_standalone_dimension_with_refs_syntax():
+    """Test that standalone dimensions work with new ${refs.name} syntax."""
+    source = SourceFactory()
+    orders_model = SqlModel(
+        name="orders",
+        sql="SELECT * FROM orders",
+        source=f"ref({source.name})",
+    )
+
+    # Standalone dimension using new ${refs.name} syntax
+    standalone_dimension = Dimension(
+        name="order_year",
+        expression="DATE_TRUNC('year', ${refs.orders.order_date})",
+    )
+
+    project = Project(
+        name="test_project",
+        sources=[source],
+        models=[orders_model],
+        dimensions=[standalone_dimension],
+        dashboards=[],
+    )
+
+    dag = project.dag()
+
+    # Verify DAG is valid
+    assert networkx.is_directed_acyclic_graph(dag)
+
+    # Verify child_items extracts model reference from refs syntax
+    children = standalone_dimension.child_items()
+    assert children == ["${refs.orders}"]
+
+    # Verify edge exists from dimension to model
+    assert dag.has_edge(standalone_dimension, orders_model)
+
+
+def test_metric_referencing_another_metric_with_refs_syntax():
+    """Test that metrics can reference other metrics using new ${refs.name} syntax."""
+    source = SourceFactory()
+    orders_model = SqlModel(
+        name="orders",
+        sql="SELECT * FROM orders",
+        source=f"ref({source.name})",
+        metrics=[
+            Metric(name="total_revenue", expression="SUM(amount)"),
+        ],
+    )
+
+    # Composite metric referencing another metric via model
+    composite_metric = Metric(
+        name="double_revenue",
+        expression="${refs.orders.total_revenue} * 2",
+    )
+
+    project = Project(
+        name="test_project",
+        sources=[source],
+        models=[orders_model],
+        metrics=[composite_metric],
+        dashboards=[],
+    )
+
+    dag = project.dag()
+
+    # Verify DAG is valid
+    assert networkx.is_directed_acyclic_graph(dag)
+
+    # Verify child_items extracts the model reference
+    children = composite_metric.child_items()
+    assert set(children) == {"${refs.orders}"}
+
+    # Verify edge exists from composite metric to model
+    assert dag.has_edge(composite_metric, orders_model)

@@ -275,7 +275,51 @@ class TestValidateRefSyntax:
         """Test validating incorrect syntax missing ref function."""
         is_valid, error = validate_ref_syntax("${orders}")
         assert not is_valid
-        assert "missing ref() function" in error
+        assert "missing ref() or refs. syntax" in error
+
+    def test_valid_refs_syntax(self):
+        """Test validating correct refs. syntax."""
+        is_valid, error = validate_ref_syntax("${refs.orders}")
+        assert is_valid
+        assert error is None
+
+    def test_valid_refs_with_property(self):
+        """Test validating correct refs. syntax with property path."""
+        is_valid, error = validate_ref_syntax("${refs.orders.id}")
+        assert is_valid
+        assert error is None
+
+
+class TestExtractRefNamesWithNewSyntax:
+    """Test extract_ref_names function with new ${refs.name} syntax."""
+
+    def test_extract_from_refs_syntax(self):
+        """Test extracting names from new refs syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders}")
+        assert names == {"orders"}
+
+    def test_extract_from_refs_with_property(self):
+        """Test extracting names from refs syntax with property."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id}")
+        assert names == {"orders"}
+
+    def test_extract_from_mixed_syntax(self):
+        """Test extracting names from mixed old and new syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id} = ${ref(users).id}")
+        assert names == {"orders", "users"}
+
+    def test_extract_multiple_refs_syntax(self):
+        """Test extracting multiple names from refs syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id} + ${refs.products.price}")
+        assert names == {"orders", "products"}
 
 
 class TestCountModelReferences:
