@@ -40,7 +40,7 @@ class EnvVarSyntaxDeprecation(BaseDeprecationChecker):
                     feature="{{ env_var('...') }} Jinja syntax",
                     message=f"Found {{{{ env_var('{var_name}') }}}} - this syntax will be removed.",
                     migration=f"Use ${{env.{var_name}}} instead.",
-                    removal_version="1.0.0",
+                    removal_version="2.0.0",
                     location=file_path or "",
                 )
             )
