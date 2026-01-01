@@ -337,3 +337,27 @@ models:
             ref_migration = next((m for m in migrations if "ref 'My Model'" in m.description), None)
             assert ref_migration is not None
             assert "${refs.my-model}" in ref_migration.new_text
+
+    def test_get_migrations_handles_refs_to_external_names(self):
+        """Test that refs to names defined externally (includes) are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # This simulates a reference to "test table" which is defined in an include
+            # but not in the local YAML files
+            yaml_content = """
+traces:
+  - name: funnel_trace
+    model: ${ ref(test table) }
+"""
+            yaml_path = os.path.join(tmpdir, "project.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 1 migration for the ref (no name: field for "test table")
+            assert len(migrations) == 1
+
+            ref_migration = migrations[0]
+            assert "ref 'test table'" in ref_migration.description
+            assert "${refs.test-table}" in ref_migration.new_text

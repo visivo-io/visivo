@@ -23,6 +23,13 @@ NAME_FIELD_UNQUOTED_PATTERN = re.compile(
 )
 NAME_FIELD_QUOTED_PATTERN = re.compile(r'^(\s*)(- )?name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE)
 
+# Pattern to find all ref() calls and extract the name
+# Matches: ${ref(Name)}, ${ ref(Name) }, ${ref('Name')}, ${ref("Name")}, ref(Name)
+# Captures the name (with optional quotes that we'll strip)
+REF_CALL_PATTERN = re.compile(
+    r'(?:\$\{\s*)?ref\(\s*(?P<quote>["\'])?(?P<name>[^"\')]+)(?P=quote)?\s*\)(?:\s*\})?'
+)
+
 
 def build_ref_pattern(name: str) -> re.Pattern:
     """
@@ -189,32 +196,61 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                 continue
 
         # Second pass: find all references to renamed items and update them
-        if name_renames:
-            for file_path in list_all_ymls_in_dir(working_dir):
-                try:
-                    with open(file_path, "r") as f:
-                        content = f.read()
+        # Also find any ref() calls with invalid names that weren't found as name: fields
+        # (e.g., names defined in includes or external files)
+        for file_path in list_all_ymls_in_dir(working_dir):
+            try:
+                with open(file_path, "r") as f:
+                    content = f.read()
 
-                    for old_name, new_name in name_renames.items():
-                        ref_pattern = build_ref_pattern(old_name)
-                        for match in ref_pattern.finditer(content):
-                            old_ref = match.group(0)
-                            # Convert to new refs syntax: ${refs.new_name}
-                            # Check if this ref has a property path
-                            new_ref = self._build_new_ref(old_ref, old_name, new_name)
+                # First handle known renames from name: fields
+                for old_name, new_name in name_renames.items():
+                    ref_pattern = build_ref_pattern(old_name)
+                    for match in ref_pattern.finditer(content):
+                        old_ref = match.group(0)
+                        # Convert to new refs syntax: ${refs.new_name}
+                        # Check if this ref has a property path
+                        new_ref = self._build_new_ref(old_ref, old_name, new_name)
+                        if new_ref and new_ref != old_ref:
+                            migrations.append(
+                                MigrationAction(
+                                    file_path=str(file_path),
+                                    old_text=old_ref,
+                                    new_text=new_ref,
+                                    description=f"ref '{old_name}' -> '${{refs.{new_name}}}'",
+                                )
+                            )
+
+                # Also find any ref() calls with invalid names not in name_renames
+                # These might reference names defined in includes or external files
+                for match in REF_CALL_PATTERN.finditer(content):
+                    ref_name = match.group("name").strip()
+                    # Skip if already handled or if the name is valid
+                    if ref_name in name_renames or is_valid_name(ref_name):
+                        continue
+
+                    normalized = normalize_name(ref_name)
+                    if normalized != ref_name:
+                        # Find the full ref pattern for this name
+                        ref_pattern = build_ref_pattern(ref_name)
+                        for ref_match in ref_pattern.finditer(content):
+                            old_ref = ref_match.group(0)
+                            new_ref = self._build_new_ref(old_ref, ref_name, normalized)
                             if new_ref and new_ref != old_ref:
                                 migrations.append(
                                     MigrationAction(
                                         file_path=str(file_path),
                                         old_text=old_ref,
                                         new_text=new_ref,
-                                        description=f"ref '{old_name}' -> '${{refs.{new_name}}}'",
+                                        description=f"ref '{ref_name}' -> '${{refs.{normalized}}}'",
                                     )
                                 )
+                        # Add to name_renames to avoid duplicate processing
+                        name_renames[ref_name] = normalized
 
-                except Exception:
-                    # Skip files that can't be read
-                    continue
+            except Exception:
+                # Skip files that can't be read
+                continue
 
         return migrations
 
