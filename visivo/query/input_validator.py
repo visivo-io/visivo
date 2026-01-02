@@ -238,9 +238,7 @@ def validate_insight_with_inputs(
                 # e.g., ["Category A", "Category B"] => "'Category A','Category B'"
                 # Single quotes in values are escaped by doubling (SQL standard)
                 sample_options = options[:2] if len(options) >= 2 else options
-                quoted_options = [
-                    "'" + str(opt).replace("'", "''") + "'" for opt in sample_options
-                ]
+                quoted_options = ["'" + str(opt).replace("'", "''") + "'" for opt in sample_options]
                 accessor_values[input_name]["values"] = ",".join(quoted_options)
 
                 # Use first/last options for .first/.last accessors

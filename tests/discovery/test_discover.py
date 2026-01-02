@@ -135,16 +135,9 @@ def test_Core_Parser_includes_git():
         home_dir=os.path.dirname(profile_file).replace(".visivo", ""),
     )
     git_models_file = Path(f"{output_dir}/.visivo_cache/visivo-io/example-include@main/models.yml")
-    if os.path.exists(
+    git_project_file = Path(
         f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
-    ):
-        git_project_file = Path(
-            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
-        )
-    else:
-        git_project_file = Path(
-            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/visivo_project.yml"
-        )
+    )
 
     assert discover.files == [
         project_file,

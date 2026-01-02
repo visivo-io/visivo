@@ -251,6 +251,22 @@ class FieldResolver:
                 # Resolve the expression (handles ${ref(...)} patterns)
                 resolved_inner = self.resolve(inner_expr_sql, alias=False)
 
+                # If resolved expression still contains ${...} placeholders (input refs),
+                # we can't use SQLGlot to parse it - use string concatenation for modifiers
+                if "${" in resolved_inner:
+                    result = resolved_inner
+                    if is_desc:
+                        result += " DESC"
+                    elif not is_desc and order_expr.args.get("desc") is None:
+                        # ASC is implicit in SQLGlot, check original expression
+                        if " ASC" in expression.upper():
+                            result += " ASC"
+                    if nulls_first is True:
+                        result += " NULLS FIRST"
+                    elif nulls_first is False:
+                        result += " NULLS LAST"
+                    return result
+
                 # Reconstruct using SQLGlot's Ordered node for proper SQL generation
                 ordered_node = exp.Ordered(
                     this=parse_expression(resolved_inner, self.native_dialect),
