@@ -1054,7 +1054,9 @@ class TestFieldResolverCaseSensitivity:
         # Should contain AMOUNT (the schema column name)
         assert "AMOUNT" in result or "amount" in result.lower()
 
-    @pytest.mark.skip(reason="Quoted identifiers ${ref(model).\"field\"} not yet supported by regex pattern")
+    @pytest.mark.skip(
+        reason='Quoted identifiers ${ref(model)."field"} not yet supported by regex pattern'
+    )
     def test_quoted_field_is_case_sensitive(self, tmpdir):
         """Test that quoted field reference requires exact case match.
 
@@ -1064,7 +1066,9 @@ class TestFieldResolverCaseSensitivity:
         """
         pass
 
-    @pytest.mark.skip(reason="Quoted identifiers ${ref(model).\"field\"} not yet supported by regex pattern")
+    @pytest.mark.skip(
+        reason='Quoted identifiers ${ref(model)."field"} not yet supported by regex pattern'
+    )
     def test_quoted_field_wrong_case_fails(self, tmpdir):
         """Test that quoted field with wrong case raises error.
 

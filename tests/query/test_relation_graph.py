@@ -899,9 +899,7 @@ class TestRelationGraphScoping:
 
         model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
         model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
-        model_c = SqlModel(
-            name="products", sql="SELECT * FROM products", source="ref(test_source)"
-        )
+        model_c = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
 
         relation_ab = Relation(
             name="orders_to_users",
@@ -927,15 +925,15 @@ class TestRelationGraphScoping:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
             schema_file = schema_dir.join("schema.json")
-            schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}}
+            schema_data = {
+                model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
+            }
             schema_file.write(json.dumps(schema_data))
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
         # Pass only orders and users as relevant models
-        graph = RelationGraph(
-            dag=dag, field_resolver=resolver, relevant_models={"orders", "users"}
-        )
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders", "users"})
 
         # Only orders and users should be nodes
         assert graph.graph.has_node("orders")
@@ -948,9 +946,7 @@ class TestRelationGraphScoping:
 
         model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
         model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
-        model_c = SqlModel(
-            name="products", sql="SELECT * FROM products", source="ref(test_source)"
-        )
+        model_c = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
 
         relation_ab = Relation(
             name="orders_to_users",
@@ -977,15 +973,15 @@ class TestRelationGraphScoping:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
             schema_file = schema_dir.join("schema.json")
-            schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}}
+            schema_data = {
+                model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
+            }
             schema_file.write(json.dumps(schema_data))
 
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
         # Pass only orders and users as relevant - should NOT try to resolve products relation
-        graph = RelationGraph(
-            dag=dag, field_resolver=resolver, relevant_models={"orders", "users"}
-        )
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders", "users"})
 
         # orders-users edge should exist
         assert graph.graph.has_edge("orders", "users")
@@ -1026,9 +1022,7 @@ class TestRelationGraphScoping:
         resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
 
         # Only pass orders as relevant - relation to users should be skipped
-        graph = RelationGraph(
-            dag=dag, field_resolver=resolver, relevant_models={"orders"}
-        )
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders"})
 
         # Only orders should be a node
         assert graph.graph.has_node("orders")
