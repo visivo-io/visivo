@@ -37,7 +37,6 @@ export function processInputRefsInProps(props, inputs) {
           return result;
         }
         // Input not found or accessor not available - return original
-        console.warn(`Input ref ${value} could not be resolved`);
         return value;
       }
 
@@ -51,7 +50,6 @@ export function processInputRefsInProps(props, inputs) {
         if (input && input[accessor] !== undefined) {
           return String(input[accessor]);
         }
-        console.warn(`Embedded input ref ${fullMatch} could not be resolved`);
         return fullMatch;
       });
 
@@ -214,12 +212,10 @@ function setNestedValue(obj, pathParts, value) {
  */
 export function mapQueryResultsToProps(results, propsMapping) {
   if (!results || results.length === 0) {
-    console.warn('No results to map');
     return {};
   }
 
   if (!propsMapping || Object.keys(propsMapping).length === 0) {
-    console.warn('No props_mapping provided');
     return {};
   }
 
@@ -247,7 +243,6 @@ export function mapQueryResultsToProps(results, propsMapping) {
     const dataArray = dataArrays[columnAlias];
 
     if (!dataArray) {
-      console.warn(`Column '${columnAlias}' not found in query results for prop '${propPath}'`);
       continue;
     }
 
@@ -297,7 +292,6 @@ function groupDataBySplitKey(data, splitKey) {
  */
 export function chartDataFromInsightData(insightsData, inputs = {}) {
   if (!insightsData) {
-    console.warn('No insightsData provided');
     return [];
   }
 
@@ -305,19 +299,16 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
 
   for (const [insightName, insightObj] of Object.entries(insightsData)) {
     if (!insightObj) {
-      console.warn(`Insight '${insightName}' is null or undefined`);
       continue;
     }
 
     const { data, props_mapping, split_key, type, static_props } = insightObj;
 
     if (!data || data.length === 0) {
-      console.warn(`Insight '${insightName}' has no data`);
       continue;
     }
 
     if (!props_mapping || Object.keys(props_mapping).length === 0) {
-      console.warn(`Insight '${insightName}' has no props_mapping`);
       continue;
     }
 
@@ -371,7 +362,6 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
     }
   }
 
-  console.debug(`Converted ${traces.length} insights to chart traces`);
   return traces;
 }
 
