@@ -274,7 +274,12 @@ class InsightQueryBuilder:
             dag=dag, output_dir=output_dir, native_dialect=source.get_sqlglot_dialect()
         )
         self.field_resolver = field_resolver
-        self.relation_graph = RelationGraph(dag, field_resolver)
+        # Pass relevant_models to RelationGraph to scope relation resolution
+        # This prevents resolving conditions for models that haven't been executed yet
+        relevant_model_names = {m.name for m in self.models}
+        self.relation_graph = RelationGraph(
+            dag, field_resolver, relevant_models=relevant_model_names
+        )
 
         self.main_query = None
         self.resolved_query_statements = None

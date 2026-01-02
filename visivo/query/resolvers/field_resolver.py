@@ -10,6 +10,7 @@ from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
 )
+from visivo.query.resolvers.error_messages import format_column_not_found_error
 from visivo.query.sqlglot_utils import (
     identify_column_references,
     field_alias_hasher,
@@ -92,6 +93,34 @@ class FieldResolver:
             return False
         except (ValueError, AttributeError):
             return False
+
+    def _find_column_in_schema(
+        self, table: dict, field_name: str, is_quoted: bool
+    ) -> Optional[str]:
+        """Find column with case-sensitivity rules.
+
+        Implements SQL identifier case-sensitivity conventions:
+        - Unquoted identifiers: case-insensitive lookup
+        - Quoted identifiers: exact case match required
+
+        Args:
+            table: Schema dict {column_name: type}
+            field_name: Field to find (without quotes)
+            is_quoted: If True, exact match required; if False, case-insensitive
+
+        Returns:
+            Actual column name from schema, or None if not found
+        """
+        if is_quoted:
+            # Quoted identifier: exact case match required
+            return field_name if field_name in table else None
+
+        # Unquoted identifier: case-insensitive lookup
+        field_lower = field_name.lower()
+        for schema_col in table.keys():
+            if schema_col.lower() == field_lower:
+                return schema_col
+        return None
 
     def _qualify_expression(self, expression: str, model_node: SqlModel) -> str:
         # Get model and its hash
@@ -345,16 +374,35 @@ class FieldResolver:
                     table = schema.get(model_hash)
                     if not table:
                         raise Exception(f"Missing schema for model: {model_node.name}.")
-                    column = table.get(field_name_stripped)
-                    if not column:
-                        columns = ", ".join(table.keys())
-                        raise Exception(
-                            f"No column: {field_name_stripped} exists on model: {model_node.name}. Here's the available columns returned from the model: {columns}"
+
+                    # Detect if field is quoted (e.g., ${ref(model)."Column"})
+                    # Quoted fields require exact case match; unquoted are case-insensitive
+                    is_quoted = (
+                        field_name_stripped.startswith('"')
+                        and field_name_stripped.endswith('"')
+                        and len(field_name_stripped) > 2
+                    )
+                    lookup_name = field_name_stripped
+                    if is_quoted:
+                        # Strip surrounding quotes for lookup
+                        lookup_name = field_name_stripped[1:-1]
+
+                    # Use case-insensitive lookup for unquoted, exact match for quoted
+                    actual_column_name = self._find_column_in_schema(table, lookup_name, is_quoted)
+
+                    if not actual_column_name:
+                        error_msg = format_column_not_found_error(
+                            field_name=lookup_name,
+                            model_name=model_node.name,
+                            table=table,
+                            is_quoted=is_quoted,
                         )
-                    # If the field name is found in the schema it's an implicit dimension like expected and we can return the qualified expression
-                    # In most dialects this will just be f"{model_hash}"."{field_name}", but some don't use double quotes.
+                        raise Exception(error_msg)
+
+                    # If the field name is found in the schema it's an implicit dimension
+                    # Use the ACTUAL column name from schema (preserves original case)
                     return self._qualify_expression(
-                        expression=field_name_stripped, model_node=model_node
+                        expression=actual_column_name, model_node=model_node
                     )
 
             field_parent_name = self.dag.get_named_parents(field_node.name)[0]

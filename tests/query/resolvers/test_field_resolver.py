@@ -176,7 +176,7 @@ class TestFieldResolverResolveImplicitDimensions:
         assert "x" in result or "X" in result.upper()
 
     def test_resolve_implicit_dimension_error_message_shows_column_names(self, tmpdir):
-        """Test that error messages show column names, not types."""
+        """Test that error messages show column names and types in a formatted table."""
         # Setup DAG
         source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
         model = SqlModel(name="orders", sql="SELECT * FROM orders_table", source="ref(test_source)")
@@ -197,10 +197,13 @@ class TestFieldResolverResolveImplicitDimensions:
             resolver.resolve("${ref(orders).nonexistent_column}")
 
         error_message = str(exc_info.value)
-        # Should show column NAMES (id, amount) not TYPES (INTEGER, DECIMAL)
-        assert "id" in error_message or "amount" in error_message
-        assert "INTEGER" not in error_message
-        assert "DECIMAL" not in error_message
+        # Should show "Available columns" header with column names and types
+        assert "Available columns" in error_message
+        assert "id" in error_message
+        assert "amount" in error_message
+        # Should also show types in the formatted table
+        assert "INTEGER" in error_message
+        assert "DECIMAL" in error_message
 
 
 class TestFieldResolverResolveMetrics:
@@ -993,3 +996,179 @@ class TestFieldResolverSortExpressions:
         assert "revenue" in result
         # Verify it's qualified with model hash
         assert model_hash in result
+
+
+class TestFieldResolverCaseSensitivity:
+    """Test case-insensitive column lookup for unquoted identifiers."""
+
+    def test_resolve_lowercase_field_with_uppercase_schema(self, tmpdir):
+        """Test that lowercase field reference matches uppercase schema column."""
+        # Setup DAG - simulates Snowflake/BigQuery where schema returns UPPERCASE
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="local_test_table",
+            sql="SELECT * FROM test_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        # Create schema with UPPERCASE columns (as Snowflake/BigQuery returns)
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("local_test_table")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"X": "INTEGER", "Y": "VARCHAR"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Resolve lowercase field reference - should match uppercase schema
+        result = resolver.resolve("${ref(local_test_table).x}")
+
+        # Should successfully resolve (contains X - the schema column name)
+        assert "X" in result or "x" in result
+        assert " AS " in result
+
+    def test_resolve_mixedcase_field_with_uppercase_schema(self, tmpdir):
+        """Test that mixed-case unquoted field matches regardless of case."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"AMOUNT": "DECIMAL", "USER_ID": "INTEGER"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Mixed case reference should match uppercase schema
+        result = resolver.resolve("${ref(orders).AmOuNt}")
+
+        # Should contain AMOUNT (the schema column name)
+        assert "AMOUNT" in result or "amount" in result.lower()
+
+    @pytest.mark.skip(reason="Quoted identifiers ${ref(model).\"field\"} not yet supported by regex pattern")
+    def test_quoted_field_is_case_sensitive(self, tmpdir):
+        """Test that quoted field reference requires exact case match.
+
+        Note: The current regex pattern CONTEXT_STRING_REF_PATTERN doesn't support
+        quoted identifiers in the property_path. The regex requires alphanumeric
+        characters only. This test is skipped until the pattern is extended.
+        """
+        pass
+
+    @pytest.mark.skip(reason="Quoted identifiers ${ref(model).\"field\"} not yet supported by regex pattern")
+    def test_quoted_field_wrong_case_fails(self, tmpdir):
+        """Test that quoted field with wrong case raises error.
+
+        Note: The current regex pattern CONTEXT_STRING_REF_PATTERN doesn't support
+        quoted identifiers in the property_path. This test is skipped until the
+        pattern is extended.
+        """
+        pass
+
+    def test_error_message_shows_formatted_columns(self, tmpdir):
+        """Test that error message shows columns in a formatted table."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders_table",
+            source="ref(test_source)",
+        )
+        project = Project(name="test_project", sources=[source], models=[model], dashboards=[])
+        dag = project.dag()
+
+        model_hash = model.name_hash()
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL", "status": "VARCHAR"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Try to resolve a non-existent column
+        with pytest.raises(Exception) as exc_info:
+            resolver.resolve("${ref(orders).nonexistent_column}")
+
+        error_message = str(exc_info.value)
+        # Should contain "Available columns" header
+        assert "Available columns" in error_message
+        # Should show column names
+        assert "id" in error_message
+        assert "amount" in error_message
+        assert "status" in error_message
+        # Should show types
+        assert "INTEGER" in error_message
+        assert "DECIMAL" in error_message
+        assert "VARCHAR" in error_message
+
+
+class TestFieldResolverFindColumnInSchema:
+    """Test the _find_column_in_schema helper method directly."""
+
+    def test_case_insensitive_finds_lowercase_from_uppercase(self, tmpdir):
+        """Test case-insensitive lookup finds lowercase request in uppercase schema."""
+        dag = ProjectDag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        table = {"ID": "INTEGER", "NAME": "VARCHAR", "AMOUNT": "DECIMAL"}
+
+        # Lowercase request should find uppercase column
+        result = resolver._find_column_in_schema(table, "id", is_quoted=False)
+        assert result == "ID"
+
+        result = resolver._find_column_in_schema(table, "name", is_quoted=False)
+        assert result == "NAME"
+
+    def test_case_insensitive_finds_uppercase_from_lowercase(self, tmpdir):
+        """Test case-insensitive lookup finds uppercase request in lowercase schema."""
+        dag = ProjectDag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        table = {"id": "INTEGER", "name": "VARCHAR", "amount": "DECIMAL"}
+
+        # Uppercase request should find lowercase column
+        result = resolver._find_column_in_schema(table, "ID", is_quoted=False)
+        assert result == "id"
+
+        result = resolver._find_column_in_schema(table, "NAME", is_quoted=False)
+        assert result == "name"
+
+    def test_quoted_requires_exact_match(self, tmpdir):
+        """Test quoted lookup requires exact case match."""
+        dag = ProjectDag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        table = {"Amount": "DECIMAL", "user_id": "INTEGER"}
+
+        # Exact match should work
+        result = resolver._find_column_in_schema(table, "Amount", is_quoted=True)
+        assert result == "Amount"
+
+        # Wrong case should return None
+        result = resolver._find_column_in_schema(table, "amount", is_quoted=True)
+        assert result is None
+
+        result = resolver._find_column_in_schema(table, "AMOUNT", is_quoted=True)
+        assert result is None
+
+    def test_not_found_returns_none(self, tmpdir):
+        """Test that non-existent column returns None."""
+        dag = ProjectDag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        table = {"id": "INTEGER", "name": "VARCHAR"}
+
+        # Non-existent column returns None
+        result = resolver._find_column_in_schema(table, "nonexistent", is_quoted=False)
+        assert result is None
+
+        result = resolver._find_column_in_schema(table, "nonexistent", is_quoted=True)
+        assert result is None
