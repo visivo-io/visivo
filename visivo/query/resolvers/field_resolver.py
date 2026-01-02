@@ -211,7 +211,15 @@ class FieldResolver:
                         expression=field_name_stripped, model_node=model_node
                     )
 
-            field_parent_name = self.dag.get_named_parents(field_node.name)[0]
+            named_parents = self.dag.get_named_parents(field_node.name)
+            if not named_parents:
+                raise Exception(
+                    f"Cannot resolve field '{field_node.name}': it has no parent in the DAG. "
+                    f"This usually means the metric/dimension is not properly connected to a model. "
+                    f"Check that '{field_node.name}' is either nested under a model or has a valid "
+                    f"expression referencing a model with ${{refs.model.field}} syntax."
+                )
+            field_parent_name = named_parents[0]
             field_parent = self.dag.get_descendant_by_name(field_parent_name)
             if isinstance(field_parent, SqlModel):
                 # Check if expression still has unresolved refs (supports both syntaxes)

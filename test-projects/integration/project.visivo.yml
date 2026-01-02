@@ -23,7 +23,7 @@ inputs:
     label: "Minimum X Value"
     type: dropdown
     default: "2"
-    options: ?{select distinct x FROM ${ref(local_test_table)} }
+    options: ?{select distinct x FROM ${refs.local_test_table} }
 
   # Input for aggregate filter testing
   - name: min_avg_y
@@ -67,7 +67,7 @@ sources:
     type: mysql
     host: localhost
     username: root
-    password: "{{ env_var('MYSQL_PASSWORD') }}"
+    password: "${env.MYSQL_PASSWORD}"
     port: 3306
 
   - name: local-clickhouse
@@ -84,24 +84,24 @@ sources:
     database: JARED_DEV
     account: bu13083.us-east-2.aws
     db_schema: DEFAULT
-    username: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}"
+    username: "${env.CLI_UNIT_TESTING_SNOWFLAKE_USER}"
     warehouse: DEV
-    password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
+    password: "${env.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD}"
     role: PROD
     
   - name: remote-bigquery
     type: bigquery
     database: test
-    project: "{{env_var('BIGQUERY_PROJECT')}}"
-    credentials_base64: "{{env_var('BIGQUERY_BASE64_CREDENTIALS')}}"
+    project: "${env.BIGQUERY_PROJECT}"
+    credentials_base64: "${env.BIGQUERY_BASE64_CREDENTIALS}"
 
 charts:
   - name: indicator_chart
     traces:
-      - ${ ref(Indicator Trace) }
+      - ${refs.indicator-trace}
   - name: surface-chart
     traces:
-      - ${ ref(Surface Trace) }
+      - ${refs.surface-trace}
     layout:
       title:
         text: Plot
@@ -111,22 +111,22 @@ charts:
   # New charts using insights
   - name: simple-scatter-chart
     insights:
-      - ${ ref(simple-scatter-insight) }
+      - ${refs.simple-scatter-insight}
     layout:
       title:
         text: "Simple Scatter with Insights"
   - name: composite-metric-chart
     insights: 
-      - ${ref(composite-scatter-insight)}
+      - ${refs.composite-scatter-insight}
   - name: fibonacci-split-chart
     insights:
-      - ${ ref(fibonacci-split-insight) }
+      - ${refs.fibonacci-split-insight}
     layout:
       title:
         text: "Fibonacci with Split Interaction"
   - name: aggregated-bar-chart
     insights:
-      - ${ ref(aggregated-bar-insight) }
+      - ${refs.aggregated-bar-insight}
     layout:
       title:
         text: "Aggregated Bar Chart"
@@ -134,41 +134,41 @@ charts:
   # Input-driven test charts
   - name: split-input-test-chart
     insights:
-      - ${ ref(split-input-test-insight) }
+      - ${refs.split-input-test-insight}
     layout:
       title:
         text: "Split Interaction Test (Input-Driven)"
 
   - name: filter-nonaggregate-input-test-chart
     insights:
-      - ${ ref(filter-nonaggregate-input-test-insight) }
+      - ${refs.filter-nonaggregate-input-test-insight}
     layout:
       title:
         text: "Non-Aggregate Filter Test (Input-Driven)"
 
   - name: filter-aggregate-input-test-chart
     insights:
-      - ${ ref(filter-aggregate-input-test-insight) }
+      - ${refs.filter-aggregate-input-test-insight}
     layout:
       title:
         text: "Aggregate Filter Test (Input-Driven)"
 
   - name: sort-input-test-chart
     insights:
-      - ${ ref(sort-input-test-insight) }
+      - ${refs.sort-input-test-insight}
     layout:
       title:
         text: "Sort Order Test (Input-Driven)"
 
   - name: combined-interactions-test-chart
     insights:
-      - ${ ref(combined-interactions-test-insight) }
+      - ${refs.combined-interactions-test-insight}
     layout:
       title:
         text: "Combined Interactions Test"
 
 dashboards:
-  - name: Insights Dashboard
+  - name: insights-dashboard
     level: 0
     tags:
       - "insights"
@@ -178,41 +178,41 @@ dashboards:
       - height: medium
         items:
           - width: 6
-            chart: ${ ref(simple-scatter-chart) }
+            chart: ${refs.simple-scatter-chart}
           - width: 6
-            chart: ${ ref(fibonacci-split-chart) }
+            chart: ${refs.fibonacci-split-chart}
       - height: medium
         items:
           - width: 6
-            chart: ${ ref(aggregated-bar-chart) }
+            chart: ${refs.aggregated-bar-chart}
           - width: 6
-            chart: ${ref(composite-metric-chart)}
+            chart: ${refs.composite-metric-chart}
 
       
       # Input-driven test charts
       - height: compact
         items:
-          - input: ${ref(split_threshold)}
-          - input: ${ref(min_x_value)}
-          - input: ${ref(min_avg_y)}
-          - input: ${ref(sort_direction)}
+          - input: ${refs.split_threshold}
+          - input: ${refs.min_x_value}
+          - input: ${refs.min_avg_y}
+          - input: ${refs.sort_direction}
       - height: medium
         items:
           - width: 6
-            chart: ${ ref(split-input-test-chart) }
+            chart: ${refs.split-input-test-chart}
           - width: 6
-            chart: ${ ref(filter-nonaggregate-input-test-chart) }
+            chart: ${refs.filter-nonaggregate-input-test-chart}
       - height: medium
         items:
           - width: 6
-            chart: ${ ref(filter-aggregate-input-test-chart) }
+            chart: ${refs.filter-aggregate-input-test-chart}
           - width: 6
-            chart: ${ ref(sort-input-test-chart) }
+            chart: ${refs.sort-input-test-chart}
       - height: medium
         items:
           - width: 12
-            chart: ${ ref(combined-interactions-test-chart) }
-  - name: Table Dashboard
+            chart: ${refs.combined-interactions-test-chart}
+  - name: table-dashboard
     level: 1
     tags:
       - "tables"
@@ -257,7 +257,7 @@ dashboards:
             table:
               name: awesome-table
               column_defs:
-                - trace_name: Fibonacci Waterfall
+                - trace_name: fibonacci-waterfall
                   columns:
                     - key: "columns.x_data"
                     - key: "columns.y_data"
@@ -266,10 +266,10 @@ dashboards:
                     - key: "columns.measure"
                     - key: "props.text"
               traces:
-                - ${ ref(Fibonacci Waterfall) }
+                - ${refs.fibonacci-waterfall}
               rows_per_page: 1000
           - width: 2
-            chart: ${ ref(indicator_chart) }
+            chart: ${refs.indicator_chart}
       - height: medium
         items:
           - table:
@@ -282,13 +282,13 @@ dashboards:
                       header: "Markdown"
                       markdown: true
               traces:
-                - model: ${ ref(markdown-table-base) }
+                - model: ${refs.markdown-table-base}
                   name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
                   columns:
                     vanilla_text: vanilla_text
                     markdown: markdown
 
-  - name: Simple Dashboard
+  - name: simple-dashboard
     level: 0
     tags:
       - "charts"
@@ -298,19 +298,19 @@ dashboards:
         items:
           - width: 9
             chart:
-              name: A very Fibonacci Waterfall
+              name: a-very-fibonacci-waterfall
               traces:
-                - ${ ref(Fibonacci Waterfall) }
-                - ${ ref(Example Indicator) }
+                - ${refs.fibonacci-waterfall}
+                - ${refs.example-indicator}
               layout:
                 title:
                   text: "AAPL P&L"
                 waterfallgroupgap: 0.1
           - width: 2
             chart:
-              name: Aggregated Fib
+              name: aggregated-fib
               traces:
-                - ${ ref(Aggregated Line) }
+                - ${refs.aggregated-line}
               layout:
                 title:
                   text: "Aggregated Fibonacci"
@@ -324,10 +324,10 @@ dashboards:
         items:
           - width: 3
             chart:
-              name: fibonacci plane
+              name: fibonacci-plane
               traces:
-                - ${ ref(3d Line One) }
-                - ${ ref(3d Line Two) }
+                - ${refs._3d-line-one}
+                - ${refs._3d-line-two}
               layout:
                 title:
                   text: "The Greatest 3d Lines"
@@ -341,7 +341,7 @@ dashboards:
             chart:
               name: fibonacci
               traces:
-                - ${ ref(Simple Line) }
+                - ${refs.simple-line}
               layout:
                 title:
                   text: "A great fibonacci series"
@@ -354,9 +354,9 @@ dashboards:
 
           - width: 3
             chart:
-              name: fibonacci times 2
+              name: fibonacci-times-2
               traces:
-                - name: Double Simple Line
+                - name: double-simple-line
                   #cohort_on: "?{'Fibonacci times 2'}"
                   model:
                     name: nested-and-name
@@ -372,8 +372,8 @@ dashboards:
                     - ?{x asc}
                   tests:
                     - assertions:
-                        - ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"
-                - ${ ref(Simple Line) }
+                        - ">{ ${refs.double-simple-line.props.x[2]} == 3 }"
+                - ${refs.simple-line}
               layout:
                 title:
                   text: "A not great fibonacci series"
@@ -392,12 +392,12 @@ dashboards:
               1. List
           - width: 2
             chart:
-              name: funnel chart
+              name: funnel-chart
               traces:
-                - ${ ref(funnel trace) }
+                - ${refs.funnel-trace}
               layout:
                 title:
                   text: "Funnel Chart"
       - height: xlarge
         items:
-          - chart: ${ ref(surface-chart) }
+          - chart: ${refs.surface-chart}

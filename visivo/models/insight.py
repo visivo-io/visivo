@@ -157,16 +157,18 @@ class Insight(NamedModel, ParentModel):
         return interactions
 
     def _convert_input_refs_to_js_templates(self, text: str, dag: ProjectDag) -> str:
-        """Convert ${ref(input)} to ${input}, leave model/metric/dimension refs intact.
+        """Convert ${ref(input)} and ${refs.input} to ${input}, leave model/metric/dimension refs intact.
 
         This method converts input references to JavaScript template literal syntax for
         client-side interpolation. Model, metric, and dimension references are left
         unchanged for the FieldResolver to handle.
 
-        Transforms: ${ref(input_name)} → ${input_name}
+        Transforms:
+            - ${ref(input_name)} → ${input_name}
+            - ${refs.input_name} → ${input_name}
 
         Args:
-            text: SQL expression that may contain ${ref(...)} patterns
+            text: SQL expression that may contain ${ref(...)} or ${refs.} patterns
             dag: Project DAG for looking up nodes
 
         Returns:
@@ -174,16 +176,20 @@ class Insight(NamedModel, ParentModel):
 
         Examples:
             - "x > ${ref(threshold)}" → "x > ${threshold}" (if threshold is an input)
+            - "x > ${refs.threshold}" → "x > ${threshold}" (if threshold is an input)
             - "x > ${ref(model).field}" → "x > ${ref(model).field}" (model ref unchanged)
+            - "x > ${refs.model.field}" → "x > ${refs.model.field}" (model ref unchanged)
         """
         from visivo.models.inputs import Input
         from visivo.query.patterns import (
             CONTEXT_STRING_REF_PATTERN_COMPILED,
+            REFS_CONTEXT_PATTERN_COMPILED,
             get_model_name_from_match,
         )
         from re import Match
 
-        def repl(m: Match) -> str:
+        # First, handle legacy ${ref(name)} syntax
+        def repl_legacy(m: Match) -> str:
             name = get_model_name_from_match(m)
             try:
                 node = dag.get_descendant_by_name(name)
@@ -196,7 +202,23 @@ class Insight(NamedModel, ParentModel):
                 pass
             return m.group(0)  # Keep non-input refs unchanged
 
-        return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
+        text = CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl_legacy, text)
+
+        # Second, handle new ${refs.name} syntax
+        def repl_refs(m: Match) -> str:
+            name = m.group("refs_name")
+            try:
+                node = dag.get_descendant_by_name(name)
+                if isinstance(node, Input):
+                    # Convert input ref to JS template literal syntax
+                    # ${refs.threshold} → ${threshold}
+                    return f"${{{name}}}"
+            except (ValueError, AttributeError):
+                # Node not found or error - leave the ref as-is for FieldResolver
+                pass
+            return m.group(0)  # Keep non-input refs unchanged
+
+        return REFS_CONTEXT_PATTERN_COMPILED.sub(repl_refs, text)
 
     def get_all_query_statements(self, dag):
         query_statements = []

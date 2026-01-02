@@ -5,8 +5,8 @@ insights:
     props:
       type: scatter
       mode: markers+lines
-      x: ?{${ref(another_local_test_table).new_x}}
-      y: ?{${ref(another_local_test_table).new_y}}
+      x: ?{${refs.another_local_test_table.new_x}}
+      y: ?{${refs.another_local_test_table.new_y}}
       marker:
         color: "#713B57"
         size: 10
@@ -16,8 +16,8 @@ insights:
   - name: composite-scatter-insight
     props: 
       type: scatter 
-      x: ?{${ref(another_local_test_table).new_x}}
-      y: ?{${ref(composite_metric)}}
+      x: ?{${refs.another_local_test_table.new_x}}
+      y: ?{${refs.composite_metric}}
 
 
   # Bar chart insight with split interaction (replaces cohort_on)
@@ -25,42 +25,42 @@ insights:
     description: "Bar chart with split based on y value threshold"
     props:
       type: bar
-      x: ?{${ref(another_local_test_table).new_x}}
-      y: ?{${ref(another_local_test_table).new_y}}
+      x: ?{${refs.another_local_test_table.new_x}}
+      y: ?{${refs.another_local_test_table.new_y}}
       marker:
-        color: ?{ case when ${ref(another_local_test_table).new_x} >= 5 then '#713B57' else '#4F494C' end }
+        color: ?{ case when ${refs.another_local_test_table.new_x} >= 5 then '#713B57' else '#4F494C' end }
     interactions:
-      - split: ?{ CASE WHEN ${ref(another_local_test_table).new_y} >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
-      - sort: ?{${ref(another_local_test_table).new_x} ASC}
+      - split: ?{ CASE WHEN ${refs.another_local_test_table.new_y} >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
+      - sort: ?{${refs.another_local_test_table.new_x} ASC}
 
   # Aggregated bar chart with filter
   - name: aggregated-bar-insight
     description: "Aggregated bar chart with conditional grouping"
     props:
       type: bar
-      x: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'less' else 'More' END }
-      y: ?{ avg(${ref(local_test_table).y}) }
+      x: ?{ CASE WHEN ${refs.local_test_table.x} <= 3 THEN 'less' else 'More' END }
+      y: ?{ avg(${refs.local_test_table.y}) }
       marker:
         color: ["rgb(142,124,195)", "rgba(204,204,204,1)"]
         line:
-          color: ?{CASE WHEN ${ref(local_test_table).x} <= 3 THEN '#D25946' else '#191D33' END}
+          color: ?{CASE WHEN ${refs.local_test_table.x} <= 3 THEN '#D25946' else '#191D33' END}
           width: 2.5
 
   # 3D scatter with filter interaction
-  - name: 3d-scatter-insight
+  - name: _3d-scatter-insight
     description: "3D scatter plot with calculated z-axis"
     props:
       type: scatter3d
-      x: ?{${ref(local_test_table).x}}
-      y: ?{${ref(local_test_table).y}}
-      z: ?{ -2*(${ref(local_test_table).x}/16)*${ref(local_test_table).x} + ${ref(local_test_table).x} + ${ref(local_test_table).y}*(${ref(local_test_table).y}-3)}
+      x: ?{${refs.local_test_table.x}}
+      y: ?{${refs.local_test_table.y}}
+      z: ?{ -2*(${refs.local_test_table.x}/16)*${refs.local_test_table.x} + ${refs.local_test_table.x} + ${refs.local_test_table.y}*(${refs.local_test_table.y}-3)}
       mode: markers+lines
       marker:
         size: 8
         color: "#713B57"
     interactions:
-      - filter: ?{${ref(local_test_table).x} > 1}
-      - sort: ?{${ref(local_test_table).x} ASC}
+      - filter: ?{${refs.local_test_table.x} > 1}
+      - sort: ?{${refs.local_test_table.x} ASC}
 
   # Line chart with metric usage
   - name: metric-line-insight
@@ -68,8 +68,8 @@ insights:
     props:
       type: scatter
       mode: lines
-      x: ?{${ref(local_test_table).x_rounded}}
-      y: ?{${ref(local_test_table).x_sum}}
+      x: ?{${refs.local_test_table.x_rounded}}
+      y: ?{${refs.local_test_table.x_sum}}
       line:
         color: "#D25946"
         shape: spline
@@ -81,13 +81,13 @@ insights:
     description: "Bar chart with dynamic split based on input threshold"
     props:
       type: bar
-      x: ?{${ref(local_test_table).x}}
-      y: ?{${ref(local_test_table).y}}
+      x: ?{${refs.local_test_table.x}}
+      y: ?{${refs.local_test_table.y}}
       marker:
-        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#D25946' END }
+        color: ?{ CASE WHEN ${refs.local_test_table.x} >= ${refs.split_threshold} THEN '#713B57' ELSE '#D25946' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'High Y Values' ELSE 'Low Y Values' END }
-      - sort: ?{${ref(local_test_table).x} desc}
+      - split: ?{ CASE WHEN ${refs.local_test_table.x} >= ${refs.split_threshold} THEN 'High Y Values' ELSE 'Low Y Values' END }
+      - sort: ?{${refs.local_test_table.x} desc}
 
   # Test Non-Aggregate Filter with Input
   - name: filter-nonaggregate-input-test-insight
@@ -95,8 +95,8 @@ insights:
     props:
       type: scatter
       mode: markers+lines
-      x: ?{${ref(local_test_table).x}}
-      y: ?{${ref(local_test_table).y}}
+      x: ?{${refs.local_test_table.x}}
+      y: ?{${refs.local_test_table.y}}
       marker:
         size: 10
         color: "#4F494C"
@@ -104,20 +104,20 @@ insights:
         color: "#713B57"
         width: 2
     interactions:
-      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
-      - sort: ?{${ref(local_test_table).x} ASC}
+      - filter: ?{${refs.local_test_table.x} > ${refs.min_x_value}}
+      - sort: ?{${refs.local_test_table.x} ASC}
 
   # Test Aggregate Filter with Input
   - name: filter-aggregate-input-test-insight
     description: "Aggregated bar chart with dynamic aggregate filter (HAVING)"
     props:
       type: bar
-      x: ?{ CASE WHEN ${ref(local_test_table).x} <= 3 THEN 'Group A' ELSE 'Group B' END }
-      y: ?{ AVG(${ref(local_test_table).y}) }
+      x: ?{ CASE WHEN ${refs.local_test_table.x} <= 3 THEN 'Group A' ELSE 'Group B' END }
+      y: ?{ AVG(${refs.local_test_table.y}) }
       marker:
         color: ["red", "green"]
     interactions:
-      - filter: ?{ ${ref(local_test_table).y} > ${ref(min_avg_y)} }
+      - filter: ?{ ${refs.local_test_table.y} > ${refs.min_avg_y} }
 
   # Test Sort Order with Input
   - name: sort-input-test-insight
@@ -125,8 +125,8 @@ insights:
     props:
       type: scatter
       mode: lines+markers
-      x: ?{${ref(another_local_test_table).new_x}}
-      y: ?{${ref(another_local_test_table).new_y}}
+      x: ?{${refs.another_local_test_table.new_x}}
+      y: ?{${refs.another_local_test_table.new_y}}
       line:
         shape: spline
         color: "#191D33"
@@ -134,18 +134,18 @@ insights:
         size: 8
         color: "#D25946"
     interactions:
-      - sort: ?{${ref(another_local_test_table).new_x} ${ref(sort_direction)}}
+      - sort: ?{${refs.another_local_test_table.new_x} ${refs.sort_direction}}
 
   # Combined Test - All Interactions with Inputs
   - name: combined-interactions-test-insight
     description: "Chart testing split, filter, and sort together"
     props:
       type: bar
-      x: ?{${ref(local_test_table).x}}
-      y: ?{${ref(local_test_table).y}}
+      x: ?{${refs.local_test_table.x}}
+      y: ?{${refs.local_test_table.y}}
       marker:
-        color: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN '#713B57' ELSE '#4F494C' END }
+        color: ?{ CASE WHEN ${refs.local_test_table.x} >= ${refs.split_threshold} THEN '#713B57' ELSE '#4F494C' END }
     interactions:
-      - split: ?{ CASE WHEN ${ref(local_test_table).x} >= ${ref(split_threshold)} THEN 'Above Threshold' ELSE 'Below Threshold' END }
-      - filter: ?{${ref(local_test_table).x} > ${ref(min_x_value)}}
-      - sort: ?{${ref(local_test_table).x} ${ref(sort_direction)}}
+      - split: ?{ CASE WHEN ${refs.local_test_table.x} >= ${refs.split_threshold} THEN 'Above Threshold' ELSE 'Below Threshold' END }
+      - filter: ?{${refs.local_test_table.x} > ${refs.min_x_value}}
+      - sort: ?{${refs.local_test_table.x} ${refs.sort_direction}}

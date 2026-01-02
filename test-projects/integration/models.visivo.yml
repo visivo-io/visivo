@@ -1,10 +1,10 @@
 relations:
   - name: local_to_local
-    condition: ${ref(local_test_table).x} = ${ref(another_local_test_table).x}
+    condition: ${refs.local_test_table.x} = ${refs.another_local_test_table.x}
 
 metrics: 
   - name: composite_metric
-    expression: ${ref(local_test_table).x_sum} + ${ref(another_local_test_table).new_y_sum}
+    expression: ${refs.local_test_table.x_sum} + ${refs.another_local_test_table.new_y_sum}
 
 models:
   - name: local_test_table
@@ -31,8 +31,8 @@ models:
         JOIN second_local_test_table.model AS sltt
         ON ltt.x = sltt.x
     models:
-      - ${ ref(local_test_table) }
-      - ${ ref(second_local_test_table) }
+      - ${refs.local_test_table}
+      - ${refs.second_local_test_table}
   - name: csv
     table_name: csv
     args:
