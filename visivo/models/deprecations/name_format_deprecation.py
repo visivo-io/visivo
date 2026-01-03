@@ -44,6 +44,26 @@ INSIGHT_NAME_FIELD_QUOTED_PATTERN = re.compile(
     r'^(\s*)(- )?insight_name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE
 )
 
+# Pattern to find source_name fields in YAML files (used in defaults)
+# Matches: source_name: value (unquoted) - value must start with non-quote/non-space char
+SOURCE_NAME_FIELD_UNQUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?source_name:\s+([^"\'\s#][^\n#]*?)\s*$', re.MULTILINE
+)
+# Matches: source_name: "value" or source_name: 'value' (quoted)
+SOURCE_NAME_FIELD_QUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?source_name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE
+)
+
+# Pattern to find alert_name fields in YAML files (used in defaults)
+# Matches: alert_name: value (unquoted) - value must start with non-quote/non-space char
+ALERT_NAME_FIELD_UNQUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?alert_name:\s+([^"\'\s#][^\n#]*?)\s*$', re.MULTILINE
+)
+# Matches: alert_name: "value" or alert_name: 'value' (quoted)
+ALERT_NAME_FIELD_QUOTED_PATTERN = re.compile(
+    r'^(\s*)(- )?alert_name:\s*(["\'])(.+?)\3\s*$', re.MULTILINE
+)
+
 # Pattern to find all ref() calls and extract the name
 # Matches: ${ref(Name)}, ${ ref(Name) }, ${ref('Name')}, ${ref("Name")}, ref(Name)
 # Captures the name (with optional quotes that we'll strip)
@@ -280,7 +300,8 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                 # Skip files that can't be read
                 continue
 
-        # Third pass: update trace_name and insight_name fields that reference renamed items
+        # Third pass: update trace_name, insight_name, source_name, and alert_name fields
+        # that reference renamed items
         for file_path in list_all_ymls_in_dir(working_dir):
             try:
                 with open(file_path, "r") as f:
@@ -307,6 +328,30 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                         "insight_name",
                         INSIGHT_NAME_FIELD_UNQUOTED_PATTERN,
                         INSIGHT_NAME_FIELD_QUOTED_PATTERN,
+                    )
+                )
+
+                # Update source_name fields (used in defaults)
+                migrations.extend(
+                    self._migrate_reference_field(
+                        content,
+                        file_path,
+                        name_renames,
+                        "source_name",
+                        SOURCE_NAME_FIELD_UNQUOTED_PATTERN,
+                        SOURCE_NAME_FIELD_QUOTED_PATTERN,
+                    )
+                )
+
+                # Update alert_name fields (used in defaults)
+                migrations.extend(
+                    self._migrate_reference_field(
+                        content,
+                        file_path,
+                        name_renames,
+                        "alert_name",
+                        ALERT_NAME_FIELD_UNQUOTED_PATTERN,
+                        ALERT_NAME_FIELD_QUOTED_PATTERN,
                     )
                 )
 

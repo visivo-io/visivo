@@ -426,6 +426,40 @@ def has_refs_pattern(text: str) -> bool:
     return bool(REFS_CONTEXT_PATTERN_COMPILED.search(text))
 
 
+def replace_refs_patterns(text: str, replacer_func) -> str:
+    """
+    Replace ${refs.name} patterns in text using a custom replacer function.
+
+    This is the new syntax equivalent of replace_refs().
+
+    Args:
+        text: Text containing ${refs.name.property} patterns
+        replacer_func: Function that takes (name, property_path) and returns replacement string
+                      property_path will be None if not present, or the path without leading dot
+
+    Returns:
+        Text with all ${refs.} patterns replaced
+
+    Example:
+        >>> replace_refs_patterns("${refs.orders.id}", lambda n, p: f"{n}_cte.{p}" if p else n)
+        "orders_cte.id"
+        >>> replace_refs_patterns("${refs.model}", lambda n, p: f"({n}_sql})")
+        "(model_sql)"
+    """
+
+    def replace_match(match):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property")
+        # Strip leading dot from property path
+        if property_path and property_path.startswith("."):
+            property_path = property_path[1:]
+        # Convert empty string to None
+        property_path = property_path if property_path else None
+        return replacer_func(name, property_path)
+
+    return REFS_CONTEXT_PATTERN_COMPILED.sub(replace_match, text)
+
+
 def normalize_ref_to_refs(text: str) -> str:
     """
     Convert legacy ${ref(name).property} syntax to new ${refs.name.property} syntax.

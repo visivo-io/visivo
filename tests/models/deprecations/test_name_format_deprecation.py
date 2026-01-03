@@ -493,3 +493,137 @@ tables:
             )
             assert insight_name_migration is not None
             assert "insight_name: my-insight" in insight_name_migration.new_text
+
+    def test_get_migrations_updates_source_name_references(self):
+        """Test that source_name fields referencing renamed items are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+sources:
+  - name: My Source
+    database: test.db
+
+defaults:
+  source_name: My Source
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + source_name update
+            assert len(migrations) == 2
+
+            # Check name migration
+            name_migration = next(
+                (
+                    m
+                    for m in migrations
+                    if "'My Source'" in m.description and "source_name" not in m.description
+                ),
+                None,
+            )
+            assert name_migration is not None
+            assert "my-source" in name_migration.new_text
+
+            # Check source_name migration
+            source_name_migration = next(
+                (m for m in migrations if "source_name" in m.description), None
+            )
+            assert source_name_migration is not None
+            assert "source_name: my-source" in source_name_migration.new_text
+
+    def test_get_migrations_updates_quoted_source_name(self):
+        """Test that quoted source_name fields are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+sources:
+  - name: "Test Source"
+    database: test.db
+
+defaults:
+  source_name: "Test Source"
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + source_name update
+            assert len(migrations) == 2
+
+            source_name_migration = next(
+                (m for m in migrations if "source_name" in m.description), None
+            )
+            assert source_name_migration is not None
+            assert "test-source" in source_name_migration.new_text
+
+    def test_get_migrations_updates_alert_name_references(self):
+        """Test that alert_name fields referencing renamed items are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+alerts:
+  - name: My Alert
+    threshold: 100
+
+defaults:
+  alert_name: My Alert
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + alert_name update
+            assert len(migrations) == 2
+
+            # Check name migration
+            name_migration = next(
+                (
+                    m
+                    for m in migrations
+                    if "'My Alert'" in m.description and "alert_name" not in m.description
+                ),
+                None,
+            )
+            assert name_migration is not None
+            assert "my-alert" in name_migration.new_text
+
+            # Check alert_name migration
+            alert_name_migration = next(
+                (m for m in migrations if "alert_name" in m.description), None
+            )
+            assert alert_name_migration is not None
+            assert "alert_name: my-alert" in alert_name_migration.new_text
+
+    def test_get_migrations_updates_quoted_alert_name(self):
+        """Test that quoted alert_name fields are also migrated."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_content = """
+alerts:
+  - name: "Test Alert"
+    threshold: 50
+
+defaults:
+  alert_name: "Test Alert"
+"""
+            yaml_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = NameFormatDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have 2 migrations: name rename + alert_name update
+            assert len(migrations) == 2
+
+            alert_name_migration = next(
+                (m for m in migrations if "alert_name" in m.description), None
+            )
+            assert alert_name_migration is not None
+            assert "test-alert" in alert_name_migration.new_text

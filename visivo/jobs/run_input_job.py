@@ -20,7 +20,7 @@ from visivo.models.base.query_string import QueryString
 from visivo.models.inputs.types.dropdown import DropdownInput
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.source import Source
-from visivo.query.patterns import extract_ref_names, replace_refs, normalize_refs_to_ref
+from visivo.query.patterns import extract_ref_names, replace_refs_patterns, normalize_ref_to_refs
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
 
@@ -51,8 +51,8 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
             # Query-based input - execute on source backend
             query_value = input_obj.options.get_value()
 
-            # Normalize ${refs.name} to ${ref(name)} for consistent processing
-            query_value = normalize_refs_to_ref(query_value)
+            # Normalize legacy ${ref(name)} to new ${refs.name} syntax
+            query_value = normalize_ref_to_refs(query_value)
 
             # Extract referenced model name
             ref_names = extract_ref_names(query_value)
@@ -91,14 +91,14 @@ def action(input_obj: DropdownInput, dag, output_dir: str) -> JobResult:
                     f"Could not find source for model '{model_name}' referenced by input '{input_name}'"
                 )
 
-            # Replace ${ref(model)} with (model.sql) as subquery
-            def replace_with_subquery(model_ref_name, field):
-                if model_ref_name == model_name:
+            # Replace ${refs.model} with (model.sql) as subquery
+            def replace_with_subquery(ref_name, field):
+                if ref_name == model_name:
                     # Wrap model SQL in parentheses to make it a subquery
                     return f"({model.sql})"
-                return f"${{ref({model_ref_name})}}"
+                return f"${{refs.{ref_name}}}"
 
-            resolved_query = replace_refs(query_value, replace_with_subquery)
+            resolved_query = replace_refs_patterns(query_value, replace_with_subquery)
 
             # Use SQLGlot qualify to add subquery aliases and proper identifier quoting
             # This fixes MySQL's "every derived table must have its own alias" requirement
@@ -201,8 +201,8 @@ def job(dag, output_dir: str, input_obj: DropdownInput) -> Job:
     # Only query-based inputs need a source
     if isinstance(input_obj.options, QueryString):
         query_value = input_obj.options.get_value()
-        # Normalize ${refs.name} to ${ref(name)} for consistent processing
-        query_value = normalize_refs_to_ref(query_value)
+        # Normalize legacy ${ref(name)} to new ${refs.name} syntax
+        query_value = normalize_ref_to_refs(query_value)
         ref_names = extract_ref_names(query_value)
 
         if len(ref_names) > 0:
