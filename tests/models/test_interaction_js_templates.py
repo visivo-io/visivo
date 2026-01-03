@@ -145,6 +145,76 @@ class TestJSTemplateLiterals:
         assert result["sort"] == "${val}"
 
 
+class TestRefsInputSyntax:
+    """Tests for the new ${refs.input} syntax."""
+
+    def test_filter_with_refs_input_converts_to_template_literal(self):
+        """Verify ${refs.input} becomes ${input}"""
+        # ARRANGE
+        input_obj = InputFactory(name="min_value", default="5")
+        interaction = InsightInteraction(filter="?{x > ${refs.min_value}}")
+        project = ProjectFactory(inputs=[input_obj])
+        dag = project.dag()
+
+        # ACT
+        result = interaction.field_values_with_js_template_literals(dag)
+
+        # ASSERT
+        assert result["filter"] == "x > ${min_value}"
+        assert "${refs.min_value}" not in result["filter"]
+
+    def test_mixed_refs_and_ref_input_syntax(self):
+        """Verify both ${refs.input} and ${ref(input)} convert to ${input}"""
+        # ARRANGE
+        input1 = InputFactory(name="min_val", default="0")
+        input2 = InputFactory(name="max_val", default="100")
+        interaction = InsightInteraction(filter="?{x > ${refs.min_val} AND x < ${ref(max_val)}}")
+        project = ProjectFactory(inputs=[input1, input2])
+        dag = project.dag()
+
+        # ACT
+        result = interaction.field_values_with_js_template_literals(dag)
+
+        # ASSERT
+        assert "${min_val}" in result["filter"]
+        assert "${max_val}" in result["filter"]
+        assert "${refs.min_val}" not in result["filter"]
+        assert "${ref(max_val)}" not in result["filter"]
+
+    def test_refs_model_refs_unchanged(self):
+        """Verify ${refs.model.field} is left unchanged (not an input)"""
+        # ARRANGE
+        model = SqlModelFactory(name="sales", sql="SELECT 1 as revenue")
+        interaction = InsightInteraction(filter="?{${refs.sales.revenue} > 1000}")
+        project = ProjectFactory(models=[model])
+        dag = project.dag()
+
+        # ACT
+        result = interaction.field_values_with_js_template_literals(dag)
+
+        # ASSERT
+        # Model ref should remain unchanged
+        assert "${refs.sales.revenue}" in result["filter"]
+
+    def test_mixed_refs_input_and_model_refs(self):
+        """Verify mixed refs: ${refs.input} converted, ${refs.model.field} unchanged"""
+        # ARRANGE
+        model = SqlModelFactory(name="data", sql="SELECT 1 as value")
+        input_obj = InputFactory(name="threshold", default="10")
+        interaction = InsightInteraction(filter="?{${refs.data.value} > ${refs.threshold}}")
+        project = ProjectFactory(models=[model], inputs=[input_obj])
+        dag = project.dag()
+
+        # ACT
+        result = interaction.field_values_with_js_template_literals(dag)
+
+        # ASSERT
+        # Model ref unchanged, input ref converted
+        assert "${refs.data.value}" in result["filter"]
+        assert "${threshold}" in result["filter"]
+        assert "${refs.threshold}" not in result["filter"]
+
+
 class TestJSTemplateLiteralMethod:
     def test_js_template_literal_method_exists(self):
         """Verify field_values_with_js_template_literals exists (replaces old sanitized method)"""

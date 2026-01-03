@@ -53,17 +53,19 @@ class SqlModel(Model, ParentModel):
 
     @model_validator(mode="after")
     def set_parent_names_on_nested_objects(self):
-        """Set parent names on nested metrics and dimensions, and validate no ref() in expressions."""
-        from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN
+        """Set parent names on nested metrics and dimensions, and validate no ref() or refs. in expressions."""
+        from visivo.query.patterns import has_CONTEXT_STRING_REF_PATTERN, has_refs_pattern
 
         # Process both metrics and dimensions
         for obj_type, objects in [("metric", self.metrics), ("dimension", self.dimensions)]:
             for obj in objects:
                 obj.set_parent_name(self.name)
-                # Validate no ref() in nested object expressions
-                if has_CONTEXT_STRING_REF_PATTERN(obj.expression):
+                # Validate no ref() or refs. in nested object expressions
+                if has_CONTEXT_STRING_REF_PATTERN(obj.expression) or has_refs_pattern(
+                    obj.expression
+                ):
                     raise ValueError(
-                        f"Nested {obj_type} '{obj.name}' in model '{self.name}' cannot use ref() syntax in expression. "
+                        f"Nested {obj_type} '{obj.name}' in model '{self.name}' cannot use ref() or refs. syntax in expression. "
                         f"Nested {obj_type}s can only reference fields from their parent model directly."
                     )
 

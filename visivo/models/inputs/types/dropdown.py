@@ -10,7 +10,7 @@ from visivo.models.inputs.input import Input
 class DropdownInput(Input):
     type: Literal["dropdown"] = "dropdown"
     options: Optional[Union[List[str], QueryOrStringField, str]] = Field(
-        None, description="Static list of options OR a dynamic SQL string '${ref(model).field}'"
+        None, description="Static list of options OR a dynamic SQL string '${refs.model.field}'"
     )
     multi: bool = Field(False, description="Allow multi-select")
 
@@ -39,15 +39,15 @@ class DropdownInput(Input):
         # Must reference exactly one item
         if len(refs) == 0:
             raise ValueError(
-                f"Input '{self.name}' query must reference exactly one model using ${{ref(model_name)}}.\n"
-                f"Example: ?{{ SELECT DISTINCT category FROM ${{ref(products)}} }}"
+                f"Input '{self.name}' query must reference exactly one model using ${{refs.model_name}}.\n"
+                f"Example: ?{{ SELECT DISTINCT category FROM ${{refs.products}} }}"
             )
 
         if len(refs) > 1:
             raise ValueError(
                 f"Input '{self.name}' query references {len(refs)} items ({', '.join(refs)}) "
                 f"but must reference exactly one model.\n"
-                f"Example: ?{{ SELECT DISTINCT category FROM ${{ref(products)}} }}"
+                f"Example: ?{{ SELECT DISTINCT category FROM ${{refs.products}} }}"
             )
 
         # Ref count validation passed

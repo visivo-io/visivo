@@ -351,4 +351,4 @@ class TestNestedObjectCycles:
                 dashboards=[],
             )
 
-        assert "cannot use ref() syntax" in str(exc_info.value).lower()
+        assert "cannot use ref() or refs. syntax" in str(exc_info.value).lower()

@@ -13,11 +13,12 @@ from tests.factories.model_factories import SourceFactory
 class TestFieldResolverWithInputs:
     """Tests for FieldResolver handling of input references."""
 
-    def test_field_resolver_crashes_on_unsanitized_input_ref(self):
-        """Document that FieldResolver crashes when given unsanitized input reference.
+    def test_field_resolver_errors_on_unsanitized_input_ref(self):
+        """Document that FieldResolver raises an error when given unsanitized input reference.
 
-        This test documents the expected behavior - FieldResolver should crash on
-        unsanitized input refs because they have no parents in the DAG.
+        This test documents the expected behavior - FieldResolver should error on
+        unsanitized input refs because they have no parents in the DAG. Input refs
+        should be converted to JS template literals before reaching the FieldResolver.
         """
         source = SourceFactory()
         orders_model = SqlModel(
@@ -43,10 +44,14 @@ class TestFieldResolverWithInputs:
             native_dialect="duckdb",
         )
 
-        # This will crash with IndexError because FieldResolver tries to get parent
+        # This will raise an Exception because FieldResolver tries to get parent
         # of Input node, but Inputs have no parents in the DAG
-        with pytest.raises(IndexError):
+        with pytest.raises(Exception) as exc_info:
             field_resolver.resolve(expression="${ref(threshold)}")
+
+        # Verify the error message is helpful
+        assert "threshold" in str(exc_info.value)
+        assert "no parent" in str(exc_info.value).lower()
 
     def test_field_resolver_ignores_sanitized_input_placeholder(self):
         """Test that FieldResolver passes through sanitized input placeholders unchanged."""

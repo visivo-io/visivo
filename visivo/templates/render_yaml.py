@@ -1,9 +1,28 @@
 import time
 import datetime
+import re
 from dateutil import parser
 import jinja2
 import os
 import json
+
+# Pattern to detect deprecated {{ env_var('VAR_NAME') }} syntax
+DEPRECATED_ENV_VAR_PATTERN = re.compile(r"\{\{\s*env_var\s*\(['\"]([^'\"]+)['\"]\s*\)\s*\}\}")
+
+# Module-level storage for deprecation warnings found during parsing
+_env_var_deprecation_warnings = []
+
+
+def clear_env_var_deprecation_warnings():
+    """Clear all collected env var deprecation warnings."""
+    _env_var_deprecation_warnings.clear()
+
+
+def get_env_var_deprecation_warnings():
+    """Get collected env var deprecation warnings and clear the list."""
+    warnings = list(_env_var_deprecation_warnings)
+    _env_var_deprecation_warnings.clear()
+    return warnings
 
 
 def env_var(key):
@@ -121,15 +140,53 @@ FUNCTIONS = {
 }
 
 
-def render_yaml(template_string: str):
+def check_deprecated_env_var_syntax(content: str, file_path: str = None) -> None:
+    """
+    Check for deprecated env_var() Jinja syntax and collect warnings.
+
+    Warnings are stored in a module-level list and retrieved by the
+    EnvVarSyntaxDeprecation checker after parsing completes.
+
+    Args:
+        content: YAML content to check
+        file_path: Optional file path for context in warning message
+    """
+    matches = DEPRECATED_ENV_VAR_PATTERN.findall(content)
+    for var_name in matches:
+        _env_var_deprecation_warnings.append(
+            {
+                "var_name": var_name,
+                "file_path": file_path,
+            }
+        )
+
+
+def render_yaml(template_string: str, file_path: str = None):
     """
     Renders a YAML template string using Jinja2 and a set of predefined functions.
 
+    NOTE: ${env.VAR_NAME} context strings are NOT resolved here. They are preserved
+    through parsing and resolved at runtime when values are actually used (e.g., when
+    connecting to a database). This allows the UI to display and edit env var syntax.
+
+    Legacy {{ env_var('VAR') }} Jinja syntax is still resolved at parse time for
+    backward compatibility.
+
     Args:
         template_string (str): The YAML template string to render.
+        file_path (str): Optional file path for context in error/warning messages.
 
     Returns:
         str: The rendered YAML string.
     """
+    # Check for deprecated env_var() syntax and warn
+    check_deprecated_env_var_syntax(template_string, file_path)
+
+    # Render Jinja2 template (handles legacy {{ env_var('VAR') }} syntax at parse time)
     template = jinja2.Template(template_string)
-    return template.render(FUNCTIONS)
+    rendered = template.render(FUNCTIONS)
+
+    # NOTE: ${env.VAR_NAME} syntax is NOT resolved here - it's preserved and
+    # resolved at runtime by EnvVarString.resolve() when the value is needed
+
+    return rendered

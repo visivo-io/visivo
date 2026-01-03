@@ -100,3 +100,62 @@ def test_ContextString_hash():
     cs6 = ContextString("${ project.name }")
     cs7 = ContextString("${ project.id }")
     assert cs6.__hash__() != cs7.__hash__()
+
+
+# Tests for new ${refs.name} syntax
+class TestNewRefsSyntax:
+    """Tests for the new ${refs.name} syntax support."""
+
+    def test_is_context_string_with_refs_syntax(self):
+        """Test that ${refs.name} is recognized as context string."""
+        assert ContextString.is_context_string("${refs.orders}")
+        assert ContextString.is_context_string("${refs.orders.user_id}")
+        assert ContextString.is_context_string(ContextString("${refs.orders}"))
+
+    def test_get_reference_with_refs_syntax(self):
+        """Test extracting reference name from ${refs.name} syntax."""
+        cs = ContextString("${refs.orders}")
+        assert cs.get_reference() == "orders"
+
+        cs = ContextString("${refs.my-model}")
+        assert cs.get_reference() == "my-model"
+
+        cs = ContextString("${refs.orders.user_id}")
+        assert cs.get_reference() == "orders"
+
+    def test_get_ref_props_path_with_refs_syntax(self):
+        """Test extracting property path from ${refs.name.property} syntax."""
+        cs = ContextString("${refs.orders}")
+        assert cs.get_ref_props_path() == ""
+
+        cs = ContextString("${refs.orders.user_id}")
+        assert cs.get_ref_props_path() == ".user_id"
+
+        cs = ContextString("${refs.orders.nested.property}")
+        assert cs.get_ref_props_path() == ".nested.property"
+
+    def test_uses_refs_syntax_detection(self):
+        """Test detection of which syntax is used."""
+        cs_new = ContextString("${refs.orders}")
+        assert cs_new.uses_refs_syntax() is True
+        assert cs_new.uses_ref_syntax() is False
+
+        cs_legacy = ContextString("${ref(orders)}")
+        assert cs_legacy.uses_refs_syntax() is False
+        assert cs_legacy.uses_ref_syntax() is True
+
+    def test_get_ref_attr_with_refs_syntax(self):
+        """Test get_ref_attr returns the full ref string."""
+        cs = ContextString("x = ${refs.orders}")
+        assert cs.get_ref_attr() == "${refs.orders}"
+
+        cs = ContextString("x = ${refs.orders.user_id}")
+        assert cs.get_ref_attr() == "${refs.orders.user_id}"
+
+    def test_as_field_with_refs_syntax(self):
+        """Test that ${refs.name} works as a Pydantic field value."""
+        model = MockStringModel(**{"ref": "${refs.orders}"})
+        assert model.ref.get_reference() == "orders"
+
+        model = MockStringModel(**{"ref": "${refs.orders.user_id}"})
+        assert model.ref.get_reference() == "orders"

@@ -174,7 +174,7 @@ def load_yaml_file(file):
     with open(file, "r") as stream:
         template_string = stream.read()
         try:
-            loaded = yaml.safe_load(render_yaml(template_string))
+            loaded = yaml.safe_load(render_yaml(template_string, file_path=str(file)))
             set_location_recursive_items(loaded, str(file))
             return loaded
         except yaml.YAMLError as exc:

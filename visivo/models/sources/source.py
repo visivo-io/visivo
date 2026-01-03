@@ -1,5 +1,7 @@
 from typing import Optional, Dict, List, Any
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.base_model import StringOrEnvVar, SecretStrOrEnvVar
+from visivo.models.base.env_var_string import EnvVarString
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
 
@@ -50,38 +52,76 @@ class Source(ABC, NamedModel):
 class ServerSource(Source):
     """
     Sources hold the connection information to your data sources.
+
+    Fields support environment variable references using ${env.VAR_NAME} syntax.
+    These are resolved at runtime when the connection is established.
     """
 
-    host: Optional[str] = Field(None, description="The host url of the database.")
+    host: Optional[StringOrEnvVar] = Field(None, description="The host url of the database.")
     port: Optional[int] = Field(None, description="The port of the database.")
-    database: str = Field(
+    database: StringOrEnvVar = Field(
         ..., description="The database that the Visivo project will use in queries."
     )
-    username: Optional[str] = Field(None, description="Username for the database.")
-    password: Optional[SecretStr] = Field(
+    username: Optional[StringOrEnvVar] = Field(None, description="Username for the database.")
+    password: Optional[SecretStrOrEnvVar] = Field(
         None, description="Password corresponding to the username."
     )
-    db_schema: Optional[str] = Field(
+    db_schema: Optional[StringOrEnvVar] = Field(
         None, description="The schema that the Visivo project will use in queries."
     )
+
+    def _resolve_field(self, field_value) -> Optional[str]:
+        """
+        Resolve a field value, handling EnvVarString, SecretStr, or plain str.
+
+        Args:
+            field_value: The field value to resolve.
+
+        Returns:
+            The resolved string value, or None if field_value is None.
+        """
+        if field_value is None:
+            return None
+        if isinstance(field_value, EnvVarString):
+            return field_value.resolve()
+        if hasattr(field_value, "get_secret_value"):  # SecretStr
+            return field_value.get_secret_value()
+        return field_value
 
     def description(self):
         """Return a description of this source for logging and error messages."""
         return f"{self.type} source '{self.name}' (host: {self.host}, database: {self.database})"
 
-    def get_password(self):
-        return self.password.get_secret_value() if self.password is not None else None
+    def get_password(self) -> Optional[str]:
+        """Get the resolved password value."""
+        return self._resolve_field(self.password)
+
+    def get_host(self) -> Optional[str]:
+        """Get the resolved host value."""
+        return self._resolve_field(self.host)
+
+    def get_database(self) -> str:
+        """Get the resolved database value."""
+        return self._resolve_field(self.database)
+
+    def get_username(self) -> Optional[str]:
+        """Get the resolved username value."""
+        return self._resolve_field(self.username)
+
+    def get_db_schema(self) -> Optional[str]:
+        """Get the resolved db_schema value."""
+        return self._resolve_field(self.db_schema)
 
     def url(self):
         from sqlalchemy.engine import URL
 
         url = URL.create(
-            host=self.host,
-            username=self.username,
+            host=self.get_host(),
+            username=self.get_username(),
             password=self.get_password(),
             port=self.port,
             drivername=self.get_dialect(),
-            database=self.database,
+            database=self.get_database(),
             query=None,
         )
         return url

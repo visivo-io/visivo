@@ -29,7 +29,7 @@ class Metric(NamedModel, ParentModel):
             ```yaml
             metrics:
               - name: revenue_per_user
-                expression: "${ref(orders).total_revenue} / ${ref(users).total_users}"
+                expression: "${refs.orders.total_revenue} / ${refs.users.total_users}"
                 description: "Average revenue per user"
             ```
     """
@@ -40,7 +40,7 @@ class Metric(NamedModel, ParentModel):
         ...,
         description="SQL aggregate expression for the metric. For model-scoped metrics, use direct SQL aggregates "
         "(e.g., 'SUM(amount)', 'COUNT(DISTINCT id)'). For global metrics, can reference other metrics "
-        "or fields using ${ref(model).field} or ${ref(metric_name)} syntax. "
+        "or fields using ${refs.model.field} or ${refs.metric_name} syntax. "
         "Must be a valid aggregate function and cannot contain raw columns outside of aggregates.",
     )
 
@@ -79,23 +79,28 @@ class Metric(NamedModel, ParentModel):
         For standalone metrics (project-level), this extracts model/metric references from the expression.
 
         Returns:
-            List of ref() strings for dependencies
+            List of reference strings for dependencies (using ${refs.name} format)
         """
         children = []
 
         # Check if this is a nested metric (has a parent_name set)
         if hasattr(self, "_parent_name") and self._parent_name:
             # Nested metric - reference the parent model only
-            children.append(f"ref({self._parent_name})")
+            children.append(f"${{refs.{self._parent_name}}}")
         else:
             # Standalone metric - extract references from expression
-            from visivo.query.patterns import extract_ref_components
+            # Supports both legacy ${ref(name)} and new ${refs.name} syntax
+            from visivo.query.patterns import extract_ref_components, extract_refs_components
 
             if self.expression:
+                # Extract from legacy ${ref(name)} syntax
                 ref_components = extract_ref_components(self.expression)
+                for name, field_name in ref_components:
+                    children.append(f"${{refs.{name}}}")
 
-                # Convert to ref() format for DAG
-                for model_or_metric_name, field_name in ref_components:
-                    children.append(f"ref({model_or_metric_name})")
+                # Extract from new ${refs.name} syntax
+                refs_components = extract_refs_components(self.expression)
+                for name, property_path in refs_components:
+                    children.append(f"${{refs.{name}}}")
 
         return children

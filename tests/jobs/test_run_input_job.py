@@ -284,6 +284,36 @@ class TestRunInputJob:
         assert result.success is False
         assert "FAILURE" in result.message or "error" in result.message.lower()
 
+    def test_query_with_new_refs_syntax(self):
+        """Verify ${refs.model} syntax works in input queries."""
+        # ARRANGE
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(
+            name="products",
+            sql="SELECT 'electronics' as category UNION SELECT 'books'",
+            source="ref(source)",
+        )
+        # Using new ${refs.name} syntax instead of legacy ${ref(name)}
+        input_obj = InputFactory(
+            name="category_filter",
+            options="?{ SELECT category FROM ${refs.products} }",
+        )
+        project = ProjectFactory(sources=[source], models=[model], inputs=[input_obj])
+        dag = project.dag()
+        output_dir = temp_folder()
+
+        # ACT
+        result = action(input_obj, dag, output_dir)
+
+        # ASSERT
+        assert result.success, f"Expected success but got: {result.message}"
+        parquet_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.parquet"
+        assert parquet_path.exists()
+
+        df = pl.read_parquet(parquet_path)
+        assert df.shape[0] == 2
+        assert set(df["option"].to_list()) == {"electronics", "books"}
+
 
 class TestSQLGlotQualifySubqueryAlias:
     """Test that SQLGlot qualify.qualify() adds aliases to subqueries.

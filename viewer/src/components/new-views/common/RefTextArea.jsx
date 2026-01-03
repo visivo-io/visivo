@@ -14,7 +14,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 /**
- * RefTextArea - A Monaco-based SQL editor for expressions with ref() syntax
+ * RefTextArea - A Monaco-based SQL editor for expressions with refs syntax
+ *
+ * Uses the new ${refs.name} syntax (e.g., ${refs.orders.id})
+ * Also supports legacy ${ref(name)} syntax for reading
  *
  * Features:
  * - Display mode shows refs as colored pills with SQL in monospace
@@ -150,8 +153,8 @@ const RefTextArea = ({
 
   // Insert or replace ref at cursor position
   const insertRef = useCallback(
-    (objectName, property = null) => {
-      // Use centralized formatting utilities for consistent output
+    (objectName, objectType = null, property = null) => {
+      // Format ref using ${ref(name)} format
       const refString = formatRef(objectName, property);
       const fullRefString = formatRefExpression(objectName, property);
 
@@ -170,7 +173,7 @@ const RefTextArea = ({
 
         // Check if we're already inside a ${}
         if (isInsideDollarBrace(value, insertPosition)) {
-          // Just insert ref() without ${}
+          // Just insert ref() or env.VAR without ${}
           const newValue = value.slice(0, insertPosition) + refString + value.slice(insertPosition);
           onChange(newValue);
         } else {
@@ -525,7 +528,7 @@ const RefTextArea = ({
                         <button
                           key={`${type}-${obj.name}`}
                           type="button"
-                          onClick={() => insertRef(obj.name)}
+                          onClick={() => insertRef(obj.name, obj.type)}
                           className="w-full px-3 py-2 flex items-center gap-2
                             text-left hover:bg-gray-50 transition-colors
                             border-b border-gray-100 last:border-b-0"

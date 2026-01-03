@@ -86,8 +86,12 @@ class MetricValidator:
         """
         Validates that a join condition is valid and references fields from both models.
 
+        Supports both syntaxes:
+        - Legacy: ${ref(model).field}
+        - New: ${refs.model.field}
+
         Args:
-            condition: Join condition with ${ref(model).field} syntax
+            condition: Join condition with ${refs.model.field} or ${ref(model).field} syntax
             left_model: Name of the left model
             right_model: Name of the right model
             source_type: Optional source type for dialect-specific parsing
@@ -103,13 +107,35 @@ class MetricValidator:
         # Create sanitizer for consistent model name handling
         sanitizer = ModelNameSanitizer()
 
-        # First, replace ${ref(model).field} with sanitized_model.field for SQLGlot parsing
         import re
-        from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
+        from visivo.query.patterns import (
+            CONTEXT_STRING_REF_PATTERN,
+            REFS_CONTEXT_PATTERN_COMPILED,
+            get_model_name_from_match,
+        )
 
-        # Replace ${ref(model).field} patterns with sanitized_model.field for SQLGlot
-        # Note: CONTEXT_STRING_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
-        def replace_for_sql(match):
+        # Start with the original condition
+        sql_condition = condition
+
+        # First, handle new ${refs.model.field} patterns
+        def replace_refs_for_sql(match):
+            ref_name = match.group("refs_name")
+            property_path = match.group("refs_property") or ""
+            # Strip leading dot if present
+            field = property_path.lstrip(".") if property_path else None
+
+            # Sanitize the model name for SQL
+            sanitized_ref = sanitizer.sanitize(ref_name)
+
+            if field:
+                return f"{sanitized_ref}.{field}"
+            else:
+                return sanitized_ref
+
+        sql_condition = REFS_CONTEXT_PATTERN_COMPILED.sub(replace_refs_for_sql, sql_condition)
+
+        # Then, handle legacy ${ref(model).field} patterns
+        def replace_ref_for_sql(match):
             ref_content = get_model_name_from_match(match)
             field_raw = match.group("property_path")
             # Strip leading dot if present
@@ -126,7 +152,7 @@ class MetricValidator:
                 # For ${ref(metric)} without field, keep sanitized name
                 return sanitized_ref
 
-        sql_condition = re.sub(CONTEXT_STRING_REF_PATTERN, replace_for_sql, condition)
+        sql_condition = re.sub(CONTEXT_STRING_REF_PATTERN, replace_ref_for_sql, sql_condition)
 
         try:
             # Parse the condition as a WHERE clause expression

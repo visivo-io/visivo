@@ -9,6 +9,8 @@ from visivo.models.dimension import Dimension
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
+    has_refs_pattern,
+    normalize_refs_to_ref,
 )
 from visivo.query.sqlglot_utils import (
     identify_column_references,
@@ -20,14 +22,23 @@ from sqlglot import exp
 from visivo.logger.logger import Logger
 
 
+def _has_any_ref_pattern(text: str) -> bool:
+    """Check if text contains any ref patterns (new or legacy syntax)."""
+    return has_CONTEXT_STRING_REF_PATTERN(text) or has_refs_pattern(text)
+
+
 class FieldResolver:
     """
-    Recursively resolves ${ref(...)} patterns in SQL expressions.
+    Recursively resolves ref patterns in SQL expressions.
+
+    Supports two syntaxes:
+      - New (recommended): ${refs.name} or ${refs.name.property}
+      - Legacy: ${ref(name)} or ${ref(name).property}
 
     Handles three types of references:
-      1. Implicit dimensions (raw columns): ${ref(model)."column"} → "model_hash"."column"
-      2. Global metrics/dimensions: ${ref(metric_name)} → fully qualified expression
-      3. Model-scoped metrics/dimensions: ${ref(model)."metric"} → fully qualified expression
+      1. Implicit dimensions (raw columns): ${refs.model.column} → "model_hash"."column"
+      2. Global metrics/dimensions: ${refs.metric_name} → fully qualified expression
+      3. Model-scoped metrics/dimensions: ${refs.model.metric} → fully qualified expression
 
     All column references are fully qualified with table aliases using model.name_hash()
     and sqlglot's identify_column_references function.
@@ -123,11 +134,13 @@ class FieldResolver:
 
     def resolve(self, expression: str, alias=True) -> str:
         """
-        Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing
-        them with their expressions until we are left with only sql statements.
+        Recurse through ref patterns within a metric replacing them with their expressions
+        until we are left with only sql statements.
+
+        Supports both new ${refs.model.field} and legacy ${ref(model).field} syntax.
 
           - Use the dag to iterate by calling direct parents of the metric/dimension node.
-          - If a "${ref(model).field}" is not a direct parent of the current metric/dimension node
+          - If a ref is not a direct parent of the current metric/dimension node
             then it's an implicit dimension and should be replaced with "model_hash.field"
           - Once the direct parent of a field is a sql_model then we should run the expression through
             sqlglot_utils.identify_column_references before we return and replace using the parent model
@@ -135,6 +148,8 @@ class FieldResolver:
 
         Returns resolved sql str
         """
+        # Normalize new ${refs.name} syntax to legacy ${ref(name)} for consistent processing
+        expression = normalize_refs_to_ref(expression)
 
         def replace_one_by_one(text, repl_fn):
             # pattern is a compiled regex
@@ -196,20 +211,30 @@ class FieldResolver:
                         expression=field_name_stripped, model_node=model_node
                     )
 
-            field_parent_name = self.dag.get_named_parents(field_node.name)[0]
+            named_parents = self.dag.get_named_parents(field_node.name)
+            if not named_parents:
+                raise Exception(
+                    f"Cannot resolve field '{field_node.name}': it has no parent in the DAG. "
+                    f"This usually means the metric/dimension is not properly connected to a model. "
+                    f"Check that '{field_node.name}' is either nested under a model or has a valid "
+                    f"expression referencing a model with ${{refs.model.field}} syntax."
+                )
+            field_parent_name = named_parents[0]
             field_parent = self.dag.get_descendant_by_name(field_parent_name)
             if isinstance(field_parent, SqlModel):
-                # Check if expression still has unresolved refs
-                if has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
+                # Check if expression still has unresolved refs (supports both syntaxes)
+                if _has_any_ref_pattern(field_node.expression):
                     # Return unresolved expression for outer recursion to handle
-                    return field_node.expression
+                    # Normalize to legacy syntax for consistent processing
+                    return normalize_refs_to_ref(field_node.expression)
                 else:
                     # No more refs - qualify the expression
                     return self._qualify_expression(
                         expression=field_node.expression, model_node=field_parent
                     )
-            elif has_CONTEXT_STRING_REF_PATTERN(field_node.expression):
-                return field_node.expression
+            elif _has_any_ref_pattern(field_node.expression):
+                # Normalize to legacy syntax for consistent processing
+                return normalize_refs_to_ref(field_node.expression)
             else:
                 raise Exception(
                     "Parent should either be a SqlModel or expression should return another nested expression"

@@ -19,7 +19,7 @@ class Relation(NamedModel, ParentModel):
         relations:
           - name: orders_to_users
             join_type: inner
-            condition: "${ref(orders).user_id} = ${ref(users).id}"
+            condition: "${refs.orders.user_id} = ${refs.users.id}"
             is_default: true
         ```
     """
@@ -32,8 +32,8 @@ class Relation(NamedModel, ParentModel):
 
     condition: str = Field(
         ...,
-        description="SQL condition for joining the models. Use ${ref(model).field} syntax to reference fields. "
-        "Example: '${ref(orders).user_id} = ${ref(users).id}'. Cannot join on metrics (aggregated values).",
+        description="SQL condition for joining the models. Use ${refs.model.field} syntax to reference fields. "
+        "Example: '${refs.orders.user_id} = ${refs.users.id}'. Cannot join on metrics (aggregated values).",
     )
 
     is_default: Optional[bool] = Field(
@@ -77,7 +77,7 @@ class Relation(NamedModel, ParentModel):
             raise ValueError(
                 f"Relation condition must reference at least two different models. "
                 f"Found: {list(models) if models else 'none'}. "
-                f"Example: '${{ref(orders).user_id}} = ${{ref(users).id}}'"
+                f"Example: '${{refs.orders.user_id}} = ${{refs.users.id}}'"
             )
 
         return v
@@ -86,11 +86,11 @@ class Relation(NamedModel, ParentModel):
         """
         Return child items for DAG construction.
 
-        Extracts model references from the relation condition using ${ref(model).field} syntax.
+        Extracts model references from the relation condition.
         This allows the DAG to properly track dependencies between relations and the models they connect.
 
         Returns:
-            List of ref() strings for models referenced in the condition
+            List of reference strings for models referenced in the condition (using ${refs.name} format)
         """
         children = []
 
@@ -98,8 +98,8 @@ class Relation(NamedModel, ParentModel):
         if self.condition:
             model_names = extract_ref_names(self.condition)
 
-            # Convert to ref() format for DAG
+            # Convert to ${refs.name} format for DAG
             for model_name in model_names:
-                children.append(f"ref({model_name})")
+                children.append(f"${{refs.{model_name}}}")
 
         return children

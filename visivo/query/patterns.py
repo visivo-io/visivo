@@ -44,13 +44,113 @@ PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 # The model_name capture handles both quoted 'model' and unquoted model
 # property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
 # property_path is optional - will be None if not present
+# DEPRECATED: Use REFS_CONTEXT_PATTERN instead
 CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
 FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 
 
 # ============================================================================
+# New Refs Syntax - ${refs.name.property} (consistent with ${env.VAR})
+# ============================================================================
+
+# Valid name pattern for refs: alphanumeric, underscore, and hyphen only
+# Must start with letter or underscore, must be lowercase
+# Examples: orders, my_model, my-model
+REFS_NAME_PATTERN = r"[a-zA-Z_][a-zA-Z0-9_-]*"
+
+# Compiled pattern for checking if a name is valid for the new refs syntax
+# Valid names: lowercase, alphanumeric, underscore, and hyphen only
+# Must start with letter or underscore
+VALID_NAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]*$")
+
+
+def is_valid_name(name: str) -> bool:
+    """
+    Check if a name is valid for the new refs syntax.
+
+    Valid names must:
+    - Be lowercase
+    - Start with a letter or underscore
+    - Contain only alphanumeric characters, underscores, and hyphens
+
+    Args:
+        name: The name to check
+
+    Returns:
+        True if the name is valid
+    """
+    return bool(VALID_NAME_PATTERN.match(name))
+
+
+def normalize_name(name: str) -> str:
+    """
+    Normalize a name to be valid for the new refs syntax.
+
+    Transformation rules:
+    - Insert underscore before uppercase letters (for camelCase/PascalCase)
+    - Lowercase the entire string
+    - Replace any character that isn't alphanumeric, underscore, or hyphen with hyphen
+    - Collapse multiple consecutive hyphens into one
+    - Strip leading and trailing hyphens
+    - If starts with a digit, prefix with underscore
+
+    Args:
+        name: The name to normalize
+
+    Returns:
+        A valid name for the new refs syntax
+
+    Examples:
+        >>> normalize_name("My Model")
+        "my-model"
+        >>> normalize_name("MyModel")
+        "my_model"
+        >>> normalize_name("Orders (2024)")
+        "orders-2024"
+        >>> normalize_name("user.name")
+        "user-name"
+    """
+    # Insert underscore before uppercase letters (for camelCase/PascalCase)
+    result = re.sub(r"([a-z])([A-Z])", r"\1_\2", name)
+
+    # Lowercase
+    result = result.lower()
+
+    # Replace invalid characters with hyphen
+    result = re.sub(r"[^a-z0-9_-]", "-", result)
+
+    # Collapse multiple consecutive hyphens into one
+    result = re.sub(r"-+", "-", result)
+
+    # Strip leading and trailing hyphens
+    result = result.strip("-")
+
+    # If starts with digit, prefix with underscore
+    if result and result[0].isdigit():
+        result = "_" + result
+
+    return result
+
+
+# Property path after name (optional): .property, [0], .nested.path
+# Examples: .id, .data[0].value, [0]
+REFS_PROPERTY_PATH_PATTERN = r"(?:(?:\.[a-zA-Z_][a-zA-Z0-9_-]*|\[\d+\])+)?"
+
+# Full refs context pattern: ${refs.name} or ${refs.name.property}
+# Captures: refs_name (group 1), refs_property (group 2, optional)
+# Examples: ${refs.orders}, ${refs.orders.id}, ${refs.my-model.data[0]}
+REFS_CONTEXT_PATTERN = rf"\${{\s*refs\.(?P<refs_name>{REFS_NAME_PATTERN})(?P<refs_property>{REFS_PROPERTY_PATH_PATTERN})\s*}}"
+REFS_CONTEXT_PATTERN_COMPILED = re.compile(REFS_CONTEXT_PATTERN)
+
+
+# ============================================================================
 # Context String Patterns - ${ } general syntax
 # ============================================================================
+
+# Environment variable pattern: ${env.VAR_NAME}
+# Captures: variable name (alphanumeric and underscore, must start with letter or underscore)
+# Example: ${env.DB_PASSWORD} or ${ env.API_KEY }
+ENV_VAR_CONTEXT_PATTERN = r"\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}"
 
 # Inline path pattern: ${path.to.property}
 # Example: ${user.name} or ${data[0].value}
@@ -154,19 +254,28 @@ def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
 
 def extract_ref_names(text: str) -> Set[str]:
     """
-    Extract unique model names from ref() patterns in text.
+    Extract unique model names from both ref() and refs. patterns in text.
+
+    Supports both syntaxes:
+    - Legacy: ${ref(model)} or ${ref(model).property}
+    - New: ${refs.model} or ${refs.model.property}
 
     Args:
-        text: Text containing ${ref(model)} patterns
+        text: Text containing ${ref(model)} or ${refs.model} patterns
 
     Returns:
         Set of unique model names
 
     Example:
-        >>> extract_ref_names("${ref(orders).id} = ${ref(users).id}")
+        >>> extract_ref_names("${ref(orders).id} = ${refs.users.id}")
         {'orders', 'users'}
     """
-    return {model for model, _ in extract_ref_components(text)}
+    # Get names from legacy ref() syntax
+    legacy_names = {model for model, _ in extract_ref_components(text)}
+    # Get names from new refs. syntax
+    new_names = extract_refs_names(text)
+    # Return combined set
+    return legacy_names | new_names
 
 
 def replace_refs(text: str, replacer_func) -> str:
@@ -218,7 +327,11 @@ def has_CONTEXT_STRING_REF_PATTERN(text: str) -> bool:
 
 def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
     """
-    Validate that all ${ } patterns in text contain valid ref() calls.
+    Validate that all ${ } patterns in text contain valid ref() or refs. calls.
+
+    Accepts both:
+    - Legacy syntax: ${ref(name)} or ${ref(name).property}
+    - New syntax: ${refs.name} or ${refs.name.property}
 
     Args:
         text: Text to validate
@@ -231,9 +344,9 @@ def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
 
     for match in re.finditer(dollar_pattern, text):
         content = match.group(0)
-        # Check if it contains ref()
-        if "ref(" not in content:
-            return False, f"Invalid context string: {content} - missing ref() function"
+        # Check if it contains ref() or refs.
+        if "ref(" not in content and "refs." not in content:
+            return False, f"Invalid context string: {content} - missing ref() or refs. syntax"
 
     return True, None
 
@@ -249,3 +362,151 @@ def count_model_references(text: str) -> int:
         Number of unique models referenced
     """
     return len(extract_ref_names(text))
+
+
+# ============================================================================
+# New Refs Syntax Helpers - ${refs.name.property}
+# ============================================================================
+
+
+def extract_refs_components(text: str) -> List[Tuple[str, Optional[str]]]:
+    """
+    Extract all refs.name.property components from a text string.
+
+    Args:
+        text: Text containing ${refs.name.property} patterns
+
+    Returns:
+        List of tuples (name, property_path) where property_path may be None
+
+    Examples:
+        >>> extract_refs_components("${refs.orders.user_id} = ${refs.users.id}")
+        [('orders', 'user_id'), ('users', 'id')]
+    """
+    results = []
+    for match in REFS_CONTEXT_PATTERN_COMPILED.finditer(text):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property")
+        # Strip leading dot from property path
+        if property_path and property_path.startswith("."):
+            property_path = property_path[1:]
+        # Convert empty string to None
+        property_path = property_path if property_path else None
+        results.append((name, property_path))
+    return results
+
+
+def extract_refs_names(text: str) -> Set[str]:
+    """
+    Extract unique names from ${refs.name} patterns in text.
+
+    Args:
+        text: Text containing ${refs.name} patterns
+
+    Returns:
+        Set of unique names
+
+    Example:
+        >>> extract_refs_names("${refs.orders.id} = ${refs.users.id}")
+        {'orders', 'users'}
+    """
+    return {name for name, _ in extract_refs_components(text)}
+
+
+def has_refs_pattern(text: str) -> bool:
+    """
+    Check if text contains any ${refs.name} patterns.
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains ${refs.name} patterns
+    """
+    return bool(REFS_CONTEXT_PATTERN_COMPILED.search(text))
+
+
+def replace_refs_patterns(text: str, replacer_func) -> str:
+    """
+    Replace ${refs.name} patterns in text using a custom replacer function.
+
+    This is the new syntax equivalent of replace_refs().
+
+    Args:
+        text: Text containing ${refs.name.property} patterns
+        replacer_func: Function that takes (name, property_path) and returns replacement string
+                      property_path will be None if not present, or the path without leading dot
+
+    Returns:
+        Text with all ${refs.} patterns replaced
+
+    Example:
+        >>> replace_refs_patterns("${refs.orders.id}", lambda n, p: f"{n}_cte.{p}" if p else n)
+        "orders_cte.id"
+        >>> replace_refs_patterns("${refs.model}", lambda n, p: f"({n}_sql})")
+        "(model_sql)"
+    """
+
+    def replace_match(match):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property")
+        # Strip leading dot from property path
+        if property_path and property_path.startswith("."):
+            property_path = property_path[1:]
+        # Convert empty string to None
+        property_path = property_path if property_path else None
+        return replacer_func(name, property_path)
+
+    return REFS_CONTEXT_PATTERN_COMPILED.sub(replace_match, text)
+
+
+def normalize_ref_to_refs(text: str) -> str:
+    """
+    Convert legacy ${ref(name).property} syntax to new ${refs.name.property} syntax.
+
+    Args:
+        text: Text containing legacy ref() patterns
+
+    Returns:
+        Text with all ${ref()} patterns converted to ${refs.} patterns
+
+    Examples:
+        >>> normalize_ref_to_refs("${ref(orders).id}")
+        "${refs.orders.id}"
+        >>> normalize_ref_to_refs("${ref(my-model)}")
+        "${refs.my-model}"
+    """
+
+    def replacer(model_name: str, property_path: Optional[str]) -> str:
+        if property_path:
+            return f"${{refs.{model_name}.{property_path}}}"
+        return f"${{refs.{model_name}}}"
+
+    return replace_refs(text, replacer)
+
+
+def normalize_refs_to_ref(text: str) -> str:
+    """
+    Convert new ${refs.name.property} syntax to legacy ${ref(name).property} syntax.
+
+    This is used during the transition period to normalize for internal processing.
+
+    Args:
+        text: Text containing ${refs.name} patterns
+
+    Returns:
+        Text with all ${refs.} patterns converted to ${ref()} patterns
+
+    Examples:
+        >>> normalize_refs_to_ref("${refs.orders.id}")
+        "${ref(orders).id}"
+        >>> normalize_refs_to_ref("${refs.my-model}")
+        "${ref(my-model)}"
+    """
+
+    def replace_match(match):
+        name = match.group("refs_name")
+        property_path = match.group("refs_property") or ""
+        return f"${{ref({name}){property_path}}}"
+
+    return REFS_CONTEXT_PATTERN_COMPILED.sub(replace_match, text)

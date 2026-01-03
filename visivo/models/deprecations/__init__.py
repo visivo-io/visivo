@@ -3,6 +3,7 @@
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
+    MigrationAction,
 )
 from visivo.models.deprecations.deprecation_checker import DeprecationChecker
 from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
@@ -12,6 +13,7 @@ __all__ = [
     "BaseDeprecationChecker",
     "DeprecationChecker",
     "DeprecationWarning",
+    "MigrationAction",
     "RefSyntaxDeprecation",
     "TraceDeprecation",
 ]

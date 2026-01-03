@@ -1,6 +1,8 @@
 from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
+from visivo.models.base.base_model import SecretStrOrEnvVar, StringOrEnvVar
+from visivo.models.base.env_var_string import EnvVarString
 from pydantic import Field, SecretStr
 from visivo.logger.logger import Logger
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
@@ -63,35 +65,42 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         None,
         description="The timezone that you want to use by default when running queries.",
     )
-    private_key_path: Optional[str] = Field(
+    private_key_path: Optional[StringOrEnvVar] = Field(
         None,
         description="Path to the private key file (.p8) for key pair authentication. If provided, password will be ignored.",
     )
-    private_key_passphrase: Optional[SecretStr] = Field(
+    private_key_passphrase: Optional[SecretStrOrEnvVar] = Field(
         None,
         description="Passphrase for the private key file if it is encrypted.",
     )
 
     type: SnowflakeType
+
     connection_pool_size: Optional[int] = Field(
         8, description="The pool size that is used for this connection."
     )
 
+    def get_private_key_path(self) -> Optional[str]:
+        """Get the resolved private key path value."""
+        return self._resolve_field(self.private_key_path)
+
+    def get_private_key_passphrase(self) -> Optional[str]:
+        """Get the resolved private key passphrase value."""
+        return self._resolve_field(self.private_key_passphrase)
+
     def connect_args(self):
-        if not self.private_key_path:
+        private_key_path = self.get_private_key_path()
+        if not private_key_path:
             return {}
 
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import serialization
 
-        with open(self.private_key_path, "rb") as key:
+        passphrase = self.get_private_key_passphrase()
+        with open(private_key_path, "rb") as key:
             p_key = serialization.load_pem_private_key(
                 key.read(),
-                password=(
-                    self.private_key_passphrase.get_secret_value().encode()
-                    if self.private_key_passphrase
-                    else None
-                ),
+                password=passphrase.encode() if passphrase else None,
                 backend=default_backend(),
             )
 
@@ -115,11 +124,11 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         from snowflake.sqlalchemy import URL
 
         url_attributes = {
-            "user": self.username,
+            "user": self.get_username(),
             "account": self.account,
         }
 
-        if not self.private_key_path:
+        if not self.get_private_key_path():
             url_attributes["password"] = self.get_password()
 
         # Optional attributes where if its not set the default value is used
@@ -129,10 +138,14 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
             url_attributes["warehouse"] = self.warehouse
         if self.role:
             url_attributes["role"] = self.role
-        if self.database:
-            url_attributes["database"] = self.database
-        if self.db_schema:
-            url_attributes["schema"] = self.db_schema
+
+        database = self.get_database()
+        if database:
+            url_attributes["database"] = database
+
+        db_schema = self.get_db_schema()
+        if db_schema:
+            url_attributes["schema"] = db_schema
 
         url = URL(**url_attributes)
 

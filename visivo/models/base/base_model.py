@@ -5,14 +5,17 @@ from pydantic import (
     Tag,
     BaseModel as PydanticBaseModel,
     ConfigDict,
+    SecretStr,
 )
 from typing_extensions import Annotated
 from typing import Optional, Union, NewType
 import re
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.env_var_string import EnvVarString
 from visivo.query.patterns import (
     REF_PROPERTY_PATTERN,
     CONTEXT_STRING_VALUE_PATTERN,
+    ENV_VAR_CONTEXT_PATTERN,
 )
 
 RefStringType = NewType(
@@ -24,6 +27,51 @@ ContextStringType = NewType(
     "ContextStringType",
     Annotated[ContextString, Tag("Context")],
 )
+
+EnvVarStringType = NewType(
+    "EnvVarStringType",
+    Annotated[EnvVarString, Tag("EnvVar")],
+)
+
+
+class StringOrEnvVarDiscriminator:
+    """Discriminates between env var references and literal strings."""
+
+    def __name__(self):
+        return "StringOrEnvVarDiscriminator"
+
+    def __call__(self, value):
+        if isinstance(value, EnvVarString):
+            return "EnvVar"
+        if isinstance(value, str) and re.search(ENV_VAR_CONTEXT_PATTERN, value):
+            return "EnvVar"
+        return "String"
+
+
+class SecretStrOrEnvVarDiscriminator:
+    """Discriminates between env var references and SecretStr values."""
+
+    def __name__(self):
+        return "SecretStrOrEnvVarDiscriminator"
+
+    def __call__(self, value):
+        if isinstance(value, EnvVarString):
+            return "EnvVar"
+        if isinstance(value, str) and re.search(ENV_VAR_CONTEXT_PATTERN, value):
+            return "EnvVar"
+        return "SecretStr"
+
+
+# Type aliases for source fields that can contain env var references
+StringOrEnvVar = Annotated[
+    Union[EnvVarStringType, Annotated[str, Tag("String")]],
+    Discriminator(StringOrEnvVarDiscriminator()),
+]
+
+SecretStrOrEnvVar = Annotated[
+    Union[EnvVarStringType, Annotated[SecretStr, Tag("SecretStr")]],
+    Discriminator(SecretStrOrEnvVarDiscriminator()),
+]
 
 
 def generate_ref_field(class_to_discriminate):

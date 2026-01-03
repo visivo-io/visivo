@@ -17,6 +17,7 @@ from visivo.query.patterns import (
     extract_ref_components,
     extract_ref_names,
     replace_refs,
+    replace_refs_patterns,
     has_CONTEXT_STRING_REF_PATTERN,
     validate_ref_syntax,
     count_model_references,
@@ -275,7 +276,51 @@ class TestValidateRefSyntax:
         """Test validating incorrect syntax missing ref function."""
         is_valid, error = validate_ref_syntax("${orders}")
         assert not is_valid
-        assert "missing ref() function" in error
+        assert "missing ref() or refs. syntax" in error
+
+    def test_valid_refs_syntax(self):
+        """Test validating correct refs. syntax."""
+        is_valid, error = validate_ref_syntax("${refs.orders}")
+        assert is_valid
+        assert error is None
+
+    def test_valid_refs_with_property(self):
+        """Test validating correct refs. syntax with property path."""
+        is_valid, error = validate_ref_syntax("${refs.orders.id}")
+        assert is_valid
+        assert error is None
+
+
+class TestExtractRefNamesWithNewSyntax:
+    """Test extract_ref_names function with new ${refs.name} syntax."""
+
+    def test_extract_from_refs_syntax(self):
+        """Test extracting names from new refs syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders}")
+        assert names == {"orders"}
+
+    def test_extract_from_refs_with_property(self):
+        """Test extracting names from refs syntax with property."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id}")
+        assert names == {"orders"}
+
+    def test_extract_from_mixed_syntax(self):
+        """Test extracting names from mixed old and new syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id} = ${ref(users).id}")
+        assert names == {"orders", "users"}
+
+    def test_extract_multiple_refs_syntax(self):
+        """Test extracting multiple names from refs syntax."""
+        from visivo.query.patterns import extract_ref_names
+
+        names = extract_ref_names("${refs.orders.user_id} + ${refs.products.price}")
+        assert names == {"orders", "products"}
 
 
 class TestCountModelReferences:
@@ -365,3 +410,65 @@ class TestEdgeCases:
         """Test multiple refs right next to each other."""
         result = extract_ref_components("${ref(a)}${ref(b)}")
         assert result == [("a", None), ("b", None)]
+
+
+class TestReplaceRefsPatterns:
+    """Test replace_refs_patterns function for new ${refs.name} syntax."""
+
+    def test_simple_replacement(self):
+        """Test simple replacement of refs pattern."""
+        result = replace_refs_patterns("${refs.orders}", lambda name, prop: f"replaced_{name}")
+        assert result == "replaced_orders"
+
+    def test_replacement_with_property(self):
+        """Test replacement preserves property path info."""
+        result = replace_refs_patterns(
+            "${refs.orders.id}",
+            lambda name, prop: f"{name}_cte.{prop}" if prop else name,
+        )
+        assert result == "orders_cte.id"
+
+    def test_replacement_with_subquery(self):
+        """Test replacing refs with SQL subquery (like input job does)."""
+        model_sql = "SELECT * FROM orders_table"
+        result = replace_refs_patterns(
+            "SELECT id FROM ${refs.orders}",
+            lambda name, prop: f"({model_sql})" if name == "orders" else f"${{refs.{name}}}",
+        )
+        assert result == f"SELECT id FROM ({model_sql})"
+
+    def test_multiple_replacements(self):
+        """Test replacing multiple refs patterns."""
+        result = replace_refs_patterns(
+            "${refs.orders} JOIN ${refs.users}",
+            lambda name, prop: f"({name}_sql)",
+        )
+        assert result == "(orders_sql) JOIN (users_sql)"
+
+    def test_no_match_returns_original(self):
+        """Test that text without refs patterns is unchanged."""
+        original = "SELECT * FROM orders"
+        result = replace_refs_patterns(original, lambda n, p: "REPLACED")
+        assert result == original
+
+    def test_property_path_is_none_when_absent(self):
+        """Test that property_path is None when not present."""
+        captured_args = []
+
+        def capture(name, prop):
+            captured_args.append((name, prop))
+            return "x"
+
+        replace_refs_patterns("${refs.model}", capture)
+        assert captured_args == [("model", None)]
+
+    def test_property_path_strips_leading_dot(self):
+        """Test that leading dot is stripped from property path."""
+        captured_args = []
+
+        def capture(name, prop):
+            captured_args.append((name, prop))
+            return "x"
+
+        replace_refs_patterns("${refs.model.field}", capture)
+        assert captured_args == [("model", "field")]

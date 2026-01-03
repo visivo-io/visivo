@@ -67,7 +67,7 @@ class TestDeprecationChecker:
 
         # Should have warnings from both checkers
         features = [w.feature for w in warnings]
-        assert "Raw ref() syntax" in features
+        assert "Legacy ref() syntax" in features
         assert "Trace" in features
 
     def test_report_outputs_nothing_when_no_warnings(self):
@@ -103,5 +103,7 @@ class TestDeprecationChecker:
         checker = DeprecationChecker()
 
         checker_names = [c.__class__.__name__ for c in checker.checkers]
+        assert "EnvVarSyntaxDeprecation" in checker_names
+        assert "NameFormatDeprecation" in checker_names
         assert "RefSyntaxDeprecation" in checker_names
         assert "TraceDeprecation" in checker_names
