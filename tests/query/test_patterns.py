@@ -275,7 +275,7 @@ class TestValidateRefSyntax:
         """Test validating incorrect syntax missing ref function."""
         is_valid, error = validate_ref_syntax("${orders}")
         assert not is_valid
-        assert "missing ref() function" in error
+        assert "missing ref() or env." in error
 
 
 class TestCountModelReferences:

@@ -37,7 +37,7 @@ traces:
         y: [0, 1]
 
   - name: funnel trace
-    model: ${ ref(test table) }
+    model: ${ ref(test-table) }
     order_by:
       - ?{x desc}
     props:
@@ -56,7 +56,7 @@ traces:
         fillcolor: "#edbdb5"
 
   - name: Aggregated Line
-    model: ${ ref(test table) }
+    model: ${ ref(test-table) }
     props:
       type: bar
       x: ?{ CASE WHEN x <= 3 THEN 'less' else 'More' END }
@@ -92,7 +92,7 @@ traces:
           - ">{ ${ref(Simple Line).props.y[0]} == 10 }"
 
   - name: 3d Line One
-    model: ${ ref(test table) }
+    model: ${ ref(test-table) }
     order_by:
       - ?{x asc}
     props:
@@ -106,7 +106,7 @@ traces:
           - ">{ ${ref(3d Line One).props.y[1]} == 1 }"
 
   - name: 3d Line Two
-    model: ${ ref(test table) }
+    model: ${ ref(test-table) }
     order_by:
       - ?{x asc}
     filters:

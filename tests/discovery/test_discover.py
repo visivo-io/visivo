@@ -143,7 +143,7 @@ def test_Core_Parser_includes_git():
         )
     else:
         git_project_file = Path(
-            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/visivo_project.yml"
+            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/project.visivo.yml"
         )
 
     assert discover.files == [

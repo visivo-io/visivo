@@ -59,15 +59,16 @@ sources:
     type: postgresql
     host: localhost
     username: postgres
-    password: "{{ env_var('PG_PASSWORD') }}"
+    password: "${ env.PG_PASSWORD }"
     port: 5434
 
+    connection_pool_size: 1
   - name: local-mysql
     database: visivo
     type: mysql
     host: localhost
     username: root
-    password: "{{ env_var('MYSQL_PASSWORD') }}"
+    password: "${env.MYSQL_PASSWORD}"
     port: 3306
 
   - name: local-clickhouse
@@ -84,16 +85,16 @@ sources:
     database: JARED_DEV
     account: bu13083.us-east-2.aws
     db_schema: DEFAULT
-    username: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}"
+    username: "${env.CLI_UNIT_TESTING_SNOWFLAKE_USER}"
     warehouse: DEV
-    password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
+    password: "${env.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD}"
     role: PROD
-    
+
   - name: remote-bigquery
     type: bigquery
     database: test
-    project: "{{env_var('BIGQUERY_PROJECT')}}"
-    credentials_base64: "{{env_var('BIGQUERY_BASE64_CREDENTIALS')}}"
+    project: "${env.BIGQUERY_PROJECT}"
+    credentials_base64: "${env.BIGQUERY_BASE64_CREDENTIALS}"
 
 charts:
   - name: indicator_chart
@@ -116,7 +117,7 @@ charts:
       title:
         text: "Simple Scatter with Insights"
   - name: composite-metric-chart
-    insights: 
+    insights:
       - ${ref(composite-scatter-insight)}
   - name: fibonacci-split-chart
     insights:
@@ -188,7 +189,7 @@ dashboards:
           - width: 6
             chart: ${ref(composite-metric-chart)}
 
-      
+
       # Input-driven test charts
       - height: compact
         items:
@@ -226,7 +227,7 @@ dashboards:
       - height: small
         items:
           - align: left
-            markdown: |
+            markdown: |2
 
               Lorem ipsum odor amet, consectetuer adipiscing elit.  
               ```

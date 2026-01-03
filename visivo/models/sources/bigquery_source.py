@@ -1,6 +1,8 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
+from visivo.models.base.base_model import SecretStrOrEnvVar, StringOrEnvVar
+from visivo.models.base.env_var_string import EnvVarString
 from pydantic import Field, SecretStr
 import os
 
@@ -103,16 +105,16 @@ class BigQuerySource(ServerSource, SqlalchemySource):
     Note: Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
     """
 
-    project: str = Field(
+    project: StringOrEnvVar = Field(
         description="The Google Cloud project ID that contains your BigQuery dataset."
     )
 
-    credentials_base64: Optional[SecretStr] = Field(
+    credentials_base64: Optional[SecretStrOrEnvVar] = Field(
         None,
         description="The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the command line with `python -m base64 < credentials.json > encoded.txt`. Not required if GOOGLE_APPLICATION_CREDENTIALS environment variable is set. ",
     )
 
-    database: Optional[str] = Field(
+    database: Optional[StringOrEnvVar] = Field(
         None,
         description="The default BigQuery dataset to use for queries.",
     )
@@ -122,6 +124,14 @@ class BigQuerySource(ServerSource, SqlalchemySource):
         8, description="The pool size that is used for this connection."
     )
 
+    def get_project(self) -> str:
+        """Get the resolved project value."""
+        return self._resolve_field(self.project)
+
+    def get_credentials_base64(self) -> Optional[str]:
+        """Get the resolved credentials_base64 value."""
+        return self._resolve_field(self.credentials_base64)
+
     def get_connection_dialect(self):
         return "bigquery"
 
@@ -129,13 +139,13 @@ class BigQuerySource(ServerSource, SqlalchemySource):
         return "bigquery"
 
     def url(self):
-        base_url = f"bigquery://{self.project}"
-        if self.database:
-            base_url += f"/{self.database}"
+        project = self.get_project()
+        database = self.get_database()
+        credentials = self.get_credentials_base64()
 
-        credentials = (
-            self.credentials_base64.get_secret_value() if self.credentials_base64 else None
-        )
+        base_url = f"bigquery://{project}"
+        if database:
+            base_url += f"/{database}"
 
         # Check for either credentials_base64 or GOOGLE_APPLICATION_CREDENTIALS
         if not credentials and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
@@ -155,11 +165,14 @@ class BigQuerySource(ServerSource, SqlalchemySource):
         For BigQuery, datasets are equivalent to databases.
         This method will test the connection by actually querying for datasets.
         """
+        project = self.get_project()
+        database = self.get_database()
+
         try:
             # Query to list all datasets in the project
             query = f"""
             SELECT schema_name
-            FROM `{self.project}.INFORMATION_SCHEMA.SCHEMATA`
+            FROM `{project}.INFORMATION_SCHEMA.SCHEMATA`
             ORDER BY schema_name
             """
 
@@ -167,25 +180,25 @@ class BigQuerySource(ServerSource, SqlalchemySource):
             datasets = result["schema_name"].to_list() if result.height > 0 else []
 
             # If no datasets found but query succeeded, connection is valid
-            if not datasets and self.database:
+            if not datasets and database:
                 # Return configured dataset if query returns empty but connection works
-                return [self.database]
+                return [database]
 
             return datasets if datasets else []
 
         except Exception as e:
             # If we can't list datasets, try to verify the configured dataset exists
-            if self.database:
+            if database:
                 try:
                     # Test if we can query the configured dataset
                     test_query = f"""
-                    SELECT 1 
-                    FROM `{self.project}.{self.database}.INFORMATION_SCHEMA.TABLES` 
+                    SELECT 1
+                    FROM `{project}.{database}.INFORMATION_SCHEMA.TABLES`
                     LIMIT 1
                     """
                     self.read_sql(test_query)
                     # If query succeeds, the dataset exists and is accessible
-                    return [self.database]
+                    return [database]
                 except Exception:
                     # Dataset doesn't exist or isn't accessible
                     pass

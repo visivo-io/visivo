@@ -48,6 +48,11 @@ def handle_anyOf(attribute_property_object: dict):
             anyOf.append(f"Regex({option.get('pattern')})")
         elif "oneOf" in option and len(option.get("oneOf")) == 1:
             anyOf.append(option.get("oneOf")[0].get("type"))
+        elif "oneOf" in option and len(option.get("oneOf")) > 1:
+            # Handle multiple oneOf options (e.g., string or SecretStr)
+            types = [o.get("type") for o in option.get("oneOf") if o.get("type")]
+            if types:
+                anyOf.append(" or ".join(types))
         elif "type" in option and "pattern" not in option:
             if option.get("type") not in ["null", "None"]:
                 anyOf.append(option.get("type"))
@@ -55,6 +60,9 @@ def handle_anyOf(attribute_property_object: dict):
         return "Any of: " + ", ".join(anyOf), default
     elif len(anyOf) == 1:
         return anyOf[0], default
+    else:
+        # Fallback for unhandled cases
+        return "string", default
 
 
 def handle_const(attribute_property_object: dict):
