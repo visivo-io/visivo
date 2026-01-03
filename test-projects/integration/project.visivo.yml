@@ -59,9 +59,10 @@ sources:
     type: postgresql
     host: localhost
     username: postgres
-    password: "${env.PG_PASSWORD}"
+    password: "${ env.PG_PASSWORD }"
     port: 5434
 
+    connection_pool_size: 1
   - name: local-mysql
     database: visivo
     type: mysql
@@ -88,7 +89,7 @@ sources:
     warehouse: DEV
     password: "${env.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD}"
     role: PROD
-    
+
   - name: remote-bigquery
     type: bigquery
     database: test
@@ -116,7 +117,7 @@ charts:
       title:
         text: "Simple Scatter with Insights"
   - name: composite-metric-chart
-    insights: 
+    insights:
       - ${ref(composite-scatter-insight)}
   - name: fibonacci-split-chart
     insights:
@@ -188,7 +189,7 @@ dashboards:
           - width: 6
             chart: ${ref(composite-metric-chart)}
 
-      
+
       # Input-driven test charts
       - height: compact
         items:
@@ -226,7 +227,7 @@ dashboards:
       - height: small
         items:
           - align: left
-            markdown: |
+            markdown: |2
 
               Lorem ipsum odor amet, consectetuer adipiscing elit.  
               ```
