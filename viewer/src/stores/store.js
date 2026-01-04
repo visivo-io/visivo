@@ -13,6 +13,7 @@ import createModelSlice from './modelStore';
 import createDimensionSlice from './dimensionStore';
 import createMetricSlice from './metricStore';
 import createRelationSlice from './relationStore';
+import createInsightCrudSlice from './insightCrudStore';
 import createPublishSlice from './publishStore';
 
 // Re-export ObjectStatus for convenience
@@ -31,6 +32,7 @@ const useStore = create(
     ...createDimensionSlice(...a),
     ...createMetricSlice(...a),
     ...createRelationSlice(...a),
+    ...createInsightCrudSlice(...a),
     ...createPublishSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',

@@ -66,6 +66,12 @@ const URL_PATTERNS = {
     relationSave: '/api/relations/{name}/save/',
     relationValidate: '/api/relations/{name}/validate/',
 
+    // Insight CRUD management endpoints
+    insightsCrudList: '/api/insights-crud/',
+    insightsCrudDetail: '/api/insights-crud/{name}/',
+    insightsCrudSave: '/api/insights-crud/{name}/save/',
+    insightsCrudValidate: '/api/insights-crud/{name}/validate/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
@@ -133,6 +139,12 @@ const URL_PATTERNS = {
     relationDetail: null,
     relationSave: null,
     relationValidate: null,
+
+    // Insight CRUD management endpoints (not available in dist)
+    insightsCrudList: null,
+    insightsCrudDetail: null,
+    insightsCrudSave: null,
+    insightsCrudValidate: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,
