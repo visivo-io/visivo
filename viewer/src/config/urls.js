@@ -13,8 +13,8 @@ const URL_PATTERNS = {
     error: '/api/error/',
     tracesQuery: '/api/traces/',
     traceData: '/api/traces/{hash}/',
-    insightsQuery: '/api/insights/',
-    insightData: '/api/insights/{hash}/',
+    insightJobsQuery: '/api/insight-jobs/',
+    insightJobData: '/api/insight-jobs/{hash}/',
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
     inputData: '/data/inputs/{hash}.parquet',
@@ -66,11 +66,11 @@ const URL_PATTERNS = {
     relationSave: '/api/relations/{name}/save/',
     relationValidate: '/api/relations/{name}/validate/',
 
-    // Insight CRUD management endpoints
-    insightsCrudList: '/api/insights-crud/',
-    insightsCrudDetail: '/api/insights-crud/{name}/',
-    insightsCrudSave: '/api/insights-crud/{name}/save/',
-    insightsCrudValidate: '/api/insights-crud/{name}/validate/',
+    // Insight management endpoints
+    insightsList: '/api/insights/',
+    insightDetail: '/api/insights/{name}/',
+    insightSave: '/api/insights/{name}/save/',
+    insightValidate: '/api/insights/{name}/validate/',
 
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
@@ -87,8 +87,8 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     tracesQuery: '/data/traces.json',
     traceData: '/data/traces/{hash}.json',
-    insightsQuery: '/data/insights.json',
-    insightData: '/data/insights/{hash}.json',
+    insightJobsQuery: '/data/insights.json',
+    insightJobData: '/data/insights/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
     inputData: '/data/inputs/{hash}.parquet',
@@ -140,11 +140,11 @@ const URL_PATTERNS = {
     relationSave: null,
     relationValidate: null,
 
-    // Insight CRUD management endpoints (not available in dist)
-    insightsCrudList: null,
-    insightsCrudDetail: null,
-    insightsCrudSave: null,
-    insightsCrudValidate: null,
+    // Insight management endpoints (not available in dist)
+    insightsList: null,
+    insightDetail: null,
+    insightSave: null,
+    insightValidate: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,

@@ -4,9 +4,9 @@ from visivo.logger.logger import Logger
 
 
 def register_insights_crud_views(app, flask_app, output_dir):
-    """Register insight CRUD API endpoints (separate from existing insight_views)."""
+    """Register insight CRUD API endpoints."""
 
-    @app.route("/api/insights-crud/", methods=["GET"])
+    @app.route("/api/insights/", methods=["GET"])
     def list_all_insights():
         """List all insights (cached + published) with status."""
         try:
@@ -16,7 +16,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing insights: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insights-crud/<insight_name>/", methods=["GET"])
+    @app.route("/api/insights/<insight_name>/", methods=["GET"])
     def get_insight_crud(insight_name):
         """Get insight configuration with status information."""
         try:
@@ -28,7 +28,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting insight: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insights-crud/<insight_name>/save/", methods=["POST"])
+    @app.route("/api/insights/<insight_name>/save/", methods=["POST"])
     def save_insight_crud(insight_name):
         """Save an insight configuration to cache (draft state)."""
         try:
@@ -66,7 +66,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error saving insight: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insights-crud/<insight_name>/", methods=["DELETE"])
+    @app.route("/api/insights/<insight_name>/", methods=["DELETE"])
     def delete_insight_crud(insight_name):
         """Mark an insight for deletion (will be removed from YAML on publish)."""
         try:
@@ -87,7 +87,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error deleting insight: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insights-crud/<insight_name>/validate/", methods=["POST"])
+    @app.route("/api/insights/<insight_name>/validate/", methods=["POST"])
     def validate_insight_crud(insight_name):
         """Validate an insight configuration without saving it."""
         try:

@@ -4,7 +4,7 @@ import * as insightsCrudApi from '../api/insightsCrud';
  * Insight CRUD Store Slice
  *
  * Manages Insight configurations independently (for editing).
- * Uses the /api/insights-crud/ endpoints via InsightManager backend.
+ * Uses the /api/insights/ endpoints via InsightManager backend.
  */
 const createInsightCrudSlice = (set, get) => ({
   // State

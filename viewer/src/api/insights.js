@@ -59,7 +59,7 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
     return [];
   }
 
-  let url = getUrl('insightsQuery');
+  let url = getUrl('insightJobsQuery');
   const params = [];
 
   // Add insight names as query parameters for server mode
@@ -137,7 +137,7 @@ export const fetchInsights = async (projectId, names, retries = 3, retryDelay = 
  * @returns {Promise<string>} Name hash
  */
 export const computeNameHash = async name => {
-  const url = getUrl('server') + '/api/insights/hash';
+  const url = getUrl('server') + '/api/insight-jobs/hash';
 
   const response = await fetch(url, {
     method: 'POST',

@@ -56,6 +56,15 @@ export function useLineageDag() {
     const nodes = [];
     const edges = [];
 
+    // Build a lookup map of object names to their types for edge creation
+    const objectTypeByName = {};
+    (sources || []).forEach(s => { objectTypeByName[s.name] = 'source'; });
+    (models || []).forEach(m => { objectTypeByName[m.name] = 'model'; });
+    (dimensions || []).forEach(d => { objectTypeByName[d.name] = 'dimension'; });
+    (metrics || []).forEach(m => { objectTypeByName[m.name] = 'metric'; });
+    (relations || []).forEach(r => { objectTypeByName[r.name] = 'relation'; });
+    (insightConfigs || []).forEach(i => { objectTypeByName[i.name] = 'insight'; });
+
     // Build source nodes
     (sources || []).forEach(source => {
       nodes.push({
@@ -178,7 +187,7 @@ export function useLineageDag() {
       });
     });
 
-    // Build insight nodes and edges to parent models
+    // Build insight nodes and edges to dependencies (models, metrics, dimensions, etc.)
     (insightConfigs || []).forEach(insight => {
       nodes.push({
         id: `insight-${insight.name}`,
@@ -193,14 +202,18 @@ export function useLineageDag() {
         position: { x: 0, y: 0 },
       });
 
-      // Create edges from insight's child_item_names (models it depends on)
+      // Create edges from insight's child_item_names (can be models, metrics, dimensions, etc.)
       const childNames = insight.child_item_names || [];
       childNames.forEach(childName => {
-        edges.push({
-          id: `edge-${childName}-insight-${insight.name}`,
-          source: `model-${childName}`,
-          target: `insight-${insight.name}`,
-        });
+        // Look up the type of the child object to create the correct edge source
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          edges.push({
+            id: `edge-${childName}-insight-${insight.name}`,
+            source: `${childType}-${childName}`,
+            target: `insight-${insight.name}`,
+          });
+        }
       });
     });
 

@@ -4,7 +4,7 @@ import { getUrl } from '../contexts/URLContext';
  * Fetch all insights with their status (NEW, MODIFIED, PUBLISHED)
  */
 export const fetchAllInsights = async () => {
-  const response = await fetch(getUrl('insightsCrudList'));
+  const response = await fetch(getUrl('insightsList'));
   if (response.status === 200) {
     return await response.json();
   }
@@ -15,7 +15,7 @@ export const fetchAllInsights = async () => {
  * Fetch a single insight by name with status information
  */
 export const fetchInsight = async name => {
-  const response = await fetch(getUrl('insightsCrudDetail', { name }));
+  const response = await fetch(getUrl('insightDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -29,7 +29,7 @@ export const fetchInsight = async name => {
  * Save an insight configuration to cache (draft state)
  */
 export const saveInsight = async (name, config) => {
-  const response = await fetch(getUrl('insightsCrudSave', { name }), {
+  const response = await fetch(getUrl('insightSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ export const saveInsight = async (name, config) => {
  * Delete an insight from cache (revert to published version)
  */
 export const deleteInsight = async name => {
-  const response = await fetch(getUrl('insightsCrudDetail', { name }), {
+  const response = await fetch(getUrl('insightDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -60,7 +60,7 @@ export const deleteInsight = async name => {
  * Validate an insight configuration without saving
  */
 export const validateInsight = async (name, config) => {
-  const response = await fetch(getUrl('insightsCrudValidate', { name }), {
+  const response = await fetch(getUrl('insightValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
