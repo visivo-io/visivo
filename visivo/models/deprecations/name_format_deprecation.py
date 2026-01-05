@@ -454,12 +454,13 @@ class NameFormatDeprecation(BaseDeprecationChecker):
 
     def _build_new_ref(self, old_ref: str, old_name: str, new_name: str) -> str:
         """
-        Convert an old ref pattern to the new ${refs.name} syntax.
+        Update ref pattern to use the normalized name while preserving ref() syntax.
 
         Handles:
-        - ${ref(Name)} -> ${refs.new_name}
-        - ${ref(Name).property} -> ${refs.new_name.property}
-        - ref(Name) -> ${refs.new_name}
+        - ${ref(Name)} -> ${ ref(new_name) }
+        - ${ ref(Name) } -> ${ ref(new_name) }
+        - ${ref(Name).property} -> ${ ref(new_name).property }
+        - ref(Name) -> ${ ref(new_name) }
         """
         # Check if this is a context ref ${ref(...)}
         context_pattern = re.compile(
@@ -472,12 +473,12 @@ class NameFormatDeprecation(BaseDeprecationChecker):
             props = props.strip()
             # props might be ".property" or empty
             if props:
-                return f"${{refs.{new_name}{props}}}"
-            return f"${{refs.{new_name}}}"
+                return f"${{ref({new_name}){props}}}"
+            return f"${{ref({new_name})}}"
 
         # Check if this is a bare ref ref(...)
         bare_pattern = re.compile(rf'ref\(\s*["\']?{re.escape(old_name)}["\']?\s*\)')
         if bare_pattern.match(old_ref):
-            return f"${{refs.{new_name}}}"
+            return f"${{ref({new_name})}}"
 
         return None
