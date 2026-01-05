@@ -9,6 +9,7 @@ from visivo.models.deprecations.base_deprecation import (
     MigrationAction,
 )
 from visivo.models.deprecations.env_var_syntax_deprecation import EnvVarSyntaxDeprecation
+from visivo.models.deprecations.name_format_deprecation import NameFormatDeprecation
 from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
 from visivo.models.deprecations.trace_deprecation import TraceDeprecation
 
@@ -28,6 +29,7 @@ class DeprecationChecker:
         """Initialize the deprecation checker with all checkers."""
         self.checkers: List[BaseDeprecationChecker] = [
             EnvVarSyntaxDeprecation(),
+            NameFormatDeprecation(),
             RefSyntaxDeprecation(),
             TraceDeprecation(),
         ]
