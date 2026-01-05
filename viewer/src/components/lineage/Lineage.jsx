@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import ReactFlow from 'react-flow-renderer';
+import ReactFlow from 'reactflow';
+import 'reactflow/dist/style.css';
 import useStore from '../../stores/store'; // Adjust path to your store
 import ObjectPillNode from './ObjectPillNode';
 import { parseSelector, filterGraph, computeLayout } from './graphUtils';

@@ -11,8 +11,8 @@ jest.mock('../../../stores/store');
 // Mock the useLineageDag hook
 jest.mock('./useLineageDag');
 
-// Mock react-flow-renderer
-jest.mock('react-flow-renderer', () => {
+// Mock reactflow
+jest.mock('reactflow', () => {
   const MockReactFlow = ({ nodes, edges, onNodeClick, children }) => (
     <div data-testid="react-flow">
       {nodes.map(node => (
