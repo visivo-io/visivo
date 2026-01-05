@@ -61,6 +61,18 @@ const sampleInsightsData = {
 };
 
 describe('chartDataFromInsightData', () => {
+  let warnSpy, debugSpy;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    debugSpy = jest.spyOn(console, 'debug').mockImplementation();
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    debugSpy.mockRestore();
+  });
+
   it('returns [] when insightsData is null', () => {
     expect(chartDataFromInsightData(null)).toEqual([]);
   });
