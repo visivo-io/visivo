@@ -6,36 +6,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
-
-// Common chart types for the type selector
-const CHART_TYPES = [
-  { value: 'scatter', label: 'Scatter / Line' },
-  { value: 'bar', label: 'Bar' },
-  { value: 'pie', label: 'Pie' },
-  { value: 'heatmap', label: 'Heatmap' },
-  { value: 'histogram', label: 'Histogram' },
-  { value: 'box', label: 'Box Plot' },
-  { value: 'violin', label: 'Violin' },
-  { value: 'funnel', label: 'Funnel' },
-  { value: 'indicator', label: 'Indicator' },
-  { value: 'treemap', label: 'Treemap' },
-  { value: 'sunburst', label: 'Sunburst' },
-  { value: 'sankey', label: 'Sankey' },
-  { value: 'candlestick', label: 'Candlestick' },
-  { value: 'waterfall', label: 'Waterfall' },
-];
-
-// Mode options for scatter/line charts
-const MODE_OPTIONS = [
-  { value: '', label: 'Default' },
-  { value: 'markers', label: 'Markers only' },
-  { value: 'lines', label: 'Lines only' },
-  { value: 'lines+markers', label: 'Lines + Markers' },
-  { value: 'text', label: 'Text only' },
-  { value: 'lines+text', label: 'Lines + Text' },
-  { value: 'markers+text', label: 'Markers + Text' },
-  { value: 'lines+markers+text', label: 'Lines + Markers + Text' },
-];
+import { SchemaEditor } from './SchemaEditor';
+import { getSchema, CHART_TYPES } from '../../../schemas';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -55,14 +27,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  // Props state
+  // Props state - chart type and schema-driven props
   const [propsType, setPropsType] = useState('scatter');
-  const [propsX, setPropsX] = useState('');
-  const [propsY, setPropsY] = useState('');
-  const [propsMode, setPropsMode] = useState('');
-  const [propsText, setPropsText] = useState('');
-  const [propsColor, setPropsColor] = useState('');
-  const [propsSize, setPropsSize] = useState('');
+  const [propsValues, setPropsValues] = useState({});
 
   // Interactions state - array of {filter, split, sort}
   const [interactions, setInteractions] = useState([]);
@@ -77,6 +44,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
 
+  // Get the current schema for the selected chart type
+  const currentSchema = getSchema(propsType);
+
   // Initialize form when insight changes
   useEffect(() => {
     if (insight) {
@@ -84,15 +54,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
       setName(insight.name || '');
       setDescription(insight.config?.description || '');
 
-      // Props
+      // Props - extract type separately, rest goes to propsValues
       const props = insight.config?.props || {};
-      setPropsType(props.type || 'scatter');
-      setPropsX(props.x || '');
-      setPropsY(props.y || '');
-      setPropsMode(props.mode || '');
-      setPropsText(props.text || '');
-      setPropsColor(props.marker?.color || '');
-      setPropsSize(props.marker?.size || '');
+      const { type, ...restProps } = props;
+      setPropsType(type || 'scatter');
+      setPropsValues(restProps);
 
       // Interactions
       const insightInteractions = insight.config?.interactions || [];
@@ -108,12 +74,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
       setName('');
       setDescription('');
       setPropsType('scatter');
-      setPropsX('');
-      setPropsY('');
-      setPropsMode('');
-      setPropsText('');
-      setPropsColor('');
-      setPropsSize('');
+      setPropsValues({});
       setInteractions([]);
     }
     setErrors({});
@@ -145,23 +106,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
     setSaveError(null);
 
     try {
-      // Build props object
+      // Build props object - combine type with schema-driven values
       const props = {
         type: propsType,
+        ...propsValues,
       };
-
-      // Only include non-empty props
-      if (propsX) props.x = propsX;
-      if (propsY) props.y = propsY;
-      if (propsMode) props.mode = propsMode;
-      if (propsText) props.text = propsText;
-
-      // Handle marker properties
-      if (propsColor || propsSize) {
-        props.marker = {};
-        if (propsColor) props.marker.color = propsColor;
-        if (propsSize) props.marker.size = propsSize;
-      }
 
       // Build config object
       const config = {
@@ -232,9 +181,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
     updated[index] = { ...updated[index], [field]: value };
     setInteractions(updated);
   };
-
-  // Check if chart type supports mode (scatter types)
-  const showModeField = ['scatter', 'scattergl', 'scatter3d'].includes(propsType);
 
   return (
     <>
@@ -329,79 +275,15 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
               {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
             </div>
 
-            {/* X axis */}
-            <RefTextArea
-              value={propsX}
-              onChange={setPropsX}
-              label="X Axis"
-              allowedTypes={['model', 'dimension', 'metric']}
-              rows={2}
-              helperText="SQL expression for X values. Use ?{...} for query syntax."
-            />
-
-            {/* Y axis */}
-            <RefTextArea
-              value={propsY}
-              onChange={setPropsY}
-              label="Y Axis"
-              allowedTypes={['model', 'dimension', 'metric']}
-              rows={2}
-              helperText="SQL expression for Y values. Use ?{...} for query syntax."
-            />
-
-            {/* Mode (for scatter charts) */}
-            {showModeField && (
-              <div className="relative">
-                <select
-                  id="propsMode"
-                  value={propsMode}
-                  onChange={e => setPropsMode(e.target.value)}
-                  className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  {MODE_OPTIONS.map(mode => (
-                    <option key={mode.value} value={mode.value}>
-                      {mode.label}
-                    </option>
-                  ))}
-                </select>
-                <label
-                  htmlFor="propsMode"
-                  className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
-                >
-                  Mode
-                </label>
-              </div>
+            {/* Schema-driven props editor */}
+            {currentSchema && (
+              <SchemaEditor
+                schema={currentSchema}
+                value={propsValues}
+                onChange={setPropsValues}
+                excludeProperties={['type']}
+              />
             )}
-
-            {/* Text */}
-            <RefTextArea
-              value={propsText}
-              onChange={setPropsText}
-              label="Text"
-              allowedTypes={['model', 'dimension', 'metric']}
-              rows={2}
-              helperText="Text labels for data points."
-            />
-
-            {/* Color */}
-            <RefTextArea
-              value={propsColor}
-              onChange={setPropsColor}
-              label="Color"
-              allowedTypes={['model', 'dimension', 'metric']}
-              rows={2}
-              helperText="Color values or SQL expression for color encoding."
-            />
-
-            {/* Size */}
-            <RefTextArea
-              value={propsSize}
-              onChange={setPropsSize}
-              label="Size"
-              allowedTypes={['model', 'dimension', 'metric']}
-              rows={2}
-              helperText="Size values or SQL expression for size encoding."
-            />
           </div>
 
           {/* Interactions Section */}

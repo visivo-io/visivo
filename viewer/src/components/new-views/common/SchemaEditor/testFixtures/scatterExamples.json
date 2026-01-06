@@ -1,0 +1,66 @@
+{
+  "valid": [
+    {
+      "description": "Basic scatter with query-string x and y",
+      "value": {
+        "x": "column(date)",
+        "y": "column(value)",
+        "mode": "lines+markers"
+      }
+    },
+    {
+      "description": "Scatter with static arrays",
+      "value": {
+        "x": [1, 2, 3, 4, 5],
+        "y": [10, 20, 15, 25, 30],
+        "mode": "markers"
+      }
+    },
+    {
+      "description": "Scatter with marker styling",
+      "value": {
+        "x": "query(SELECT date FROM table)",
+        "y": "query(SELECT value FROM table)",
+        "mode": "markers",
+        "marker": {
+          "color": "#ff0000",
+          "size": 10
+        }
+      }
+    },
+    {
+      "description": "Scatter with query-string marker color",
+      "value": {
+        "x": "column(x)",
+        "y": "column(y)",
+        "marker": {
+          "color": "?{color_column}",
+          "size": 8
+        }
+      }
+    },
+    {
+      "description": "Scatter with name and text",
+      "value": {
+        "x": "column(x)",
+        "y": "column(y)",
+        "name": "My Trace",
+        "text": "column(label)",
+        "mode": "markers+text"
+      }
+    },
+    {
+      "description": "Line chart with fill",
+      "value": {
+        "x": "column(date)",
+        "y": "column(revenue)",
+        "mode": "lines",
+        "fill": "tozeroy",
+        "line": {
+          "color": "#3366cc",
+          "width": 2
+        }
+      }
+    }
+  ]
+}
