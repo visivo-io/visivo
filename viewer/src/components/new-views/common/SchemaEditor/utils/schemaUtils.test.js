@@ -115,6 +115,67 @@ describe('schemaUtils', () => {
       const schema = { $ref: '#/$defs/query-string' };
       expect(getStaticSchema(schema, defs)).toBeNull();
     });
+
+    it('handles nested oneOf - single value OR array pattern', () => {
+      // Pattern: oneOf: [{ oneOf: [query-string, enum] }, { type: array }]
+      const schema = {
+        oneOf: [
+          {
+            oneOf: [
+              { $ref: '#/$defs/query-string' },
+              { enum: ['left', 'right', 'auto'], default: 'auto' },
+            ],
+          },
+          {
+            type: 'array',
+            items: {
+              oneOf: [
+                { $ref: '#/$defs/query-string' },
+                { enum: ['left', 'right', 'auto'], default: 'auto' },
+              ],
+            },
+          },
+        ],
+      };
+      // Should resolve to the enum inside the nested oneOf
+      const result = getStaticSchema(schema, defs);
+      expect(result).toEqual({ enum: ['left', 'right', 'auto'], default: 'auto' });
+    });
+
+    it('handles nested oneOf with string pattern', () => {
+      // Pattern like hoverinfo: oneOf with nested enum + pattern string
+      const schema = {
+        oneOf: [
+          {
+            oneOf: [
+              { $ref: '#/$defs/query-string' },
+              {
+                oneOf: [
+                  { type: 'string', enum: ['all', 'none', 'skip'] },
+                  { type: 'string', pattern: '^(x|y|z)+$' },
+                ],
+                default: 'all',
+              },
+            ],
+          },
+          { type: 'array', items: {} },
+        ],
+      };
+      const result = getStaticSchema(schema, defs);
+      // Resolves all the way to the first concrete type (string with enum)
+      expect(result).toEqual({ type: 'string', enum: ['all', 'none', 'skip'] });
+    });
+
+    it('prefers single value over array when both present', () => {
+      const schema = {
+        oneOf: [
+          { type: 'string', enum: ['a', 'b'] },
+          { type: 'array', items: { type: 'string' } },
+        ],
+      };
+      const result = getStaticSchema(schema, defs);
+      expect(result).toEqual({ type: 'string', enum: ['a', 'b'] });
+    });
   });
 
   describe('flattenSchemaProperties', () => {

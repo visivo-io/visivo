@@ -100,8 +100,71 @@ describe('fieldResolver', () => {
       expect(resolveFieldType(undefined, defs)).toBe('unknown');
     });
 
-    it('returns unknown for empty schema', () => {
-      expect(resolveFieldType({}, defs)).toBe('unknown');
+    it('returns string for empty schema (accepts any value)', () => {
+      expect(resolveFieldType({}, defs)).toBe('string');
+    });
+
+    it('returns string for schema with only description', () => {
+      const schema = { description: 'Some description for any value' };
+      expect(resolveFieldType(schema, defs)).toBe('string');
+    });
+
+    it('returns string for schema with only default', () => {
+      const schema = { default: null };
+      expect(resolveFieldType(schema, defs)).toBe('string');
+    });
+
+    it('returns string for schema with description and default', () => {
+      const schema = { description: 'A label alias', default: null };
+      expect(resolveFieldType(schema, defs)).toBe('string');
+    });
+
+    it('handles nested oneOf - single value OR array with enum', () => {
+      // hoverlabel.align pattern
+      const schema = {
+        oneOf: [
+          {
+            oneOf: [
+              { $ref: '#/$defs/query-string' },
+              { enum: ['left', 'right', 'auto'], default: 'auto' },
+            ],
+          },
+          {
+            type: 'array',
+            items: {
+              oneOf: [
+                { $ref: '#/$defs/query-string' },
+                { enum: ['left', 'right', 'auto'] },
+              ],
+            },
+          },
+        ],
+      };
+      expect(resolveFieldType(schema, defs)).toBe('enum');
+    });
+
+    it('handles deeply nested oneOf with string enum', () => {
+      // hoverinfo pattern with nested oneOf containing enum + pattern
+      const schema = {
+        oneOf: [
+          {
+            oneOf: [
+              { $ref: '#/$defs/query-string' },
+              {
+                oneOf: [
+                  { type: 'string', enum: ['all', 'none', 'skip'] },
+                  { type: 'string', pattern: '^(x|y)+$' },
+                ],
+                default: 'all',
+              },
+            ],
+          },
+          { type: 'array', items: {} },
+        ],
+      };
+      // Should resolve through the nested oneOf to find the enum or string
+      const result = resolveFieldType(schema, defs);
+      expect(['enum', 'string']).toContain(result);
     });
   });
 

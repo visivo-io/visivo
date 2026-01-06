@@ -54,61 +54,40 @@ export function SchemaEditor({
     return allProperties.filter(prop => addedProperties.has(prop.path));
   }, [allProperties, addedProperties]);
 
-  // Track the previous value reference to detect when it changes
-  const prevValueRef = useRef(value);
+  // Track the last schema we initialized for (to detect schema changes)
+  const lastSchemaRef = useRef(null);
 
-  // Sync properties from value - runs when value changes or on initial mount
+  // Initialize addedProperties when schema changes or on mount
+  // This extracts existing values from the value prop
   useEffect(() => {
-    if (!value || typeof value !== 'object' || allProperties.length === 0) return;
-
-    // Check if the value reference has actually changed (new object)
-    const valueChanged = prevValueRef.current !== value;
-    prevValueRef.current = value;
+    // Only run when schema actually changes (different object reference)
+    if (lastSchemaRef.current === schema) return;
+    lastSchemaRef.current = schema;
 
     // Extract all paths that have values in the current value object
-    const pathsWithValues = new Set();
-
     const extractPaths = (obj, prefix = '') => {
-      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+      const paths = [];
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return paths;
 
       Object.keys(obj).forEach(key => {
         const path = prefix ? `${prefix}.${key}` : key;
-        pathsWithValues.add(path);
+        paths.push(path);
 
         if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-          extractPaths(obj[key], path);
+          paths.push(...extractPaths(obj[key], path));
         }
       });
+      return paths;
     };
 
-    extractPaths(value);
+    const pathsWithValues = extractPaths(value);
 
     // Find paths that exist in the schema
-    const pathsToAdd = [];
-    pathsWithValues.forEach(path => {
-      if (allProperties.some(p => p.path === path)) {
-        pathsToAdd.push(path);
-      }
-    });
+    const validPaths = pathsWithValues.filter(path => allProperties.some(p => p.path === path));
 
-    // If value changed (different insight being edited), reset and set new properties
-    if (valueChanged && pathsToAdd.length > 0) {
-      setAddedProperties(new Set([...initiallyExpanded, ...pathsToAdd]));
-    } else if (pathsToAdd.length > 0) {
-      // Just add any missing properties without resetting
-      setAddedProperties(prev => {
-        const next = new Set(prev);
-        let changed = false;
-        pathsToAdd.forEach(path => {
-          if (!next.has(path)) {
-            next.add(path);
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }
-  }, [value, allProperties, initiallyExpanded]);
+    // Set added properties to include initiallyExpanded + any paths with values
+    setAddedProperties(new Set([...initiallyExpanded, ...validPaths]));
+  }, [schema, value, allProperties, initiallyExpanded]);
 
   // Handle property value change
   const handlePropertyChange = useCallback(

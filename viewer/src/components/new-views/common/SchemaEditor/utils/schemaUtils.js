@@ -60,6 +60,13 @@ export function resolveRef(ref, defs) {
 /**
  * Get the non-query-string schema from a property
  * Used to determine what static field type to render
+ *
+ * Handles these patterns:
+ * 1. Direct type: { type: "string" }
+ * 2. Direct $ref: { $ref: "#/$defs/color" }
+ * 3. Simple oneOf: { oneOf: [{ $ref: "query-string" }, { type: "string" }] }
+ * 4. Nested oneOf (single OR array): { oneOf: [{ oneOf: [query-string, staticType] }, { type: "array", items: {...} }] }
+ *
  * @param {object} schema - The property schema
  * @param {object} defs - The $defs object from the schema
  * @returns {object|null} The static schema without query-string option
@@ -75,29 +82,48 @@ export function getStaticSchema(schema, defs = {}) {
     return resolveRef(schema.$ref, defs) || schema;
   }
 
-  // Handle oneOf - find first non-query-string option
-  if (schema.oneOf) {
-    const staticOption = schema.oneOf.find(opt => opt.$ref !== '#/$defs/query-string');
-    if (staticOption) {
-      // Recursively resolve if it's a $ref
-      if (staticOption.$ref) {
-        return resolveRef(staticOption.$ref, defs) || staticOption;
-      }
-      return staticOption;
-    }
-    return null;
-  }
+  // Handle oneOf/anyOf
+  const options = schema.oneOf || schema.anyOf;
+  if (options) {
+    // Find non-query-string options
+    const staticOptions = options.filter(opt => opt.$ref !== '#/$defs/query-string');
 
-  // Handle anyOf similarly
-  if (schema.anyOf) {
-    const staticOption = schema.anyOf.find(opt => opt.$ref !== '#/$defs/query-string');
-    if (staticOption) {
-      if (staticOption.$ref) {
-        return resolveRef(staticOption.$ref, defs) || staticOption;
+    if (staticOptions.length === 0) return null;
+
+    // Check for "single value OR array" pattern
+    // This is where we have oneOf: [singleValueSchema, arraySchema]
+    // where singleValueSchema might itself be a oneOf with query-string
+    const singleOption = staticOptions.find(opt => opt.type !== 'array' || !opt.items);
+    const arrayOption = staticOptions.find(opt => opt.type === 'array' && opt.items);
+
+    // If we have both single and array options, prefer the single value schema
+    // but recurse into it if it's a nested oneOf
+    if (singleOption) {
+      // If the single option is itself a oneOf (nested pattern), recurse
+      if (singleOption.oneOf || singleOption.anyOf) {
+        return getStaticSchema(singleOption, defs);
       }
-      return staticOption;
+      // If it's a $ref, resolve it
+      if (singleOption.$ref) {
+        return resolveRef(singleOption.$ref, defs) || singleOption;
+      }
+      return singleOption;
     }
-    return null;
+
+    // If only array option, return it
+    if (arrayOption) {
+      return arrayOption;
+    }
+
+    // Fallback: return first static option, recursing if needed
+    const firstOption = staticOptions[0];
+    if (firstOption.oneOf || firstOption.anyOf) {
+      return getStaticSchema(firstOption, defs);
+    }
+    if (firstOption.$ref) {
+      return resolveRef(firstOption.$ref, defs) || firstOption;
+    }
+    return firstOption;
   }
 
   return schema;

@@ -110,7 +110,14 @@ export function resolveFieldType(schema, defs = {}) {
     if (schemaType.includes('object')) return 'object';
   }
 
-  return 'unknown';
+  // If schema only has description/default but no type, treat as string (accepts any value)
+  if (staticSchema.description || staticSchema.default !== undefined) {
+    return 'string';
+  }
+
+  // Empty schema {} or schema with only unknown keys - treat as string (accepts any value)
+  // This handles edge cases like impliedEdits: {} or autorangeoptions.include
+  return 'string';
 }
 
 /**
