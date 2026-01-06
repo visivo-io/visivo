@@ -105,6 +105,8 @@ export function getStaticSchema(schema, defs = {}) {
 
 /**
  * Flatten nested property paths from a schema
+ * Only returns leaf nodes - properties that don't have nested object children.
+ * Parent objects with children are not included; only their leaf descendants are.
  * @param {object} schema - The JSON schema
  * @param {string} prefix - Path prefix for nested properties
  * @param {object} defs - The $defs object from the schema
@@ -131,18 +133,19 @@ export function flattenSchemaProperties(schema, prefix = '', defs = {}) {
       resolvedSchema.properties &&
       Object.keys(resolvedSchema.properties).length > 0;
 
-    result.push({
-      path,
-      schema: propSchema,
-      resolvedSchema,
-      description: propSchema.description || resolvedSchema?.description || '',
-      isObject: isNestedObject,
-      supportsQueryString: supportsQueryString(propSchema),
-    });
-
-    // If it's a nested object, recursively flatten its properties
+    // If it's a nested object, only include its children (not the parent itself)
     if (isNestedObject) {
       result.push(...flattenSchemaProperties(resolvedSchema, path, defs));
+    } else {
+      // This is a leaf node - include it
+      result.push({
+        path,
+        schema: propSchema,
+        resolvedSchema,
+        description: propSchema.description || resolvedSchema?.description || '',
+        isObject: false,
+        supportsQueryString: supportsQueryString(propSchema),
+      });
     }
   });
 

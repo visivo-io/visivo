@@ -132,7 +132,7 @@ describe('schemaUtils', () => {
       expect(result[1].path).toBe('y');
     });
 
-    it('flattens nested object properties', () => {
+    it('flattens nested object properties (only leaf nodes)', () => {
       const schema = {
         properties: {
           marker: {
@@ -146,10 +146,52 @@ describe('schemaUtils', () => {
       };
 
       const result = flattenSchemaProperties(schema);
-      // Should have: marker, marker.color, marker.size
-      expect(result.find(p => p.path === 'marker')).toBeDefined();
+      // Should only have leaf nodes: marker.color, marker.size (NOT marker itself)
+      expect(result.find(p => p.path === 'marker')).toBeUndefined();
       expect(result.find(p => p.path === 'marker.color')).toBeDefined();
       expect(result.find(p => p.path === 'marker.size')).toBeDefined();
+      expect(result).toHaveLength(2);
+    });
+
+    it('handles deeply nested objects (only leaf nodes)', () => {
+      const schema = {
+        properties: {
+          marker: {
+            type: 'object',
+            properties: {
+              colorbar: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'object',
+                    properties: {
+                      font: {
+                        type: 'object',
+                        properties: {
+                          size: { type: 'number' },
+                          color: { type: 'string' },
+                        },
+                      },
+                      text: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = flattenSchemaProperties(schema);
+      // Should only have the deepest leaf nodes
+      expect(result.find(p => p.path === 'marker')).toBeUndefined();
+      expect(result.find(p => p.path === 'marker.colorbar')).toBeUndefined();
+      expect(result.find(p => p.path === 'marker.colorbar.title')).toBeUndefined();
+      expect(result.find(p => p.path === 'marker.colorbar.title.font')).toBeUndefined();
+      expect(result.find(p => p.path === 'marker.colorbar.title.font.size')).toBeDefined();
+      expect(result.find(p => p.path === 'marker.colorbar.title.font.color')).toBeDefined();
+      expect(result.find(p => p.path === 'marker.colorbar.title.text')).toBeDefined();
+      expect(result).toHaveLength(3);
     });
 
     it('excludes type property at root level', () => {
