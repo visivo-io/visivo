@@ -9,7 +9,6 @@ import { BooleanField } from './BooleanField';
 import { EnumField } from './EnumField';
 import { ColorField } from './ColorField';
 import { ArrayField } from './ArrayField';
-import { ObjectField } from './ObjectField';
 
 export { StringField } from './StringField';
 export { NumberField } from './NumberField';
@@ -17,7 +16,6 @@ export { BooleanField } from './BooleanField';
 export { EnumField } from './EnumField';
 export { ColorField } from './ColorField';
 export { ArrayField } from './ArrayField';
-export { ObjectField } from './ObjectField';
 
 /**
  * Registry mapping field type names to components
@@ -29,7 +27,6 @@ export const FIELD_COMPONENTS = {
   EnumField,
   ColorField,
   ArrayField,
-  ObjectField,
 };
 
 /**
@@ -46,7 +43,6 @@ export function getFieldComponent(fieldType) {
     color: ColorField,
     colorscale: ArrayField, // Colorscales are arrays of colors
     array: ArrayField,
-    object: ObjectField,
     unknown: StringField, // Fallback
   };
 

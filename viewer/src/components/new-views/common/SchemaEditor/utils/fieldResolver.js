@@ -127,7 +127,6 @@ export function getFieldComponentName(fieldType) {
     color: 'ColorField',
     colorscale: 'ColorscaleField',
     array: 'ArrayField',
-    object: 'ObjectField',
     'query-string': 'QueryStringField',
     unknown: 'StringField', // Fallback to string input
   };

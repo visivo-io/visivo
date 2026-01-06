@@ -36,10 +36,6 @@ describe('fieldResolver', () => {
       expect(resolveFieldType({ type: 'array', items: { type: 'string' } }, defs)).toBe('array');
     });
 
-    it('returns object for type: object', () => {
-      expect(resolveFieldType({ type: 'object', properties: {} }, defs)).toBe('object');
-    });
-
     it('returns enum for schema with enum', () => {
       expect(resolveFieldType({ enum: ['a', 'b', 'c'] }, defs)).toBe('enum');
     });
@@ -136,10 +132,6 @@ describe('fieldResolver', () => {
 
     it('maps array to ArrayField', () => {
       expect(getFieldComponentName('array')).toBe('ArrayField');
-    });
-
-    it('maps object to ObjectField', () => {
-      expect(getFieldComponentName('object')).toBe('ObjectField');
     });
 
     it('maps unknown to StringField fallback', () => {
