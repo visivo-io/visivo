@@ -31,7 +31,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const [propsType, setPropsType] = useState('scatter');
   const [propsValues, setPropsValues] = useState({});
 
-  // Interactions state - array of {filter, split, sort}
+  // Interactions state - array of {type: 'filter'|'split'|'sort', value: string}
   const [interactions, setInteractions] = useState([]);
 
   // UI state
@@ -60,14 +60,16 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
       setPropsType(type || 'scatter');
       setPropsValues(restProps);
 
-      // Interactions
+      // Interactions - each interaction has only one type (filter, split, or sort)
       const insightInteractions = insight.config?.interactions || [];
       setInteractions(
-        insightInteractions.map(i => ({
-          filter: i.filter || '',
-          split: i.split || '',
-          sort: i.sort || '',
-        }))
+        insightInteractions.map(i => {
+          // Determine which type this interaction is
+          if (i.filter) return { type: 'filter', value: i.filter };
+          if (i.split) return { type: 'split', value: i.split };
+          if (i.sort) return { type: 'sort', value: i.sort };
+          return { type: 'filter', value: '' }; // Default
+        })
       );
     } else if (isCreate) {
       // Create mode - reset form
@@ -125,14 +127,8 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
       // Only include interactions if non-empty
       const nonEmptyInteractions = interactions
-        .map(i => {
-          const interaction = {};
-          if (i.filter) interaction.filter = i.filter;
-          if (i.split) interaction.split = i.split;
-          if (i.sort) interaction.sort = i.sort;
-          return interaction;
-        })
-        .filter(i => Object.keys(i).length > 0);
+        .filter(i => i.value && i.value.trim())
+        .map(i => ({ [i.type]: i.value }));
 
       if (nonEmptyInteractions.length > 0) {
         config.interactions = nonEmptyInteractions;
@@ -169,18 +165,31 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
   // Interaction management
   const addInteraction = () => {
-    setInteractions([...interactions, { filter: '', split: '', sort: '' }]);
+    setInteractions([...interactions, { type: 'filter', value: '' }]);
   };
 
   const removeInteraction = index => {
     setInteractions(interactions.filter((_, i) => i !== index));
   };
 
-  const updateInteraction = (index, field, value) => {
+  const updateInteractionType = (index, newType) => {
     const updated = [...interactions];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], type: newType };
     setInteractions(updated);
   };
+
+  const updateInteractionValue = (index, newValue) => {
+    const updated = [...interactions];
+    updated[index] = { ...updated[index], value: newValue };
+    setInteractions(updated);
+  };
+
+  // Interaction type options
+  const INTERACTION_TYPES = [
+    { value: 'filter', label: 'Filter', helperText: 'Client-side filter condition (WHERE clause logic).' },
+    { value: 'split', label: 'Split', helperText: 'Column to split data into multiple traces.' },
+    { value: 'sort', label: 'Sort', helperText: 'Column and direction to sort by (e.g., "date DESC").' },
+  ];
 
   return (
     <>
@@ -305,51 +314,52 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
                 No interactions defined. Add interactions for client-side filtering, splitting, or sorting.
               </p>
             ) : (
-              interactions.map((interaction, index) => (
-                <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-600">Interaction {index + 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeInteraction(index)}
-                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                      title="Remove interaction"
-                    >
-                      <RemoveIcon fontSize="small" />
-                    </button>
+              interactions.map((interaction, index) => {
+                const typeConfig = INTERACTION_TYPES.find(t => t.value === interaction.type) || INTERACTION_TYPES[0];
+                return (
+                  <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">Interaction {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeInteraction(index)}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                        title="Remove interaction"
+                      >
+                        <RemoveIcon fontSize="small" />
+                      </button>
+                    </div>
+
+                    {/* Interaction Type Selector */}
+                    <div className="relative">
+                      <select
+                        value={interaction.type}
+                        onChange={e => updateInteractionType(index, e.target.value)}
+                        className="block w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        {INTERACTION_TYPES.map(t => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500">
+                        Type
+                      </label>
+                    </div>
+
+                    {/* Interaction Value */}
+                    <RefTextArea
+                      value={interaction.value}
+                      onChange={value => updateInteractionValue(index, value)}
+                      label={typeConfig.label}
+                      allowedTypes={['model', 'dimension', 'metric']}
+                      rows={2}
+                      helperText={typeConfig.helperText}
+                    />
                   </div>
-
-                  {/* Filter */}
-                  <RefTextArea
-                    value={interaction.filter}
-                    onChange={value => updateInteraction(index, 'filter', value)}
-                    label="Filter"
-                    allowedTypes={['model', 'dimension', 'metric']}
-                    rows={2}
-                    helperText="Client-side filter condition (WHERE clause logic)."
-                  />
-
-                  {/* Split */}
-                  <RefTextArea
-                    value={interaction.split}
-                    onChange={value => updateInteraction(index, 'split', value)}
-                    label="Split"
-                    allowedTypes={['model', 'dimension', 'metric']}
-                    rows={2}
-                    helperText="Column to split data into multiple traces."
-                  />
-
-                  {/* Sort */}
-                  <RefTextArea
-                    value={interaction.sort}
-                    onChange={value => updateInteraction(index, 'sort', value)}
-                    label="Sort"
-                    allowedTypes={['model', 'dimension', 'metric']}
-                    rows={2}
-                    helperText="Column and direction to sort by (e.g., 'date DESC')."
-                  />
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 

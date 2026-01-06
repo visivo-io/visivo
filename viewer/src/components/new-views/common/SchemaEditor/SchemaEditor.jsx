@@ -54,17 +54,18 @@ export function SchemaEditor({
     return allProperties.filter(prop => addedProperties.has(prop.path));
   }, [allProperties, addedProperties]);
 
-  // Track if we've already synced initial values
-  const hasInitializedFromValue = useRef(false);
+  // Track the previous value reference to detect when it changes
+  const prevValueRef = useRef(value);
 
-  // Sync properties from initial value (only once on mount or when value changes)
+  // Sync properties from value - runs when value changes or on initial mount
   useEffect(() => {
     if (!value || typeof value !== 'object' || allProperties.length === 0) return;
 
-    // Only sync once per value reference
-    if (hasInitializedFromValue.current) return;
-    hasInitializedFromValue.current = true;
+    // Check if the value reference has actually changed (new object)
+    const valueChanged = prevValueRef.current !== value;
+    prevValueRef.current = value;
 
+    // Extract all paths that have values in the current value object
     const pathsWithValues = new Set();
 
     const extractPaths = (obj, prefix = '') => {
@@ -82,7 +83,7 @@ export function SchemaEditor({
 
     extractPaths(value);
 
-    // Add any paths with values to the added set
+    // Find paths that exist in the schema
     const pathsToAdd = [];
     pathsWithValues.forEach(path => {
       if (allProperties.some(p => p.path === path)) {
@@ -90,14 +91,24 @@ export function SchemaEditor({
       }
     });
 
-    if (pathsToAdd.length > 0) {
+    // If value changed (different insight being edited), reset and set new properties
+    if (valueChanged && pathsToAdd.length > 0) {
+      setAddedProperties(new Set([...initiallyExpanded, ...pathsToAdd]));
+    } else if (pathsToAdd.length > 0) {
+      // Just add any missing properties without resetting
       setAddedProperties(prev => {
         const next = new Set(prev);
-        pathsToAdd.forEach(path => next.add(path));
-        return next;
+        let changed = false;
+        pathsToAdd.forEach(path => {
+          if (!next.has(path)) {
+            next.add(path);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
       });
     }
-  }, [value, allProperties]);
+  }, [value, allProperties, initiallyExpanded]);
 
   // Handle property value change
   const handlePropertyChange = useCallback(
