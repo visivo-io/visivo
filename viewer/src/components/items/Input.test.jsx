@@ -28,22 +28,32 @@ jest.mock('./inputs/RangeSliderInput', () => ({ label }) => (
   <div data-testid="range-slider-input">{label}</div>
 ));
 
+// Store mock state - needs to be accessible both inside mock factory and in tests
 const mockSetInputValue = jest.fn();
-const mockInputs = {};
-const mockInputOptions = {};
 const mockSetInputOptions = jest.fn();
 const mockSetDefaultInputValue = jest.fn();
-jest.mock('../../stores/store', () => ({
-  __esModule: true,
-  default: fn =>
-    fn({
-      setInputValue: mockSetInputValue,
-      inputs: mockInputs,
-      inputOptions: mockInputOptions,
-      setInputOptions: mockSetInputOptions,
-      setDefaultInputValue: mockSetDefaultInputValue,
-    }),
-}));
+const mockSetInputData = jest.fn();
+
+jest.mock('../../stores/store', () => {
+  const storeState = {
+    setInputValue: jest.fn(),
+    inputs: {},
+    inputOptions: {},
+    inputData: {},
+    setInputOptions: jest.fn(),
+    setDefaultInputValue: jest.fn(),
+    setInputData: jest.fn(),
+    inputSelectedValues: {},
+  };
+
+  const mockFn = jest.fn(fn => fn(storeState));
+  mockFn.getState = () => storeState;
+
+  return {
+    __esModule: true,
+    default: mockFn,
+  };
+});
 
 describe('Input component', () => {
   beforeEach(() => {

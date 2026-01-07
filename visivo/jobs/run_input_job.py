@@ -1,17 +1,20 @@
 """
-Input Job System Core - Process input options and store as JSON files.
+Input Job System Core - Process input options and store as parquet/JSON files.
 
 This module handles both single-select and multi-select input types:
-- SingleSelectInput: Execute options query, store as JSON
-- MultiSelectInput: Execute options OR range queries, store as JSON
+- SingleSelectInput: Execute options query, store as parquet (query-based) or JSON (static)
+- MultiSelectInput: Execute options OR range queries, store as parquet/JSON
 
-JSON output includes all resolved values for frontend consumption.
+Output follows the insights pattern:
+- Parquet files in {output_dir}/files/{hash}_{key}.parquet for list data
+- Metadata JSON in {output_dir}/inputs/{hash}.json with file references
+- Scalars (range values, single-select defaults) resolved at runtime and stored in metadata
 """
 
 import json
 import os
 from time import time
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Any, Tuple, Dict
 
 import polars as pl
 from sqlglot import parse_one
@@ -33,12 +36,38 @@ OPTION_COUNT_WARNING_THRESHOLD = 10000
 OPTION_COUNT_ERROR_THRESHOLD = 100000
 
 
+def _write_parquet_file(
+    df: pl.DataFrame,
+    output_dir: str,
+    input_hash: str,
+    key: str,
+) -> str:
+    """
+    Write a DataFrame to a parquet file.
+
+    Args:
+        df: Polars DataFrame to write
+        output_dir: Base output directory
+        input_hash: Hash of the input name
+        key: File key (options, defaults)
+
+    Returns:
+        Full path to the written parquet file
+    """
+    files_directory = f"{output_dir}/files"
+    os.makedirs(files_directory, exist_ok=True)
+    parquet_path = f"{files_directory}/{input_hash}_{key}.parquet"
+    df.write_parquet(parquet_path)
+    return parquet_path
+
+
 def _execute_query_for_options(
     query_value: str,
     dag,
     input_name: str,
     output_dir: str,
-) -> List[str]:
+    return_dataframe: bool = False,
+) -> Union[List[str], Tuple[List[str], pl.DataFrame]]:
     """
     Execute a query to get options from a data source.
 
@@ -47,9 +76,10 @@ def _execute_query_for_options(
         dag: Project DAG for model resolution
         input_name: Name of the input (for error messages)
         output_dir: Output directory
+        return_dataframe: If True, also return the DataFrame for parquet writing
 
     Returns:
-        List of option values as strings
+        List of option values as strings, or tuple of (list, DataFrame) if return_dataframe=True
 
     Raises:
         ValueError: If query references invalid model or returns invalid data
@@ -115,7 +145,7 @@ def _execute_query_for_options(
     # Validate not empty
     if df.shape[0] == 0:
         raise ValueError(
-            f"Input '{input_name}' query returned 0 rows. " f"Inputs must have at least one option."
+            f"Input '{input_name}' query returned 0 rows. Inputs must have at least one option."
         )
 
     # Ensure single column
@@ -125,9 +155,15 @@ def _execute_query_for_options(
             f"found {df.shape[1]} columns."
         )
 
+    # Rename column to 'option' for consistency
+    df = df.rename({df.columns[0]: "option"})
+
     # Get values as list of strings
-    first_col = df.columns[0]
-    return df[first_col].cast(pl.Utf8).to_list()
+    options = df["option"].cast(pl.Utf8).to_list()
+
+    if return_dataframe:
+        return options, df
+    return options
 
 
 def _execute_scalar_query(
@@ -188,9 +224,9 @@ def _process_single_select(
     input_obj: SingleSelectInput,
     dag,
     output_dir: str,
-) -> dict:
+) -> Dict[str, Any]:
     """
-    Process a single-select input and return JSON-serializable result.
+    Process a single-select input and return metadata structure.
 
     Args:
         input_obj: The SingleSelectInput object
@@ -198,21 +234,36 @@ def _process_single_select(
         output_dir: Output directory
 
     Returns:
-        Dict with results for JSON output
+        Dict with metadata for JSON output (files, static_props, display, warnings)
     """
     input_name = input_obj.name
+    input_hash = input_obj.name_hash()
+    files = []
+    static_props = None
+    warnings = []
 
-    # Get options
+    # Get options - query-based goes to parquet, static goes to static_props
     if isinstance(input_obj.options, QueryString):
         query_value = input_obj.options.get_value()
-        options = _execute_query_for_options(query_value, dag, input_name, output_dir)
+        options, df = _execute_query_for_options(
+            query_value, dag, input_name, output_dir, return_dataframe=True
+        )
+
+        # Write parquet file
+        parquet_path = _write_parquet_file(df, output_dir, input_hash, "options")
+        files.append(
+            {
+                "name_hash": f"{input_hash}_options",
+                "signed_data_file_url": parquet_path,
+                "key": "options",
+            }
+        )
     else:
         options = [str(opt) for opt in input_obj.options]
+        static_props = {"options": options}
 
     # Check option count limits
     option_count = len(options)
-    warnings = []
-
     if option_count > OPTION_COUNT_ERROR_THRESHOLD:
         raise ValueError(
             f"Input '{input_name}' has {option_count:,} options, exceeding the "
@@ -225,26 +276,29 @@ def _process_single_select(
             f"to reduce option count. Large option lists may cause slow dashboard loading."
         )
 
-    # Get display configuration
+    # Get display configuration - default value resolved to scalar
     display_type = "dropdown"
     default_value = options[0] if options else None
 
     if input_obj.display:
         display_type = input_obj.display.type
 
-        if input_obj.display.default:
+        if input_obj.display.default and input_obj.display.default.value is not None:
             default_val = input_obj.display.default.value
+            # Resolve query-based default to scalar
             default_value = _resolve_value(
                 default_val, dag, input_name, "default.value", output_dir
             )
 
     return {
-        "options": options,
+        "files": files,
+        "static_props": static_props,
         "display": {
             "type": display_type,
             "default": {"value": default_value},
         },
         "warnings": warnings,
+        "_option_count": option_count,  # For success message
     }
 
 
@@ -252,9 +306,9 @@ def _process_multi_select(
     input_obj: MultiSelectInput,
     dag,
     output_dir: str,
-) -> dict:
+) -> Dict[str, Any]:
     """
-    Process a multi-select input and return JSON-serializable result.
+    Process a multi-select input and return metadata structure.
 
     Args:
         input_obj: The MultiSelectInput object
@@ -262,18 +316,37 @@ def _process_multi_select(
         output_dir: Output directory
 
     Returns:
-        Dict with results for JSON output
+        Dict with metadata for JSON output (structure, files, static_props, display, warnings)
     """
     input_name = input_obj.name
+    input_hash = input_obj.name_hash()
+    files = []
+    static_props = None
     warnings = []
 
     if input_obj.is_list_based():
         # List-based multi-select
+        structure = "options"
+
+        # Get options - query-based goes to parquet, static goes to static_props
         if isinstance(input_obj.options, QueryString):
             query_value = input_obj.options.get_value()
-            options = _execute_query_for_options(query_value, dag, input_name, output_dir)
+            options, df = _execute_query_for_options(
+                query_value, dag, input_name, output_dir, return_dataframe=True
+            )
+
+            # Write parquet file
+            parquet_path = _write_parquet_file(df, output_dir, input_hash, "options")
+            files.append(
+                {
+                    "name_hash": f"{input_hash}_options",
+                    "signed_data_file_url": parquet_path,
+                    "key": "options",
+                }
+            )
         else:
             options = [str(opt) for opt in input_obj.options]
+            static_props = {"options": options}
 
         # Check option count limits
         option_count = len(options)
@@ -297,32 +370,62 @@ def _process_multi_select(
             if input_obj.display.default and input_obj.display.default.values is not None:
                 default_val = input_obj.display.default.values
                 if isinstance(default_val, QueryString):
+                    # Query-based defaults go to parquet (can be large list)
                     query_value = default_val.get_value()
-                    default_values = _execute_query_for_options(
-                        query_value, dag, input_name, output_dir
+                    defaults_list, defaults_df = _execute_query_for_options(
+                        query_value, dag, input_name, output_dir, return_dataframe=True
                     )
+
+                    # Rename column to 'value' for defaults
+                    defaults_df = defaults_df.rename({"option": "value"})
+
+                    # Write parquet file for defaults
+                    parquet_path = _write_parquet_file(
+                        defaults_df, output_dir, input_hash, "defaults"
+                    )
+                    files.append(
+                        {
+                            "name_hash": f"{input_hash}_defaults",
+                            "signed_data_file_url": parquet_path,
+                            "key": "defaults",
+                        }
+                    )
+                    # Set to None to indicate it's in parquet
+                    default_values = None
                 elif default_val in ("all", "none"):
                     default_values = default_val
                 else:
                     default_values = [str(v) for v in default_val]
 
         return {
-            "structure": "options",
-            "options": options,
+            "structure": structure,
+            "files": files,
+            "static_props": static_props,
             "display": {
                 "type": display_type,
                 "default": {"values": default_values},
             },
             "warnings": warnings,
+            "_option_count": option_count,
         }
 
     else:
         # Range-based multi-select
+        structure = "range"
         range_config = input_obj.range
 
+        # Resolve range values - all scalars, store in static_props
         start = _resolve_value(range_config.start, dag, input_name, "range.start", output_dir)
         end = _resolve_value(range_config.end, dag, input_name, "range.end", output_dir)
         step = _resolve_value(range_config.step, dag, input_name, "range.step", output_dir)
+
+        static_props = {
+            "range": {
+                "start": start,
+                "end": end,
+                "step": step,
+            }
+        }
 
         # Get display configuration
         display_type = "range-slider"
@@ -351,12 +454,9 @@ def _process_multi_select(
                     )
 
         return {
-            "structure": "range",
-            "range": {
-                "start": start,
-                "end": end,
-                "step": step,
-            },
+            "structure": structure,
+            "files": files,
+            "static_props": static_props,
             "display": {
                 "type": display_type,
                 "default": {
@@ -365,6 +465,7 @@ def _process_multi_select(
                 },
             },
             "warnings": warnings,
+            "_option_count": None,  # Range doesn't have option count
         }
 
 
@@ -374,7 +475,11 @@ def action(
     output_dir: str,
 ) -> JobResult:
     """
-    Execute input job - compute options/range and store results as JSON.
+    Execute input job - compute options/range and store results as parquet + JSON metadata.
+
+    Output structure follows the insights pattern:
+    - Parquet files in {output_dir}/files/{hash}_{key}.parquet
+    - Metadata JSON in {output_dir}/inputs/{hash}.json
 
     Args:
         input_obj: The input object to process
@@ -394,26 +499,29 @@ def action(
 
         # Process based on input type
         if isinstance(input_obj, SingleSelectInput):
-            results = _process_single_select(input_obj, dag, output_dir)
+            result = _process_single_select(input_obj, dag, output_dir)
             input_type = "single-select"
             structure = "options"
         elif isinstance(input_obj, MultiSelectInput):
-            results = _process_multi_select(input_obj, dag, output_dir)
+            result = _process_multi_select(input_obj, dag, output_dir)
             input_type = "multi-select"
-            structure = results.get("structure", "options")
+            structure = result.get("structure", "options")
         else:
             raise ValueError(f"Unknown input type: {type(input_obj).__name__}")
 
-        # Extract warnings from results
-        warnings = results.pop("warnings", [])
+        # Extract internal fields
+        warnings = result.pop("warnings", [])
+        option_count = result.pop("_option_count", None)
 
-        # Build JSON output
+        # Build metadata JSON output (aligned with insights pattern)
         json_output = {
-            "input_name": input_name,
-            "input_hash": input_hash,
+            "name": input_name,
+            "files": result["files"],
             "type": input_type,
             "structure": structure,
-            "results": results,
+            "static_props": result["static_props"],
+            "display": result["display"],
+            "warnings": warnings,
         }
 
         # Write JSON file
@@ -421,8 +529,7 @@ def action(
             json.dump(json_output, f, indent=2, default=str)
 
         # Build success message
-        if structure == "options":
-            option_count = len(results.get("options", []))
+        if structure == "options" and option_count is not None:
             details = f"Computed {option_count} options for input \033[4m{input_name}\033[0m"
         else:
             details = f"Computed range for input \033[4m{input_name}\033[0m"
@@ -475,6 +582,14 @@ def job(
         if isinstance(input_obj.options, QueryString):
             needs_source = True
             query_value = input_obj.options.get_value()
+        # Also check for query-based default
+        elif (
+            input_obj.display
+            and input_obj.display.default
+            and isinstance(input_obj.display.default.value, QueryString)
+        ):
+            needs_source = True
+            query_value = input_obj.display.default.value.get_value()
 
     elif isinstance(input_obj, MultiSelectInput):
         if isinstance(input_obj.options, QueryString):
@@ -488,6 +603,16 @@ def job(
                     needs_source = True
                     query_value = field_value.get_value()
                     break
+        # Also check for query-based defaults
+        if (
+            not needs_source
+            and input_obj.display
+            and input_obj.display.default
+            and hasattr(input_obj.display.default, "values")
+            and isinstance(input_obj.display.default.values, QueryString)
+        ):
+            needs_source = True
+            query_value = input_obj.display.default.values.get_value()
 
     # Get source if needed
     if needs_source and query_value:

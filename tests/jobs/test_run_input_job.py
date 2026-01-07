@@ -2,11 +2,16 @@
 Test suite for run_input_job module.
 
 This tests the Input Job System Core - processing both static and query-based input options.
+Output follows the insights pattern:
+- Parquet files in {output_dir}/files/{hash}_{key}.parquet for query-based list data
+- Metadata JSON in {output_dir}/inputs/{hash}.json with file references
+- Static options stored in static_props field
 """
 
 import pytest
 import json
 from pathlib import Path
+import polars as pl
 from visivo.jobs.run_input_job import action, job
 from tests.factories.model_factories import (
     SingleSelectInputFactory,
@@ -23,8 +28,8 @@ from sqlglot.optimizer import qualify
 class TestRunInputJobSingleSelect:
     """Test suite for SingleSelectInput Job execution."""
 
-    def test_static_options_stores_json(self):
-        """Verify static options stored as JSON with correct data."""
+    def test_static_options_stores_in_static_props(self):
+        """Verify static options stored in static_props field (no parquet file)."""
         input_obj = SingleSelectInputFactory(
             name="category_filter", options=["electronics", "books", "toys"]
         )
@@ -43,10 +48,11 @@ class TestRunInputJobSingleSelect:
 
         assert data["type"] == "single-select"
         assert data["structure"] == "options"
-        assert set(data["results"]["options"]) == {"electronics", "books", "toys"}
+        assert data["files"] == []  # No parquet for static options
+        assert set(data["static_props"]["options"]) == {"electronics", "books", "toys"}
 
-    def test_query_based_options_executes_on_source(self):
-        """Verify query runs on source backend, not DuckDB."""
+    def test_query_based_options_creates_parquet(self):
+        """Verify query-based options create parquet file with file reference."""
         source = SourceFactory(name="source")
         model = SqlModelFactory(
             name="products",
@@ -70,7 +76,20 @@ class TestRunInputJobSingleSelect:
         with open(json_path) as f:
             data = json.load(f)
 
-        assert len(data["results"]["options"]) == 2
+        # Query-based options should have files array with parquet reference
+        assert len(data["files"]) == 1
+        assert data["files"][0]["key"] == "options"
+        assert "_options" in data["files"][0]["name_hash"]
+        assert data["static_props"] is None  # No static props for query-based
+
+        # Verify parquet file exists
+        parquet_path = Path(data["files"][0]["signed_data_file_url"])
+        assert parquet_path.exists()
+
+        # Verify parquet content
+        df = pl.read_parquet(parquet_path)
+        assert df.shape[0] == 2
+        assert "option" in df.columns
 
     def test_query_with_subquery_replacement(self):
         """Verify ${ref(model)} replaced with (model.sql) subquery."""
@@ -95,8 +114,12 @@ class TestRunInputJobSingleSelect:
         with open(json_path) as f:
             data = json.load(f)
 
-        assert len(data["results"]["options"]) == 1
-        assert data["results"]["options"][0] == "shipped"
+        # Query-based should have parquet file
+        assert len(data["files"]) == 1
+        parquet_path = Path(data["files"][0]["signed_data_file_url"])
+        df = pl.read_parquet(parquet_path)
+        assert df.shape[0] == 1
+        assert df["option"][0] == "shipped"
 
     def test_empty_result_raises_error(self):
         """Verify helpful error when query returns 0 results."""
@@ -155,8 +178,9 @@ class TestRunInputJobSingleSelect:
         with open(path2) as f:
             data2 = json.load(f)
 
-        assert len(data1["results"]["options"]) == 2
-        assert len(data2["results"]["options"]) == 3
+        # Static options in static_props
+        assert len(data1["static_props"]["options"]) == 2
+        assert len(data2["static_props"]["options"]) == 3
 
     def test_job_assigns_correct_source(self):
         """Verify job() assigns source for query-based inputs."""
@@ -261,8 +285,8 @@ class TestRunInputJobSingleSelect:
 class TestRunInputJobMultiSelect:
     """Test suite for MultiSelectInput Job execution."""
 
-    def test_list_based_stores_json(self):
-        """Verify list-based multi-select stores JSON correctly."""
+    def test_list_based_static_stores_in_static_props(self):
+        """Verify list-based multi-select stores static options in static_props."""
         input_obj = MultiSelectInputFactory(
             name="categories", options=["electronics", "books", "toys"]
         )
@@ -281,10 +305,11 @@ class TestRunInputJobMultiSelect:
 
         assert data["type"] == "multi-select"
         assert data["structure"] == "options"
-        assert set(data["results"]["options"]) == {"electronics", "books", "toys"}
+        assert data["files"] == []  # No parquet for static options
+        assert set(data["static_props"]["options"]) == {"electronics", "books", "toys"}
 
-    def test_range_based_stores_json(self):
-        """Verify range-based multi-select stores JSON correctly."""
+    def test_range_based_stores_in_static_props(self):
+        """Verify range-based multi-select stores range values in static_props."""
         input_obj = MultiSelectInputFactory(
             name="price_range",
             options=None,
@@ -305,9 +330,105 @@ class TestRunInputJobMultiSelect:
 
         assert data["type"] == "multi-select"
         assert data["structure"] == "range"
-        assert data["results"]["range"]["start"] == 0
-        assert data["results"]["range"]["end"] == 100
-        assert data["results"]["range"]["step"] == 10
+        assert data["files"] == []  # Range values are scalars, not in parquet
+        assert data["static_props"]["range"]["start"] == 0
+        assert data["static_props"]["range"]["end"] == 100
+        assert data["static_props"]["range"]["step"] == 10
+
+    def test_query_based_options_creates_parquet(self):
+        """Verify query-based multi-select options create parquet file."""
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(
+            name="categories",
+            sql="SELECT 'A' as cat UNION SELECT 'B' UNION SELECT 'C'",
+            source="ref(source)",
+        )
+        input_obj = MultiSelectInputFactory(
+            name="category_input",
+            options="?{ SELECT cat FROM ${ref(categories)} }",
+        )
+        project = ProjectFactory(sources=[source], models=[model], inputs=[input_obj])
+        dag = project.dag()
+        output_dir = temp_folder()
+
+        result = action(input_obj, dag, output_dir)
+
+        assert result.success
+        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+
+        with open(json_path) as f:
+            data = json.load(f)
+
+        # Query-based should have parquet file reference
+        assert len(data["files"]) == 1
+        assert data["files"][0]["key"] == "options"
+        assert data["static_props"] is None
+
+        # Verify parquet file exists and has correct content
+        parquet_path = Path(data["files"][0]["signed_data_file_url"])
+        assert parquet_path.exists()
+        df = pl.read_parquet(parquet_path)
+        assert df.shape[0] == 3
+
+
+class TestMetadataJSONStructure:
+    """Test the metadata JSON structure matches insights pattern."""
+
+    def test_static_input_json_structure(self):
+        """Verify static input JSON has correct structure aligned with insights."""
+        input_obj = SingleSelectInputFactory(name="test_input", options=["a", "b"])
+        project = ProjectFactory(inputs=[input_obj])
+        dag = project.dag()
+        output_dir = temp_folder()
+
+        action(input_obj, dag, output_dir)
+
+        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        with open(json_path) as f:
+            data = json.load(f)
+
+        # Required fields (aligned with insights pattern)
+        assert "name" in data
+        assert "files" in data
+        assert "type" in data
+        assert "structure" in data
+        assert "static_props" in data
+        assert "display" in data
+        assert "warnings" in data
+
+        # Values for static input
+        assert data["name"] == "test_input"
+        assert data["files"] == []
+        assert data["type"] == "single-select"
+        assert data["structure"] == "options"
+        assert data["static_props"]["options"] == ["a", "b"]
+
+    def test_query_input_json_structure(self):
+        """Verify query-based input JSON has correct file reference structure."""
+        source = SourceFactory(name="source")
+        model = SqlModelFactory(name="data", sql="SELECT 'x' as col", source="ref(source)")
+        input_obj = SingleSelectInputFactory(
+            name="query_test", options="?{ SELECT col FROM ${ref(data)} }"
+        )
+        project = ProjectFactory(sources=[source], models=[model], inputs=[input_obj])
+        dag = project.dag()
+        output_dir = temp_folder()
+
+        action(input_obj, dag, output_dir)
+
+        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        with open(json_path) as f:
+            data = json.load(f)
+
+        # Files array structure (like insights)
+        assert len(data["files"]) == 1
+        file_ref = data["files"][0]
+        assert "name_hash" in file_ref
+        assert "signed_data_file_url" in file_ref
+        assert "key" in file_ref
+
+        # Static props should be None for query-based
+        assert data["static_props"] is None
 
 
 class TestSQLGlotQualifySubqueryAlias:
