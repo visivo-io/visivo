@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Box, Button, Collapse, Divider, Typography, IconButton } from '@mui/material';
+import { Box, Button, Collapse, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { PropertyRow } from './PropertyRow';
 import { PropertySearch } from './PropertySearch';
@@ -36,8 +35,8 @@ export function SchemaEditor({
   // Track whether the property picker is open
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
 
-  // Get $defs from schema
-  const defs = schema?.$defs || {};
+  // Get $defs from schema (memoized to prevent unnecessary re-renders)
+  const defs = useMemo(() => schema?.$defs || {}, [schema]);
 
   // Flatten all available properties from schema
   const allProperties = useMemo(() => {

@@ -174,10 +174,10 @@ describe('SchemaEditor', () => {
     const textInputs = screen.getAllByRole('textbox');
     const nameInput = textInputs.find(input => !input.placeholder?.includes('Search'));
 
-    if (nameInput) {
-      fireEvent.change(nameInput, { target: { value: 'My Trace' } });
-      expect(onChange).toHaveBeenCalled();
-    }
+    // Ensure we found the input and test it
+    expect(nameInput).toBeTruthy();
+    fireEvent.change(nameInput, { target: { value: 'My Trace' } });
+    expect(onChange).toHaveBeenCalled();
   });
 
   it('removes property when remove button clicked', () => {

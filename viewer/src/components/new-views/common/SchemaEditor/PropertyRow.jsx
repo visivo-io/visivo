@@ -71,9 +71,6 @@ export function PropertyRow({
     onChange(newValue);
   };
 
-  // Get display name from path (last segment)
-  const displayName = path.split('.').pop();
-
   // Current mode based on value
   const currentMode = isQueryMode ? 'query' : 'static';
 

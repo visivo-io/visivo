@@ -131,7 +131,6 @@ export function PropertySearch({ properties = [], selectedPaths = new Set(), onT
     if (groupProperties.length === 0) return null;
 
     const isExpanded = expandedGroups.has(groupPath);
-    const groupName = groupPath || 'Properties';
     const selectedCount = groupProperties.filter(p => selectedPaths.has(p.path)).length;
 
     return (

@@ -35,10 +35,10 @@ export function BooleanField({ value, onChange, schema, label, description, disa
           size="small"
           disabled={disabled}
         >
-          <ToggleButton value="true" aria-label="true">
+          <ToggleButton value="true" aria-label="Set to true">
             True
           </ToggleButton>
-          <ToggleButton value="false" aria-label="false">
+          <ToggleButton value="false" aria-label="Set to false">
             False
           </ToggleButton>
         </ToggleButtonGroup>

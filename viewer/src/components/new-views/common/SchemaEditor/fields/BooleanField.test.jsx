@@ -27,26 +27,26 @@ describe('BooleanField', () => {
 
   it('renders True and False buttons', () => {
     render(<BooleanField {...defaultProps} />);
-    expect(screen.getByRole('button', { name: 'true' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'false' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set to true/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set to false/i })).toBeInTheDocument();
   });
 
   it('shows True selected when value is true', () => {
     render(<BooleanField {...defaultProps} value={true} />);
-    const trueButton = screen.getByRole('button', { name: 'true' });
+    const trueButton = screen.getByRole('button', { name: /set to true/i });
     expect(trueButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows False selected when value is false', () => {
     render(<BooleanField {...defaultProps} value={false} />);
-    const falseButton = screen.getByRole('button', { name: 'false' });
+    const falseButton = screen.getByRole('button', { name: /set to false/i });
     expect(falseButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows neither selected when value is undefined', () => {
     render(<BooleanField {...defaultProps} value={undefined} />);
-    const trueButton = screen.getByRole('button', { name: 'true' });
-    const falseButton = screen.getByRole('button', { name: 'false' });
+    const trueButton = screen.getByRole('button', { name: /set to true/i });
+    const falseButton = screen.getByRole('button', { name: /set to false/i });
     expect(trueButton).toHaveAttribute('aria-pressed', 'false');
     expect(falseButton).toHaveAttribute('aria-pressed', 'false');
   });
@@ -55,7 +55,7 @@ describe('BooleanField', () => {
     const onChange = jest.fn();
     render(<BooleanField {...defaultProps} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'true' }));
+    fireEvent.click(screen.getByRole('button', { name: /set to true/i }));
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
@@ -63,13 +63,13 @@ describe('BooleanField', () => {
     const onChange = jest.fn();
     render(<BooleanField {...defaultProps} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'false' }));
+    fireEvent.click(screen.getByRole('button', { name: /set to false/i }));
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
   it('can be disabled', () => {
     render(<BooleanField {...defaultProps} disabled={true} />);
-    expect(screen.getByRole('button', { name: 'true' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'false' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /set to true/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /set to false/i })).toBeDisabled();
   });
 });
