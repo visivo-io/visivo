@@ -2,7 +2,7 @@
  * Schema Registry - Bundles all JSON schemas for chart types
  */
 
-// Import all schemas
+// Import all schemas (copied from ../visivo/schema/ at build time)
 import areaSchema from './area.schema.json';
 import barSchema from './bar.schema.json';
 import barpolarSchema from './barpolar.schema.json';
@@ -20,6 +20,7 @@ import densitymapboxSchema from './densitymapbox.schema.json';
 import funnelSchema from './funnel.schema.json';
 import funnelareaSchema from './funnelarea.schema.json';
 import heatmapSchema from './heatmap.schema.json';
+import heatmapglSchema from './heatmapgl.schema.json';
 import histogramSchema from './histogram.schema.json';
 import histogram2dSchema from './histogram2d.schema.json';
 import histogram2dcontourSchema from './histogram2dcontour.schema.json';
@@ -33,6 +34,7 @@ import ohlcSchema from './ohlc.schema.json';
 import parcatsSchema from './parcats.schema.json';
 import parcoordsSchema from './parcoords.schema.json';
 import pieSchema from './pie.schema.json';
+import pointcloudSchema from './pointcloud.schema.json';
 import sankeySchema from './sankey.schema.json';
 import scatterSchema from './scatter.schema.json';
 import scatter3dSchema from './scatter3d.schema.json';
@@ -75,6 +77,7 @@ export const SCHEMAS = {
   funnel: funnelSchema,
   funnelarea: funnelareaSchema,
   heatmap: heatmapSchema,
+  heatmapgl: heatmapglSchema,
   histogram: histogramSchema,
   histogram2d: histogram2dSchema,
   histogram2dcontour: histogram2dcontourSchema,
@@ -88,6 +91,7 @@ export const SCHEMAS = {
   parcats: parcatsSchema,
   parcoords: parcoordsSchema,
   pie: pieSchema,
+  pointcloud: pointcloudSchema,
   sankey: sankeySchema,
   scatter: scatterSchema,
   scatter3d: scatter3dSchema,
@@ -136,6 +140,7 @@ export const CHART_TYPES = [
   { value: 'bar', label: 'Bar' },
   { value: 'pie', label: 'Pie' },
   { value: 'heatmap', label: 'Heatmap' },
+  { value: 'heatmapgl', label: 'Heatmap GL' },
   { value: 'histogram', label: 'Histogram' },
   { value: 'box', label: 'Box Plot' },
   { value: 'violin', label: 'Violin' },
@@ -158,6 +163,7 @@ export const CHART_TYPES = [
   { value: 'streamtube', label: 'Streamtube' },
   { value: 'volume', label: 'Volume' },
   { value: 'isosurface', label: 'Isosurface' },
+  { value: 'pointcloud', label: 'Point Cloud' },
   { value: 'scattergeo', label: 'Scatter Geo' },
   { value: 'choropleth', label: 'Choropleth' },
   { value: 'scattermap', label: 'Scatter Map' },
