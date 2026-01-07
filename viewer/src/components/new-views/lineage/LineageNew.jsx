@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import ReactFlow, { Background, Controls, MiniMap } from 'react-flow-renderer';
+import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
+import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
 import SourceNode from './SourceNode';

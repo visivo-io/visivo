@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
