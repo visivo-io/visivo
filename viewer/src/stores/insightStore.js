@@ -1,94 +1,96 @@
-import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
-import { ContextString } from '../utils/contextString';
+import * as insightsApi from '../api/insights';
 
+/**
+ * Insight Store Slice
+ *
+ * Manages Insight configurations independently (for editing).
+ * Uses the /api/insights/ endpoints via InsightManager backend.
+ */
 const createInsightSlice = (set, get) => ({
-  insights: {},
-  inputs: null,
-  inputOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
-  db: null,
+  // State
+  insightConfigs: [], // All insights with status (NEW, MODIFIED, PUBLISHED)
+  insightConfigsLoading: false,
+  insightConfigsError: null,
+  editingInsightConfig: null, // Insight being edited (null = create mode)
+  insightConfigModalOpen: false,
 
-  setDB: db => set({ db }),
+  // Fetch all insights from API
+  fetchInsightConfigs: async () => {
+    set({ insightConfigsLoading: true, insightConfigsError: null });
+    try {
+      const data = await insightsApi.fetchAllInsights();
+      set({ insightConfigs: data.insights || [], insightConfigsLoading: false });
+    } catch (error) {
+      set({ insightConfigsError: error.message, insightConfigsLoading: false });
+    }
+  },
 
-  // Set options for a specific input
-  setInputOptions: (inputName, options) =>
-    set(state => ({
-      inputOptions: {
-        ...state.inputOptions,
-        [inputName]: options,
-      },
-    })),
+  // Save insight to cache
+  saveInsightConfig: async (name, config) => {
+    try {
+      const result = await insightsApi.saveInsight(name, config);
+      // Refresh insights list to get updated status
+      await get().fetchInsightConfigs();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
+      return { success: true, result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
 
-  setInsights: newInsights =>
-    set(state => ({
-      insights: { ...state.insights, ...newInsights },
-    })),
+  // Mark insight for deletion (will be removed from YAML on publish)
+  deleteInsightConfig: async name => {
+    try {
+      await insightsApi.deleteInsight(name);
+      await get().fetchInsightConfigs();
+      // Trigger publish status check
+      if (get().checkPublishStatus) {
+        await get().checkPublishStatus();
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
 
-  updateInsight: (insightName, dataObj) =>
-    set(state => ({
-      insights: {
-        ...state.insights,
-        [insightName]: {
-          ...(state.insights[insightName] || {}),
-          ...dataObj,
-        },
-      },
-    })),
+  // Open modal for editing existing insight
+  openEditInsightConfigModal: insight => {
+    set({
+      editingInsightConfig: insight,
+      insightConfigModalOpen: true,
+    });
+  },
 
-  setDefaultInputValue: (inputName, value) =>
-    set(state => {
-      const newInputs = { ...state.inputs, [inputName]: value };
-      return { inputs: newInputs };
-    }),
-  setInputValue: (inputName, value) =>
-    set(state => {
-      const newInputs = { ...state.inputs, [inputName]: value };
+  // Open modal for creating new insight
+  openCreateInsightConfigModal: () => {
+    set({
+      editingInsightConfig: null,
+      insightConfigModalOpen: true,
+    });
+  },
 
-      setTimeout(async () => {
-        const { insights, db } = get();
+  // Close modal
+  closeInsightConfigModal: () => {
+    set({
+      editingInsightConfig: null,
+      insightConfigModalOpen: false,
+    });
+  },
 
-        const dependentInsights = Object.entries(insights)
-          .filter(([_, insight]) =>
-            insight.interactions?.some(i => {
-              if (!ContextString.isContextString(i.filter)) return true;
-              const ctx = new ContextString(i.filter);
-              return ctx.getReference() === inputName;
-            })
-          )
-          .map(([name]) => name);
+  // Get insight by name
+  getInsightConfigByName: name => {
+    const { insightConfigs } = get();
+    return insightConfigs.find(i => i.name === name);
+  },
 
-        for (const insightName of dependentInsights) {
-          const insight = insights[insightName];
-          let post_query = prepPostQuery(insight, newInputs);
-          try {
-            const result = await runDuckDBQuery(db, post_query, 3, 300);
-            const processedRows =
-              result.toArray().map(row => {
-                const rowData = row.toJSON();
-                return Object.fromEntries(
-                  Object.entries(rowData).map(([key, value]) => [
-                    key,
-                    typeof value === 'bigint' ? value.toString() : value,
-                  ])
-                );
-              }) || [];
-
-            set(s => ({
-              insights: {
-                ...s.insights,
-                [insightName]: {
-                  ...s.insights[insightName],
-                  insight: processedRows,
-                },
-              },
-            }));
-          } catch (err) {
-            console.error(`Query for ${insightName} failed:`, err);
-          }
-        }
-      }, 0);
-
-      return { inputs: newInputs };
-    }),
+  // Get status for a specific insight
+  getInsightConfigStatus: name => {
+    const insight = get().getInsightConfigByName(name);
+    return insight?.status || null;
+  },
 });
 
 export default createInsightSlice;

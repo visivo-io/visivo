@@ -1,14 +1,14 @@
 import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
-import { fetchInsights as defaultFetchInsights } from '../api/insights';
+import { fetchInsightJobs as defaultFetchInsightJobs } from '../api/insightJobs';
 import { fetchInputOptions as defaultFetchInputOptions } from '../api/inputs';
 
 // Default query functions
 const defaultQueries = {
   fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
-  fetchInsights: defaultFetchInsights,
+  fetchInsightJobs: defaultFetchInsightJobs,
   fetchInputOptions: defaultFetchInputOptions,
 };
 
@@ -21,21 +21,21 @@ const QueryContext = createContext(defaultQueries);
  *
  * @param {Object} props
  * @param {Function} props.fetchTraces - Custom traces fetch function
- * @param {Function} props.fetchInsights - Custom insights fetch function
+ * @param {Function} props.fetchInsightJobs - Custom insight jobs fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
  * @param {Function} props.fetchInputOptions - Custom input options fetch function
  * @param {ReactNode} props.children
  */
 export function QueryProvider({
   fetchTraces,
-  fetchInsights,
+  fetchInsightJobs,
   fetchDashboard,
   fetchInputOptions,
   children,
 }) {
   const queries = {
     fetchTraces: fetchTraces || defaultFetchTraces,
-    fetchInsights: fetchInsights || defaultFetchInsights,
+    fetchInsightJobs: fetchInsightJobs || defaultFetchInsightJobs,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
     fetchInputOptions: fetchInputOptions || defaultFetchInputOptions,
   };
@@ -45,7 +45,7 @@ export function QueryProvider({
 
 /**
  * Hook to access query functions
- * @returns {Object} Object containing fetchTraces, fetchInsights and fetchDashboard functions
+ * @returns {Object} Object containing fetchTraces, fetchInsightJobs, fetchDashboard, and fetchInputOptions functions
  */
 export function useQueries() {
   const context = useContext(QueryContext);
@@ -65,13 +65,16 @@ export function useFetchTraces() {
 }
 
 /**
- * Hook to get the fetchInsights function
- * @returns {Function} fetchInsights function
+ * Hook to get the fetchInsightJobs function
+ * @returns {Function} fetchInsightJobs function
  */
-export function useFetchInsights() {
-  const { fetchInsights } = useQueries();
-  return fetchInsights;
+export function useFetchInsightJobs() {
+  const { fetchInsightJobs } = useQueries();
+  return fetchInsightJobs;
 }
+
+// Backward compatibility alias
+export const useFetchInsights = useFetchInsightJobs;
 
 /**
  * Hook to get the fetchDashboard function
