@@ -30,9 +30,6 @@ jest.mock('./inputs/RangeSliderInput', () => ({ label }) => (
 
 // Store mock state - needs to be accessible both inside mock factory and in tests
 const mockSetInputValue = jest.fn();
-const mockSetInputOptions = jest.fn();
-const mockSetDefaultInputValue = jest.fn();
-const mockSetInputData = jest.fn();
 
 jest.mock('../../stores/store', () => {
   const storeState = {

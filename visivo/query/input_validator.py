@@ -35,8 +35,15 @@ MAX_COMBINATIONS = 96
 
 
 def get_input_options(input_obj: Input, output_dir: str) -> List[str]:
-    """Load input options from JSON file."""
+    """Load input options from JSON file.
+
+    Supports three data sources:
+    1. static_props.options - static list-based inputs
+    2. static_props.range - range-based inputs (returns start/end as sample values)
+    3. files array - query-based inputs (loads from parquet files)
+    """
     logger = Logger.instance()
+    import polars as pl
 
     input_dir = Path(output_dir) / "inputs"
     json_path = input_dir / f"{input_obj.name_hash()}.json"
@@ -52,31 +59,41 @@ def get_input_options(input_obj: Input, output_dir: str) -> List[str]:
     with open(json_path, "r") as f:
         data = json.load(f)
 
-    results = data.get("results", {})
+    static_props = data.get("static_props") or {}
+    files = data.get("files") or []
 
-    # Handle list-based options
-    if "options" in results:
-        options = results["options"]
+    # Handle static list-based options (stored in static_props.options)
+    if "options" in static_props:
+        options = static_props["options"]
         return [str(opt) for opt in options]
 
-    # Handle range-based (return sample values)
-    if "range" in results:
-        range_config = results["range"]
+    # Handle range-based inputs (stored in static_props.range)
+    if "range" in static_props:
+        range_config = static_props["range"]
         start = range_config.get("start", 0)
         end = range_config.get("end", 100)
-        step = range_config.get("step", 10)
 
         try:
             start = float(start)
             end = float(end)
-            step = float(step)
             return [str(start), str(end)]
         except (ValueError, TypeError):
             return ["0", "100"]
 
+    # Handle query-based inputs (stored in parquet files)
+    for file_info in files:
+        if file_info.get("key") == "options":
+            parquet_path = file_info.get("signed_data_file_url")
+            if parquet_path and Path(parquet_path).exists():
+                df = pl.read_parquet(parquet_path)
+                if df.shape[1] > 0:
+                    # Get the first column values as strings
+                    col_name = df.columns[0]
+                    return df[col_name].cast(pl.Utf8).to_list()
+
     raise ValueError(
         f"Invalid input JSON structure for '{input_obj.name}': "
-        f"missing 'options' or 'range' in results"
+        f"missing 'options' or 'range' in static_props, and no options parquet file found"
     )
 
 

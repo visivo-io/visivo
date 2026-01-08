@@ -221,7 +221,10 @@ export const useInputOptions = (input, projectId) => {
     };
 
     loadOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    // We intentionally use specific properties instead of the full `input` object
+    // to avoid unnecessary re-runs when the object reference changes but values don't
     input?.name,
     input?.name_hash,
     input?.display?.default?.value,

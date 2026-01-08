@@ -168,14 +168,15 @@ class TestInputOptionsLoading:
             )
 
             json_data = {
-                "input_name": input_obj.name,
-                "input_hash": input_obj.name_hash(),
+                "name": input_obj.name,
+                "files": [],
                 "type": "single-select",
                 "structure": "options",
-                "results": {
+                "static_props": {
                     "options": ["electronics", "books", "toys"],
-                    "display": {"type": "dropdown", "default": {"value": "electronics"}},
                 },
+                "display": {"type": "dropdown", "default": {"value": "electronics"}},
+                "warnings": [],
             }
             json_path = input_dir / f"{input_obj.name_hash()}.json"
             with open(json_path, "w") as f:
@@ -203,14 +204,15 @@ class TestInputOptionsLoading:
             )
 
             json_data = {
-                "input_name": input_obj.name,
-                "input_hash": input_obj.name_hash(),
+                "name": input_obj.name,
+                "files": [],
                 "type": "multi-select",
                 "structure": "range",
-                "results": {
+                "static_props": {
                     "range": {"start": 0, "end": 100, "step": 10},
-                    "display": {"type": "range-slider", "default": {"start": 0, "end": 100}},
                 },
+                "display": {"type": "range-slider", "default": {"start": 0, "end": 100}},
+                "warnings": [],
             }
             json_path = input_dir / f"{input_obj.name_hash()}.json"
             with open(json_path, "w") as f:
@@ -241,11 +243,13 @@ class TestValidationIntegration:
             )
 
             json_data = {
-                "input_name": input_obj.name,
-                "input_hash": input_obj.name_hash(),
+                "name": input_obj.name,
+                "files": [],
                 "type": "single-select",
                 "structure": "options",
-                "results": {"options": ["electronics", "books"]},
+                "static_props": {"options": ["electronics", "books"]},
+                "display": {"type": "dropdown", "default": {"value": "electronics"}},
+                "warnings": [],
             }
             json_path = input_dir / f"{input_obj.name_hash()}.json"
             with open(json_path, "w") as f:
@@ -298,11 +302,13 @@ class TestValidationIntegration:
             )
 
             json_data = {
-                "input_name": input_obj.name,
-                "input_hash": input_obj.name_hash(),
+                "name": input_obj.name,
+                "files": [],
                 "type": "single-select",
                 "structure": "options",
-                "results": {"options": ["electronics", "books"]},
+                "static_props": {"options": ["electronics", "books"]},
+                "display": {"type": "dropdown", "default": {"value": "electronics"}},
+                "warnings": [],
             }
             json_path = input_dir / f"{input_obj.name_hash()}.json"
             with open(json_path, "w") as f:

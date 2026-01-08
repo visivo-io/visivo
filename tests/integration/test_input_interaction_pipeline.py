@@ -50,7 +50,8 @@ class TestInputInteractionPipeline:
             data = json.load(f)
         assert data["type"] == "single-select", f"Expected single-select, got {data['type']}"
         assert data["structure"] == "options", f"Expected options structure"
-        assert set(data["results"]["options"]) == {"10", "20", "30"}, "Options don't match"
+        # New structure uses static_props.options for static options
+        assert set(data["static_props"]["options"]) == {"10", "20", "30"}, "Options don't match"
 
     def test_js_template_literal_conversion(self):
         """Phase 2: Verify ${ref(input).accessor} converts to ${input.accessor} in interactions."""
