@@ -26,6 +26,7 @@
     "autoprefixer": "^10.4.23",
     "copy-to-clipboard": "^3.3.3",
     "dagre": "^0.8.5",
+    "date-fns": "^4.1.0",
     "export-to-csv": "^1.4.0",
     "flowbite-react": "^0.12.15",
     "html2canvas-pro": "^1.6.3",

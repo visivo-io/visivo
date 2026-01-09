@@ -1,6 +1,5 @@
-from datetime import date
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Optional
 
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
@@ -8,21 +7,20 @@ from visivo.models.base.parent_model import ParentModel
 
 
 class InputTypes(str, Enum):
-    DROPDOWN = "dropdown"
+    SINGLE_SELECT = "single-select"
+    MULTI_SELECT = "multi-select"
 
 
 class Input(NamedModel, ParentModel):
     """Base class for all input types."""
 
     type: InputTypes = Field(
-        default=InputTypes.DROPDOWN,
-        description="Type of input component (dropdown)",
+        description="Type of input component (single-select or multi-select)",
     )
     label: Optional[str] = Field(
         default=None,
         description="Label shown to the user",
     )
-    default: Optional[Union[str, int, float, bool, date, List[str]]] = None
 
     def child_items(self):
         """

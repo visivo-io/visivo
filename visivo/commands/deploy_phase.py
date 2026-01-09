@@ -564,7 +564,7 @@ async def process_insights_async(
 
 async def process_inputs_async(inputs, output_dir, project_id, form_headers, json_headers, host):
     """
-    Coordinates the asynchronous upload of input parquet files and creation of input records.
+    Coordinates the asynchronous upload of input JSON files and creation of input records.
     """
     batch_size = 20
 
@@ -572,13 +572,13 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     input_files = []
     for input_obj in inputs:
         input_hash = input_obj.name_hash()
-        input_path = f"{output_dir}/inputs/{input_hash}.parquet"
+        input_path = f"{output_dir}/inputs/{input_hash}.json"
         if os.path.exists(input_path):
             input_files.append(
                 {
                     "name": input_obj.name,
                     "name_hash": input_hash,
-                    "file_path": f"inputs/{input_hash}.parquet",
+                    "file_path": f"inputs/{input_hash}.json",
                 }
             )
 
@@ -754,6 +754,51 @@ def collect_models_for_insights(insights, dag, output_dir):
     return list(models_dict.values())
 
 
+def collect_parquet_files_for_inputs(inputs, output_dir):
+    """
+    Collect parquet files for inputs that have query-based options.
+
+    Reads each input's metadata JSON to find parquet file references
+    in the files[] array, then returns a list of file info for upload.
+    """
+    parquet_files = {}
+
+    for input_obj in inputs:
+        input_hash = input_obj.name_hash()
+        metadata_path = f"{output_dir}/inputs/{input_hash}.json"
+
+        if not os.path.exists(metadata_path):
+            continue
+
+        try:
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+
+            # Check for parquet files in the files array
+            if "files" in metadata and isinstance(metadata["files"], list):
+                for file_ref in metadata["files"]:
+                    if "name_hash" in file_ref and "signed_data_file_url" in file_ref:
+                        file_hash = file_ref["name_hash"]
+                        # The signed_data_file_url contains the local path like
+                        # {output_dir}/files/{hash}_options.parquet
+                        file_path = file_ref["signed_data_file_url"]
+                        # Extract the relative path from output_dir
+                        if file_path.startswith(output_dir):
+                            file_path = file_path[len(output_dir) + 1 :]
+
+                        if os.path.exists(f"{output_dir}/{file_path}"):
+                            parquet_files[file_hash] = {
+                                "name": f"{input_obj.name}_{file_ref.get('key', 'data')}",
+                                "name_hash": file_hash,
+                                "file_path": file_path,
+                            }
+        except (json.JSONDecodeError, IOError):
+            # Skip inputs with invalid or unreadable metadata
+            continue
+
+    return list(parquet_files.values())
+
+
 def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -885,7 +930,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
             "info",
         )
 
-        # Process inputs
+        # Process inputs (metadata JSON files)
         Logger.instance().info(f"")
         send_progress("Processing input uploads...", "info")
         process_inputs_start_time = time()
@@ -903,6 +948,27 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
             )
         send_progress(
             f"Input uploads completed in {time() - process_inputs_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Process input parquet files (for query-based options)
+        Logger.instance().info(f"")
+        send_progress("Processing input parquet files...", "info")
+        process_input_parquet_start_time = time()
+        input_parquet_files = collect_parquet_files_for_inputs(inputs, output_dir)
+        if input_parquet_files:
+            asyncio.run(
+                process_models_async(
+                    models=input_parquet_files,
+                    output_dir=output_dir,
+                    project_id=project_id,
+                    form_headers=form_headers,
+                    json_headers=json_headers,
+                    host=host,
+                )
+            )
+        send_progress(
+            f"Input parquet uploads completed in {time() - process_input_parquet_start_time:.2f} seconds",
             "info",
         )
 

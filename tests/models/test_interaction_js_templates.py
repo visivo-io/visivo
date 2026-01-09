@@ -9,10 +9,10 @@ from tests.factories.model_factories import (
 
 class TestJSTemplateLiterals:
     def test_filter_with_input_converts_to_template_literal(self):
-        """Verify ${ref(input)} becomes ${input}"""
+        """Verify ${ref(input).value} becomes ${input.value}"""
         # ARRANGE
-        input_obj = InputFactory(name="min_value", default="5")
-        interaction = InsightInteraction(filter="?{x > ${ref(min_value)}}")
+        input_obj = InputFactory(name="min_value", options=["5", "10", "15"])
+        interaction = InsightInteraction(filter="?{x > ${ref(min_value).value}}")
         project = ProjectFactory(inputs=[input_obj])
         dag = project.dag()
 
@@ -20,15 +20,15 @@ class TestJSTemplateLiterals:
         result = interaction.field_values_with_js_template_literals(dag)
 
         # ASSERT
-        assert result["filter"] == "x > ${min_value}"
-        assert "${ref(min_value)}" not in result["filter"]
+        assert result["filter"] == "x > ${min_value.value}"
+        assert "${ref(min_value).value}" not in result["filter"]
 
     def test_split_with_input_converts_case_expression(self):
         """Verify CASE with input converts"""
         # ARRANGE
-        input_obj = InputFactory(name="threshold", default="100")
+        input_obj = InputFactory(name="threshold", options=["100", "200", "300"])
         interaction = InsightInteraction(
-            split="?{CASE WHEN x > ${ref(threshold)} THEN 'high' ELSE 'low' END}"
+            split="?{CASE WHEN x > ${ref(threshold).value} THEN 'high' ELSE 'low' END}"
         )
         project = ProjectFactory(inputs=[input_obj])
         dag = project.dag()
@@ -37,14 +37,14 @@ class TestJSTemplateLiterals:
         result = interaction.field_values_with_js_template_literals(dag)
 
         # ASSERT
-        assert "${threshold}" in result["split"]
-        assert "${ref(threshold)}" not in result["split"]
+        assert "${threshold.value}" in result["split"]
+        assert "${ref(threshold).value}" not in result["split"]
 
     def test_sort_with_input_converts(self):
         """Verify sort interaction with input"""
         # ARRANGE
-        input_obj = InputFactory(name="sort_field", default="name")
-        interaction = InsightInteraction(sort="?{${ref(sort_field)}}")
+        input_obj = InputFactory(name="sort_field", options=["name", "date", "amount"])
+        interaction = InsightInteraction(sort="?{${ref(sort_field).value}}")
         project = ProjectFactory(inputs=[input_obj])
         dag = project.dag()
 
@@ -52,8 +52,8 @@ class TestJSTemplateLiterals:
         result = interaction.field_values_with_js_template_literals(dag)
 
         # ASSERT
-        assert result["sort"] == "${sort_field}"
-        assert "${ref(sort_field)}" not in result["sort"]
+        assert result["sort"] == "${sort_field.value}"
+        assert "${ref(sort_field).value}" not in result["sort"]
 
     def test_non_input_refs_unchanged(self):
         """Verify model refs are left unchanged"""
@@ -74,8 +74,8 @@ class TestJSTemplateLiterals:
         """Verify mixed refs: inputs converted, models unchanged"""
         # ARRANGE
         model = SqlModelFactory(name="data", sql="SELECT 1 as value")
-        input_obj = InputFactory(name="threshold", default="10")
-        interaction = InsightInteraction(filter="?{${ref(data).value} > ${ref(threshold)}}")
+        input_obj = InputFactory(name="threshold", options=["10", "20", "30"])
+        interaction = InsightInteraction(filter="?{${ref(data).value} > ${ref(threshold).value}}")
         project = ProjectFactory(models=[model], inputs=[input_obj])
         dag = project.dag()
 
@@ -85,15 +85,17 @@ class TestJSTemplateLiterals:
         # ASSERT
         # Model ref unchanged, input ref converted
         assert "${ref(data).value}" in result["filter"]
-        assert "${threshold}" in result["filter"]
-        assert "${ref(threshold)}" not in result["filter"]
+        assert "${threshold.value}" in result["filter"]
+        assert "${ref(threshold).value}" not in result["filter"]
 
     def test_multiple_inputs_in_same_expression(self):
         """Verify multiple inputs all converted"""
         # ARRANGE
-        input1 = InputFactory(name="min_val", default="0")
-        input2 = InputFactory(name="max_val", default="100")
-        interaction = InsightInteraction(filter="?{x > ${ref(min_val)} AND x < ${ref(max_val)}}")
+        input1 = InputFactory(name="min_val", options=["0", "5", "10"])
+        input2 = InputFactory(name="max_val", options=["100", "200", "300"])
+        interaction = InsightInteraction(
+            filter="?{x > ${ref(min_val).value} AND x < ${ref(max_val).value}}"
+        )
         project = ProjectFactory(inputs=[input1, input2])
         dag = project.dag()
 
@@ -101,10 +103,10 @@ class TestJSTemplateLiterals:
         result = interaction.field_values_with_js_template_literals(dag)
 
         # ASSERT
-        assert "${min_val}" in result["filter"]
-        assert "${max_val}" in result["filter"]
-        assert "${ref(min_val)}" not in result["filter"]
-        assert "${ref(max_val)}" not in result["filter"]
+        assert "${min_val.value}" in result["filter"]
+        assert "${max_val.value}" in result["filter"]
+        assert "${ref(min_val).value}" not in result["filter"]
+        assert "${ref(max_val).value}" not in result["filter"]
 
     def test_no_inputs_returns_unchanged(self):
         """Verify no changes when no inputs"""
@@ -124,11 +126,11 @@ class TestJSTemplateLiterals:
     def test_returns_dict_with_filter_split_sort(self):
         """Verify returns dict with correct keys"""
         # ARRANGE
-        input_obj = InputFactory(name="val", default="5")
+        input_obj = InputFactory(name="val", options=["5", "10", "15"])
         interaction = InsightInteraction(
-            filter="?{x > ${ref(val)}}",
+            filter="?{x > ${ref(val).value}}",
             split="?{category}",
-            sort="?{${ref(val)}}",
+            sort="?{${ref(val).value}}",
         )
         project = ProjectFactory(inputs=[input_obj])
         dag = project.dag()
@@ -140,9 +142,9 @@ class TestJSTemplateLiterals:
         assert "filter" in result
         assert "split" in result
         assert "sort" in result
-        assert result["filter"] == "x > ${val}"
+        assert result["filter"] == "x > ${val.value}"
         assert result["split"] == "category"
-        assert result["sort"] == "${val}"
+        assert result["sort"] == "${val.value}"
 
 
 class TestJSTemplateLiteralMethod:

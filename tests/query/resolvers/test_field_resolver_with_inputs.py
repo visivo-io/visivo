@@ -5,7 +5,7 @@ import json
 import os
 from visivo.models.project import Project
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.query.resolvers.field_resolver import FieldResolver
 from tests.factories.model_factories import SourceFactory
 
@@ -26,7 +26,9 @@ class TestFieldResolverWithInputs:
             source=f"ref({source.name})",
         )
 
-        threshold_input = DropdownInput(name="threshold", label="Threshold", options=["5", "10"])
+        threshold_input = SingleSelectInput(
+            name="threshold", label="Threshold", options=["5", "10"]
+        )
 
         project = Project(
             name="test_project",

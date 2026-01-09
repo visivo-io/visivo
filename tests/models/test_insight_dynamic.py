@@ -6,7 +6,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.dimension import Dimension
 from tests.factories.model_factories import SourceFactory
 
@@ -128,7 +128,7 @@ class TestInsightDynamicMethods:
             source=f"ref({source.name})",
         )
 
-        year_input = DropdownInput(
+        year_input = SingleSelectInput(
             name="selected_year", label="Select Year", options=["2023", "2024"]
         )
 
@@ -196,7 +196,7 @@ class TestInsightDynamicMethods:
             source=f"ref({source.name})",
         )
 
-        year_input = DropdownInput(
+        year_input = SingleSelectInput(
             name="selected_year", label="Select Year", options=["2023", "2024"]
         )
 

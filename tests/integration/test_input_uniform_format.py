@@ -2,9 +2,9 @@
 Integration tests for uniform input format in insight queries (Phase 2).
 
 Tests verify that insights with inputs in BOTH props and interactions
-generate uniform ${input_name} format in the final query, not {'_0': ...} placeholders.
+generate uniform ${input_name.accessor} format in the final query, not {'_0': ...} placeholders.
 
-This test suite catches the bug where interactions use JS template literals (${input})
+This test suite catches the bug where interactions use JS template literals (${input.accessor})
 but props use placeholder dictionaries ({'_0': ...}).
 """
 
@@ -27,7 +27,7 @@ from visivo.query.insight.insight_query_builder import InsightQueryBuilder
 
 class TestInputUniformFormat:
     """
-    Integration tests verifying uniform ${input_name} format in insight queries.
+    Integration tests verifying uniform ${input_name.accessor} format in insight queries.
 
     These tests verify that the InsightQueryBuilder generates consistent
     input references regardless of whether inputs appear in props or interactions.
@@ -69,7 +69,7 @@ class TestInputUniformFormat:
         }
 
     def test_props_only_with_input_generates_dollar_format(self, setup_basic_project):
-        """Test that props-only input refs generate ${input_name} format."""
+        """Test that props-only input refs generate ${input_name.accessor} format."""
         # ARRANGE
         setup = setup_basic_project
         threshold_input = InputFactory(name="threshold", options=["100", "500", "1000"])
@@ -81,7 +81,7 @@ class TestInputUniformFormat:
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
                 marker={
-                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold).value} THEN 'green' ELSE 'red' END}"
                 },
             ),
         )
@@ -100,15 +100,15 @@ class TestInputUniformFormat:
         builder.resolve()
         post_query = builder.post_query
 
-        # ASSERT - Should use ${threshold} format
+        # ASSERT - Should use ${threshold.value} format
         assert post_query is not None, "post_query should not be None"
-        assert "${threshold}" in post_query, "Should contain ${threshold} format"
+        assert "${threshold.value}" in post_query, "Should contain ${threshold.value} format"
         # Should NOT contain old placeholder format
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
         assert "{'_0'" not in post_query, "Should not contain {'_0' dict format"
 
     def test_interactions_only_with_input_generates_dollar_format(self, setup_basic_project):
-        """Test that interaction-only input refs generate ${input_name} format."""
+        """Test that interaction-only input refs generate ${input_name.accessor} format."""
         # ARRANGE
         setup = setup_basic_project
         min_value_input = InputFactory(name="min_value", options=["10", "50", "100"])
@@ -121,7 +121,7 @@ class TestInputUniformFormat:
                 y="?{${ref(orders).amount}}",
             ),
             interactions=[
-                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(min_value)}}"),
+                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(min_value).value}}"),
             ],
         )
 
@@ -138,18 +138,18 @@ class TestInputUniformFormat:
         builder.resolve()
         post_query = builder.post_query
 
-        # ASSERT - Should use ${min_value} format
+        # ASSERT - Should use ${min_value.value} format
         assert post_query is not None
-        assert "${min_value}" in post_query, "Should contain ${min_value} format"
+        assert "${min_value.value}" in post_query, "Should contain ${min_value.value} format"
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
         assert "{'_0'" not in post_query, "Should not contain {'_0' dict format"
 
     def test_props_and_interactions_both_use_uniform_format(self, setup_basic_project):
         """
-        CRITICAL TEST: Verify props AND interactions both use ${input_name} format.
+        CRITICAL TEST: Verify props AND interactions both use ${input_name.accessor} format.
 
         This is the main bug scenario - props might use {'_0': ...} while
-        interactions use ${input_name}, causing inconsistency.
+        interactions use ${input_name.accessor}, causing inconsistency.
         """
         # ARRANGE
         setup = setup_basic_project
@@ -163,12 +163,12 @@ class TestInputUniformFormat:
                 y="?{${ref(orders).amount}}",
                 # Input in props
                 marker={
-                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold).value} THEN 'green' ELSE 'red' END}"
                 },
             ),
             # Input in interactions
             interactions=[
-                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(threshold)}}"),
+                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(threshold).value}}"),
             ],
         )
 
@@ -185,14 +185,14 @@ class TestInputUniformFormat:
         builder.resolve()
         post_query = builder.post_query
 
-        # ASSERT - Both should use ${threshold} format
+        # ASSERT - Both should use ${threshold.value} format
         assert post_query is not None
 
-        # Count occurrences of ${threshold}
-        threshold_count = post_query.count("${threshold}")
+        # Count occurrences of ${threshold.value}
+        threshold_count = post_query.count("${threshold.value}")
         assert (
             threshold_count >= 2
-        ), f"Expected at least 2 occurrences of ${{threshold}}, got {threshold_count}"
+        ), f"Expected at least 2 occurrences of ${{threshold.value}}, got {threshold_count}"
 
         # Should NOT contain any placeholder dict format
         assert "'_0'" not in post_query, "Should not contain '_0' placeholder"
@@ -219,14 +219,14 @@ class TestInputUniformFormat:
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
                 # Input in props
-                text="?{CONCAT('Category: ', ${ref(category)})}",
+                text="?{CONCAT('Category: ', ${ref(category).value})}",
             ),
             # Multiple inputs in interactions
             interactions=[
                 InsightInteraction(
-                    filter="?{${ref(orders).amount} >= ${ref(min_value)} AND ${ref(orders).amount} <= ${ref(max_value)}}"
+                    filter="?{${ref(orders).amount} >= ${ref(min_value).value} AND ${ref(orders).amount} <= ${ref(max_value).value}}"
                 ),
-                InsightInteraction(split="?{${ref(orders).category} = ${ref(category)}}"),
+                InsightInteraction(split="?{${ref(orders).category} = ${ref(category).value}}"),
             ],
         )
 
@@ -243,11 +243,11 @@ class TestInputUniformFormat:
         builder.resolve()
         post_query = builder.post_query
 
-        # ASSERT - All inputs should use ${input_name} format
+        # ASSERT - All inputs should use ${input_name.value} format
         assert post_query is not None
-        assert "${min_value}" in post_query, "Should contain ${min_value}"
-        assert "${max_value}" in post_query, "Should contain ${max_value}"
-        assert "${category}" in post_query, "Should contain ${category}"
+        assert "${min_value.value}" in post_query, "Should contain ${min_value.value}"
+        assert "${max_value.value}" in post_query, "Should contain ${max_value.value}"
+        assert "${category.value}" in post_query, "Should contain ${category.value}"
 
         # Should NOT contain any placeholder dict format
         assert "'_0'" not in post_query, "Should not contain '_0'"
@@ -268,7 +268,7 @@ class TestInputUniformFormat:
                 x="?{${ref(orders).category}}",
                 y="?{${ref(orders).amount}}",
                 marker={
-                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' WHEN ${ref(orders).amount} = ${ref(threshold)} THEN 'yellow' ELSE 'red' END}"
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold).value} THEN 'green' WHEN ${ref(orders).amount} = ${ref(threshold).value} THEN 'yellow' ELSE 'red' END}"
                 },
             ),
         )
@@ -289,10 +289,10 @@ class TestInputUniformFormat:
         # ASSERT
         assert post_query is not None
         # Should have multiple occurrences in CASE statement
-        threshold_count = post_query.count("${threshold}")
+        threshold_count = post_query.count("${threshold.value}")
         assert (
             threshold_count >= 2
-        ), f"Expected multiple ${threshold} in CASE, got {threshold_count}"
+        ), f"Expected multiple ${{threshold.value}} in CASE, got {threshold_count}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
     def test_input_in_split_interaction(self, setup_basic_project):
@@ -311,7 +311,7 @@ class TestInputUniformFormat:
             interactions=[
                 # Split interaction with CASE using input
                 InsightInteraction(
-                    split="?{CASE WHEN ${ref(orders).amount} >= ${ref(threshold)} THEN 'High' ELSE 'Low' END}"
+                    split="?{CASE WHEN ${ref(orders).amount} >= ${ref(threshold).value} THEN 'High' ELSE 'Low' END}"
                 ),
             ],
         )
@@ -331,7 +331,7 @@ class TestInputUniformFormat:
 
         # ASSERT
         assert post_query is not None
-        assert "${threshold}" in post_query, "Split should contain ${threshold}"
+        assert "${threshold.value}" in post_query, "Split should contain ${threshold.value}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
     def test_mixed_refs_models_and_inputs(self, setup_basic_project):
@@ -348,12 +348,12 @@ class TestInputUniformFormat:
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
                 # Input ref in props
-                marker={"size": "?{${ref(threshold)} / 10}"},
+                marker={"size": "?{${ref(threshold).value} / 10}"},
             ),
             interactions=[
                 # Mixed model + input refs in filter
                 InsightInteraction(
-                    filter="?{${ref(orders).amount} > ${ref(threshold)} AND ${ref(orders).user_id} IS NOT NULL}"
+                    filter="?{${ref(orders).amount} > ${ref(threshold).value} AND ${ref(orders).user_id} IS NOT NULL}"
                 ),
             ],
         )
@@ -376,8 +376,8 @@ class TestInputUniformFormat:
         # Model refs should be qualified with model hash
         model_hash = setup["model"].name_hash()
         assert model_hash in post_query, f"Should contain model hash {model_hash}"
-        # Input refs should use ${input_name}
-        assert "${threshold}" in post_query, "Should contain ${threshold}"
+        # Input refs should use ${input_name.value}
+        assert "${threshold.value}" in post_query, "Should contain ${threshold.value}"
         # No placeholders
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
@@ -397,7 +397,7 @@ class TestInputUniformFormat:
             interactions=[
                 # HAVING clause with input
                 InsightInteraction(
-                    filter="?{SUM(${ref(orders).amount}) > ${ref(min_total)}}", aggregate=True
+                    filter="?{SUM(${ref(orders).amount}) > ${ref(min_total).value}}", aggregate=True
                 ),
             ],
         )
@@ -417,7 +417,7 @@ class TestInputUniformFormat:
 
         # ASSERT
         assert post_query is not None
-        assert "${min_total}" in post_query, "Should contain ${min_total} in HAVING"
+        assert "${min_total.value}" in post_query, "Should contain ${min_total.value} in HAVING"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
     def test_input_in_sort_expression(self, setup_basic_project):
@@ -435,7 +435,7 @@ class TestInputUniformFormat:
             ),
             interactions=[
                 # Sort with input (dynamic sort field)
-                InsightInteraction(sort="?{${ref(sort_field)}}"),
+                InsightInteraction(sort="?{${ref(sort_field).value}}"),
             ],
         )
 
@@ -454,7 +454,7 @@ class TestInputUniformFormat:
 
         # ASSERT
         assert post_query is not None
-        assert "${sort_field}" in post_query, "Should contain ${sort_field}"
+        assert "${sort_field.value}" in post_query, "Should contain ${sort_field.value}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
     def test_complex_expression_with_multiple_input_refs(self, setup_basic_project):
@@ -471,7 +471,7 @@ class TestInputUniformFormat:
                 y="?{${ref(orders).amount}}",
                 # Same input used multiple times in one expression
                 marker={
-                    "size": "?{(${ref(orders).amount} * ${ref(multiplier)}) / (${ref(multiplier)} + 1)}"
+                    "size": "?{(${ref(orders).amount} * ${ref(multiplier).value}) / (${ref(multiplier).value} + 1)}"
                 },
             ),
         )
@@ -492,15 +492,17 @@ class TestInputUniformFormat:
         # ASSERT
         assert post_query is not None
         # Should have multiple occurrences
-        multiplier_count = post_query.count("${multiplier}")
-        assert multiplier_count >= 2, f"Expected multiple ${multiplier}, got {multiplier_count}"
+        multiplier_count = post_query.count("${multiplier.value}")
+        assert (
+            multiplier_count >= 2
+        ), f"Expected multiple ${{multiplier.value}}, got {multiplier_count}"
         assert "'_0'" not in post_query, "Should not contain placeholder"
 
     def test_input_validator_format(self, setup_basic_project):
         """
         Verify that the generated query format is compatible with InputValidator.
 
-        InputValidator expects ${input_name} format for client-side replacement.
+        InputValidator expects ${input_name.accessor} format for client-side replacement.
         """
         # ARRANGE
         setup = setup_basic_project
@@ -513,11 +515,11 @@ class TestInputUniformFormat:
                 x="?{${ref(orders).date}}",
                 y="?{${ref(orders).amount}}",
                 marker={
-                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold)} THEN 'green' ELSE 'red' END}"
+                    "color": "?{CASE WHEN ${ref(orders).amount} > ${ref(threshold).value} THEN 'green' ELSE 'red' END}"
                 },
             ),
             interactions=[
-                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(threshold)}}"),
+                InsightInteraction(filter="?{${ref(orders).amount} > ${ref(threshold).value}}"),
             ],
         )
 
@@ -537,10 +539,12 @@ class TestInputUniformFormat:
         # ASSERT - Verify InputValidator compatible format
         assert post_query is not None
 
-        # Should contain ${input_name} format that InputValidator expects
-        input_pattern = re.compile(r"\$\{threshold\}")
+        # Should contain ${input_name.accessor} format that InputValidator expects
+        input_pattern = re.compile(r"\$\{threshold\.value\}")
         matches = input_pattern.findall(post_query)
-        assert len(matches) >= 2, f"Expected multiple ${{threshold}} patterns, found {len(matches)}"
+        assert (
+            len(matches) >= 2
+        ), f"Expected multiple ${{threshold.value}} patterns, found {len(matches)}"
 
         # Should NOT contain any internal placeholder format
         internal_placeholder_pattern = re.compile(r"['\"]_\d+['\"]|visivo-input-placeholder")

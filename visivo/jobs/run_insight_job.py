@@ -25,13 +25,11 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
     # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
     if insight_query_info.post_query:
         import re
-        from visivo.query.input_validator import (
-            validate_insight_with_inputs,
-            INPUT_PLACEHOLDER_PATTERN,
-        )
+        from visivo.query.input_validator import validate_insight_with_inputs
+        from visivo.query.patterns import INPUT_FRONTEND_PATTERN
 
-        # Check if post_query has input placeholders
-        has_placeholders = bool(re.search(INPUT_PLACEHOLDER_PATTERN, insight_query_info.post_query))
+        # Check if post_query has input placeholders (frontend pattern: ${input.accessor})
+        has_placeholders = bool(re.search(INPUT_FRONTEND_PATTERN, insight_query_info.post_query))
 
         if has_placeholders:
             try:

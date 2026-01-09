@@ -88,25 +88,20 @@ const _insertJSON = async (db, file, tableName) => {
 };
 
 const _insertParquet = async (db, file, tableName) => {
-  try {
-    const buffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(buffer);
+  const buffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(buffer);
 
-    const tempFile = getTempFilename() + '.parquet';
-    await db.registerFileBuffer(tempFile, uint8Array);
+  const tempFile = getTempFilename() + '.parquet';
+  await db.registerFileBuffer(tempFile, uint8Array);
 
-    const conn = await db.connect();
-    await conn.query(`
-      CREATE TABLE "${tableName}" AS
-      SELECT * FROM read_parquet('${tempFile}')
-    `);
-    await conn.close();
+  const conn = await db.connect();
+  await conn.query(`
+    CREATE TABLE "${tableName}" AS
+    SELECT * FROM read_parquet('${tempFile}')
+  `);
+  await conn.close();
 
-    await db.dropFile(tempFile);
-  } catch (e) {
-    console.error('Failed to import Parquet file:', e);
-    throw e;
-  }
+  await db.dropFile(tempFile);
 };
 
 /**
@@ -130,28 +125,45 @@ export const tableDuckDBExists = async (db, tableName) => {
 /**
  * Prepare post query by replacing input placeholders with actual values using template literals
  *
- * Uses JavaScript template literal evaluation to inject input values AS-IS (no quoting).
- * Values are expected to come from backend input queries which already include proper SQL formatting.
+ * Uses JavaScript template literal evaluation to inject input values.
+ * Supports both flat values (legacy) and nested accessor objects:
+ * - Flat: { inputName: 'value' } - for ${inputName}
+ * - Nested: { inputName: { value: "'quoted'" } } - for ${inputName.value}
  *
- * @param {Object} insight - Insight object with query containing ${inputName} placeholders
- * @param {Object} inputs - Object mapping input names to their values (as strings)
+ * Null accessor values are injected as SQL NULL keyword (not the string 'NULL').
+ * This causes queries with null accessors to return no rows, matching PRD behavior.
+ *
+ * @param {Object} insight - Insight object with query containing ${inputName} or ${inputName.accessor} placeholders
+ * @param {Object} inputs - Object mapping input names to their values (string or accessor object)
  * @returns {String} - Query with all placeholders replaced by actual values
  */
 export const prepPostQuery = (insight, inputs) => {
   const query = insight.query;
 
   if (!query) {
-    console.warn('Insight has no query');
     return '';
   }
 
   try {
     // Extract input keys and values
-    const inputKeys = Object.keys(inputs);
-    const inputValues = Object.values(inputs);
+    const inputKeys = Object.keys(inputs || {});
+    const inputValues = Object.values(inputs || {});
 
-    // Convert all values to strings AS-IS (no additional quoting)
-    const stringValues = inputValues.map(value => String(value));
+    // Keep objects as-is for accessor syntax (${input.value}), convert primitives to strings
+    // This allows template literals like ${region.value} to work with nested objects
+    // For null values in accessor objects, keep them as null - they'll become 'undefined'
+    // in the template literal output, which we'll then replace with SQL NULL keyword
+    const processedValues = inputValues.map(value => {
+      if (value === null || value === undefined) {
+        return 'NULL';
+      }
+      if (typeof value === 'object') {
+        // For accessor objects, keep null values as-is (don't convert to string 'NULL')
+        // They will output 'undefined' in template literal which we replace with NULL below
+        return value;
+      }
+      return String(value);
+    });
 
     // Create a function that evaluates the query as a template literal
     // This safely injects values without regex manipulation
@@ -159,12 +171,14 @@ export const prepPostQuery = (insight, inputs) => {
     const templateFunc = new Function(...inputKeys, `return \`${query}\`;`);
 
     // Execute the template function with the input values
-    const result = templateFunc(...stringValues);
+    let result = templateFunc(...processedValues);
 
-    console.debug('Query prepared:', result);
+    // Replace 'null' (from null accessor values in JS) with SQL NULL keyword
+    // This ensures null accessors inject NULL without quotes (not the string 'NULL')
+    result = result.replace(/\bnull\b/g, 'NULL');
+
     return result;
   } catch (error) {
-    console.error('Failed to inject input values into query:', error);
     throw new Error(`Query preparation failed: ${error.message}`);
   }
 };
@@ -181,25 +195,21 @@ export const prepPostQuery = (insight, inputs) => {
 export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
   const cache = getParquetCache();
 
-  // Check if already loaded (unless forcing reload)
-  if (!force && cache.isLoaded(nameHash)) {
-    console.debug(`Parquet file ${nameHash} already loaded from cache`);
+  // ALWAYS verify table exists in DuckDB - don't trust in-memory cache alone
+  // The cache can become stale if DuckDB instance is re-initialized
+  if (!force && (await tableDuckDBExists(db, nameHash))) {
+    cache.markLoaded(nameHash);
     return;
   }
 
-  // Check if table already exists in DuckDB
-  if (!force && (await tableDuckDBExists(db, nameHash))) {
-    cache.markLoaded(nameHash, url);
-    console.debug(`Parquet file ${nameHash} already exists in DuckDB`);
-    return;
+  // Clear stale cache entry if table doesn't exist but cache thought it was loaded
+  if (cache.isLoaded(nameHash)) {
+    cache.clearLoaded(nameHash);
   }
 
   // Use cache to prevent duplicate concurrent fetches
   return cache.getOrFetch(nameHash, async () => {
     try {
-      cache.markLoading(nameHash, url);
-      console.debug(`Loading parquet file from ${url} as table '${nameHash}'`);
-
       // Fetch the parquet file
       const response = await fetch(url);
       if (!response.ok) {
@@ -225,7 +235,6 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
           CREATE TABLE "${nameHash}" AS
           SELECT * FROM read_parquet('${tempFile}')
         `);
-        console.debug(`Successfully created table '${nameHash}' from parquet file`);
       } finally {
         await conn.close();
         await db.dropFile(tempFile);
@@ -233,8 +242,6 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
 
       cache.markLoaded(nameHash, url);
     } catch (error) {
-      console.error(`Error loading parquet file from ${url}:`, error);
-      cache.markError(nameHash, url, error);
       throw error;
     }
   });
@@ -252,8 +259,6 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
   if (!files || files.length === 0) {
     return { loaded: [], failed: [] };
   }
-
-  console.debug(`Loading ${files.length} parquet files for insight`);
 
   const results = await Promise.allSettled(
     files.map(file => loadParquetFromURL(db, file.signed_data_file_url, file.name_hash, force))
@@ -274,12 +279,6 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
       });
     }
   });
-
-  if (failed.length > 0) {
-    console.error(`Failed to load ${failed.length} parquet files:`, failed);
-  }
-
-  console.debug(`Successfully loaded ${loaded.length}/${files.length} parquet files`);
 
   return { loaded, failed };
 };

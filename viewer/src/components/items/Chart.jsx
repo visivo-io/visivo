@@ -14,10 +14,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { chartDataFromInsightData } from '../../models/Insight';
+import useStore from '../../stores/store';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
+  const inputs = useStore(state => state.inputs);
 
   // Expose loading state through ref
   useImperativeHandle(
@@ -39,7 +41,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const hasInsights = chart.insights && chart.insights.length > 0;
 
-  const { insightsData, isInsightsLoading } = useInsightsData(
+  const { insightsData, isInsightsLoading, hasAllInsightData } = useInsightsData(
     project.id,
     hasInsights ? insightNames : []
   );
@@ -47,7 +49,10 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   // For insight-only charts (no traces), don't wait for tracesData
   // For trace-based charts, wait for tracesData to load
   const isTracesLoading = hasTraces && !tracesData;
-  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading);
+  // For insights, also check hasAllInsightData to handle pendingInputs case
+  // (query might be "complete" but data is null while waiting for inputs)
+  const isInsightsWaiting = hasInsights && !hasAllInsightData;
+  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading) || isInsightsWaiting;
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -74,7 +79,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     // Handle insight-based data
     if (hasInsights && insightsData) {
       const insightName = chart.insights[0]?.name;
-      const insightData = chartDataFromInsightData(insightsData);
+      const insightData = chartDataFromInsightData(insightsData, inputs);
       // Use sourceInsight for split traces (which have modified names), fall back to name for non-split
       data.push(
         ...insightData.filter(insight => (insight.sourceInsight || insight.name) === insightName)
@@ -82,7 +87,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     }
 
     return data;
-  }, [selectedCohortData, insightsData, chart.traces, chart.insights, hasInsights]);
+  }, [selectedCohortData, insightsData, chart.traces, chart.insights, hasInsights, inputs]);
 
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;

@@ -15,9 +15,10 @@ const URL_PATTERNS = {
     traceData: '/api/traces/{hash}/',
     insightJobsQuery: '/api/insight-jobs/',
     insightJobData: '/api/insight-jobs/{hash}/',
+    inputsQuery: '/api/inputs/',
+    inputData: '/data/inputs/{hash}.json',
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
-    inputData: '/data/inputs/{hash}.parquet',
 
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
@@ -89,9 +90,10 @@ const URL_PATTERNS = {
     traceData: '/data/traces/{hash}.json',
     insightJobsQuery: '/data/insights.json',
     insightJobData: '/data/insights/{hash}.json',
+    inputsQuery: '/data/inputs.json',
+    inputData: '/data/inputs/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
-    inputData: '/data/inputs/{hash}.parquet',
 
     // Interactive endpoints not available in dist
     worksheet: null,
