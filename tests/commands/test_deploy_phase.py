@@ -301,7 +301,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     )
     httpx_mock.add_response(
         method="POST",
-        url="http://host/api/inputs/",
+        url="http://host/api/input-jobs/",
         json=[{"id": "id5"}],
         status_code=201,
     )

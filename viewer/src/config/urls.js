@@ -15,8 +15,8 @@ const URL_PATTERNS = {
     traceData: '/api/traces/{hash}/',
     insightJobsQuery: '/api/insight-jobs/',
     insightJobData: '/api/insight-jobs/{hash}/',
-    inputsQuery: '/api/inputs/',
-    inputData: '/data/inputs/{hash}.json',
+    inputJobsQuery: '/api/input-jobs/',
+    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
 
@@ -90,8 +90,8 @@ const URL_PATTERNS = {
     traceData: '/data/traces/{hash}.json',
     insightJobsQuery: '/data/insights.json',
     insightJobData: '/data/insights/{hash}.json',
-    inputsQuery: '/data/inputs.json',
-    inputData: '/data/inputs/{hash}.json',
+    inputJobsQuery: '/data/inputs.json',
+    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
 

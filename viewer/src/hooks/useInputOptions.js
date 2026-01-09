@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import useStore from '../stores/store';
 import { useFetchInputs, useFetchInputOptions } from '../contexts/QueryContext';
-import { loadInputData } from '../api/inputs';
+import { loadInputData } from '../api/inputJobs';
 import { loadInsightParquetFiles, runDuckDBQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import {
