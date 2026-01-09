@@ -52,6 +52,11 @@ FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
 # Context String Patterns - ${ } general syntax
 # ============================================================================
 
+# Environment variable pattern: ${env.VAR_NAME}
+# Captures: variable name (alphanumeric and underscore, must start with letter or underscore)
+# Example: ${env.DB_PASSWORD} or ${ env.API_KEY }
+ENV_VAR_CONTEXT_PATTERN = r"\$\{\s*env\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\}"
+
 # Inline path pattern: ${path.to.property}
 # Example: ${user.name} or ${data[0].value}
 INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
@@ -218,7 +223,7 @@ def has_CONTEXT_STRING_REF_PATTERN(text: str) -> bool:
 
 def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
     """
-    Validate that all ${ } patterns in text contain valid ref() calls.
+    Validate that all ${ } patterns in text contain valid ref() or env. calls.
 
     Args:
         text: Text to validate
@@ -231,9 +236,9 @@ def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
 
     for match in re.finditer(dollar_pattern, text):
         content = match.group(0)
-        # Check if it contains ref()
-        if "ref(" not in content:
-            return False, f"Invalid context string: {content} - missing ref() function"
+        # Check if it contains ref() or env.
+        if "ref(" not in content and "env." not in content:
+            return False, f"Invalid context string: {content} - missing ref() or env. syntax"
 
     return True, None
 

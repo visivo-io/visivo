@@ -66,6 +66,16 @@ describe('DuckDB Query Functions', () => {
 });
 
 describe('prepPostQuery - Template Literal Injection', () => {
+  let debugSpy;
+
+  beforeEach(() => {
+    debugSpy = jest.spyOn(console, 'debug').mockImplementation();
+  });
+
+  afterEach(() => {
+    debugSpy.mockRestore();
+  });
+
   describe('Simple value injection', () => {
     it('injects string value with quotes as-is', () => {
       const insight = { query: 'SELECT * FROM table WHERE category = ${category}' };
@@ -173,9 +183,12 @@ describe('prepPostQuery - Template Literal Injection', () => {
     });
 
     it('throws error when referenced input is missing', () => {
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
       const insight = { query: 'SELECT * FROM table WHERE category = ${category}' };
       const inputs = {}; // Missing 'category'
       expect(() => prepPostQuery(insight, inputs)).toThrow('Query preparation failed');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
     });
 
     it('handles special characters in string values', () => {

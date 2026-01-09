@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import ObjectPill from '../editors/ObjectPill'; // Adjust path to your ObjectPill component
 
 const ObjectPillNode = ({ data, onNodeClick }) => {

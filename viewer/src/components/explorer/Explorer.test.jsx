@@ -159,36 +159,36 @@ const mockUpdateWorksheet = jest.fn().mockResolvedValue({});
 const mockCreateWorksheet = jest.fn().mockResolvedValue({});
 const mockSetActiveWorksheetId = jest.fn();
 
-jest.mock('../../contexts/WorksheetContext', () => ({
-  ...jest.requireActual('../../contexts/WorksheetContext'),
-  useWorksheets: () => ({
-    worksheets: [
-      {
-        worksheet: {
-          id: 'ws1',
-          name: 'Worksheet 1',
-          query: '',
-          selected_source: 'source1',
-        },
-        session_state: {
-          worksheet_id: 'ws1',
-          is_visible: true,
-          tab_order: 1,
-        },
-      },
-    ],
-    activeWorksheetId: 'ws1',
-    isLoading: false,
-    error: null,
-    actions: {
-      createWorksheet: mockCreateWorksheet,
-      updateWorksheet: mockUpdateWorksheet,
-      deleteWorksheet: jest.fn(),
-      setActiveWorksheetId: mockSetActiveWorksheetId,
-      loadWorksheetResults: mockLoadWorksheetResults,
-      clearError: jest.fn(),
+const mockWorksheetContextValue = {
+  worksheets: [
+    {
+      id: 'ws1',
+      name: 'Worksheet 1',
+      query: '',
+      selected_source: 'source1',
+      is_visible: true,
+      tab_order: 1,
     },
-  }),
+  ],
+  allWorksheets: [],
+  activeWorksheetId: 'ws1',
+  isLoading: false,
+  error: null,
+  worksheetResults: {},
+  actions: {
+    createWorksheet: mockCreateWorksheet,
+    updateWorksheet: mockUpdateWorksheet,
+    deleteWorksheet: jest.fn(),
+    setActiveWorksheetId: mockSetActiveWorksheetId,
+    loadWorksheetResults: mockLoadWorksheetResults,
+    reorderWorksheets: jest.fn(),
+    clearError: jest.fn(),
+  },
+};
+
+jest.mock('../../contexts/WorksheetContext', () => ({
+  WorksheetProvider: ({ children }) => children,
+  useWorksheets: () => mockWorksheetContextValue,
 }));
 
 // Wrap component with necessary providers
