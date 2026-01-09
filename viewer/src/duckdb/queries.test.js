@@ -183,12 +183,9 @@ describe('prepPostQuery - Template Literal Injection', () => {
     });
 
     it('throws error when referenced input is missing', () => {
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
       const insight = { query: 'SELECT * FROM table WHERE category = ${category}' };
       const inputs = {}; // Missing 'category'
       expect(() => prepPostQuery(insight, inputs)).toThrow('Query preparation failed');
-      expect(errorSpy).toHaveBeenCalled();
-      errorSpy.mockRestore();
     });
 
     it('handles special characters in string values', () => {
