@@ -8,7 +8,7 @@ This module provides functionality to:
 4. Generate SQL JOIN clauses for multi-model queries
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 from collections import deque
 from visivo.models.relation import Relation
 from visivo.models.models.model import Model
@@ -39,42 +39,69 @@ class RelationGraph:
     - Weights can represent relation preferences
     """
 
-    def __init__(self, dag: ProjectDag, field_resolver: FieldResolver):
+    def __init__(
+        self,
+        dag: ProjectDag,
+        field_resolver: FieldResolver,
+        relevant_models: Optional[Set[str]] = None,
+    ):
         """
         Initialize the RelationGraph with a project.
 
         Args:
-            project: The project containing models and relations
-            model_alias_map: Optional mapping of model names to their SQL aliases
+            dag: The project DAG containing models and relations
+            field_resolver: FieldResolver for resolving relation conditions
+            relevant_models: Optional set of model names to include. If provided,
+                only models in this set are added as nodes, and only relations
+                where BOTH models are in this set are resolved. This prevents
+                errors when resolving relations for models without schemas yet.
         """
 
         self.dag = dag
         self.graph = nx.Graph()
         self.field_resolver = field_resolver
+        self.relevant_models = relevant_models
         self._resolved_conditions = {}  # Cache for resolved conditions
         self._build_relation_graph()
 
     def _build_relation_graph(self):
-        """Build the relationship graph from project relations."""
+        """Build the relationship graph from project relations.
+
+        If relevant_models is set, only adds:
+        - Nodes for models in the relevant_models set
+        - Edges for relations where BOTH referenced models are in relevant_models
+
+        This allows building a scoped graph that only resolves conditions for
+        models that have schemas available, preventing errors when the full DAG
+        contains models that haven't been executed yet.
+        """
         # Get all models from the DAG
         from visivo.models.dag import all_descendants_of_type
 
-        models = all_descendants_of_type(type=Model, dag=self.dag)
+        all_models = all_descendants_of_type(type=Model, dag=self.dag)
         relations = all_descendants_of_type(type=Relation, dag=self.dag)
 
-        # Add models as nodes
-        for model in models:
-            self.graph.add_node(model.name, model=model)
+        # Add models as nodes (filtered if relevant_models is set)
+        for model in all_models:
+            if self.relevant_models is None or model.name in self.relevant_models:
+                self.graph.add_node(model.name, model=model)
 
         # Add relations as edges
         for relation in relations:
             # Extract models from the condition using the Relation's method
-            models = relation.get_referenced_models()
+            referenced_models = relation.get_referenced_models()
 
             # A relation should reference exactly 2 models
-            if len(models) == 2:
+            if len(referenced_models) == 2:
                 # Convert set to list to access models
-                model_list = list(models)
+                model_list = list(referenced_models)
+
+                # Skip relations where one or both models are not in relevant_models
+                if self.relevant_models is not None:
+                    if not referenced_models.issubset(self.relevant_models):
+                        # One or both models not in relevant set, skip this relation
+                        continue
+
                 # Resolve the condition immediately and cache it
                 resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
                 self._resolved_conditions[relation.condition] = resolved_condition

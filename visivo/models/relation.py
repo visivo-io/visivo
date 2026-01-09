@@ -103,3 +103,42 @@ class Relation(NamedModel, ParentModel):
                 children.append(f"ref({model_name})")
 
         return children
+
+    def validate_same_source(self, dag, output_dir: str) -> None:
+        """Validate that all models in this relation use the same source.
+
+        Relations between models from different sources are not supported because
+        SQL joins require all tables to be accessible from a single database connection.
+
+        Args:
+            dag: The project DAG
+            output_dir: Output directory for model schemas
+
+        Raises:
+            ValueError: If models use different sources
+        """
+        from visivo.jobs.utils import get_source_for_model
+
+        model_names = list(self.get_referenced_models())
+        if len(model_names) != 2:
+            return  # Other validation handles this case
+
+        model_a = dag.get_descendant_by_name(model_names[0])
+        model_b = dag.get_descendant_by_name(model_names[1])
+
+        source_a = get_source_for_model(model_a, dag, output_dir)
+        source_b = get_source_for_model(model_b, dag, output_dir)
+
+        if source_a is None or source_b is None:
+            # If sources can't be determined, skip validation
+            # Other validation will catch missing source errors
+            return
+
+        if source_a.name != source_b.name:
+            raise ValueError(
+                f"Relation '{self.name}' connects models from different sources.\n\n"
+                f"  Model '{model_a.name}' uses source: {source_a.name}\n"
+                f"  Model '{model_b.name}' uses source: {source_b.name}\n\n"
+                f"Cross-source relations are not currently supported. "
+                f"Both models must use the same source."
+            )

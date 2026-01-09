@@ -13,29 +13,39 @@ from visivo.query.sqlglot_utils import (
     normalize_identifier_for_dialect,
 )
 from visivo.query.schema_aggregator import SchemaAggregator
+from visivo.query.patterns import (
+    INPUT_ACCESSOR_PATTERN,
+    extract_input_accessors,
+)
+from visivo.query.accessor_validator import get_accessor_sample_value
 from visivo.logger.logger import Logger
 import sqlglot
 from sqlglot import exp
 from sqlglot.optimizer import qualify
 import re
-from typing import Tuple, Dict, Optional, List
+from typing import Tuple, Dict, Optional, List, TYPE_CHECKING
 
-# Pattern to match ${input_name} placeholders
-INPUT_PLACEHOLDER_PATTERN = r"\$\{(\w+)\}"
+if TYPE_CHECKING:
+    from visivo.models.insight import Insight
+
+# Pattern to match ${ref(input_name).accessor} placeholders
+# Captures: (1) input_name, (2) accessor
+INPUT_PLACEHOLDER_PATTERN = INPUT_ACCESSOR_PATTERN
 
 
-def get_sample_value_for_input(input_obj, output_dir: str = None) -> str:
+def get_sample_value_for_input(input_obj, output_dir: str = None, accessor: str = "value") -> str:
     """
     Get a type-appropriate sample value from an input for SQLGlot parsing.
 
     Priority:
-    1. Static options (List[str]): Use first option
+    1. Static options (List[str]): Use options based on accessor type
     2. Default value: Use default
-    3. Query-based options with parquet: Load from parquet
+    3. Query-based options with JSON: Load from JSON file
 
     Args:
-        input_obj: The input object (DropdownInput)
-        output_dir: Output directory for loading parquet files
+        input_obj: The input object (SingleSelectInput or MultiSelectInput)
+        output_dir: Output directory for loading JSON files
+        accessor: The accessor being used ('value', 'values', 'min', 'max', 'first', 'last')
 
     Returns:
         A sample value suitable for SQL parsing
@@ -43,36 +53,74 @@ def get_sample_value_for_input(input_obj, output_dir: str = None) -> str:
     Raises:
         ValueError: If no sample value can be obtained
     """
-    from visivo.models.inputs.types.dropdown import DropdownInput
+    from visivo.models.inputs.types.single_select import SingleSelectInput
+    from visivo.models.inputs.types.multi_select import MultiSelectInput
 
-    if isinstance(input_obj, DropdownInput):
-        # Check for static options first
+    options = None
+    default_value = None
+
+    if isinstance(input_obj, SingleSelectInput):
+        # Check for static options
         if isinstance(input_obj.options, list) and len(input_obj.options) > 0:
-            return str(input_obj.options[0])
+            options = input_obj.options
 
         # Check for default value
-        if input_obj.default is not None:
-            return str(input_obj.default)
+        if input_obj.display and input_obj.display.default:
+            default_value = input_obj.display.default.value
 
-        # Query-based options - try loading from parquet if available
-        if output_dir:
+    elif isinstance(input_obj, MultiSelectInput):
+        # Check for static options (list-based)
+        if isinstance(input_obj.options, list) and len(input_obj.options) > 0:
+            options = input_obj.options
+
+        # Check for range-based (generate sample range values)
+        elif input_obj.range:
+            # For range-based, generate sample numeric values
+            start = input_obj.range.start if not hasattr(input_obj.range.start, "get_value") else 0
+            end = input_obj.range.end if not hasattr(input_obj.range.end, "get_value") else 100
+            step = input_obj.range.step if not hasattr(input_obj.range.step, "get_value") else 10
+
+            # Convert to numeric if possible
             try:
-                from visivo.query.input_validator import get_input_options
+                start = float(start) if isinstance(start, (int, float, str)) else 0
+                end = float(end) if isinstance(end, (int, float, str)) else 100
+                step = float(step) if isinstance(step, (int, float, str)) else 10
+                # Generate a few sample values
+                options = [start, start + step, end - step, end]
+            except (ValueError, TypeError):
+                options = [0, 10, 90, 100]  # Fallback
 
-                options = get_input_options(input_obj, output_dir)
-                if options:
-                    return options[0]
-            except (FileNotFoundError, ValueError) as e:
-                raise ValueError(
-                    f"Cannot get sample value for input '{input_obj.name}': "
-                    f"Query-based input options not yet available. "
-                    f"Run the input job first or provide static options/default."
-                ) from e
+        # Check for default value
+        if input_obj.display and input_obj.display.default:
+            default = input_obj.display.default
+            if default.values is not None and isinstance(default.values, list):
+                default_value = default.values
+            elif default.start is not None:
+                default_value = default.start
+
+    # If we have options, use the accessor sample value function
+    if options:
+        return get_accessor_sample_value(accessor, options, default_value)
+
+    # Try loading from JSON if available
+    if output_dir:
+        try:
+            from visivo.query.input_validator import get_input_options
+
+            loaded_options = get_input_options(input_obj, output_dir)
+            if loaded_options:
+                return get_accessor_sample_value(accessor, loaded_options, default_value)
+        except (FileNotFoundError, ValueError) as e:
+            raise ValueError(
+                f"Cannot get sample value for input '{input_obj.name}': "
+                f"Query-based input options not yet available. "
+                f"Run the input job first or provide static options/default."
+            ) from e
 
     raise ValueError(
         f"Cannot get sample value for input '{input_obj.name}': "
         f"Input must have static options, a default value, or query-based options "
-        f"(with parquet already generated)."
+        f"(with JSON file already generated)."
     )
 
 
@@ -83,34 +131,35 @@ def replace_input_placeholders_for_parsing(
     output_dir: str = None,
 ) -> Tuple[str, Dict[str, str]]:
     """
-    Replace ${input_name} placeholders with sample values + tracking comments.
+    Replace input placeholders with sample values + tracking comments.
+
+    Handles both formats:
+    - YAML format: ${ref(input_name).accessor}
+    - JS template literal format: ${input_name.accessor}
 
     SQLGlot misinterprets ${...} syntax (e.g., as STRUCT in DuckDB dialect).
     This function replaces placeholders with type-appropriate sample values from
     the actual input definitions, plus SQL comment markers for restoration.
 
-    Marker format: sample_value /* __VISIVO_INPUT:input_name__ */
+    Marker format: sample_value /* __VISIVO_INPUT:input_name.accessor__ */
 
     Args:
-        sql: SQL expression potentially containing ${input_name} placeholders
+        sql: SQL expression potentially containing input placeholders
         dag: Project DAG for looking up input objects
         insight: The insight object (for finding descendant inputs)
-        output_dir: Output directory for loading parquet files
+        output_dir: Output directory for loading JSON files
 
     Returns:
-        Tuple of (modified_sql, {placeholder_name: sample_value})
+        Tuple of (modified_sql, {input_name.accessor: sample_value})
 
     Raises:
         ValueError: If an input placeholder references an undefined input
     """
     from visivo.models.dag import all_descendants_of_type
     from visivo.models.inputs.input import Input
+    from visivo.query.patterns import extract_frontend_input_accessors
 
     replacements = {}
-    placeholder_names = set(re.findall(INPUT_PLACEHOLDER_PATTERN, sql))
-
-    if not placeholder_names:
-        return sql, replacements
 
     # Build mapping of input names to objects from DAG
     input_map = {}
@@ -118,45 +167,74 @@ def replace_input_placeholders_for_parsing(
         input_descendants = all_descendants_of_type(type=Input, dag=dag, from_node=insight)
         input_map = {inp.name: inp for inp in input_descendants}
 
-    # Replace each placeholder with sample value + comment marker
     result_sql = sql
-    for placeholder_name in placeholder_names:
-        if placeholder_name not in input_map:
+
+    # Extract (input_name, accessor) tuples from YAML format ${ref(input).accessor}
+    accessor_refs = extract_input_accessors(sql)
+    for input_name, accessor in accessor_refs:
+        if input_name not in input_map:
             raise ValueError(
-                f"Input placeholder '${{{placeholder_name}}}' references undefined input. "
-                f"Make sure input '{placeholder_name}' is defined in your project."
+                f"Input placeholder '${{ref({input_name}).{accessor}}}' references undefined input. "
+                f"Make sure input '{input_name}' is defined in your project."
             )
 
-        sample_value = get_sample_value_for_input(input_map[placeholder_name], output_dir)
-        replacements[placeholder_name] = sample_value
+        sample_value = get_sample_value_for_input(
+            input_map[input_name], output_dir, accessor=accessor
+        )
+        key = f"{input_name}.{accessor}"
+        replacements[key] = sample_value
 
-        # Replace with: sample_value /* __VISIVO_INPUT:input_name__ */
-        marker = f"{sample_value} /* __VISIVO_INPUT:{placeholder_name}__ */"
-        result_sql = re.sub(rf"\$\{{{placeholder_name}\}}", marker, result_sql)
+        # Replace with: sample_value /* __VISIVO_INPUT:input_name.accessor__ */
+        marker = f"{sample_value} /* __VISIVO_INPUT:{input_name}.{accessor}__ */"
+        pattern = rf"\$\{{ref\({input_name}\)\.{accessor}\}}"
+        result_sql = re.sub(pattern, marker, result_sql)
+
+    # Also handle JS template literal format ${input.accessor}
+    frontend_refs = extract_frontend_input_accessors(result_sql)
+    for input_name, accessor in frontend_refs:
+        if input_name not in input_map:
+            # Not an input - skip (might be a model reference or other syntax)
+            continue
+
+        sample_value = get_sample_value_for_input(
+            input_map[input_name], output_dir, accessor=accessor
+        )
+        key = f"{input_name}.{accessor}"
+        replacements[key] = sample_value
+
+        # Replace with: sample_value /* __VISIVO_INPUT:input_name.accessor__ */
+        marker = f"{sample_value} /* __VISIVO_INPUT:{input_name}.{accessor}__ */"
+        pattern = rf"\$\{{{input_name}\.{accessor}\}}"
+        result_sql = re.sub(pattern, marker, result_sql)
 
     return result_sql, replacements
 
 
 def restore_input_placeholders(sql: str) -> str:
     """
-    Restore ${input_name} placeholders from marker comments after SQLGlot processing.
+    Restore ${input_name.accessor} placeholders from marker comments after SQLGlot processing.
 
-    Finds patterns like: value /* __VISIVO_INPUT:input_name__ */
-    Replaces with: ${input_name}
+    Finds patterns like: value /* __VISIVO_INPUT:input_name.accessor__ */
+    Replaces with: ${input_name.accessor}
+
+    Note: The ref() wrapper is stripped for frontend injection. Frontend uses
+    nested object access via JS template literals: ${input_name.accessor}
 
     Args:
         sql: SQL string with marker comments
 
     Returns:
-        SQL string with ${input_name} placeholders restored
+        SQL string with ${input_name.accessor} placeholders restored
     """
-    # Pattern matches: anything followed by /* __VISIVO_INPUT:name__ */
-    # We need to remove the sample value AND the comment, replace with ${name}
-    pattern = r"[^\s,\)]+\s*/\*\s*__VISIVO_INPUT:(\w+)__\s*\*/"
+    # Pattern matches: anything followed by /* __VISIVO_INPUT:name.accessor__ */
+    # We need to remove the sample value AND the comment, replace with ${name.accessor}
+    # The marker format is: input_name.accessor (e.g., region.value, price_range.min)
+    pattern = r"[^\s,\)]+\s*/\*\s*__VISIVO_INPUT:([\w\.]+)__\s*\*/"
 
     def replace_marker(match):
-        input_name = match.group(1)
-        return f"${{{input_name}}}"
+        # match.group(1) is "input_name.accessor"
+        input_accessor = match.group(1)
+        return f"${{{input_accessor}}}"
 
     return re.sub(pattern, replace_marker, sql)
 
@@ -196,7 +274,12 @@ class InsightQueryBuilder:
             dag=dag, output_dir=output_dir, native_dialect=source.get_sqlglot_dialect()
         )
         self.field_resolver = field_resolver
-        self.relation_graph = RelationGraph(dag, field_resolver)
+        # Pass relevant_models to RelationGraph to scope relation resolution
+        # This prevents resolving conditions for models that haven't been executed yet
+        relevant_model_names = {m.name for m in self.models}
+        self.relation_graph = RelationGraph(
+            dag, field_resolver, relevant_models=relevant_model_names
+        )
 
         self.main_query = None
         self.resolved_query_statements = None
@@ -264,8 +347,34 @@ class InsightQueryBuilder:
 
         Used by the frontend to apply static Plotly props like marker.color: ["red", "green"]
         that are not derived from query results.
+
+        Input refs like ${ref(input).accessor} are converted to ${input.accessor} for
+        frontend JS template literal injection.
         """
-        return self.insight.props.extract_static_props()
+        raw_static_props = self.insight.props.extract_static_props()
+        return self._convert_input_refs_in_props(raw_static_props)
+
+    def _convert_input_refs_in_props(self, obj):
+        """
+        Recursively convert ${ref(input).accessor} to ${input.accessor} in props.
+
+        This converts YAML-format input references to JS template literal format
+        for frontend runtime injection.
+
+        Args:
+            obj: A dict, list, or primitive value from props
+
+        Returns:
+            The same structure with input refs converted
+        """
+        if isinstance(obj, str):
+            return self.insight._convert_input_refs_to_js_templates(obj, self.dag)
+        elif isinstance(obj, dict):
+            return {k: self._convert_input_refs_in_props(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_input_refs_in_props(item) for item in obj]
+        else:
+            return obj
 
     @property
     def pre_query(self):
@@ -291,7 +400,10 @@ class InsightQueryBuilder:
         """Sets the resolved_query_statements"""
         resolved_query_statements = []
         for key, statement in self.unresolved_query_statements:
-            if key in ("filter", "sort"):
+            if key == "sort":
+                # Sort expressions need special handling to preserve ASC/DESC modifiers
+                resolved_statement = self.field_resolver.resolve_sort(expression=statement)
+            elif key == "filter":
                 resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
             else:
                 resolved_statement = self.field_resolver.resolve(expression=statement)
@@ -402,6 +514,29 @@ class InsightQueryBuilder:
                     restored_expr = restore_input_placeholders(expr_sql)
                     if restored_expr not in group_by_clauses:
                         group_by_clauses.append(restored_expr)
+
+        # Also collect GROUP BY expressions from ORDER BY clauses
+        # Sort expressions may reference non-aggregated columns not in SELECT
+        for key, statement in self.resolved_query_statements:
+            if key == "sort":
+                # Strip ASC/DESC before parsing
+                sort_expr = statement.strip()
+                if sort_expr.upper().endswith(" DESC"):
+                    sort_expr = sort_expr[:-5].strip()
+                elif sort_expr.upper().endswith(" ASC"):
+                    sort_expr = sort_expr[:-4].strip()
+
+                # Replace input placeholders for SQLGlot parsing
+                safe_expr, _ = replace_input_placeholders_for_parsing(
+                    sort_expr, dag=self.dag, insight=self.insight, output_dir=self.output_dir
+                )
+                parsed = parse_expression(safe_expr, "duckdb")
+                if parsed:
+                    non_agg_exprs = find_non_aggregated_expressions(parsed, dialect="duckdb")
+                    for expr_sql in non_agg_exprs:
+                        restored_expr = restore_input_placeholders(expr_sql)
+                        if restored_expr not in group_by_clauses:
+                            group_by_clauses.append(restored_expr)
 
         # Collect HAVING conditions (aggregate filters)
         having_conditions = []
@@ -746,6 +881,30 @@ class InsightQueryBuilder:
                     expr_sql = parsed_expr.sql()
                     if not any(e.sql() == expr_sql for e in group_by_expressions):
                         group_by_expressions.append(parsed_expr)
+
+        # Also include non-aggregated expressions from ORDER BY clauses
+        # Sort expressions may reference non-aggregated columns not in SELECT
+        for key, statement in self.resolved_query_statements:
+            if key == "sort":
+                # Strip ASC/DESC before parsing
+                sort_expr = statement.strip()
+                if sort_expr.upper().endswith(" DESC"):
+                    sort_expr = sort_expr[:-5].strip()
+                elif sort_expr.upper().endswith(" ASC"):
+                    sort_expr = sort_expr[:-4].strip()
+
+                parsed_sort = parse_expression(sort_expr, self.native_dialect)
+                if parsed_sort:
+                    non_agg_exprs = find_non_aggregated_expressions(
+                        parsed_sort, dialect=target_dialect
+                    )
+                    for expr_str in non_agg_exprs:
+                        parsed_expr = parse_expression(expr_str, self.native_dialect)
+                        if parsed_expr:
+                            parsed_expr = self._transpile_if_dynamic(parsed_expr, target_dialect)
+                            expr_sql = parsed_expr.sql()
+                            if not any(e.sql() == expr_sql for e in group_by_expressions):
+                                group_by_expressions.append(parsed_expr)
 
         # Return None if no grouping needed
         if not group_by_expressions:

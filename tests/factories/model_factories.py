@@ -27,18 +27,19 @@ from visivo.models.dbt import Dbt
 from visivo.models.relation import Relation
 from visivo.models.metric import Metric
 from visivo.models.dimension import Dimension
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
+from visivo.models.inputs.types.multi_select import MultiSelectInput
+from visivo.models.inputs.types.display import RangeConfig
 from visivo.models.base.query_string import QueryString
 
 
-class InputFactory(factory.Factory):
+class SingleSelectInputFactory(factory.Factory):
     class Meta:
-        model = DropdownInput
+        model = SingleSelectInput
 
     name = "test_input"
     label = "Test Input"
     options = ["A", "B", "C"]
-    default = None
 
     class Params:
         query_based = factory.Trait(
@@ -46,6 +47,30 @@ class InputFactory(factory.Factory):
                 lambda o: QueryString(value="?{ SELECT x FROM ${ref(data)} }")
             )
         )
+
+
+class MultiSelectInputFactory(factory.Factory):
+    class Meta:
+        model = MultiSelectInput
+
+    name = "test_multi_input"
+    label = "Test Multi Input"
+    options = ["A", "B", "C"]
+
+    class Params:
+        query_based = factory.Trait(
+            options=factory.LazyAttribute(
+                lambda o: QueryString(value="?{ SELECT x FROM ${ref(data)} }")
+            )
+        )
+        range_based = factory.Trait(
+            options=None,
+            range=factory.LazyAttribute(lambda o: RangeConfig(start=0, end=100, step=10)),
+        )
+
+
+# Alias for backward compatibility
+InputFactory = SingleSelectInputFactory
 
 
 class MetricFactory(factory.Factory):

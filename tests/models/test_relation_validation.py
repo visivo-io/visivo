@@ -317,3 +317,113 @@ class TestRelationGetReferencedModels:
         relation = Relation(name="test", condition="${ref('my-orders').id} = ${ref('my-users').id}")
         models = relation.get_referenced_models()
         assert models == {"my-orders", "my-users"}
+
+
+class TestRelationCrossSourceValidation:
+    """Test cross-source relation validation."""
+
+    def test_validate_same_source_passes_for_same_source(self, tmpdir):
+        """Test that validation passes when both models use the same source."""
+        from visivo.models.sources.duckdb_source import DuckdbSource
+
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        relation = Relation(
+            name="orders_to_users",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=[relation],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Should not raise an error
+        relation.validate_same_source(dag, str(tmpdir))
+
+    def test_validate_same_source_fails_for_different_sources(self, tmpdir):
+        """Test that validation fails when models use different sources."""
+        from visivo.models.sources.duckdb_source import DuckdbSource
+
+        source_a = DuckdbSource(name="source_a", database="db_a.duckdb", type="duckdb")
+        source_b = DuckdbSource(name="source_b", database="db_b.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(source_a)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(source_b)")
+
+        relation = Relation(
+            name="cross_source",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source_a, source_b],
+            models=[model_a, model_b],
+            relations=[relation],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Should raise ValueError with helpful message
+        with pytest.raises(ValueError) as exc_info:
+            relation.validate_same_source(dag, str(tmpdir))
+
+        error_msg = str(exc_info.value)
+        assert "different sources" in error_msg.lower()
+        assert "source_a" in error_msg
+        assert "source_b" in error_msg
+        assert "orders" in error_msg
+        assert "users" in error_msg
+
+    def test_cross_source_error_message_is_helpful(self, tmpdir):
+        """Test that error message provides helpful information."""
+        from visivo.models.sources.duckdb_source import DuckdbSource
+
+        source_warehouse = DuckdbSource(
+            name="production_warehouse", database="warehouse.duckdb", type="duckdb"
+        )
+        source_analytics = DuckdbSource(
+            name="analytics_db", database="analytics.duckdb", type="duckdb"
+        )
+
+        model_orders = SqlModel(
+            name="sales_orders", sql="SELECT * FROM orders", source="ref(production_warehouse)"
+        )
+        model_metrics = SqlModel(
+            name="user_metrics", sql="SELECT * FROM metrics", source="ref(analytics_db)"
+        )
+
+        relation = Relation(
+            name="invalid_cross_source_join",
+            condition="${ref(sales_orders).user_id} = ${ref(user_metrics).user_id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source_warehouse, source_analytics],
+            models=[model_orders, model_metrics],
+            relations=[relation],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        with pytest.raises(ValueError) as exc_info:
+            relation.validate_same_source(dag, str(tmpdir))
+
+        error_msg = str(exc_info.value)
+        # Should contain relation name
+        assert "invalid_cross_source_join" in error_msg
+        # Should name both models and their sources
+        assert "sales_orders" in error_msg
+        assert "user_metrics" in error_msg
+        assert "production_warehouse" in error_msg
+        assert "analytics_db" in error_msg
+        # Should explain the problem
+        assert "not currently supported" in error_msg.lower() or "cross-source" in error_msg.lower()

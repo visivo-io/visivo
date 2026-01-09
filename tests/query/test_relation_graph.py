@@ -888,3 +888,187 @@ class TestEdgeCases:
 
         with pytest.raises(NoJoinPathError):
             graph.get_join_plan([])
+
+
+class TestRelationGraphScoping:
+    """Test relevant_models parameter for scoping relation resolution."""
+
+    def test_only_relevant_models_are_nodes(self, tmpdir):
+        """Test that only models in relevant_models become graph nodes."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+        model_c = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
+
+        relation_ab = Relation(
+            name="orders_to_users",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+        relation_bc = Relation(
+            name="users_to_products",
+            condition="${ref(users).product_id} = ${ref(products).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b, model_c],
+            relations=[relation_ab, relation_bc],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schemas only for models A and B (not C)
+        schema_base = tmpdir.mkdir("schema")
+        for model in [model_a, model_b]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {
+                model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
+            }
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Pass only orders and users as relevant models
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders", "users"})
+
+        # Only orders and users should be nodes
+        assert graph.graph.has_node("orders")
+        assert graph.graph.has_node("users")
+        assert not graph.graph.has_node("products")
+
+    def test_irrelevant_relation_not_resolved(self, tmpdir):
+        """Test that relations involving non-relevant models are not resolved."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+        model_c = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
+
+        relation_ab = Relation(
+            name="orders_to_users",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+        # This relation involves products which won't be in relevant_models
+        relation_bc = Relation(
+            name="users_to_products",
+            condition="${ref(users).product_id} = ${ref(products).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b, model_c],
+            relations=[relation_ab, relation_bc],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schemas only for orders and users
+        schema_base = tmpdir.mkdir("schema")
+        for model in [model_a, model_b]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {
+                model_hash: {"id": "INTEGER", "user_id": "INTEGER", "product_id": "INTEGER"}
+            }
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Pass only orders and users as relevant - should NOT try to resolve products relation
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders", "users"})
+
+        # orders-users edge should exist
+        assert graph.graph.has_edge("orders", "users")
+
+        # users-products edge should NOT exist (products not in relevant_models)
+        assert not graph.graph.has_edge("users", "products")
+
+    def test_partial_overlap_relation_skipped(self, tmpdir):
+        """Test that relation with only one model in relevant set is skipped."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        # Relation between orders and users
+        relation_ab = Relation(
+            name="orders_to_users",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=[relation_ab],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schema only for orders
+        schema_base = tmpdir.mkdir("schema")
+        model_hash = model_a.name_hash()
+        schema_dir = schema_base.mkdir(model_a.name)
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Only pass orders as relevant - relation to users should be skipped
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models={"orders"})
+
+        # Only orders should be a node
+        assert graph.graph.has_node("orders")
+        assert not graph.graph.has_node("users")
+
+        # Edge should not exist since users is not relevant
+        assert not graph.graph.has_edge("orders", "users")
+
+    def test_no_relevant_models_means_all_models(self, tmpdir):
+        """Test that passing None for relevant_models includes all models."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        relation_ab = Relation(
+            name="orders_to_users",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+        )
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=[relation_ab],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Create schemas for both
+        schema_base = tmpdir.mkdir("schema")
+        for model in [model_a, model_b]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER"}}
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # Pass None for relevant_models - should include all
+        graph = RelationGraph(dag=dag, field_resolver=resolver, relevant_models=None)
+
+        # Both models should be nodes
+        assert graph.graph.has_node("orders")
+        assert graph.graph.has_node("users")
+
+        # Edge should exist
+        assert graph.graph.has_edge("orders", "users")

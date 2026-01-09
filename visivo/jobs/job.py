@@ -9,10 +9,11 @@ from termcolor import colored
 
 
 class JobResult:
-    def __init__(self, item: NamedModel, success: bool, message: str):
+    def __init__(self, item: NamedModel, success: bool, message: str, warnings: list = None):
         self.item = item
         self.success = success
         self.message = message
+        self.warnings = warnings or []
 
 
 class CachedFuture:
@@ -120,3 +121,10 @@ def format_message_success(details, start_time, full_path):
 def format_message_failure(details, start_time, full_path, error_msg):
     status = colored(f"FAILURE {round(time()-start_time,2)}s", "red")
     return _format_message(details=details, status=status, full_path=full_path, error_msg=error_msg)
+
+
+def format_message_warning(details, start_time, full_path, warning_msg):
+    status = colored(f"WARNING {round(time()-start_time,2)}s", "yellow")
+    return _format_message(
+        details=details, status=status, full_path=full_path, error_msg=warning_msg
+    )

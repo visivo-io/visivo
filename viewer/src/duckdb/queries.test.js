@@ -171,11 +171,8 @@ describe('prepPostQuery - Template Literal Injection', () => {
     it('returns empty string when query is missing', () => {
       const insight = {};
       const inputs = { category: "'electronics'" };
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
       const result = prepPostQuery(insight, inputs);
       expect(result).toBe('');
-      expect(consoleSpy).toHaveBeenCalledWith('Insight has no query');
-      consoleSpy.mockRestore();
     });
 
     it('handles empty inputs object', () => {
@@ -186,12 +183,9 @@ describe('prepPostQuery - Template Literal Injection', () => {
     });
 
     it('throws error when referenced input is missing', () => {
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
       const insight = { query: 'SELECT * FROM table WHERE category = ${category}' };
       const inputs = {}; // Missing 'category'
       expect(() => prepPostQuery(insight, inputs)).toThrow('Query preparation failed');
-      expect(errorSpy).toHaveBeenCalled();
-      errorSpy.mockRestore();
     });
 
     it('handles special characters in string values', () => {
@@ -250,6 +244,69 @@ describe('prepPostQuery - Template Literal Injection', () => {
       const inputs = { metadata: 'NULL' };
       const result = prepPostQuery(insight, inputs);
       expect(result).toBe('SELECT * FROM table WHERE metadata = NULL');
+    });
+  });
+
+  describe('Accessor object support', () => {
+    it('handles single-select accessor with .value', () => {
+      const insight = { query: 'SELECT * FROM table WHERE region = ${region.value}' };
+      const inputs = { region: { value: "'East'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE region = 'East'");
+    });
+
+    it('handles multi-select accessor with .values', () => {
+      const insight = { query: 'SELECT * FROM table WHERE category IN (${categories.values})' };
+      const inputs = { categories: { values: "'electronics','clothing'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE category IN ('electronics','clothing')");
+    });
+
+    it('handles multi-select accessor with .min and .max', () => {
+      const insight = {
+        query: 'SELECT * FROM table WHERE price BETWEEN ${price.min} AND ${price.max}',
+      };
+      const inputs = { price: { min: 100, max: 500, values: "'100','500'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe('SELECT * FROM table WHERE price BETWEEN 100 AND 500');
+    });
+
+    it('handles multi-select accessor with .first and .last', () => {
+      const insight = {
+        query: "SELECT * FROM table WHERE date >= '${dates.first}' AND date <= '${dates.last}'",
+      };
+      const inputs = { dates: { first: '2024-01-01', last: '2024-12-31', values: "'2024-01-01','2024-12-31'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE date >= '2024-01-01' AND date <= '2024-12-31'");
+    });
+
+    it('handles null accessor values as SQL NULL keyword (not string)', () => {
+      const insight = {
+        query: 'SELECT * FROM table WHERE date BETWEEN ${dateRange.min} AND ${dateRange.max}',
+      };
+      // Null min/max from empty selection or non-numeric values
+      const inputs = { dateRange: { values: null, min: null, max: null, first: null, last: null } };
+      const result = prepPostQuery(insight, inputs);
+      // null values should become SQL NULL keyword (not string 'NULL')
+      expect(result).toBe('SELECT * FROM table WHERE date BETWEEN NULL AND NULL');
+    });
+
+    it('handles mixed null and non-null accessor values', () => {
+      const insight = {
+        query: 'SELECT * FROM table WHERE price >= ${price.min} AND category IN (${price.values})',
+      };
+      // min is computed, values is null (empty selection scenario)
+      const inputs = { price: { values: null, min: 100, max: null, first: 100, last: null } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe('SELECT * FROM table WHERE price >= 100 AND category IN (NULL)');
+    });
+
+    it('handles accessor with escaped single quotes in .values', () => {
+      const insight = { query: 'SELECT * FROM table WHERE name IN (${names.values})' };
+      // Values with escaped single quotes (O'Reilly -> 'O''Reilly')
+      const inputs = { names: { values: "'O''Reilly','ACME'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE name IN ('O''Reilly','ACME')");
     });
   });
 

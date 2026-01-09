@@ -11,33 +11,168 @@ defaults:
   alert_name: slack
 
 inputs:
-  # Input for split testing
+  # ===== SINGLE-SELECT INPUTS (all display types) =====
+
+  # Single-select: Dropdown (default display)
   - name: split_threshold
-    label: "Split Threshold"
-    type: dropdown
-    default: "5"
+    label: "Split Threshold (Dropdown)"
+    type: single-select
     options: ["3", "5", "7"]
+    display:
+      type: dropdown
+      default:
+        value: "5"
 
-  # Input for non-aggregate filter testing
+  # Single-select: Query-based dropdown
   - name: min_x_value
-    label: "Minimum X Value"
-    type: dropdown
-    default: "2"
+    label: "Min X Value (Query Dropdown)"
+    type: single-select
     options: ?{select distinct x FROM ${ref(local_test_table)} }
+    display:
+      type: dropdown
 
-  # Input for aggregate filter testing
+  # Single-select: Radio buttons
   - name: min_avg_y
-    label: "Minimum Average Y"
-    type: dropdown
-    default: "5"
+    label: "Min Average Y (Radio)"
+    type: single-select
     options: ["0", "5", "10"]
+    display:
+      type: radio
+      default:
+        value: "5"
 
-  # Input for sort order testing
+  # Single-select: Tabs
   - name: sort_direction
-    label: "Sort Direction"
-    type: dropdown
-    default: "ASC"
+    label: "Sort Direction (Tabs)"
+    type: single-select
     options: ["ASC", "DESC"]
+    display:
+      type: tabs
+      default:
+        value: "ASC"
+
+  # Single-select: Toggle (exactly 2 options required)
+  - name: show_markers
+    label: "Show Markers (Toggle)"
+    type: single-select
+    options: ["lines", "markers+lines"]
+    display:
+      type: toggle
+      default:
+        value: "markers+lines"
+
+  # ===== MULTI-SELECT INPUTS (all display types) =====
+
+  # Multi-select: Dropdown
+  - name: selected_categories
+    label: "Categories (Dropdown)"
+    type: multi-select
+    options: ["Category A", "Category B", "Category C", "Category D"]
+    display:
+      type: dropdown
+      default:
+        values: ["Category A", "Category B"]
+
+  # Multi-select: Checkboxes
+  - name: selected_groups
+    label: "Groups (Checkboxes)"
+    type: multi-select
+    options: ["Group 1", "Group 2", "Group 3"]
+    display:
+      type: checkboxes
+      default:
+        values: all
+
+  # Multi-select: Chips
+  - name: selected_tags
+    label: "Tags (Chips)"
+    type: multi-select
+    options: ["High", "Medium", "Low", "Critical"]
+    display:
+      type: chips
+      default:
+        values: ["High", "Medium"]
+
+  # Multi-select: Range slider (for numeric values)
+  - name: x_value_range
+    label: "X Value Range (Slider)"
+    type: multi-select
+    options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+    display:
+      type: range-slider
+      default:
+        values: ["3", "4", "5", "6", "7"]
+
+  # Multi-select: Query-based checkboxes
+  - name: selected_x_values
+    label: "X Values (Query Checkboxes)"
+    type: multi-select
+    options: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} }
+    display:
+      type: checkboxes
+      default: 
+        values: all
+
+
+  # ===== DATE-BASED INPUTS (new display types) =====
+
+  # Single-select: Autocomplete (for large option sets)
+  - name: autocomplete_date
+    label: "Select Date (Autocomplete)"
+    type: single-select
+    options: ?{SELECT DISTINCT strftime(date, '%Y-%m-%d') as formatted_date FROM ${ref(daily_metrics)} ORDER BY formatted_date}
+    display:
+      type: autocomplete
+      default:
+        value: "2024-01-15"
+
+  # Single-select: Slider (for numeric/date ranges)
+  - name: slider_day_num
+    label: "Day Number (Slider)"
+    type: single-select
+    options: ["1", "5", "10", "15", "20", "25", "30"]
+    display:
+      type: slider
+      default:
+        value: "15"
+
+  # Multi-select: Date Range with date expressions
+  - name: date_range_filter
+    label: "Date Range (Calendar)"
+    type: multi-select
+    range:
+      start: "today - 30 days"
+      end: "today"
+      step: "1 day"
+    display:
+      type: date-range
+      default:
+        start: "today - 7 days"
+        end: "today"
+
+  # Multi-select: Date Range with static dates for testing
+  - name: static_date_range
+    label: "January Date Range"
+    type: multi-select
+    range:
+      start: "2024-01-01"
+      end: "2025-01-31"
+      step: "1 day"
+    display:
+      type: date-range
+      default:
+        start: "2024-01-01"
+        end: "2024-01-05"
+
+  # Single-select: Autocomplete with week-based dates
+  - name: week_selector
+    label: "Select Week Start (Autocomplete)"
+    type: single-select
+    options: ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"]
+    display:
+      type: autocomplete
+      default:
+        value: "2024-01-01"
 
 alerts:
   - name: slack
@@ -168,6 +303,82 @@ charts:
       title:
         text: "Combined Interactions Test"
 
+  # ===== INPUT DISPLAY SHOWCASE CHARTS =====
+
+  # Toggle display chart
+  - name: toggle-mode-chart
+    insights:
+      - ${ ref(toggle-mode-insight) }
+    layout:
+      title:
+        text: "Toggle Input: Dynamic Mode"
+
+  # Range slider chart
+  - name: range-slider-chart
+    insights:
+      - ${ ref(range-slider-insight) }
+    layout:
+      title:
+        text: "Range Slider: Filter by Min/Max"
+
+  # Checkboxes chart
+  - name: checkboxes-filter-chart
+    insights:
+      - ${ ref(checkboxes-filter-insight) }
+    layout:
+      title:
+        text: "Checkboxes: Multi-Value Filter"
+
+  # Chips chart
+  - name: chips-split-chart
+    insights:
+      - ${ ref(chips-split-insight) }
+    layout:
+      title:
+        text: "Chips: Dynamic Split Labels"
+
+  # ===== DATE-BASED CHARTS (new display types) =====
+
+  # Autocomplete chart
+  - name: autocomplete-date-chart
+    insights:
+      - ${ ref(autocomplete-date-insight) }
+    layout:
+      title:
+        text: "Autocomplete: Date Filter"
+
+  # Slider chart
+  - name: slider-day-chart
+    insights:
+      - ${ ref(slider-day-insight) }
+    layout:
+      title:
+        text: "Slider: Day Number Filter"
+
+  # Date range chart
+  - name: date-range-filter-chart
+    insights:
+      - ${ ref(date-range-filter-insight) }
+    layout:
+      title:
+        text: "Date Range: Time Series Filter"
+
+  # Date range category chart
+  - name: date-range-category-chart
+    insights:
+      - ${ ref(date-range-category-insight) }
+    layout:
+      title:
+        text: "Date Range: Category Aggregation"
+
+  # Week selector chart
+  - name: week-selector-chart
+    insights:
+      - ${ ref(week-selector-insight) }
+    layout:
+      title:
+        text: "Week Selector: Autocomplete Filter"
+
 dashboards:
   - name: Insights Dashboard
     level: 0
@@ -175,7 +386,11 @@ dashboards:
       - "insights"
       - "interactive"
     rows:
-      # Original insights (no inputs)
+      # ===== SECTION 1: Original insights (no inputs) =====
+      - height: compact
+        items:
+          - markdown: |
+              ## Basic Insights (No Input Controls)
       - height: medium
         items:
           - width: 6
@@ -189,30 +404,151 @@ dashboards:
           - width: 6
             chart: ${ref(composite-metric-chart)}
 
-
-      # Input-driven test charts
+      # ===== SECTION 2: Input-Controlled Charts =====
+      # Each input is directly above its related chart
       - height: compact
         items:
-          - input: ${ref(split_threshold)}
-          - input: ${ref(min_x_value)}
-          - input: ${ref(min_avg_y)}
-          - input: ${ref(sort_direction)}
+          - markdown: |
+              ## Input-Controlled Charts
+              Each input controls the chart directly below it
+
+      # Split Threshold -> Split Input Test Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(split_threshold)}
+          - width: 6
+            input: ${ref(min_x_value)}
       - height: medium
         items:
           - width: 6
             chart: ${ ref(split-input-test-chart) }
           - width: 6
             chart: ${ ref(filter-nonaggregate-input-test-chart) }
+
+      # Min Avg Y (Radio) -> Aggregate Filter | Sort Direction -> Sort Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(min_avg_y)}
+          - width: 6
+            input: ${ref(sort_direction)}
       - height: medium
         items:
           - width: 6
             chart: ${ ref(filter-aggregate-input-test-chart) }
           - width: 6
             chart: ${ ref(sort-input-test-chart) }
+
+      # Combined inputs control combined chart
+      - height: compact
+        items:
+          - width: 4
+            input: ${ref(split_threshold)}
+          - width: 4
+            input: ${ref(min_x_value)}
+          - width: 4
+            input: ${ref(sort_direction)}
       - height: medium
         items:
           - width: 12
             chart: ${ ref(combined-interactions-test-chart) }
+
+      # ===== SECTION 3: Display Type Showcase =====
+      - height: compact
+        items:
+          - markdown: |
+              ## Single-Select Display Types
+              Toggle, Radio, Tabs, Dropdown - each input above its chart
+
+      # Toggle -> Toggle Mode Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(show_markers)}
+          - width: 6
+            input: ${ref(x_value_range)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(toggle-mode-chart) }
+          - width: 6
+            chart: ${ ref(range-slider-chart) }
+
+      # Multi-select displays
+      - height: compact
+        items:
+          - markdown: |
+              ## Multi-Select Display Types
+              Checkboxes, Chips, Range Slider
+
+      # Checkboxes & Chips
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(selected_x_values)}
+          - width: 6
+            input: ${ref(selected_tags)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(checkboxes-filter-chart) }
+          - width: 6
+            chart: ${ ref(chips-split-chart) }
+
+      # ===== SECTION 4: DATE-BASED INPUTS (New Display Types) =====
+      - height: compact
+        items:
+          - markdown: |
+              ## Date-Based Inputs (New Display Types)
+              Autocomplete, Slider, and Date Range inputs
+
+      # Autocomplete -> Autocomplete Date Chart
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(autocomplete_date)}
+          - width: 6
+            input: ${ref(slider_day_num)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(autocomplete-date-chart) }
+          - width: 6
+            chart: ${ ref(slider-day-chart) }
+
+      # Date Range -> Date Range Charts
+      - height: compact
+        items:
+          - width: 6
+            input: ${ref(static_date_range)}
+          - width: 6
+            input: ${ref(week_selector)}
+      - height: medium
+        items:
+          - width: 6
+            chart: ${ ref(date-range-filter-chart) }
+          - width: 6
+            chart: ${ ref(week-selector-chart) }
+
+      # Date Range Category Chart (uses same static_date_range input)
+      - height: compact
+        items:
+          - width: 12
+            input: ${ref(static_date_range)}
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ ref(date-range-category-chart) }
+
+      # Additional inputs (unused showcase)
+      - height: compact
+        items:
+          - markdown: |
+              ## Additional Multi-Select Inputs (Showcase)
+          - input: ${ref(selected_categories)}
+          - input: ${ref(selected_groups)}
+
   - name: Table Dashboard
     level: 1
     tags:

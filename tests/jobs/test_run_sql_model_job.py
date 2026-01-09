@@ -2,7 +2,7 @@
 
 import pytest
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.base.query_string import QueryString
 from visivo.models.project import Project
 from visivo.models.insight import Insight
@@ -29,8 +29,8 @@ class TestSqlModelJobNoInputLogic:
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
         # Create an input with query-based options that references the model
-        input_obj = DropdownInput(
-            name="filter", type="dropdown", options="?{ SELECT DISTINCT x FROM ${ref(data)} }"
+        input_obj = SingleSelectInput(
+            name="filter", options="?{ SELECT DISTINCT x FROM ${ref(data)} }"
         )
         # Create insight that does NOT reference the input (so insight is NOT dynamic)
         insight = Insight(
@@ -74,7 +74,7 @@ class TestSqlModelJobNoInputLogic:
         # ARRANGE
         source = SourceFactory()
         model = SqlModel(name="data", sql="SELECT 1 as x", source=f"ref({source.name})")
-        input_obj = DropdownInput(name="threshold", type="dropdown", options=["10", "20", "30"])
+        input_obj = SingleSelectInput(name="threshold", options=["10", "20", "30"])
         # Create insight that DOES reference the input (making it dynamic)
         insight = Insight(
             name="test_insight",

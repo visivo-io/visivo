@@ -2,7 +2,10 @@ import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
 import { fetchInsights as defaultFetchInsights } from '../api/insights';
-import { fetchInputOptions as defaultFetchInputOptions } from '../api/inputs';
+import {
+  fetchInputOptions as defaultFetchInputOptions,
+  fetchInputs as defaultFetchInputs,
+} from '../api/inputs';
 
 // Default query functions
 const defaultQueries = {
@@ -10,6 +13,7 @@ const defaultQueries = {
   fetchDashboard: defaultFetchDashboard,
   fetchInsights: defaultFetchInsights,
   fetchInputOptions: defaultFetchInputOptions,
+  fetchInputs: defaultFetchInputs,
 };
 
 // Create context
@@ -23,7 +27,8 @@ const QueryContext = createContext(defaultQueries);
  * @param {Function} props.fetchTraces - Custom traces fetch function
  * @param {Function} props.fetchInsights - Custom insights fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
- * @param {Function} props.fetchInputOptions - Custom input options fetch function
+ * @param {Function} props.fetchInputOptions - Custom input options fetch function (legacy)
+ * @param {Function} props.fetchInputs - Custom inputs metadata fetch function
  * @param {ReactNode} props.children
  */
 export function QueryProvider({
@@ -31,6 +36,7 @@ export function QueryProvider({
   fetchInsights,
   fetchDashboard,
   fetchInputOptions,
+  fetchInputs,
   children,
 }) {
   const queries = {
@@ -38,6 +44,7 @@ export function QueryProvider({
     fetchInsights: fetchInsights || defaultFetchInsights,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
     fetchInputOptions: fetchInputOptions || defaultFetchInputOptions,
+    fetchInputs: fetchInputs || defaultFetchInputs,
   };
 
   return <QueryContext.Provider value={queries}>{children}</QueryContext.Provider>;
@@ -83,10 +90,19 @@ export function useFetchDashboard() {
 }
 
 /**
- * Hook to get the fetchInputOptions function
+ * Hook to get the fetchInputOptions function (legacy)
  * @returns {Function} fetchInputOptions function
  */
 export function useFetchInputOptions() {
   const { fetchInputOptions } = useQueries();
   return fetchInputOptions;
+}
+
+/**
+ * Hook to get the fetchInputs function
+ * @returns {Function} fetchInputs function
+ */
+export function useFetchInputs() {
+  const { fetchInputs } = useQueries();
+  return fetchInputs;
 }

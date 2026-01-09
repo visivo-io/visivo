@@ -1,201 +1,213 @@
 import pytest
 from visivo.models.inputs.input import Input
-from visivo.models.inputs.types.dropdown import DropdownInput
+from visivo.models.inputs.types.single_select import SingleSelectInput
+from visivo.models.inputs.types.multi_select import MultiSelectInput
+from visivo.models.inputs.types.display import RangeConfig
 from visivo.models.base.query_string import QueryString
 
 
-def test_serialize_without_options():
-    """Test serialization when no options attribute exists"""
-    input_obj = Input(name="test_input", label="Test Input")
+class TestSingleSelectInput:
+    def test_minimal_data(self):
+        data = {"name": "single_select_input", "options": ["A", "B"]}
+        input_obj = SingleSelectInput(**data)
 
-    # Use standard Pydantic serialization (no custom serializer in base class)
-    result = input_obj.model_dump()
+        assert input_obj.name == "single_select_input"
+        assert input_obj.type == "single-select"
+        assert input_obj.options == ["A", "B"]
 
-    assert result["name"] == "test_input"
-    assert result["label"] == "Test Input"
-    assert result["type"] == "dropdown"
-    assert "options" not in result  # Base Input has no options field
-
-
-def test_dropdown_with_minimal_data():
-    """Test dropdown with minimal data"""
-    data = {"name": "dropdown_input"}
-    dropdown = DropdownInput(**data)
-
-    assert dropdown.name == "dropdown_input"
-    assert dropdown.type == "dropdown"
-    assert dropdown.options is None
-
-
-def test_dropdown_with_static_options():
-    """Test dropdown with static options"""
-    data = {
-        "name": "static_options",
-        "label": "Static",
-        "options": ["Test", "Test 1", "Test 2", "Test 3"],
-        "default": "Test",
-    }
-    dropdown = DropdownInput(**data)
-    dumped = dropdown.model_dump()
-
-    assert dropdown.name == "static_options"
-    assert "options" in dumped
-    assert dumped["options"] == ["Test", "Test 1", "Test 2", "Test 3"]
-
-
-def test_dropdown_with_query_options():
-    """Test dropdown with query options serializes the query string and adds name_hash"""
-    # Create input with query-based options
-    data = {
-        "name": "query_options",
-        "label": "query",
-        "options": "?{ select distinct(category) from ${ref(products_model)} }",
-    }
-    dropdown = DropdownInput(**data)
-
-    # Serialize (no DAG context needed anymore)
-    dumped = dropdown.model_dump()
-
-    # Verify the input was created correctly
-    assert dropdown.name == "query_options"
-
-    # Options should be the query string (QueryString serializes via its schema)
-    assert "options" in dumped
-    assert "${ref(products_model)}" in dumped["options"]
-    assert "select distinct(category)" in dumped["options"]
-
-    # name_hash should be present for viewer to fetch parquet file
-    assert "name_hash" in dumped
-    assert dumped["name_hash"] == dropdown.name_hash()
-
-
-def test_query_options_serialize_without_dag():
-    """Test that query options serialize without needing DAG context.
-
-    Query validation (column count, SELECT statement, etc.) now happens
-    in the run phase via run_input_job.py, not at serialization time.
-    """
-    # Query with multiple columns should serialize fine (validation happens at run time)
-    data = {
-        "name": "multi_column_input",
-        "options": "?{ select category, name from ${ref(products)} }",
-    }
-    dropdown = DropdownInput(**data)
-    dumped = dropdown.model_dump()
-
-    # Should serialize the query string as-is
-    assert "options" in dumped
-    assert "category, name" in dumped["options"]
-    assert "name_hash" in dumped
-
-
-def test_query_multiple_references_fails():
-    """Test that queries with multiple ${ref(...)} fail"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    from visivo.models.models.sql_model import SqlModel
-    import pytest
-
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    model1 = SqlModel(name="products", sql="SELECT * FROM products", source="ref(test_source)")
-    model2 = SqlModel(name="sales", sql="SELECT * FROM sales", source="ref(test_source)")
-    project = Project(name="test_project", sources=[source], models=[model1, model2])
-    dag = project.dag()
-
-    # Query with two references should fail during construction (model_validator)
-    with pytest.raises(ValueError) as exc_info:
+    def test_with_static_options(self):
         data = {
-            "name": "bad_input",
-            "options": "?{ select category from ${ref(products)} union select category from ${ref(sales)} }",
+            "name": "static_options",
+            "label": "Static",
+            "options": ["Test", "Test 1", "Test 2", "Test 3"],
         }
-        dropdown = DropdownInput(**data)
+        input_obj = SingleSelectInput(**data)
+        dumped = input_obj.model_dump()
 
-    assert "references 2 items" in str(exc_info.value)
-    assert "must reference exactly one" in str(exc_info.value)
+        assert input_obj.name == "static_options"
+        assert "options" in dumped
+        assert dumped["options"] == ["Test", "Test 1", "Test 2", "Test 3"]
 
-
-def test_query_no_reference_fails():
-    """Test that queries without ${ref(...)} fail"""
-    from visivo.models.project import Project
-    from visivo.models.sources.sqlite_source import SqliteSource
-    import pytest
-
-    source = SqliteSource(name="test_source", type="sqlite", database="tmp/test.db")
-    project = Project(name="test_project", sources=[source])
-    dag = project.dag()
-
-    # Query without any reference should fail during construction (model_validator)
-    with pytest.raises(ValueError) as exc_info:
+    def test_with_query_options(self):
         data = {
-            "name": "bad_input",
-            "options": "?{ select category from products }",
+            "name": "query_options",
+            "label": "query",
+            "options": "?{ select distinct(category) from ${ref(products_model)} }",
         }
-        dropdown = DropdownInput(**data)
+        input_obj = SingleSelectInput(**data)
+        dumped = input_obj.model_dump()
 
-    assert "must reference exactly one model" in str(exc_info.value)
+        assert input_obj.name == "query_options"
+        assert "options" in dumped
+        assert "${ref(products_model)}" in dumped["options"]
+        assert "select distinct(category)" in dumped["options"]
+        assert "name_hash" in dumped
+        assert dumped["name_hash"] == input_obj.name_hash()
+
+    def test_query_multiple_references_fails(self):
+        with pytest.raises(ValueError) as exc_info:
+            data = {
+                "name": "bad_input",
+                "options": "?{ select category from ${ref(products)} union select category from ${ref(sales)} }",
+            }
+            SingleSelectInput(**data)
+
+        assert "references 2 items" in str(exc_info.value)
+        assert "must reference exactly one" in str(exc_info.value)
+
+    def test_query_no_reference_fails(self):
+        with pytest.raises(ValueError) as exc_info:
+            data = {
+                "name": "bad_input",
+                "options": "?{ select category from products }",
+            }
+            SingleSelectInput(**data)
+
+        assert "must reference exactly one model" in str(exc_info.value)
+
+    def test_child_items_includes_query_refs(self):
+        data = {
+            "name": "test_input",
+            "options": "?{ select category from ${ref(products)} }",
+        }
+        input_obj = SingleSelectInput(**data)
+
+        assert isinstance(input_obj.options, QueryString)
+        children = input_obj.child_items()
+
+        assert len(children) == 1
+        assert "ref(products)" in children
+
+    def test_child_items_empty_for_static_options(self):
+        data = {
+            "name": "test_input",
+            "options": ["Option 1", "Option 2"],
+        }
+        input_obj = SingleSelectInput(**data)
+        children = input_obj.child_items()
+
+        assert len(children) == 0
+
+    def test_static_options_include_name_hash(self):
+        data = {
+            "name": "category_filter",
+            "options": ["Option A", "Option B", "Option C"],
+        }
+        input_obj = SingleSelectInput(**data)
+        dumped = input_obj.model_dump()
+
+        assert dumped["options"] == ["Option A", "Option B", "Option C"]
+        assert "name_hash" in dumped
+        assert dumped["name_hash"] == input_obj.name_hash()
 
 
-def test_query_reference_serializes_without_validation():
-    """Test that query options with any reference serialize without DAG validation.
+class TestMultiSelectInput:
+    def test_minimal_data_with_options(self):
+        data = {"name": "multi_select_input", "options": ["A", "B", "C"]}
+        input_obj = MultiSelectInput(**data)
 
-    Reference validation (existence, type) now happens in the run phase
-    via run_input_job.py, not at serialization time.
-    """
-    # Reference to nonexistent item should serialize fine (validation at run time)
-    data = {
-        "name": "test_input",
-        "options": "?{ select category from ${ref(nonexistent)} }",
-    }
-    dropdown = DropdownInput(**data)
-    dumped = dropdown.model_dump()
+        assert input_obj.name == "multi_select_input"
+        assert input_obj.type == "multi-select"
+        assert input_obj.options == ["A", "B", "C"]
+        assert input_obj.is_list_based()
+        assert not input_obj.is_range_based()
 
-    # Should serialize the query string as-is
-    assert "options" in dumped
-    assert "${ref(nonexistent)}" in dumped["options"]
-    assert "name_hash" in dumped
+    def test_with_range(self):
+        data = {
+            "name": "price_range",
+            "label": "Price Range",
+            "range": {"start": 0, "end": 100, "step": 10},
+        }
+        input_obj = MultiSelectInput(**data)
 
+        assert input_obj.name == "price_range"
+        assert input_obj.type == "multi-select"
+        assert input_obj.range is not None
+        assert input_obj.range.start == 0
+        assert input_obj.range.end == 100
+        assert input_obj.range.step == 10
+        assert input_obj.is_range_based()
+        assert not input_obj.is_list_based()
 
-def test_static_options_include_name_hash():
-    """Test that static options also include name_hash for consistency"""
-    data = {
-        "name": "category_filter",
-        "options": ["Option A", "Option B", "Option C"],
-    }
-    dropdown = DropdownInput(**data)
-    dumped = dropdown.model_dump()
+    def test_options_and_range_mutually_exclusive(self):
+        with pytest.raises(ValueError) as exc_info:
+            data = {
+                "name": "bad_input",
+                "options": ["A", "B"],
+                "range": {"start": 0, "end": 100, "step": 10},
+            }
+            MultiSelectInput(**data)
 
-    assert dumped["options"] == ["Option A", "Option B", "Option C"]
-    assert "name_hash" in dumped
-    assert dumped["name_hash"] == dropdown.name_hash()
+        assert "not both" in str(exc_info.value)
 
+    def test_requires_options_or_range(self):
+        with pytest.raises(ValueError) as exc_info:
+            data = {"name": "bad_input"}
+            MultiSelectInput(**data)
 
-def test_child_items_includes_query_refs():
-    """Test that child_items() returns query reference dependencies"""
-    from visivo.models.base.query_string import QueryString
+        assert "must specify either 'options' or 'range'" in str(exc_info.value)
 
-    data = {
-        "name": "test_input",
-        "options": "?{ select category from ${ref(products)} }",
-    }
-    dropdown = DropdownInput(**data)
+    def test_with_query_options(self):
+        data = {
+            "name": "query_options",
+            "options": "?{ select distinct(category) from ${ref(products_model)} }",
+        }
+        input_obj = MultiSelectInput(**data)
+        dumped = input_obj.model_dump()
 
-    # Verify options was deserialized to QueryString
-    assert isinstance(dropdown.options, QueryString)
+        assert input_obj.name == "query_options"
+        assert "${ref(products_model)}" in dumped["options"]
 
-    children = dropdown.child_items()
+    def test_with_query_range(self):
+        data = {
+            "name": "dynamic_range",
+            "range": {
+                "start": "?{ select min(price) from ${ref(products)} }",
+                "end": "?{ select max(price) from ${ref(products)} }",
+                "step": 10,
+            },
+        }
+        input_obj = MultiSelectInput(**data)
 
-    assert len(children) == 1
-    assert "ref(products)" in children
+        # Range values can be query strings (stored as str with ?{ } syntax)
+        assert "?{" in str(input_obj.range.start)
+        assert "?{" in str(input_obj.range.end)
+        assert "${ref(products)}" in str(input_obj.range.start)
+        assert input_obj.range.step == 10
 
+    def test_child_items_includes_range_query_refs(self):
+        data = {
+            "name": "dynamic_range",
+            "range": {
+                "start": "?{ select min(price) from ${ref(products)} }",
+                "end": "?{ select max(price) from ${ref(orders)} }",
+                "step": 10,
+            },
+        }
+        input_obj = MultiSelectInput(**data)
+        children = input_obj.child_items()
 
-def test_child_items_empty_for_static_options():
-    """Test that child_items() returns empty list for static options"""
-    data = {
-        "name": "test_input",
-        "options": ["Option 1", "Option 2"],
-    }
-    dropdown = DropdownInput(**data)
+        assert len(children) == 2
+        assert "ref(products)" in children
+        assert "ref(orders)" in children
 
-    children = dropdown.child_items()
+    def test_child_items_empty_for_static_range(self):
+        data = {
+            "name": "static_range",
+            "range": {"start": 0, "end": 100, "step": 10},
+        }
+        input_obj = MultiSelectInput(**data)
+        children = input_obj.child_items()
 
-    assert len(children) == 0
+        assert len(children) == 0
+
+    def test_serialize_with_name_hash(self):
+        data = {
+            "name": "multi_input",
+            "options": ["A", "B", "C"],
+        }
+        input_obj = MultiSelectInput(**data)
+        dumped = input_obj.model_dump()
+
+        assert "name_hash" in dumped
+        assert dumped["name_hash"] == input_obj.name_hash()

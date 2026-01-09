@@ -15,17 +15,17 @@ from tests.support.utils import temp_folder
 
 class TestInsightQueryBuilderJSTemplates:
     def test_query_builder_uses_js_template_literals_in_unresolved_statements(self):
-        """Verify query builder converts ${ref(input)} to ${input} in unresolved statements"""
+        """Verify query builder converts ${ref(input).value} to ${input.value} in unresolved statements"""
         # ARRANGE
         source = SourceFactory()
         model = SqlModelFactory(
             name="data", sql="SELECT 1 as x, 2 as y", source=f"ref({source.name})"
         )
-        input_obj = InputFactory(name="threshold", default="5")
+        input_obj = InputFactory(name="threshold", options=["5", "10", "15"])
         insight = Insight(
             name="filtered",
             props=InsightProps(type="scatter", x="?{${ref(data).x}}", y="?{${ref(data).y}}"),
-            interactions=[InsightInteraction(filter="?{x > ${ref(threshold)}}")],
+            interactions=[InsightInteraction(filter="?{x > ${ref(threshold).value}}")],
         )
         project = Project(
             name="test_project",
@@ -49,9 +49,9 @@ class TestInsightQueryBuilderJSTemplates:
         # ASSERT
         assert len(filter_statements) == 1
         filter_value = filter_statements[0][1]
-        # Input ref should be converted to JS template literal
-        assert "${threshold}" in filter_value
-        assert "${ref(threshold)}" not in filter_value
+        # Input ref should be converted to JS template literal with accessor
+        assert "${threshold.value}" in filter_value
+        assert "${ref(threshold).value}" not in filter_value
         # Old placeholder syntax should not be present
         assert "visivo-input-placeholder" not in filter_value
 
@@ -64,13 +64,13 @@ class TestInsightQueryBuilderJSTemplates:
             sql="SELECT 1 as revenue, '2024-01-01' as date",
             source=f"ref({source.name})",
         )
-        input_obj = InputFactory(name="min_revenue", default="1000")
+        input_obj = InputFactory(name="min_revenue", options=["1000", "2000", "5000"])
         insight = Insight(
             name="filtered_sales",
             props=InsightProps(type="bar", x="?{${ref(sales).date}}", y="?{${ref(sales).revenue}}"),
             interactions=[
                 InsightInteraction(
-                    filter="?{${ref(sales).revenue} > ${ref(min_revenue)} AND ${ref(sales).date} > '2024-01-01'}"
+                    filter="?{${ref(sales).revenue} > ${ref(min_revenue).value} AND ${ref(sales).date} > '2024-01-01'}"
                 )
             ],
         )
@@ -96,9 +96,9 @@ class TestInsightQueryBuilderJSTemplates:
         # ASSERT
         assert len(filter_statements) == 1
         filter_value = filter_statements[0][1]
-        # Input refs should be converted
-        assert "${min_revenue}" in filter_value
-        assert "${ref(min_revenue)}" not in filter_value
+        # Input refs should be converted with accessor
+        assert "${min_revenue.value}" in filter_value
+        assert "${ref(min_revenue).value}" not in filter_value
         # Model refs should remain unchanged (will be handled by field resolver)
         assert "${ref(sales).revenue}" in filter_value
         assert "${ref(sales).date}" in filter_value
