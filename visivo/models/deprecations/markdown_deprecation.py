@@ -150,101 +150,121 @@ class MarkdownDeprecation(BaseDeprecationChecker):
             while i < len(lines):
                 line = lines[i]
 
-                # Check if this line starts an item with markdown
-                match = re.match(r"^(\s*)-\s+markdown:\s*(.*)$", line)
-                if match:
-                    indent = match.group(1)
-                    value_part = match.group(2)
+                # Case 1: Item starts with markdown (- markdown: ...)
+                match_item_start = re.match(r"^(\s*)-\s+markdown:\s*(.*)$", line)
+                # Case 2: markdown is a property within an item (  markdown: ...)
+                match_property = re.match(r"^(\s+)markdown:\s*(.*)$", line)
+
+                if match_item_start:
+                    indent = match_item_start.group(1)
+                    value_part = match_item_start.group(2)
                     item_indent = indent + "  "  # Indent for item properties
+                    is_item_start = True
+                elif match_property:
+                    # This is markdown as a property, not starting the item
+                    prop_indent_str = match_property.group(1)
+                    value_part = match_property.group(2)
+                    # The item indent is the same as the property indent
+                    item_indent = prop_indent_str
+                    is_item_start = False
+                else:
+                    i += 1
+                    continue
 
-                    # Check if it's already a Markdown model (has nested content:) or a ref
-                    if value_part.strip().startswith("ref("):
-                        # ref() usage should not be migrated
+                # Check if it's already a Markdown model (has nested content:) or a ref
+                if value_part.strip().startswith("ref("):
+                    # ref() usage should not be migrated
+                    i += 1
+                    continue
+
+                if value_part.strip() == "":
+                    # Check if next line has 'content:' (already migrated or is a model)
+                    content_indent = item_indent + "  " if is_item_start else item_indent + "  "
+                    if i + 1 < len(lines) and re.match(
+                        rf"^{re.escape(content_indent)}content:", lines[i + 1]
+                    ):
                         i += 1
                         continue
+                    # Empty value with no content: on next line - skip
+                    i += 1
+                    continue
 
-                    if value_part.strip() == "":
-                        # Check if next line has 'content:' (already migrated or is a model)
-                        if i + 1 < len(lines) and re.match(
-                            rf"^{re.escape(item_indent)}\s*content:", lines[i + 1]
-                        ):
-                            i += 1
-                            continue
-                        # Empty value with no content: on next line - skip
-                        i += 1
-                        continue
+                # Found an inline markdown string - collect the full item
+                old_lines = [line]
+                markdown_value = value_part
+                align_value = None
+                justify_value = None
 
-                    # Found an inline markdown string - collect the full item
-                    old_lines = [line]
-                    markdown_value = value_part
-                    align_value = None
-                    justify_value = None
-
-                    # Handle block scalar (| or >)
-                    if value_part.strip() in ("|", ">", "|-", ">-", "|+", ">+"):
-                        # Collect the block content
-                        block_indent = None
-                        j = i + 1
-                        while j < len(lines):
-                            next_line = lines[j]
-                            # Empty lines are part of the block
-                            if next_line.strip() == "":
-                                old_lines.append(next_line)
-                                j += 1
-                                continue
-                            # Determine block indent from first content line
-                            if block_indent is None:
-                                line_match = re.match(r"^(\s*)", next_line)
-                                if line_match and len(line_match.group(1)) > len(item_indent):
-                                    block_indent = line_match.group(1)
-                                else:
-                                    break
-                            # Check if still in block (same or greater indent)
-                            if next_line.startswith(block_indent) or next_line.strip() == "":
-                                old_lines.append(next_line)
-                                j += 1
-                            else:
-                                break
-                        i = j - 1  # Will be incremented at end of loop
-
-                    # Check for align/justify on following lines
+                # Handle block scalar (| or >)
+                if value_part.strip() in ("|", ">", "|-", ">-", "|+", ">+"):
+                    # Collect the block content
+                    block_indent = None
                     j = i + 1
                     while j < len(lines):
                         next_line = lines[j]
-                        # Must be at item property indent level
-                        align_match = re.match(
-                            rf"^{re.escape(item_indent)}align:\s*(\S+)\s*$", next_line
-                        )
-                        justify_match = re.match(
-                            rf"^{re.escape(item_indent)}justify:\s*(\S+)\s*$", next_line
-                        )
-
-                        if align_match and align_value is None:
-                            align_value = align_match.group(1)
+                        # Empty lines are part of the block
+                        if next_line.strip() == "":
                             old_lines.append(next_line)
                             j += 1
-                        elif justify_match and justify_value is None:
-                            justify_value = justify_match.group(1)
+                            continue
+                        # Determine block indent from first content line
+                        if block_indent is None:
+                            line_match = re.match(r"^(\s*)", next_line)
+                            if line_match and len(line_match.group(1)) > len(item_indent):
+                                block_indent = line_match.group(1)
+                            else:
+                                break
+                        # Check if still in block (same or greater indent)
+                        if next_line.startswith(block_indent) or next_line.strip() == "":
                             old_lines.append(next_line)
                             j += 1
                         else:
                             break
+                    i = j - 1  # Will be incremented at end of loop
 
-                    # Build the replacement
-                    old_text = "\n".join(old_lines)
-                    new_text = self._build_replacement(
-                        indent, markdown_value, align_value, justify_value, old_lines, lines, i
+                # Check for align/justify on following lines
+                j = i + 1
+                while j < len(lines):
+                    next_line = lines[j]
+                    # Must be at item property indent level
+                    align_match = re.match(
+                        rf"^{re.escape(item_indent)}align:\s*(\S+)\s*$", next_line
+                    )
+                    justify_match = re.match(
+                        rf"^{re.escape(item_indent)}justify:\s*(\S+)\s*$", next_line
                     )
 
-                    if new_text != old_text:
-                        migrations.append(
-                            MigrationAction(
-                                file_path=file_path,
-                                old_text=old_text,
-                                new_text=new_text,
-                                description=f"Converted inline markdown to Markdown model",
-                            )
+                    if align_match and align_value is None:
+                        align_value = align_match.group(1)
+                        old_lines.append(next_line)
+                        j += 1
+                    elif justify_match and justify_value is None:
+                        justify_value = justify_match.group(1)
+                        old_lines.append(next_line)
+                        j += 1
+                    else:
+                        break
+
+                # Build the replacement
+                old_text = "\n".join(old_lines)
+                new_text = self._build_replacement(
+                    item_indent,
+                    markdown_value,
+                    align_value,
+                    justify_value,
+                    old_lines,
+                    is_item_start,
+                )
+
+                if new_text != old_text:
+                    migrations.append(
+                        MigrationAction(
+                            file_path=file_path,
+                            old_text=old_text,
+                            new_text=new_text,
+                            description="Converted inline markdown to Markdown model",
                         )
+                    )
 
                 i += 1
 
@@ -255,30 +275,35 @@ class MarkdownDeprecation(BaseDeprecationChecker):
 
     def _build_replacement(
         self,
-        indent: str,
+        item_indent: str,
         markdown_value: str,
         align_value: str,
         justify_value: str,
         old_lines: List[str],
-        all_lines: List[str],
-        start_line: int,
+        is_item_start: bool,
     ) -> str:
         """Build the replacement text for an inline markdown."""
-        item_indent = indent + "  "
-        prop_indent = item_indent + "  "
-
-        # Start building new lines
-        new_lines = [f"{indent}- markdown:"]
+        # For item start (- markdown:), the content indent is item_indent + 2
+        # For property (  markdown:), the content indent is item_indent + 2
+        content_indent = item_indent + "  "
 
         # Handle the content value
         first_line = old_lines[0]
         value_match = re.match(r"^.*markdown:\s*(.*)$", first_line)
         value_part = value_match.group(1) if value_match else ""
 
+        if is_item_start:
+            # Item starts with markdown: - markdown:
+            indent = item_indent[:-2] if len(item_indent) >= 2 else ""
+            new_lines = [f"{indent}- markdown:"]
+        else:
+            # markdown is a property within the item
+            new_lines = [f"{item_indent}markdown:"]
+
         # Check if it's a block scalar
         if value_part.strip() in ("|", ">", "|-", ">-", "|+", ">+"):
             # Preserve block scalar style
-            new_lines.append(f"{prop_indent}content: {value_part.strip()}")
+            new_lines.append(f"{content_indent}content: {value_part.strip()}")
             # Add the block content lines with adjusted indentation
             for old_line in old_lines[1:]:
                 # Skip align/justify lines
@@ -290,20 +315,20 @@ class MarkdownDeprecation(BaseDeprecationChecker):
                     line_indent_match = re.match(r"^(\s*)", old_line)
                     original_indent = line_indent_match.group(1) if line_indent_match else ""
                     # Add 2 more spaces for being nested under content
-                    new_indent = prop_indent + original_indent[len(item_indent) :]
+                    new_indent = content_indent + original_indent[len(item_indent) :]
                     new_lines.append(new_indent + old_line.lstrip())
                 else:
                     new_lines.append(old_line)
         else:
             # Simple string value (quoted or plain)
-            new_lines.append(f"{prop_indent}content: {value_part}")
+            new_lines.append(f"{content_indent}content: {value_part}")
 
         # Add align if present
         if align_value:
-            new_lines.append(f"{prop_indent}align: {align_value}")
+            new_lines.append(f"{content_indent}align: {align_value}")
 
         # Add justify if present
         if justify_value:
-            new_lines.append(f"{prop_indent}justify: {justify_value}")
+            new_lines.append(f"{content_indent}justify: {justify_value}")
 
         return "\n".join(new_lines)

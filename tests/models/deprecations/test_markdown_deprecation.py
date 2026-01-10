@@ -319,3 +319,65 @@ dashboards:
             # Empty markdown should still be migrated
             assert len(migrations) == 1
             assert 'content: ""' in migrations[0].new_text
+
+    def test_migration_handles_markdown_as_property(self):
+        """Test that migration handles markdown as a property within an item (not first property)."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - height: medium
+        items:
+          - width: 1
+            markdown: |
+              ## Sub heading
+              1. Numbered
+              1. Lists are cool
+
+              But we can have lots of other _content_ as well
+          - width: 3
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            new_text = migrations[0].new_text
+
+            # Check the structure - markdown should become an object with content
+            assert "markdown:" in new_text
+            assert "content: |" in new_text
+            assert "## Sub heading" in new_text
+            assert "Numbered" in new_text
+
+    def test_migration_handles_markdown_property_with_align(self):
+        """Test that migration handles markdown as property with align/justify."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - width: 2
+            markdown: "# Centered Title"
+            align: center
+            justify: end
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            new_text = migrations[0].new_text
+
+            # Should have markdown as object with content, align, justify nested
+            lines = new_text.split("\n")
+            assert "            markdown:" in lines[0]
+            assert 'content: "# Centered Title"' in new_text
+            assert "align: center" in new_text
+            assert "justify: end" in new_text
