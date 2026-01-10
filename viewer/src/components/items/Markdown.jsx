@@ -21,10 +21,13 @@ const Markdown = ({ markdown, row, height }) => {
         ? 'text-center'
         : 'text-left';
 
+  // Get the path from the markdown object (could be on markdown itself or on name)
+  const markdownPath = markdown.path || markdown.name || '';
+
   return (
     <div
-      id={itemNameToSlug(markdown.path)}
-      data-testid={itemNameToSlug(markdown.path)}
+      id={itemNameToSlug(markdownPath)}
+      data-testid={itemNameToSlug(markdownPath)}
       className={`relative w-full h-full flex flex-col ${alignmentClass}`}
       style={row.height !== 'compact' ? { height: height } : {}}
       onMouseOver={() => setHovering(true)}
@@ -68,11 +71,11 @@ const Markdown = ({ markdown, row, height }) => {
                       ? 'grow flex flex-col justify-evenly'
                       : ''
           }`}
-          key={markdown.path}
+          key={markdownPath}
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw, rehypeSanitize]}
         >
-          {markdown.markdown}
+          {markdown.content}
         </MarkdownRenderer>
       </div>
     </div>

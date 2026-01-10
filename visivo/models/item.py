@@ -4,11 +4,10 @@ from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.markdown import Markdown
-from pydantic import Field, model_serializer
+from pydantic import Field, model_validator
 from typing import Optional, Literal, Union
 from visivo.models.chart import Chart
 from visivo.models.table import Table
-from pydantic import model_validator
 
 
 class Item(NamedModel, ParentModel):
@@ -143,21 +142,6 @@ class Item(NamedModel, ParentModel):
             self.align = None
             self.justify = None
         return self
-
-    @model_serializer(mode="wrap")
-    def serialize_item(self, handler):
-        """Custom serializer to ensure markdown content is in expected format for frontend."""
-        result = handler(self)
-
-        # If markdown is a Markdown model, ensure the serialized output has the right structure
-        # The frontend expects: markdown.markdown (content), markdown.align, markdown.justify, markdown.path
-        if self.markdown is not None and isinstance(self.markdown, Markdown):
-            result["markdown"] = self.markdown.content
-            result["align"] = self.markdown.align
-            result["justify"] = self.markdown.justify
-            # path is already on the item itself
-
-        return result
 
     def child_items(self):
         child = self.__get_child()

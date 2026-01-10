@@ -135,24 +135,30 @@ def test_Item_with_legacy_inline_markdown_align_and_justify():
 
 
 def test_Item_serialize_markdown_model():
-    """Test that serialization outputs the expected frontend format."""
+    """Test that serialization outputs the Markdown model for frontend."""
     markdown = Markdown(name="test-md", content="# Hello World", align="center", justify="end")
     item = Item(markdown=markdown)
     serialized = item.model_dump()
-    # Frontend expects: markdown (string content), align, justify
-    assert serialized["markdown"] == "# Hello World"
-    assert serialized["align"] == "center"
-    assert serialized["justify"] == "end"
+    # Frontend expects the full Markdown model with content, align, justify
+    assert serialized["markdown"]["content"] == "# Hello World"
+    assert serialized["markdown"]["align"] == "center"
+    assert serialized["markdown"]["justify"] == "end"
+    # Item-level align/justify should be None (not duplicated)
+    assert serialized["align"] is None
+    assert serialized["justify"] is None
 
 
 def test_Item_serialize_legacy_markdown():
-    """Test that legacy markdown serializes correctly for frontend."""
+    """Test that legacy markdown is converted and serializes correctly for frontend."""
     item = Item(markdown="# Hello World", align="right")
     serialized = item.model_dump()
-    # Frontend expects: markdown (string content), align, justify
-    assert serialized["markdown"] == "# Hello World"
-    assert serialized["align"] == "right"
-    assert serialized["justify"] == "start"
+    # Legacy markdown is converted to Markdown model, so frontend gets the model
+    assert serialized["markdown"]["content"] == "# Hello World"
+    assert serialized["markdown"]["align"] == "right"
+    assert serialized["markdown"]["justify"] == "start"
+    # Item-level align/justify should be None (moved to Markdown model)
+    assert serialized["align"] is None
+    assert serialized["justify"] is None
 
 
 def test_Item_child_items_with_markdown_model():
