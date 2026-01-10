@@ -1,5 +1,8 @@
 """Tests for MarkdownDeprecation checker."""
 
+import os
+import tempfile
+
 from visivo.models.deprecations.markdown_deprecation import MarkdownDeprecation
 from visivo.models.project import Project
 from visivo.models.markdown import Markdown
@@ -66,7 +69,7 @@ class TestMarkdownDeprecation:
         assert len(markdown_warnings) == 1
         assert "inline markdown string" in markdown_warnings[0].message.lower()
         assert markdown_warnings[0].removal_version == "2.0.0"
-        assert "Markdown model" in markdown_warnings[0].migration
+        assert "content" in markdown_warnings[0].migration.lower()
 
     def test_warns_on_multiple_legacy_markdown_items(self):
         """Test that multiple legacy markdown items each trigger a warning."""
@@ -114,3 +117,205 @@ class TestMarkdownDeprecation:
 
         # ref() usage should not trigger warnings
         assert len(markdown_warnings) == 0
+
+
+class TestMarkdownMigration:
+    """Tests for inline markdown migration functionality."""
+
+    def test_migration_converts_inline_markdown(self):
+        """Test that migration converts inline markdown to Markdown model."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: "# Hello World"
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            migration = migrations[0]
+            assert migration.file_path == file_path
+            assert "content:" in migration.new_text
+            assert "# Hello World" in migration.new_text
+
+    def test_migration_preserves_align_and_justify(self):
+        """Test that migration moves align and justify into the Markdown model."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: "# Centered"
+            align: center
+            justify: end
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            new_text = migrations[0].new_text
+
+            # Check that content, align, and justify are in the new format
+            assert 'content: "# Centered"' in new_text
+            assert "align: center" in new_text
+            assert "justify: end" in new_text
+
+    def test_migration_handles_multiline_markdown(self):
+        """Test that migration handles multiline markdown content."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: |
+              # Welcome
+
+              This is **formatted** text.
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            new_text = migrations[0].new_text
+
+            # Check that content uses block scalar
+            assert "content: |" in new_text
+            assert "# Welcome" in new_text
+            assert "**formatted**" in new_text
+
+    def test_migration_handles_multiple_inline_markdowns(self):
+        """Test that migration handles multiple inline markdowns in one file."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: "# First"
+          - markdown: "# Second"
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Should have one migration per inline markdown
+            assert len(migrations) == 2
+
+    def test_migration_skips_ref_markdowns(self):
+        """Test that migration skips items that already use ref()."""
+        yaml_content = """markdowns:
+  - name: existing-markdown
+    content: "# Existing"
+
+dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: ref(existing-markdown)
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # No migrations needed since the markdown already uses ref()
+            assert len(migrations) == 0
+
+    def test_migration_skips_already_migrated(self):
+        """Test that migration skips items already in the new format."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown:
+              content: "# Already migrated"
+              align: center
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # No migrations needed since already in new format
+            assert len(migrations) == 0
+
+    def test_migration_skips_non_yaml_files(self):
+        """Test that migration skips non-YAML files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a non-YAML file
+            file_path = os.path.join(tmpdir, "readme.md")
+            with open(file_path, "w") as f:
+                f.write("# This is markdown content but not YAML")
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 0
+
+    def test_migration_output_format(self):
+        """Test that migration output has correct indentation."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: "# Hello"
+            align: right
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 1
+            new_text = migrations[0].new_text
+
+            # Verify proper indentation structure
+            lines = new_text.split("\n")
+            assert lines[0] == "          - markdown:"
+            assert lines[1] == '              content: "# Hello"'
+            assert lines[2] == "              align: right"
+
+    def test_migration_handles_empty_markdown(self):
+        """Test that migration handles empty markdown strings."""
+        yaml_content = """dashboards:
+  - name: test-dashboard
+    rows:
+      - items:
+          - markdown: ""
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = os.path.join(tmpdir, "project.visivo.yml")
+            with open(file_path, "w") as f:
+                f.write(yaml_content)
+
+            checker = MarkdownDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            # Empty markdown should still be migrated
+            assert len(migrations) == 1
+            assert 'content: ""' in migrations[0].new_text
