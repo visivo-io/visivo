@@ -164,6 +164,13 @@ class MarkdownDeprecation(BaseDeprecationChecker):
                     # This is markdown as a property, not starting the item
                     prop_indent_str = match_property.group(1)
                     value_part = match_property.group(2)
+
+                    # Validate this is actually an item's markdown property
+                    # by checking if it's a sibling to item-specific properties
+                    if not self._is_item_markdown_property(lines, i, prop_indent_str):
+                        i += 1
+                        continue
+
                     # The item indent is the same as the property indent
                     item_indent = prop_indent_str
                     is_item_start = False
@@ -195,8 +202,9 @@ class MarkdownDeprecation(BaseDeprecationChecker):
                 align_value = None
                 justify_value = None
 
-                # Handle block scalar (| or >)
-                if value_part.strip() in ("|", ">", "|-", ">-", "|+", ">+"):
+                # Handle block scalar (| or >) - including those with indentation indicators like |2, >2
+                block_scalar_match = re.match(r"^[|>][-+]?\d*$", value_part.strip())
+                if block_scalar_match:
                     # Collect the block content
                     block_indent = None
                     j = i + 1
@@ -300,8 +308,9 @@ class MarkdownDeprecation(BaseDeprecationChecker):
             # markdown is a property within the item
             new_lines = [f"{item_indent}markdown:"]
 
-        # Check if it's a block scalar
-        if value_part.strip() in ("|", ">", "|-", ">-", "|+", ">+"):
+        # Check if it's a block scalar (including those with indentation indicators like |2)
+        block_scalar_match = re.match(r"^[|>][-+]?\d*$", value_part.strip())
+        if block_scalar_match:
             # Preserve block scalar style
             new_lines.append(f"{content_indent}content: {value_part.strip()}")
             # Add the block content lines with adjusted indentation
@@ -332,3 +341,89 @@ class MarkdownDeprecation(BaseDeprecationChecker):
             new_lines.append(f"{content_indent}justify: {justify_value}")
 
         return "\n".join(new_lines)
+
+    def _is_item_markdown_property(self, lines: List[str], line_idx: int, prop_indent: str) -> bool:
+        """
+        Check if a markdown property line is actually part of an Item.
+
+        An Item markdown property should:
+        1. Be preceded by a list item start (- ) at the correct indent level
+        2. Have sibling properties that are item-specific (width, chart, table, etc.)
+
+        This helps avoid matching markdown properties in other contexts like
+        table column configs or trace column mappings.
+        """
+        # Item-specific properties that only appear on Item objects
+        item_properties = {"width", "chart", "table", "selector", "input", "align", "justify"}
+
+        # Calculate the expected list item indent (2 spaces less than property indent)
+        if len(prop_indent) < 2:
+            return False
+        list_item_indent = prop_indent[:-2]
+
+        # Look backwards to find the list item start
+        list_item_line_idx = None
+        for j in range(line_idx - 1, -1, -1):
+            prev_line = lines[j]
+            # Skip empty lines
+            if not prev_line.strip():
+                continue
+            # Check if this is the list item start at the right indent
+            if re.match(rf"^{re.escape(list_item_indent)}-\s+", prev_line):
+                list_item_line_idx = j
+                break
+            # If we hit a line with less indent, we've gone too far
+            line_indent_match = re.match(r"^(\s*)", prev_line)
+            if line_indent_match:
+                line_indent = line_indent_match.group(1)
+                if len(line_indent) < len(prop_indent):
+                    break
+
+        if list_item_line_idx is None:
+            return False
+
+        # Check the list item start line itself for an item property
+        # e.g., "- width: 1" has width as the first property
+        list_item_line = lines[list_item_line_idx]
+        first_prop_match = re.match(rf"^{re.escape(list_item_indent)}-\s+(\w+):", list_item_line)
+        if first_prop_match:
+            first_prop = first_prop_match.group(1)
+            if first_prop in item_properties:
+                return True
+
+        # Look for sibling properties that indicate this is an Item
+        # Check lines before the markdown line (after the list item start)
+        for j in range(line_idx - 1, list_item_line_idx, -1):
+            prev_line = lines[j]
+            if not prev_line.strip():
+                continue
+            # Check if this line is at the same indent level (sibling property)
+            prop_match = re.match(rf"^{re.escape(prop_indent)}(\w+):", prev_line)
+            if prop_match:
+                prop_name = prop_match.group(1)
+                if prop_name in item_properties:
+                    return True
+
+        # Check lines after the markdown line
+        for j in range(line_idx + 1, len(lines)):
+            next_line = lines[j]
+            if not next_line.strip():
+                continue
+            # Check if this line is at the same indent level (sibling property)
+            prop_match = re.match(rf"^{re.escape(prop_indent)}(\w+):", next_line)
+            if prop_match:
+                prop_name = prop_match.group(1)
+                if prop_name in item_properties:
+                    return True
+            # If we've moved to a different indent level, stop
+            line_indent_match = re.match(r"^(\s*)", next_line)
+            if line_indent_match:
+                line_indent = line_indent_match.group(1)
+                if len(line_indent) < len(prop_indent):
+                    break
+                # Also stop if we hit a new list item at the same level
+                if re.match(rf"^{re.escape(list_item_indent)}-\s+", next_line):
+                    break
+
+        # No item-specific properties found - this might not be an Item markdown
+        return False
