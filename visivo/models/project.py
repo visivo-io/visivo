@@ -22,6 +22,7 @@ from visivo.models.dashboards.fields import DashboardField
 from visivo.models.chart import Chart
 from visivo.models.trace import Trace
 from visivo.models.insight import Insight
+from visivo.models.markdown import Markdown
 from visivo.models.table import Table
 from visivo.models.defaults import Defaults
 from visivo.models.dbt import Dbt
@@ -59,6 +60,10 @@ class Project(NamedModel, ParentModel):
     models: List[ModelField] = []
     traces: List[Trace] = []
     insights: List[Insight] = []
+    markdowns: List[Markdown] = Field(
+        [],
+        description="A list of markdown objects for displaying formatted text in dashboards.",
+    )
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
