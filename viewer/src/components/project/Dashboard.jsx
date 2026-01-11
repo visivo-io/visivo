@@ -7,7 +7,27 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useInsightsData } from '../../hooks/useInsightsData';
+
+/**
+ * Collect all insight names from visible rows for centralized prefetching.
+ * This enables a single useInsightsData call instead of N calls from individual Charts/Tables.
+ */
+const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
+  const insightNames = new Set();
+  for (const rowIndex of visibleRowIndices) {
+    const row = rows[rowIndex];
+    if (!row) continue;
+    for (const item of row.items) {
+      // Only collect from items that will be rendered
+      if (shouldShowItem && !shouldShowItem(item)) continue;
+      item.chart?.insights?.forEach(i => insightNames.add(i.name));
+      item.table?.insights?.forEach(i => insightNames.add(i.name));
+    }
+  }
+  return [...insightNames];
+};
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
@@ -109,36 +129,52 @@ const Dashboard = ({ project, dashboardName }) => {
     throwError(`Dashboard with name ${dashboardName} not found.`, 404);
   }
 
-  const shouldShowNamedModel = namedModel => {
-    if (!namedModel || !namedModel.name) {
+  const shouldShowNamedModel = useCallback(
+    namedModel => {
+      if (!namedModel || !namedModel.name) {
+        return true;
+      }
+      const selector = getSelectorByOptionName(project, namedModel.name);
+      if (selector && searchParams.has(selector.name)) {
+        const selectedNames = searchParams.get(selector.name).split(',');
+        if (!selectedNames.includes(namedModel.name)) {
+          return false;
+        }
+      }
       return true;
-    }
-    const selector = getSelectorByOptionName(project, namedModel.name);
-    if (selector && searchParams.has(selector.name)) {
-      const selectedNames = searchParams.get(selector.name).split(',');
-      if (!selectedNames.includes(namedModel.name)) {
+    },
+    [project, searchParams]
+  );
+
+  const shouldShowItem = useCallback(
+    item => {
+      if (!shouldShowNamedModel(item)) {
         return false;
       }
-    }
-    return true;
-  };
+      let object;
+      if (item.chart) {
+        object = item.chart;
+      } else if (item.table) {
+        object = item.table;
+      } else if (item.selector) {
+        object = item.selector;
+      } else if (item.input) {
+        object = item.input;
+      }
+      return shouldShowNamedModel(object);
+    },
+    [shouldShowNamedModel]
+  );
 
-  const shouldShowItem = item => {
-    if (!shouldShowNamedModel(item)) {
-      return false;
-    }
-    let object;
-    if (item.chart) {
-      object = item.chart;
-    } else if (item.table) {
-      object = item.table;
-    } else if (item.selector) {
-      object = item.selector;
-    } else if (item.input) {
-      object = item.input;
-    }
-    return shouldShowNamedModel(object);
-  };
+  // Centralized insight prefetching: Collect all insight names from visible rows
+  // and load them in a single batch. Charts/Tables read from Zustand store.
+  const visibleInsightNames = useMemo(
+    () => collectInsightNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    [dashboard.rows, visibleRows, shouldShowItem]
+  );
+
+  // Single combined fetch for all visible insights (stores results in Zustand)
+  useInsightsData(project.id, visibleInsightNames);
 
   const renderRow = (row, rowIndex) => {
     if (!shouldShowNamedModel(row)) {

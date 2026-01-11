@@ -143,7 +143,6 @@ const processInsight = async (db, insight, inputs) => {
       );
     });
 
-    console.debug(`Query returned ${processedRows.length} rows for insight '${insightName}'`);
 
     // Step 5: Return structured data
     return {

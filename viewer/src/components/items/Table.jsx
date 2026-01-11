@@ -1,5 +1,7 @@
 import Loading from '../common/Loading';
 import React, { useEffect, useState, useMemo } from 'react';
+import useStore from '../../stores/store';
+import { useShallow } from 'zustand/react/shallow';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -44,7 +46,6 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import { useInsightsData } from '../../hooks/useInsightsData';
 
 const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
@@ -68,10 +69,17 @@ const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) 
 
   const isInsightTable = table.insights?.length > 0;
 
-  // Viewport-based loading: Only fetch insights when shouldLoad is true
-  const { insightsData } = useInsightsData(
-    project.id,
-    shouldLoad && isInsightTable ? insightNames : []
+  // Read insights data from store (Dashboard prefetches all visible insights)
+  // Uses useShallow for shallow equality comparison to avoid infinite re-renders
+  const insightsData = useStore(
+    useShallow(state => {
+      if (!insightNames.length) return null;
+      const data = {};
+      for (const name of insightNames) {
+        if (state.insights[name]) data[name] = state.insights[name];
+      }
+      return Object.keys(data).length > 0 ? data : null;
+    })
   );
 
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);

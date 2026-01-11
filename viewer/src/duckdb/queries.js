@@ -1,4 +1,4 @@
-import { getTempFilename } from './duckdb';
+import { getTempFilename, getConnection } from './duckdb';
 import { getParquetCache } from './parquetCache';
 
 /**
@@ -33,13 +33,9 @@ export const withRetry = async (fn, retries = 3, initialDelay = 50) => {
 export const runDuckDBQuery = async (db, sql, retries = 1, delay = 500) => {
   return withRetry(
     async () => {
-      const conn = await db.connect();
-      try {
-        const arrow = await conn.query(sql);
-        return arrow;
-      } finally {
-        await conn.close();
-      }
+      const conn = await getConnection(db);
+      const arrow = await conn.query(sql);
+      return arrow;
     },
     retries,
     delay
@@ -71,23 +67,18 @@ export const insertDuckDBFile = async (db, file, tableName) => {
 };
 
 const _insertJSON = async (db, file, tableName) => {
-  try {
-    const text = await file.text();
+  const text = await file.text();
 
-    const tempFile = getTempFilename() + '.json';
-    await db.registerFileText(tempFile, text);
+  const tempFile = getTempFilename() + '.json';
+  await db.registerFileText(tempFile, text);
 
-    const conn = await db.connect();
-    await conn.query(`
-      CREATE TABLE "${tableName}" AS
-      SELECT * FROM read_json_auto('${tempFile}')
-    `);
-    await conn.close();
+  const conn = await getConnection(db);
+  await conn.query(`
+    CREATE TABLE "${tableName}" AS
+    SELECT * FROM read_json_auto('${tempFile}')
+  `);
 
-    await db.dropFile(tempFile);
-  } catch (e) {
-    throw e;
-  }
+  await db.dropFile(tempFile);
 };
 
 const _insertParquet = async (db, file, tableName) => {
@@ -97,12 +88,11 @@ const _insertParquet = async (db, file, tableName) => {
   const tempFile = getTempFilename() + '.parquet';
   await db.registerFileBuffer(tempFile, uint8Array);
 
-  const conn = await db.connect();
+  const conn = await getConnection(db);
   await conn.query(`
     CREATE TABLE "${tableName}" AS
     SELECT * FROM read_parquet('${tempFile}')
   `);
-  await conn.close();
 
   await db.dropFile(tempFile);
 };
@@ -212,41 +202,34 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
 
   // Use cache to prevent duplicate concurrent fetches
   return cache.getOrFetch(nameHash, async () => {
-    try {
-      // Fetch the parquet file
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch parquet file: ${response.status} ${response.statusText}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-
-      // Register file in DuckDB
-      const tempFile = getTempFilename() + '.parquet';
-      await db.registerFileBuffer(tempFile, uint8Array);
-
-      // Create table from parquet file using name_hash as table name
-      const conn = await db.connect();
-      try {
-        // Drop existing table if forcing reload
-        if (force) {
-          await conn.query(`DROP TABLE IF EXISTS "${nameHash}"`);
-        }
-
-        await conn.query(`
-          CREATE TABLE "${nameHash}" AS
-          SELECT * FROM read_parquet('${tempFile}')
-        `);
-      } finally {
-        await conn.close();
-        await db.dropFile(tempFile);
-      }
-
-      cache.markLoaded(nameHash, url);
-    } catch (error) {
-      throw error;
+    // Fetch the parquet file
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch parquet file: ${response.status} ${response.statusText}`);
     }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Register file in DuckDB
+    const tempFile = getTempFilename() + '.parquet';
+    await db.registerFileBuffer(tempFile, uint8Array);
+
+    // Create table from parquet file using name_hash as table name
+    const conn = await getConnection(db);
+
+    // Drop existing table if forcing reload
+    if (force) {
+      await conn.query(`DROP TABLE IF EXISTS "${nameHash}"`);
+    }
+
+    await conn.query(`
+      CREATE TABLE "${nameHash}" AS
+      SELECT * FROM read_parquet('${tempFile}')
+    `);
+
+    await db.dropFile(tempFile);
+    cache.markLoaded(nameHash, url);
   });
 };
 
@@ -260,23 +243,19 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
 const batchCheckTablesExist = async (db, tableNames) => {
   if (tableNames.length === 0) return new Set();
 
-  const conn = await db.connect();
-  try {
-    const result = await conn.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_name IN (${tableNames.map(n => `'${n}'`).join(', ')})
-    `);
+  const conn = await getConnection(db);
+  const result = await conn.query(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_name IN (${tableNames.map(n => `'${n}'`).join(', ')})
+  `);
 
-    const existingTables = new Set();
-    const rows = result.toArray();
-    for (const row of rows) {
-      existingTables.add(row.table_name);
-    }
-    return existingTables;
-  } finally {
-    await conn.close();
+  const existingTables = new Set();
+  const rows = result.toArray();
+  for (const row of rows) {
+    existingTables.add(row.table_name);
   }
+  return existingTables;
 };
 
 /**
@@ -362,41 +341,37 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
   }
 
   if (filesToCreate.length > 0) {
-    const conn = await db.connect();
-    try {
-      for (const { file, buffer } of filesToCreate) {
-        const tempFile = getTempFilename() + '.parquet';
-        try {
-          await db.registerFileBuffer(tempFile, buffer);
+    const conn = await getConnection(db);
+    for (const { file, buffer } of filesToCreate) {
+      const tempFile = getTempFilename() + '.parquet';
+      try {
+        await db.registerFileBuffer(tempFile, buffer);
 
-          if (force) {
-            await conn.query(`DROP TABLE IF EXISTS "${file.name_hash}"`);
-          }
-
-          await conn.query(`
-            CREATE TABLE "${file.name_hash}" AS
-            SELECT * FROM read_parquet('${tempFile}')
-          `);
-
-          await db.dropFile(tempFile);
-          cache.markLoaded(file.name_hash, file.signed_data_file_url);
-          loaded.push(file.name_hash);
-        } catch (err) {
-          // Try to clean up temp file on error
-          try {
-            await db.dropFile(tempFile);
-          } catch {
-            // Ignore cleanup errors
-          }
-          failed.push({
-            nameHash: file.name_hash,
-            url: file.signed_data_file_url,
-            error: err.message || String(err),
-          });
+        if (force) {
+          await conn.query(`DROP TABLE IF EXISTS "${file.name_hash}"`);
         }
+
+        await conn.query(`
+          CREATE TABLE "${file.name_hash}" AS
+          SELECT * FROM read_parquet('${tempFile}')
+        `);
+
+        await db.dropFile(tempFile);
+        cache.markLoaded(file.name_hash, file.signed_data_file_url);
+        loaded.push(file.name_hash);
+      } catch (err) {
+        // Try to clean up temp file on error
+        try {
+          await db.dropFile(tempFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+        failed.push({
+          nameHash: file.name_hash,
+          url: file.signed_data_file_url,
+          error: err.message || String(err),
+        });
       }
-    } finally {
-      await conn.close();
     }
   }
 

@@ -33,12 +33,13 @@ beforeEach(() => {
 });
 
 describe('DuckDB Query Functions', () => {
-  it('executes query and closes connection', async () => {
+  it('executes query with persistent connection (no close)', async () => {
     const result = await runDuckDBQuery(db, 'SELECT 1');
 
     expect(db.connect).toHaveBeenCalled();
     expect(mockConn.query).toHaveBeenCalledWith('SELECT 1');
-    expect(mockConn.close).toHaveBeenCalled();
+    // Connection is NOT closed - we use persistent connections for performance
+    expect(mockConn.close).not.toHaveBeenCalled();
     expect(result).toBe('mock-result');
   });
 

@@ -12,7 +12,6 @@ import MenuContainer from './MenuContainer';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
-import { useInsightsData } from '../../hooks/useInsightsData';
 import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
@@ -67,21 +66,37 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
 
   const hasInsights = chart.insights && chart.insights.length > 0;
 
-  // Viewport-based loading: Only fetch insights when shouldLoad is true
-  const { insightsData, isInsightsLoading, hasAllInsightData } = useInsightsData(
-    project.id,
-    shouldLoad && hasInsights ? chartInsightNames : []
+  // Read insights data from store (Dashboard prefetches all visible insights)
+  // Uses useShallow for shallow equality comparison to avoid infinite re-renders
+  const insightsData = useStore(
+    useShallow(state => {
+      if (!chartInsightNames.length) return {};
+      const data = {};
+      for (const name of chartInsightNames) {
+        if (state.insights[name]) data[name] = state.insights[name];
+      }
+      return data;
+    })
   );
+
+  // Check if all insight data is loaded (data !== null means loaded, data === null means pending)
+  const hasAllInsightData = useMemo(() => {
+    if (!chartInsightNames.length) return true;
+    return chartInsightNames.every(
+      name =>
+        insightsData[name]?.data !== undefined &&
+        insightsData[name]?.data !== null &&
+        !insightsData[name]?.pendingInputs?.length
+    );
+  }, [chartInsightNames, insightsData]);
 
   // For insight-only charts (no traces), don't wait for tracesData
   // For trace-based charts, wait for tracesData to load
   const isTracesLoading = hasTraces && !tracesData;
-  // For insights, also check hasAllInsightData to handle pendingInputs case
-  // (query might be "complete" but data is null while waiting for inputs)
+  // For insights, check if data is available in store
   const isInsightsWaiting = hasInsights && !hasAllInsightData;
   // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
-  const isDataLoading =
-    !shouldLoad || isTracesLoading || (hasInsights && isInsightsLoading) || isInsightsWaiting;
+  const isDataLoading = !shouldLoad || isTracesLoading || isInsightsWaiting;
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
