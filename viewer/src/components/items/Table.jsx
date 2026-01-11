@@ -46,7 +46,7 @@ import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useInsightsData } from '../../hooks/useInsightsData';
 
-const Table = ({ table, project, itemWidth, height, width }) => {
+const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -63,11 +63,16 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     return table.traces.map(trace => trace.name);
   }, [table.traces, isDirectQueryResult]);
 
-  const tracesData = useTracesData(project.id, traceNames);
+  // Viewport-based loading: Only fetch data when shouldLoad is true
+  const tracesData = useTracesData(project.id, shouldLoad ? traceNames : []);
 
   const isInsightTable = table.insights?.length > 0;
 
-  const { insightsData } = useInsightsData(project.id, isInsightTable ? insightNames : []);
+  // Viewport-based loading: Only fetch insights when shouldLoad is true
+  const { insightsData } = useInsightsData(
+    project.id,
+    shouldLoad && isInsightTable ? insightNames : []
+  );
 
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
@@ -226,8 +231,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
   });
 
+  // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && !tracesData) {
+  if (!shouldLoad || (!isDirectQueryResult && !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 

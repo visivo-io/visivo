@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleChevronDown, faCircleChevronUp } from '@fortawesome/free-solid-svg-icons';
-import { Tooltip } from '@mui/material';
+import LazyTooltip from '../common/LazyTooltip';
 
 const Menu = ({
   children,
@@ -47,9 +47,9 @@ const Menu = ({
   return (
     <>
       {showToolTip ? (
-        <Tooltip title={toolTip}>
-          <span>{renderButton}</span>
-        </Tooltip>
+        <LazyTooltip content={toolTip} placement="top">
+          {renderButton}
+        </LazyTooltip>
       ) : (
         renderButton
       )}

@@ -7,9 +7,64 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+
+  // Viewport-based loading: Track which rows are visible
+  // Initially load first 3 rows for immediate content
+  const [visibleRows, setVisibleRows] = useState(() => new Set([0, 1, 2]));
+  const rowRefs = useRef({});
+  const observerRef = useRef(null);
+
+  // Store row ref callback
+  const setRowRef = useCallback((element, rowIndex) => {
+    rowRefs.current[rowIndex] = element;
+  }, []);
+
+  // Set up IntersectionObserver for lazy loading
+  useEffect(() => {
+    // Disconnect previous observer if exists
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const rowIndex = parseInt(entry.target.dataset.rowIndex, 10);
+            if (!isNaN(rowIndex)) {
+              setVisibleRows(prev => {
+                if (prev.has(rowIndex)) return prev;
+                const next = new Set(prev);
+                next.add(rowIndex);
+                return next;
+              });
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '200px', // Start loading 200px before row enters viewport
+        threshold: 0,
+      }
+    );
+
+    // Observe all row refs
+    Object.entries(rowRefs.current).forEach(([, element]) => {
+      if (element) {
+        observerRef.current.observe(element);
+      }
+    });
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [dashboardName]); // Re-setup when dashboard changes
 
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
@@ -92,10 +147,13 @@ const Dashboard = ({ project, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : getHeightStyle(row);
+    const shouldLoad = visibleRows.has(rowIndex);
 
     return (
       <div
         key={`row-${rowIndex}`}
+        ref={el => setRowRef(el, rowIndex)}
+        data-row-index={rowIndex}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           margin: '0.5rem',
@@ -116,7 +174,7 @@ const Dashboard = ({ project, dashboardName }) => {
             }}
           >
             <div className="flex items-center h-full w-full max-w-full">
-              {renderComponent(item, row, itemIndex, rowIndex)}
+              {renderComponent(item, row, itemIndex, rowIndex, shouldLoad)}
             </div>
           </div>
         ))}
@@ -124,7 +182,7 @@ const Dashboard = ({ project, dashboardName }) => {
     );
   };
 
-  const renderComponent = (item, row, itemIndex, rowIndex) => {
+  const renderComponent = (item, row, itemIndex, rowIndex, shouldLoad = true) => {
     const items = row.items.filter(shouldShowItem);
     if (items.indexOf(item) < 0) {
       return null;
@@ -146,6 +204,7 @@ const Dashboard = ({ project, dashboardName }) => {
           itemWidth={item.width}
           width={getWidth(items, item)}
           height={getHeight(row.height)}
+          shouldLoad={shouldLoad}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         />
       );
@@ -166,6 +225,7 @@ const Dashboard = ({ project, dashboardName }) => {
           height={getHeight(row.height) - 8}
           width={getWidth(items, item)}
           itemWidth={item.width}
+          shouldLoad={shouldLoad}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         />
       );

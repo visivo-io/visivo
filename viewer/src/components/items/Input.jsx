@@ -29,7 +29,11 @@ export const MULTI_SELECT = 'multi-select';
  */
 const Input = ({ input, itemWidth, project }) => {
   const setInputValue = useStore(state => state.setInputValue);
-  const inputSelectedValues = useStore(state => state.inputSelectedValues);
+  // Performance optimization: Only subscribe to THIS input's value, not all inputs
+  // This prevents re-rendering when other inputs change
+  const mySelectedValue = useStore(
+    useCallback(state => state.inputSelectedValues?.[input?.name], [input?.name])
+  );
 
   // Load options from JSON (this also sets defaults via setDefaultInputValue)
   const options = useInputOptions(input, project?.id);
@@ -48,16 +52,15 @@ const Input = ({ input, itemWidth, project }) => {
   );
 
   // Get current selected value(s) from store (for display)
-  // Uses inputSelectedValues (raw values) not inputs (accessor objects)
+  // Uses mySelectedValue (raw value for THIS input only)
   const { selectedValue, selectedValues } = useMemo(() => {
-    const rawValue = inputSelectedValues?.[input?.name];
-    if (rawValue === undefined || rawValue === null) {
+    if (mySelectedValue === undefined || mySelectedValue === null) {
       return { selectedValue: null, selectedValues: null };
     }
 
     if (isMulti) {
       // For multi-select, ensure we have an array
-      const valuesArray = Array.isArray(rawValue) ? rawValue : [rawValue];
+      const valuesArray = Array.isArray(mySelectedValue) ? mySelectedValue : [mySelectedValue];
       return {
         selectedValue: valuesArray[0] || null,
         selectedValues: valuesArray,
@@ -65,11 +68,11 @@ const Input = ({ input, itemWidth, project }) => {
     } else {
       // For single-select, return value directly
       return {
-        selectedValue: rawValue,
+        selectedValue: mySelectedValue,
         selectedValues: null,
       };
     }
-  }, [inputSelectedValues, input?.name, isMulti]);
+  }, [mySelectedValue, isMulti]);
 
   // Early return checks (after all hooks)
   if (!input) return null;

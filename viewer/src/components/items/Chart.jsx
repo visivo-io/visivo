@@ -15,11 +15,41 @@ import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
+import { useShallow } from 'zustand/react/shallow';
 
-const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
+const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shouldLoad = true }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
-  const inputs = useStore(state => state.inputs);
+
+  // Performance optimization: Subscribe only to inputs this chart's insights depend on
+  // Step 1: Get insight names this chart uses (memoized, changes only when chart.insights changes)
+  const chartInsightNames = useMemo(() => {
+    if (!chart.insights?.length) return [];
+    return chart.insights.map(insight => insight.name);
+  }, [chart.insights]);
+
+  // Step 2: Subscribe to relevant inputs using pre-computed inputDependencies from insight objects
+  // Uses useShallow for Zustand 5.x compatibility - caches result with shallow equality comparison
+  const inputs = useStore(
+    useShallow(state => {
+      // Early return for charts without insights
+      if (!chartInsightNames.length) return {};
+
+      const result = {};
+      // Get input names from pre-computed insight dependencies
+      for (const insightName of chartInsightNames) {
+        const insight = state.insights[insightName];
+        if (insight?.inputDependencies) {
+          for (const inputName of insight.inputDependencies) {
+            if (state.inputs[inputName]) {
+              result[inputName] = state.inputs[inputName];
+            }
+          }
+        }
+      }
+      return result;
+    })
+  );
 
   // Expose loading state through ref
   useImperativeHandle(
@@ -32,18 +62,15 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const traceNames = chart.traces.map(trace => trace.name);
   const hasTraces = traceNames.length > 0;
-  const tracesData = useTracesData(project.id, traceNames);
-
-  const insightNames = useMemo(() => {
-    if (!chart.insights?.length) return [];
-    return chart.insights.map(insight => insight.name);
-  }, [chart.insights]);
+  // Viewport-based loading: Only fetch data when shouldLoad is true
+  const tracesData = useTracesData(project.id, shouldLoad ? traceNames : []);
 
   const hasInsights = chart.insights && chart.insights.length > 0;
 
+  // Viewport-based loading: Only fetch insights when shouldLoad is true
   const { insightsData, isInsightsLoading, hasAllInsightData } = useInsightsData(
     project.id,
-    hasInsights ? insightNames : []
+    shouldLoad && hasInsights ? chartInsightNames : []
   );
 
   // For insight-only charts (no traces), don't wait for tracesData
@@ -52,7 +79,9 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   // For insights, also check hasAllInsightData to handle pendingInputs case
   // (query might be "complete" but data is null while waiting for inputs)
   const isInsightsWaiting = hasInsights && !hasAllInsightData;
-  const isDataLoading = isTracesLoading || (hasInsights && isInsightsLoading) || isInsightsWaiting;
+  // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
+  const isDataLoading =
+    !shouldLoad || isTracesLoading || (hasInsights && isInsightsLoading) || isInsightsWaiting;
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
