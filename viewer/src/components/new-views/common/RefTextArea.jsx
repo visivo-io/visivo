@@ -63,7 +63,8 @@ const RefTextArea = ({
   const currentRefAtCursor = useMemo(() => {
     if (cursorPosition === null) return null;
     return parsedSegments.find(
-      segment => segment.type === 'ref' && cursorPosition >= segment.start && cursorPosition <= segment.end
+      segment =>
+        segment.type === 'ref' && cursorPosition >= segment.start && cursorPosition <= segment.end
     );
   }, [parsedSegments, cursorPosition]);
 
@@ -161,7 +162,9 @@ const RefTextArea = ({
       // If we're in replace mode, replace the entire ref segment
       if (replaceRefSegment) {
         const newValue =
-          value.slice(0, replaceRefSegment.start) + fullRefString + value.slice(replaceRefSegment.end);
+          value.slice(0, replaceRefSegment.start) +
+          fullRefString +
+          value.slice(replaceRefSegment.end);
         onChange(newValue);
         setReplaceRefSegment(null);
       } else if (cursorPosition !== null) {
@@ -175,7 +178,8 @@ const RefTextArea = ({
           onChange(newValue);
         } else {
           // Wrap with ${}
-          const newValue = value.slice(0, insertPosition) + fullRefString + value.slice(insertPosition);
+          const newValue =
+            value.slice(0, insertPosition) + fullRefString + value.slice(insertPosition);
           onChange(newValue);
         }
       } else {
@@ -259,7 +263,9 @@ const RefTextArea = ({
   // Check if we should show the add button
   // Hide when: hideAddButton prop is true, or cursor is inside ${}, or cursor is on a ref
   const showAddButton =
-    !hideAddButton && !isInsideDollarBrace(value, cursorPosition ?? value.length) && !currentRefAtCursor;
+    !hideAddButton &&
+    !isInsideDollarBrace(value, cursorPosition ?? value.length) &&
+    !currentRefAtCursor;
 
   // Show swap button when cursor is on a ref (in edit mode)
   const showSwapButton = isEditing && currentRefAtCursor && !hideAddButton;
@@ -458,7 +464,9 @@ const RefTextArea = ({
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={replaceRefSegment ? 'Search for replacement...' : 'Search objects...'}
+                  placeholder={
+                    replaceRefSegment ? 'Search for replacement...' : 'Search objects...'
+                  }
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md
                     focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   autoFocus
@@ -532,9 +540,13 @@ const RefTextArea = ({
                         >
                           {TypeIcon && <TypeIcon fontSize="small" className={colors.text} />}
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">{obj.name}</div>
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {obj.name}
+                            </div>
                             {obj.config?.description && (
-                              <div className="text-xs text-gray-500 truncate">{obj.config.description}</div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {obj.config.description}
+                              </div>
                             )}
                           </div>
                         </button>
@@ -561,9 +573,7 @@ const RefTextArea = ({
       </div>
 
       {/* Helper Text */}
-      {helperText && !error && (
-        <p className="text-xs text-gray-500">{helperText}</p>
-      )}
+      {helperText && !error && <p className="text-xs text-gray-500">{helperText}</p>}
 
       {/* Error Message */}
       {error && <p className="text-xs text-red-500">{error}</p>}

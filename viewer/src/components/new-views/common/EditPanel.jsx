@@ -25,7 +25,17 @@ import RelationEditForm from './RelationEditForm';
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  */
-const EditPanel = ({ source, model, dimension, metric, relation, objectType = 'source', isCreate, onClose, onSave }) => {
+const EditPanel = ({
+  source,
+  model,
+  dimension,
+  metric,
+  relation,
+  objectType = 'source',
+  isCreate,
+  onClose,
+  onSave,
+}) => {
   // Determine which object we're editing
   const currentObjectType = model
     ? 'model'
@@ -68,15 +78,31 @@ const EditPanel = ({ source, model, dimension, metric, relation, objectType = 's
         return <ModelEditForm model={model} onSave={handleModelSave} onCancel={onClose} />;
       case 'dimension':
         return (
-          <DimensionEditForm dimension={dimension} isCreate={isCreate} onClose={onClose} onSave={onSave} />
+          <DimensionEditForm
+            dimension={dimension}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
         );
       case 'metric':
-        return <MetricEditForm metric={metric} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+        return (
+          <MetricEditForm metric={metric} isCreate={isCreate} onClose={onClose} onSave={onSave} />
+        );
       case 'relation':
-        return <RelationEditForm relation={relation} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+        return (
+          <RelationEditForm
+            relation={relation}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
       case 'source':
       default:
-        return <SourceEditForm source={source} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+        return (
+          <SourceEditForm source={source} isCreate={isCreate} onClose={onClose} onSave={onSave} />
+        );
     }
   };
 
@@ -85,7 +111,9 @@ const EditPanel = ({ source, model, dimension, metric, relation, objectType = 's
       {/* Header */}
       <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
-          {TypeIcon && <TypeIcon fontSize="small" className={typeConfig?.colors?.text || 'text-gray-500'} />}
+          {TypeIcon && (
+            <TypeIcon fontSize="small" className={typeConfig?.colors?.text || 'text-gray-500'} />
+          )}
           <h2 className="text-lg font-semibold text-gray-900">{getTitle()}</h2>
         </div>
         <button

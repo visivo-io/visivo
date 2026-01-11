@@ -58,7 +58,9 @@ const RelationNode = ({ data, selected }) => {
 
       {/* Name and model reference */}
       <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
+        <span
+          className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}
+        >
           {name}
         </span>
         {model && (

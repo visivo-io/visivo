@@ -192,7 +192,9 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
           </div>
 
           {/* Save Error */}
-          {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {saveError && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>
+          )}
         </div>
       </div>
 

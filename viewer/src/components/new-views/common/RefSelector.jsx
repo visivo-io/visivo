@@ -31,7 +31,7 @@ const parseRefValue = value => {
  */
 const formatRefValue = name => {
   if (!name) return null;
-  return `\${ref(${name})}`
+  return `\${ref(${name})}`;
 };
 
 /**
@@ -170,7 +170,9 @@ const RefSelector = ({
           `}
         >
           {objects.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-gray-500 italic">No {pluralLabel.toLowerCase()} available</div>
+            <div className="px-3 py-2 text-sm text-gray-500 italic">
+              No {pluralLabel.toLowerCase()} available
+            </div>
           ) : (
             objects.map(obj => (
               <label

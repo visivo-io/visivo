@@ -4,11 +4,7 @@ import { useFetchInputs, useFetchInputOptions } from '../contexts/QueryContext';
 import { loadInputData } from '../api/inputs';
 import { loadInsightParquetFiles, runDuckDBQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import {
-  isDateExpression,
-  isStepUnit,
-  resolveDateRangeToOptions,
-} from '../utils/dateExpressions';
+import { isDateExpression, isStepUnit, resolveDateRangeToOptions } from '../utils/dateExpressions';
 
 /**
  * Extract options from DuckDB after loading parquet file

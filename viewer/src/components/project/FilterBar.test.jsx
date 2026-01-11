@@ -22,7 +22,13 @@ let mockStoreData = {
 jest.mock('../../stores/store', () => {
   return {
     __esModule: true,
-    default: () => mockStoreData,
+    // Support both selector functions and destructuring patterns
+    default: selector => {
+      if (typeof selector === 'function') {
+        return selector(mockStoreData);
+      }
+      return mockStoreData;
+    },
   };
 });
 

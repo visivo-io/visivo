@@ -98,7 +98,7 @@ const LineageNew = () => {
     const { children, parents } = buildAdjacencyLists();
 
     // Get all descendants of a node
-    const getDescendants = (nodeId) => {
+    const getDescendants = nodeId => {
       const result = new Set();
       const queue = [nodeId];
       while (queue.length > 0) {
@@ -114,7 +114,7 @@ const LineageNew = () => {
     };
 
     // Get all ancestors of a node
-    const getAncestors = (nodeId) => {
+    const getAncestors = nodeId => {
       const result = new Set();
       const queue = [nodeId];
       while (queue.length > 0) {
@@ -130,7 +130,10 @@ const LineageNew = () => {
     };
 
     const selected = new Set();
-    const parts = selectorStr.split(',').map(p => p.trim()).filter(Boolean);
+    const parts = selectorStr
+      .split(',')
+      .map(p => p.trim())
+      .filter(Boolean);
 
     parts.forEach(part => {
       // Check for +name+ pattern (ancestors and descendants)
@@ -138,7 +141,15 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (
+            n.data.name === name ||
+            n.id === name ||
+            n.id === `source-${name}` ||
+            n.id === `model-${name}` ||
+            n.id === `dimension-${name}` ||
+            n.id === `metric-${name}` ||
+            n.id === `relation-${name}`
+          ) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -152,7 +163,15 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (
+            n.data.name === name ||
+            n.id === name ||
+            n.id === `source-${name}` ||
+            n.id === `model-${name}` ||
+            n.id === `dimension-${name}` ||
+            n.id === `metric-${name}` ||
+            n.id === `relation-${name}`
+          ) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -165,7 +184,15 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (
+            n.data.name === name ||
+            n.id === name ||
+            n.id === `source-${name}` ||
+            n.id === `model-${name}` ||
+            n.id === `dimension-${name}` ||
+            n.id === `metric-${name}` ||
+            n.id === `relation-${name}`
+          ) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -175,7 +202,15 @@ const LineageNew = () => {
 
       // Plain name - just select matching nodes
       nodes.forEach(n => {
-        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}`) {
+        if (
+          n.data.name === part ||
+          n.id === part ||
+          n.id === `source-${part}` ||
+          n.id === `model-${part}` ||
+          n.id === `dimension-${part}` ||
+          n.id === `metric-${part}` ||
+          n.id === `relation-${part}`
+        ) {
           selected.add(n.id);
         }
       });
@@ -235,13 +270,20 @@ const LineageNew = () => {
           },
         };
       });
-  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation]);
+  }, [
+    dagNodes,
+    selectedIds,
+    clearAllEditing,
+    editingSource,
+    editingModel,
+    editingDimension,
+    editingMetric,
+    editingRelation,
+  ]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
-    return dagEdges.filter(
-      edge => selectedIds.has(edge.source) && selectedIds.has(edge.target)
-    );
+    return dagEdges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target));
   }, [dagEdges, selectedIds]);
 
   // Fit view when nodes are first loaded
@@ -268,21 +310,24 @@ const LineageNew = () => {
   );
 
   // Handle node click - open edit panel for the clicked node
-  const handleNodeClick = useCallback((event, node) => {
-    clearAllEditing();
-    if (node.data.objectType === 'model') {
-      setEditingModel(node.data.model);
-    } else if (node.data.objectType === 'source') {
-      setEditingSource(node.data.source);
-    } else if (node.data.objectType === 'dimension') {
-      setEditingDimension(node.data.dimension);
-    } else if (node.data.objectType === 'metric') {
-      setEditingMetric(node.data.metric);
-    } else if (node.data.objectType === 'relation') {
-      setEditingRelation(node.data.relation);
-    }
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleNodeClick = useCallback(
+    (event, node) => {
+      clearAllEditing();
+      if (node.data.objectType === 'model') {
+        setEditingModel(node.data.model);
+      } else if (node.data.objectType === 'source') {
+        setEditingSource(node.data.source);
+      } else if (node.data.objectType === 'dimension') {
+        setEditingDimension(node.data.dimension);
+      } else if (node.data.objectType === 'metric') {
+        setEditingMetric(node.data.metric);
+      } else if (node.data.objectType === 'relation') {
+        setEditingRelation(node.data.relation);
+      }
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
@@ -335,11 +380,14 @@ const LineageNew = () => {
   );
 
   // Handle create button selection
-  const handleCreateSelect = useCallback(objectType => {
-    clearAllEditing();
-    setIsCreating(true);
-    setCreateObjectType(objectType);
-  }, [clearAllEditing]);
+  const handleCreateSelect = useCallback(
+    objectType => {
+      clearAllEditing();
+      setIsCreating(true);
+      setCreateObjectType(objectType);
+    },
+    [clearAllEditing]
+  );
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
@@ -356,19 +404,21 @@ const LineageNew = () => {
     await fetchRelations();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
+  const isPanelOpen =
+    editingSource ||
+    editingModel ||
+    editingDimension ||
+    editingMetric ||
+    editingRelation ||
+    isCreating;
+  const isLoading =
+    sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
       {/* Selector input bar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setSelector('')}
-          disabled={!selector}
-        >
+        <Button variant="secondary" size="sm" onClick={() => setSelector('')} disabled={!selector}>
           Clear
         </Button>
         <input
@@ -383,7 +433,9 @@ const LineageNew = () => {
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* DAG area */}
-        <div className={`flex-1 relative ${isPanelOpen ? 'mr-96' : ''} transition-all duration-200`}>
+        <div
+          className={`flex-1 relative ${isPanelOpen ? 'mr-96' : ''} transition-all duration-200`}
+        >
           {/* Loading state */}
           {isLoading && nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
@@ -412,9 +464,7 @@ const LineageNew = () => {
           {!isLoading && dagNodes.length > 0 && nodes.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
               <div className="text-gray-400 text-lg mb-2">No matching objects</div>
-              <div className="text-gray-400 text-sm">
-                Try a different selector or click Clear
-              </div>
+              <div className="text-gray-400 text-sm">Try a different selector or click Clear</div>
             </div>
           )}
 

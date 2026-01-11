@@ -18,8 +18,14 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
  * - onSave: Callback after successful save
  */
 const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
-  const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
-    useStore();
+  const {
+    saveSource,
+    deleteSource,
+    testConnection,
+    connectionStatus,
+    clearConnectionStatus,
+    checkPublishStatus,
+  } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -153,16 +159,16 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
-        {/* Name field */}
-        <div className="relative">
-          <input
-            type="text"
-            id="sourceName"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
-            placeholder=" "
-            className={`
+          {/* Name field */}
+          <div className="relative">
+            <input
+              type="text"
+              id="sourceName"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              disabled={isEditMode}
+              placeholder=" "
+              className={`
               block w-full px-3 py-2.5 text-sm text-gray-900
               bg-white rounded-md border appearance-none
               focus:outline-none focus:ring-2 focus:border-primary-500
@@ -170,10 +176,10 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
               ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
               ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
             `}
-          />
-          <label
-            htmlFor="sourceName"
-            className={`
+            />
+            <label
+              htmlFor="sourceName"
+              className={`
               absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
               bg-white px-1 left-2
               peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
@@ -181,37 +187,37 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
               peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
               ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
             `}
-          >
-            Source Name<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-        </div>
+            >
+              Source Name<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+          </div>
 
-        {/* Source Type Selector */}
-        <div>
-          <SourceTypeSelector
-            value={sourceType}
-            onChange={type => {
-              setSourceType(type);
-              setFormValues({}); // Reset form values when type changes
-            }}
-            disabled={isEditMode}
+          {/* Source Type Selector */}
+          <div>
+            <SourceTypeSelector
+              value={sourceType}
+              onChange={type => {
+                setSourceType(type);
+                setFormValues({}); // Reset form values when type changes
+              }}
+              disabled={isEditMode}
+            />
+            {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
+          </div>
+
+          {/* Dynamic Form Fields */}
+          <SourceFormGenerator
+            sourceType={sourceType}
+            values={formValues}
+            onChange={setFormValues}
+            errors={errors}
           />
-          {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
-        </div>
 
-        {/* Dynamic Form Fields */}
-        <SourceFormGenerator
-          sourceType={sourceType}
-          values={formValues}
-          onChange={setFormValues}
-          errors={errors}
-        />
-
-        {/* Connection Status */}
-        {currentConnectionStatus && (
-          <div
-            className={`
+          {/* Connection Status */}
+          {currentConnectionStatus && (
+            <div
+              className={`
             flex items-center gap-2 p-3 rounded-md text-sm
             ${
               currentConnectionStatus.status === 'connected'
@@ -221,30 +227,32 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
                   : 'bg-red-50 text-red-700'
             }
           `}
-          >
-            {currentConnectionStatus.status === 'testing' && (
-              <>
-                <CircularProgress size={16} />
-                <span>Testing connection...</span>
-              </>
-            )}
-            {currentConnectionStatus.status === 'connected' && (
-              <>
-                <CheckCircleIcon fontSize="small" />
-                <span>Connection successful</span>
-              </>
-            )}
-            {currentConnectionStatus.status === 'failed' && (
-              <>
-                <ErrorOutlineIcon fontSize="small" />
-                <span>Connection failed: {currentConnectionStatus.error}</span>
-              </>
-            )}
-          </div>
-        )}
+            >
+              {currentConnectionStatus.status === 'testing' && (
+                <>
+                  <CircularProgress size={16} />
+                  <span>Testing connection...</span>
+                </>
+              )}
+              {currentConnectionStatus.status === 'connected' && (
+                <>
+                  <CheckCircleIcon fontSize="small" />
+                  <span>Connection successful</span>
+                </>
+              )}
+              {currentConnectionStatus.status === 'failed' && (
+                <>
+                  <ErrorOutlineIcon fontSize="small" />
+                  <span>Connection failed: {currentConnectionStatus.error}</span>
+                </>
+              )}
+            </div>
+          )}
 
-        {/* Save Error */}
-        {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {/* Save Error */}
+          {saveError && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>
+          )}
         </div>
       </div>
 

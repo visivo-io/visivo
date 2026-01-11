@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Tooltip } from 'flowbite-react';
+import LazyTooltip from './LazyTooltip';
 import { FiInfo } from 'react-icons/fi';
 
 const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
@@ -49,7 +49,7 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
             className={`inline-flex items-center justify-center transition-all duration-500 w-3
               ${showInfoIcon ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}`}
           >
-            <Tooltip
+            <LazyTooltip
               content={tooltip || label}
               placement="bottom"
               trigger="hover"
@@ -66,7 +66,7 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
                 />
                 <span className="sr-only">Show info</span>
               </span>
-            </Tooltip>
+            </LazyTooltip>
           </span>
         </span>
       </span>

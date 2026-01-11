@@ -4,14 +4,12 @@ import { HiSearch } from 'react-icons/hi';
 import useStore from '../../stores/store';
 
 function FilterBar() {
-  const {
-    searchTerm,
-    setSearchTerm,
-    selectedTags,
-    setSelectedTags,
-    availableTags,
-    filteredDashboards,
-  } = useStore();
+  const searchTerm = useStore(state => state.searchTerm);
+  const setSearchTerm = useStore(state => state.setSearchTerm);
+  const selectedTags = useStore(state => state.selectedTags);
+  const setSelectedTags = useStore(state => state.setSelectedTags);
+  const availableTags = useStore(state => state.availableTags);
+  const filteredDashboards = useStore(state => state.filteredDashboards);
 
   const totalCount = filteredDashboards.length;
   return (

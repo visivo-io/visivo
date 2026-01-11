@@ -313,7 +313,9 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
     }
 
     // Process static_props to replace input refs with actual values
-    const processedStaticProps = static_props ? processInputRefsInProps(static_props, inputs) : null;
+    const processedStaticProps = static_props
+      ? processInputRefsInProps(static_props, inputs)
+      : null;
 
     // Check if this insight has a split interaction
     if (split_key && data[0] && data[0][split_key] !== undefined) {

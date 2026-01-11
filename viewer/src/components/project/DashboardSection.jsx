@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
-import { Tooltip } from 'flowbite-react';
+import LazyTooltip from '../common/LazyTooltip';
 import useStore from '../../stores/store';
 import { getLevels, organizeDashboardsByLevel, defaultLevels } from '../../utils/dashboardUtils';
 
@@ -9,7 +9,7 @@ import { getLevels, organizeDashboardsByLevel, defaultLevels } from '../../utils
 export { getLevels, organizeDashboardsByLevel };
 
 function DashboardSection({ title, dashboards, hasLevels, projectDefaults, projectId }) {
-  const { searchTerm } = useStore();
+  const searchTerm = useStore(state => state.searchTerm);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const configuredLevels = projectDefaults?.levels || [];
@@ -64,9 +64,9 @@ function DashboardSection({ title, dashboards, hasLevels, projectDefaults, proje
           </h2>
           <span className="ml-3 text-sm text-gray-500">({dashboards.length})</span>
         </div>
-        <Tooltip content={levelDescription} placement="right" className="max-w-xs" trigger="hover">
+        <LazyTooltip content={levelDescription} placement="right" className="max-w-xs" trigger="hover">
           <HiInformationCircle className="h-5 w-5 text-gray-400 hover:text-gray-600 ml-2 shrink-0" />
-        </Tooltip>
+        </LazyTooltip>
       </div>
       <div
         className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-8 gap-3 transition-all duration-200 ${

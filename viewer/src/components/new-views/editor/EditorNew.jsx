@@ -140,7 +140,8 @@ const EditorNew = () => {
       filtered = filtered.filter(
         dimension =>
           dimension.name.toLowerCase().includes(query) ||
-          (dimension.config?.expression && dimension.config.expression.toLowerCase().includes(query))
+          (dimension.config?.expression &&
+            dimension.config.expression.toLowerCase().includes(query))
       );
     }
 
@@ -205,46 +206,64 @@ const EditorNew = () => {
   }, []);
 
   // Handle source selection
-  const handleSourceSelect = useCallback(source => {
-    clearAllEditing();
-    setEditingSource(source);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleSourceSelect = useCallback(
+    source => {
+      clearAllEditing();
+      setEditingSource(source);
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle model selection
-  const handleModelSelect = useCallback(model => {
-    clearAllEditing();
-    setEditingModel(model);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleModelSelect = useCallback(
+    model => {
+      clearAllEditing();
+      setEditingModel(model);
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle dimension selection
-  const handleDimensionSelect = useCallback(dimension => {
-    clearAllEditing();
-    setEditingDimension(dimension);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleDimensionSelect = useCallback(
+    dimension => {
+      clearAllEditing();
+      setEditingDimension(dimension);
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle metric selection
-  const handleMetricSelect = useCallback(metric => {
-    clearAllEditing();
-    setEditingMetric(metric);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleMetricSelect = useCallback(
+    metric => {
+      clearAllEditing();
+      setEditingMetric(metric);
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle relation selection
-  const handleRelationSelect = useCallback(relation => {
-    clearAllEditing();
-    setEditingRelation(relation);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+  const handleRelationSelect = useCallback(
+    relation => {
+      clearAllEditing();
+      setEditingRelation(relation);
+      setIsCreating(false);
+    },
+    [clearAllEditing]
+  );
 
   // Handle create button selection
-  const handleCreateSelect = useCallback(objectType => {
-    clearAllEditing();
-    setIsCreating(true);
-    setCreateObjectType(objectType);
-  }, [clearAllEditing]);
+  const handleCreateSelect = useCallback(
+    objectType => {
+      clearAllEditing();
+      setIsCreating(true);
+      setCreateObjectType(objectType);
+    },
+    [clearAllEditing]
+  );
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
@@ -261,8 +280,15 @@ const EditorNew = () => {
     await fetchRelations();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
+  const isPanelOpen =
+    editingSource ||
+    editingModel ||
+    editingDimension ||
+    editingMetric ||
+    editingRelation ||
+    isCreating;
+  const isLoading =
+    sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -282,8 +308,18 @@ const EditorNew = () => {
   const relationTypeConfig = getTypeByValue('relation');
   const RelationIcon = relationTypeConfig?.icon;
 
-  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length;
-  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length;
+  const hasNoObjects =
+    !sources?.length &&
+    !models?.length &&
+    !dimensions?.length &&
+    !metrics?.length &&
+    !relations?.length;
+  const hasNoFilteredObjects =
+    !filteredSources.length &&
+    !filteredModels.length &&
+    !filteredDimensions.length &&
+    !filteredMetrics.length &&
+    !filteredRelations.length;
 
   const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError;
 
@@ -304,7 +340,11 @@ const EditorNew = () => {
 
         {/* Search */}
         <div className="p-3 border-b border-gray-200">
-          <SourceSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search by name..." />
+          <SourceSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by name..."
+          />
         </div>
 
         {/* Loading state */}
@@ -317,7 +357,8 @@ const EditorNew = () => {
         {/* Error state */}
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError}
+            Error:{' '}
+            {sourcesError || modelsError || dimensionsError || metricsError || relationsError}
           </div>
         )}
 
@@ -398,28 +439,44 @@ const EditorNew = () => {
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <div className="flex gap-4 mb-4">
               {SourceIcon && (
-                <div className={`w-12 h-12 rounded-full ${sourceColors.bg} flex items-center justify-center`}>
+                <div
+                  className={`w-12 h-12 rounded-full ${sourceColors.bg} flex items-center justify-center`}
+                >
                   <SourceIcon className={`w-6 h-6 ${sourceColors.text}`} />
                 </div>
               )}
               {ModelIcon && (
-                <div className={`w-12 h-12 rounded-full ${modelColors.bg} flex items-center justify-center`}>
+                <div
+                  className={`w-12 h-12 rounded-full ${modelColors.bg} flex items-center justify-center`}
+                >
                   <ModelIcon className={`w-6 h-6 ${modelColors.text}`} />
                 </div>
               )}
               {DimensionIcon && (
-                <div className={`w-12 h-12 rounded-full ${dimensionTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <DimensionIcon className={`w-6 h-6 ${dimensionTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${dimensionTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <DimensionIcon
+                    className={`w-6 h-6 ${dimensionTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
               {MetricIcon && (
-                <div className={`w-12 h-12 rounded-full ${metricTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <MetricIcon className={`w-6 h-6 ${metricTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${metricTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <MetricIcon
+                    className={`w-6 h-6 ${metricTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
               {RelationIcon && (
-                <div className={`w-12 h-12 rounded-full ${relationTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <RelationIcon className={`w-6 h-6 ${relationTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${relationTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <RelationIcon
+                    className={`w-6 h-6 ${relationTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
             </div>

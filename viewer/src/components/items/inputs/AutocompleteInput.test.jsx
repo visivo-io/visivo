@@ -47,7 +47,9 @@ describe('AutocompleteInput', () => {
 
     // Should only show Cherry (text may be split due to highlighting)
     // Use getAllByText and check length since elements may have multiple matches
-    const cherryElements = screen.getAllByText((content, element) => element?.textContent === 'Cherry');
+    const cherryElements = screen.getAllByText(
+      (content, element) => element?.textContent === 'Cherry'
+    );
     expect(cherryElements.length).toBeGreaterThan(0);
     expect(screen.queryByText('Apple')).not.toBeInTheDocument();
     expect(screen.queryByText('Banana')).not.toBeInTheDocument();
@@ -61,7 +63,9 @@ describe('AutocompleteInput', () => {
     fireEvent.change(input, { target: { value: 'ch' } });
 
     // Text may be split due to highlighting - use getAllByText
-    const cherryElements = screen.getAllByText((content, element) => element?.textContent === 'Cherry');
+    const cherryElements = screen.getAllByText(
+      (content, element) => element?.textContent === 'Cherry'
+    );
     expect(cherryElements.length).toBeGreaterThan(0);
   });
 

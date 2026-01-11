@@ -58,7 +58,9 @@ const ModelNode = ({ data, selected }) => {
 
       {/* Name and source */}
       <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
+        <span
+          className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}
+        >
           {name}
         </span>
         {source && <span className="text-xs text-gray-400">source: {source}</span>}

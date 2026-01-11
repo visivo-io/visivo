@@ -275,9 +275,13 @@ describe('prepPostQuery - Template Literal Injection', () => {
       const insight = {
         query: "SELECT * FROM table WHERE date >= '${dates.first}' AND date <= '${dates.last}'",
       };
-      const inputs = { dates: { first: '2024-01-01', last: '2024-12-31', values: "'2024-01-01','2024-12-31'" } };
+      const inputs = {
+        dates: { first: '2024-01-01', last: '2024-12-31', values: "'2024-01-01','2024-12-31'" },
+      };
       const result = prepPostQuery(insight, inputs);
-      expect(result).toBe("SELECT * FROM table WHERE date >= '2024-01-01' AND date <= '2024-12-31'");
+      expect(result).toBe(
+        "SELECT * FROM table WHERE date >= '2024-01-01' AND date <= '2024-12-31'"
+      );
     });
 
     it('handles null accessor values as SQL NULL keyword (not string)', () => {

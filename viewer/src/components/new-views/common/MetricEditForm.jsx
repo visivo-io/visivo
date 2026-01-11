@@ -19,7 +19,8 @@ import RefTextArea from './RefTextArea';
  * - onSave: Callback after successful save
  */
 const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
-  const { saveMetric, deleteMetric, checkPublishStatus, models, saveModel, fetchModels } = useStore();
+  const { saveMetric, deleteMetric, checkPublishStatus, models, saveModel, fetchModels } =
+    useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -71,7 +72,8 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
       // Model-scoped metrics cannot contain ref() expressions
       const refPattern = /\$\{\s*ref\s*\(/;
       if (refPattern.test(expression)) {
-        newErrors.expression = 'Model-scoped metrics cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
+        newErrors.expression =
+          'Model-scoped metrics cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
       }
     }
 
@@ -173,16 +175,16 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
-        {/* Name field */}
-        <div className="relative">
-          <input
-            type="text"
-            id="metricName"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
-            placeholder=" "
-            className={`
+          {/* Name field */}
+          <div className="relative">
+            <input
+              type="text"
+              id="metricName"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              disabled={isEditMode}
+              placeholder=" "
+              className={`
               block w-full px-3 py-2.5 text-sm text-gray-900
               bg-white rounded-md border appearance-none
               focus:outline-none focus:ring-2 focus:border-primary-500
@@ -190,10 +192,10 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
               ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
               ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
             `}
-          />
-          <label
-            htmlFor="metricName"
-            className={`
+            />
+            <label
+              htmlFor="metricName"
+              className={`
               absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
               bg-white px-1 left-2
               peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
@@ -201,82 +203,86 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave }) => {
               peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
               ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
             `}
-          >
-            Metric Name<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-        </div>
+            >
+              Metric Name<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+          </div>
 
-        {/* Parent Model selector */}
-        <div className="relative">
-          <select
-            id="parentModel"
-            value={parentModel}
-            onChange={e => {
-              setParentModel(e.target.value);
-              // Clear expression errors when switching modes
-              if (errors.expression) {
-                setErrors(prev => ({ ...prev, expression: null }));
-              }
-            }}
-            className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-          >
-            <option value="">Multi-model (project-level)</option>
-            {models.map(model => (
-              <option key={model.name} value={model.name}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-          <label
-            htmlFor="parentModel"
-            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
-          >
-            Parent Model
-          </label>
-          <p className="mt-1 text-xs text-gray-500">
-            {isModelScoped
-              ? 'This metric will be scoped to the selected model and use plain SQL.'
-              /* eslint-disable-next-line no-template-curly-in-string */
-              : 'This metric can reference multiple models using ${ref(model_name)}.'}
-          </p>
-        </div>
+          {/* Parent Model selector */}
+          <div className="relative">
+            <select
+              id="parentModel"
+              value={parentModel}
+              onChange={e => {
+                setParentModel(e.target.value);
+                // Clear expression errors when switching modes
+                if (errors.expression) {
+                  setErrors(prev => ({ ...prev, expression: null }));
+                }
+              }}
+              className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+            >
+              <option value="">Multi-model (project-level)</option>
+              {models.map(model => (
+                <option key={model.name} value={model.name}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+            <label
+              htmlFor="parentModel"
+              className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
+            >
+              Parent Model
+            </label>
+            <p className="mt-1 text-xs text-gray-500">
+              {isModelScoped
+                ? 'This metric will be scoped to the selected model and use plain SQL.'
+                : /* eslint-disable-next-line no-template-curly-in-string */
+                  'This metric can reference multiple models using ${ref(model_name)}.'}
+            </p>
+          </div>
 
-        {/* Expression - always use RefTextArea (Monaco SQL editor) */}
-        <RefTextArea
-          value={expression}
-          onChange={setExpression}
-          label="Expression"
-          required
-          error={errors.expression}
-          allowedTypes={isModelScoped ? [] : ['model', 'metric', 'dimension']}
-          hideAddButton={isModelScoped}
-          rows={4}
-          helperText={isModelScoped
-            ? 'SQL aggregate expression (e.g., SUM, COUNT, AVG) referencing columns from the parent model.'
-            : 'SQL aggregate expression for this metric. Use the + button to insert references.'}
-        />
-
-        {/* Description (optional) */}
-        <div className="relative">
-          <textarea
-            id="metricDescription"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder=" "
-            rows={2}
-            className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y"
+          {/* Expression - always use RefTextArea (Monaco SQL editor) */}
+          <RefTextArea
+            value={expression}
+            onChange={setExpression}
+            label="Expression"
+            required
+            error={errors.expression}
+            allowedTypes={isModelScoped ? [] : ['model', 'metric', 'dimension']}
+            hideAddButton={isModelScoped}
+            rows={4}
+            helperText={
+              isModelScoped
+                ? 'SQL aggregate expression (e.g., SUM, COUNT, AVG) referencing columns from the parent model.'
+                : 'SQL aggregate expression for this metric. Use the + button to insert references.'
+            }
           />
-          <label
-            htmlFor="metricDescription"
-            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
-          >
-            Description
-          </label>
-        </div>
 
-        {/* Save Error */}
-        {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {/* Description (optional) */}
+          <div className="relative">
+            <textarea
+              id="metricDescription"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder=" "
+              rows={2}
+              className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y"
+            />
+            <label
+              htmlFor="metricDescription"
+              className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
+            >
+              Description
+            </label>
+          </div>
+
+          {/* Save Error */}
+          {saveError && (
+            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>
+          )}
         </div>
       </div>
 
