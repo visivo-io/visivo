@@ -9,6 +9,9 @@ import DimensionNode from './DimensionNode';
 import MetricNode from './MetricNode';
 import RelationNode from './RelationNode';
 import InsightNode from './InsightNode';
+import MarkdownNode from './MarkdownNode';
+import ChartNode from './ChartNode';
+import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
@@ -45,6 +48,18 @@ const LineageNew = () => {
   const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
   const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
 
+  // Markdowns
+  const fetchMarkdownConfigs = useStore(state => state.fetchMarkdownConfigs);
+  const markdownConfigsLoading = useStore(state => state.markdownConfigsLoading);
+
+  // Charts
+  const fetchChartConfigs = useStore(state => state.fetchChartConfigs);
+  const chartConfigsLoading = useStore(state => state.chartConfigsLoading);
+
+  // Tables
+  const fetchTableConfigs = useStore(state => state.fetchTableConfigs);
+  const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
+
   // Editing state
   const [editingSource, setEditingSource] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
@@ -52,6 +67,9 @@ const LineageNew = () => {
   const [editingMetric, setEditingMetric] = useState(null);
   const [editingRelation, setEditingRelation] = useState(null);
   const [editingInsight, setEditingInsight] = useState(null);
+  const [editingMarkdown, setEditingMarkdown] = useState(null);
+  const [editingChart, setEditingChart] = useState(null);
+  const [editingTable, setEditingTable] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
@@ -67,7 +85,10 @@ const LineageNew = () => {
     fetchMetrics();
     fetchRelations();
     fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
+    fetchMarkdownConfigs();
+    fetchChartConfigs();
+    fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
   // Clear all editing states helper
   const clearAllEditing = useCallback(() => {
@@ -77,6 +98,9 @@ const LineageNew = () => {
     setEditingMetric(null);
     setEditingRelation(null);
     setEditingInsight(null);
+    setEditingMarkdown(null);
+    setEditingChart(null);
+    setEditingTable(null);
   }, []);
 
   // Get DAG data
@@ -146,7 +170,7 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -160,7 +184,7 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -173,7 +197,7 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -183,7 +207,7 @@ const LineageNew = () => {
 
       // Plain name - just select matching nodes
       nodes.forEach(n => {
-        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}` || n.id === `insight-${part}`) {
+        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}` || n.id === `insight-${part}` || n.id === `markdown-${part}` || n.id === `chart-${part}` || n.id === `table-${part}`) {
           selected.add(n.id);
         }
       });
@@ -220,6 +244,12 @@ const LineageNew = () => {
           isEditing = true;
         } else if (objectType === 'insight' && editingInsight?.name === nodeName) {
           isEditing = true;
+        } else if (objectType === 'markdown' && editingMarkdown?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'chart' && editingChart?.name === nodeName) {
+          isEditing = true;
+        } else if (objectType === 'table' && editingTable?.name === nodeName) {
+          isEditing = true;
         }
 
         return {
@@ -241,13 +271,19 @@ const LineageNew = () => {
                 setEditingRelation(obj);
               } else if (objectType === 'insight') {
                 setEditingInsight(obj);
+              } else if (objectType === 'markdown') {
+                setEditingMarkdown(obj);
+              } else if (objectType === 'chart') {
+                setEditingChart(obj);
+              } else if (objectType === 'table') {
+                setEditingTable(obj);
               }
               setIsCreating(false);
             },
           },
         };
       });
-  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation, editingInsight]);
+  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation, editingInsight, editingMarkdown, editingChart, editingTable]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
@@ -276,6 +312,9 @@ const LineageNew = () => {
       metricNode: MetricNode,
       relationNode: RelationNode,
       insightNode: InsightNode,
+      markdownNode: MarkdownNode,
+      chartNode: ChartNode,
+      tableNode: TableNode,
     }),
     []
   );
@@ -295,6 +334,12 @@ const LineageNew = () => {
       setEditingRelation(node.data.relation);
     } else if (node.data.objectType === 'insight') {
       setEditingInsight(node.data.insight);
+    } else if (node.data.objectType === 'markdown') {
+      setEditingMarkdown(node.data.markdown);
+    } else if (node.data.objectType === 'chart') {
+      setEditingChart(node.data.chart);
+    } else if (node.data.objectType === 'table') {
+      setEditingTable(node.data.table);
     }
     setIsCreating(false);
   }, [clearAllEditing]);
@@ -370,10 +415,13 @@ const LineageNew = () => {
     await fetchMetrics();
     await fetchRelations();
     await fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
+    await fetchMarkdownConfigs();
+    await fetchChartConfigs();
+    await fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading;
+  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || editingMarkdown || editingChart || editingTable || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
@@ -474,6 +522,12 @@ const LineageNew = () => {
                     return '#06b6d4'; // cyan
                   case 'insight':
                     return '#ec4899'; // pink
+                  case 'markdown':
+                    return '#22c55e'; // green
+                  case 'chart':
+                    return '#3b82f6'; // blue
+                  case 'table':
+                    return '#f59e0b'; // amber
                   default:
                     return '#94a3b8'; // gray
                 }
@@ -496,6 +550,9 @@ const LineageNew = () => {
               metric={editingMetric}
               relation={editingRelation}
               insight={editingInsight}
+              markdown={editingMarkdown}
+              chart={editingChart}
+              table={editingTable}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}

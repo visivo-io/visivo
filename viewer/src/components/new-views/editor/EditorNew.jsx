@@ -48,6 +48,24 @@ const EditorNew = () => {
   const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
   const insightConfigsError = useStore(state => state.insightConfigsError);
 
+  // Markdowns
+  const markdownConfigs = useStore(state => state.markdownConfigs);
+  const fetchMarkdownConfigs = useStore(state => state.fetchMarkdownConfigs);
+  const markdownConfigsLoading = useStore(state => state.markdownConfigsLoading);
+  const markdownConfigsError = useStore(state => state.markdownConfigsError);
+
+  // Charts
+  const chartConfigs = useStore(state => state.chartConfigs);
+  const fetchChartConfigs = useStore(state => state.fetchChartConfigs);
+  const chartConfigsLoading = useStore(state => state.chartConfigsLoading);
+  const chartConfigsError = useStore(state => state.chartConfigsError);
+
+  // Tables
+  const tableConfigs = useStore(state => state.tableConfigs);
+  const fetchTableConfigs = useStore(state => state.fetchTableConfigs);
+  const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
+  const tableConfigsError = useStore(state => state.tableConfigsError);
+
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +77,9 @@ const EditorNew = () => {
   const [editingMetric, setEditingMetric] = useState(null);
   const [editingRelation, setEditingRelation] = useState(null);
   const [editingInsight, setEditingInsight] = useState(null);
+  const [editingMarkdown, setEditingMarkdown] = useState(null);
+  const [editingChart, setEditingChart] = useState(null);
+  const [editingTable, setEditingTable] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
 
@@ -70,7 +91,10 @@ const EditorNew = () => {
     fetchMetrics();
     fetchRelations();
     fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
+    fetchMarkdownConfigs();
+    fetchChartConfigs();
+    fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
   // Compute object type counts
   const typeCounts = useMemo(() => {
@@ -81,8 +105,11 @@ const EditorNew = () => {
       metric: metrics?.length || 0,
       relation: relations?.length || 0,
       insight: insightConfigs?.length || 0,
+      markdown: markdownConfigs?.length || 0,
+      chart: chartConfigs?.length || 0,
+      table: tableConfigs?.length || 0,
     };
-  }, [sources, models, dimensions, metrics, relations, insightConfigs]);
+  }, [sources, models, dimensions, metrics, relations, insightConfigs, markdownConfigs, chartConfigs, tableConfigs]);
 
   // Filter sources by type and search query
   const filteredSources = useMemo(() => {
@@ -229,6 +256,74 @@ const EditorNew = () => {
     return filtered;
   }, [insightConfigs, selectedTypes, searchQuery]);
 
+  // Filter markdowns by type and search query
+  const filteredMarkdowns = useMemo(() => {
+    if (!markdownConfigs) return [];
+
+    // If types are selected and markdown is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('markdown')) {
+      return [];
+    }
+
+    let filtered = markdownConfigs;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        markdown =>
+          markdown.name.toLowerCase().includes(query) ||
+          (markdown.config?.content && markdown.config.content.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [markdownConfigs, selectedTypes, searchQuery]);
+
+  // Filter charts by type and search query
+  const filteredCharts = useMemo(() => {
+    if (!chartConfigs) return [];
+
+    // If types are selected and chart is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('chart')) {
+      return [];
+    }
+
+    let filtered = chartConfigs;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        chart => chart.name.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [chartConfigs, selectedTypes, searchQuery]);
+
+  // Filter tables by type and search query
+  const filteredTables = useMemo(() => {
+    if (!tableConfigs) return [];
+
+    // If types are selected and table is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('table')) {
+      return [];
+    }
+
+    let filtered = tableConfigs;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        table => table.name.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [tableConfigs, selectedTypes, searchQuery]);
+
   // Clear all editing states helper
   const clearAllEditing = useCallback(() => {
     setEditingSource(null);
@@ -237,6 +332,9 @@ const EditorNew = () => {
     setEditingMetric(null);
     setEditingRelation(null);
     setEditingInsight(null);
+    setEditingMarkdown(null);
+    setEditingChart(null);
+    setEditingTable(null);
   }, []);
 
   // Handle source selection
@@ -281,6 +379,27 @@ const EditorNew = () => {
     setIsCreating(false);
   }, [clearAllEditing]);
 
+  // Handle markdown selection
+  const handleMarkdownSelect = useCallback(markdown => {
+    clearAllEditing();
+    setEditingMarkdown(markdown);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
+  // Handle chart selection
+  const handleChartSelect = useCallback(chart => {
+    clearAllEditing();
+    setEditingChart(chart);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
+  // Handle table selection
+  const handleTableSelect = useCallback(table => {
+    clearAllEditing();
+    setEditingTable(table);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
     clearAllEditing();
@@ -302,10 +421,13 @@ const EditorNew = () => {
     await fetchMetrics();
     await fetchRelations();
     await fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
+    await fetchMarkdownConfigs();
+    await fetchChartConfigs();
+    await fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading;
+  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || editingMarkdown || editingChart || editingTable || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -328,10 +450,10 @@ const EditorNew = () => {
   const insightTypeConfig = getTypeByValue('insight');
   const InsightIcon = insightTypeConfig?.icon;
 
-  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insightConfigs?.length;
-  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length;
+  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insightConfigs?.length && !markdownConfigs?.length && !chartConfigs?.length && !tableConfigs?.length;
+  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length && !filteredMarkdowns.length && !filteredCharts.length && !filteredTables.length;
 
-  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError;
+  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError || markdownConfigsError || chartConfigsError || tableConfigsError;
 
   return (
     <div className="flex h-[calc(100vh-48px)]">
@@ -363,7 +485,7 @@ const EditorNew = () => {
         {/* Error state */}
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError}
+            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError || markdownConfigsError || chartConfigsError || tableConfigsError}
           </div>
         )}
 
@@ -435,6 +557,39 @@ const EditorNew = () => {
                 objectType="insight"
               />
             )}
+
+            {/* Markdowns List */}
+            {filteredMarkdowns.length > 0 && (
+              <ObjectList
+                objects={filteredMarkdowns}
+                selectedName={editingMarkdown?.name}
+                onSelect={handleMarkdownSelect}
+                title="Markdowns"
+                objectType="markdown"
+              />
+            )}
+
+            {/* Charts List */}
+            {filteredCharts.length > 0 && (
+              <ObjectList
+                objects={filteredCharts}
+                selectedName={editingChart?.name}
+                onSelect={handleChartSelect}
+                title="Charts"
+                objectType="chart"
+              />
+            )}
+
+            {/* Tables List */}
+            {filteredTables.length > 0 && (
+              <ObjectList
+                objects={filteredTables}
+                selectedName={editingTable?.name}
+                onSelect={handleTableSelect}
+                title="Tables"
+                objectType="table"
+              />
+            )}
           </div>
         )}
 
@@ -504,6 +659,9 @@ const EditorNew = () => {
             metric={editingMetric}
             relation={editingRelation}
             insight={editingInsight}
+            markdown={editingMarkdown}
+            chart={editingChart}
+            table={editingTable}
             objectType={createObjectType}
             isCreate={isCreating}
             onClose={handlePanelClose}

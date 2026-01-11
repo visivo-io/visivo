@@ -18,6 +18,9 @@ def register_publish_views(app, flask_app, output_dir):
                 or flask_app.metric_manager.has_unpublished_changes()
                 or flask_app.relation_manager.has_unpublished_changes()
                 or flask_app.insight_manager.has_unpublished_changes()
+                or flask_app.markdown_manager.has_unpublished_changes()
+                or flask_app.chart_manager.has_unpublished_changes()
+                or flask_app.table_manager.has_unpublished_changes()
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -98,6 +101,39 @@ def register_publish_views(app, flask_app, output_dir):
                         "status": status.value,
                     }
                     pending.append(insight_info)
+
+            # Get markdowns with changes
+            for name, markdown in flask_app.markdown_manager.cached_objects.items():
+                status = flask_app.markdown_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    markdown_info = {
+                        "name": name,
+                        "type": "markdown",
+                        "status": status.value,
+                    }
+                    pending.append(markdown_info)
+
+            # Get charts with changes
+            for name, chart in flask_app.chart_manager.cached_objects.items():
+                status = flask_app.chart_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    chart_info = {
+                        "name": name,
+                        "type": "chart",
+                        "status": status.value,
+                    }
+                    pending.append(chart_info)
+
+            # Get tables with changes
+            for name, table in flask_app.table_manager.cached_objects.items():
+                status = flask_app.table_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    table_info = {
+                        "name": name,
+                        "type": "table",
+                        "status": status.value,
+                    }
+                    pending.append(table_info)
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -202,6 +238,51 @@ def register_publish_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
+            # Process markdowns
+            for name, markdown in flask_app.markdown_manager.cached_objects.items():
+                status = flask_app.markdown_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=markdown,
+                        status=status,
+                        published_obj=flask_app.markdown_manager.published_objects.get(name),
+                        type_key="markdowns",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process charts
+            for name, chart in flask_app.chart_manager.cached_objects.items():
+                status = flask_app.chart_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=chart,
+                        status=status,
+                        published_obj=flask_app.chart_manager.published_objects.get(name),
+                        type_key="charts",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process tables
+            for name, table in flask_app.table_manager.cached_objects.items():
+                status = flask_app.table_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=table,
+                        status=status,
+                        published_obj=flask_app.table_manager.published_objects.get(name),
+                        type_key="tables",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
             if not named_children:
                 return jsonify({"message": "No changes to publish", "published_count": 0})
 
@@ -217,6 +298,9 @@ def register_publish_views(app, flask_app, output_dir):
             flask_app.metric_manager.clear_cache()
             flask_app.relation_manager.clear_cache()
             flask_app.insight_manager.clear_cache()
+            flask_app.markdown_manager.clear_cache()
+            flask_app.chart_manager.clear_cache()
+            flask_app.table_manager.clear_cache()
 
             # Trigger project reload via hot reload server if available
             if flask_app.hot_reload_server:

@@ -73,6 +73,24 @@ const URL_PATTERNS = {
     insightSave: '/api/insights/{name}/save/',
     insightValidate: '/api/insights/{name}/validate/',
 
+    // Markdown management endpoints
+    markdownsList: '/api/markdowns/',
+    markdownDetail: '/api/markdowns/{name}/',
+    markdownSave: '/api/markdowns/{name}/save/',
+    markdownValidate: '/api/markdowns/{name}/validate/',
+
+    // Chart management endpoints
+    chartsList: '/api/charts/',
+    chartDetail: '/api/charts/{name}/',
+    chartSave: '/api/charts/{name}/save/',
+    chartValidate: '/api/charts/{name}/validate/',
+
+    // Table management endpoints
+    tablesList: '/api/tables/',
+    tableDetail: '/api/tables/{name}/',
+    tableSave: '/api/tables/{name}/save/',
+    tableValidate: '/api/tables/{name}/validate/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
@@ -147,6 +165,24 @@ const URL_PATTERNS = {
     insightDetail: null,
     insightSave: null,
     insightValidate: null,
+
+    // Markdown management endpoints (not available in dist)
+    markdownsList: null,
+    markdownDetail: null,
+    markdownSave: null,
+    markdownValidate: null,
+
+    // Chart management endpoints (not available in dist)
+    chartsList: null,
+    chartDetail: null,
+    chartSave: null,
+    chartValidate: null,
+
+    // Table management endpoints (not available in dist)
+    tablesList: null,
+    tableDetail: null,
+    tableSave: null,
+    tableValidate: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,
