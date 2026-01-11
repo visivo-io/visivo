@@ -3,25 +3,6 @@
  */
 
 /**
- * Query-string patterns used in Visivo schemas
- */
-const QUERY_STRING_PATTERNS = [
-  /^\?\{.*\}$/, // ?{column}
-  /^query\(.*\)$/, // query(...)
-  /^column\(.*\)(?:\[-?\d+\])?$/, // column(...) or column(...)[n]
-];
-
-/**
- * Check if a value is a query-string value
- * @param {any} val - The value to check
- * @returns {boolean} True if the value matches query-string patterns
- */
-export function isQueryStringValue(val) {
-  if (typeof val !== 'string') return false;
-  return QUERY_STRING_PATTERNS.some(pattern => pattern.test(val));
-}
-
-/**
  * Check if a schema supports query-string values
  * Looks for $ref to #/$defs/query-string in oneOf arrays
  * @param {object} schema - The JSON schema

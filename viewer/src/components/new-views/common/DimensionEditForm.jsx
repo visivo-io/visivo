@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
-import { Button, ButtonOutline } from '../../styled/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { FormInput, FormTextarea, FormSelect, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from './RefTextArea';
 
 /**
@@ -170,79 +168,43 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
 
   return (
     <>
-      {/* Scrollable Form Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-5">
-        {/* Name field */}
-        <div className="relative">
-          <input
-            type="text"
-            id="dimensionName"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            disabled={isEditMode}
-            placeholder=" "
-            className={`
-              block w-full px-3 py-2.5 text-sm text-gray-900
-              bg-white rounded-md border appearance-none
-              focus:outline-none focus:ring-2 focus:border-primary-500
-              peer placeholder-transparent
-              ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
-              ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-            `}
-          />
-          <label
-            htmlFor="dimensionName"
-            className={`
-              absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-              bg-white px-1 left-2
-              peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-              peer-placeholder-shown:top-1/2
-              peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-              ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-            `}
-          >
-            Dimension Name<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-        </div>
+      <FormLayout>
+        <FormInput
+          id="dimensionName"
+          label="Dimension Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          disabled={isEditMode}
+          required
+          error={errors.name}
+        />
 
-        {/* Parent Model selector */}
-        <div className="relative">
-          <select
-            id="parentModel"
-            value={parentModel}
-            onChange={e => {
-              setParentModel(e.target.value);
-              // Clear expression errors when switching modes
-              if (errors.expression) {
-                setErrors(prev => ({ ...prev, expression: null }));
-              }
-            }}
-            className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-          >
-            <option value="">Multi-model (project-level)</option>
-            {models.map(model => (
-              <option key={model.name} value={model.name}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-          <label
-            htmlFor="parentModel"
-            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
-          >
-            Parent Model
-          </label>
-          <p className="mt-1 text-xs text-gray-500">
-            {isModelScoped
+        <FormSelect
+          id="parentModel"
+          label="Parent Model"
+          value={parentModel}
+          onChange={e => {
+            setParentModel(e.target.value);
+            // Clear expression errors when switching modes
+            if (errors.expression) {
+              setErrors(prev => ({ ...prev, expression: null }));
+            }
+          }}
+          helperText={
+            isModelScoped
               ? 'This dimension will be scoped to the selected model and use plain SQL.'
               /* eslint-disable-next-line no-template-curly-in-string */
-              : 'This dimension can reference multiple models using ${ref(model_name)}.'}
-          </p>
-        </div>
+              : 'This dimension can reference multiple models using ${ref(model_name)}.'
+          }
+        >
+          <option value="">Multi-model (project-level)</option>
+          {models.map(model => (
+            <option key={model.name} value={model.name}>
+              {model.name}
+            </option>
+          ))}
+        </FormSelect>
 
-        {/* Expression - always use RefTextArea (Monaco SQL editor) */}
         <RefTextArea
           value={expression}
           onChange={setExpression}
@@ -252,95 +214,44 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
           allowedTypes={isModelScoped ? [] : ['model', 'dimension']}
           hideAddButton={isModelScoped}
           rows={4}
-          helperText={isModelScoped
-            ? 'Plain SQL expression referencing columns from the parent model.'
-            : 'SQL expression for this dimension. Use the + button to insert references.'}
+          helperText={
+            isModelScoped
+              ? 'Plain SQL expression referencing columns from the parent model.'
+              : 'SQL expression for this dimension. Use the + button to insert references.'
+          }
         />
 
-        {/* Description (optional) */}
-        <div className="relative">
-          <textarea
-            id="dimensionDescription"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder=" "
-            rows={2}
-            className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y"
-          />
-          <label
-            htmlFor="dimensionDescription"
-            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
-          >
-            Description
-          </label>
-        </div>
+        <FormTextarea
+          id="dimensionDescription"
+          label="Description"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          rows={2}
+        />
 
-        {/* Save Error */}
-        {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
-        </div>
-      </div>
+        {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
+      </FormLayout>
 
-      {/* Fixed Footer Actions */}
-      <div className="border-t border-gray-200 bg-gray-50">
-        {/* Delete Confirmation */}
-        {showDeleteConfirm && isEditMode && (
-          <div className="px-4 py-3 bg-red-50 border-b border-red-200">
-            <p className="text-sm text-red-700 mb-2">
-              {isNewObject
-                ? 'Are you sure you want to delete this dimension? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this dimension? This will mark it for deletion and remove it from YAML when you publish.'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleting ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-between items-center px-4 py-3">
-          <div className="flex gap-2">
-            {/* Delete button - only in edit mode */}
-            {isEditMode && !showDeleteConfirm && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
-                title="Delete dimension"
-              >
-                <DeleteOutlineIcon fontSize="small" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <FormFooter
+        onCancel={onClose}
+        onSave={handleSave}
+        saving={saving}
+        showDelete={isEditMode && !showDeleteConfirm}
+        onDeleteClick={() => setShowDeleteConfirm(true)}
+        deleteConfirm={
+          showDeleteConfirm && isEditMode
+            ? {
+                show: true,
+                message: isNewObject
+                  ? 'Are you sure you want to delete this dimension? This will discard your unsaved changes.'
+                  : 'Are you sure you want to delete this dimension? This will mark it for deletion and remove it from YAML when you publish.',
+                onConfirm: handleDelete,
+                onCancel: () => setShowDeleteConfirm(false),
+                deleting,
+              }
+            : null
+        }
+      />
     </>
   );
 };
