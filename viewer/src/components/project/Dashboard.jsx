@@ -173,7 +173,7 @@ const Dashboard = ({ project, dashboardName }) => {
       return (
         <Markdown
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
-          markdown={item}
+          markdown={item.markdown}
           row={row}
           height={getHeight(row.height)}
         />

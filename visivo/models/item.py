@@ -3,16 +3,16 @@ from visivo.models.inputs.fields import InputField
 from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
-from pydantic import Field
-from typing import Optional, Literal
+from visivo.models.markdown import Markdown
+from pydantic import Field, model_validator
+from typing import Optional, Literal, Union
 from visivo.models.chart import Chart
 from visivo.models.table import Table
-from pydantic import model_validator
 
 
 class Item(NamedModel, ParentModel):
     """
-    The Item houses a single chart, table, selector or markdown object.
+    The Item houses a single chart, table, selector, markdown, or input object.
 
     It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.
 
@@ -21,7 +21,7 @@ class Item(NamedModel, ParentModel):
     ``` yaml
     items:
       - width: 1
-        markdown: "# Some inline **markdown**"
+        markdown: ref(welcome-markdown)
       - width: 1
         table: ref(table-name)
       - width: 2
@@ -31,107 +31,44 @@ class Item(NamedModel, ParentModel):
       - width: 1
         input: ref(input-name)
     ```
+
     ## Markdown
-    You can use markdown to add formatted text to your dashboard. Visivo markdown supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also
-    render raw HTML within your markdown.
+    Reference a markdown object to add formatted text to your dashboard:
 
-    To control the alignment of markdown content, you can use the `align` and `justify` properties.
-    === "Horizontal Alignment (align)"
-        Controls how text aligns horizontally within the container:
+    ``` yaml
+    markdowns:
+      - name: welcome-markdown
+        content: |
+          # Welcome to Visivo
+          This is **formatted** text.
+        align: center
+        justify: start
 
-        `align: left` (default)
-        ```
-        [Header     ]
-        [Paragraph  ]
-        [List       ]
-        ```
+    dashboards:
+      - name: my-dashboard
+        rows:
+          - items:
+              - markdown: ref(welcome-markdown)
+    ```
 
-        `align: center`
-        ```
-        [  Header   ]
-        [ Paragraph ]
-        [   List    ]
-        ```
-
-        `align: right`
-        ```
-        [     Header]
-        [  Paragraph]
-        [      List]
-        ```
-
-    === "Vertical Distribution (justify)"
-        Controls how content blocks are distributed vertically in fixed-height containers:
-
-        `justify: start` (default)
-        ```
-        [Header     ]
-        [Paragraph  ]
-        [List       ]
-        [           ]
-        [           ]
-        ```
-
-        `justify: center`
-        ```
-        [           ]
-        [Header     ]
-        [Paragraph  ]
-        [List       ]
-        [           ]
-        ```
-
-        `justify: between`
-        ```
-        [Header     ]
-        [           ]
-        [Paragraph  ]
-        [           ]
-        [List       ]
-        ```
-
-        `justify: around`
-        ```
-        [           ]
-        [Header     ]
-        [           ]
-        [Paragraph  ]
-        [           ]
-        [List       ]
-        [           ]
-        ```
-
-        `justify: evenly`
-        ```
-        [           ]
-        [Header     ]
-        [Paragraph  ]
-        [List       ]
-        [           ]
-        ```
-
-        `justify: end`
-        ```
-        [           ]
-        [           ]
-        [Header     ]
-        [Paragraph  ]
-        [List       ]
-        ```
+    Markdown content supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also render raw HTML within your markdown.
     """
 
     width: int = Field(
         1,
         description="The width of the Item determines is evaluated relative to the other items in a row.",
     )
-    markdown: Optional[str] = Field(None, description="Markdown text to include in the dashboard.")
+    markdown: Optional[Union[generate_ref_field(Markdown), str]] = Field(
+        None,
+        description="A Markdown object defined inline, a ref() to a markdown, or a markdown string (deprecated).",
+    )
     align: Optional[Literal["left", "center", "right"]] = Field(
         None,
-        description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'.",
+        description="DEPRECATED: Use the align property on the Markdown model instead. Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'.",
     )
     justify: Optional[Literal["start", "end", "center", "between", "around", "evenly"]] = Field(
         None,
-        description="Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.",
+        description="DEPRECATED: Use the justify property on the Markdown model instead. Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.",
     )
     chart: Optional[generate_ref_field(Chart)] = Field(
         None, description="A chart object defined inline or a ref() to a chart."
@@ -168,9 +105,8 @@ class Item(NamedModel, ParentModel):
     def validate_align_with_markdown(cls, data: any):
         align = data.get("align")
         markdown = data.get("markdown")
-        if markdown is not None and align is None:
-            data["align"] = "left"
-        elif align is not None and markdown is None:
+        # Only allow align if markdown is present
+        if align is not None and markdown is None:
             raise ValueError(
                 "The 'align' property can only be set when 'markdown' is present in the same item"
             )
@@ -181,13 +117,31 @@ class Item(NamedModel, ParentModel):
     def validate_justify_with_markdown(cls, data: any):
         justify = data.get("justify")
         markdown = data.get("markdown")
-        if markdown is not None and justify is None:
-            data["justify"] = "start"
-        elif justify is not None and markdown is None:
+        # Only allow justify if markdown is present
+        if justify is not None and markdown is None:
             raise ValueError(
                 "The 'justify' property can only be set when 'markdown' is present in the same item"
             )
         return data
+
+    @model_validator(mode="after")
+    def convert_legacy_markdown_to_model(self):
+        """Convert legacy inline markdown string to Markdown model for backwards compatibility."""
+        # If markdown is a plain string (legacy format), convert to Markdown model
+        if isinstance(self.markdown, str) and not self.markdown.startswith("ref("):
+            # Create a Markdown model from the string
+            align = self.align if self.align is not None else "left"
+            justify = self.justify if self.justify is not None else "start"
+            self.markdown = Markdown(
+                name=f"inline-markdown-{id(self)}",
+                content=self.markdown,
+                align=align,
+                justify=justify,
+            )
+            # Clear the deprecated fields since they're now on the Markdown model
+            self.align = None
+            self.justify = None
+        return self
 
     def child_items(self):
         child = self.__get_child()
@@ -204,3 +158,5 @@ class Item(NamedModel, ParentModel):
             return self.selector
         if self.input is not None:
             return self.input
+        if self.markdown is not None and isinstance(self.markdown, Markdown):
+            return self.markdown

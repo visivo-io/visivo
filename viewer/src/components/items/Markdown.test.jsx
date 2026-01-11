@@ -26,8 +26,9 @@ describe('Markdown Component', () => {
   });
 
   const sampleMarkdown = {
+    name: 'sample-markdown',
     path: 'sample-markdown',
-    markdown: '# Hello World',
+    content: '# Hello World',
     justify: 'center',
     align: 'center',
   };

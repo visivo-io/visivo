@@ -26,6 +26,7 @@ PROJECT_CHILDREN = [
     "dimensions",
     "inputs",
     "insights",
+    "markdowns",
     "metrics",
     "models",
     "relations",
@@ -44,8 +45,10 @@ Contents:
 - dimensions
 - inputs
 - insights
+- markdowns
 - metrics
 - models
+- relations
 - selectors
 - sources
 - tables
