@@ -10,7 +10,7 @@ import { validateName } from './namedModel';
 /**
  * TableEditForm - Form component for editing/creating tables
  *
- * Tables combine traces and insights with pagination and column configuration.
+ * Tables combine insights with pagination configuration.
  *
  * Props:
  * - table: Table object to edit (null for create mode)
@@ -19,11 +19,10 @@ import { validateName } from './namedModel';
  * - onSave: Callback after successful save
  */
 const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
-  const { saveTableConfig, deleteTableConfig, checkPublishStatus, project } = useStore();
+  const { saveTableConfig, deleteTableConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
 
   // Form state
   const [name, setName] = useState('');
-  const [traces, setTraces] = useState([]);
   const [insights, setInsights] = useState([]);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
@@ -37,22 +36,24 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
   const isEditMode = !!table && !isCreate;
   const isNewObject = table?.status === ObjectStatus.NEW;
 
-  // Get available traces and insights from project
-  const availableTraces = project?.traces?.map(t => t.name) || [];
-  const availableInsights = project?.insights?.map(i => i.name) || [];
+  // Get available insights from the insight store
+  const availableInsights = insightConfigs?.map(i => i.name) || [];
 
   // Rows per page options
   const ROWS_PER_PAGE_OPTIONS = [3, 5, 15, 25, 50, 100, 500, 1000];
+
+  // Fetch insights on mount if needed
+  useEffect(() => {
+    if (!insightConfigs || insightConfigs.length === 0) {
+      fetchInsightConfigs();
+    }
+  }, [insightConfigs, fetchInsightConfigs]);
 
   // Initialize form when table changes
   useEffect(() => {
     if (table) {
       // Edit mode - populate from existing table
       setName(table.name || '');
-
-      // Extract trace refs
-      const tableTraces = table.config?.traces || table.traces || [];
-      setTraces(tableTraces.map(t => (typeof t === 'string' ? t.replace('ref(', '').replace(')', '') : t)));
 
       // Extract insight refs
       const tableInsights = table.config?.insights || table.insights || [];
@@ -63,7 +64,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
     } else if (isCreate) {
       // Create mode - reset form
       setName('');
-      setTraces([]);
       setInsights([]);
       setRowsPerPage(25);
     }
@@ -79,8 +79,8 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
       newErrors.name = nameError;
     }
 
-    if (traces.length === 0 && insights.length === 0) {
-      newErrors.data = 'At least one trace or insight is required';
+    if (insights.length === 0) {
+      newErrors.data = 'At least one insight is required';
     }
 
     setErrors(newErrors);
@@ -99,11 +99,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
         name,
         rows_per_page: rowsPerPage,
       };
-
-      // Add traces as refs
-      if (traces.length > 0) {
-        config.traces = traces.map(t => `ref(${t})`);
-      }
 
       // Add insights as refs
       if (insights.length > 0) {
@@ -137,24 +132,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
       setSaveError(result?.error || 'Failed to delete table');
       setShowDeleteConfirm(false);
     }
-  };
-
-  // Trace management
-  const addTrace = () => {
-    const availableToAdd = availableTraces.filter(t => !traces.includes(t));
-    if (availableToAdd.length > 0) {
-      setTraces([...traces, availableToAdd[0]]);
-    }
-  };
-
-  const removeTrace = index => {
-    setTraces(traces.filter((_, i) => i !== index));
-  };
-
-  const updateTrace = (index, value) => {
-    const updated = [...traces];
-    updated[index] = value;
-    setTraces(updated);
   };
 
   // Insight management
@@ -243,52 +220,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
             </div>
           </div>
 
-          {/* Traces Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-              <h3 className="text-sm font-medium text-gray-700">Traces</h3>
-              <button
-                type="button"
-                onClick={addTrace}
-                disabled={availableTraces.filter(t => !traces.includes(t)).length === 0}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <AddIcon fontSize="small" />
-                Add Trace
-              </button>
-            </div>
-
-            {traces.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No traces added. Add traces to display data in this table.
-              </p>
-            ) : (
-              traces.map((trace, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <select
-                    value={trace}
-                    onChange={e => updateTrace(index, e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    {availableTraces.map(t => (
-                      <option key={t} value={t} disabled={traces.includes(t) && t !== trace}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeTrace(index)}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    title="Remove trace"
-                  >
-                    <RemoveIcon fontSize="small" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
           {/* Insights Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-gray-200 pb-2">
@@ -304,9 +235,13 @@ const TableEditForm = ({ table, isCreate, onClose, onSave }) => {
               </button>
             </div>
 
-            {insights.length === 0 ? (
+            {availableInsights.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
-                No insights added. Add insights for interactive features.
+                No insights available. Create insights first to add them to tables.
+              </p>
+            ) : insights.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">
+                No insights added. Add insights to display data in this table.
               </p>
             ) : (
               insights.map((insight, index) => (

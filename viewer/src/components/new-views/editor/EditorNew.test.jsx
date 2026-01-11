@@ -33,6 +33,9 @@ describe('EditorNew', () => {
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
   const mockFetchInsightConfigs = jest.fn();
+  const mockFetchMarkdownConfigs = jest.fn();
+  const mockFetchChartConfigs = jest.fn();
+  const mockFetchTableConfigs = jest.fn();
 
   const defaultStoreState = {
     sources: [],
@@ -59,6 +62,18 @@ describe('EditorNew', () => {
     fetchInsightConfigs: mockFetchInsightConfigs,
     insightConfigsLoading: false,
     insightConfigsError: null,
+    markdownConfigs: [],
+    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
+    markdownConfigsLoading: false,
+    markdownConfigsError: null,
+    chartConfigs: [],
+    fetchChartConfigs: mockFetchChartConfigs,
+    chartConfigsLoading: false,
+    chartConfigsError: null,
+    tableConfigs: [],
+    fetchTableConfigs: mockFetchTableConfigs,
+    tableConfigsLoading: false,
+    tableConfigsError: null,
   };
 
   beforeEach(() => {

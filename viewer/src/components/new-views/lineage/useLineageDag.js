@@ -51,6 +51,9 @@ export function useLineageDag() {
   const metrics = useStore(state => state.metrics);
   const relations = useStore(state => state.relations);
   const insightConfigs = useStore(state => state.insightConfigs);
+  const markdownConfigs = useStore(state => state.markdownConfigs);
+  const chartConfigs = useStore(state => state.chartConfigs);
+  const tableConfigs = useStore(state => state.tableConfigs);
 
   const dag = useMemo(() => {
     const nodes = [];
@@ -64,6 +67,9 @@ export function useLineageDag() {
     (metrics || []).forEach(m => { objectTypeByName[m.name] = 'metric'; });
     (relations || []).forEach(r => { objectTypeByName[r.name] = 'relation'; });
     (insightConfigs || []).forEach(i => { objectTypeByName[i.name] = 'insight'; });
+    (markdownConfigs || []).forEach(m => { objectTypeByName[m.name] = 'markdown'; });
+    (chartConfigs || []).forEach(c => { objectTypeByName[c.name] = 'chart'; });
+    (tableConfigs || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
 
     // Build source nodes
     (sources || []).forEach(source => {
@@ -217,11 +223,82 @@ export function useLineageDag() {
       });
     });
 
+    // Build markdown nodes (no edges - markdowns are standalone)
+    (markdownConfigs || []).forEach(markdown => {
+      nodes.push({
+        id: `markdown-${markdown.name}`,
+        type: 'markdownNode',
+        data: {
+          name: markdown.name,
+          status: markdown.status,
+          markdown: markdown,
+          objectType: 'markdown',
+        },
+        position: { x: 0, y: 0 },
+      });
+    });
+
+    // Build chart nodes and edges from insights
+    (chartConfigs || []).forEach(chart => {
+      nodes.push({
+        id: `chart-${chart.name}`,
+        type: 'chartNode',
+        data: {
+          name: chart.name,
+          status: chart.status,
+          chart: chart,
+          objectType: 'chart',
+        },
+        position: { x: 0, y: 0 },
+      });
+
+      // Create edges from chart's child_item_names (insights it depends on)
+      const childNames = chart.child_item_names || [];
+      childNames.forEach(childName => {
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          edges.push({
+            id: `edge-${childName}-chart-${chart.name}`,
+            source: `${childType}-${childName}`,
+            target: `chart-${chart.name}`,
+          });
+        }
+      });
+    });
+
+    // Build table nodes and edges from insights
+    (tableConfigs || []).forEach(table => {
+      nodes.push({
+        id: `table-${table.name}`,
+        type: 'tableNode',
+        data: {
+          name: table.name,
+          status: table.status,
+          table: table,
+          objectType: 'table',
+        },
+        position: { x: 0, y: 0 },
+      });
+
+      // Create edges from table's child_item_names (insights it depends on)
+      const childNames = table.child_item_names || [];
+      childNames.forEach(childName => {
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          edges.push({
+            id: `edge-${childName}-table-${table.name}`,
+            source: `${childType}-${childName}`,
+            target: `table-${table.name}`,
+          });
+        }
+      });
+    });
+
     // Compute layout with dagre
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations, insightConfigs]);
+  }, [sources, models, dimensions, metrics, relations, insightConfigs, markdownConfigs, chartConfigs, tableConfigs]);
 
   return dag;
 }

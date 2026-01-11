@@ -72,6 +72,9 @@ describe('LineageNew', () => {
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
   const mockFetchInsightConfigs = jest.fn();
+  const mockFetchMarkdownConfigs = jest.fn();
+  const mockFetchChartConfigs = jest.fn();
+  const mockFetchTableConfigs = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -95,6 +98,15 @@ describe('LineageNew', () => {
     insightConfigs: [],
     fetchInsightConfigs: mockFetchInsightConfigs,
     insightConfigsLoading: false,
+    markdownConfigs: [],
+    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
+    markdownConfigsLoading: false,
+    chartConfigs: [],
+    fetchChartConfigs: mockFetchChartConfigs,
+    chartConfigsLoading: false,
+    tableConfigs: [],
+    fetchTableConfigs: mockFetchTableConfigs,
+    tableConfigsLoading: false,
   };
 
   const emptyDagData = {
