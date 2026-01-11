@@ -17,6 +17,7 @@ def register_publish_views(app, flask_app, output_dir):
                 or flask_app.dimension_manager.has_unpublished_changes()
                 or flask_app.metric_manager.has_unpublished_changes()
                 or flask_app.relation_manager.has_unpublished_changes()
+                or flask_app.insight_manager.has_unpublished_changes()
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -86,6 +87,17 @@ def register_publish_views(app, flask_app, output_dir):
                         "status": status.value,
                     }
                     pending.append(relation_info)
+
+            # Get insights with changes
+            for name, insight in flask_app.insight_manager.cached_objects.items():
+                status = flask_app.insight_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    insight_info = {
+                        "name": name,
+                        "type": "insight",
+                        "status": status.value,
+                    }
+                    pending.append(insight_info)
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -175,6 +187,21 @@ def register_publish_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
+            # Process insights
+            for name, insight in flask_app.insight_manager.cached_objects.items():
+                status = flask_app.insight_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=insight,
+                        status=status,
+                        published_obj=flask_app.insight_manager.published_objects.get(name),
+                        type_key="insights",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
             if not named_children:
                 return jsonify({"message": "No changes to publish", "published_count": 0})
 
@@ -189,6 +216,7 @@ def register_publish_views(app, flask_app, output_dir):
             flask_app.dimension_manager.clear_cache()
             flask_app.metric_manager.clear_cache()
             flask_app.relation_manager.clear_cache()
+            flask_app.insight_manager.clear_cache()
 
             # Trigger project reload via hot reload server if available
             if flask_app.hot_reload_server:
