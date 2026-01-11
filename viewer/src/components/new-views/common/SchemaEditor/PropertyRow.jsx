@@ -11,7 +11,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CodeIcon from '@mui/icons-material/Code';
 import TuneIcon from '@mui/icons-material/Tune';
 import RefTextArea from '../RefTextArea';
-import { isQueryStringValue, supportsQueryString, getStaticSchema } from './utils/schemaUtils';
+import { isQueryStringValue } from '../../../../utils/queryString';
+import { supportsQueryString, getStaticSchema } from './utils/schemaUtils';
 import { resolveFieldType } from './utils/fieldResolver';
 import { getFieldComponent } from './fields';
 

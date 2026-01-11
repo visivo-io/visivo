@@ -8,6 +8,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
+import { validateName } from './namedModel';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -86,11 +87,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
-      newErrors.name =
-        'Name must start with a letter and contain only letters, numbers, underscores, and hyphens';
+    const nameError = validateName(name);
+    if (nameError) {
+      newErrors.name = nameError;
     }
 
     if (!propsType) {

@@ -16,6 +16,83 @@ from typing import Tuple, Optional, List, Set
 # Valid characters in reference names (allows alphanumeric, spaces, quotes, hyphens, underscores)
 NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 
+# ============================================================================
+# Name Validation - For new naming conventions
+# ============================================================================
+
+# Compiled pattern for checking if a name is valid
+# Valid names: lowercase, alphanumeric, underscore, and hyphen only
+# Must start with letter or underscore
+VALID_NAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]*$")
+
+
+def is_valid_name(name: str) -> bool:
+    """
+    Check if a name is valid for the new naming conventions.
+
+    Valid names must:
+    - Be lowercase
+    - Start with a letter or underscore
+    - Contain only alphanumeric characters, underscores, and hyphens
+
+    Args:
+        name: The name to check
+
+    Returns:
+        True if the name is valid
+    """
+    return bool(VALID_NAME_PATTERN.match(name))
+
+
+def normalize_name(name: str) -> str:
+    """
+    Normalize a name to be valid for the new naming conventions.
+
+    Transformation rules:
+    - Insert underscore before uppercase letters (for camelCase/PascalCase)
+    - Lowercase the entire string
+    - Replace any character that isn't alphanumeric, underscore, or hyphen with hyphen
+    - Collapse multiple consecutive hyphens into one
+    - Strip leading and trailing hyphens
+    - If starts with a digit, prefix with underscore
+
+    Args:
+        name: The name to normalize
+
+    Returns:
+        A valid name
+
+    Examples:
+        >>> normalize_name("My Model")
+        "my-model"
+        >>> normalize_name("MyModel")
+        "my_model"
+        >>> normalize_name("Orders (2024)")
+        "orders-2024"
+        >>> normalize_name("user.name")
+        "user-name"
+    """
+    # Insert underscore before uppercase letters (for camelCase/PascalCase)
+    result = re.sub(r"([a-z])([A-Z])", r"\1_\2", name)
+
+    # Lowercase
+    result = result.lower()
+
+    # Replace invalid characters with hyphen
+    result = re.sub(r"[^a-z0-9_-]", "-", result)
+
+    # Collapse multiple consecutive hyphens into one
+    result = re.sub(r"-+", "-", result)
+
+    # Strip leading and trailing hyphens
+    result = result.strip("-")
+
+    # If starts with digit, prefix with underscore
+    if result and result[0].isdigit():
+        result = "_" + result
+
+    return result
+
 
 # ============================================================================
 # Reference Patterns - ${ref(...)} syntax variations

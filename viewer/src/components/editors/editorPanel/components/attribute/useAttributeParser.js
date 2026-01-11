@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from '../../../../../constants';
+import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from '../../../../../utils/queryString';
 
 export const useAttributeParser = () => {
   const [isJsonObject, setIsJsonObject] = useState(false);
