@@ -8,8 +8,8 @@ from visivo.models.base.named_model import alpha_hash
 
 def register_input_views(app, flask_app, output_dir):
 
-    @app.route("/api/inputs/", methods=["GET"])
-    def get_inputs_api():
+    @app.route("/api/input-jobs/", methods=["GET"])
+    def get_input_jobs_api():
         """Get input metadata by input names.
 
         Query params:

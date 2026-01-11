@@ -605,7 +605,7 @@ def test_serve_insight_data_by_hash(client, output_dir):
     insight_file = insight_dir / f"{insight_hash}.json"
     insight_file.write_text(json.dumps({"hello": "world"}))
 
-    resp = client.get(f"/api/insights/{insight_hash}/")
+    resp = client.get(f"/api/insight-jobs/{insight_hash}/")
     assert resp.status_code == 200
     assert resp.data == b'{"hello": "world"}'
 
@@ -613,6 +613,6 @@ def test_serve_insight_data_by_hash(client, output_dir):
 def test_serve_insight_data_by_hash_not_found(client):
     """Test serve insight data hash not found"""
     wrong_hash = hashlib.md5("unknown".encode()).hexdigest()
-    resp = client.get(f"/api/insights/{wrong_hash}/")
+    resp = client.get(f"/api/insight-jobs/{wrong_hash}/")
     assert resp.status_code == 404
     assert "Insight data not found" in resp.get_json()["message"]

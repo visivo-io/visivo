@@ -40,7 +40,7 @@ function computeLayout(nodes, edges) {
 }
 
 /**
- * useLineageDag - Hook for building full DAG with sources, models, dimensions, metrics, and relations
+ * useLineageDag - Hook for building full DAG with sources, models, dimensions, metrics, relations, and insights
  * Uses dagre for automatic left-to-right layout
  * Uses child_item_names from backend for relationships
  */
@@ -50,10 +50,20 @@ export function useLineageDag() {
   const dimensions = useStore(state => state.dimensions);
   const metrics = useStore(state => state.metrics);
   const relations = useStore(state => state.relations);
+  const insightConfigs = useStore(state => state.insightConfigs);
 
   const dag = useMemo(() => {
     const nodes = [];
     const edges = [];
+
+    // Build a lookup map of object names to their types for edge creation
+    const objectTypeByName = {};
+    (sources || []).forEach(s => { objectTypeByName[s.name] = 'source'; });
+    (models || []).forEach(m => { objectTypeByName[m.name] = 'model'; });
+    (dimensions || []).forEach(d => { objectTypeByName[d.name] = 'dimension'; });
+    (metrics || []).forEach(m => { objectTypeByName[m.name] = 'metric'; });
+    (relations || []).forEach(r => { objectTypeByName[r.name] = 'relation'; });
+    (insightConfigs || []).forEach(i => { objectTypeByName[i.name] = 'insight'; });
 
     // Build source nodes
     (sources || []).forEach(source => {
@@ -177,11 +187,41 @@ export function useLineageDag() {
       });
     });
 
+    // Build insight nodes and edges to dependencies (models, metrics, dimensions, etc.)
+    (insightConfigs || []).forEach(insight => {
+      nodes.push({
+        id: `insight-${insight.name}`,
+        type: 'insightNode',
+        data: {
+          name: insight.name,
+          propsType: insight.config?.props?.type,
+          status: insight.status,
+          insight: insight,
+          objectType: 'insight',
+        },
+        position: { x: 0, y: 0 },
+      });
+
+      // Create edges from insight's child_item_names (can be models, metrics, dimensions, etc.)
+      const childNames = insight.child_item_names || [];
+      childNames.forEach(childName => {
+        // Look up the type of the child object to create the correct edge source
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          edges.push({
+            id: `edge-${childName}-insight-${insight.name}`,
+            source: `${childType}-${childName}`,
+            target: `insight-${insight.name}`,
+          });
+        }
+      });
+    });
+
     // Compute layout with dagre
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations]);
+  }, [sources, models, dimensions, metrics, relations, insightConfigs]);
 
   return dag;
 }

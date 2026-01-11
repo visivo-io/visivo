@@ -55,11 +55,12 @@
     "zustand": "^5.0.9"
   },
   "scripts": {
+    "copy-schemas": "cp ../visivo/schema/*.schema.json src/schemas/",
     "start": "yarn run start:local",
-    "start:local": "cp src/LocalProviders.jsx src/Providers.jsx && vite",
-    "start:dist": "cp src/DistProviders.jsx src/Providers.jsx && vite",
-    "test": "jest",
-    "build": "vite build",
+    "start:local": "yarn run copy-schemas && cp src/LocalProviders.jsx src/Providers.jsx && vite",
+    "start:dist": "yarn run copy-schemas && cp src/DistProviders.jsx src/Providers.jsx && vite",
+    "test": "yarn run copy-schemas && jest",
+    "build": "yarn run copy-schemas && vite build",
     "deploy": "yarn run deploy:local && yarn run deploy:dist",
     "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv build/ ../visivo/viewers/local/",
     "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",

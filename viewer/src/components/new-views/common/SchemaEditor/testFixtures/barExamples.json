@@ -1,0 +1,62 @@
+{
+  "valid": [
+    {
+      "description": "Basic bar chart with query-string data",
+      "value": {
+        "x": "column(category)",
+        "y": "column(count)",
+        "type": "bar"
+      }
+    },
+    {
+      "description": "Horizontal bar chart",
+      "value": {
+        "x": "column(value)",
+        "y": "column(label)",
+        "orientation": "h",
+        "type": "bar"
+      }
+    },
+    {
+      "description": "Bar chart with static data",
+      "value": {
+        "x": ["A", "B", "C", "D"],
+        "y": [10, 20, 15, 25],
+        "type": "bar"
+      }
+    },
+    {
+      "description": "Styled bar chart",
+      "value": {
+        "x": "column(category)",
+        "y": "column(value)",
+        "marker": {
+          "color": "#4CAF50"
+        },
+        "name": "Sales",
+        "type": "bar"
+      }
+    },
+    {
+      "description": "Bar chart with text labels",
+      "value": {
+        "x": "column(product)",
+        "y": "column(revenue)",
+        "text": "column(formatted_revenue)",
+        "textposition": "outside",
+        "type": "bar"
+      }
+    },
+    {
+      "description": "Bar chart with query-string colors",
+      "value": {
+        "x": "column(category)",
+        "y": "column(value)",
+        "marker": {
+          "color": "?{color_values}"
+        },
+        "type": "bar"
+      }
+    }
+  ]
+}

@@ -1,19 +1,19 @@
 import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
-import { fetchInsights as defaultFetchInsights } from '../api/insights';
+import { fetchInsightJobs as defaultFetchInsightJobs } from '../api/insightJobs';
 import {
-  fetchInputOptions as defaultFetchInputOptions,
-  fetchInputs as defaultFetchInputs,
-} from '../api/inputs';
+  fetchInputJobOptions as defaultFetchInputJobOptions,
+  fetchInputJobs as defaultFetchInputJobs,
+} from '../api/inputJobs';
 
 // Default query functions
 const defaultQueries = {
   fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
-  fetchInsights: defaultFetchInsights,
-  fetchInputOptions: defaultFetchInputOptions,
-  fetchInputs: defaultFetchInputs,
+  fetchInsightJobs: defaultFetchInsightJobs,
+  fetchInputJobOptions: defaultFetchInputJobOptions,
+  fetchInputJobs: defaultFetchInputJobs,
 };
 
 // Create context
@@ -25,26 +25,26 @@ const QueryContext = createContext(defaultQueries);
  *
  * @param {Object} props
  * @param {Function} props.fetchTraces - Custom traces fetch function
- * @param {Function} props.fetchInsights - Custom insights fetch function
+ * @param {Function} props.fetchInsightJobs - Custom insight jobs fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
- * @param {Function} props.fetchInputOptions - Custom input options fetch function (legacy)
- * @param {Function} props.fetchInputs - Custom inputs metadata fetch function
+ * @param {Function} props.fetchInputJobOptions - Custom input job options fetch function
+ * @param {Function} props.fetchInputJobs - Custom input jobs metadata fetch function
  * @param {ReactNode} props.children
  */
 export function QueryProvider({
   fetchTraces,
-  fetchInsights,
+  fetchInsightJobs,
   fetchDashboard,
-  fetchInputOptions,
-  fetchInputs,
+  fetchInputJobOptions,
+  fetchInputJobs,
   children,
 }) {
   const queries = {
     fetchTraces: fetchTraces || defaultFetchTraces,
-    fetchInsights: fetchInsights || defaultFetchInsights,
+    fetchInsightJobs: fetchInsightJobs || defaultFetchInsightJobs,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
-    fetchInputOptions: fetchInputOptions || defaultFetchInputOptions,
-    fetchInputs: fetchInputs || defaultFetchInputs,
+    fetchInputJobOptions: fetchInputJobOptions || defaultFetchInputJobOptions,
+    fetchInputJobs: fetchInputJobs || defaultFetchInputJobs,
   };
 
   return <QueryContext.Provider value={queries}>{children}</QueryContext.Provider>;
@@ -52,7 +52,7 @@ export function QueryProvider({
 
 /**
  * Hook to access query functions
- * @returns {Object} Object containing fetchTraces, fetchInsights and fetchDashboard functions
+ * @returns {Object} Object containing fetchTraces, fetchInsightJobs, fetchDashboard, and fetchInputOptions functions
  */
 export function useQueries() {
   const context = useContext(QueryContext);
@@ -72,13 +72,16 @@ export function useFetchTraces() {
 }
 
 /**
- * Hook to get the fetchInsights function
- * @returns {Function} fetchInsights function
+ * Hook to get the fetchInsightJobs function
+ * @returns {Function} fetchInsightJobs function
  */
-export function useFetchInsights() {
-  const { fetchInsights } = useQueries();
-  return fetchInsights;
+export function useFetchInsightJobs() {
+  const { fetchInsightJobs } = useQueries();
+  return fetchInsightJobs;
 }
+
+// Backward compatibility alias
+export const useFetchInsights = useFetchInsightJobs;
 
 /**
  * Hook to get the fetchDashboard function
@@ -90,19 +93,25 @@ export function useFetchDashboard() {
 }
 
 /**
- * Hook to get the fetchInputOptions function (legacy)
- * @returns {Function} fetchInputOptions function
+ * Hook to get the fetchInputJobOptions function
+ * @returns {Function} fetchInputJobOptions function
  */
-export function useFetchInputOptions() {
-  const { fetchInputOptions } = useQueries();
-  return fetchInputOptions;
+export function useFetchInputJobOptions() {
+  const { fetchInputJobOptions } = useQueries();
+  return fetchInputJobOptions;
 }
 
+// Backward compatibility alias
+export const useFetchInputOptions = useFetchInputJobOptions;
+
 /**
- * Hook to get the fetchInputs function
- * @returns {Function} fetchInputs function
+ * Hook to get the fetchInputJobs function
+ * @returns {Function} fetchInputJobs function
  */
-export function useFetchInputs() {
-  const { fetchInputs } = useQueries();
-  return fetchInputs;
+export function useFetchInputJobs() {
+  const { fetchInputJobs } = useQueries();
+  return fetchInputJobs;
 }
+
+// Backward compatibility alias
+export const useFetchInputs = useFetchInputJobs;

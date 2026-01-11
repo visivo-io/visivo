@@ -436,6 +436,10 @@ const RefTextArea = ({
               bg-white border border-gray-200 rounded-lg shadow-lg
               flex flex-col"
             style={{ top: '100%' }}
+            onMouseDown={() => {
+              // Prevent editor blur from exiting edit mode when clicking inside selector
+              keepEditModeRef.current = true;
+            }}
           >
             {/* Header */}
             <div className="p-3 border-b border-gray-200">

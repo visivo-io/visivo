@@ -4,6 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+### Environment Setup
+- **Node Version Manager (nvm)**: This project uses nvm to manage Node.js versions. Yarn is installed within nvm environments.
+- **To enable nvm**: Run `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"` before running yarn commands
+- **Example**: `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && yarn test`
+
 ### Python CLI Development
 - **Install dependencies**: `poetry install`
 - **Run tests**: `poetry run pytest`

@@ -6,13 +6,14 @@ import createExplorerSlice from './explorerStore';
 import createCommonSlice from './commonStore';
 import createProjectSlice from './projectStore';
 import createSelectorSlice from './selectorStore';
-import createInsightSlice from './insightStore';
+import createInsightJobsSlice from './insightJobsStore';
 import createWorksheetSlice from './worksheetStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
 import createModelSlice from './modelStore';
 import createDimensionSlice from './dimensionStore';
 import createMetricSlice from './metricStore';
 import createRelationSlice from './relationStore';
+import createInsightSlice from './insightStore';
 import createPublishSlice from './publishStore';
 
 // Re-export ObjectStatus for convenience
@@ -24,13 +25,14 @@ const useStore = create(
     ...createExplorerSlice(...a),
     ...createProjectSlice(...a),
     ...createSelectorSlice(...a),
-    ...createInsightSlice(...a),
+    ...createInsightJobsSlice(...a),
     ...createWorksheetSlice(...a),
     ...createSourceSlice(...a),
     ...createModelSlice(...a),
     ...createDimensionSlice(...a),
     ...createMetricSlice(...a),
     ...createRelationSlice(...a),
+    ...createInsightSlice(...a),
     ...createPublishSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',

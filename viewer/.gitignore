@@ -7,6 +7,9 @@
 
 src/Providers.jsx
 
+# Generated schema files (copied from ../visivo/schema/ at build time)
+src/schemas/*.schema.json
+
 # testing
 /coverage
 

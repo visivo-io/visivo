@@ -8,7 +8,7 @@ from visivo.models.base.named_model import alpha_hash
 
 def register_insight_views(app, flask_app, output_dir):
 
-    @app.route("/api/insights/", methods=["GET"])
+    @app.route("/api/insight-jobs/", methods=["GET"])
     def get_insights_api():
         try:
             insight_names = request.args.getlist("insight_names")
@@ -82,7 +82,7 @@ def register_insight_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error fetching insights data: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/insights/hash", methods=["POST"])
+    @app.route("/api/insight-jobs/hash", methods=["POST"])
     def compute_insight_hash():
         """Compute name_hash for a given insight or model name.
 

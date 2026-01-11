@@ -20,6 +20,7 @@ tasks:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
       github-access-token: ${{ github.token }}
+      fetch-full-depth: true
 
   - key: versions
     use: code
@@ -90,7 +91,7 @@ tasks:
     run: |
       cd viewer
       yarn test --json --testLocationInResults --outputFile jest.json
-    filter: [viewer]
+    filter: [viewer, visivo]
     outputs:
       test-results:
         - path: viewer/jest.json

@@ -92,7 +92,7 @@ def register_data_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error serving data file by hash: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/insights/<insight_hash>/")
+    @app.route("/api/insight-jobs/<insight_hash>/")
     def serve_insight_data_by_hash(insight_hash):
         """API endpoint to serve insight metadata by hash"""
         try:

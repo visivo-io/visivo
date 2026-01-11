@@ -8,12 +8,13 @@ import ModelNode from './ModelNode';
 import DimensionNode from './DimensionNode';
 import MetricNode from './MetricNode';
 import RelationNode from './RelationNode';
+import InsightNode from './InsightNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 
 /**
- * LineageNew - Lineage view for sources, models, dimensions, metrics, and relations
+ * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
  * Supports drag-to-connect edges between sources and models
  */
 const LineageNew = () => {
@@ -40,12 +41,17 @@ const LineageNew = () => {
   const fetchRelations = useStore(state => state.fetchRelations);
   const relationsLoading = useStore(state => state.relationsLoading);
 
+  // Insights
+  const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
+  const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
+
   // Editing state
   const [editingSource, setEditingSource] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
   const [editingDimension, setEditingDimension] = useState(null);
   const [editingMetric, setEditingMetric] = useState(null);
   const [editingRelation, setEditingRelation] = useState(null);
+  const [editingInsight, setEditingInsight] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
@@ -60,7 +66,8 @@ const LineageNew = () => {
     fetchDimensions();
     fetchMetrics();
     fetchRelations();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
+    fetchInsightConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
 
   // Clear all editing states helper
   const clearAllEditing = useCallback(() => {
@@ -69,6 +76,7 @@ const LineageNew = () => {
     setEditingDimension(null);
     setEditingMetric(null);
     setEditingRelation(null);
+    setEditingInsight(null);
   }, []);
 
   // Get DAG data
@@ -138,7 +146,7 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -152,7 +160,7 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -165,7 +173,7 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}`) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}`) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -175,7 +183,7 @@ const LineageNew = () => {
 
       // Plain name - just select matching nodes
       nodes.forEach(n => {
-        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}`) {
+        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}` || n.id === `insight-${part}`) {
           selected.add(n.id);
         }
       });
@@ -210,6 +218,8 @@ const LineageNew = () => {
           isEditing = true;
         } else if (objectType === 'relation' && editingRelation?.name === nodeName) {
           isEditing = true;
+        } else if (objectType === 'insight' && editingInsight?.name === nodeName) {
+          isEditing = true;
         }
 
         return {
@@ -229,13 +239,15 @@ const LineageNew = () => {
                 setEditingMetric(obj);
               } else if (objectType === 'relation') {
                 setEditingRelation(obj);
+              } else if (objectType === 'insight') {
+                setEditingInsight(obj);
               }
               setIsCreating(false);
             },
           },
         };
       });
-  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation]);
+  }, [dagNodes, selectedIds, clearAllEditing, editingSource, editingModel, editingDimension, editingMetric, editingRelation, editingInsight]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
@@ -263,6 +275,7 @@ const LineageNew = () => {
       dimensionNode: DimensionNode,
       metricNode: MetricNode,
       relationNode: RelationNode,
+      insightNode: InsightNode,
     }),
     []
   );
@@ -280,6 +293,8 @@ const LineageNew = () => {
       setEditingMetric(node.data.metric);
     } else if (node.data.objectType === 'relation') {
       setEditingRelation(node.data.relation);
+    } else if (node.data.objectType === 'insight') {
+      setEditingInsight(node.data.insight);
     }
     setIsCreating(false);
   }, [clearAllEditing]);
@@ -354,10 +369,11 @@ const LineageNew = () => {
     await fetchDimensions();
     await fetchMetrics();
     await fetchRelations();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
+    await fetchInsightConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
+  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
@@ -456,6 +472,8 @@ const LineageNew = () => {
                     return '#f97316'; // orange
                   case 'relation':
                     return '#06b6d4'; // cyan
+                  case 'insight':
+                    return '#ec4899'; // pink
                   default:
                     return '#94a3b8'; // gray
                 }
@@ -477,6 +495,7 @@ const LineageNew = () => {
               dimension={editingDimension}
               metric={editingMetric}
               relation={editingRelation}
+              insight={editingInsight}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}
