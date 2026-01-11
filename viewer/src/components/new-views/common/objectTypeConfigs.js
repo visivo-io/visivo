@@ -4,6 +4,9 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import InsightsIcon from '@mui/icons-material/Insights';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import TableChartIcon from '@mui/icons-material/TableChart';
 
 /**
  * Centralized object type definitions
@@ -125,6 +128,60 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-pink-50 border-pink-200',
       nodeSelected: 'bg-pink-100 border-pink-400',
+    },
+  },
+  {
+    value: 'markdown',
+    label: 'Markdowns',
+    singularLabel: 'Markdown',
+    icon: DescriptionIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-green-100',
+      text: 'text-green-800',
+      border: 'border-green-200',
+      bgHover: 'hover:bg-green-50',
+      bgSelected: 'bg-green-100',
+      borderSelected: 'border-green-300',
+      // For nodes/pills
+      node: 'bg-green-50 border-green-200',
+      nodeSelected: 'bg-green-100 border-green-400',
+    },
+  },
+  {
+    value: 'chart',
+    label: 'Charts',
+    singularLabel: 'Chart',
+    icon: BarChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-blue-100',
+      text: 'text-blue-800',
+      border: 'border-blue-200',
+      bgHover: 'hover:bg-blue-50',
+      bgSelected: 'bg-blue-100',
+      borderSelected: 'border-blue-300',
+      // For nodes/pills
+      node: 'bg-blue-50 border-blue-200',
+      nodeSelected: 'bg-blue-100 border-blue-400',
+    },
+  },
+  {
+    value: 'table',
+    label: 'Tables',
+    singularLabel: 'Table',
+    icon: TableChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-800',
+      border: 'border-amber-200',
+      bgHover: 'hover:bg-amber-50',
+      bgSelected: 'bg-amber-100',
+      borderSelected: 'border-amber-300',
+      // For nodes/pills
+      node: 'bg-amber-50 border-amber-200',
+      nodeSelected: 'bg-amber-100 border-amber-400',
     },
   },
 ];

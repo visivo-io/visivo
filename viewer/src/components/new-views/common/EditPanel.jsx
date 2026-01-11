@@ -7,6 +7,9 @@ import DimensionEditForm from './DimensionEditForm';
 import MetricEditForm from './MetricEditForm';
 import RelationEditForm from './RelationEditForm';
 import InsightEditForm from './InsightEditForm';
+import MarkdownEditForm from './MarkdownEditForm';
+import ChartEditForm from './ChartEditForm';
+import TableEditForm from './TableEditForm';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources, models, and semantic objects
@@ -22,12 +25,15 @@ import InsightEditForm from './InsightEditForm';
  * - metric: Metric object to edit
  * - relation: Relation object to edit
  * - insight: Insight object to edit
- * - objectType: 'source' | 'model' | 'dimension' | 'metric' | 'relation' | 'insight' (used for create mode)
+ * - markdown: Markdown object to edit
+ * - chart: Chart object to edit
+ * - table: Table object to edit
+ * - objectType: 'source' | 'model' | 'dimension' | 'metric' | 'relation' | 'insight' | 'markdown' | 'chart' | 'table' (used for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  */
-const EditPanel = ({ source, model, dimension, metric, relation, insight, objectType = 'source', isCreate, onClose, onSave }) => {
+const EditPanel = ({ source, model, dimension, metric, relation, insight, markdown, chart, table, objectType = 'source', isCreate, onClose, onSave }) => {
   // Determine which object we're editing
   const currentObjectType = model
     ? 'model'
@@ -41,13 +47,19 @@ const EditPanel = ({ source, model, dimension, metric, relation, insight, object
             ? 'relation'
             : insight
               ? 'insight'
-              : objectType;
+              : markdown
+                ? 'markdown'
+                : chart
+                  ? 'chart'
+                  : table
+                    ? 'table'
+                    : objectType;
 
   const typeConfig = getTypeByValue(currentObjectType);
   const TypeIcon = typeConfig?.icon;
 
   // Get the current object for display
-  const currentObject = model || dimension || metric || relation || insight || source;
+  const currentObject = model || dimension || metric || relation || insight || markdown || chart || table || source;
   const isEditMode = !!currentObject && !isCreate;
 
   // Generate title based on object type
@@ -80,6 +92,12 @@ const EditPanel = ({ source, model, dimension, metric, relation, insight, object
         return <RelationEditForm relation={relation} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
       case 'insight':
         return <InsightEditForm insight={insight} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+      case 'markdown':
+        return <MarkdownEditForm markdown={markdown} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+      case 'chart':
+        return <ChartEditForm chart={chart} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+      case 'table':
+        return <TableEditForm table={table} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
       case 'source':
       default:
         return <SourceEditForm source={source} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
