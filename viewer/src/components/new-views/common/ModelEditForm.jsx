@@ -32,13 +32,21 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Check if source is embedded (object) vs referenced (string)
+  const hasEmbeddedSource = model?.config?.source && typeof model.config.source === 'object';
+
   // Initialize form with model data
   useEffect(() => {
     if (model) {
       setName(model.name || '');
       setSql(model.config?.sql || '');
-      // Source comes from API already in ref() format (or null)
-      setSource(model.config?.source || null);
+      // Source comes from API - could be ref() string, embedded object, or null
+      // Only set source state if it's a string reference, not embedded
+      if (typeof model.config?.source === 'string') {
+        setSource(model.config.source);
+      } else {
+        setSource(null);
+      }
     } else {
       setName('');
       setSql('');
@@ -62,8 +70,10 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
       sql: sql.trim(),
     };
 
-    // Add source reference if selected (already in ref() format from RefSelector)
-    if (source) {
+    // Preserve embedded source if it exists, otherwise use selected ref
+    if (hasEmbeddedSource) {
+      config.source = model.config.source;
+    } else if (source) {
       config.source = source;
     }
 
@@ -154,14 +164,39 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         </p>
       </div>
 
-      <RefSelector
-        value={source}
-        onChange={setSource}
-        objectType="source"
-        label="Data Source"
-        placeholder="No source (use default)"
-        helperText="Select a source to run the SQL query against, or leave empty to use the default source."
-      />
+      {/* Show embedded source as read-only, or RefSelector for selection */}
+      {hasEmbeddedSource ? (
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">
+            Data Source
+          </label>
+          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-teal-700">
+                {model.config.source.type || 'embedded'}
+              </span>
+              <span className="text-xs text-gray-500">(embedded)</span>
+            </div>
+            {model.config.source.database && (
+              <span className="text-xs text-gray-500">
+                Database: {model.config.source.database}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500">
+            This model has an embedded source defined inline. Edit the YAML directly to modify it.
+          </p>
+        </div>
+      ) : (
+        <RefSelector
+          value={source}
+          onChange={setSource}
+          objectType="source"
+          label="Data Source"
+          placeholder="No source (use default)"
+          helperText="Select a source to run the SQL query against, or leave empty to use the default source."
+        />
+      )}
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && !isCreate && (

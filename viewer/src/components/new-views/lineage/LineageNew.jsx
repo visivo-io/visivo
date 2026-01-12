@@ -280,6 +280,30 @@ const LineageNew = () => {
               }
               setIsCreating(false);
             },
+            // For models with embedded sources, clicking the nested source pill opens the model editor
+            onEditEmbeddedSource: objectType === 'model' ? () => {
+              clearAllEditing();
+              setEditingModel(node.data.model);
+              setIsCreating(false);
+            } : undefined,
+            // For charts/tables with embedded traces/insights, clicking opens the parent editor
+            onEditEmbeddedObject: (() => {
+              if (objectType === 'chart') {
+                return () => {
+                  clearAllEditing();
+                  setEditingChart(node.data.chart);
+                  setIsCreating(false);
+                };
+              }
+              if (objectType === 'table') {
+                return () => {
+                  clearAllEditing();
+                  setEditingTable(node.data.table);
+                  setIsCreating(false);
+                };
+              }
+              return undefined;
+            })(),
           },
         };
       });
