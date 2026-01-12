@@ -280,30 +280,38 @@ const LineageNew = () => {
               }
               setIsCreating(false);
             },
-            // For models with embedded sources, clicking the nested source pill opens the model editor
+            // For models with embedded sources, clicking the nested source pill opens the source editor
             onEditEmbeddedSource: objectType === 'model' ? () => {
+              const embeddedSourceConfig = node.data.source;
+              // Create a synthetic source object for the editor
+              // Mark it as embedded so the form knows it's read-only / special
+              const syntheticSource = {
+                name: `(embedded in ${node.data.name})`,
+                status: 'published',
+                child_item_names: [],
+                config: embeddedSourceConfig,
+                _isEmbedded: true,
+                _parentModelName: node.data.name,
+              };
               clearAllEditing();
-              setEditingModel(node.data.model);
-              setIsCreating(false);
+              setEditingSource(syntheticSource);
             } : undefined,
-            // For charts/tables with embedded traces/insights, clicking opens the parent editor
-            onEditEmbeddedObject: (() => {
-              if (objectType === 'chart') {
-                return () => {
-                  clearAllEditing();
-                  setEditingChart(node.data.chart);
-                  setIsCreating(false);
-                };
-              }
-              if (objectType === 'table') {
-                return () => {
-                  clearAllEditing();
-                  setEditingTable(node.data.table);
-                  setIsCreating(false);
-                };
-              }
-              return undefined;
-            })(),
+            // For charts/tables with embedded insights, clicking opens the insight editor
+            onEditEmbeddedInsight: (objectType === 'chart' || objectType === 'table') ? (insightConfig, index) => {
+              // Create synthetic insight for the editor
+              const parentName = objectType === 'chart' ? node.data.chart?.name : node.data.table?.name;
+              const syntheticInsight = {
+                name: `(embedded insight ${index + 1} in ${parentName})`,
+                status: 'published',
+                child_item_names: [],
+                config: insightConfig,
+                _isEmbedded: true,
+                _parentName: parentName,
+                _parentType: objectType,
+              };
+              clearAllEditing();
+              setEditingInsight(syntheticInsight);
+            } : undefined,
           },
         };
       });

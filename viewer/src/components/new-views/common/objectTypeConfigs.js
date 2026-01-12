@@ -7,7 +7,6 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import TableChartIcon from '@mui/icons-material/TableChart';
-import TimelineIcon from '@mui/icons-material/Timeline';
 
 /**
  * Centralized object type definitions
@@ -129,24 +128,6 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-pink-50 border-pink-200',
       nodeSelected: 'bg-pink-100 border-pink-400',
-    },
-  },
-  {
-    value: 'trace',
-    label: 'Traces',
-    singularLabel: 'Trace',
-    icon: TimelineIcon,
-    enabled: false, // Traces are typically embedded, not created standalone
-    colors: {
-      bg: 'bg-rose-100',
-      text: 'text-rose-800',
-      border: 'border-rose-200',
-      bgHover: 'hover:bg-rose-50',
-      bgSelected: 'bg-rose-100',
-      borderSelected: 'border-rose-300',
-      // For nodes/pills
-      node: 'bg-rose-50 border-rose-200',
-      nodeSelected: 'bg-rose-100 border-rose-400',
     },
   },
   {

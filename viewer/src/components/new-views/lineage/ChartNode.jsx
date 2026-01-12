@@ -29,15 +29,13 @@ const ChartNode = ({ data, selected }) => {
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
-  // Check for embedded traces or insights in chart config
+  // Check for embedded insights in chart config (traces not supported for embedded display)
   const config = chart?.config || {};
-  const traces = config.traces || [];
   const insights = config.insights || [];
 
-  // Count embedded objects (not refs)
-  const embeddedTraces = traces.filter(isEmbeddedObject);
+  // Count embedded insights (not refs)
   const embeddedInsights = insights.filter(isEmbeddedObject);
-  const hasEmbeddedObjects = embeddedTraces.length > 0 || embeddedInsights.length > 0;
+  const hasEmbeddedObjects = embeddedInsights.length > 0;
 
   return (
     <div
@@ -85,23 +83,17 @@ const ChartNode = ({ data, selected }) => {
           {name}
         </span>
 
-        {/* Embedded objects pills */}
+        {/* Embedded insight pills */}
         {hasEmbeddedObjects && (
           <div className="flex flex-wrap gap-1">
-            {embeddedTraces.length > 0 && (
+            {embeddedInsights.map((insight, index) => (
               <EmbeddedPill
-                objectType="trace"
-                label={embeddedTraces.length === 1 ? 'trace' : `${embeddedTraces.length} traces`}
-                onClick={data.onEditEmbeddedObject}
-              />
-            )}
-            {embeddedInsights.length > 0 && (
-              <EmbeddedPill
+                key={`insight-${index}`}
                 objectType="insight"
-                label={embeddedInsights.length === 1 ? 'insight' : `${embeddedInsights.length} insights`}
-                onClick={data.onEditEmbeddedObject}
+                label={insight.name || 'insight'}
+                onClick={() => data.onEditEmbeddedInsight?.(insight, index)}
               />
-            )}
+            ))}
           </div>
         )}
       </div>

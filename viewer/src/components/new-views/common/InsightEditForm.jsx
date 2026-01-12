@@ -44,6 +44,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
+  const isEmbedded = insight?._isEmbedded === true;
+  const parentName = insight?._parentName;
+  const parentType = insight?._parentType;
 
   // Get the current schema for the selected chart type
   const currentSchema = getSchema(propsType);
@@ -195,6 +198,17 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
+          {/* Embedded insight banner */}
+          {isEmbedded && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800 font-medium">Embedded Insight</p>
+              <p className="text-xs text-amber-700 mt-1">
+                This insight is defined inline within the {parentType} "{parentName}".
+                To modify it, edit the {parentType}'s YAML file directly.
+              </p>
+            </div>
+          )}
+
           {/* Basic Fields Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
@@ -396,37 +410,46 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
           </div>
         )}
 
-        <div className="flex justify-between items-center px-4 py-3">
-          <div className="flex gap-2">
-            {/* Delete button - only in edit mode */}
-            {isEditMode && !showDeleteConfirm && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
-                title="Delete insight"
-              >
-                <DeleteOutlineIcon fontSize="small" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
+        {isEmbedded ? (
+          /* For embedded insights, only show close button */
+          <div className="flex justify-end items-center px-4 py-3">
             <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Cancel
+              Close
             </ButtonOutline>
-            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="flex justify-between items-center px-4 py-3">
+            <div className="flex gap-2">
+              {/* Delete button - only in edit mode */}
+              {isEditMode && !showDeleteConfirm && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+                  title="Delete insight"
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <ButtonOutline type="button" onClick={onClose} className="text-sm">
+                Cancel
+              </ButtonOutline>
+              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
