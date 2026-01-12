@@ -6,7 +6,7 @@ import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 /**
  * InsightNode - Custom React Flow node for insights
  * Shows insight name with status indicator and chart type.
- * Insights are leaf nodes - they have incoming connections from models but no outgoing connections.
+ * Insights connect from models/traces and connect to charts/tables.
  */
 const InsightNode = ({ data, selected }) => {
   const { name, propsType, status, isEditing } = data;
@@ -65,7 +65,17 @@ const InsightNode = ({ data, selected }) => {
         {propsType && <span className="text-xs text-gray-400">{propsType}</span>}
       </div>
 
-      {/* No source handle - insights are leaf nodes */}
+      {/* Source handle (for outgoing connections to charts/tables) */}
+      <Handle
+        type="source"
+        position="right"
+        style={{
+          background: '#ec4899', // pink-500 for insight connections
+          width: 8,
+          height: 8,
+          border: '2px solid white',
+        }}
+      />
     </div>
   );
 };
