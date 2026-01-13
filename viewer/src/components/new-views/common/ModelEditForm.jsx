@@ -6,6 +6,7 @@ import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -14,8 +15,9 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
  * - model: Existing model to edit (null for create mode)
  * - onSave: Callback after successful save
  * - onCancel: Callback to cancel editing
+ * - onNavigateToEmbedded: Callback(type, object) to navigate to an embedded object
  */
-const ModelEditForm = ({ model, onSave, onCancel }) => {
+const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   const saveModel = useStore(state => state.saveModel);
   const deleteModel = useStore(state => state.deleteModel);
   const checkPublishStatus = useStore(state => state.checkPublishStatus);
@@ -164,27 +166,49 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         </p>
       </div>
 
-      {/* Show embedded source as read-only, or RefSelector for selection */}
+      {/* Show embedded source as clickable link, or RefSelector for selection */}
       {hasEmbeddedSource ? (
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">
             Data Source
           </label>
-          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-teal-700">
-                {model.config.source.type || 'embedded'}
-              </span>
-              <span className="text-xs text-gray-500">(embedded)</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigateToEmbedded) {
+                // Create synthetic source object for navigation
+                const syntheticSource = {
+                  name: `(embedded in ${model.name})`,
+                  status: 'published',
+                  child_item_names: [],
+                  config: model.config.source,
+                  _isEmbedded: true,
+                  _parentModelName: model.name,
+                };
+                onNavigateToEmbedded('source', syntheticSource);
+              }
+            }}
+            className="w-full text-left px-3 py-2 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-teal-700">
+                    {model.config.source.type || 'embedded'}
+                  </span>
+                  <span className="text-xs text-teal-600">(embedded)</span>
+                </div>
+                {model.config.source.database && (
+                  <span className="text-xs text-teal-600">
+                    Database: {model.config.source.database}
+                  </span>
+                )}
+              </div>
+              <ChevronRightIcon className="text-teal-500" fontSize="small" />
             </div>
-            {model.config.source.database && (
-              <span className="text-xs text-gray-500">
-                Database: {model.config.source.database}
-              </span>
-            )}
-          </div>
+          </button>
           <p className="text-xs text-gray-500">
-            This model has an embedded source defined inline. Edit the YAML directly to modify it.
+            Click to edit the embedded source configuration.
           </p>
         </div>
       ) : (

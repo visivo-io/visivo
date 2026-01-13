@@ -1,6 +1,24 @@
 import React from 'react';
+import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
+
+/**
+ * Check if an object has embedded children that can be edited
+ */
+const hasEmbeddedChildren = (obj, objectType) => {
+  if (objectType === 'model') {
+    // Model has embedded source if source is an object (not a ref string)
+    const source = obj.config?.source || obj.source;
+    return source && typeof source === 'object';
+  }
+  if (objectType === 'chart' || objectType === 'table') {
+    // Chart/Table has embedded insights if any insight is an object (not a ref string)
+    const insights = obj.config?.insights || obj.insights || [];
+    return insights.some(i => typeof i === 'object');
+  }
+  return false;
+};
 
 /**
  * StatusDot - Visual indicator for object status
@@ -71,6 +89,15 @@ const ObjectList = ({ objects, selectedName, onSelect, title = 'Objects', object
               >
                 {obj.name}
               </span>
+
+              {/* Embedded children indicator */}
+              {hasEmbeddedChildren(obj, objectType) && (
+                <SubdirectoryArrowRightIcon
+                  fontSize="inherit"
+                  className="text-gray-400"
+                  titleAccess="Contains embedded objects"
+                />
+              )}
 
               {/* Type badge */}
               {obj.type && (

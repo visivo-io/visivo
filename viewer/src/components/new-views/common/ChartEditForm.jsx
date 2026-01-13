@@ -5,6 +5,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema } from '../../../schemas';
@@ -19,8 +20,9 @@ import { getSchema } from '../../../schemas';
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
+ * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
-const ChartEditForm = ({ chart, isCreate, onClose, onSave }) => {
+const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
   const { saveChartConfig, deleteChartConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
 
   // Form state
@@ -51,15 +53,25 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave }) => {
     }
   }, [insightConfigs, fetchInsightConfigs]);
 
+  // Detect embedded insights (objects vs refs)
+  const rawInsights = chart?.config?.insights || chart?.insights || [];
+  const embeddedInsights = rawInsights
+    .map((insight, index) => ({ insight, index }))
+    .filter(({ insight }) => typeof insight === 'object');
+
   // Initialize form when chart changes
   useEffect(() => {
     if (chart) {
       // Edit mode - populate from existing chart
       setName(chart.name || '');
 
-      // Extract insight refs
+      // Extract insight refs (strings only, not embedded objects)
       const chartInsights = chart.config?.insights || chart.insights || [];
-      setInsights(chartInsights.map(i => (typeof i === 'string' ? i.replace('ref(', '').replace(')', '') : i)));
+      setInsights(
+        chartInsights
+          .filter(i => typeof i === 'string')
+          .map(i => i.replace('ref(', '').replace(')', ''))
+      );
 
       // Layout as object
       const layout = chart.config?.layout || chart.layout || {};
@@ -102,9 +114,12 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave }) => {
         name,
       };
 
-      // Add insights as refs
-      if (insights.length > 0) {
-        config.insights = insights.map(i => `ref(${i})`);
+      // Combine ref insights with embedded insights (preserve embedded)
+      const refInsights = insights.map(i => `ref(${i})`);
+      const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
+
+      if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
+        config.insights = [...refInsights, ...embeddedInsightObjects];
       }
 
       // Add layout if there are values
@@ -255,6 +270,50 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave }) => {
             )}
 
             {errors.data && <p className="text-xs text-red-500">{errors.data}</p>}
+
+            {/* Embedded Insights Section */}
+            {embeddedInsights.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Embedded Insights</h4>
+                <div className="space-y-2">
+                  {embeddedInsights.map(({ insight, index }) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToEmbedded) {
+                          const syntheticInsight = {
+                            name: insight.name || `(embedded insight ${index + 1})`,
+                            status: 'published',
+                            child_item_names: [],
+                            config: insight,
+                            _isEmbedded: true,
+                            _parentName: chart.name,
+                            _parentType: 'chart',
+                            _embeddedIndex: index,
+                          };
+                          onNavigateToEmbedded('insight', syntheticInsight);
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 bg-pink-50 border border-pink-200 rounded-md hover:bg-pink-100 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium text-pink-700">
+                            {insight.name || `Insight ${index + 1}`}
+                          </span>
+                          <span className="text-xs text-pink-600 ml-2">(embedded)</span>
+                        </div>
+                        <ChevronRightIcon className="text-pink-500" fontSize="small" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Click to edit embedded insight configuration.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Layout Section */}

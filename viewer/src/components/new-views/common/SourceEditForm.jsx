@@ -6,6 +6,7 @@ import SourceFormGenerator, { getSourceSchema } from '../../sources/SourceFormGe
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import {
   FormInput,
   FormFooter,
@@ -23,8 +24,9 @@ import { validateName } from './namedModel';
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  * - onSaveEmbedded: Callback to save embedded source (updates parent model)
+ * - onGoBack: Callback to navigate back to parent (for embedded sources)
  */
-const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded }) => {
+const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onGoBack }) => {
   const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
     useStore();
 
@@ -177,11 +179,24 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded }) =
         {/* Embedded source banner */}
         {isEmbedded && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-4">
-            <p className="text-sm text-blue-800 font-medium">Embedded Source</p>
-            <p className="text-xs text-blue-700 mt-1">
-              This source is defined inline within the model "{parentModelName}".
-              Changes will update the parent model's configuration.
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-800 font-medium">Embedded Source</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Defined inline in model "{parentModelName}"
+                </p>
+              </div>
+              {onGoBack && (
+                <button
+                  type="button"
+                  onClick={onGoBack}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <ChevronLeftIcon fontSize="inherit" />
+                  Back to model
+                </button>
+              )}
+            </div>
           </div>
         )}
 

@@ -5,6 +5,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
@@ -21,8 +22,9 @@ import { validateName } from './namedModel';
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  * - onSaveEmbedded: Callback to save embedded insight (updates parent chart/table)
+ * - onGoBack: Callback to navigate back to parent (for embedded insights)
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded, onGoBack }) => {
   const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -218,11 +220,24 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded })
           {/* Embedded insight banner */}
           {isEmbedded && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">Embedded Insight</p>
-              <p className="text-xs text-blue-700 mt-1">
-                This insight is defined inline within the {parentType} "{parentName}".
-                Changes will update the parent {parentType}'s configuration.
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-800 font-medium">Embedded Insight</p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Defined inline in {parentType} "{parentName}"
+                  </p>
+                </div>
+                {onGoBack && (
+                  <button
+                    type="button"
+                    onClick={onGoBack}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    <ChevronLeftIcon fontSize="inherit" />
+                    Back to {parentType}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

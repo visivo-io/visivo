@@ -70,18 +70,27 @@ const EditorNew = () => {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Editing state
-  const [editingSource, setEditingSource] = useState(null);
-  const [editingModel, setEditingModel] = useState(null);
-  const [editingDimension, setEditingDimension] = useState(null);
-  const [editingMetric, setEditingMetric] = useState(null);
-  const [editingRelation, setEditingRelation] = useState(null);
-  const [editingInsight, setEditingInsight] = useState(null);
-  const [editingMarkdown, setEditingMarkdown] = useState(null);
-  const [editingChart, setEditingChart] = useState(null);
-  const [editingTable, setEditingTable] = useState(null);
+  // Navigation stack for editing - supports drilling into embedded objects
+  const [editStack, setEditStack] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
+
+  // Navigation helpers
+  const pushEdit = useCallback((type, object) => {
+    setEditStack(prev => [...prev, { type, object }]);
+    setIsCreating(false);
+  }, []);
+
+  const popEdit = useCallback(() => {
+    setEditStack(prev => prev.slice(0, -1));
+  }, []);
+
+  const clearEdit = useCallback(() => {
+    setEditStack([]);
+  }, []);
+
+  const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
+  const canGoBack = editStack.length > 1;
 
   // Fetch all object types on mount
   useEffect(() => {
@@ -324,94 +333,72 @@ const EditorNew = () => {
     return filtered;
   }, [tableConfigs, selectedTypes, searchQuery]);
 
-  // Clear all editing states helper
-  const clearAllEditing = useCallback(() => {
-    setEditingSource(null);
-    setEditingModel(null);
-    setEditingDimension(null);
-    setEditingMetric(null);
-    setEditingRelation(null);
-    setEditingInsight(null);
-    setEditingMarkdown(null);
-    setEditingChart(null);
-    setEditingTable(null);
-  }, []);
-
   // Handle source selection
   const handleSourceSelect = useCallback(source => {
-    clearAllEditing();
-    setEditingSource(source);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('source', source);
+  }, [clearEdit, pushEdit]);
 
   // Handle model selection
   const handleModelSelect = useCallback(model => {
-    clearAllEditing();
-    setEditingModel(model);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('model', model);
+  }, [clearEdit, pushEdit]);
 
   // Handle dimension selection
   const handleDimensionSelect = useCallback(dimension => {
-    clearAllEditing();
-    setEditingDimension(dimension);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('dimension', dimension);
+  }, [clearEdit, pushEdit]);
 
   // Handle metric selection
   const handleMetricSelect = useCallback(metric => {
-    clearAllEditing();
-    setEditingMetric(metric);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('metric', metric);
+  }, [clearEdit, pushEdit]);
 
   // Handle relation selection
   const handleRelationSelect = useCallback(relation => {
-    clearAllEditing();
-    setEditingRelation(relation);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('relation', relation);
+  }, [clearEdit, pushEdit]);
 
   // Handle insight selection
   const handleInsightSelect = useCallback(insight => {
-    clearAllEditing();
-    setEditingInsight(insight);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('insight', insight);
+  }, [clearEdit, pushEdit]);
 
   // Handle markdown selection
   const handleMarkdownSelect = useCallback(markdown => {
-    clearAllEditing();
-    setEditingMarkdown(markdown);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('markdown', markdown);
+  }, [clearEdit, pushEdit]);
 
   // Handle chart selection
   const handleChartSelect = useCallback(chart => {
-    clearAllEditing();
-    setEditingChart(chart);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('chart', chart);
+  }, [clearEdit, pushEdit]);
 
   // Handle table selection
   const handleTableSelect = useCallback(table => {
-    clearAllEditing();
-    setEditingTable(table);
-    setIsCreating(false);
-  }, [clearAllEditing]);
+    clearEdit();
+    pushEdit('table', table);
+  }, [clearEdit, pushEdit]);
 
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
-    clearAllEditing();
+    clearEdit();
     setIsCreating(true);
     setCreateObjectType(objectType);
-  }, [clearAllEditing]);
+  }, [clearEdit]);
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
-    clearAllEditing();
+    clearEdit();
     setIsCreating(false);
-  }, [clearAllEditing]);
+  }, [clearEdit]);
 
   // Handle save - refresh data and close panel
   const handleSave = useCallback(async () => {
@@ -426,7 +413,101 @@ const EditorNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || editingMarkdown || editingChart || editingTable || isCreating;
+  // Get the saveModel function for embedded source saves
+  const saveModel = useStore(state => state.saveModel);
+
+  // Handle embedded source save - updates the parent model
+  const handleSaveEmbeddedSource = useCallback(async (sourceConfig, parentModelName) => {
+    // Find the parent model in our models list
+    const parentModel = models?.find(m => m.name === parentModelName);
+    if (!parentModel) {
+      return { success: false, error: `Parent model "${parentModelName}" not found` };
+    }
+
+    // Build the updated model config with the new source
+    const updatedConfig = {
+      ...parentModel.config,
+      source: sourceConfig,
+    };
+
+    // Save the model with the updated embedded source
+    const result = await saveModel(parentModelName, updatedConfig);
+
+    if (result?.success) {
+      await handleSave();
+      // Navigate back to the parent model after saving
+      popEdit();
+    }
+
+    return result;
+  }, [models, saveModel, handleSave, popEdit]);
+
+  // Get the saveChartConfig and saveTableConfig for embedded insight saves
+  const saveChartConfig = useStore(state => state.saveChartConfig);
+  const saveTableConfig = useStore(state => state.saveTableConfig);
+
+  // Handle embedded insight save - updates the parent chart or table
+  const handleSaveEmbeddedInsight = useCallback(async (insightConfig, parentName, parentType, embeddedIndex) => {
+    if (parentType === 'chart') {
+      const parentChart = chartConfigs?.find(c => c.name === parentName);
+      if (!parentChart) {
+        return { success: false, error: `Parent chart "${parentName}" not found` };
+      }
+
+      // Get the current insights array
+      const currentInsights = parentChart.config?.insights || [];
+
+      // Update the embedded insight at the specified index
+      const updatedInsights = [...currentInsights];
+      updatedInsights[embeddedIndex] = insightConfig;
+
+      // Build the updated chart config
+      const updatedConfig = {
+        ...parentChart.config,
+        insights: updatedInsights,
+      };
+
+      const result = await saveChartConfig(parentName, updatedConfig);
+
+      if (result?.success) {
+        await handleSave();
+        popEdit();
+      }
+
+      return result;
+    } else if (parentType === 'table') {
+      const parentTable = tableConfigs?.find(t => t.name === parentName);
+      if (!parentTable) {
+        return { success: false, error: `Parent table "${parentName}" not found` };
+      }
+
+      // Get the current insights array
+      const currentInsights = parentTable.config?.insights || [];
+
+      // Update the embedded insight at the specified index
+      const updatedInsights = [...currentInsights];
+      updatedInsights[embeddedIndex] = insightConfig;
+
+      // Build the updated table config
+      const updatedConfig = {
+        ...parentTable.config,
+        insights: updatedInsights,
+      };
+
+      const result = await saveTableConfig(parentName, updatedConfig);
+
+      if (result?.success) {
+        await handleSave();
+        popEdit();
+      }
+
+      return result;
+    }
+
+    return { success: false, error: 'Unknown parent type' };
+  }, [chartConfigs, tableConfigs, saveChartConfig, saveTableConfig, handleSave, popEdit]);
+
+  const isPanelOpen = currentEdit !== null || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
 
   // Get type colors for consistent theming
@@ -496,7 +577,7 @@ const EditorNew = () => {
             {filteredSources.length > 0 && (
               <ObjectList
                 objects={filteredSources}
-                selectedName={editingSource?.name}
+                selectedName={currentEdit?.type === 'source' ? currentEdit.object?.name : null}
                 onSelect={handleSourceSelect}
                 title="Sources"
                 objectType="source"
@@ -507,7 +588,7 @@ const EditorNew = () => {
             {filteredModels.length > 0 && (
               <ObjectList
                 objects={filteredModels}
-                selectedName={editingModel?.name}
+                selectedName={currentEdit?.type === 'model' ? currentEdit.object?.name : null}
                 onSelect={handleModelSelect}
                 title="Models"
                 objectType="model"
@@ -518,7 +599,7 @@ const EditorNew = () => {
             {filteredDimensions.length > 0 && (
               <ObjectList
                 objects={filteredDimensions}
-                selectedName={editingDimension?.name}
+                selectedName={currentEdit?.type === 'dimension' ? currentEdit.object?.name : null}
                 onSelect={handleDimensionSelect}
                 title="Dimensions"
                 objectType="dimension"
@@ -529,7 +610,7 @@ const EditorNew = () => {
             {filteredMetrics.length > 0 && (
               <ObjectList
                 objects={filteredMetrics}
-                selectedName={editingMetric?.name}
+                selectedName={currentEdit?.type === 'metric' ? currentEdit.object?.name : null}
                 onSelect={handleMetricSelect}
                 title="Metrics"
                 objectType="metric"
@@ -540,7 +621,7 @@ const EditorNew = () => {
             {filteredRelations.length > 0 && (
               <ObjectList
                 objects={filteredRelations}
-                selectedName={editingRelation?.name}
+                selectedName={currentEdit?.type === 'relation' ? currentEdit.object?.name : null}
                 onSelect={handleRelationSelect}
                 title="Relations"
                 objectType="relation"
@@ -551,7 +632,7 @@ const EditorNew = () => {
             {filteredInsights.length > 0 && (
               <ObjectList
                 objects={filteredInsights}
-                selectedName={editingInsight?.name}
+                selectedName={currentEdit?.type === 'insight' ? currentEdit.object?.name : null}
                 onSelect={handleInsightSelect}
                 title="Insights"
                 objectType="insight"
@@ -562,7 +643,7 @@ const EditorNew = () => {
             {filteredMarkdowns.length > 0 && (
               <ObjectList
                 objects={filteredMarkdowns}
-                selectedName={editingMarkdown?.name}
+                selectedName={currentEdit?.type === 'markdown' ? currentEdit.object?.name : null}
                 onSelect={handleMarkdownSelect}
                 title="Markdowns"
                 objectType="markdown"
@@ -573,7 +654,7 @@ const EditorNew = () => {
             {filteredCharts.length > 0 && (
               <ObjectList
                 objects={filteredCharts}
-                selectedName={editingChart?.name}
+                selectedName={currentEdit?.type === 'chart' ? currentEdit.object?.name : null}
                 onSelect={handleChartSelect}
                 title="Charts"
                 objectType="chart"
@@ -584,7 +665,7 @@ const EditorNew = () => {
             {filteredTables.length > 0 && (
               <ObjectList
                 objects={filteredTables}
-                selectedName={editingTable?.name}
+                selectedName={currentEdit?.type === 'table' ? currentEdit.object?.name : null}
                 onSelect={handleTableSelect}
                 title="Tables"
                 objectType="table"
@@ -653,19 +734,16 @@ const EditorNew = () => {
       {isPanelOpen && (
         <div className="fixed top-12 right-0 bottom-0 z-20">
           <EditPanel
-            source={editingSource}
-            model={editingModel}
-            dimension={editingDimension}
-            metric={editingMetric}
-            relation={editingRelation}
-            insight={editingInsight}
-            markdown={editingMarkdown}
-            chart={editingChart}
-            table={editingTable}
+            editItem={currentEdit}
+            canGoBack={canGoBack}
+            onGoBack={popEdit}
+            onNavigateTo={pushEdit}
             objectType={createObjectType}
             isCreate={isCreating}
             onClose={handlePanelClose}
             onSave={handleSave}
+            onSaveEmbeddedSource={handleSaveEmbeddedSource}
+            onSaveEmbeddedInsight={handleSaveEmbeddedInsight}
           />
         </div>
       )}
