@@ -35,7 +35,7 @@ const Input = ({ input, itemWidth, project }) => {
     useCallback(state => state.inputSelectedValues?.[input?.name], [input?.name])
   );
 
-  // Load options from JSON (this also sets defaults via setDefaultInputValue)
+  // Get options from store (pre-loaded by Dashboard via useInputsData)
   const options = useInputOptions(input, project?.id);
 
   // Determine input type and multi-select status

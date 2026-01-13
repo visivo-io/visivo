@@ -9,6 +9,7 @@ import Markdown from '../items/Markdown';
 import Input from '../items/Input';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
+import { useInputsData } from '../../hooks/useInputsData';
 
 /**
  * Collect all insight names from visible rows for centralized prefetching.
@@ -27,6 +28,26 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
     }
   }
   return [...insightNames];
+};
+
+/**
+ * Collect all input names from visible rows for centralized prefetching.
+ * This enables a single useInputsData call instead of N calls from individual Input components.
+ */
+const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
+  const inputNames = new Set();
+  for (const rowIndex of visibleRowIndices) {
+    const row = rows[rowIndex];
+    if (!row) continue;
+    for (const item of row.items) {
+      // Only collect from items that will be rendered
+      if (shouldShowItem && !shouldShowItem(item)) continue;
+      if (item.input?.name) {
+        inputNames.add(item.input.name);
+      }
+    }
+  }
+  return [...inputNames];
 };
 
 const Dashboard = ({ project, dashboardName }) => {
@@ -165,6 +186,16 @@ const Dashboard = ({ project, dashboardName }) => {
     },
     [shouldShowNamedModel]
   );
+
+  // Centralized input prefetching: Collect all input names from visible rows
+  // and load them in a single batch BEFORE insights (so inputs are ready for insight queries).
+  const visibleInputNames = useMemo(
+    () => collectInputNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    [dashboard.rows, visibleRows, shouldShowItem]
+  );
+
+  // Single batch fetch for all visible inputs (stores results in Zustand)
+  useInputsData(project.id, visibleInputNames);
 
   // Centralized insight prefetching: Collect all insight names from visible rows
   // and load them in a single batch. Charts/Tables read from Zustand store.

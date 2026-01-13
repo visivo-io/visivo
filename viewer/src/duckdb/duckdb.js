@@ -32,7 +32,8 @@ const DUCKDB_BUNDLES = {
 export const initDuckDB = async () => {
   const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
   const worker = new Worker(bundle.mainWorker);
-  const logger = new duckdb.ConsoleLogger();
+  // Use VoidLogger to reduce console noise (use ConsoleLogger for debugging)
+  const logger = new duckdb.VoidLogger();
   const db = new duckdb.AsyncDuckDB(logger, worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   return db;
