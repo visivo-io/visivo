@@ -36,11 +36,21 @@ const project_with_json = {
         rows: [
           {
             name: 'option1',
-            items: [{ name: 'markdown1', markdown: 'Option 1 Content' }],
+            items: [
+              {
+                name: 'markdown1',
+                markdown: { name: 'md1', content: 'Option 1 Content', align: 'left', justify: 'start' },
+              },
+            ],
           },
           {
             name: 'option2',
-            items: [{ name: 'markdown2', markdown: 'Option 2 Content' }],
+            items: [
+              {
+                name: 'markdown2',
+                markdown: { name: 'md2', content: 'Option 2 Content', align: 'left', justify: 'start' },
+              },
+            ],
           },
         ],
       },
@@ -71,8 +81,8 @@ test('renders dashboard chart', async () => {
 
 test('renders dashboard markdown content', async () => {
   const project = getProject([
-    { width: 1, markdown: 'First Markdown' },
-    { width: 2, markdown: 'Wider Second Markdown' },
+    { width: 1, markdown: { name: 'md1', content: 'First Markdown', align: 'left', justify: 'start' } },
+    { width: 2, markdown: { name: 'md2', content: 'Wider Second Markdown', align: 'left', justify: 'start' } },
   ]);
 
   renderDashboard(project, 'dashboard', '/dashboard');

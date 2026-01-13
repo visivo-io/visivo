@@ -71,6 +71,7 @@ describe('LineageNew', () => {
   const mockFetchDimensions = jest.fn();
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
+  const mockFetchInsightConfigs = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -91,6 +92,9 @@ describe('LineageNew', () => {
     relations: [],
     fetchRelations: mockFetchRelations,
     relationsLoading: false,
+    insightConfigs: [],
+    fetchInsightConfigs: mockFetchInsightConfigs,
+    insightConfigsLoading: false,
   };
 
   const emptyDagData = {

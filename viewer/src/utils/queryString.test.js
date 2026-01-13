@@ -1,4 +1,4 @@
-import { QueryString } from './queryString';
+import { QueryString, isQueryStringValue } from './queryString';
 
 describe('QueryString', () => {
   describe('constructor', () => {
@@ -71,5 +71,31 @@ describe('QueryString', () => {
     it('should return false for empty string', () => {
       expect(QueryString.isQueryString('')).toBe(false);
     });
+  });
+});
+
+describe('isQueryStringValue', () => {
+  it('detects ?{...} pattern', () => {
+    expect(isQueryStringValue('?{column_name}')).toBe(true);
+    expect(isQueryStringValue('?{SELECT * FROM table}')).toBe(true);
+  });
+
+  it('detects query(...) pattern', () => {
+    expect(isQueryStringValue('query(date)')).toBe(true);
+    expect(isQueryStringValue('query(SELECT value FROM table)')).toBe(true);
+  });
+
+  it('detects column(...) pattern', () => {
+    expect(isQueryStringValue('column(date)')).toBe(true);
+    expect(isQueryStringValue('column(value)[0]')).toBe(true);
+    expect(isQueryStringValue('column(value)[-1]')).toBe(true);
+  });
+
+  it('returns false for non-query values', () => {
+    expect(isQueryStringValue('hello')).toBe(false);
+    expect(isQueryStringValue('#ff0000')).toBe(false);
+    expect(isQueryStringValue(123)).toBe(false);
+    expect(isQueryStringValue(null)).toBe(false);
+    expect(isQueryStringValue(undefined)).toBe(false);
   });
 });

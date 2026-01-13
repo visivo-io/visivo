@@ -22,17 +22,24 @@ class TestPublishViews:
         flask_app.dimension_manager = Mock()
         flask_app.metric_manager = Mock()
         flask_app.relation_manager = Mock()
+        flask_app.insight_manager = Mock()
         flask_app.project = Mock()
         flask_app.project.project_file_path = "/tmp/project.yaml"
         flask_app.hot_reload_server = None
 
-        # Default to no unpublished changes and empty cached_objects for new managers
+        # Default to no unpublished changes and empty cached_objects for all managers
+        flask_app.source_manager.has_unpublished_changes.return_value = False
+        flask_app.source_manager.cached_objects = {}
+        flask_app.model_manager.has_unpublished_changes.return_value = False
+        flask_app.model_manager.cached_objects = {}
         flask_app.dimension_manager.has_unpublished_changes.return_value = False
         flask_app.dimension_manager.cached_objects = {}
         flask_app.metric_manager.has_unpublished_changes.return_value = False
         flask_app.metric_manager.cached_objects = {}
         flask_app.relation_manager.has_unpublished_changes.return_value = False
         flask_app.relation_manager.cached_objects = {}
+        flask_app.insight_manager.has_unpublished_changes.return_value = False
+        flask_app.insight_manager.cached_objects = {}
 
         register_publish_views(app, flask_app, "/tmp/output")
 

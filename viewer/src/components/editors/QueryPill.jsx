@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from './../../constants';
+import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from '../../utils/queryString';
 
 function QueryPill({ value, onChange, isQueryFunction, inputShellRef }) {
   const [isEditing, setIsEditing] = useState(false);

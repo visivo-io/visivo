@@ -8,7 +8,7 @@ import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 
 /**
- * EditorNew - New editor view for sources, models, dimensions, metrics, and relations
+ * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
  * Completely independent of namedChildren/editorStore
  */
 const EditorNew = () => {
@@ -42,6 +42,12 @@ const EditorNew = () => {
   const relationsLoading = useStore(state => state.relationsLoading);
   const relationsError = useStore(state => state.relationsError);
 
+  // Insights
+  const insightConfigs = useStore(state => state.insightConfigs);
+  const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
+  const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
+  const insightConfigsError = useStore(state => state.insightConfigsError);
+
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +58,7 @@ const EditorNew = () => {
   const [editingDimension, setEditingDimension] = useState(null);
   const [editingMetric, setEditingMetric] = useState(null);
   const [editingRelation, setEditingRelation] = useState(null);
+  const [editingInsight, setEditingInsight] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
 
@@ -62,7 +69,8 @@ const EditorNew = () => {
     fetchDimensions();
     fetchMetrics();
     fetchRelations();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
+    fetchInsightConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
 
   // Compute object type counts
   const typeCounts = useMemo(() => {
@@ -72,8 +80,9 @@ const EditorNew = () => {
       dimension: dimensions?.length || 0,
       metric: metrics?.length || 0,
       relation: relations?.length || 0,
+      insight: insightConfigs?.length || 0,
     };
-  }, [sources, models, dimensions, metrics, relations]);
+  }, [sources, models, dimensions, metrics, relations, insightConfigs]);
 
   // Filter sources by type and search query
   const filteredSources = useMemo(() => {
@@ -196,6 +205,31 @@ const EditorNew = () => {
     return filtered;
   }, [relations, selectedTypes, searchQuery]);
 
+  // Filter insights by type and search query
+  const filteredInsights = useMemo(() => {
+    if (!insightConfigs) return [];
+
+    // If types are selected and insight is not included, return empty
+    if (selectedTypes.length > 0 && !selectedTypes.includes('insight')) {
+      return [];
+    }
+
+    let filtered = insightConfigs;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        insight =>
+          insight.name.toLowerCase().includes(query) ||
+          (insight.config?.description && insight.config.description.toLowerCase().includes(query)) ||
+          (insight.config?.props?.type && insight.config.props.type.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
+  }, [insightConfigs, selectedTypes, searchQuery]);
+
   // Clear all editing states helper
   const clearAllEditing = useCallback(() => {
     setEditingSource(null);
@@ -203,6 +237,7 @@ const EditorNew = () => {
     setEditingDimension(null);
     setEditingMetric(null);
     setEditingRelation(null);
+    setEditingInsight(null);
   }, []);
 
   // Handle source selection
@@ -255,6 +290,13 @@ const EditorNew = () => {
     [clearAllEditing]
   );
 
+  // Handle insight selection
+  const handleInsightSelect = useCallback(insight => {
+    clearAllEditing();
+    setEditingInsight(insight);
+    setIsCreating(false);
+  }, [clearAllEditing]);
+
   // Handle create button selection
   const handleCreateSelect = useCallback(
     objectType => {
@@ -278,7 +320,8 @@ const EditorNew = () => {
     await fetchDimensions();
     await fetchMetrics();
     await fetchRelations();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations]);
+    await fetchInsightConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
 
   const isPanelOpen =
     editingSource ||
@@ -286,9 +329,15 @@ const EditorNew = () => {
     editingDimension ||
     editingMetric ||
     editingRelation ||
+    editingInsight ||
     isCreating;
   const isLoading =
-    sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading;
+    sourcesLoading ||
+    modelsLoading ||
+    dimensionsLoading ||
+    metricsLoading ||
+    relationsLoading ||
+    insightConfigsLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -308,20 +357,13 @@ const EditorNew = () => {
   const relationTypeConfig = getTypeByValue('relation');
   const RelationIcon = relationTypeConfig?.icon;
 
-  const hasNoObjects =
-    !sources?.length &&
-    !models?.length &&
-    !dimensions?.length &&
-    !metrics?.length &&
-    !relations?.length;
-  const hasNoFilteredObjects =
-    !filteredSources.length &&
-    !filteredModels.length &&
-    !filteredDimensions.length &&
-    !filteredMetrics.length &&
-    !filteredRelations.length;
+  const insightTypeConfig = getTypeByValue('insight');
+  const InsightIcon = insightTypeConfig?.icon;
 
-  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError;
+  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insightConfigs?.length;
+  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length;
+
+  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError;
 
   return (
     <div className="flex h-[calc(100vh-48px)]">
@@ -358,7 +400,12 @@ const EditorNew = () => {
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
             Error:{' '}
-            {sourcesError || modelsError || dimensionsError || metricsError || relationsError}
+            {sourcesError ||
+              modelsError ||
+              dimensionsError ||
+              metricsError ||
+              relationsError ||
+              insightConfigsError}
           </div>
         )}
 
@@ -417,6 +464,17 @@ const EditorNew = () => {
                 onSelect={handleRelationSelect}
                 title="Relations"
                 objectType="relation"
+              />
+            )}
+
+            {/* Insights List */}
+            {filteredInsights.length > 0 && (
+              <ObjectList
+                objects={filteredInsights}
+                selectedName={editingInsight?.name}
+                onSelect={handleInsightSelect}
+                title="Insights"
+                objectType="insight"
               />
             )}
           </div>
@@ -479,6 +537,11 @@ const EditorNew = () => {
                   />
                 </div>
               )}
+              {InsightIcon && (
+                <div className={`w-12 h-12 rounded-full ${insightTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
+                  <InsightIcon className={`w-6 h-6 ${insightTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                </div>
+              )}
             </div>
             <div className="text-lg mb-2">Select an object to edit</div>
             <div className="text-sm">or click the + button to create a new object</div>
@@ -498,6 +561,7 @@ const EditorNew = () => {
             dimension={editingDimension}
             metric={editingMetric}
             relation={editingRelation}
+            insight={editingInsight}
             objectType={createObjectType}
             isCreate={isCreating}
             onClose={handlePanelClose}

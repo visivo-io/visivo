@@ -11,6 +11,7 @@ from visivo.server.managers.model_manager import ModelManager
 from visivo.server.managers.dimension_manager import DimensionManager
 from visivo.server.managers.metric_manager import MetricManager
 from visivo.server.managers.relation_manager import RelationManager
+from visivo.server.managers.insight_manager import InsightManager
 
 
 class FlaskApp:
@@ -47,6 +48,9 @@ class FlaskApp:
         self.relation_manager = RelationManager()
         self.relation_manager.load(dag)
 
+        self.insight_manager = InsightManager()
+        self.insight_manager.load(dag)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -70,3 +74,4 @@ class FlaskApp:
         self.dimension_manager.load(dag)
         self.metric_manager.load(dag)
         self.relation_manager.load(dag)
+        self.insight_manager.load(dag)

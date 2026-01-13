@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import RefSelector from './RefSelector';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -106,38 +107,18 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Error message */}
-      {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <FormAlert variant="error">{error}</FormAlert>}
 
-      {/* Name field */}
-      <div className="space-y-1">
-        <label htmlFor="model-name" className="block text-sm font-medium text-gray-700">
-          Name
-        </label>
-        <input
-          id="model-name"
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          disabled={!isCreate} // Can't rename existing model
-          placeholder="my_model"
-          className={`
-            block w-full px-3 py-2 text-sm
-            border border-gray-300 rounded-md
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-            disabled:bg-gray-100 disabled:cursor-not-allowed
-          `}
-        />
-        {!isCreate && (
-          <p className="text-xs text-gray-500">Model names cannot be changed after creation.</p>
-        )}
-      </div>
+      <FormInput
+        id="model-name"
+        label="Name"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        disabled={!isCreate}
+        helperText={!isCreate ? 'Model names cannot be changed after creation.' : undefined}
+      />
 
-      {/* SQL field */}
+      {/* SQL field - Monaco Editor doesn't fit the standard form pattern */}
       <div className="space-y-1">
         <label htmlFor="model-sql" className="block text-sm font-medium text-gray-700">
           SQL Query
@@ -173,7 +154,6 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
         </p>
       </div>
 
-      {/* Source selector - uses RefSelector for proper ref() serialization */}
       <RefSelector
         value={source}
         onChange={setSource}
@@ -214,7 +194,6 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
 
       {/* Action buttons */}
       <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
-        {/* Delete button - only in edit mode */}
         <div>
           {!isCreate && !showDeleteConfirm && (
             <button

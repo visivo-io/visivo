@@ -13,10 +13,10 @@ const URL_PATTERNS = {
     error: '/api/error/',
     tracesQuery: '/api/traces/',
     traceData: '/api/traces/{hash}/',
-    insightsQuery: '/api/insights/',
-    insightData: '/api/insights/{hash}/',
-    inputsQuery: '/api/inputs/',
-    inputData: '/data/inputs/{hash}.json',
+    insightJobsQuery: '/api/insight-jobs/',
+    insightJobData: '/api/insight-jobs/{hash}/',
+    inputJobsQuery: '/api/input-jobs/',
+    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
 
@@ -67,6 +67,12 @@ const URL_PATTERNS = {
     relationSave: '/api/relations/{name}/save/',
     relationValidate: '/api/relations/{name}/validate/',
 
+    // Insight management endpoints
+    insightsList: '/api/insights/',
+    insightDetail: '/api/insights/{name}/',
+    insightSave: '/api/insights/{name}/save/',
+    insightValidate: '/api/insights/{name}/validate/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
@@ -82,10 +88,10 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     tracesQuery: '/data/traces.json',
     traceData: '/data/traces/{hash}.json',
-    insightsQuery: '/data/insights.json',
-    insightData: '/data/insights/{hash}.json',
-    inputsQuery: '/data/inputs.json',
-    inputData: '/data/inputs/{hash}.json',
+    insightJobsQuery: '/data/insights.json',
+    insightJobData: '/data/insights/{hash}.json',
+    inputJobsQuery: '/data/inputs.json',
+    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
 
@@ -135,6 +141,12 @@ const URL_PATTERNS = {
     relationDetail: null,
     relationSave: null,
     relationValidate: null,
+
+    // Insight management endpoints (not available in dist)
+    insightsList: null,
+    insightDetail: null,
+    insightSave: null,
+    insightValidate: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,

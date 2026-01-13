@@ -32,6 +32,7 @@ describe('EditorNew', () => {
   const mockFetchDimensions = jest.fn();
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
+  const mockFetchInsightConfigs = jest.fn();
 
   const defaultStoreState = {
     sources: [],
@@ -54,6 +55,10 @@ describe('EditorNew', () => {
     fetchRelations: mockFetchRelations,
     relationsLoading: false,
     relationsError: null,
+    insightConfigs: [],
+    fetchInsightConfigs: mockFetchInsightConfigs,
+    insightConfigsLoading: false,
+    insightConfigsError: null,
   };
 
   beforeEach(() => {

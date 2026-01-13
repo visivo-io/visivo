@@ -3,6 +3,7 @@ import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import CategoryIcon from '@mui/icons-material/Category';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import InsightsIcon from '@mui/icons-material/Insights';
 
 /**
  * Centralized object type definitions
@@ -106,6 +107,24 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-cyan-50 border-cyan-200',
       nodeSelected: 'bg-cyan-100 border-cyan-400',
+    },
+  },
+  {
+    value: 'insight',
+    label: 'Insights',
+    singularLabel: 'Insight',
+    icon: InsightsIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-pink-100',
+      text: 'text-pink-800',
+      border: 'border-pink-200',
+      bgHover: 'hover:bg-pink-50',
+      bgSelected: 'bg-pink-100',
+      borderSelected: 'border-pink-300',
+      // For nodes/pills
+      node: 'bg-pink-50 border-pink-200',
+      nodeSelected: 'bg-pink-100 border-pink-400',
     },
   },
 ];

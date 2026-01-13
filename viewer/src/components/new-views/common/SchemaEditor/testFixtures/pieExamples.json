@@ -1,0 +1,59 @@
+{
+  "valid": [
+    {
+      "description": "Basic pie chart with query-string data",
+      "value": {
+        "values": "column(amount)",
+        "labels": "column(category)",
+        "type": "pie"
+      }
+    },
+    {
+      "description": "Pie chart with static data",
+      "value": {
+        "values": [30, 25, 20, 15, 10],
+        "labels": ["A", "B", "C", "D", "E"],
+        "type": "pie"
+      }
+    },
+    {
+      "description": "Donut chart",
+      "value": {
+        "values": "column(value)",
+        "labels": "column(label)",
+        "hole": 0.4,
+        "type": "pie"
+      }
+    },
+    {
+      "description": "Pie chart with custom colors",
+      "value": {
+        "values": "column(count)",
+        "labels": "column(status)",
+        "marker": {
+          "colors": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"]
+        },
+        "type": "pie"
+      }
+    },
+    {
+      "description": "Pie chart with text info",
+      "value": {
+        "values": "column(percentage)",
+        "labels": "column(name)",
+        "textinfo": "label+percent",
+        "textposition": "outside",
+        "type": "pie"
+      }
+    },
+    {
+      "description": "Pie chart with pull effect",
+      "value": {
+        "values": [40, 30, 20, 10],
+        "labels": ["A", "B", "C", "D"],
+        "pull": [0.1, 0, 0, 0],
+        "type": "pie"
+      }
+    }
+  ]
+}

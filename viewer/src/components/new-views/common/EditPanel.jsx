@@ -6,6 +6,7 @@ import SourceEditForm from './SourceEditForm';
 import DimensionEditForm from './DimensionEditForm';
 import MetricEditForm from './MetricEditForm';
 import RelationEditForm from './RelationEditForm';
+import InsightEditForm from './InsightEditForm';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources, models, and semantic objects
@@ -20,7 +21,8 @@ import RelationEditForm from './RelationEditForm';
  * - dimension: Dimension object to edit
  * - metric: Metric object to edit
  * - relation: Relation object to edit
- * - objectType: 'source' | 'model' | 'dimension' | 'metric' | 'relation' (used for create mode)
+ * - insight: Insight object to edit
+ * - objectType: 'source' | 'model' | 'dimension' | 'metric' | 'relation' | 'insight' (used for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
@@ -31,6 +33,7 @@ const EditPanel = ({
   dimension,
   metric,
   relation,
+  insight,
   objectType = 'source',
   isCreate,
   onClose,
@@ -47,13 +50,15 @@ const EditPanel = ({
           ? 'metric'
           : relation
             ? 'relation'
-            : objectType;
+            : insight
+              ? 'insight'
+              : objectType;
 
   const typeConfig = getTypeByValue(currentObjectType);
   const TypeIcon = typeConfig?.icon;
 
   // Get the current object for display
-  const currentObject = model || dimension || metric || relation || source;
+  const currentObject = model || dimension || metric || relation || insight || source;
   const isEditMode = !!currentObject && !isCreate;
 
   // Generate title based on object type
@@ -93,6 +98,15 @@ const EditPanel = ({
         return (
           <RelationEditForm
             relation={relation}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
+      case 'insight':
+        return (
+          <InsightEditForm
+            insight={insight}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
