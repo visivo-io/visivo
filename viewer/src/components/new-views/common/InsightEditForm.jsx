@@ -20,8 +20,9 @@ import { validateName } from './namedModel';
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
+ * - onSaveEmbedded: Callback to save embedded insight (updates parent chart/table)
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded }) => {
   const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -47,6 +48,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const isEmbedded = insight?._isEmbedded === true;
   const parentName = insight?._parentName;
   const parentType = insight?._parentType;
+  const embeddedIndex = insight?._embeddedIndex;
 
   // Get the current schema for the selected chart type
   const currentSchema = getSchema(propsType);
@@ -90,9 +92,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    const nameError = validateName(name);
-    if (nameError) {
-      newErrors.name = nameError;
+    // Skip name validation for embedded insights (they don't require names)
+    if (!isEmbedded) {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.name = nameError;
+      }
     }
 
     if (!propsType) {
@@ -118,9 +123,13 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
       // Build config object
       const config = {
-        name,
         props,
       };
+
+      // Include name only for non-embedded insights
+      if (!isEmbedded && name) {
+        config.name = name;
+      }
 
       // Only include description if non-empty
       if (description) {
@@ -136,11 +145,19 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
         config.interactions = nonEmptyInteractions;
       }
 
-      const result = await saveInsightConfig(name, config);
+      let result;
+      if (isEmbedded && onSaveEmbedded) {
+        // For embedded insights, save through the parent chart/table
+        result = await onSaveEmbedded(config, parentName, parentType, embeddedIndex);
+      } else {
+        result = await saveInsightConfig(name, config);
+      }
 
       if (result?.success) {
         onSave && onSave(config);
-        onClose();
+        if (!isEmbedded) {
+          onClose();
+        }
       } else {
         setSaveError(result?.error || 'Failed to save insight');
       }
@@ -200,11 +217,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
         <div className="space-y-6">
           {/* Embedded insight banner */}
           {isEmbedded && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800 font-medium">Embedded Insight</p>
-              <p className="text-xs text-amber-700 mt-1">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 font-medium">Embedded Insight</p>
+              <p className="text-xs text-blue-700 mt-1">
                 This insight is defined inline within the {parentType} "{parentName}".
-                To modify it, edit the {parentType}'s YAML file directly.
+                Changes will update the parent {parentType}'s configuration.
               </p>
             </div>
           )}
@@ -215,39 +232,41 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
               Basic Information
             </h3>
 
-            {/* Name field */}
-            <div className="relative">
-              <input
-                type="text"
-                id="insightName"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                disabled={isEditMode}
-                placeholder=" "
-                className={`
-                  block w-full px-3 py-2.5 text-sm text-gray-900
-                  bg-white rounded-md border appearance-none
-                  focus:outline-none focus:ring-2 focus:border-primary-500
-                  peer placeholder-transparent
-                  ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
-                  ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-                `}
-              />
-              <label
-                htmlFor="insightName"
-                className={`
-                  absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                  bg-white px-1 left-2
-                  peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-                  peer-placeholder-shown:top-1/2
-                  peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-                  ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-                `}
-              >
-                Insight Name<span className="text-red-500 ml-0.5">*</span>
-              </label>
-              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-            </div>
+            {/* Name field - hidden for embedded insights */}
+            {!isEmbedded && (
+              <div className="relative">
+                <input
+                  type="text"
+                  id="insightName"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  disabled={isEditMode}
+                  placeholder=" "
+                  className={`
+                    block w-full px-3 py-2.5 text-sm text-gray-900
+                    bg-white rounded-md border appearance-none
+                    focus:outline-none focus:ring-2 focus:border-primary-500
+                    peer placeholder-transparent
+                    ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
+                    ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
+                  `}
+                />
+                <label
+                  htmlFor="insightName"
+                  className={`
+                    absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                    bg-white px-1 left-2
+                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
+                    peer-placeholder-shown:top-1/2
+                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
+                    ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
+                  `}
+                >
+                  Insight Name<span className="text-red-500 ml-0.5">*</span>
+                </label>
+                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+              </div>
+            )}
 
             {/* Description (optional) */}
             <div className="relative">
@@ -410,46 +429,37 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
           </div>
         )}
 
-        {isEmbedded ? (
-          /* For embedded insights, only show close button */
-          <div className="flex justify-end items-center px-4 py-3">
-            <ButtonOutline type="button" onClick={onClose} className="text-sm">
-              Close
-            </ButtonOutline>
+        <div className="flex justify-between items-center px-4 py-3">
+          <div className="flex gap-2">
+            {/* Delete button - only in edit mode and not embedded */}
+            {isEditMode && !showDeleteConfirm && !isEmbedded && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+                title="Delete insight"
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="flex justify-between items-center px-4 py-3">
-            <div className="flex gap-2">
-              {/* Delete button - only in edit mode */}
-              {isEditMode && !showDeleteConfirm && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
-                  title="Delete insight"
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </button>
-              )}
-            </div>
 
-            <div className="flex gap-2">
-              <ButtonOutline type="button" onClick={onClose} className="text-sm">
-                Cancel
-              </ButtonOutline>
-              <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
-                {saving ? (
-                  <>
-                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                    Saving...
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <ButtonOutline type="button" onClick={onClose} className="text-sm">
+              Cancel
+            </ButtonOutline>
+            <Button type="button" onClick={handleSave} disabled={saving} className="text-sm">
+              {saving ? (
+                <>
+                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                  Saving...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
           </div>
-        )}
+        </div>
       </div>
     </>
   );

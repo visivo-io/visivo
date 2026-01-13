@@ -32,8 +32,10 @@ import TableEditForm from './TableEditForm';
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
+ * - onSaveEmbeddedSource: Callback to save an embedded source (updates parent model)
+ * - onSaveEmbeddedInsight: Callback to save an embedded insight (updates parent chart/table)
  */
-const EditPanel = ({ source, model, dimension, metric, relation, insight, markdown, chart, table, objectType = 'source', isCreate, onClose, onSave }) => {
+const EditPanel = ({ source, model, dimension, metric, relation, insight, markdown, chart, table, objectType = 'source', isCreate, onClose, onSave, onSaveEmbeddedSource, onSaveEmbeddedInsight }) => {
   // Determine which object we're editing
   const currentObjectType = model
     ? 'model'
@@ -91,7 +93,7 @@ const EditPanel = ({ source, model, dimension, metric, relation, insight, markdo
       case 'relation':
         return <RelationEditForm relation={relation} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
       case 'insight':
-        return <InsightEditForm insight={insight} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+        return <InsightEditForm insight={insight} isCreate={isCreate} onClose={onClose} onSave={onSave} onSaveEmbedded={onSaveEmbeddedInsight} />;
       case 'markdown':
         return <MarkdownEditForm markdown={markdown} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
       case 'chart':
@@ -100,7 +102,7 @@ const EditPanel = ({ source, model, dimension, metric, relation, insight, markdo
         return <TableEditForm table={table} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
       case 'source':
       default:
-        return <SourceEditForm source={source} isCreate={isCreate} onClose={onClose} onSave={onSave} />;
+        return <SourceEditForm source={source} isCreate={isCreate} onClose={onClose} onSave={onSave} onSaveEmbedded={onSaveEmbeddedSource} />;
     }
   };
 

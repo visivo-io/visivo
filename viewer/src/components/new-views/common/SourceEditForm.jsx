@@ -22,8 +22,9 @@ import { validateName } from './namedModel';
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
+ * - onSaveEmbedded: Callback to save embedded source (updates parent model)
  */
-const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
+const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded }) => {
   const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
     useStore();
 
@@ -81,9 +82,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    const nameError = validateName(name);
-    if (nameError) {
-      newErrors.name = nameError;
+    // Skip name validation for embedded sources (they don't have names)
+    if (!isEmbedded) {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.name = nameError;
+      }
     }
 
     if (!sourceType) {
@@ -126,13 +130,26 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
       ...formValues,
     };
 
-    const result = await saveSource(name, config);
+    let result;
+    if (isEmbedded && onSaveEmbedded) {
+      // For embedded sources, save through the parent model
+      // Don't include name in config since embedded sources don't need names
+      const embeddedConfig = {
+        type: sourceType,
+        ...formValues,
+      };
+      result = await onSaveEmbedded(embeddedConfig, parentModelName);
+    } else {
+      result = await saveSource(name, config);
+    }
 
     setSaving(false);
 
     if (result.success) {
       onSave && onSave(config);
-      onClose();
+      if (!isEmbedded) {
+        onClose();
+      }
     } else {
       setSaveError(result.error || 'Failed to save source');
     }
@@ -159,24 +176,27 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
       <FormLayout>
         {/* Embedded source banner */}
         {isEmbedded && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-md mb-4">
-            <p className="text-sm text-amber-800 font-medium">Embedded Source</p>
-            <p className="text-xs text-amber-700 mt-1">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-4">
+            <p className="text-sm text-blue-800 font-medium">Embedded Source</p>
+            <p className="text-xs text-blue-700 mt-1">
               This source is defined inline within the model "{parentModelName}".
-              To modify it, edit the model's YAML file directly.
+              Changes will update the parent model's configuration.
             </p>
           </div>
         )}
 
-        <FormInput
-          id="sourceName"
-          label="Source Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          disabled={isEditMode || isEmbedded}
-          required={!isEmbedded}
-          error={errors.name}
-        />
+        {/* Name field - hidden for embedded sources */}
+        {!isEmbedded && (
+          <FormInput
+            id="sourceName"
+            label="Source Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            disabled={isEditMode}
+            required
+            error={errors.name}
+          />
+        )}
 
         {/* Source Type Selector */}
         <div>
@@ -186,7 +206,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
               setSourceType(type);
               setFormValues({}); // Reset form values when type changes
             }}
-            disabled={isEditMode || isEmbedded}
+            disabled={isEditMode}
           />
           {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
         </div>
@@ -195,9 +215,8 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
         <SourceFormGenerator
           sourceType={sourceType}
           values={formValues}
-          onChange={isEmbedded ? () => {} : setFormValues}
+          onChange={setFormValues}
           errors={errors}
-          disabled={isEmbedded}
         />
 
         {/* Connection Status */}
@@ -238,45 +257,36 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
       </FormLayout>
 
-      {isEmbedded ? (
-        /* For embedded sources, only show close button */
-        <div className="flex justify-end pt-4 border-t border-gray-200">
-          <ButtonOutline type="button" onClick={onClose} className="text-sm">
-            Close
+      <FormFooter
+        onCancel={onClose}
+        onSave={handleSave}
+        saving={saving}
+        showDelete={isEditMode && !showDeleteConfirm && !isEmbedded}
+        onDeleteClick={() => setShowDeleteConfirm(true)}
+        deleteConfirm={
+          showDeleteConfirm && isEditMode && !isEmbedded
+            ? {
+                show: true,
+                message: isNewObject
+                  ? 'Are you sure you want to delete this source? This will discard your unsaved changes.'
+                  : 'Are you sure you want to delete this source? This will mark it for deletion and remove it from YAML when you publish.',
+                onConfirm: handleDelete,
+                onCancel: () => setShowDeleteConfirm(false),
+                deleting,
+              }
+            : null
+        }
+        leftActions={
+          <ButtonOutline
+            type="button"
+            onClick={handleTestConnection}
+            disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
+            className="text-sm"
+          >
+            Test Connection
           </ButtonOutline>
-        </div>
-      ) : (
-        <FormFooter
-          onCancel={onClose}
-          onSave={handleSave}
-          saving={saving}
-          showDelete={isEditMode && !showDeleteConfirm}
-          onDeleteClick={() => setShowDeleteConfirm(true)}
-          deleteConfirm={
-            showDeleteConfirm && isEditMode
-              ? {
-                  show: true,
-                  message: isNewObject
-                    ? 'Are you sure you want to delete this source? This will discard your unsaved changes.'
-                    : 'Are you sure you want to delete this source? This will mark it for deletion and remove it from YAML when you publish.',
-                  onConfirm: handleDelete,
-                  onCancel: () => setShowDeleteConfirm(false),
-                  deleting,
-                }
-              : null
-          }
-          leftActions={
-            <ButtonOutline
-              type="button"
-              onClick={handleTestConnection}
-              disabled={!sourceType || currentConnectionStatus?.status === 'testing'}
-              className="text-sm"
-            >
-              Test Connection
-            </ButtonOutline>
-          }
-        />
-      )}
+        }
+      />
     </>
   );
 };

@@ -77,6 +77,12 @@ const LineageNew = () => {
   const reactFlowInstance = useRef(null);
   const hasFitView = useRef(false);
 
+  // Charts and tables stores
+  const charts = useStore(state => state.chartConfigs);
+  const saveChart = useStore(state => state.saveChartConfig);
+  const tables = useStore(state => state.tableConfigs);
+  const saveTable = useStore(state => state.saveTableConfig);
+
   // Fetch all object types on mount
   useEffect(() => {
     fetchSources();
@@ -308,6 +314,7 @@ const LineageNew = () => {
                 _isEmbedded: true,
                 _parentName: parentName,
                 _parentType: objectType,
+                _embeddedIndex: index,
               };
               clearAllEditing();
               setEditingInsight(syntheticInsight);
@@ -452,6 +459,83 @@ const LineageNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
+  // Handle save of embedded source (updates the parent model)
+  const handleSaveEmbeddedSource = useCallback(async (sourceConfig, parentModelName) => {
+    const model = models.find(m => m.name === parentModelName);
+    if (!model) {
+      console.error('Parent model not found:', parentModelName);
+      return { success: false, error: 'Parent model not found' };
+    }
+
+    // Update the model's source with the new embedded source config
+    const updatedConfig = {
+      ...model.config,
+      name: model.name,
+      sql: model.config?.sql,
+      source: sourceConfig,
+    };
+
+    const result = await saveModel(parentModelName, updatedConfig);
+    if (result.success) {
+      await fetchModels();
+      clearAllEditing();
+    }
+    return result;
+  }, [models, saveModel, fetchModels, clearAllEditing]);
+
+  // Handle save of embedded insight (updates the parent chart or table)
+  const handleSaveEmbeddedInsight = useCallback(async (insightConfig, parentName, parentType, embeddedIndex) => {
+    if (parentType === 'chart') {
+      const chart = charts.find(c => c.name === parentName);
+      if (!chart) {
+        console.error('Parent chart not found:', parentName);
+        return { success: false, error: 'Parent chart not found' };
+      }
+
+      // Update the specific insight in the chart's insights array
+      const insights = [...(chart.config?.insights || [])];
+      insights[embeddedIndex] = insightConfig;
+
+      const updatedConfig = {
+        ...chart.config,
+        name: chart.name,
+        insights,
+      };
+
+      const result = await saveChart(parentName, updatedConfig);
+      if (result.success) {
+        await fetchChartConfigs();
+        clearAllEditing();
+      }
+      return result;
+    } else if (parentType === 'table') {
+      const table = tables.find(t => t.name === parentName);
+      if (!table) {
+        console.error('Parent table not found:', parentName);
+        return { success: false, error: 'Parent table not found' };
+      }
+
+      // Update the specific insight in the table's insights array
+      const insights = [...(table.config?.insights || [])];
+      insights[embeddedIndex] = insightConfig;
+
+      const updatedConfig = {
+        ...table.config,
+        name: table.name,
+        insights,
+      };
+
+      const result = await saveTable(parentName, updatedConfig);
+      if (result.success) {
+        await fetchTableConfigs();
+        clearAllEditing();
+      }
+      return result;
+    }
+
+    return { success: false, error: 'Unknown parent type' };
+  }, [charts, tables, saveChart, saveTable, fetchChartConfigs, fetchTableConfigs, clearAllEditing]);
+
   const isPanelOpen = editingSource || editingModel || editingDimension || editingMetric || editingRelation || editingInsight || editingMarkdown || editingChart || editingTable || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
 
@@ -589,6 +673,8 @@ const LineageNew = () => {
               isCreate={isCreating}
               onClose={handlePanelClose}
               onSave={handleSave}
+              onSaveEmbeddedSource={handleSaveEmbeddedSource}
+              onSaveEmbeddedInsight={handleSaveEmbeddedInsight}
             />
           </div>
         )}
