@@ -93,8 +93,8 @@ const ObjectList = ({ objects, selectedName, onSelect, title = 'Objects', object
               {/* Embedded children indicator */}
               {hasEmbeddedChildren(obj, objectType) && (
                 <SubdirectoryArrowRightIcon
-                  fontSize="inherit"
-                  className="text-gray-400"
+                  fontSize="small"
+                  className="text-blue-500 flex-shrink-0"
                   titleAccess="Contains embedded objects"
                 />
               )}
