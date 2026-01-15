@@ -10,7 +10,7 @@ import { validateName } from './namedModel';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema } from '../../../schemas';
 import { getTypeByValue } from './objectTypeConfigs';
-import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils';
+import { setAtPath } from './embeddedObjectUtils';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -25,7 +25,7 @@ import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
-  const { saveChartConfig, deleteChartConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
+  const { deleteChartConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -110,38 +110,32 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaving(true);
     setSaveError(null);
 
-    try {
-      // Build config object
-      const config = {
-        name,
-      };
+    // Build config object
+    const config = {
+      name,
+    };
 
-      // Combine ref insights with embedded insights (preserve embedded)
-      const refInsights = insights.map(i => `ref(${i})`);
-      const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
+    // Combine ref insights with embedded insights (preserve embedded)
+    const refInsights = insights.map(i => `ref(${i})`);
+    const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
 
-      if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
-        config.insights = [...refInsights, ...embeddedInsightObjects];
-      }
-
-      // Add layout if there are values
-      if (Object.keys(layoutValues).length > 0) {
-        config.layout = layoutValues;
-      }
-
-      const result = await saveChartConfig(name, config);
-
-      if (result?.success) {
-        onSave && onSave(config);
-        onClose();
-      } else {
-        setSaveError(result?.error || 'Failed to save chart');
-      }
-    } catch (error) {
-      setSaveError(error.message || 'Failed to save chart');
+    if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
+      config.insights = [...refInsights, ...embeddedInsightObjects];
     }
 
+    // Add layout if there are values
+    if (Object.keys(layoutValues).length > 0) {
+      config.layout = layoutValues;
+    }
+
+    // Call unified save - parent handles routing and panel close
+    const result = await onSave('chart', name, config);
+
     setSaving(false);
+
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save chart');
+    }
   };
 
   const handleDelete = async () => {
@@ -289,15 +283,17 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
                           type="button"
                           onClick={() => {
                             if (onNavigateToEmbedded) {
-                              // Create synthetic insight using unified embedded metadata
-                              const embeddedMeta = createEmbeddedMeta('chart', chart.name, `insights[${index}]`);
-                              const syntheticInsight = createSyntheticObject(
-                                'insight',
-                                insightConfig,
-                                embeddedMeta,
-                                insightConfig.name || `(embedded insight ${index + 1})`
-                              );
-                              onNavigateToEmbedded('insight', syntheticInsight);
+                              // Create synthetic insight with embedded marker
+                              const syntheticInsight = {
+                                name: insightConfig.name || `(embedded insight ${index + 1})`,
+                                config: insightConfig,
+                                _embedded: { parentType: 'chart', parentName: chart.name, path: `insights[${index}]` },
+                              };
+                              // Navigate with applyToParent to update chart's insights array on save
+                              onNavigateToEmbedded('insight', syntheticInsight, {
+                                applyToParent: (parentConfig, newInsightConfig) =>
+                                  setAtPath(parentConfig, `insights[${index}]`, newInsightConfig),
+                              });
                             }
                           }}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${insightTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${insightTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}

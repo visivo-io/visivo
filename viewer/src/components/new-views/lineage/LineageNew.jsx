@@ -15,13 +15,7 @@ import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
-import {
-  createEmbeddedMeta,
-  createSyntheticObject,
-  isEmbeddedObject,
-  saveEmbeddedObject,
-  saveStandaloneObject,
-} from '../common/embeddedObjectUtils';
+import { isEmbeddedObject, setAtPath } from '../common/embeddedObjectUtils';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -68,15 +62,17 @@ const LineageNew = () => {
   const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
 
   // Navigation stack for editing - supports drilling into embedded objects
-  // Each item is { type: 'source'|'model'|etc, object: {...} }
+  // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
+  // applyToParent is provided by parent forms for embedded objects
   const [editStack, setEditStack] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
 
   // Navigation stack helpers
-  const pushEdit = useCallback((type, object) => {
-    setEditStack(prev => [...prev, { type, object }]);
+  // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
+  const pushEdit = useCallback((type, object, options = {}) => {
+    setEditStack(prev => [...prev, { type, object, ...options }]);
     setIsCreating(false);
   }, []);
 
@@ -271,35 +267,39 @@ const LineageNew = () => {
             // For models with embedded sources, clicking the nested source pill opens the source editor
             onEditEmbeddedSource: objectType === 'model' ? () => {
               const embeddedSourceConfig = node.data.source;
-              // Create a synthetic source object with unified metadata
-              const embeddedMeta = createEmbeddedMeta('model', node.data.name, 'source');
-              const syntheticSource = createSyntheticObject(
-                'source',
-                embeddedSourceConfig,
-                embeddedMeta,
-                `(embedded in ${node.data.name})`
-              );
-              // Clear stack and push model first, then embedded source
+              // Create a synthetic source object with embedded marker
+              const syntheticSource = {
+                name: `(embedded in ${node.data.name})`,
+                config: embeddedSourceConfig,
+                _embedded: { parentType: 'model', parentName: node.data.name, path: 'source' },
+              };
+              // Clear stack and push model first, then embedded source with applyToParent
               clearEdit();
               pushEdit('model', node.data.model);
-              pushEdit('source', syntheticSource);
+              pushEdit('source', syntheticSource, {
+                applyToParent: (parentConfig, newSourceConfig) => ({
+                  ...parentConfig,
+                  source: newSourceConfig,
+                }),
+              });
             } : undefined,
             // For charts/tables with embedded insights, clicking opens the insight editor
             onEditEmbeddedInsight: (objectType === 'chart' || objectType === 'table') ? (insightConfig, index) => {
               const parentName = objectType === 'chart' ? node.data.chart?.name : node.data.table?.name;
               const parentObj = objectType === 'chart' ? node.data.chart : node.data.table;
-              // Create a synthetic insight with unified metadata
-              const embeddedMeta = createEmbeddedMeta(objectType, parentName, `insights[${index}]`);
-              const syntheticInsight = createSyntheticObject(
-                'insight',
-                insightConfig,
-                embeddedMeta,
-                `(embedded insight ${index + 1} in ${parentName})`
-              );
-              // Clear stack and push parent first, then embedded insight
+              // Create a synthetic insight with embedded marker
+              const syntheticInsight = {
+                name: `(embedded insight ${index + 1} in ${parentName})`,
+                config: insightConfig,
+                _embedded: { parentType: objectType, parentName, path: `insights[${index}]` },
+              };
+              // Clear stack and push parent first, then embedded insight with applyToParent
               clearEdit();
               pushEdit(objectType, parentObj);
-              pushEdit('insight', syntheticInsight);
+              pushEdit('insight', syntheticInsight, {
+                applyToParent: (parentConfig, newInsightConfig) =>
+                  setAtPath(parentConfig, `insights[${index}]`, newInsightConfig),
+              });
             } : undefined,
           },
         };
@@ -424,48 +424,75 @@ const LineageNew = () => {
 
   // Unified save handler - handles both standalone and embedded objects
   const handleObjectSave = useCallback(async (type, name, config) => {
-    const currentObject = currentEdit?.object;
-    const embedded = currentObject?._embedded;
+    const stackEntry = currentEdit;
+    const currentObject = stackEntry?.object;
+    const isEmbedded = isEmbeddedObject(currentObject);
 
-    // Build stores object for utility functions
-    const stores = {
-      models,
-      charts,
-      tables,
-      saveModel,
-      saveChartConfig,
-      saveTableConfig,
-      saveSource,
-      saveDimension,
-      saveMetric,
-      saveRelation,
-      saveInsightConfig,
-      saveMarkdownConfig,
-    };
+    // For embedded objects with applyToParent, update the parent's config in the stack
+    // No backend save - that happens when the parent form saves
+    if (isEmbedded && stackEntry?.applyToParent) {
+      setEditStack(prev => {
+        const newStack = [...prev];
+        const parentIndex = newStack.length - 2;
+        if (parentIndex >= 0) {
+          const parentEntry = newStack[parentIndex];
+          const updatedParentConfig = stackEntry.applyToParent(parentEntry.object.config, config);
+          newStack[parentIndex] = {
+            ...parentEntry,
+            object: {
+              ...parentEntry.object,
+              config: updatedParentConfig,
+            },
+          };
+        }
+        // Pop the current entry
+        return newStack.slice(0, -1);
+      });
+      return { success: true };
+    }
 
+    // Standalone save - save directly to backend
     let result;
-    if (embedded && isEmbeddedObject(currentObject)) {
-      // Embedded save - update parent object
-      result = await saveEmbeddedObject(config, embedded, stores);
-    } else {
-      // Standalone save - save directly
-      result = await saveStandaloneObject(type, name, config, stores);
+    switch (type) {
+      case 'source':
+        result = await saveSource(name, config);
+        break;
+      case 'model':
+        result = await saveModel(name, config);
+        break;
+      case 'dimension':
+        result = await saveDimension(name, config);
+        break;
+      case 'metric':
+        result = await saveMetric(name, config);
+        break;
+      case 'relation':
+        result = await saveRelation(name, config);
+        break;
+      case 'insight':
+        result = await saveInsightConfig(name, config);
+        break;
+      case 'markdown':
+        result = await saveMarkdownConfig(name, config);
+        break;
+      case 'chart':
+        result = await saveChartConfig(name, config);
+        break;
+      case 'table':
+        result = await saveTableConfig(name, config);
+        break;
+      default:
+        result = { success: false, error: `Unknown object type: ${type}` };
     }
 
     if (result?.success) {
       await refreshData();
-      if (embedded) {
-        // Pop back to parent after embedded save
-        popEdit();
-      } else {
-        // Close panel after standalone save
-        clearEdit();
-        setIsCreating(false);
-      }
+      clearEdit();
+      setIsCreating(false);
     }
 
     return result;
-  }, [currentEdit, models, charts, tables, saveModel, saveChartConfig, saveTableConfig, saveSource, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, refreshData, popEdit, clearEdit]);
+  }, [currentEdit, saveSource, saveModel, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, saveChartConfig, saveTableConfig, refreshData, clearEdit]);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;

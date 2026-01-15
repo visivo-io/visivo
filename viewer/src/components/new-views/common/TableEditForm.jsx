@@ -8,7 +8,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
-import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils';
+import { setAtPath } from './embeddedObjectUtils';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -23,7 +23,7 @@ import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
-  const { saveTableConfig, deleteTableConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
+  const { deleteTableConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -107,34 +107,28 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaving(true);
     setSaveError(null);
 
-    try {
-      // Build config object
-      const config = {
-        name,
-        rows_per_page: rowsPerPage,
-      };
+    // Build config object
+    const config = {
+      name,
+      rows_per_page: rowsPerPage,
+    };
 
-      // Combine ref insights with embedded insights (preserve embedded)
-      const refInsights = insights.map(i => `ref(${i})`);
-      const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
+    // Combine ref insights with embedded insights (preserve embedded)
+    const refInsights = insights.map(i => `ref(${i})`);
+    const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
 
-      if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
-        config.insights = [...refInsights, ...embeddedInsightObjects];
-      }
-
-      const result = await saveTableConfig(name, config);
-
-      if (result?.success) {
-        onSave && onSave(config);
-        onClose();
-      } else {
-        setSaveError(result?.error || 'Failed to save table');
-      }
-    } catch (error) {
-      setSaveError(error.message || 'Failed to save table');
+    if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
+      config.insights = [...refInsights, ...embeddedInsightObjects];
     }
 
+    // Call unified save - parent handles routing and panel close
+    const result = await onSave('table', name, config);
+
     setSaving(false);
+
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save table');
+    }
   };
 
   const handleDelete = async () => {
@@ -304,15 +298,17 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
                           type="button"
                           onClick={() => {
                             if (onNavigateToEmbedded) {
-                              // Create synthetic insight using unified embedded metadata
-                              const embeddedMeta = createEmbeddedMeta('table', table.name, `insights[${index}]`);
-                              const syntheticInsight = createSyntheticObject(
-                                'insight',
-                                insightConfig,
-                                embeddedMeta,
-                                insightConfig.name || `(embedded insight ${index + 1})`
-                              );
-                              onNavigateToEmbedded('insight', syntheticInsight);
+                              // Create synthetic insight with embedded marker
+                              const syntheticInsight = {
+                                name: insightConfig.name || `(embedded insight ${index + 1})`,
+                                config: insightConfig,
+                                _embedded: { parentType: 'table', parentName: table.name, path: `insights[${index}]` },
+                              };
+                              // Navigate with applyToParent to update table's insights array on save
+                              onNavigateToEmbedded('insight', syntheticInsight, {
+                                applyToParent: (parentConfig, newInsightConfig) =>
+                                  setAtPath(parentConfig, `insights[${index}]`, newInsightConfig),
+                              });
                             }
                           }}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${insightTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${insightTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}

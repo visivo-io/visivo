@@ -8,7 +8,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { getTypeByValue } from './objectTypeConfigs';
-import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -17,10 +16,10 @@ import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils
  * - model: Existing model to edit (null for create mode)
  * - onSave: Callback after successful save
  * - onCancel: Callback to cancel editing
- * - onNavigateToEmbedded: Callback(type, object) to navigate to an embedded object
+ * - onNavigateToEmbedded: Callback(type, object, options) to navigate to an embedded object
+ *   options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
  */
 const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
-  const saveModel = useStore(state => state.saveModel);
   const deleteModel = useStore(state => state.deleteModel);
   const checkPublishStatus = useStore(state => state.checkPublishStatus);
   const fetchSources = useStore(state => state.fetchSources);
@@ -81,17 +80,13 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       config.source = source;
     }
 
-    try {
-      const result = await saveModel(config.name, config);
-      if (result.success) {
-        onSave && onSave(result);
-      } else {
-        setError(result.error || 'Failed to save model');
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to save model');
-    } finally {
-      setSaving(false);
+    // Call unified save - parent handles routing and panel close
+    const result = await onSave('model', config.name, config);
+
+    setSaving(false);
+
+    if (!result?.success) {
+      setError(result?.error || 'Failed to save model');
     }
   };
 
@@ -182,15 +177,19 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
               type="button"
               onClick={() => {
                 if (onNavigateToEmbedded) {
-                  // Create synthetic source object using unified embedded metadata
-                  const embeddedMeta = createEmbeddedMeta('model', model.name, 'source');
-                  const syntheticSource = createSyntheticObject(
-                    'source',
-                    embeddedConfig,
-                    embeddedMeta,
-                    `(embedded in ${model.name})`
-                  );
-                  onNavigateToEmbedded('source', syntheticSource);
+                  // Create synthetic source with embedded marker
+                  const syntheticSource = {
+                    name: `(embedded in ${model.name})`,
+                    config: embeddedConfig,
+                    _embedded: { parentType: 'model', parentName: model.name, path: 'source' },
+                  };
+                  // Navigate with applyToParent to update model's source on save
+                  onNavigateToEmbedded('source', syntheticSource, {
+                    applyToParent: (parentConfig, newSourceConfig) => ({
+                      ...parentConfig,
+                      source: newSourceConfig,
+                    }),
+                  });
                 }
               }}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${sourceTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${sourceTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
