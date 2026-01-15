@@ -26,7 +26,7 @@ import { isEmbeddedObject } from './embeddedObjectUtils';
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
  */
 const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
-  const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
+  const { deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
   const [name, setName] = useState('');

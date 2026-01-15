@@ -91,9 +91,7 @@ const LineageNew = () => {
   const hasFitView = useRef(false);
 
   // Charts and tables stores
-  const charts = useStore(state => state.chartConfigs);
   const saveChartConfig = useStore(state => state.saveChartConfig);
-  const tables = useStore(state => state.tableConfigs);
   const saveTableConfig = useStore(state => state.saveTableConfig);
 
   // Additional store functions for unified save
@@ -116,11 +114,6 @@ const LineageNew = () => {
     fetchChartConfigs();
     fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
-
-  // Clear all editing states helper (now uses navigation stack)
-  const clearAllEditing = useCallback(() => {
-    clearEdit();
-  }, [clearEdit]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
