@@ -250,31 +250,31 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
           />
         )}
 
-        {/* Source Type Selector */}
-        <div>
-          <SourceTypeSelector
-            value={sourceType}
-            onChange={type => {
-              setSourceType(type);
-              setFormValues({}); // Reset form values when type changes
-            }}
-            disabled={isEditMode}
+          {/* Source Type Selector */}
+          <div>
+            <SourceTypeSelector
+              value={sourceType}
+              onChange={type => {
+                setSourceType(type);
+                setFormValues({}); // Reset form values when type changes
+              }}
+              disabled={isEditMode}
+            />
+            {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
+          </div>
+
+          {/* Dynamic Form Fields */}
+          <SourceFormGenerator
+            sourceType={sourceType}
+            values={formValues}
+            onChange={setFormValues}
+            errors={errors}
           />
-          {errors.type && <p className="mt-1 text-xs text-red-500">{errors.type}</p>}
-        </div>
 
-        {/* Dynamic Form Fields */}
-        <SourceFormGenerator
-          sourceType={sourceType}
-          values={formValues}
-          onChange={setFormValues}
-          errors={errors}
-        />
-
-        {/* Connection Status */}
-        {currentConnectionStatus && (
-          <div
-            className={`
+          {/* Connection Status */}
+          {currentConnectionStatus && (
+            <div
+              className={`
             flex items-center gap-2 p-3 rounded-md text-sm
             ${
               currentConnectionStatus.status === 'connected'
@@ -284,27 +284,27 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
                   : 'bg-red-50 text-red-700'
             }
           `}
-          >
-            {currentConnectionStatus.status === 'testing' && (
-              <>
-                <CircularProgress size={16} />
-                <span>Testing connection...</span>
-              </>
-            )}
-            {currentConnectionStatus.status === 'connected' && (
-              <>
-                <CheckCircleIcon fontSize="small" />
-                <span>Connection successful</span>
-              </>
-            )}
-            {currentConnectionStatus.status === 'failed' && (
-              <>
-                <ErrorOutlineIcon fontSize="small" />
-                <span>Connection failed: {currentConnectionStatus.error}</span>
-              </>
-            )}
-          </div>
-        )}
+            >
+              {currentConnectionStatus.status === 'testing' && (
+                <>
+                  <CircularProgress size={16} />
+                  <span>Testing connection...</span>
+                </>
+              )}
+              {currentConnectionStatus.status === 'connected' && (
+                <>
+                  <CheckCircleIcon fontSize="small" />
+                  <span>Connection successful</span>
+                </>
+              )}
+              {currentConnectionStatus.status === 'failed' && (
+                <>
+                  <ErrorOutlineIcon fontSize="small" />
+                  <span>Connection failed: {currentConnectionStatus.error}</span>
+                </>
+              )}
+            </div>
+          )}
 
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
       </FormLayout>

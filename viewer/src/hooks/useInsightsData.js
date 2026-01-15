@@ -118,6 +118,7 @@ const processInsight = async (db, insight, inputs) => {
           failed: 0,
           error: null,
           pendingInputs: missingInputs, // Track which inputs we're waiting for
+          inputDependencies: requiredInputs, // Pre-computed input dependencies for selective subscriptions
         },
       };
     }
@@ -142,7 +143,6 @@ const processInsight = async (db, insight, inputs) => {
       );
     });
 
-    console.debug(`Query returned ${processedRows.length} rows for insight '${insightName}'`);
 
     // Step 5: Return structured data
     return {
@@ -159,10 +159,16 @@ const processInsight = async (db, insight, inputs) => {
         failed: failed.length,
         error: null,
         pendingInputs: null, // Clear pending state
+        inputDependencies: requiredInputs, // Pre-computed input dependencies for selective subscriptions
       },
     };
   } catch (error) {
     const insightName = insight.name;
+    // Extract input dependencies even in error case for Chart.jsx selective subscriptions
+    const errorInputDependencies = extractInputDependencies(
+      insight.query,
+      insight.static_props
+    );
 
     return {
       [insightName]: {
@@ -178,6 +184,7 @@ const processInsight = async (db, insight, inputs) => {
         failed: insight.files?.length || 0,
         error: error.message || String(error),
         pendingInputs: null,
+        inputDependencies: errorInputDependencies,
       },
     };
   }

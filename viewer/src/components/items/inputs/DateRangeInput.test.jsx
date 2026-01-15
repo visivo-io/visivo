@@ -225,12 +225,7 @@ describe('DateRangeInput', () => {
   it('navigates to next month when next button is clicked', () => {
     const props = {
       ...defaultProps,
-      options: [
-        '2024-06-01',
-        '2024-06-02',
-        '2024-07-01',
-        '2024-07-02',
-      ],
+      options: ['2024-06-01', '2024-06-02', '2024-07-01', '2024-07-02'],
       selectedValues: ['2024-06-01'],
     };
     render(<DateRangeInput {...props} />);
@@ -253,12 +248,7 @@ describe('DateRangeInput', () => {
   it('navigates to previous month when previous button is clicked', () => {
     const props = {
       ...defaultProps,
-      options: [
-        '2024-05-01',
-        '2024-05-02',
-        '2024-06-01',
-        '2024-06-02',
-      ],
+      options: ['2024-05-01', '2024-05-02', '2024-06-01', '2024-06-02'],
       selectedValues: ['2024-06-01', '2024-06-02'],
     };
     render(<DateRangeInput {...props} />);

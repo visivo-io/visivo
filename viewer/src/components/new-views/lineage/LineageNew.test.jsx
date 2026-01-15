@@ -129,7 +129,9 @@ describe('LineageNew', () => {
     render(<LineageNew />);
 
     expect(screen.getByText('No sources or models yet')).toBeInTheDocument();
-    expect(screen.getByText('Click the + button to create your first source or model')).toBeInTheDocument();
+    expect(
+      screen.getByText('Click the + button to create your first source or model')
+    ).toBeInTheDocument();
   });
 
   it('fetches all object types on mount', () => {
@@ -170,9 +172,7 @@ describe('LineageNew', () => {
         { id: 'source-db', data: { label: 'db', objectType: 'source' } },
         { id: 'model-users', data: { label: 'users', objectType: 'model' } },
       ],
-      edges: [
-        { id: 'edge-1', source: 'source-db', target: 'model-users' },
-      ],
+      edges: [{ id: 'edge-1', source: 'source-db', target: 'model-users' }],
     });
 
     render(<LineageNew />);
@@ -200,9 +200,7 @@ describe('LineageNew', () => {
 
   it('clears selector when Clear button is clicked', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-      ],
+      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -223,9 +221,7 @@ describe('LineageNew', () => {
 
   it('shows no matching objects message when selector matches nothing', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-      ],
+      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -294,9 +290,7 @@ describe('LineageNew', () => {
     const mockSource = { name: 'db', type: 'sqlite' };
 
     useLineageDag.mockReturnValue({
-      nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } },
-      ],
+      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } }],
       edges: [],
     });
 
@@ -319,9 +313,7 @@ describe('LineageNew', () => {
 
   it('renders ReactFlow with proper structure', () => {
     useLineageDag.mockReturnValue({
-      nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-      ],
+      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
       edges: [],
     });
 

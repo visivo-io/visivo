@@ -185,7 +185,8 @@ const EditorNew = () => {
       filtered = filtered.filter(
         dimension =>
           dimension.name.toLowerCase().includes(query) ||
-          (dimension.config?.expression && dimension.config.expression.toLowerCase().includes(query))
+          (dimension.config?.expression &&
+            dimension.config.expression.toLowerCase().includes(query))
       );
     }
 
@@ -553,7 +554,11 @@ const EditorNew = () => {
 
         {/* Search */}
         <div className="p-3 border-b border-gray-200">
-          <SourceSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search by name..." />
+          <SourceSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by name..."
+          />
         </div>
 
         {/* Loading state */}
@@ -691,28 +696,44 @@ const EditorNew = () => {
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <div className="flex gap-4 mb-4">
               {SourceIcon && (
-                <div className={`w-12 h-12 rounded-full ${sourceColors.bg} flex items-center justify-center`}>
+                <div
+                  className={`w-12 h-12 rounded-full ${sourceColors.bg} flex items-center justify-center`}
+                >
                   <SourceIcon className={`w-6 h-6 ${sourceColors.text}`} />
                 </div>
               )}
               {ModelIcon && (
-                <div className={`w-12 h-12 rounded-full ${modelColors.bg} flex items-center justify-center`}>
+                <div
+                  className={`w-12 h-12 rounded-full ${modelColors.bg} flex items-center justify-center`}
+                >
                   <ModelIcon className={`w-6 h-6 ${modelColors.text}`} />
                 </div>
               )}
               {DimensionIcon && (
-                <div className={`w-12 h-12 rounded-full ${dimensionTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <DimensionIcon className={`w-6 h-6 ${dimensionTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${dimensionTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <DimensionIcon
+                    className={`w-6 h-6 ${dimensionTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
               {MetricIcon && (
-                <div className={`w-12 h-12 rounded-full ${metricTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <MetricIcon className={`w-6 h-6 ${metricTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${metricTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <MetricIcon
+                    className={`w-6 h-6 ${metricTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
               {RelationIcon && (
-                <div className={`w-12 h-12 rounded-full ${relationTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}>
-                  <RelationIcon className={`w-6 h-6 ${relationTypeConfig?.colors?.text || 'text-gray-800'}`} />
+                <div
+                  className={`w-12 h-12 rounded-full ${relationTypeConfig?.colors?.bg || 'bg-gray-100'} flex items-center justify-center`}
+                >
+                  <RelationIcon
+                    className={`w-6 h-6 ${relationTypeConfig?.colors?.text || 'text-gray-800'}`}
+                  />
                 </div>
               )}
               {InsightIcon && (

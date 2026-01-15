@@ -3,27 +3,19 @@ import { render, screen } from '@testing-library/react';
 import Input, { SINGLE_SELECT, MULTI_SELECT } from './Input';
 
 // Mock all input components
-jest.mock('./inputs/Dropdown', () => ({ label }) => (
-  <div data-testid="dropdown">{label}</div>
-));
+jest.mock('./inputs/Dropdown', () => ({ label }) => <div data-testid="dropdown">{label}</div>);
 jest.mock('./inputs/MultiSelectDropdown', () => ({ label }) => (
   <div data-testid="multi-select-dropdown">{label}</div>
 ));
-jest.mock('./inputs/RadioInput', () => ({ label }) => (
-  <div data-testid="radio-input">{label}</div>
-));
+jest.mock('./inputs/RadioInput', () => ({ label }) => <div data-testid="radio-input">{label}</div>);
 jest.mock('./inputs/ToggleInput', () => ({ label }) => (
   <div data-testid="toggle-input">{label}</div>
 ));
-jest.mock('./inputs/TabsInput', () => ({ label }) => (
-  <div data-testid="tabs-input">{label}</div>
-));
+jest.mock('./inputs/TabsInput', () => ({ label }) => <div data-testid="tabs-input">{label}</div>);
 jest.mock('./inputs/CheckboxesInput', () => ({ label }) => (
   <div data-testid="checkboxes-input">{label}</div>
 ));
-jest.mock('./inputs/ChipsInput', () => ({ label }) => (
-  <div data-testid="chips-input">{label}</div>
-));
+jest.mock('./inputs/ChipsInput', () => ({ label }) => <div data-testid="chips-input">{label}</div>);
 jest.mock('./inputs/RangeSliderInput', () => ({ label }) => (
   <div data-testid="range-slider-input">{label}</div>
 ));

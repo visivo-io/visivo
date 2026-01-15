@@ -74,7 +74,9 @@ const ObjectTypeFilter = ({ selectedTypes = [], onChange, counts = {}, showDisab
       >
         <div className="flex items-center gap-2">
           <FilterListIcon fontSize="small" className="text-gray-500" />
-          <span className={selectedTypes.length > 0 ? 'text-primary-700 font-medium' : 'text-gray-700'}>
+          <span
+            className={selectedTypes.length > 0 ? 'text-primary-700 font-medium' : 'text-gray-700'}
+          >
             {getButtonText()}
           </span>
         </div>
@@ -153,9 +155,7 @@ const ObjectTypeFilter = ({ selectedTypes = [], onChange, counts = {}, showDisab
                 )}
 
                 {/* Coming soon badge */}
-                {isDisabled && (
-                  <span className="text-xs text-gray-400 italic">Soon</span>
-                )}
+                {isDisabled && <span className="text-xs text-gray-400 italic">Soon</span>}
               </button>
             );
           })}

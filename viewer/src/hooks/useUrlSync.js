@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useStore from '../stores/store';
 
@@ -8,13 +8,21 @@ import useStore from '../stores/store';
  */
 export const useUrlSync = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { selectorValues, setSelectorValues, setSelectorValue } = useStore();
+  const selectorValues = useStore(state => state.selectorValues);
+  const setSelectorValues = useStore(state => state.setSelectorValues);
+  const setSelectorValue = useStore(state => state.setSelectorValue);
+  const initializedRef = useRef(false);
 
-  // Initialize selector values from URL on mount
+  // Initialize selector values from URL on mount only
   useEffect(() => {
-    const initialValues = {};
+    // Only run once on mount
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
-    for (const [key, value] of searchParams.entries()) {
+    const initialValues = {};
+    const urlParams = new URLSearchParams(window.location.search);
+
+    for (const [key, value] of urlParams.entries()) {
       try {
         // Try to parse as JSON array first
         if (value.startsWith('[') && value.endsWith(']')) {
@@ -33,10 +41,13 @@ export const useUrlSync = () => {
     if (Object.keys(initialValues).length > 0) {
       setSelectorValues(initialValues);
     }
-  }, [searchParams, setSelectorValues]); // Only run on mount
+  }, [setSelectorValues]);
 
-  // Sync URL when selector values change
+  // Sync URL when selector values change (skip initial sync to avoid loop)
   useEffect(() => {
+    // Skip on first render to avoid conflicting with initialization effect
+    if (!initializedRef.current) return;
+
     const params = new URLSearchParams();
 
     Object.entries(selectorValues).forEach(([key, value]) => {
@@ -56,6 +67,7 @@ export const useUrlSync = () => {
     });
 
     // Update URL params if they've changed
+    // Use searchParams from useSearchParams() for proper router integration
     const currentParams = searchParams.toString();
     const newParams = params.toString();
 
@@ -78,7 +90,7 @@ export const useUrlSync = () => {
  */
 export const useUrlSyncManual = () => {
   const [searchParams] = useSearchParams();
-  const { setSelectorValue } = useStore();
+  const setSelectorValue = useStore(state => state.setSelectorValue);
 
   const setStateSearchParam = (name, value) => {
     setSelectorValue(name, value);

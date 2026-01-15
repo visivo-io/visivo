@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../../images/logo.png';
-import { Tooltip } from 'flowbite-react';
+import LazyTooltip from './LazyTooltip';
 import { SiSlack } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
 import { FaUserCircle } from 'react-icons/fa';
@@ -53,7 +53,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
         </div>
         <div className="flex items-center gap-5 sm:gap-8">
           {hasUnpublishedChanges && (
-            <Tooltip content="Publish changes to YAML files" placement="bottom" trigger="hover">
+            <LazyTooltip content="Publish changes to YAML files" placement="bottom" trigger="hover">
               <button
                 onClick={onPublishClick}
                 className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
@@ -63,7 +63,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
                   <HiOutlineCloudUpload className="w-5 h-5 ml-1" />
                 </div>
               </button>
-            </Tooltip>
+            </LazyTooltip>
           )}
           <button
             onClick={onDeployClick}
@@ -75,7 +75,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
             </div>
           </button>
           {!isMobile ? (
-            <Tooltip content="Join the Community" placement="bottom" trigger="hover">
+            <LazyTooltip content="Join the Community" placement="bottom" trigger="hover">
               <a
                 href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ"
                 target="_blank"
@@ -85,9 +85,9 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
               >
                 <SiSlack className="w-5 h-5" />
               </a>
-            </Tooltip>
+            </LazyTooltip>
           ) : null}
-          <Tooltip content="Documentation" placement="bottom" trigger="hover">
+          <LazyTooltip content="Documentation" placement="bottom" trigger="hover">
             <a
               href="https://docs.visivo.io"
               target="_blank"
@@ -97,7 +97,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
             >
               <MdMenuBook className="w-6 h-6" />
             </a>
-          </Tooltip>
+          </LazyTooltip>
           <div className="relative">
             <button
               className="text-white hover:text-gray-300 flex items-center focus:outline-none"
@@ -112,7 +112,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 flex flex-col items-center transition-all duration-200 ease-out opacity-100 translate-y-0 animate-dropdown">
                 <ul className="py-1 w-full flex flex-col items-center">
                   <li className="w-full flex justify-center">
-                    <Tooltip
+                    <LazyTooltip
                       content={
                         <span className="text-xs">
                           Create a Visivo cloud account for fast & easy deployments{' '}
@@ -140,10 +140,10 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
                       >
                         Log in / Sign up
                       </a>
-                    </Tooltip>
+                    </LazyTooltip>
                   </li>
                   <li className="w-full flex justify-center">
-                    <Tooltip
+                    <LazyTooltip
                       content={
                         <span className="text-xs">
                           Found a bug or have feedback? Log an issue on GitHub{' '}
@@ -172,7 +172,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
                         <FiAlertCircle className="w-4 h-4 text-rose-500" />
                         Log an Issue
                       </a>
-                    </Tooltip>
+                    </LazyTooltip>
                   </li>
                 </ul>
               </div>

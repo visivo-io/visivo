@@ -43,6 +43,8 @@ jest.mock('../../stores/store', () => {
     setDashboards: jest.fn(),
     setCurrentDashboardName: jest.fn(),
     filterDashboards: jest.fn(),
+    initializeDashboardView: jest.fn(),
+    setDefaultInputValues: jest.fn(),
     searchTerm: '',
     setSearchTerm: jest.fn(),
     selectedTags: [],

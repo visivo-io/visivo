@@ -39,7 +39,13 @@ const StatusDot = ({ status }) => {
  * ObjectList - Displays a list of objects with status indicators
  * Used by EditorNew view
  */
-const ObjectList = ({ objects, selectedName, onSelect, title = 'Objects', objectType = 'source' }) => {
+const ObjectList = ({
+  objects,
+  selectedName,
+  onSelect,
+  title = 'Objects',
+  objectType = 'source',
+}) => {
   const typeConfig = getTypeByValue(objectType);
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
@@ -81,7 +87,9 @@ const ObjectList = ({ objects, selectedName, onSelect, title = 'Objects', object
               <StatusDot status={obj.status} />
 
               {/* Icon */}
-              {Icon && <Icon fontSize="small" className={isSelected ? colors.text : 'text-gray-400'} />}
+              {Icon && (
+                <Icon fontSize="small" className={isSelected ? colors.text : 'text-gray-400'} />
+              )}
 
               {/* Name */}
               <span

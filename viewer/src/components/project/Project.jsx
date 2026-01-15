@@ -15,7 +15,7 @@ function Project(props) {
   const elementId = searchParams.get('element_id');
   const setScrollPosition = useStore(state => state.setScrollPosition);
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
-  const setDefaultInputValue = useStore(state => state.setDefaultInputValue);
+  const setDefaultInputValues = useStore(state => state.setDefaultInputValues);
   const throttleRef = useRef();
   const [windowPosition, setWindowPosition] = useState('');
 
@@ -55,52 +55,46 @@ function Project(props) {
     }
   }, [props.dashboardName, scrollPositions, windowPosition, searchParams]);
 
-  const {
-    filteredDashboards,
-    dashboardsByLevel,
-    setDashboards,
-    setCurrentDashboardName,
-    filterDashboards,
-  } = useStore();
+  const filteredDashboards = useStore(state => state.filteredDashboards);
+  const dashboardsByLevel = useStore(state => state.dashboardsByLevel);
+  const initializeDashboardView = useStore(state => state.initializeDashboardView);
 
+  // Consolidated initialization effect - combines input defaults, dashboards, and current name
   useEffect(() => {
-    props.project.project_json.dashboards.forEach(dashboard => {
-      dashboard.rows.forEach(row => {
-        row.items.map(item => {
-          if (item?.input) {
-            const input = item.input;
-            switch (input.type) {
-              case SINGLE_SELECT:
-              case MULTI_SELECT:
-                if (input?.default) {
-                  setDefaultInputValue(input.name, input.default);
-                }
-                break;
-              default:
-                break;
+    // Collect all input defaults first, then set them in a single batch
+    const inputDefaults = [];
+    if (props.project?.project_json?.dashboards) {
+      props.project.project_json.dashboards.forEach(dashboard => {
+        dashboard.rows.forEach(row => {
+          row.items.forEach(item => {
+            if (item?.input) {
+              const input = item.input;
+              if ((input.type === SINGLE_SELECT || input.type === MULTI_SELECT) && input?.default) {
+                inputDefaults.push({
+                  name: input.name,
+                  value: input.default,
+                  type: input.type,
+                });
+              }
             }
-          }
-          return null;
+          });
         });
       });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.project]);
-
-  // Initialize dashboards in store when props change
-  useEffect(() => {
-    if (props.dashboards) {
-      setDashboards(props.dashboards);
-      filterDashboards();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.dashboards]);
 
-  // Update current dashboard name when it changes
-  useEffect(() => {
-    setCurrentDashboardName(props.dashboardName);
+    // Set all input defaults in a single batch
+    if (inputDefaults.length > 0) {
+      setDefaultInputValues(inputDefaults);
+    }
+
+    // Initialize dashboards in store with single batched update
+    initializeDashboardView(
+      props.dashboards,
+      props.dashboardName,
+      props.project?.project_json?.defaults
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.dashboardName]);
+  }, [props.project, props.dashboards, props.dashboardName]);
 
   const renderLoading = () => {
     return <Loading />;

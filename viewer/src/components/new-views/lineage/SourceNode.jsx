@@ -58,7 +58,9 @@ const SourceNode = ({ data, selected }) => {
 
       {/* Name and type */}
       <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
+        <span
+          className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}
+        >
           {name}
         </span>
         {type && <span className="text-xs text-gray-400">{type}</span>}

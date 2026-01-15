@@ -7,9 +7,55 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
+import { useCallback, useMemo } from 'react';
+import { useInsightsData } from '../../hooks/useInsightsData';
+import { useInputsData } from '../../hooks/useInputsData';
+import { useVisibleRows } from '../../hooks/useVisibleRows';
+
+/**
+ * Collect all insight names from visible rows for centralized prefetching.
+ * This enables a single useInsightsData call instead of N calls from individual Charts/Tables.
+ */
+const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
+  const insightNames = new Set();
+  for (const rowIndex of visibleRowIndices) {
+    const row = rows[rowIndex];
+    if (!row) continue;
+    for (const item of row.items) {
+      // Only collect from items that will be rendered
+      if (shouldShowItem && !shouldShowItem(item)) continue;
+      item.chart?.insights?.forEach(i => insightNames.add(i.name));
+      item.table?.insights?.forEach(i => insightNames.add(i.name));
+    }
+  }
+  return [...insightNames];
+};
+
+/**
+ * Collect all input names from visible rows for centralized prefetching.
+ * This enables a single useInputsData call instead of N calls from individual Input components.
+ */
+const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
+  const inputNames = new Set();
+  for (const rowIndex of visibleRowIndices) {
+    const row = rows[rowIndex];
+    if (!row) continue;
+    for (const item of row.items) {
+      // Only collect from items that will be rendered
+      if (shouldShowItem && !shouldShowItem(item)) continue;
+      if (item.input?.name) {
+        inputNames.add(item.input.name);
+      }
+    }
+  }
+  return [...inputNames];
+};
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+
+  // Viewport-based loading: Track which rows are visible
+  const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
 
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
@@ -54,36 +100,62 @@ const Dashboard = ({ project, dashboardName }) => {
     throwError(`Dashboard with name ${dashboardName} not found.`, 404);
   }
 
-  const shouldShowNamedModel = namedModel => {
-    if (!namedModel || !namedModel.name) {
+  const shouldShowNamedModel = useCallback(
+    namedModel => {
+      if (!namedModel || !namedModel.name) {
+        return true;
+      }
+      const selector = getSelectorByOptionName(project, namedModel.name);
+      if (selector && searchParams.has(selector.name)) {
+        const selectedNames = searchParams.get(selector.name).split(',');
+        if (!selectedNames.includes(namedModel.name)) {
+          return false;
+        }
+      }
       return true;
-    }
-    const selector = getSelectorByOptionName(project, namedModel.name);
-    if (selector && searchParams.has(selector.name)) {
-      const selectedNames = searchParams.get(selector.name).split(',');
-      if (!selectedNames.includes(namedModel.name)) {
+    },
+    [project, searchParams]
+  );
+
+  const shouldShowItem = useCallback(
+    item => {
+      if (!shouldShowNamedModel(item)) {
         return false;
       }
-    }
-    return true;
-  };
+      let object;
+      if (item.chart) {
+        object = item.chart;
+      } else if (item.table) {
+        object = item.table;
+      } else if (item.selector) {
+        object = item.selector;
+      } else if (item.input) {
+        object = item.input;
+      }
+      return shouldShowNamedModel(object);
+    },
+    [shouldShowNamedModel]
+  );
 
-  const shouldShowItem = item => {
-    if (!shouldShowNamedModel(item)) {
-      return false;
-    }
-    let object;
-    if (item.chart) {
-      object = item.chart;
-    } else if (item.table) {
-      object = item.table;
-    } else if (item.selector) {
-      object = item.selector;
-    } else if (item.input) {
-      object = item.input;
-    }
-    return shouldShowNamedModel(object);
-  };
+  // Centralized input prefetching: Collect all input names from visible rows
+  // and load them in a single batch BEFORE insights (so inputs are ready for insight queries).
+  const visibleInputNames = useMemo(
+    () => collectInputNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    [dashboard.rows, visibleRows, shouldShowItem]
+  );
+
+  // Single batch fetch for all visible inputs (stores results in Zustand)
+  useInputsData(project.id, visibleInputNames);
+
+  // Centralized insight prefetching: Collect all insight names from visible rows
+  // and load them in a single batch. Charts/Tables read from Zustand store.
+  const visibleInsightNames = useMemo(
+    () => collectInsightNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    [dashboard.rows, visibleRows, shouldShowItem]
+  );
+
+  // Single combined fetch for all visible insights (stores results in Zustand)
+  useInsightsData(project.id, visibleInsightNames);
 
   const renderRow = (row, rowIndex) => {
     if (!shouldShowNamedModel(row)) {
@@ -92,10 +164,13 @@ const Dashboard = ({ project, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : getHeightStyle(row);
+    const shouldLoad = visibleRows.has(rowIndex);
 
     return (
       <div
         key={`row-${rowIndex}`}
+        ref={el => setRowRef(el, rowIndex)}
+        data-row-index={rowIndex}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           margin: '0.5rem',
@@ -116,7 +191,7 @@ const Dashboard = ({ project, dashboardName }) => {
             }}
           >
             <div className="flex items-center h-full w-full max-w-full">
-              {renderComponent(item, row, itemIndex, rowIndex)}
+              {renderComponent(item, row, itemIndex, rowIndex, shouldLoad)}
             </div>
           </div>
         ))}
@@ -124,7 +199,7 @@ const Dashboard = ({ project, dashboardName }) => {
     );
   };
 
-  const renderComponent = (item, row, itemIndex, rowIndex) => {
+  const renderComponent = (item, row, itemIndex, rowIndex, shouldLoad = true) => {
     const items = row.items.filter(shouldShowItem);
     if (items.indexOf(item) < 0) {
       return null;
@@ -146,6 +221,7 @@ const Dashboard = ({ project, dashboardName }) => {
           itemWidth={item.width}
           width={getWidth(items, item)}
           height={getHeight(row.height)}
+          shouldLoad={shouldLoad}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         />
       );
@@ -166,6 +242,7 @@ const Dashboard = ({ project, dashboardName }) => {
           height={getHeight(row.height) - 8}
           width={getWidth(items, item)}
           itemWidth={item.width}
+          shouldLoad={shouldLoad}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         />
       );
