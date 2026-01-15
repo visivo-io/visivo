@@ -1,6 +1,5 @@
 import React from 'react';
 import CloseIcon from '@mui/icons-material/Close';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { getTypeByValue } from './objectTypeConfigs';
 import ModelEditForm from './ModelEditForm';
 import SourceEditForm from './SourceEditForm';
@@ -27,24 +26,17 @@ import TableEditForm from './TableEditForm';
  * - objectType: 'source' | 'model' | etc. (used for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
- * - onSaveEmbeddedSource: Callback to save an embedded source (updates parent model)
- * - onSaveEmbeddedInsight: Callback to save an embedded insight (updates parent chart/table)
+ * - onSave: Function(type, name, config) - Unified save callback for all objects
  */
 const EditPanel = ({
   editItem,
-  parentEdit,
   canGoBack,
   onGoBack,
   onNavigateTo,
-  onUpdateCurrentEntry,
-  onUpdateParentEntry,
   objectType = 'source',
   isCreate,
   onClose,
   onSave,
-  onSaveEmbeddedSource,
-  onSaveEmbeddedInsight
 }) => {
   // Extract type and object from editItem (new navigation stack format)
   const currentObjectType = editItem?.type || objectType;
@@ -64,12 +56,6 @@ const EditPanel = ({
     return `Create ${singularLabel}`;
   };
 
-  // Model form handling
-  const handleModelSave = result => {
-    onSave && onSave(result);
-    onClose();
-  };
-
   // Render the appropriate form based on object type
   const renderForm = () => {
     switch (currentObjectType) {
@@ -77,7 +63,8 @@ const EditPanel = ({
         return (
           <ModelEditForm
             model={currentObject}
-            onSave={handleModelSave}
+            isCreate={isCreate}
+            onSave={onSave}
             onCancel={onClose}
             onNavigateToEmbedded={onNavigateTo}
           />
@@ -113,13 +100,10 @@ const EditPanel = ({
         return (
           <InsightEditForm
             insight={currentObject}
-            parentEdit={parentEdit}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
-            onSaveEmbedded={onSaveEmbeddedInsight}
             onGoBack={canGoBack ? onGoBack : undefined}
-            onUpdateParent={onUpdateParentEntry}
           />
         );
       case 'markdown':
@@ -156,13 +140,10 @@ const EditPanel = ({
         return (
           <SourceEditForm
             source={currentObject}
-            parentEdit={parentEdit}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
-            onSaveEmbedded={onSaveEmbeddedSource}
             onGoBack={canGoBack ? onGoBack : undefined}
-            onUpdateParent={onUpdateParentEntry}
           />
         );
     }

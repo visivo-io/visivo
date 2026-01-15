@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { ButtonOutline } from '../../styled/Button';
 import SourceTypeSelector from '../../sources/SourceTypeSelector';
@@ -15,22 +15,20 @@ import {
 } from '../../styled/FormComponents';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
+import { isEmbeddedObject } from './embeddedObjectUtils';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
  *
  * Props:
  * - source: Source object to edit (null for create mode)
- * - parentEdit: Parent edit item from navigation stack (for embedded sources)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
- * - onSaveEmbedded: Callback to save embedded source (updates parent model)
+ * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
- * - onUpdateParent: Callback to update the parent stack entry with pending changes
  */
-const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveEmbedded, onGoBack, onUpdateParent }) => {
-  const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
+const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
+  const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
     useStore();
 
   // Form state
@@ -45,41 +43,25 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
 
   const isEditMode = !!source && !isCreate;
   const isNewObject = source?.status === ObjectStatus.NEW;
-  const isEmbedded = source?._isEmbedded === true;
-  const parentModelName = source?._parentModelName;
-
-  // Use ref to track the parentEdit at mount time - this avoids re-running init when parent updates
-  const initialParentEditRef = useRef(parentEdit);
+  const isEmbedded = isEmbeddedObject(source);
+  const parentName = source?._embedded?.parentName;
 
   // Initialize form when source changes
   useEffect(() => {
-    // Capture the current parentEdit at init time
-    const currentParentEdit = initialParentEditRef.current;
-
     if (source) {
       // Edit mode - populate from existing source
-      // API returns: { name, status, child_item_names, config: { name, type, ...props } }
       setName(source.name || '');
 
-      // For embedded sources, prefer pending changes from parent if available
-      // This ensures changes persist when navigating back and forth
-      let configToUse = source.config;
-      if (isEmbedded && currentParentEdit?.object?._pendingEmbeddedSource) {
-        configToUse = currentParentEdit.object._pendingEmbeddedSource;
-      }
-
+      const configToUse = source.config;
       setSourceType(configToUse?.type || '');
 
       // Extract form values from the config object
       if (configToUse) {
         const { name: _, type: __, ...formProps } = configToUse;
         setFormValues(formProps);
-      } else if (source.config) {
-        const { name: _, type: __, ...formProps } = source.config;
-        setFormValues(formProps);
       } else {
         // Fallback for flat source objects
-        const { name: _, type: __, status: ___, config: ____, ...formProps } = source;
+        const { name: _, type: __, status: ___, config: ____, _embedded: _____, ...formProps } = source;
         setFormValues(formProps);
       }
     } else if (isCreate) {
@@ -90,12 +72,7 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
     }
     setErrors({});
     setSaveError(null);
-  }, [source, isCreate, isEmbedded]);
-
-  // Update the ref when parentEdit changes (for the next mount)
-  useEffect(() => {
-    initialParentEditRef.current = parentEdit;
-  }, [parentEdit]);
+  }, [source, isCreate]);
 
   // Clear connection status when panel closes
   useEffect(() => {
@@ -105,23 +82,6 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
       }
     };
   }, [name, clearConnectionStatus]);
-
-  // Update the parent model with pending embedded source changes
-  // This ensures pending changes are preserved when navigating back and forth
-  useEffect(() => {
-    if (isEmbedded && onUpdateParent && sourceType) {
-      const pendingConfig = {
-        type: sourceType,
-        ...formValues,
-      };
-      // Store pending embedded source on the parent model
-      onUpdateParent(prevParent => ({
-        ...prevParent,
-        _pendingEmbeddedSource: pendingConfig,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceType, formValues, isEmbedded, onUpdateParent]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -168,34 +128,18 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
     setSaving(true);
     setSaveError(null);
 
-    const config = {
-      name,
-      type: sourceType,
-      ...formValues,
-    };
+    // Build config - embedded sources don't include name
+    const config = isEmbedded
+      ? { type: sourceType, ...formValues }
+      : { name, type: sourceType, ...formValues };
 
-    let result;
-    if (isEmbedded && onSaveEmbedded) {
-      // For embedded sources, save through the parent model
-      // Don't include name in config since embedded sources don't need names
-      const embeddedConfig = {
-        type: sourceType,
-        ...formValues,
-      };
-      result = await onSaveEmbedded(embeddedConfig, parentModelName);
-    } else {
-      result = await saveSource(name, config);
-    }
+    // Call unified save - parent handles embedded vs standalone routing
+    const result = await onSave('source', name, config);
 
     setSaving(false);
 
-    if (result.success) {
-      onSave && onSave(config);
-      if (!isEmbedded) {
-        onClose();
-      }
-    } else {
-      setSaveError(result.error || 'Failed to save source');
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save source');
     }
   };
 
@@ -231,7 +175,7 @@ const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveE
               <ChevronLeftIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />
               {ParentIcon && <ParentIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />}
               <span className={`text-sm font-medium ${parentTypeConfig?.colors?.text || 'text-gray-700'}`}>
-                Model {parentModelName}
+                Model {parentName}
               </span>
             </button>
           );

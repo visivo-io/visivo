@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { getTypeByValue } from './objectTypeConfigs';
+import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -73,9 +74,9 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       sql: sql.trim(),
     };
 
-    // Preserve embedded source if it exists (use pending changes if available), otherwise use selected ref
+    // Preserve embedded source if it exists, otherwise use selected ref
     if (hasEmbeddedSource) {
-      config.source = model._pendingEmbeddedSource || model.config.source;
+      config.source = model.config.source;
     } else if (source) {
       config.source = source;
     }
@@ -171,7 +172,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       {hasEmbeddedSource ? (() => {
         const sourceTypeConfig = getTypeByValue('source');
         const SourceIcon = sourceTypeConfig?.icon;
-        const embeddedConfig = model._pendingEmbeddedSource || model.config.source;
+        const embeddedConfig = model.config.source;
         return (
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">
@@ -181,15 +182,14 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
               type="button"
               onClick={() => {
                 if (onNavigateToEmbedded) {
-                  // Create synthetic source object for navigation
-                  const syntheticSource = {
-                    name: `(embedded in ${model.name})`,
-                    status: 'published',
-                    child_item_names: [],
-                    config: embeddedConfig,
-                    _isEmbedded: true,
-                    _parentModelName: model.name,
-                  };
+                  // Create synthetic source object using unified embedded metadata
+                  const embeddedMeta = createEmbeddedMeta('model', model.name, 'source');
+                  const syntheticSource = createSyntheticObject(
+                    'source',
+                    embeddedConfig,
+                    embeddedMeta,
+                    `(embedded in ${model.name})`
+                  );
                   onNavigateToEmbedded('source', syntheticSource);
                 }
               }}
@@ -199,9 +199,6 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
               <span className={`text-sm font-medium ${sourceTypeConfig?.colors?.text || 'text-gray-700'}`}>
                 Source: {embeddedConfig.type || 'embedded'}
               </span>
-              {model._pendingEmbeddedSource && (
-                <span className="w-2 h-2 bg-amber-500 rounded-full" title="Unsaved changes" />
-              )}
               <ChevronRightIcon fontSize="small" className={`ml-auto ${sourceTypeConfig?.colors?.text || 'text-gray-600'}`} />
             </button>
             {embeddedConfig.database && (

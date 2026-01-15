@@ -8,6 +8,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
+import { createEmbeddedMeta, createSyntheticObject } from './embeddedObjectUtils';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -296,26 +297,21 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
                   <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Embedded Insights</h4>
                   <div className="space-y-2">
                     {embeddedInsights.map(({ insight, index }) => {
-                      // Check for pending changes from previous edits
-                      const pendingConfig = table?._pendingEmbeddedInsights?.[index];
-                      const insightConfig = pendingConfig || insight;
-                      const hasPendingChanges = !!pendingConfig;
+                      const insightConfig = insight;
                       return (
                         <button
                           key={index}
                           type="button"
                           onClick={() => {
                             if (onNavigateToEmbedded) {
-                              const syntheticInsight = {
-                                name: insightConfig.name || `(embedded insight ${index + 1})`,
-                                status: 'published',
-                                child_item_names: [],
-                                config: insightConfig,
-                                _isEmbedded: true,
-                                _parentName: table.name,
-                                _parentType: 'table',
-                                _embeddedIndex: index,
-                              };
+                              // Create synthetic insight using unified embedded metadata
+                              const embeddedMeta = createEmbeddedMeta('table', table.name, `insights[${index}]`);
+                              const syntheticInsight = createSyntheticObject(
+                                'insight',
+                                insightConfig,
+                                embeddedMeta,
+                                insightConfig.name || `(embedded insight ${index + 1})`
+                              );
                               onNavigateToEmbedded('insight', syntheticInsight);
                             }
                           }}
@@ -325,9 +321,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
                           <span className={`text-sm font-medium ${insightTypeConfig?.colors?.text || 'text-gray-700'}`}>
                             Insight: {insightConfig.name || `${index + 1}`}
                           </span>
-                          {hasPendingChanges && (
-                            <span className="w-2 h-2 bg-amber-500 rounded-full" title="Unsaved changes" />
-                          )}
                           <ChevronRightIcon fontSize="small" className={`ml-auto ${insightTypeConfig?.colors?.text || 'text-gray-600'}`} />
                         </button>
                       );

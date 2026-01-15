@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -11,6 +11,7 @@ import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
+import { isEmbeddedObject } from './embeddedObjectUtils';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -19,15 +20,12 @@ import { getTypeByValue } from './objectTypeConfigs';
  *
  * Props:
  * - insight: Insight object to edit (null for create mode)
- * - parentEdit: Parent edit item from navigation stack (for embedded insights)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
- * - onSaveEmbedded: Callback to save embedded insight (updates parent chart/table)
+ * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
- * - onUpdateParent: Callback to update the parent stack entry with pending changes
  */
-const InsightEditForm = ({ insight, parentEdit, isCreate, onClose, onSave, onSaveEmbedded, onGoBack, onUpdateParent }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
   const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -50,33 +48,20 @@ const InsightEditForm = ({ insight, parentEdit, isCreate, onClose, onSave, onSav
 
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
-  const isEmbedded = insight?._isEmbedded === true;
-  const parentName = insight?._parentName;
-  const parentType = insight?._parentType;
-  const embeddedIndex = insight?._embeddedIndex;
+  const isEmbedded = isEmbeddedObject(insight);
+  const parentName = insight?._embedded?.parentName;
+  const parentType = insight?._embedded?.parentType;
 
   // Get the current schema for the selected chart type
   const currentSchema = getSchema(propsType);
 
-  // Use ref to track the parentEdit at mount time - this avoids re-running init when parent updates
-  const initialParentEditRef = useRef(parentEdit);
-
   // Initialize form when insight changes
   useEffect(() => {
-    // Capture the current parentEdit at init time
-    const currentParentEdit = initialParentEditRef.current;
-
     if (insight) {
       // Edit mode - populate from existing insight
       setName(insight.name || '');
 
-      // For embedded insights, prefer pending changes from parent if available
-      // This ensures changes persist when navigating back and forth
-      let configToUse = insight.config;
-      if (isEmbedded && embeddedIndex !== undefined && currentParentEdit?.object?._pendingEmbeddedInsights?.[embeddedIndex]) {
-        configToUse = currentParentEdit.object._pendingEmbeddedInsights[embeddedIndex];
-      }
-
+      const configToUse = insight.config;
       setDescription(configToUse?.description || '');
 
       // Props - extract type separately, rest goes to propsValues
@@ -106,46 +91,7 @@ const InsightEditForm = ({ insight, parentEdit, isCreate, onClose, onSave, onSav
     }
     setErrors({});
     setSaveError(null);
-  }, [insight, isCreate, isEmbedded, embeddedIndex]);
-
-  // Update the ref when parentEdit changes (for the next mount)
-  useEffect(() => {
-    initialParentEditRef.current = parentEdit;
-  }, [parentEdit]);
-
-  // Update the parent chart/table with pending embedded insight changes
-  // This ensures pending changes are preserved when navigating back and forth
-  useEffect(() => {
-    if (isEmbedded && onUpdateParent && embeddedIndex !== undefined && propsType) {
-      // Build the pending config
-      const pendingProps = {
-        type: propsType,
-        ...propsValues,
-      };
-      const pendingConfig = {
-        props: pendingProps,
-      };
-      if (description) {
-        pendingConfig.description = description;
-      }
-      const nonEmptyInteractions = interactions
-        .filter(i => i.value && i.value.trim())
-        .map(i => ({ [i.type]: i.value }));
-      if (nonEmptyInteractions.length > 0) {
-        pendingConfig.interactions = nonEmptyInteractions;
-      }
-
-      // Store pending embedded insight on the parent (keyed by index)
-      onUpdateParent(prevParent => ({
-        ...prevParent,
-        _pendingEmbeddedInsights: {
-          ...(prevParent._pendingEmbeddedInsights || {}),
-          [embeddedIndex]: pendingConfig,
-        },
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propsType, propsValues, description, interactions, isEmbedded, onUpdateParent, embeddedIndex]);
+  }, [insight, isCreate]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -172,58 +118,39 @@ const InsightEditForm = ({ insight, parentEdit, isCreate, onClose, onSave, onSav
     setSaving(true);
     setSaveError(null);
 
-    try {
-      // Build props object - combine type with schema-driven values
-      const props = {
-        type: propsType,
-        ...propsValues,
-      };
+    // Build props object - combine type with schema-driven values
+    const props = {
+      type: propsType,
+      ...propsValues,
+    };
 
-      // Build config object
-      const config = {
-        props,
-      };
+    // Build config object - embedded insights don't include name
+    const config = isEmbedded
+      ? { props }
+      : { name, props };
 
-      // Include name only for non-embedded insights
-      if (!isEmbedded && name) {
-        config.name = name;
-      }
-
-      // Only include description if non-empty
-      if (description) {
-        config.description = description;
-      }
-
-      // Only include interactions if non-empty
-      const nonEmptyInteractions = interactions
-        .filter(i => i.value && i.value.trim())
-        .map(i => ({ [i.type]: i.value }));
-
-      if (nonEmptyInteractions.length > 0) {
-        config.interactions = nonEmptyInteractions;
-      }
-
-      let result;
-      if (isEmbedded && onSaveEmbedded) {
-        // For embedded insights, save through the parent chart/table
-        result = await onSaveEmbedded(config, parentName, parentType, embeddedIndex);
-      } else {
-        result = await saveInsightConfig(name, config);
-      }
-
-      if (result?.success) {
-        onSave && onSave(config);
-        if (!isEmbedded) {
-          onClose();
-        }
-      } else {
-        setSaveError(result?.error || 'Failed to save insight');
-      }
-    } catch (error) {
-      setSaveError(error.message || 'Failed to save insight');
+    // Only include description if non-empty
+    if (description) {
+      config.description = description;
     }
 
+    // Only include interactions if non-empty
+    const nonEmptyInteractions = interactions
+      .filter(i => i.value && i.value.trim())
+      .map(i => ({ [i.type]: i.value }));
+
+    if (nonEmptyInteractions.length > 0) {
+      config.interactions = nonEmptyInteractions;
+    }
+
+    // Call unified save - parent handles embedded vs standalone routing
+    const result = await onSave('insight', name, config);
+
     setSaving(false);
+
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save insight');
+    }
   };
 
   const handleDelete = async () => {

@@ -6,6 +6,11 @@ import CreateButton from '../common/CreateButton';
 import ObjectList from '../common/ObjectList';
 import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import {
+  isEmbeddedObject,
+  saveEmbeddedObject,
+  saveStandaloneObject,
+} from '../common/embeddedObjectUtils';
 
 /**
  * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
@@ -401,8 +406,19 @@ const EditorNew = () => {
     setIsCreating(false);
   }, [clearEdit]);
 
-  // Handle save - refresh data and close panel
-  const handleSave = useCallback(async () => {
+  // Store functions for unified save
+  const saveSource = useStore(state => state.saveSource);
+  const saveModel = useStore(state => state.saveModel);
+  const saveDimension = useStore(state => state.saveDimension);
+  const saveMetric = useStore(state => state.saveMetric);
+  const saveRelation = useStore(state => state.saveRelation);
+  const saveInsightConfig = useStore(state => state.saveInsightConfig);
+  const saveMarkdownConfig = useStore(state => state.saveMarkdownConfig);
+  const saveChartConfig = useStore(state => state.saveChartConfig);
+  const saveTableConfig = useStore(state => state.saveTableConfig);
+
+  // Refresh all data after save
+  const refreshData = useCallback(async () => {
     await fetchSources();
     await fetchModels();
     await fetchDimensions();
@@ -414,99 +430,50 @@ const EditorNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  // Get the saveModel function for embedded source saves
-  const saveModel = useStore(state => state.saveModel);
+  // Unified save handler - handles both standalone and embedded objects
+  const handleObjectSave = useCallback(async (type, name, config) => {
+    const currentObject = currentEdit?.object;
+    const embedded = currentObject?._embedded;
 
-  // Handle embedded source save - updates the parent model
-  const handleSaveEmbeddedSource = useCallback(async (sourceConfig, parentModelName) => {
-    // Find the parent model in our models list
-    const parentModel = models?.find(m => m.name === parentModelName);
-    if (!parentModel) {
-      return { success: false, error: `Parent model "${parentModelName}" not found` };
-    }
-
-    // Build the updated model config with the new source
-    const updatedConfig = {
-      ...parentModel.config,
-      source: sourceConfig,
+    // Build stores object for utility functions
+    const stores = {
+      models,
+      charts: chartConfigs,
+      tables: tableConfigs,
+      saveModel,
+      saveChartConfig,
+      saveTableConfig,
+      saveSource,
+      saveDimension,
+      saveMetric,
+      saveRelation,
+      saveInsightConfig,
+      saveMarkdownConfig,
     };
 
-    // Save the model with the updated embedded source
-    const result = await saveModel(parentModelName, updatedConfig);
+    let result;
+    if (embedded && isEmbeddedObject(currentObject)) {
+      // Embedded save - update parent object
+      result = await saveEmbeddedObject(config, embedded, stores);
+    } else {
+      // Standalone save - save directly
+      result = await saveStandaloneObject(type, name, config, stores);
+    }
 
     if (result?.success) {
-      await handleSave();
-      // Navigate back to the parent model after saving
-      popEdit();
+      await refreshData();
+      if (embedded) {
+        // Pop back to parent after embedded save
+        popEdit();
+      } else {
+        // Close panel after standalone save
+        clearEdit();
+        setIsCreating(false);
+      }
     }
 
     return result;
-  }, [models, saveModel, handleSave, popEdit]);
-
-  // Get the saveChartConfig and saveTableConfig for embedded insight saves
-  const saveChartConfig = useStore(state => state.saveChartConfig);
-  const saveTableConfig = useStore(state => state.saveTableConfig);
-
-  // Handle embedded insight save - updates the parent chart or table
-  const handleSaveEmbeddedInsight = useCallback(async (insightConfig, parentName, parentType, embeddedIndex) => {
-    if (parentType === 'chart') {
-      const parentChart = chartConfigs?.find(c => c.name === parentName);
-      if (!parentChart) {
-        return { success: false, error: `Parent chart "${parentName}" not found` };
-      }
-
-      // Get the current insights array
-      const currentInsights = parentChart.config?.insights || [];
-
-      // Update the embedded insight at the specified index
-      const updatedInsights = [...currentInsights];
-      updatedInsights[embeddedIndex] = insightConfig;
-
-      // Build the updated chart config
-      const updatedConfig = {
-        ...parentChart.config,
-        insights: updatedInsights,
-      };
-
-      const result = await saveChartConfig(parentName, updatedConfig);
-
-      if (result?.success) {
-        await handleSave();
-        popEdit();
-      }
-
-      return result;
-    } else if (parentType === 'table') {
-      const parentTable = tableConfigs?.find(t => t.name === parentName);
-      if (!parentTable) {
-        return { success: false, error: `Parent table "${parentName}" not found` };
-      }
-
-      // Get the current insights array
-      const currentInsights = parentTable.config?.insights || [];
-
-      // Update the embedded insight at the specified index
-      const updatedInsights = [...currentInsights];
-      updatedInsights[embeddedIndex] = insightConfig;
-
-      // Build the updated table config
-      const updatedConfig = {
-        ...parentTable.config,
-        insights: updatedInsights,
-      };
-
-      const result = await saveTableConfig(parentName, updatedConfig);
-
-      if (result?.success) {
-        await handleSave();
-        popEdit();
-      }
-
-      return result;
-    }
-
-    return { success: false, error: 'Unknown parent type' };
-  }, [chartConfigs, tableConfigs, saveChartConfig, saveTableConfig, handleSave, popEdit]);
+  }, [currentEdit, models, chartConfigs, tableConfigs, saveModel, saveChartConfig, saveTableConfig, saveSource, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, refreshData, popEdit, clearEdit]);
 
   const isPanelOpen = currentEdit !== null || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
@@ -762,9 +729,7 @@ const EditorNew = () => {
             objectType={createObjectType}
             isCreate={isCreating}
             onClose={handlePanelClose}
-            onSave={handleSave}
-            onSaveEmbeddedSource={handleSaveEmbeddedSource}
-            onSaveEmbeddedInsight={handleSaveEmbeddedInsight}
+            onSave={handleObjectSave}
           />
         </div>
       )}

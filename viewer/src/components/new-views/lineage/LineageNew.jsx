@@ -15,6 +15,13 @@ import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
+import {
+  createEmbeddedMeta,
+  createSyntheticObject,
+  isEmbeddedObject,
+  saveEmbeddedObject,
+  saveStandaloneObject,
+} from '../common/embeddedObjectUtils';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -81,45 +88,6 @@ const LineageNew = () => {
     setEditStack([]);
   }, []);
 
-  // Update the current stack entry's object (for tracking pending changes in embedded objects)
-  // Accepts either an object or a function (prevObject => newObject)
-  const updateCurrentStackEntry = useCallback((updatedObjectOrFn) => {
-    setEditStack(prev => {
-      if (prev.length === 0) return prev;
-      const currentEntry = prev[prev.length - 1];
-      const newObject = typeof updatedObjectOrFn === 'function'
-        ? updatedObjectOrFn(currentEntry.object)
-        : updatedObjectOrFn;
-      const newStack = [...prev];
-      newStack[newStack.length - 1] = {
-        ...currentEntry,
-        object: newObject,
-      };
-      return newStack;
-    });
-  }, []);
-
-  // Get the previous stack entry (parent when editing embedded objects)
-  const parentEdit = editStack.length > 1 ? editStack[editStack.length - 2] : null;
-
-  // Update the parent (previous) stack entry - used by embedded forms to store pending changes
-  const updateParentStackEntry = useCallback((updatedObjectOrFn) => {
-    setEditStack(prev => {
-      if (prev.length < 2) return prev;
-      const parentIndex = prev.length - 2;
-      const parentEntry = prev[parentIndex];
-      const newObject = typeof updatedObjectOrFn === 'function'
-        ? updatedObjectOrFn(parentEntry.object)
-        : updatedObjectOrFn;
-      const newStack = [...prev];
-      newStack[parentIndex] = {
-        ...parentEntry,
-        object: newObject,
-      };
-      return newStack;
-    });
-  }, []);
-
   const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
   const canGoBack = editStack.length > 1;
 
@@ -128,9 +96,17 @@ const LineageNew = () => {
 
   // Charts and tables stores
   const charts = useStore(state => state.chartConfigs);
-  const saveChart = useStore(state => state.saveChartConfig);
+  const saveChartConfig = useStore(state => state.saveChartConfig);
   const tables = useStore(state => state.tableConfigs);
-  const saveTable = useStore(state => state.saveTableConfig);
+  const saveTableConfig = useStore(state => state.saveTableConfig);
+
+  // Additional store functions for unified save
+  const saveSource = useStore(state => state.saveSource);
+  const saveDimension = useStore(state => state.saveDimension);
+  const saveMetric = useStore(state => state.saveMetric);
+  const saveRelation = useStore(state => state.saveRelation);
+  const saveInsightConfig = useStore(state => state.saveInsightConfig);
+  const saveMarkdownConfig = useStore(state => state.saveMarkdownConfig);
 
   // Fetch all object types on mount
   useEffect(() => {
@@ -295,15 +271,14 @@ const LineageNew = () => {
             // For models with embedded sources, clicking the nested source pill opens the source editor
             onEditEmbeddedSource: objectType === 'model' ? () => {
               const embeddedSourceConfig = node.data.source;
-              // Create a synthetic source object for the editor
-              const syntheticSource = {
-                name: `(embedded in ${node.data.name})`,
-                status: 'published',
-                child_item_names: [],
-                config: embeddedSourceConfig,
-                _isEmbedded: true,
-                _parentModelName: node.data.name,
-              };
+              // Create a synthetic source object with unified metadata
+              const embeddedMeta = createEmbeddedMeta('model', node.data.name, 'source');
+              const syntheticSource = createSyntheticObject(
+                'source',
+                embeddedSourceConfig,
+                embeddedMeta,
+                `(embedded in ${node.data.name})`
+              );
               // Clear stack and push model first, then embedded source
               clearEdit();
               pushEdit('model', node.data.model);
@@ -311,19 +286,16 @@ const LineageNew = () => {
             } : undefined,
             // For charts/tables with embedded insights, clicking opens the insight editor
             onEditEmbeddedInsight: (objectType === 'chart' || objectType === 'table') ? (insightConfig, index) => {
-              // Create synthetic insight for the editor
               const parentName = objectType === 'chart' ? node.data.chart?.name : node.data.table?.name;
               const parentObj = objectType === 'chart' ? node.data.chart : node.data.table;
-              const syntheticInsight = {
-                name: `(embedded insight ${index + 1} in ${parentName})`,
-                status: 'published',
-                child_item_names: [],
-                config: insightConfig,
-                _isEmbedded: true,
-                _parentName: parentName,
-                _parentType: objectType,
-                _embeddedIndex: index,
-              };
+              // Create a synthetic insight with unified metadata
+              const embeddedMeta = createEmbeddedMeta(objectType, parentName, `insights[${index}]`);
+              const syntheticInsight = createSyntheticObject(
+                'insight',
+                insightConfig,
+                embeddedMeta,
+                `(embedded insight ${index + 1} in ${parentName})`
+              );
               // Clear stack and push parent first, then embedded insight
               clearEdit();
               pushEdit(objectType, parentObj);
@@ -437,8 +409,8 @@ const LineageNew = () => {
     setIsCreating(false);
   }, [clearEdit]);
 
-  // Handle save - refresh data and close panel
-  const handleSave = useCallback(async () => {
+  // Refresh all data after save
+  const refreshData = useCallback(async () => {
     await fetchSources();
     await fetchModels();
     await fetchDimensions();
@@ -450,85 +422,50 @@ const LineageNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  // Handle save of embedded source (updates the parent model)
-  const handleSaveEmbeddedSource = useCallback(async (sourceConfig, parentModelName) => {
-    const model = models.find(m => m.name === parentModelName);
-    if (!model) {
-      console.error('Parent model not found:', parentModelName);
-      return { success: false, error: 'Parent model not found' };
-    }
+  // Unified save handler - handles both standalone and embedded objects
+  const handleObjectSave = useCallback(async (type, name, config) => {
+    const currentObject = currentEdit?.object;
+    const embedded = currentObject?._embedded;
 
-    // Update the model's source with the new embedded source config
-    const updatedConfig = {
-      ...model.config,
-      name: model.name,
-      sql: model.config?.sql,
-      source: sourceConfig,
+    // Build stores object for utility functions
+    const stores = {
+      models,
+      charts,
+      tables,
+      saveModel,
+      saveChartConfig,
+      saveTableConfig,
+      saveSource,
+      saveDimension,
+      saveMetric,
+      saveRelation,
+      saveInsightConfig,
+      saveMarkdownConfig,
     };
 
-    const result = await saveModel(parentModelName, updatedConfig);
-    if (result.success) {
-      await fetchModels();
-      // Pop back to the parent model instead of clearing everything
-      popEdit();
+    let result;
+    if (embedded && isEmbeddedObject(currentObject)) {
+      // Embedded save - update parent object
+      result = await saveEmbeddedObject(config, embedded, stores);
+    } else {
+      // Standalone save - save directly
+      result = await saveStandaloneObject(type, name, config, stores);
     }
+
+    if (result?.success) {
+      await refreshData();
+      if (embedded) {
+        // Pop back to parent after embedded save
+        popEdit();
+      } else {
+        // Close panel after standalone save
+        clearEdit();
+        setIsCreating(false);
+      }
+    }
+
     return result;
-  }, [models, saveModel, fetchModels, popEdit]);
-
-  // Handle save of embedded insight (updates the parent chart or table)
-  const handleSaveEmbeddedInsight = useCallback(async (insightConfig, parentName, parentType, embeddedIndex) => {
-    if (parentType === 'chart') {
-      const chart = charts.find(c => c.name === parentName);
-      if (!chart) {
-        console.error('Parent chart not found:', parentName);
-        return { success: false, error: 'Parent chart not found' };
-      }
-
-      // Update the specific insight in the chart's insights array
-      const insights = [...(chart.config?.insights || [])];
-      insights[embeddedIndex] = insightConfig;
-
-      const updatedConfig = {
-        ...chart.config,
-        name: chart.name,
-        insights,
-      };
-
-      const result = await saveChart(parentName, updatedConfig);
-      if (result.success) {
-        await fetchChartConfigs();
-        // Pop back to the parent chart instead of clearing everything
-        popEdit();
-      }
-      return result;
-    } else if (parentType === 'table') {
-      const table = tables.find(t => t.name === parentName);
-      if (!table) {
-        console.error('Parent table not found:', parentName);
-        return { success: false, error: 'Parent table not found' };
-      }
-
-      // Update the specific insight in the table's insights array
-      const insights = [...(table.config?.insights || [])];
-      insights[embeddedIndex] = insightConfig;
-
-      const updatedConfig = {
-        ...table.config,
-        name: table.name,
-        insights,
-      };
-
-      const result = await saveTable(parentName, updatedConfig);
-      if (result.success) {
-        await fetchTableConfigs();
-        // Pop back to the parent table instead of clearing everything
-        popEdit();
-      }
-      return result;
-    }
-
-    return { success: false, error: 'Unknown parent type' };
-  }, [charts, tables, saveChart, saveTable, fetchChartConfigs, fetchTableConfigs, popEdit]);
+  }, [currentEdit, models, charts, tables, saveModel, saveChartConfig, saveTableConfig, saveSource, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, refreshData, popEdit, clearEdit]);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
@@ -650,18 +587,13 @@ const LineageNew = () => {
           <div className="fixed top-12 right-0 bottom-0 z-20">
             <EditPanel
               editItem={currentEdit}
-              parentEdit={parentEdit}
               canGoBack={canGoBack}
               onGoBack={popEdit}
               onNavigateTo={pushEdit}
-              onUpdateCurrentEntry={updateCurrentStackEntry}
-              onUpdateParentEntry={updateParentStackEntry}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}
-              onSave={handleSave}
-              onSaveEmbeddedSource={handleSaveEmbeddedSource}
-              onSaveEmbeddedInsight={handleSaveEmbeddedInsight}
+              onSave={handleObjectSave}
             />
           </div>
         )}
