@@ -7,7 +7,10 @@ import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import { getTypeByValue } from './objectTypeConfigs';
+import { setAtPath } from './embeddedObjectUtils';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -30,6 +33,8 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   const [name, setName] = useState('');
   const [sql, setSql] = useState('');
   const [source, setSource] = useState(null); // Stored as ref(name) format
+  const [dimensions, setDimensions] = useState([]); // Inline dimensions
+  const [metrics, setMetrics] = useState([]); // Inline metrics
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -50,10 +55,15 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       } else {
         setSource(null);
       }
+      // Initialize inline dimensions and metrics
+      setDimensions(model.config?.dimensions || []);
+      setMetrics(model.config?.metrics || []);
     } else {
       setName('');
       setSql('');
       setSource(null);
+      setDimensions([]);
+      setMetrics([]);
     }
   }, [model]);
 
@@ -78,6 +88,14 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       config.source = model.config.source;
     } else if (source) {
       config.source = source;
+    }
+
+    // Include inline dimensions and metrics from state
+    if (dimensions.length > 0) {
+      config.dimensions = dimensions;
+    }
+    if (metrics.length > 0) {
+      config.metrics = metrics;
     }
 
     // Call unified save - parent handles routing and panel close
@@ -216,6 +234,172 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
           placeholder="No source (use default)"
           helperText="Select a source to run the SQL query against, or leave empty to use the default source."
         />
+      )}
+
+      {/* Inline Dimensions Section */}
+      {!isCreate && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700">
+              Inline Dimensions
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const newDimension = { name: '', expression: '' };
+                const newIndex = dimensions.length;
+                setDimensions([...dimensions, newDimension]);
+                // Navigate to edit the new dimension
+                if (onNavigateToEmbedded) {
+                  const syntheticDimension = {
+                    name: `(new dimension)`,
+                    config: newDimension,
+                    _embedded: { parentType: 'model', parentName: model.name, path: `dimensions[${newIndex}]` },
+                  };
+                  onNavigateToEmbedded('dimension', syntheticDimension, {
+                    applyToParent: (parentConfig, newDimConfig) => {
+                      const newDimensions = [...(parentConfig.dimensions || [])];
+                      newDimensions[newIndex] = newDimConfig;
+                      return { ...parentConfig, dimensions: newDimensions };
+                    },
+                  });
+                }
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+            >
+              <AddIcon fontSize="small" />
+              Add
+            </button>
+          </div>
+          {dimensions.length === 0 ? (
+            <p className="text-xs text-gray-500 italic">No inline dimensions defined.</p>
+          ) : (
+            <div className="space-y-1">
+              {dimensions.map((dim, index) => {
+                const dimTypeConfig = getTypeByValue('dimension');
+                const DimIcon = dimTypeConfig?.icon;
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToEmbedded) {
+                          const syntheticDimension = {
+                            name: dim.name || `(dimension ${index + 1})`,
+                            config: dim,
+                            _embedded: { parentType: 'model', parentName: model.name, path: `dimensions[${index}]` },
+                          };
+                          onNavigateToEmbedded('dimension', syntheticDimension, {
+                            applyToParent: (parentConfig, newDimConfig) =>
+                              setAtPath(parentConfig, `dimensions[${index}]`, newDimConfig),
+                          });
+                        }
+                      }}
+                      className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border transition-colors text-left ${dimTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${dimTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+                    >
+                      {DimIcon && <DimIcon fontSize="small" className={dimTypeConfig?.colors?.text || 'text-gray-600'} />}
+                      <span className={`text-sm font-medium truncate ${dimTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                        {dim.name || `Dimension ${index + 1}`}
+                      </span>
+                      <ChevronRightIcon fontSize="small" className={`ml-auto flex-shrink-0 ${dimTypeConfig?.colors?.text || 'text-gray-600'}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDimensions(dimensions.filter((_, i) => i !== index))}
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                      title="Remove dimension"
+                    >
+                      <RemoveIcon fontSize="small" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inline Metrics Section */}
+      {!isCreate && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700">
+              Inline Metrics
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const newMetric = { name: '', expression: '' };
+                const newIndex = metrics.length;
+                setMetrics([...metrics, newMetric]);
+                // Navigate to edit the new metric
+                if (onNavigateToEmbedded) {
+                  const syntheticMetric = {
+                    name: `(new metric)`,
+                    config: newMetric,
+                    _embedded: { parentType: 'model', parentName: model.name, path: `metrics[${newIndex}]` },
+                  };
+                  onNavigateToEmbedded('metric', syntheticMetric, {
+                    applyToParent: (parentConfig, newMetricConfig) => {
+                      const newMetrics = [...(parentConfig.metrics || [])];
+                      newMetrics[newIndex] = newMetricConfig;
+                      return { ...parentConfig, metrics: newMetrics };
+                    },
+                  });
+                }
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+            >
+              <AddIcon fontSize="small" />
+              Add
+            </button>
+          </div>
+          {metrics.length === 0 ? (
+            <p className="text-xs text-gray-500 italic">No inline metrics defined.</p>
+          ) : (
+            <div className="space-y-1">
+              {metrics.map((metric, index) => {
+                const metricTypeConfig = getTypeByValue('metric');
+                const MetricIcon = metricTypeConfig?.icon;
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToEmbedded) {
+                          const syntheticMetric = {
+                            name: metric.name || `(metric ${index + 1})`,
+                            config: metric,
+                            _embedded: { parentType: 'model', parentName: model.name, path: `metrics[${index}]` },
+                          };
+                          onNavigateToEmbedded('metric', syntheticMetric, {
+                            applyToParent: (parentConfig, newMetricConfig) =>
+                              setAtPath(parentConfig, `metrics[${index}]`, newMetricConfig),
+                          });
+                        }
+                      }}
+                      className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-md border transition-colors text-left ${metricTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${metricTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+                    >
+                      {MetricIcon && <MetricIcon fontSize="small" className={metricTypeConfig?.colors?.text || 'text-gray-600'} />}
+                      <span className={`text-sm font-medium truncate ${metricTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                        {metric.name || `Metric ${index + 1}`}
+                      </span>
+                      <ChevronRightIcon fontSize="small" className={`ml-auto flex-shrink-0 ${metricTypeConfig?.colors?.text || 'text-gray-600'}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMetrics(metrics.filter((_, i) => i !== index))}
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                      title="Remove metric"
+                    >
+                      <RemoveIcon fontSize="small" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Delete Confirmation */}

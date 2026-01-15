@@ -1,23 +1,88 @@
 import React from 'react';
-import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 
 /**
- * Check if an object has embedded children that can be edited
+ * Get the types of embedded children for an object
+ * Returns an array of type strings, e.g., ['source', 'dimension', 'metric']
  */
-const hasEmbeddedChildren = (obj, objectType) => {
+const getEmbeddedTypes = (obj, objectType) => {
+  const types = [];
+
   if (objectType === 'model') {
-    // Model has embedded source if source is an object (not a ref string)
+    // Check for embedded source
     const source = obj.config?.source || obj.source;
-    return source && typeof source === 'object';
+    if (source && typeof source === 'object') {
+      types.push('source');
+    }
+    // Check for inline dimensions
+    const dimensions = obj.config?.dimensions || [];
+    if (dimensions.length > 0) {
+      types.push('dimension');
+    }
+    // Check for inline metrics
+    const metrics = obj.config?.metrics || [];
+    if (metrics.length > 0) {
+      types.push('metric');
+    }
   }
+
   if (objectType === 'chart' || objectType === 'table') {
-    // Chart/Table has embedded insights if any insight is an object (not a ref string)
+    // Check for embedded insights
     const insights = obj.config?.insights || obj.insights || [];
-    return insights.some(i => typeof i === 'object');
+    if (insights.some(i => typeof i === 'object')) {
+      types.push('insight');
+    }
   }
-  return false;
+
+  return types;
+};
+
+/**
+ * EmbeddedTypesIndicator - Shows icons for embedded types
+ * If multiple types, shows stacked/overlapped icons with depth
+ */
+const EmbeddedTypesIndicator = ({ types }) => {
+  if (types.length === 0) return null;
+
+  // Get icons for each type
+  const typeIcons = types.map(type => {
+    const config = getTypeByValue(type);
+    return { type, Icon: config?.icon, color: config?.colors?.text || 'text-gray-500' };
+  }).filter(t => t.Icon);
+
+  if (typeIcons.length === 0) return null;
+
+  // Single type - just show the icon in a square
+  if (typeIcons.length === 1) {
+    const { Icon, color } = typeIcons[0];
+    return (
+      <span
+        className="flex-shrink-0 flex items-center justify-center w-5 h-5 bg-white rounded shadow-sm"
+        title={`Contains embedded ${types[0]}`}
+      >
+        <Icon style={{ fontSize: 14 }} className={color} />
+      </span>
+    );
+  }
+
+  // Multiple types - show stacked square icons with depth
+  return (
+    <span
+      className="flex-shrink-0 flex items-center -space-x-2"
+      title={`Contains embedded: ${types.join(', ')}`}
+    >
+      {typeIcons.map(({ type, Icon, color }, index) => (
+        <span
+          key={type}
+          className="flex items-center justify-center w-5 h-5 bg-white rounded shadow-sm"
+          style={{ zIndex: typeIcons.length - index }}
+        >
+          <Icon style={{ fontSize: 14 }} className={color} />
+        </span>
+      ))}
+    </span>
+  );
 };
 
 /**
@@ -99,13 +164,7 @@ const ObjectList = ({
               </span>
 
               {/* Embedded children indicator */}
-              {hasEmbeddedChildren(obj, objectType) && (
-                <SubdirectoryArrowRightIcon
-                  fontSize="small"
-                  className="text-blue-500 flex-shrink-0"
-                  titleAccess="Contains embedded objects"
-                />
-              )}
+              <EmbeddedTypesIndicator types={getEmbeddedTypes(obj, objectType)} />
 
               {/* Type badge */}
               {obj.type && (

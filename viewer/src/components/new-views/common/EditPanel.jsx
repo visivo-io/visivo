@@ -76,6 +76,7 @@ const EditPanel = ({
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
+            onGoBack={canGoBack ? onGoBack : undefined}
           />
         );
       case 'metric':
@@ -85,6 +86,7 @@ const EditPanel = ({
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
+            onGoBack={canGoBack ? onGoBack : undefined}
           />
         );
       case 'relation':
