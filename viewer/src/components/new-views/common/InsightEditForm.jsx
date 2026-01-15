@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -10,6 +10,7 @@ import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
 import { validateName } from './namedModel';
+import { getTypeByValue } from './objectTypeConfigs';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -18,13 +19,15 @@ import { validateName } from './namedModel';
  *
  * Props:
  * - insight: Insight object to edit (null for create mode)
+ * - parentEdit: Parent edit item from navigation stack (for embedded insights)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  * - onSaveEmbedded: Callback to save embedded insight (updates parent chart/table)
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
+ * - onUpdateParent: Callback to update the parent stack entry with pending changes
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded, onGoBack }) => {
+const InsightEditForm = ({ insight, parentEdit, isCreate, onClose, onSave, onSaveEmbedded, onGoBack, onUpdateParent }) => {
   const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -55,21 +58,35 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded, o
   // Get the current schema for the selected chart type
   const currentSchema = getSchema(propsType);
 
+  // Use ref to track the parentEdit at mount time - this avoids re-running init when parent updates
+  const initialParentEditRef = useRef(parentEdit);
+
   // Initialize form when insight changes
   useEffect(() => {
+    // Capture the current parentEdit at init time
+    const currentParentEdit = initialParentEditRef.current;
+
     if (insight) {
       // Edit mode - populate from existing insight
       setName(insight.name || '');
-      setDescription(insight.config?.description || '');
+
+      // For embedded insights, prefer pending changes from parent if available
+      // This ensures changes persist when navigating back and forth
+      let configToUse = insight.config;
+      if (isEmbedded && embeddedIndex !== undefined && currentParentEdit?.object?._pendingEmbeddedInsights?.[embeddedIndex]) {
+        configToUse = currentParentEdit.object._pendingEmbeddedInsights[embeddedIndex];
+      }
+
+      setDescription(configToUse?.description || '');
 
       // Props - extract type separately, rest goes to propsValues
-      const props = insight.config?.props || {};
+      const props = configToUse?.props || {};
       const { type, ...restProps } = props;
       setPropsType(type || 'scatter');
       setPropsValues(restProps);
 
       // Interactions - each interaction has only one type (filter, split, or sort)
-      const insightInteractions = insight.config?.interactions || [];
+      const insightInteractions = configToUse?.interactions || [];
       setInteractions(
         insightInteractions.map(i => {
           // Determine which type this interaction is
@@ -89,7 +106,46 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded, o
     }
     setErrors({});
     setSaveError(null);
-  }, [insight, isCreate]);
+  }, [insight, isCreate, isEmbedded, embeddedIndex]);
+
+  // Update the ref when parentEdit changes (for the next mount)
+  useEffect(() => {
+    initialParentEditRef.current = parentEdit;
+  }, [parentEdit]);
+
+  // Update the parent chart/table with pending embedded insight changes
+  // This ensures pending changes are preserved when navigating back and forth
+  useEffect(() => {
+    if (isEmbedded && onUpdateParent && embeddedIndex !== undefined && propsType) {
+      // Build the pending config
+      const pendingProps = {
+        type: propsType,
+        ...propsValues,
+      };
+      const pendingConfig = {
+        props: pendingProps,
+      };
+      if (description) {
+        pendingConfig.description = description;
+      }
+      const nonEmptyInteractions = interactions
+        .filter(i => i.value && i.value.trim())
+        .map(i => ({ [i.type]: i.value }));
+      if (nonEmptyInteractions.length > 0) {
+        pendingConfig.interactions = nonEmptyInteractions;
+      }
+
+      // Store pending embedded insight on the parent (keyed by index)
+      onUpdateParent(prevParent => ({
+        ...prevParent,
+        _pendingEmbeddedInsights: {
+          ...(prevParent._pendingEmbeddedInsights || {}),
+          [embeddedIndex]: pendingConfig,
+        },
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propsType, propsValues, description, interactions, isEmbedded, onUpdateParent, embeddedIndex]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -217,29 +273,25 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onSaveEmbedded, o
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {/* Embedded insight banner */}
-          {isEmbedded && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-blue-800 font-medium">Embedded Insight</p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Defined inline in {parentType} "{parentName}"
-                  </p>
-                </div>
-                {onGoBack && (
-                  <button
-                    type="button"
-                    onClick={onGoBack}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    <ChevronLeftIcon fontSize="inherit" />
-                    Back to {parentType}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Embedded insight back navigation */}
+          {isEmbedded && onGoBack && (() => {
+            const parentTypeConfig = getTypeByValue(parentType);
+            const ParentIcon = parentTypeConfig?.icon;
+            const parentLabel = parentTypeConfig?.singularLabel || parentType;
+            return (
+              <button
+                type="button"
+                onClick={onGoBack}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${parentTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${parentTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+              >
+                <ChevronLeftIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />
+                {ParentIcon && <ParentIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />}
+                <span className={`text-sm font-medium ${parentTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                  {parentLabel} {parentName}
+                </span>
+              </button>
+            );
+          })()}
 
           {/* Basic Fields Section */}
           <div className="space-y-4">

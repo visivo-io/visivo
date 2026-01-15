@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { ButtonOutline } from '../../styled/Button';
 import SourceTypeSelector from '../../sources/SourceTypeSelector';
@@ -14,19 +14,22 @@ import {
   FormLayout,
 } from '../../styled/FormComponents';
 import { validateName } from './namedModel';
+import { getTypeByValue } from './objectTypeConfigs';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
  *
  * Props:
  * - source: Source object to edit (null for create mode)
+ * - parentEdit: Parent edit item from navigation stack (for embedded sources)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
  * - onSaveEmbedded: Callback to save embedded source (updates parent model)
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
+ * - onUpdateParent: Callback to update the parent stack entry with pending changes
  */
-const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onGoBack }) => {
+const SourceEditForm = ({ source, parentEdit, isCreate, onClose, onSave, onSaveEmbedded, onGoBack, onUpdateParent }) => {
   const { saveSource, deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
     useStore();
 
@@ -45,16 +48,33 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onG
   const isEmbedded = source?._isEmbedded === true;
   const parentModelName = source?._parentModelName;
 
+  // Use ref to track the parentEdit at mount time - this avoids re-running init when parent updates
+  const initialParentEditRef = useRef(parentEdit);
+
   // Initialize form when source changes
   useEffect(() => {
+    // Capture the current parentEdit at init time
+    const currentParentEdit = initialParentEditRef.current;
+
     if (source) {
       // Edit mode - populate from existing source
       // API returns: { name, status, child_item_names, config: { name, type, ...props } }
       setName(source.name || '');
-      setSourceType(source.config?.type || '');
 
-      // Extract form values from the nested config object
-      if (source.config) {
+      // For embedded sources, prefer pending changes from parent if available
+      // This ensures changes persist when navigating back and forth
+      let configToUse = source.config;
+      if (isEmbedded && currentParentEdit?.object?._pendingEmbeddedSource) {
+        configToUse = currentParentEdit.object._pendingEmbeddedSource;
+      }
+
+      setSourceType(configToUse?.type || '');
+
+      // Extract form values from the config object
+      if (configToUse) {
+        const { name: _, type: __, ...formProps } = configToUse;
+        setFormValues(formProps);
+      } else if (source.config) {
         const { name: _, type: __, ...formProps } = source.config;
         setFormValues(formProps);
       } else {
@@ -70,7 +90,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onG
     }
     setErrors({});
     setSaveError(null);
-  }, [source, isCreate]);
+  }, [source, isCreate, isEmbedded]);
+
+  // Update the ref when parentEdit changes (for the next mount)
+  useEffect(() => {
+    initialParentEditRef.current = parentEdit;
+  }, [parentEdit]);
 
   // Clear connection status when panel closes
   useEffect(() => {
@@ -80,6 +105,23 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onG
       }
     };
   }, [name, clearConnectionStatus]);
+
+  // Update the parent model with pending embedded source changes
+  // This ensures pending changes are preserved when navigating back and forth
+  useEffect(() => {
+    if (isEmbedded && onUpdateParent && sourceType) {
+      const pendingConfig = {
+        type: sourceType,
+        ...formValues,
+      };
+      // Store pending embedded source on the parent model
+      onUpdateParent(prevParent => ({
+        ...prevParent,
+        _pendingEmbeddedSource: pendingConfig,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceType, formValues, isEmbedded, onUpdateParent]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -176,29 +218,24 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onSaveEmbedded, onG
   return (
     <>
       <FormLayout>
-        {/* Embedded source banner */}
-        {isEmbedded && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-800 font-medium">Embedded Source</p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Defined inline in model "{parentModelName}"
-                </p>
-              </div>
-              {onGoBack && (
-                <button
-                  type="button"
-                  onClick={onGoBack}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  <ChevronLeftIcon fontSize="inherit" />
-                  Back to model
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Embedded source back navigation */}
+        {isEmbedded && onGoBack && (() => {
+          const parentTypeConfig = getTypeByValue('model');
+          const ParentIcon = parentTypeConfig?.icon;
+          return (
+            <button
+              type="button"
+              onClick={onGoBack}
+              className={`w-full flex items-center gap-2 px-3 py-2 mb-4 rounded-md border transition-colors ${parentTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${parentTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+            >
+              <ChevronLeftIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />
+              {ParentIcon && <ParentIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />}
+              <span className={`text-sm font-medium ${parentTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                Model {parentModelName}
+              </span>
+            </button>
+          );
+        })()}
 
         {/* Name field - hidden for embedded sources */}
         {!isEmbedded && (

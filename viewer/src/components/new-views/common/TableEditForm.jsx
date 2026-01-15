@@ -7,6 +7,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
+import { getTypeByValue } from './objectTypeConfigs';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -287,48 +288,54 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             {errors.data && <p className="text-xs text-red-500">{errors.data}</p>}
 
             {/* Embedded Insights Section */}
-            {embeddedInsights.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Embedded Insights</h4>
-                <div className="space-y-2">
-                  {embeddedInsights.map(({ insight, index }) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        if (onNavigateToEmbedded) {
-                          const syntheticInsight = {
-                            name: insight.name || `(embedded insight ${index + 1})`,
-                            status: 'published',
-                            child_item_names: [],
-                            config: insight,
-                            _isEmbedded: true,
-                            _parentName: table.name,
-                            _parentType: 'table',
-                            _embeddedIndex: index,
-                          };
-                          onNavigateToEmbedded('insight', syntheticInsight);
-                        }
-                      }}
-                      className="w-full text-left px-3 py-2 bg-pink-50 border border-pink-200 rounded-md hover:bg-pink-100 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm font-medium text-pink-700">
-                            {insight.name || `Insight ${index + 1}`}
+            {embeddedInsights.length > 0 && (() => {
+              const insightTypeConfig = getTypeByValue('insight');
+              const InsightIcon = insightTypeConfig?.icon;
+              return (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Embedded Insights</h4>
+                  <div className="space-y-2">
+                    {embeddedInsights.map(({ insight, index }) => {
+                      // Check for pending changes from previous edits
+                      const pendingConfig = table?._pendingEmbeddedInsights?.[index];
+                      const insightConfig = pendingConfig || insight;
+                      const hasPendingChanges = !!pendingConfig;
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            if (onNavigateToEmbedded) {
+                              const syntheticInsight = {
+                                name: insightConfig.name || `(embedded insight ${index + 1})`,
+                                status: 'published',
+                                child_item_names: [],
+                                config: insightConfig,
+                                _isEmbedded: true,
+                                _parentName: table.name,
+                                _parentType: 'table',
+                                _embeddedIndex: index,
+                              };
+                              onNavigateToEmbedded('insight', syntheticInsight);
+                            }
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${insightTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${insightTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+                        >
+                          {InsightIcon && <InsightIcon fontSize="small" className={insightTypeConfig?.colors?.text || 'text-gray-600'} />}
+                          <span className={`text-sm font-medium ${insightTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                            Insight: {insightConfig.name || `${index + 1}`}
                           </span>
-                          <span className="text-xs text-pink-600 ml-2">(embedded)</span>
-                        </div>
-                        <ChevronRightIcon className="text-pink-500" fontSize="small" />
-                      </div>
-                    </button>
-                  ))}
+                          {hasPendingChanges && (
+                            <span className="w-2 h-2 bg-amber-500 rounded-full" title="Unsaved changes" />
+                          )}
+                          <ChevronRightIcon fontSize="small" className={`ml-auto ${insightTypeConfig?.colors?.text || 'text-gray-600'}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Click to edit embedded insight configuration.
-                </p>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Save Error */}

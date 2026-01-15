@@ -7,6 +7,7 @@ import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { getTypeByValue } from './objectTypeConfigs';
 
 /**
  * ModelEditForm - Form for creating/editing SqlModel
@@ -72,9 +73,9 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       sql: sql.trim(),
     };
 
-    // Preserve embedded source if it exists, otherwise use selected ref
+    // Preserve embedded source if it exists (use pending changes if available), otherwise use selected ref
     if (hasEmbeddedSource) {
-      config.source = model.config.source;
+      config.source = model._pendingEmbeddedSource || model.config.source;
     } else if (source) {
       config.source = source;
     }
@@ -167,51 +168,50 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
       </div>
 
       {/* Show embedded source as clickable link, or RefSelector for selection */}
-      {hasEmbeddedSource ? (
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
-            Data Source
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              if (onNavigateToEmbedded) {
-                // Create synthetic source object for navigation
-                const syntheticSource = {
-                  name: `(embedded in ${model.name})`,
-                  status: 'published',
-                  child_item_names: [],
-                  config: model.config.source,
-                  _isEmbedded: true,
-                  _parentModelName: model.name,
-                };
-                onNavigateToEmbedded('source', syntheticSource);
-              }
-            }}
-            className="w-full text-left px-3 py-2 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-teal-700">
-                    {model.config.source.type || 'embedded'}
-                  </span>
-                  <span className="text-xs text-teal-600">(embedded)</span>
-                </div>
-                {model.config.source.database && (
-                  <span className="text-xs text-teal-600">
-                    Database: {model.config.source.database}
-                  </span>
-                )}
-              </div>
-              <ChevronRightIcon className="text-teal-500" fontSize="small" />
-            </div>
-          </button>
-          <p className="text-xs text-gray-500">
-            Click to edit the embedded source configuration.
-          </p>
-        </div>
-      ) : (
+      {hasEmbeddedSource ? (() => {
+        const sourceTypeConfig = getTypeByValue('source');
+        const SourceIcon = sourceTypeConfig?.icon;
+        const embeddedConfig = model._pendingEmbeddedSource || model.config.source;
+        return (
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Data Source
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToEmbedded) {
+                  // Create synthetic source object for navigation
+                  const syntheticSource = {
+                    name: `(embedded in ${model.name})`,
+                    status: 'published',
+                    child_item_names: [],
+                    config: embeddedConfig,
+                    _isEmbedded: true,
+                    _parentModelName: model.name,
+                  };
+                  onNavigateToEmbedded('source', syntheticSource);
+                }
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${sourceTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${sourceTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+            >
+              {SourceIcon && <SourceIcon fontSize="small" className={sourceTypeConfig?.colors?.text || 'text-gray-600'} />}
+              <span className={`text-sm font-medium ${sourceTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                Source: {embeddedConfig.type || 'embedded'}
+              </span>
+              {model._pendingEmbeddedSource && (
+                <span className="w-2 h-2 bg-amber-500 rounded-full" title="Unsaved changes" />
+              )}
+              <ChevronRightIcon fontSize="small" className={`ml-auto ${sourceTypeConfig?.colors?.text || 'text-gray-600'}`} />
+            </button>
+            {embeddedConfig.database && (
+              <p className="text-xs text-gray-500 ml-1">
+                Database: {embeddedConfig.database}
+              </p>
+            )}
+          </div>
+        );
+      })() : (
         <RefSelector
           value={source}
           onChange={setSource}

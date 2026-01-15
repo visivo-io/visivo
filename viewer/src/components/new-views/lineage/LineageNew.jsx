@@ -81,6 +81,45 @@ const LineageNew = () => {
     setEditStack([]);
   }, []);
 
+  // Update the current stack entry's object (for tracking pending changes in embedded objects)
+  // Accepts either an object or a function (prevObject => newObject)
+  const updateCurrentStackEntry = useCallback((updatedObjectOrFn) => {
+    setEditStack(prev => {
+      if (prev.length === 0) return prev;
+      const currentEntry = prev[prev.length - 1];
+      const newObject = typeof updatedObjectOrFn === 'function'
+        ? updatedObjectOrFn(currentEntry.object)
+        : updatedObjectOrFn;
+      const newStack = [...prev];
+      newStack[newStack.length - 1] = {
+        ...currentEntry,
+        object: newObject,
+      };
+      return newStack;
+    });
+  }, []);
+
+  // Get the previous stack entry (parent when editing embedded objects)
+  const parentEdit = editStack.length > 1 ? editStack[editStack.length - 2] : null;
+
+  // Update the parent (previous) stack entry - used by embedded forms to store pending changes
+  const updateParentStackEntry = useCallback((updatedObjectOrFn) => {
+    setEditStack(prev => {
+      if (prev.length < 2) return prev;
+      const parentIndex = prev.length - 2;
+      const parentEntry = prev[parentIndex];
+      const newObject = typeof updatedObjectOrFn === 'function'
+        ? updatedObjectOrFn(parentEntry.object)
+        : updatedObjectOrFn;
+      const newStack = [...prev];
+      newStack[parentIndex] = {
+        ...parentEntry,
+        object: newObject,
+      };
+      return newStack;
+    });
+  }, []);
+
   const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
   const canGoBack = editStack.length > 1;
 
@@ -615,9 +654,12 @@ const LineageNew = () => {
           <div className="fixed top-12 right-0 bottom-0 z-20">
             <EditPanel
               editItem={currentEdit}
+              parentEdit={parentEdit}
               canGoBack={canGoBack}
               onGoBack={popEdit}
               onNavigateTo={pushEdit}
+              onUpdateCurrentEntry={updateCurrentStackEntry}
+              onUpdateParentEntry={updateParentStackEntry}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}

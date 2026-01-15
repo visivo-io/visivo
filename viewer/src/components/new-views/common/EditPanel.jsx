@@ -33,9 +33,12 @@ import TableEditForm from './TableEditForm';
  */
 const EditPanel = ({
   editItem,
+  parentEdit,
   canGoBack,
   onGoBack,
   onNavigateTo,
+  onUpdateCurrentEntry,
+  onUpdateParentEntry,
   objectType = 'source',
   isCreate,
   onClose,
@@ -56,11 +59,9 @@ const EditPanel = ({
   const getTitle = () => {
     const singularLabel = typeConfig?.singularLabel || currentObjectType;
     if (isEditMode) {
-      // For embedded objects, show a shorter name
-      const displayName = currentObject?.name || 'Unnamed';
-      return `Edit ${singularLabel}: ${displayName}`;
+      return `Edit ${singularLabel}`;
     }
-    return `Create New ${singularLabel}`;
+    return `Create ${singularLabel}`;
   };
 
   // Model form handling
@@ -112,11 +113,13 @@ const EditPanel = ({
         return (
           <InsightEditForm
             insight={currentObject}
+            parentEdit={parentEdit}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
             onSaveEmbedded={onSaveEmbeddedInsight}
             onGoBack={canGoBack ? onGoBack : undefined}
+            onUpdateParent={onUpdateParentEntry}
           />
         );
       case 'markdown':
@@ -153,11 +156,13 @@ const EditPanel = ({
         return (
           <SourceEditForm
             source={currentObject}
+            parentEdit={parentEdit}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}
             onSaveEmbedded={onSaveEmbeddedSource}
             onGoBack={canGoBack ? onGoBack : undefined}
+            onUpdateParent={onUpdateParentEntry}
           />
         );
     }
@@ -168,15 +173,6 @@ const EditPanel = ({
       {/* Header */}
       <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
-          {canGoBack && (
-            <button
-              onClick={onGoBack}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200"
-              title="Go back"
-            >
-              <ChevronLeftIcon fontSize="small" />
-            </button>
-          )}
           {TypeIcon && <TypeIcon fontSize="small" className={typeConfig?.colors?.text || 'text-gray-500'} />}
           <h2 className="text-lg font-semibold text-gray-900 truncate">{getTitle()}</h2>
         </div>
