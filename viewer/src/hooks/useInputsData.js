@@ -118,12 +118,12 @@ const extractDefaultValue = (data, options) => {
 };
 
 /**
- * Process a single input: load files, extract options, compute defaults
+ * Load parquet files, extract options, and compute defaults for a single input
  * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db - DuckDB instance
  * @param {Object} inputData - Input metadata from API
  * @returns {Promise<Object>} Processed input with options and default
  */
-const processInput = async (db, inputData) => {
+const loadExtractComputeInput = async (db, inputData) => {
   let options = [];
 
   // Check for parquet-based structure
@@ -226,7 +226,7 @@ export const useInputsData = (projectId, inputNames) => {
     }
 
     // Step 3: Process each input (options are already in DuckDB tables)
-    const results = await Promise.allSettled(inputs.map(input => processInput(db, input)));
+    const results = await Promise.allSettled(inputs.map(input => loadExtractComputeInput(db, input)));
 
     // Step 4: Collect successful results
     const processed = [];
