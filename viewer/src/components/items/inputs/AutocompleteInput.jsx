@@ -34,9 +34,7 @@ const AutocompleteInput = ({
   // Filter options based on search term
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
-    return options.filter(option =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return options.filter(option => option.label.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [options, searchTerm]);
 
   // Convert raw options to formatted options
@@ -152,7 +150,9 @@ const AutocompleteInput = ({
     return (
       <>
         {text.substring(0, index)}
-        <span className="bg-yellow-200 font-medium">{text.substring(index, index + searchTerm.length)}</span>
+        <span className="bg-yellow-200 font-medium">
+          {text.substring(index, index + searchTerm.length)}
+        </span>
         {text.substring(index + searchTerm.length)}
       </>
     );

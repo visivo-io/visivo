@@ -125,8 +125,10 @@ const DateRangeInput = ({
     const selectedOptions = dateOptions
       .filter(opt => {
         if (!effectiveStart && !effectiveEnd) return false;
-        if (!effectiveStart) return isSameDay(opt.date, effectiveEnd) || isBefore(opt.date, effectiveEnd);
-        if (!effectiveEnd) return isSameDay(opt.date, effectiveStart) || isAfter(opt.date, effectiveStart);
+        if (!effectiveStart)
+          return isSameDay(opt.date, effectiveEnd) || isBefore(opt.date, effectiveEnd);
+        if (!effectiveEnd)
+          return isSameDay(opt.date, effectiveStart) || isAfter(opt.date, effectiveStart);
         return (
           (isSameDay(opt.date, effectiveStart) || isAfter(opt.date, effectiveStart)) &&
           (isSameDay(opt.date, effectiveEnd) || isBefore(opt.date, effectiveEnd))
@@ -261,10 +263,7 @@ const DateRangeInput = ({
 
             const isSelected = selectedDate && isSameDay(day.date, selectedDate);
             const isInRange =
-              startDate &&
-              endDate &&
-              isAfter(day.date, startDate) &&
-              isBefore(day.date, endDate);
+              startDate && endDate && isAfter(day.date, startDate) && isBefore(day.date, endDate);
             const isOtherEnd = otherDate && isSameDay(day.date, otherDate);
             const isDisabled = !day.isAvailable;
 
@@ -336,7 +335,14 @@ const DateRangeInput = ({
               </span>
             </div>
           </button>
-          {renderDatePicker(isStartOpen, handleStartSelect, startDate, endDate, startViewMonth, setStartViewMonth)}
+          {renderDatePicker(
+            isStartOpen,
+            handleStartSelect,
+            startDate,
+            endDate,
+            startViewMonth,
+            setStartViewMonth
+          )}
         </div>
 
         <span className="text-gray-400">to</span>
@@ -363,7 +369,14 @@ const DateRangeInput = ({
               </span>
             </div>
           </button>
-          {renderDatePicker(isEndOpen, handleEndSelect, endDate, startDate, endViewMonth, setEndViewMonth)}
+          {renderDatePicker(
+            isEndOpen,
+            handleEndSelect,
+            endDate,
+            startDate,
+            endViewMonth,
+            setEndViewMonth
+          )}
         </div>
 
         {/* Clear Button */}

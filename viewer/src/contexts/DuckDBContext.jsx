@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { initDuckDB } from '../duckdb/duckdb';
+import { initDuckDB, closeConnection } from '../duckdb/duckdb';
 
 const DuckDBContext = createContext(null);
 
@@ -11,6 +11,11 @@ export const DuckDBProvider = ({ children }) => {
       const db = await initDuckDB();
       setDb(db);
     })();
+
+    // Cleanup persistent connection on unmount
+    return () => {
+      closeConnection();
+    };
   }, []);
 
   return <DuckDBContext.Provider value={db}>{children}</DuckDBContext.Provider>;

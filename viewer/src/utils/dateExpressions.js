@@ -54,7 +54,18 @@ const ANCHORS = [
 /**
  * List of supported time units.
  */
-const UNITS = ['day', 'days', 'week', 'weeks', 'month', 'months', 'quarter', 'quarters', 'year', 'years'];
+const UNITS = [
+  'day',
+  'days',
+  'week',
+  'weeks',
+  'month',
+  'months',
+  'quarter',
+  'quarters',
+  'year',
+  'years',
+];
 
 /**
  * Regex pattern for date expressions.

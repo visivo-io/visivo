@@ -17,7 +17,9 @@ const StatusBadge = ({ status }) => {
   };
 
   return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${colorMap[status] || 'bg-gray-100 text-gray-800'}`}>
+    <span
+      className={`px-2 py-1 text-xs font-medium rounded-full ${colorMap[status] || 'bg-gray-100 text-gray-800'}`}
+    >
       {labelMap[status] || status}
     </span>
   );
@@ -29,7 +31,9 @@ const TypeBadge = ({ type }) => {
   const colors = typeConfig?.colors || { bg: 'bg-gray-100', text: 'text-gray-800' };
 
   return (
-    <span className={`px-2 py-1 text-xs font-medium rounded flex items-center gap-1 ${colors.bg} ${colors.text}`}>
+    <span
+      className={`px-2 py-1 text-xs font-medium rounded flex items-center gap-1 ${colors.bg} ${colors.text}`}
+    >
       {Icon && <Icon style={{ fontSize: 14 }} />}
       {typeConfig?.singularLabel || type}
     </span>
@@ -69,9 +73,7 @@ const PublishModal = () => {
         </p>
 
         {publishError && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-            {publishError}
-          </div>
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{publishError}</div>
         )}
 
         <div className="max-h-64 overflow-y-auto mb-6">

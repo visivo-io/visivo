@@ -265,6 +265,40 @@ const createInsightJobsSlice = (set, get) => ({
         inputsInitialized: { ...state.inputsInitialized, [inputName]: true },
       };
     }),
+
+  /**
+   * Batch set multiple default input values at once.
+   * Reduces multiple set() calls to a single update.
+   *
+   * @param {Array<{name: string, value: any, type: string}>} inputDefaults - Array of input defaults
+   */
+  setDefaultInputValues: inputDefaults =>
+    set(state => {
+      if (!inputDefaults || inputDefaults.length === 0) {
+        return state;
+      }
+
+      const newInputs = { ...state.inputs };
+      const newInputSelectedValues = { ...state.inputSelectedValues };
+      const newInputsInitialized = { ...state.inputsInitialized };
+
+      inputDefaults.forEach(({ name, value, type = 'single-select' }) => {
+        const accessors =
+          type === 'multi-select'
+            ? computeMultiSelectAccessors(Array.isArray(value) ? value : [value])
+            : computeSingleSelectAccessors(value);
+
+        newInputs[name] = accessors;
+        newInputSelectedValues[name] = value;
+        newInputsInitialized[name] = true;
+      });
+
+      return {
+        inputs: newInputs,
+        inputSelectedValues: newInputSelectedValues,
+        inputsInitialized: newInputsInitialized,
+      };
+    }),
 });
 
 export default createInsightJobsSlice;

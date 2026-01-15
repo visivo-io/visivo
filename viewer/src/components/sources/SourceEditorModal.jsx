@@ -139,7 +139,12 @@ const SourceEditorModal = () => {
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -203,15 +208,18 @@ const SourceEditorModal = () => {
 
           {/* Connection Status */}
           {currentConnectionStatus && (
-            <div className={`
+            <div
+              className={`
               flex items-center gap-2 p-3 rounded-md text-sm
-              ${currentConnectionStatus.status === 'connected'
-                ? 'bg-green-50 text-green-700'
-                : currentConnectionStatus.status === 'testing'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'bg-red-50 text-red-700'
+              ${
+                currentConnectionStatus.status === 'connected'
+                  ? 'bg-green-50 text-green-700'
+                  : currentConnectionStatus.status === 'testing'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'bg-red-50 text-red-700'
               }
-            `}>
+            `}
+            >
               {currentConnectionStatus.status === 'testing' && (
                 <>
                   <CircularProgress size={16} />
@@ -235,9 +243,7 @@ const SourceEditorModal = () => {
 
           {/* Save Error */}
           {saveError && (
-            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">
-              {saveError}
-            </div>
+            <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>
           )}
         </div>
 
@@ -255,11 +261,7 @@ const SourceEditorModal = () => {
             <ButtonOutline type="button" onClick={handleClose}>
               Cancel
             </ButtonOutline>
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-            >
+            <Button type="button" onClick={handleSave} disabled={saving}>
               {saving ? (
                 <>
                   <CircularProgress size={16} className="mr-2" style={{ color: 'white' }} />

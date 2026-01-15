@@ -216,11 +216,7 @@ const ModelEditForm = ({ model, onSave, onCancel }) => {
           >
             Cancel
           </ButtonOutline>
-          <Button
-            type="submit"
-            disabled={!isValid || saving || deleting}
-            className="text-sm"
-          >
+          <Button type="submit" disabled={!isValid || saving || deleting} className="text-sm">
             {saving ? (
               <>
                 <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

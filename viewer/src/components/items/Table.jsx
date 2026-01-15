@@ -1,5 +1,7 @@
 import Loading from '../common/Loading';
 import React, { useEffect, useState, useMemo } from 'react';
+import useStore from '../../stores/store';
+import { useShallow } from 'zustand/react/shallow';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -44,9 +46,8 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import { useInsightsData } from '../../hooks/useInsightsData';
 
-const Table = ({ table, project, itemWidth, height, width }) => {
+const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -63,11 +64,23 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     return table.traces.map(trace => trace.name);
   }, [table.traces, isDirectQueryResult]);
 
-  const tracesData = useTracesData(project.id, traceNames);
+  // Viewport-based loading: Only fetch data when shouldLoad is true
+  const tracesData = useTracesData(project.id, shouldLoad ? traceNames : []);
 
   const isInsightTable = table.insights?.length > 0;
 
-  const { insightsData } = useInsightsData(project.id, isInsightTable ? insightNames : []);
+  // Read insights data from store (Dashboard prefetches all visible insights)
+  // Uses useShallow for shallow equality comparison to avoid infinite re-renders
+  const insightsData = useStore(
+    useShallow(state => {
+      if (!insightNames.length) return null;
+      const data = {};
+      for (const name of insightNames) {
+        if (state.insights[name]) data[name] = state.insights[name];
+      }
+      return Object.keys(data).length > 0 ? data : null;
+    })
+  );
 
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
@@ -226,8 +239,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
   });
 
+  // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && !tracesData) {
+  if (!shouldLoad || (!isDirectQueryResult && !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 

@@ -11,6 +11,7 @@ global.Worker = class {
 jest.mock('@duckdb/duckdb-wasm', () => {
   return {
     ConsoleLogger: jest.fn(() => ({ log: jest.fn() })),
+    VoidLogger: jest.fn(() => ({})),
     AsyncDuckDB: jest.fn().mockImplementation(() => {
       return {
         instantiate: jest.fn().mockResolvedValue(true),
@@ -29,7 +30,7 @@ describe('initDuckDB', () => {
 
     // Assertions
     expect(duckdb.selectBundle).toHaveBeenCalled();
-    expect(duckdb.ConsoleLogger).toHaveBeenCalled();
+    expect(duckdb.VoidLogger).toHaveBeenCalled();
     expect(duckdb.AsyncDuckDB).toHaveBeenCalledWith(expect.any(Object), expect.any(Worker));
     expect(db.instantiate).toHaveBeenCalledWith('mockModule', undefined);
 

@@ -5,7 +5,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CircularProgress from '@mui/material/CircularProgress';
-import { Tooltip } from 'flowbite-react';
+import LazyTooltip from '../../common/LazyTooltip';
 import { ItemLabel, ItemIcon, StatusIcon, LoadingLabel } from '../styles/TreeStyles';
 import { createSourceNodeId } from '../utils/nodeIdUtils';
 import { useTreeContext } from '../TreeContext';
@@ -26,23 +26,23 @@ const SourceNode = ({ source }) => {
         {isTestingConnection ? (
           <CircularProgress size={16} />
         ) : source.status === 'connection_failed' ? (
-          <Tooltip content={source.error || 'Connection failed'}>
+          <LazyTooltip content={source.error || 'Connection failed'}>
             <StatusIcon>
               <CancelIcon fontSize="small" style={{ color: '#dc2626' }} />
             </StatusIcon>
-          </Tooltip>
+          </LazyTooltip>
         ) : source.status === 'connected' ? (
-          <Tooltip content="Connected">
+          <LazyTooltip content="Connected">
             <StatusIcon>
               <CheckCircleIcon fontSize="small" style={{ color: '#059669' }} />
             </StatusIcon>
-          </Tooltip>
+          </LazyTooltip>
         ) : (
-          <Tooltip content="Connection not tested">
+          <LazyTooltip content="Connection not tested">
             <StatusIcon>
               <HelpOutlineIcon fontSize="small" style={{ color: '#6b7280' }} />
             </StatusIcon>
-          </Tooltip>
+          </LazyTooltip>
         )}
         {isLoadingDatabases && <CircularProgress size={14} />}
       </Pill>

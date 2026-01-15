@@ -62,6 +62,24 @@ if (!global.Worker) {
   };
 }
 
+// Mock IntersectionObserver for viewport-based loading tests
+if (!global.IntersectionObserver) {
+  global.IntersectionObserver = class IntersectionObserver {
+    constructor(callback) {
+      this.callback = callback;
+    }
+    observe() {
+      // Immediately trigger intersection for all observed elements in tests
+      // This ensures all items load without needing to simulate scrolling
+      setTimeout(() => {
+        this.callback([{ isIntersecting: true, target: { dataset: { rowIndex: '0' } } }]);
+      }, 0);
+    }
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Mock React Query to prevent network requests in tests
 jest.mock('@tanstack/react-query', () => {
   const actual = jest.requireActual('@tanstack/react-query');

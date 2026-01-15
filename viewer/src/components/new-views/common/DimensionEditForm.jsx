@@ -18,7 +18,8 @@ import { validateName } from './namedModel';
  * - onSave: Callback after successful save
  */
 const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
-  const { saveDimension, deleteDimension, checkPublishStatus, models, saveModel, fetchModels } = useStore();
+  const { saveDimension, deleteDimension, checkPublishStatus, models, saveModel, fetchModels } =
+    useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -68,7 +69,8 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
       // Model-scoped dimensions cannot contain ref() expressions
       const refPattern = /\$\{\s*ref\s*\(/;
       if (refPattern.test(expression)) {
-        newErrors.expression = 'Model-scoped dimensions cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
+        newErrors.expression =
+          'Model-scoped dimensions cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
       }
     }
 

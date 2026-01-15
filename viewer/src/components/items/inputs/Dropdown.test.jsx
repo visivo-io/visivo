@@ -47,7 +47,12 @@ describe('Dropdown Component', () => {
   it('can change selection to a different option', () => {
     const setInputValue = jest.fn();
     render(
-      <Dropdown options={options} selectedValue="Option A" name="test" setInputValue={setInputValue} />
+      <Dropdown
+        options={options}
+        selectedValue="Option A"
+        name="test"
+        setInputValue={setInputValue}
+      />
     );
 
     expect(screen.getByText('Option A')).toBeInTheDocument();
@@ -83,7 +88,12 @@ describe('Dropdown Component', () => {
       const setInputValue = jest.fn();
 
       render(
-        <Dropdown options={options} selectedValue="Option A" name="test" setInputValue={setInputValue} />
+        <Dropdown
+          options={options}
+          selectedValue="Option A"
+          name="test"
+          setInputValue={setInputValue}
+        />
       );
 
       // setInputValue should NOT be called on render (no default setting)

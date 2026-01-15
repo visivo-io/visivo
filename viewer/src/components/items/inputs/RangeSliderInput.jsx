@@ -155,7 +155,7 @@ const RangeSliderInput = ({
               className="absolute top-0 w-full h-full opacity-0 cursor-pointer"
               style={{
                 zIndex: 4,
-                clipPath: `inset(0 ${100 - (minPercent + maxPercent) / 2}% 0 0)`
+                clipPath: `inset(0 ${100 - (minPercent + maxPercent) / 2}% 0 0)`,
               }}
             />
 
@@ -169,7 +169,7 @@ const RangeSliderInput = ({
               className="absolute top-0 w-full h-full opacity-0 cursor-pointer"
               style={{
                 zIndex: 4,
-                clipPath: `inset(0 0 0 ${(minPercent + maxPercent) / 2}%)`
+                clipPath: `inset(0 0 0 ${(minPercent + maxPercent) / 2}%)`,
               }}
             />
           </div>

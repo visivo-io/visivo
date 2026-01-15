@@ -61,7 +61,8 @@ const NameSelect = ({
   onVisible = () => {},
 }) => {
   const [, setStateSearchParam] = useUrlSync();
-  const { generateSelectorOptions, getSelectorValue } = useStore();
+  const generateSelectorOptions = useStore(state => state.generateSelectorOptions);
+  const getSelectorValue = useStore(state => state.getSelectorValue);
   // Generate selector configuration using store helper
   const selectorConfig = generateSelectorOptions(selector, parentName, parentType, names);
   const { isMulti, name, visible, options } = selectorConfig;

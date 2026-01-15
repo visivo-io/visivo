@@ -57,6 +57,7 @@
   "scripts": {
     "copy-schemas": "cp ../visivo/schema/*.schema.json src/schemas/",
     "start": "yarn run start:local",
+    "scan": "yarn start & npx react-scan@latest localhost:3000",
     "start:local": "yarn run copy-schemas && cp src/LocalProviders.jsx src/Providers.jsx && vite",
     "start:dist": "yarn run copy-schemas && cp src/DistProviders.jsx src/Providers.jsx && vite",
     "test": "yarn run copy-schemas && jest",
