@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { FormInput, FormTextarea, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from './RefTextArea';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { validateName } from './namedModel';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { getTypeByValue } from './objectTypeConfigs';
+import { BackNavigationButton } from '../../styled/BackNavigationButton';
 
 /**
  * DimensionEditForm - Form component for editing/creating dimensions
@@ -144,23 +144,14 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) =
     <>
       <FormLayout>
         {/* Embedded dimension back navigation */}
-        {isEmbedded && onGoBack && (() => {
-          const parentTypeConfig = getTypeByValue('model');
-          const ParentIcon = parentTypeConfig?.icon;
-          return (
-            <button
-              type="button"
-              onClick={onGoBack}
-              className={`w-full flex items-center gap-2 px-3 py-2 mb-4 rounded-md border transition-colors ${parentTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${parentTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
-            >
-              <ChevronLeftIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />
-              {ParentIcon && <ParentIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />}
-              <span className={`text-sm font-medium ${parentTypeConfig?.colors?.text || 'text-gray-700'}`}>
-                Model {parentName}
-              </span>
-            </button>
-          );
-        })()}
+        {isEmbedded && onGoBack && (
+          <BackNavigationButton
+            onClick={onGoBack}
+            typeConfig={getTypeByValue('model')}
+            label="Model"
+            name={parentName}
+          />
+        )}
 
         <FormInput
           id="dimensionName"

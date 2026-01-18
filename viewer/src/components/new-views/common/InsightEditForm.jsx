@@ -5,13 +5,21 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
+import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import {
+  SectionContainer,
+  SectionTitle,
+  FormGroup,
+  EmptyState,
+  AlertContainer,
+  AlertText
+} from '../../styled/FormLayoutComponents';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -201,30 +209,20 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
           {/* Embedded insight back navigation */}
-          {isEmbedded && onGoBack && (() => {
-            const parentTypeConfig = getTypeByValue(parentType);
-            const ParentIcon = parentTypeConfig?.icon;
-            const parentLabel = parentTypeConfig?.singularLabel || parentType;
-            return (
-              <button
-                type="button"
-                onClick={onGoBack}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${parentTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${parentTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
-              >
-                <ChevronLeftIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />
-                {ParentIcon && <ParentIcon fontSize="small" className={parentTypeConfig?.colors?.text || 'text-gray-600'} />}
-                <span className={`text-sm font-medium ${parentTypeConfig?.colors?.text || 'text-gray-700'}`}>
-                  {parentLabel} {parentName}
-                </span>
-              </button>
-            );
-          })()}
+          {isEmbedded && onGoBack && (
+            <BackNavigationButton
+              onClick={onGoBack}
+              typeConfig={getTypeByValue(parentType)}
+              label={getTypeByValue(parentType)?.singularLabel || parentType}
+              name={parentName}
+            />
+          )}
 
           {/* Basic Fields Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
+          <SectionContainer>
+            <SectionTitle>
               Basic Information
-            </h3>
+            </SectionTitle>
 
             {/* Name field - hidden for embedded insights */}
             {!isEmbedded && (
@@ -279,13 +277,13 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
                 Description
               </label>
             </div>
-          </div>
+          </SectionContainer>
 
           {/* Props Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
+          <SectionContainer>
+            <SectionTitle>
               Visualization Props
-            </h3>
+            </SectionTitle>
 
             {/* Chart Type selector */}
             <div className="relative">
@@ -319,10 +317,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
                 excludeProperties={['type']}
               />
             )}
-          </div>
+          </SectionContainer>
 
           {/* Interactions Section */}
-          <div className="space-y-4">
+          <SectionContainer>
             <div className="flex items-center justify-between border-b border-gray-200 pb-2">
               <h3 className="text-sm font-medium text-gray-700">Interactions</h3>
               <button
@@ -336,9 +334,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
             </div>
 
             {interactions.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
+              <EmptyState>
                 No interactions defined. Add interactions for client-side filtering, splitting, or sorting.
-              </p>
+              </EmptyState>
             ) : (
               interactions.map((interaction, index) => {
                 const typeConfig = INTERACTION_TYPES.find(t => t.value === interaction.type) || INTERACTION_TYPES[0];
@@ -387,10 +385,14 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
                 );
               })
             )}
-          </div>
+          </SectionContainer>
 
           {/* Save Error */}
-          {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {saveError && (
+            <AlertContainer $type="error">
+              <AlertText $type="error">{saveError}</AlertText>
+            </AlertContainer>
+          )}
         </div>
       </div>
 
