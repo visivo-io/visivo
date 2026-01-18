@@ -16,8 +16,8 @@ import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
-import { setAtPath } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
+import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -249,43 +249,9 @@ const LineageNew = () => {
               clearEdit();
               pushEdit(objectType, obj);
             },
-            // For models with embedded sources, clicking the nested source pill opens the source editor
-            onEditEmbeddedSource: objectType === 'model' ? () => {
-              const embeddedSourceConfig = node.data.source;
-              // Create a synthetic source object with embedded marker
-              const syntheticSource = {
-                name: `(embedded in ${node.data.name})`,
-                config: embeddedSourceConfig,
-                _embedded: { parentType: 'model', parentName: node.data.name, path: 'source' },
-              };
-              // Clear stack and push model first, then embedded source with applyToParent
-              clearEdit();
-              pushEdit('model', node.data.model);
-              pushEdit('source', syntheticSource, {
-                applyToParent: (parentConfig, newSourceConfig) => ({
-                  ...parentConfig,
-                  source: newSourceConfig,
-                }),
-              });
-            } : undefined,
-            // For charts/tables with embedded insights, clicking opens the insight editor
-            onEditEmbeddedInsight: (objectType === 'chart' || objectType === 'table') ? (insightConfig, index) => {
-              const parentName = objectType === 'chart' ? node.data.chart?.name : node.data.table?.name;
-              const parentObj = objectType === 'chart' ? node.data.chart : node.data.table;
-              // Create a synthetic insight with embedded marker
-              const syntheticInsight = {
-                name: `(embedded insight ${index + 1} in ${parentName})`,
-                config: insightConfig,
-                _embedded: { parentType: objectType, parentName, path: `insights[${index}]` },
-              };
-              // Clear stack and push parent first, then embedded insight with applyToParent
-              clearEdit();
-              pushEdit(objectType, parentObj);
-              pushEdit('insight', syntheticInsight, {
-                applyToParent: (parentConfig, newInsightConfig) =>
-                  setAtPath(parentConfig, `insights[${index}]`, newInsightConfig),
-              });
-            } : undefined,
+            // Generic handlers for embedded objects based on configuration
+            onEditEmbeddedSource: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'source'),
+            onEditEmbeddedInsight: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'insight'),
           },
         };
       });
