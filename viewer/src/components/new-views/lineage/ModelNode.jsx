@@ -1,11 +1,13 @@
 import React from 'react';
 import { Handle } from 'reactflow';
-import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { StatusIndicator } from '../../styled/StatusIndicator';
+import EmbeddedPill from './EmbeddedPill';
 
 /**
  * ModelNode - Custom React Flow node for models
  * Shows model name with status indicator. Click node to edit.
+ * Supports nested embedded objects (e.g., embedded sources).
  */
 const ModelNode = ({ data, selected }) => {
   const { name, source, status, isEditing } = data;
@@ -15,6 +17,10 @@ const ModelNode = ({ data, selected }) => {
   const typeConfig = getTypeByValue('model');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
+
+  // Check if source is embedded (object) vs referenced (string)
+  const hasEmbeddedSource = source && typeof source === 'object';
+  const hasReferencedSource = source && typeof source === 'string';
 
   return (
     <div
@@ -30,7 +36,7 @@ const ModelNode = ({ data, selected }) => {
         type="target"
         position="left"
         style={{
-          background: '#6366f1', // indigo-500 for model connections
+          background: colors.connectionHandle,
           width: 8,
           height: 8,
           border: '2px solid white',
@@ -38,32 +44,28 @@ const ModelNode = ({ data, selected }) => {
       />
 
       {/* Status indicator */}
-      {status && status !== ObjectStatus.PUBLISHED && (
-        <span
-          className={`
-            absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full z-10
-            border-2 border-white
-            ${status === ObjectStatus.NEW ? 'bg-green-500' : 'bg-amber-500'}
-          `}
-          title={
-            status === ObjectStatus.NEW
-              ? 'New - Not yet published'
-              : 'Modified - Has unpublished changes'
-          }
-        />
-      )}
+      <StatusIndicator status={status} />
 
       {/* Icon */}
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
       {/* Name and source */}
-      <div className="flex flex-col min-w-0">
-        <span
-          className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}
-        >
+      <div className="flex flex-col min-w-0 gap-1">
+        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
           {name}
         </span>
-        {source && <span className="text-xs text-gray-400">source: {source}</span>}
+        {hasReferencedSource && (
+          <span className="text-xs text-gray-400">
+            source: {source}
+          </span>
+        )}
+        {hasEmbeddedSource && (
+          <EmbeddedPill
+            objectType="source"
+            label={source.type || 'embedded'}
+            onClick={data.onEditEmbeddedSource}
+          />
+        )}
       </div>
 
       {/* Source handle (for future connections to traces/downstream) */}

@@ -1,55 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
-import { FormInput, FormTextarea, FormSelect, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
+import { FormInput, FormTextarea, FormFooter, FormLayout, FormAlert } from '../../styled/FormComponents';
 import RefTextArea from './RefTextArea';
 import { validateName } from './namedModel';
+import { isEmbeddedObject } from './embeddedObjectUtils';
+import { getTypeByValue } from './objectTypeConfigs';
+import { BackNavigationButton } from '../../styled/BackNavigationButton';
 
 /**
  * DimensionEditForm - Form component for editing/creating dimensions
  *
  * Dimensions can be either:
- * 1. Model-scoped: Attached to a specific model, plain SQL expression (no refs)
- * 2. Project-level (multi-model): Standalone, can use refs to reference models/dimensions
+ * 1. Project-level (multi-model): Created via + button, can use refs to reference models/dimensions
+ * 2. Embedded: Inline dimension within a model (uses _embedded metadata), plain SQL only
  *
  * Props:
  * - dimension: Dimension object to edit (null for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
+ * - onSave: Callback after successful save (type, name, config)
+ * - onGoBack: Callback to navigate back to parent (for embedded dimensions)
  */
-const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
-  const { saveDimension, deleteDimension, checkPublishStatus, models, saveModel, fetchModels } =
-    useStore();
+const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) => {
+  const { saveDimension, deleteDimension, checkPublishStatus } = useStore();
+
+  // Detect embedded mode (inline dimension within a model)
+  const isEmbedded = isEmbeddedObject(dimension);
+  const parentName = dimension?._embedded?.parentName;
 
   // Form state
   const [name, setName] = useState('');
   const [expression, setExpression] = useState('');
   const [description, setDescription] = useState('');
-  const [parentModel, setParentModel] = useState(''); // Empty string = project-level (multi-model)
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const isEditMode = !!dimension && !isCreate;
+  // For embedded dimensions, we allow name editing since they're being created inline
+  // For standalone dimensions, name is read-only in edit mode
+  const isEditMode = !!dimension && !isCreate && !isEmbedded;
   const isNewObject = dimension?.status === ObjectStatus.NEW;
-  const isModelScoped = !!parentModel;
 
   // Initialize form when dimension changes
   useEffect(() => {
     if (dimension) {
       // Edit mode - populate from existing dimension
-      setName(dimension.name || '');
+      // For embedded dimensions, get name from config.name (it's the actual dimension name)
+      const dimName = dimension.config?.name || dimension.name || '';
+      setName(dimName);
       setExpression(dimension.config?.expression || '');
       setDescription(dimension.config?.description || '');
-      setParentModel(dimension.parentModel || '');
     } else if (isCreate) {
       // Create mode - reset form
       setName('');
       setExpression('');
       setDescription('');
-      setParentModel('');
     }
     setErrors({});
     setSaveError(null);
@@ -65,12 +72,12 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
 
     if (!expression.trim()) {
       newErrors.expression = 'Expression is required';
-    } else if (isModelScoped) {
-      // Model-scoped dimensions cannot contain ref() expressions
+    } else if (isEmbedded) {
+      // Embedded (inline) dimensions cannot contain ref() expressions
       const refPattern = /\$\{\s*ref\s*\(/;
       if (refPattern.test(expression)) {
         newErrors.expression =
-          'Model-scoped dimensions cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
+          'Inline dimensions cannot use ref() expressions. Use plain SQL referencing fields from the parent model.';
       }
     }
 
@@ -84,61 +91,28 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
     setSaving(true);
     setSaveError(null);
 
+    // Build the dimension config
+    const config = {
+      name,
+      expression,
+      description: description || undefined,
+    };
+
     try {
-      if (isModelScoped) {
-        // Save as model-scoped dimension - update the parent model
-        const model = models.find(m => m.name === parentModel);
-        if (!model) {
-          setSaveError(`Model "${parentModel}" not found`);
-          setSaving(false);
-          return;
+      if (isEmbedded) {
+        // Embedded dimension - use unified save callback
+        // Parent will handle updating the stack via applyToParent
+        const result = await onSave('dimension', name, config);
+        setSaving(false);
+        if (!result?.success) {
+          setSaveError(result?.error || 'Failed to save dimension');
         }
-
-        // Build updated dimensions list
-        const existingDimensions = model.config?.dimensions || [];
-        const newDimension = {
-          name,
-          expression,
-          description: description || undefined,
-        };
-
-        // Replace or add the dimension
-        const dimensionIndex = existingDimensions.findIndex(d => d.name === name);
-        let updatedDimensions;
-        if (dimensionIndex >= 0) {
-          updatedDimensions = [...existingDimensions];
-          updatedDimensions[dimensionIndex] = newDimension;
-        } else {
-          updatedDimensions = [...existingDimensions, newDimension];
-        }
-
-        // Update the model with new dimensions
-        const updatedConfig = {
-          ...model.config,
-          name: model.name,
-          sql: model.sql || model.config?.sql,
-          dimensions: updatedDimensions,
-        };
-
-        const result = await saveModel(parentModel, updatedConfig);
-        await fetchModels();
-
-        if (result?.success) {
-          onSave && onSave(newDimension);
-          onClose();
-        } else {
-          setSaveError(result?.error || 'Failed to save dimension to model');
-        }
+        // Parent handles panel close on success
       } else {
-        // Save as project-level dimension
-        const config = {
-          name,
-          expression,
-          description: description || undefined,
-        };
-
+        // Save as project-level dimension (always multi-model)
         const result = await saveDimension(name, config);
 
+        setSaving(false);
         if (result?.success) {
           onSave && onSave(config);
           onClose();
@@ -148,9 +122,8 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
       }
     } catch (error) {
       setSaveError(error.message || 'Failed to save dimension');
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   const handleDelete = async () => {
@@ -170,6 +143,16 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
   return (
     <>
       <FormLayout>
+        {/* Embedded dimension back navigation */}
+        {isEmbedded && onGoBack && (
+          <BackNavigationButton
+            onClick={onGoBack}
+            typeConfig={getTypeByValue('model')}
+            label="Model"
+            name={parentName}
+          />
+        )}
+
         <FormInput
           id="dimensionName"
           label="Dimension Name"
@@ -180,43 +163,17 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave }) => {
           error={errors.name}
         />
 
-        <FormSelect
-          id="parentModel"
-          label="Parent Model"
-          value={parentModel}
-          onChange={e => {
-            setParentModel(e.target.value);
-            // Clear expression errors when switching modes
-            if (errors.expression) {
-              setErrors(prev => ({ ...prev, expression: null }));
-            }
-          }}
-          helperText={
-            isModelScoped
-              ? 'This dimension will be scoped to the selected model and use plain SQL.'
-              /* eslint-disable-next-line no-template-curly-in-string */
-              : 'This dimension can reference multiple models using ${ref(model_name)}.'
-          }
-        >
-          <option value="">Multi-model (project-level)</option>
-          {models.map(model => (
-            <option key={model.name} value={model.name}>
-              {model.name}
-            </option>
-          ))}
-        </FormSelect>
-
         <RefTextArea
           value={expression}
           onChange={setExpression}
           label="Expression"
           required
           error={errors.expression}
-          allowedTypes={isModelScoped ? [] : ['model', 'dimension']}
-          hideAddButton={isModelScoped}
+          allowedTypes={isEmbedded ? [] : ['model', 'dimension']}
+          hideAddButton={isEmbedded}
           rows={4}
           helperText={
-            isModelScoped
+            isEmbedded
               ? 'Plain SQL expression referencing columns from the parent model.'
               : 'SQL expression for this dimension. Use the + button to insert references.'
           }

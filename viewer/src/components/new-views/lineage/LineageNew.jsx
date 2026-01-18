@@ -3,15 +3,21 @@ import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
+import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
 import DimensionNode from './DimensionNode';
 import MetricNode from './MetricNode';
 import RelationNode from './RelationNode';
 import InsightNode from './InsightNode';
+import MarkdownNode from './MarkdownNode';
+import ChartNode from './ChartNode';
+import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
+import { getTypeByValue } from '../common/objectTypeConfigs';
+import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -45,19 +51,48 @@ const LineageNew = () => {
   const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
   const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
 
-  // Editing state
-  const [editingSource, setEditingSource] = useState(null);
-  const [editingModel, setEditingModel] = useState(null);
-  const [editingDimension, setEditingDimension] = useState(null);
-  const [editingMetric, setEditingMetric] = useState(null);
-  const [editingRelation, setEditingRelation] = useState(null);
-  const [editingInsight, setEditingInsight] = useState(null);
+  // Markdowns
+  const fetchMarkdownConfigs = useStore(state => state.fetchMarkdownConfigs);
+  const markdownConfigsLoading = useStore(state => state.markdownConfigsLoading);
+
+  // Charts
+  const fetchChartConfigs = useStore(state => state.fetchChartConfigs);
+  const chartConfigsLoading = useStore(state => state.chartConfigsLoading);
+
+  // Tables
+  const fetchTableConfigs = useStore(state => state.fetchTableConfigs);
+  const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
+
+  // Navigation stack for editing - supports drilling into embedded objects
+  // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
+  // applyToParent is provided by parent forms for embedded objects
+  const [editStack, setEditStack] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
 
+  // Navigation stack helpers
+  // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
+  const pushEdit = useCallback((type, object, options = {}) => {
+    setEditStack(prev => [...prev, { type, object, ...options }]);
+    setIsCreating(false);
+  }, []);
+
+  const popEdit = useCallback(() => {
+    setEditStack(prev => prev.slice(0, -1));
+  }, []);
+
+  const clearEdit = useCallback(() => {
+    setEditStack([]);
+  }, []);
+
+  const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
+  const canGoBack = editStack.length > 1;
+
   const reactFlowInstance = useRef(null);
   const hasFitView = useRef(false);
+
+  // Note: Individual save functions are now handled by useObjectSave hook
 
   // Fetch all object types on mount
   useEffect(() => {
@@ -67,17 +102,10 @@ const LineageNew = () => {
     fetchMetrics();
     fetchRelations();
     fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
-
-  // Clear all editing states helper
-  const clearAllEditing = useCallback(() => {
-    setEditingSource(null);
-    setEditingModel(null);
-    setEditingDimension(null);
-    setEditingMetric(null);
-    setEditingRelation(null);
-    setEditingInsight(null);
-  }, []);
+    fetchMarkdownConfigs();
+    fetchChartConfigs();
+    fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -149,16 +177,7 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (
-            n.data.name === name ||
-            n.id === name ||
-            n.id === `source-${name}` ||
-            n.id === `model-${name}` ||
-            n.id === `dimension-${name}` ||
-            n.id === `metric-${name}` ||
-            n.id === `relation-${name}` ||
-            n.id === `insight-${name}`
-          ) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -172,16 +191,7 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (
-            n.data.name === name ||
-            n.id === name ||
-            n.id === `source-${name}` ||
-            n.id === `model-${name}` ||
-            n.id === `dimension-${name}` ||
-            n.id === `metric-${name}` ||
-            n.id === `relation-${name}` ||
-            n.id === `insight-${name}`
-          ) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -194,16 +204,7 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (
-            n.data.name === name ||
-            n.id === name ||
-            n.id === `source-${name}` ||
-            n.id === `model-${name}` ||
-            n.id === `dimension-${name}` ||
-            n.id === `metric-${name}` ||
-            n.id === `relation-${name}` ||
-            n.id === `insight-${name}`
-          ) {
+          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -213,16 +214,7 @@ const LineageNew = () => {
 
       // Plain name - just select matching nodes
       nodes.forEach(n => {
-        if (
-          n.data.name === part ||
-          n.id === part ||
-          n.id === `source-${part}` ||
-          n.id === `model-${part}` ||
-          n.id === `dimension-${part}` ||
-          n.id === `metric-${part}` ||
-          n.id === `relation-${part}` ||
-          n.id === `insight-${part}`
-        ) {
+        if (n.data.name === part || n.id === part || n.id === `source-${part}` || n.id === `model-${part}` || n.id === `dimension-${part}` || n.id === `metric-${part}` || n.id === `relation-${part}` || n.id === `insight-${part}` || n.id === `markdown-${part}` || n.id === `chart-${part}` || n.id === `table-${part}`) {
           selected.add(n.id);
         }
       });
@@ -242,24 +234,10 @@ const LineageNew = () => {
     return dagNodes
       .filter(node => selectedIds.has(node.id))
       .map(node => {
-        // Determine if this node is currently being edited
-        let isEditing = false;
+        // Determine if this node is currently being edited (check the top of the stack)
         const objectType = node.data.objectType;
         const nodeName = node.data.name;
-
-        if (objectType === 'source' && editingSource?.name === nodeName) {
-          isEditing = true;
-        } else if (objectType === 'model' && editingModel?.name === nodeName) {
-          isEditing = true;
-        } else if (objectType === 'dimension' && editingDimension?.name === nodeName) {
-          isEditing = true;
-        } else if (objectType === 'metric' && editingMetric?.name === nodeName) {
-          isEditing = true;
-        } else if (objectType === 'relation' && editingRelation?.name === nodeName) {
-          isEditing = true;
-        } else if (objectType === 'insight' && editingInsight?.name === nodeName) {
-          isEditing = true;
-        }
+        const isEditing = currentEdit?.type === objectType && currentEdit?.object?.name === nodeName;
 
         return {
           ...node,
@@ -267,36 +245,17 @@ const LineageNew = () => {
             ...node.data,
             isEditing,
             onEdit: obj => {
-              clearAllEditing();
-              if (objectType === 'model') {
-                setEditingModel(obj);
-              } else if (objectType === 'source') {
-                setEditingSource(obj);
-              } else if (objectType === 'dimension') {
-                setEditingDimension(obj);
-              } else if (objectType === 'metric') {
-                setEditingMetric(obj);
-              } else if (objectType === 'relation') {
-                setEditingRelation(obj);
-              } else if (objectType === 'insight') {
-                setEditingInsight(obj);
-              }
-              setIsCreating(false);
+              // Clear stack and push this as the new root edit
+              clearEdit();
+              pushEdit(objectType, obj);
             },
+            // Generic handlers for embedded objects based on configuration
+            onEditEmbeddedSource: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'source'),
+            onEditEmbeddedInsight: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'insight'),
           },
         };
       });
-  }, [
-    dagNodes,
-    selectedIds,
-    clearAllEditing,
-    editingSource,
-    editingModel,
-    editingDimension,
-    editingMetric,
-    editingRelation,
-    editingInsight,
-  ]);
+  }, [dagNodes, selectedIds, currentEdit, clearEdit, pushEdit]);
 
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
@@ -323,31 +282,20 @@ const LineageNew = () => {
       metricNode: MetricNode,
       relationNode: RelationNode,
       insightNode: InsightNode,
+      markdownNode: MarkdownNode,
+      chartNode: ChartNode,
+      tableNode: TableNode,
     }),
     []
   );
 
   // Handle node click - open edit panel for the clicked node
-  const handleNodeClick = useCallback(
-    (event, node) => {
-      clearAllEditing();
-      if (node.data.objectType === 'model') {
-        setEditingModel(node.data.model);
-      } else if (node.data.objectType === 'source') {
-        setEditingSource(node.data.source);
-      } else if (node.data.objectType === 'dimension') {
-        setEditingDimension(node.data.dimension);
-      } else if (node.data.objectType === 'metric') {
-        setEditingMetric(node.data.metric);
-      } else if (node.data.objectType === 'relation') {
-        setEditingRelation(node.data.relation);
-      } else if (node.data.objectType === 'insight') {
-        setEditingInsight(node.data.insight);
-      }
-      setIsCreating(false);
-    },
-    [clearAllEditing]
-  );
+  const handleNodeClick = useCallback((event, node) => {
+    const objectType = node.data.objectType;
+    const objectData = node.data[objectType]; // e.g., node.data.model, node.data.source, etc.
+    clearEdit();
+    pushEdit(objectType, objectData);
+  }, [clearEdit, pushEdit]);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
@@ -400,46 +348,43 @@ const LineageNew = () => {
   );
 
   // Handle create button selection
-  const handleCreateSelect = useCallback(
-    objectType => {
-      clearAllEditing();
-      setIsCreating(true);
-      setCreateObjectType(objectType);
-    },
-    [clearAllEditing]
-  );
+  const handleCreateSelect = useCallback(objectType => {
+    clearEdit();
+    setIsCreating(true);
+    setCreateObjectType(objectType);
+  }, [clearEdit]);
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {
-    clearAllEditing();
+    clearEdit();
     setIsCreating(false);
-  }, [clearAllEditing]);
+  }, [clearEdit]);
 
-  // Handle save - refresh data and close panel
-  const handleSave = useCallback(async () => {
+  // Refresh all data after save
+  const refreshData = useCallback(async () => {
     await fetchSources();
     await fetchModels();
     await fetchDimensions();
     await fetchMetrics();
     await fetchRelations();
     await fetchInsightConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs]);
+    await fetchMarkdownConfigs();
+    await fetchChartConfigs();
+    await fetchTableConfigs();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  const isPanelOpen =
-    editingSource ||
-    editingModel ||
-    editingDimension ||
-    editingMetric ||
-    editingRelation ||
-    editingInsight ||
-    isCreating;
-  const isLoading =
-    sourcesLoading ||
-    modelsLoading ||
-    dimensionsLoading ||
-    metricsLoading ||
-    relationsLoading ||
-    insightConfigsLoading;
+  // Create success callback for the save handler
+  const onSuccessfulSave = useCallback(async () => {
+    await refreshData();
+    clearEdit();
+    setIsCreating(false);
+  }, [refreshData, clearEdit]);
+
+  // Use unified save handler from custom hook
+  const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
+
+  const isPanelOpen = editStack.length > 0 || isCreating;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
@@ -521,23 +466,9 @@ const LineageNew = () => {
                 const objectType = node.data?.objectType;
                 if (status === 'new') return '#22c55e';
                 if (status === 'modified') return '#f59e0b';
-                // Different base color for different object types
-                switch (objectType) {
-                  case 'source':
-                    return '#14b8a6'; // teal
-                  case 'model':
-                    return '#6366f1'; // indigo
-                  case 'dimension':
-                    return '#a855f7'; // purple
-                  case 'metric':
-                    return '#f97316'; // orange
-                  case 'relation':
-                    return '#06b6d4'; // cyan
-                  case 'insight':
-                    return '#ec4899'; // pink
-                  default:
-                    return '#94a3b8'; // gray
-                }
+                // Get color from object type config
+                const typeConfig = getTypeByValue(objectType);
+                return typeConfig?.colors?.connectionHandle || '#94a3b8'; // gray fallback
               }}
               style={{ background: '#f1f5f9' }}
             />
@@ -551,16 +482,14 @@ const LineageNew = () => {
         {isPanelOpen && (
           <div className="fixed top-12 right-0 bottom-0 z-20">
             <EditPanel
-              source={editingSource}
-              model={editingModel}
-              dimension={editingDimension}
-              metric={editingMetric}
-              relation={editingRelation}
-              insight={editingInsight}
+              editItem={currentEdit}
+              canGoBack={canGoBack}
+              onGoBack={popEdit}
+              onNavigateTo={pushEdit}
               objectType={createObjectType}
               isCreate={isCreating}
               onClose={handlePanelClose}
-              onSave={handleSave}
+              onSave={handleObjectSave}
             />
           </div>
         )}

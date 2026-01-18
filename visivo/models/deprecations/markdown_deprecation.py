@@ -89,8 +89,8 @@ class MarkdownDeprecation(BaseDeprecationChecker):
                 from visivo.models.markdown import Markdown
 
                 if isinstance(item.markdown, Markdown):
-                    # Check if this was converted from inline (has auto-generated name)
-                    if item.markdown.name and item.markdown.name.startswith("inline-markdown-"):
+                    # Check if this was converted from legacy inline string
+                    if getattr(item.markdown, "_converted_from_legacy_string", False):
                         warnings.append(
                             DeprecationWarning(
                                 feature=self.FEATURE_NAME,

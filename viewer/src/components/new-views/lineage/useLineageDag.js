@@ -40,6 +40,20 @@ function computeLayout(nodes, edges) {
 }
 
 /**
+ * Generate consistent node ID from type and name
+ */
+function getNodeId(type, name) {
+  return `${type}-${name}`;
+}
+
+/**
+ * Generate consistent edge ID
+ */
+function getEdgeId(sourceType, sourceName, targetType, targetName) {
+  return `edge-${sourceType}-${sourceName}-to-${targetType}-${targetName}`;
+}
+
+/**
  * useLineageDag - Hook for building full DAG with sources, models, dimensions, metrics, relations, and insights
  * Uses dagre for automatic left-to-right layout
  * Uses child_item_names from backend for relationships
@@ -51,6 +65,9 @@ export function useLineageDag() {
   const metrics = useStore(state => state.metrics);
   const relations = useStore(state => state.relations);
   const insightConfigs = useStore(state => state.insightConfigs);
+  const markdownConfigs = useStore(state => state.markdownConfigs);
+  const chartConfigs = useStore(state => state.chartConfigs);
+  const tableConfigs = useStore(state => state.tableConfigs);
 
   const dag = useMemo(() => {
     const nodes = [];
@@ -64,142 +81,114 @@ export function useLineageDag() {
     (metrics || []).forEach(m => { objectTypeByName[m.name] = 'metric'; });
     (relations || []).forEach(r => { objectTypeByName[r.name] = 'relation'; });
     (insightConfigs || []).forEach(i => { objectTypeByName[i.name] = 'insight'; });
+    (markdownConfigs || []).forEach(m => { objectTypeByName[m.name] = 'markdown'; });
+    (chartConfigs || []).forEach(c => { objectTypeByName[c.name] = 'chart'; });
+    (tableConfigs || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
+
+    /**
+     * Add a node to the DAG
+     */
+    const addNode = (name, type, nodeType, data) => {
+      nodes.push({
+        id: getNodeId(type, name),
+        type: nodeType,
+        data: {
+          name,
+          objectType: type,
+          ...data,
+        },
+        position: { x: 0, y: 0 }, // Will be set by layout
+      });
+    };
+
+    /**
+     * Add an edge to the DAG
+     */
+    const addEdge = (sourceName, sourceType, targetName, targetType) => {
+      edges.push({
+        id: getEdgeId(sourceType, sourceName, targetType, targetName),
+        source: getNodeId(sourceType, sourceName),
+        target: getNodeId(targetType, targetName),
+      });
+    };
 
     // Build source nodes
     (sources || []).forEach(source => {
-      nodes.push({
-        id: `source-${source.name}`,
-        type: 'sourceNode',
-        data: {
-          name: source.name,
-          type: source.config?.type,
-          status: source.status,
-          source: source,
-          objectType: 'source',
-        },
-        position: { x: 0, y: 0 }, // Will be set by layout
+      addNode(source.name, 'source', 'sourceNode', {
+        type: source.config?.type,
+        status: source.status,
+        source: source,
       });
     });
 
     // Build model nodes and edges
     (models || []).forEach(model => {
-      nodes.push({
-        id: `model-${model.name}`,
-        type: 'modelNode',
-        data: {
-          name: model.name,
-          sql: model.config?.sql,
-          source: model.config?.source,
-          status: model.status,
-          model: model,
-          objectType: 'model',
-        },
-        position: { x: 0, y: 0 }, // Will be set by layout
+      addNode(model.name, 'model', 'modelNode', {
+        sql: model.config?.sql,
+        source: model.config?.source,
+        status: model.status,
+        model: model,
       });
 
       // Create edges from model's child_item_names (sources it depends on)
       const childNames = model.child_item_names || [];
       childNames.forEach(childName => {
-        edges.push({
-          id: `edge-${childName}-${model.name}`,
-          source: `source-${childName}`,
-          target: `model-${model.name}`,
-        });
+        addEdge(childName, 'source', model.name, 'model');
       });
     });
 
     // Build dimension nodes and edges to parent models
     (dimensions || []).forEach(dimension => {
-      nodes.push({
-        id: `dimension-${dimension.name}`,
-        type: 'dimensionNode',
-        data: {
-          name: dimension.name,
-          sql: dimension.config?.sql,
-          status: dimension.status,
-          dimension: dimension,
-          objectType: 'dimension',
-        },
-        position: { x: 0, y: 0 },
+      addNode(dimension.name, 'dimension', 'dimensionNode', {
+        sql: dimension.config?.sql,
+        status: dimension.status,
+        dimension: dimension,
       });
 
       // Create edges from dimension's child_item_names (models it belongs to)
       const childNames = dimension.child_item_names || [];
       childNames.forEach(childName => {
-        edges.push({
-          id: `edge-${childName}-dimension-${dimension.name}`,
-          source: `model-${childName}`,
-          target: `dimension-${dimension.name}`,
-        });
+        addEdge(childName, 'model', dimension.name, 'dimension');
       });
     });
 
     // Build metric nodes and edges to parent models
     (metrics || []).forEach(metric => {
-      nodes.push({
-        id: `metric-${metric.name}`,
-        type: 'metricNode',
-        data: {
-          name: metric.name,
-          sql: metric.config?.sql,
-          status: metric.status,
-          metric: metric,
-          objectType: 'metric',
-        },
-        position: { x: 0, y: 0 },
+      addNode(metric.name, 'metric', 'metricNode', {
+        sql: metric.config?.sql,
+        status: metric.status,
+        metric: metric,
       });
 
       // Create edges from metric's child_item_names (models it belongs to)
       const childNames = metric.child_item_names || [];
       childNames.forEach(childName => {
-        edges.push({
-          id: `edge-${childName}-metric-${metric.name}`,
-          source: `model-${childName}`,
-          target: `metric-${metric.name}`,
-        });
+        addEdge(childName, 'model', metric.name, 'metric');
       });
     });
 
     // Build relation nodes and edges to parent models
     (relations || []).forEach(relation => {
-      nodes.push({
-        id: `relation-${relation.name}`,
-        type: 'relationNode',
-        data: {
-          name: relation.name,
-          model: relation.config?.model,
-          sql_on: relation.config?.sql_on,
-          status: relation.status,
-          relation: relation,
-          objectType: 'relation',
-        },
-        position: { x: 0, y: 0 },
+      addNode(relation.name, 'relation', 'relationNode', {
+        model: relation.config?.model,
+        sql_on: relation.config?.sql_on,
+        status: relation.status,
+        relation: relation,
       });
 
       // Create edges from relation's child_item_names (models it relates)
       const childNames = relation.child_item_names || [];
       childNames.forEach(childName => {
-        edges.push({
-          id: `edge-${childName}-relation-${relation.name}`,
-          source: `model-${childName}`,
-          target: `relation-${relation.name}`,
-        });
+        addEdge(childName, 'model', relation.name, 'relation');
       });
     });
 
     // Build insight nodes and edges to dependencies (models, metrics, dimensions, etc.)
     (insightConfigs || []).forEach(insight => {
-      nodes.push({
-        id: `insight-${insight.name}`,
-        type: 'insightNode',
-        data: {
-          name: insight.name,
-          propsType: insight.config?.props?.type,
-          status: insight.status,
-          insight: insight,
-          objectType: 'insight',
-        },
-        position: { x: 0, y: 0 },
+      addNode(insight.name, 'insight', 'insightNode', {
+        propsType: insight.config?.props?.type,
+        status: insight.status,
+        insight: insight,
       });
 
       // Create edges from insight's child_item_names (can be models, metrics, dimensions, etc.)
@@ -208,12 +197,48 @@ export function useLineageDag() {
         // Look up the type of the child object to create the correct edge source
         const childType = objectTypeByName[childName];
         if (childType) {
-          edges.push({
-            id: `edge-${childName}-insight-${insight.name}`,
-            source: `${childType}-${childName}`,
-            target: `insight-${insight.name}`,
-          });
+          addEdge(childName, childType, insight.name, 'insight');
         }
+      });
+    });
+
+    // Build markdown nodes (no edges - markdowns are standalone)
+    (markdownConfigs || []).forEach(markdown => {
+      addNode(markdown.name, 'markdown', 'markdownNode', {
+        status: markdown.status,
+        markdown: markdown,
+      });
+    });
+
+    // Build chart nodes and edges from child items (primarily insights)
+    (chartConfigs || []).forEach(chart => {
+      addNode(chart.name, 'chart', 'chartNode', {
+        status: chart.status,
+        chart: chart,
+      });
+
+      // Create edges from chart's child_item_names
+      const childNames = chart.child_item_names || [];
+      childNames.forEach(childName => {
+        // Look up the type, default to 'insight' for charts
+        const childType = objectTypeByName[childName] || 'insight';
+        addEdge(childName, childType, chart.name, 'chart');
+      });
+    });
+
+    // Build table nodes and edges from child items (primarily insights)
+    (tableConfigs || []).forEach(table => {
+      addNode(table.name, 'table', 'tableNode', {
+        status: table.status,
+        table: table,
+      });
+
+      // Create edges from table's child_item_names
+      const childNames = table.child_item_names || [];
+      childNames.forEach(childName => {
+        // Look up the type, default to 'insight' for tables
+        const childType = objectTypeByName[childName] || 'insight';
+        addEdge(childName, childType, table.name, 'table');
       });
     });
 
@@ -221,7 +246,7 @@ export function useLineageDag() {
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations, insightConfigs]);
+  }, [sources, models, dimensions, metrics, relations, insightConfigs, markdownConfigs, chartConfigs, tableConfigs]);
 
   return dag;
 }

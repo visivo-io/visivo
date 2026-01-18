@@ -13,6 +13,9 @@ import {
   FormLayout,
 } from '../../styled/FormComponents';
 import { validateName } from './namedModel';
+import { getTypeByValue } from './objectTypeConfigs';
+import { isEmbeddedObject } from './embeddedObjectUtils';
+import { BackNavigationButton } from '../../styled/BackNavigationButton';
 
 /**
  * SourceEditForm - Form component for editing/creating sources
@@ -21,17 +24,12 @@ import { validateName } from './namedModel';
  * - source: Source object to edit (null for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
+ * - onSave: Function(type, name, config) - Unified save callback
+ * - onGoBack: Callback to navigate back to parent (for embedded sources)
  */
-const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
-  const {
-    saveSource,
-    deleteSource,
-    testConnection,
-    connectionStatus,
-    clearConnectionStatus,
-    checkPublishStatus,
-  } = useStore();
+const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
+  const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
+    useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -45,22 +43,25 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
 
   const isEditMode = !!source && !isCreate;
   const isNewObject = source?.status === ObjectStatus.NEW;
+  const isEmbedded = isEmbeddedObject(source);
+  const parentName = source?._embedded?.parentName;
 
   // Initialize form when source changes
   useEffect(() => {
     if (source) {
       // Edit mode - populate from existing source
-      // API returns: { name, status, child_item_names, config: { name, type, ...props } }
       setName(source.name || '');
-      setSourceType(source.config?.type || '');
 
-      // Extract form values from the nested config object
-      if (source.config) {
-        const { name: _, type: __, ...formProps } = source.config;
+      const configToUse = source.config;
+      setSourceType(configToUse?.type || '');
+
+      // Extract form values from the config object
+      if (configToUse) {
+        const { name: _, type: __, ...formProps } = configToUse;
         setFormValues(formProps);
       } else {
         // Fallback for flat source objects
-        const { name: _, type: __, status: ___, config: ____, ...formProps } = source;
+        const { name: _, type: __, status: ___, config: ____, _embedded: _____, ...formProps } = source;
         setFormValues(formProps);
       }
     } else if (isCreate) {
@@ -85,9 +86,12 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    const nameError = validateName(name);
-    if (nameError) {
-      newErrors.name = nameError;
+    // Skip name validation for embedded sources (they don't have names)
+    if (!isEmbedded) {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.name = nameError;
+      }
     }
 
     if (!sourceType) {
@@ -124,21 +128,18 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
     setSaving(true);
     setSaveError(null);
 
-    const config = {
-      name,
-      type: sourceType,
-      ...formValues,
-    };
+    // Build config - embedded sources don't include name
+    const config = isEmbedded
+      ? { type: sourceType, ...formValues }
+      : { name, type: sourceType, ...formValues };
 
-    const result = await saveSource(name, config);
+    // Call unified save - parent handles embedded vs standalone routing
+    const result = await onSave('source', name, config);
 
     setSaving(false);
 
-    if (result.success) {
-      onSave && onSave(config);
-      onClose();
-    } else {
-      setSaveError(result.error || 'Failed to save source');
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save source');
     }
   };
 
@@ -161,15 +162,28 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
   return (
     <>
       <FormLayout>
-        <FormInput
-          id="sourceName"
-          label="Source Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          disabled={isEditMode}
-          required
-          error={errors.name}
-        />
+        {/* Embedded source back navigation */}
+        {isEmbedded && onGoBack && (
+          <BackNavigationButton
+            onClick={onGoBack}
+            typeConfig={getTypeByValue('model')}
+            label="Model"
+            name={parentName}
+          />
+        )}
+
+        {/* Name field - hidden for embedded sources */}
+        {!isEmbedded && (
+          <FormInput
+            id="sourceName"
+            label="Source Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            disabled={isEditMode}
+            required
+            error={errors.name}
+          />
+        )}
 
           {/* Source Type Selector */}
           <div>
@@ -234,10 +248,10 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave }) => {
         onCancel={onClose}
         onSave={handleSave}
         saving={saving}
-        showDelete={isEditMode && !showDeleteConfirm}
+        showDelete={isEditMode && !showDeleteConfirm && !isEmbedded}
         onDeleteClick={() => setShowDeleteConfirm(true)}
         deleteConfirm={
-          showDeleteConfirm && isEditMode
+          showDeleteConfirm && isEditMode && !isEmbedded
             ? {
                 show: true,
                 message: isNewObject

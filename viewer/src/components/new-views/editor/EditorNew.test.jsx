@@ -17,10 +17,10 @@ jest.mock('@mui/icons-material/CheckCircle', () => () => <span data-testid="chec
 jest.mock('@mui/icons-material/ErrorOutline', () => () => <span data-testid="error-icon" />);
 
 // Mock EditPanel since it has complex dependencies
-jest.mock('../common/EditPanel', () => ({ source, model, isCreate, onClose }) => (
+jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
   <div data-testid="edit-panel">
-    {source && <span>Editing source: {source.name}</span>}
-    {model && <span>Editing model: {model.name}</span>}
+    {editItem?.type === 'source' && <span>Editing source: {editItem.object?.name}</span>}
+    {editItem?.type === 'model' && <span>Editing model: {editItem.object?.name}</span>}
     {isCreate && <span>Creating new object</span>}
     <button onClick={onClose}>Close</button>
   </div>
@@ -33,6 +33,12 @@ describe('EditorNew', () => {
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
   const mockFetchInsightConfigs = jest.fn();
+  const mockFetchMarkdownConfigs = jest.fn();
+  const mockFetchChartConfigs = jest.fn();
+  const mockFetchTableConfigs = jest.fn();
+  const mockSaveModel = jest.fn();
+  const mockSaveChartConfig = jest.fn();
+  const mockSaveTableConfig = jest.fn();
 
   const defaultStoreState = {
     sources: [],
@@ -41,6 +47,7 @@ describe('EditorNew', () => {
     sourcesError: null,
     models: [],
     fetchModels: mockFetchModels,
+    saveModel: mockSaveModel,
     modelsLoading: false,
     modelsError: null,
     dimensions: [],
@@ -59,6 +66,20 @@ describe('EditorNew', () => {
     fetchInsightConfigs: mockFetchInsightConfigs,
     insightConfigsLoading: false,
     insightConfigsError: null,
+    markdownConfigs: [],
+    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
+    markdownConfigsLoading: false,
+    markdownConfigsError: null,
+    chartConfigs: [],
+    fetchChartConfigs: mockFetchChartConfigs,
+    saveChartConfig: mockSaveChartConfig,
+    chartConfigsLoading: false,
+    chartConfigsError: null,
+    tableConfigs: [],
+    fetchTableConfigs: mockFetchTableConfigs,
+    saveTableConfig: mockSaveTableConfig,
+    tableConfigsLoading: false,
+    tableConfigsError: null,
   };
 
   beforeEach(() => {

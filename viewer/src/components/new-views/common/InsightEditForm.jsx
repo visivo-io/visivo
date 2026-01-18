@@ -9,6 +9,16 @@ import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES } from '../../../schemas';
 import { validateName } from './namedModel';
+import { getTypeByValue } from './objectTypeConfigs';
+import { isEmbeddedObject } from './embeddedObjectUtils';
+import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import {
+  SectionContainer,
+  SectionTitle,
+  EmptyState,
+  AlertContainer,
+  AlertText
+} from '../../styled/FormLayoutComponents';
 
 /**
  * InsightEditForm - Form component for editing/creating insights
@@ -19,10 +29,11 @@ import { validateName } from './namedModel';
  * - insight: Insight object to edit (null for create mode)
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
- * - onSave: Callback after successful save
+ * - onSave: Function(type, name, config) - Unified save callback
+ * - onGoBack: Callback to navigate back to parent (for embedded insights)
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
-  const { saveInsightConfig, deleteInsightConfig, checkPublishStatus } = useStore();
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
+  const { deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
   const [name, setName] = useState('');
@@ -44,6 +55,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
+  const isEmbedded = isEmbeddedObject(insight);
+  const parentName = insight?._embedded?.parentName;
+  const parentType = insight?._embedded?.parentType;
 
   // Get the current schema for the selected chart type
   const currentSchema = getSchema(propsType);
@@ -53,16 +67,18 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
     if (insight) {
       // Edit mode - populate from existing insight
       setName(insight.name || '');
-      setDescription(insight.config?.description || '');
+
+      const configToUse = insight.config;
+      setDescription(configToUse?.description || '');
 
       // Props - extract type separately, rest goes to propsValues
-      const props = insight.config?.props || {};
+      const props = configToUse?.props || {};
       const { type, ...restProps } = props;
       setPropsType(type || 'scatter');
       setPropsValues(restProps);
 
       // Interactions - each interaction has only one type (filter, split, or sort)
-      const insightInteractions = insight.config?.interactions || [];
+      const insightInteractions = configToUse?.interactions || [];
       setInteractions(
         insightInteractions.map(i => {
           // Determine which type this interaction is
@@ -87,9 +103,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    const nameError = validateName(name);
-    if (nameError) {
-      newErrors.name = nameError;
+    // Skip name validation for embedded insights (they don't require names)
+    if (!isEmbedded) {
+      const nameError = validateName(name);
+      if (nameError) {
+        newErrors.name = nameError;
+      }
     }
 
     if (!propsType) {
@@ -106,46 +125,39 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
     setSaving(true);
     setSaveError(null);
 
-    try {
-      // Build props object - combine type with schema-driven values
-      const props = {
-        type: propsType,
-        ...propsValues,
-      };
+    // Build props object - combine type with schema-driven values
+    const props = {
+      type: propsType,
+      ...propsValues,
+    };
 
-      // Build config object
-      const config = {
-        name,
-        props,
-      };
+    // Build config object - embedded insights don't include name
+    const config = isEmbedded
+      ? { props }
+      : { name, props };
 
-      // Only include description if non-empty
-      if (description) {
-        config.description = description;
-      }
-
-      // Only include interactions if non-empty
-      const nonEmptyInteractions = interactions
-        .filter(i => i.value && i.value.trim())
-        .map(i => ({ [i.type]: i.value }));
-
-      if (nonEmptyInteractions.length > 0) {
-        config.interactions = nonEmptyInteractions;
-      }
-
-      const result = await saveInsightConfig(name, config);
-
-      if (result?.success) {
-        onSave && onSave(config);
-        onClose();
-      } else {
-        setSaveError(result?.error || 'Failed to save insight');
-      }
-    } catch (error) {
-      setSaveError(error.message || 'Failed to save insight');
+    // Only include description if non-empty
+    if (description) {
+      config.description = description;
     }
 
+    // Only include interactions if non-empty
+    const nonEmptyInteractions = interactions
+      .filter(i => i.value && i.value.trim())
+      .map(i => ({ [i.type]: i.value }));
+
+    if (nonEmptyInteractions.length > 0) {
+      config.interactions = nonEmptyInteractions;
+    }
+
+    // Call unified save - parent handles embedded vs standalone routing
+    const result = await onSave('insight', name, config);
+
     setSaving(false);
+
+    if (!result?.success) {
+      setSaveError(result?.error || 'Failed to save insight');
+    }
   };
 
   const handleDelete = async () => {
@@ -195,45 +207,57 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
       {/* Scrollable Form Content */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {/* Basic Fields Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
-              Basic Information
-            </h3>
+          {/* Embedded insight back navigation */}
+          {isEmbedded && onGoBack && (
+            <BackNavigationButton
+              onClick={onGoBack}
+              typeConfig={getTypeByValue(parentType)}
+              label={getTypeByValue(parentType)?.singularLabel || parentType}
+              name={parentName}
+            />
+          )}
 
-            {/* Name field */}
-            <div className="relative">
-              <input
-                type="text"
-                id="insightName"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                disabled={isEditMode}
-                placeholder=" "
-                className={`
-                  block w-full px-3 py-2.5 text-sm text-gray-900
-                  bg-white rounded-md border appearance-none
-                  focus:outline-none focus:ring-2 focus:border-primary-500
-                  peer placeholder-transparent
-                  ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
-                  ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
-                `}
-              />
-              <label
-                htmlFor="insightName"
-                className={`
-                  absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                  bg-white px-1 left-2
-                  peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-                  peer-placeholder-shown:top-1/2
-                  peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-                  ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-                `}
-              >
-                Insight Name<span className="text-red-500 ml-0.5">*</span>
-              </label>
-              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-            </div>
+          {/* Basic Fields Section */}
+          <SectionContainer>
+            <SectionTitle>
+              Basic Information
+            </SectionTitle>
+
+            {/* Name field - hidden for embedded insights */}
+            {!isEmbedded && (
+              <div className="relative">
+                <input
+                  type="text"
+                  id="insightName"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  disabled={isEditMode}
+                  placeholder=" "
+                  className={`
+                    block w-full px-3 py-2.5 text-sm text-gray-900
+                    bg-white rounded-md border appearance-none
+                    focus:outline-none focus:ring-2 focus:border-primary-500
+                    peer placeholder-transparent
+                    ${isEditMode ? 'bg-gray-100 cursor-not-allowed' : ''}
+                    ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'}
+                  `}
+                />
+                <label
+                  htmlFor="insightName"
+                  className={`
+                    absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                    bg-white px-1 left-2
+                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
+                    peer-placeholder-shown:top-1/2
+                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
+                    ${errors.name ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
+                  `}
+                >
+                  Insight Name<span className="text-red-500 ml-0.5">*</span>
+                </label>
+                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+              </div>
+            )}
 
             {/* Description (optional) */}
             <div className="relative">
@@ -252,13 +276,13 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
                 Description
               </label>
             </div>
-          </div>
+          </SectionContainer>
 
           {/* Props Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
+          <SectionContainer>
+            <SectionTitle>
               Visualization Props
-            </h3>
+            </SectionTitle>
 
             {/* Chart Type selector */}
             <div className="relative">
@@ -292,10 +316,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
                 excludeProperties={['type']}
               />
             )}
-          </div>
+          </SectionContainer>
 
           {/* Interactions Section */}
-          <div className="space-y-4">
+          <SectionContainer>
             <div className="flex items-center justify-between border-b border-gray-200 pb-2">
               <h3 className="text-sm font-medium text-gray-700">Interactions</h3>
               <button
@@ -309,9 +333,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
             </div>
 
             {interactions.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
+              <EmptyState>
                 No interactions defined. Add interactions for client-side filtering, splitting, or sorting.
-              </p>
+              </EmptyState>
             ) : (
               interactions.map((interaction, index) => {
                 const typeConfig = INTERACTION_TYPES.find(t => t.value === interaction.type) || INTERACTION_TYPES[0];
@@ -360,10 +384,14 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
                 );
               })
             )}
-          </div>
+          </SectionContainer>
 
           {/* Save Error */}
-          {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
+          {saveError && (
+            <AlertContainer $type="error">
+              <AlertText $type="error">{saveError}</AlertText>
+            </AlertContainer>
+          )}
         </div>
       </div>
 
@@ -398,8 +426,8 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave }) => {
 
         <div className="flex justify-between items-center px-4 py-3">
           <div className="flex gap-2">
-            {/* Delete button - only in edit mode */}
-            {isEditMode && !showDeleteConfirm && (
+            {/* Delete button - only in edit mode and not embedded */}
+            {isEditMode && !showDeleteConfirm && !isEmbedded && (
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}

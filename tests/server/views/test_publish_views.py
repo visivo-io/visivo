@@ -23,6 +23,9 @@ class TestPublishViews:
         flask_app.metric_manager = Mock()
         flask_app.relation_manager = Mock()
         flask_app.insight_manager = Mock()
+        flask_app.markdown_manager = Mock()
+        flask_app.chart_manager = Mock()
+        flask_app.table_manager = Mock()
         flask_app.project = Mock()
         flask_app.project.project_file_path = "/tmp/project.yaml"
         flask_app.hot_reload_server = None
@@ -40,6 +43,12 @@ class TestPublishViews:
         flask_app.relation_manager.cached_objects = {}
         flask_app.insight_manager.has_unpublished_changes.return_value = False
         flask_app.insight_manager.cached_objects = {}
+        flask_app.markdown_manager.has_unpublished_changes.return_value = False
+        flask_app.markdown_manager.cached_objects = {}
+        flask_app.chart_manager.has_unpublished_changes.return_value = False
+        flask_app.chart_manager.cached_objects = {}
+        flask_app.table_manager.has_unpublished_changes.return_value = False
+        flask_app.table_manager.cached_objects = {}
 
         register_publish_views(app, flask_app, "/tmp/output")
 

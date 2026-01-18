@@ -56,10 +56,10 @@ jest.mock('@mui/icons-material/Add', () => () => <span data-testid="add-icon" />
 jest.mock('@mui/icons-material/Close', () => () => <span data-testid="close-icon" />);
 
 // Mock EditPanel
-jest.mock('../common/EditPanel', () => ({ source, model, isCreate, onClose }) => (
+jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
   <div data-testid="edit-panel">
-    {source && <span>Editing source: {source.name}</span>}
-    {model && <span>Editing model: {model.name}</span>}
+    {editItem?.type === 'source' && <span>Editing source: {editItem.object?.name}</span>}
+    {editItem?.type === 'model' && <span>Editing model: {editItem.object?.name}</span>}
     {isCreate && <span>Creating new object</span>}
     <button onClick={onClose}>Close</button>
   </div>
@@ -72,6 +72,9 @@ describe('LineageNew', () => {
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
   const mockFetchInsightConfigs = jest.fn();
+  const mockFetchMarkdownConfigs = jest.fn();
+  const mockFetchChartConfigs = jest.fn();
+  const mockFetchTableConfigs = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -95,6 +98,15 @@ describe('LineageNew', () => {
     insightConfigs: [],
     fetchInsightConfigs: mockFetchInsightConfigs,
     insightConfigsLoading: false,
+    markdownConfigs: [],
+    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
+    markdownConfigsLoading: false,
+    chartConfigs: [],
+    fetchChartConfigs: mockFetchChartConfigs,
+    chartConfigsLoading: false,
+    tableConfigs: [],
+    fetchTableConfigs: mockFetchTableConfigs,
+    tableConfigsLoading: false,
   };
 
   const emptyDagData = {

@@ -129,15 +129,16 @@ class Item(NamedModel, ParentModel):
         """Convert legacy inline markdown string to Markdown model for backwards compatibility."""
         # If markdown is a plain string (legacy format), convert to Markdown model
         if isinstance(self.markdown, str) and not self.markdown.startswith("ref("):
-            # Create a Markdown model from the string
+            # Create a Markdown model from the string (no name - it's embedded, not referenced)
             align = self.align if self.align is not None else "left"
             justify = self.justify if self.justify is not None else "start"
             self.markdown = Markdown(
-                name=f"inline-markdown-{id(self)}",
                 content=self.markdown,
                 align=align,
                 justify=justify,
             )
+            # Mark as converted from legacy string for deprecation detection
+            self.markdown._converted_from_legacy_string = True
             # Clear the deprecated fields since they're now on the Markdown model
             self.align = None
             self.justify = None

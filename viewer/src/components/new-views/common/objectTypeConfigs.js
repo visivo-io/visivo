@@ -4,6 +4,9 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import InsightsIcon from '@mui/icons-material/Insights';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import TableChartIcon from '@mui/icons-material/TableChart';
 
 /**
  * Centralized object type definitions
@@ -35,6 +38,8 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-teal-50 border-teal-200',
       nodeSelected: 'bg-teal-100 border-teal-400',
+      // For connection handles in lineage view
+      connectionHandle: '#14b8a6', // teal-500
     },
   },
   {
@@ -53,6 +58,8 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-indigo-50 border-indigo-200',
       nodeSelected: 'bg-indigo-100 border-indigo-400',
+      // For connection handles in lineage view
+      connectionHandle: '#6366f1', // indigo-500
     },
   },
   {
@@ -71,6 +78,8 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-purple-50 border-purple-200',
       nodeSelected: 'bg-purple-100 border-purple-400',
+      // For connection handles in lineage view
+      connectionHandle: '#a855f7', // purple-500
     },
   },
   {
@@ -89,6 +98,8 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-orange-50 border-orange-200',
       nodeSelected: 'bg-orange-100 border-orange-400',
+      // For connection handles in lineage view
+      connectionHandle: '#f97316', // orange-500
     },
   },
   {
@@ -107,6 +118,8 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-cyan-50 border-cyan-200',
       nodeSelected: 'bg-cyan-100 border-cyan-400',
+      // For connection handles in lineage view
+      connectionHandle: '#06b6d4', // cyan-500
     },
   },
   {
@@ -125,6 +138,68 @@ export const OBJECT_TYPES = [
       // For nodes/pills
       node: 'bg-pink-50 border-pink-200',
       nodeSelected: 'bg-pink-100 border-pink-400',
+      // For connection handles in lineage view
+      connectionHandle: '#ec4899', // pink-500
+    },
+  },
+  {
+    value: 'markdown',
+    label: 'Markdowns',
+    singularLabel: 'Markdown',
+    icon: DescriptionIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-green-100',
+      text: 'text-green-800',
+      border: 'border-green-200',
+      bgHover: 'hover:bg-green-50',
+      bgSelected: 'bg-green-100',
+      borderSelected: 'border-green-300',
+      // For nodes/pills
+      node: 'bg-green-50 border-green-200',
+      nodeSelected: 'bg-green-100 border-green-400',
+      // For connection handles in lineage view
+      connectionHandle: '#22c55e', // green-500
+    },
+  },
+  {
+    value: 'chart',
+    label: 'Charts',
+    singularLabel: 'Chart',
+    icon: BarChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-blue-100',
+      text: 'text-blue-800',
+      border: 'border-blue-200',
+      bgHover: 'hover:bg-blue-50',
+      bgSelected: 'bg-blue-100',
+      borderSelected: 'border-blue-300',
+      // For nodes/pills
+      node: 'bg-blue-50 border-blue-200',
+      nodeSelected: 'bg-blue-100 border-blue-400',
+      // For connection handles in lineage view
+      connectionHandle: '#3b82f6', // blue-500
+    },
+  },
+  {
+    value: 'table',
+    label: 'Tables',
+    singularLabel: 'Table',
+    icon: TableChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-800',
+      border: 'border-amber-200',
+      bgHover: 'hover:bg-amber-50',
+      bgSelected: 'bg-amber-100',
+      borderSelected: 'border-amber-300',
+      // For nodes/pills
+      node: 'bg-amber-50 border-amber-200',
+      nodeSelected: 'bg-amber-100 border-amber-400',
+      // For connection handles in lineage view
+      connectionHandle: '#f59e0b', // amber-500
     },
   },
 ];
@@ -140,6 +215,21 @@ export const getEnabledTypes = () => OBJECT_TYPES.filter(t => t.enabled);
 export const getTypeByValue = value => OBJECT_TYPES.find(t => t.value === value);
 
 /**
+ * Default colors for unknown types
+ */
+export const DEFAULT_COLORS = {
+  bg: 'bg-gray-100',
+  text: 'text-gray-800',
+  border: 'border-gray-200',
+  bgHover: 'hover:bg-gray-50',
+  bgSelected: 'bg-gray-100',
+  borderSelected: 'border-gray-300',
+  node: 'bg-gray-50 border-gray-200',
+  nodeSelected: 'bg-gray-100 border-gray-400',
+  connectionHandle: '#6b7280', // gray-500
+};
+
+/**
  * Get icon component for an object type
  */
 export const getTypeIcon = value => {
@@ -153,30 +243,5 @@ export const getTypeIcon = value => {
  */
 export const getTypeColors = value => {
   const type = getTypeByValue(value);
-  return (
-    type?.colors || {
-      bg: 'bg-gray-100',
-      text: 'text-gray-800',
-      border: 'border-gray-200',
-      bgHover: 'hover:bg-gray-50',
-      bgSelected: 'bg-gray-100',
-      borderSelected: 'border-gray-300',
-      node: 'bg-gray-50 border-gray-200',
-      nodeSelected: 'bg-gray-100 border-gray-400',
-    }
-  );
-};
-
-/**
- * Default colors for unknown types
- */
-export const DEFAULT_COLORS = {
-  bg: 'bg-gray-100',
-  text: 'text-gray-800',
-  border: 'border-gray-200',
-  bgHover: 'hover:bg-gray-50',
-  bgSelected: 'bg-gray-100',
-  borderSelected: 'border-gray-300',
-  node: 'bg-gray-50 border-gray-200',
-  nodeSelected: 'bg-gray-100 border-gray-400',
+  return type?.colors || DEFAULT_COLORS;
 };

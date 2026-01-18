@@ -74,6 +74,24 @@ class TestModelManager:
         assert result["config"]["sql"] == "SELECT * FROM test"
         assert "child_item_names" in result
 
+    def test_get_model_with_status_excludes_file_path_and_path(self):
+        """Test that file_path and path fields are excluded from serialized model."""
+        manager = ModelManager()
+        config = {"name": "test_model", "sql": "SELECT * FROM test"}
+        model = manager.save_from_config(config)
+
+        # Even though the model object has file_path and path attributes
+        assert hasattr(model, "file_path")
+        assert hasattr(model, "path")
+
+        # They should be excluded from the serialized response
+        result = manager.get_model_with_status("test_model")
+
+        assert "file_path" not in result["config"]
+        assert "path" not in result["config"]
+        assert result["config"]["sql"] == "SELECT * FROM test"
+        assert result["config"]["name"] == "test_model"
+
     def test_get_model_with_status_returns_child_item_names_for_source_ref(self):
         """Test that get_model_with_status returns source in child_item_names."""
         manager = ModelManager()
