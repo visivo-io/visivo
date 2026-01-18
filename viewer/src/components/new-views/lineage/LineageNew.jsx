@@ -16,6 +16,7 @@ import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 import { isEmbeddedObject, setAtPath } from '../common/embeddedObjectUtils';
+import { getTypeByValue } from '../common/objectTypeConfigs';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -570,29 +571,9 @@ const LineageNew = () => {
                 const objectType = node.data?.objectType;
                 if (status === 'new') return '#22c55e';
                 if (status === 'modified') return '#f59e0b';
-                // Different base color for different object types
-                switch (objectType) {
-                  case 'source':
-                    return '#14b8a6'; // teal
-                  case 'model':
-                    return '#6366f1'; // indigo
-                  case 'dimension':
-                    return '#a855f7'; // purple
-                  case 'metric':
-                    return '#f97316'; // orange
-                  case 'relation':
-                    return '#06b6d4'; // cyan
-                  case 'insight':
-                    return '#ec4899'; // pink
-                  case 'markdown':
-                    return '#22c55e'; // green
-                  case 'chart':
-                    return '#3b82f6'; // blue
-                  case 'table':
-                    return '#f59e0b'; // amber
-                  default:
-                    return '#94a3b8'; // gray
-                }
+                // Get color from object type config
+                const typeConfig = getTypeByValue(objectType);
+                return typeConfig?.colors?.connectionHandle || '#94a3b8'; // gray fallback
               }}
               style={{ background: '#f1f5f9' }}
             />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle } from 'reactflow';
-import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { StatusIndicator } from '../../styled/StatusIndicator';
 import EmbeddedPill from './EmbeddedPill';
 
 /**
@@ -36,7 +36,7 @@ const ModelNode = ({ data, selected }) => {
         type="target"
         position="left"
         style={{
-          background: '#6366f1', // indigo-500 for model connections
+          background: colors.connectionHandle,
           width: 8,
           height: 8,
           border: '2px solid white',
@@ -44,20 +44,7 @@ const ModelNode = ({ data, selected }) => {
       />
 
       {/* Status indicator */}
-      {status && status !== ObjectStatus.PUBLISHED && (
-        <span
-          className={`
-            absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full z-10
-            border-2 border-white
-            ${status === ObjectStatus.NEW ? 'bg-green-500' : 'bg-amber-500'}
-          `}
-          title={
-            status === ObjectStatus.NEW
-              ? 'New - Not yet published'
-              : 'Modified - Has unpublished changes'
-          }
-        />
-      )}
+      <StatusIndicator status={status} />
 
       {/* Icon */}
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
