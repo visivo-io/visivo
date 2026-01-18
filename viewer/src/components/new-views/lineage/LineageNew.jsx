@@ -3,6 +3,7 @@ import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
 import { useLineageDag } from './useLineageDag';
+import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
 import DimensionNode from './DimensionNode';
@@ -15,7 +16,7 @@ import TableNode from './TableNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
-import { isEmbeddedObject, setAtPath } from '../common/embeddedObjectUtils';
+import { setAtPath } from '../common/embeddedObjectUtils';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 
 /**
@@ -91,17 +92,7 @@ const LineageNew = () => {
   const reactFlowInstance = useRef(null);
   const hasFitView = useRef(false);
 
-  // Charts and tables stores
-  const saveChartConfig = useStore(state => state.saveChartConfig);
-  const saveTableConfig = useStore(state => state.saveTableConfig);
-
-  // Additional store functions for unified save
-  const saveSource = useStore(state => state.saveSource);
-  const saveDimension = useStore(state => state.saveDimension);
-  const saveMetric = useStore(state => state.saveMetric);
-  const saveRelation = useStore(state => state.saveRelation);
-  const saveInsightConfig = useStore(state => state.saveInsightConfig);
-  const saveMarkdownConfig = useStore(state => state.saveMarkdownConfig);
+  // Note: Individual save functions are now handled by useObjectSave hook
 
   // Fetch all object types on mount
   useEffect(() => {
@@ -416,77 +407,15 @@ const LineageNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  // Unified save handler - handles both standalone and embedded objects
-  const handleObjectSave = useCallback(async (type, name, config) => {
-    const stackEntry = currentEdit;
-    const currentObject = stackEntry?.object;
-    const isEmbedded = isEmbeddedObject(currentObject);
+  // Create success callback for the save handler
+  const onSuccessfulSave = useCallback(async () => {
+    await refreshData();
+    clearEdit();
+    setIsCreating(false);
+  }, [refreshData, clearEdit]);
 
-    // For embedded objects with applyToParent, update the parent's config in the stack
-    // No backend save - that happens when the parent form saves
-    if (isEmbedded && stackEntry?.applyToParent) {
-      setEditStack(prev => {
-        const newStack = [...prev];
-        const parentIndex = newStack.length - 2;
-        if (parentIndex >= 0) {
-          const parentEntry = newStack[parentIndex];
-          const updatedParentConfig = stackEntry.applyToParent(parentEntry.object.config, config);
-          newStack[parentIndex] = {
-            ...parentEntry,
-            object: {
-              ...parentEntry.object,
-              config: updatedParentConfig,
-            },
-          };
-        }
-        // Pop the current entry
-        return newStack.slice(0, -1);
-      });
-      return { success: true };
-    }
-
-    // Standalone save - save directly to backend
-    let result;
-    switch (type) {
-      case 'source':
-        result = await saveSource(name, config);
-        break;
-      case 'model':
-        result = await saveModel(name, config);
-        break;
-      case 'dimension':
-        result = await saveDimension(name, config);
-        break;
-      case 'metric':
-        result = await saveMetric(name, config);
-        break;
-      case 'relation':
-        result = await saveRelation(name, config);
-        break;
-      case 'insight':
-        result = await saveInsightConfig(name, config);
-        break;
-      case 'markdown':
-        result = await saveMarkdownConfig(name, config);
-        break;
-      case 'chart':
-        result = await saveChartConfig(name, config);
-        break;
-      case 'table':
-        result = await saveTableConfig(name, config);
-        break;
-      default:
-        result = { success: false, error: `Unknown object type: ${type}` };
-    }
-
-    if (result?.success) {
-      await refreshData();
-      clearEdit();
-      setIsCreating(false);
-    }
-
-    return result;
-  }, [currentEdit, saveSource, saveModel, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, saveChartConfig, saveTableConfig, refreshData, clearEdit]);
+  // Use unified save handler from custom hook
+  const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import useStore from '../../../stores/store';
+import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceSearch from './SourceSearch';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import ObjectList from '../common/ObjectList';
 import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
-import { isEmbeddedObject } from '../common/embeddedObjectUtils';
 
 /**
  * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
@@ -404,17 +404,6 @@ const EditorNew = () => {
     setIsCreating(false);
   }, [clearEdit]);
 
-  // Store functions for unified save
-  const saveSource = useStore(state => state.saveSource);
-  const saveModel = useStore(state => state.saveModel);
-  const saveDimension = useStore(state => state.saveDimension);
-  const saveMetric = useStore(state => state.saveMetric);
-  const saveRelation = useStore(state => state.saveRelation);
-  const saveInsightConfig = useStore(state => state.saveInsightConfig);
-  const saveMarkdownConfig = useStore(state => state.saveMarkdownConfig);
-  const saveChartConfig = useStore(state => state.saveChartConfig);
-  const saveTableConfig = useStore(state => state.saveTableConfig);
-
   // Refresh all data after save
   const refreshData = useCallback(async () => {
     await fetchSources();
@@ -428,77 +417,15 @@ const EditorNew = () => {
     await fetchTableConfigs();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
 
-  // Unified save handler - handles both standalone and embedded objects
-  const handleObjectSave = useCallback(async (type, name, config) => {
-    const stackEntry = currentEdit;
-    const currentObject = stackEntry?.object;
-    const isEmbedded = isEmbeddedObject(currentObject);
+  // Callback for successful saves - refresh data and clear edit state
+  const onSuccessfulSave = useCallback(async () => {
+    await refreshData();
+    clearEdit();
+    setIsCreating(false);
+  }, [refreshData, clearEdit]);
 
-    // For embedded objects with applyToParent, update the parent's config in the stack
-    // No backend save - that happens when the parent form saves
-    if (isEmbedded && stackEntry?.applyToParent) {
-      setEditStack(prev => {
-        const newStack = [...prev];
-        const parentIndex = newStack.length - 2;
-        if (parentIndex >= 0) {
-          const parentEntry = newStack[parentIndex];
-          const updatedParentConfig = stackEntry.applyToParent(parentEntry.object.config, config);
-          newStack[parentIndex] = {
-            ...parentEntry,
-            object: {
-              ...parentEntry.object,
-              config: updatedParentConfig,
-            },
-          };
-        }
-        // Pop the current entry
-        return newStack.slice(0, -1);
-      });
-      return { success: true };
-    }
-
-    // Standalone save - save directly to backend
-    let result;
-    switch (type) {
-      case 'source':
-        result = await saveSource(name, config);
-        break;
-      case 'model':
-        result = await saveModel(name, config);
-        break;
-      case 'dimension':
-        result = await saveDimension(name, config);
-        break;
-      case 'metric':
-        result = await saveMetric(name, config);
-        break;
-      case 'relation':
-        result = await saveRelation(name, config);
-        break;
-      case 'insight':
-        result = await saveInsightConfig(name, config);
-        break;
-      case 'markdown':
-        result = await saveMarkdownConfig(name, config);
-        break;
-      case 'chart':
-        result = await saveChartConfig(name, config);
-        break;
-      case 'table':
-        result = await saveTableConfig(name, config);
-        break;
-      default:
-        result = { success: false, error: `Unknown object type: ${type}` };
-    }
-
-    if (result?.success) {
-      await refreshData();
-      clearEdit();
-      setIsCreating(false);
-    }
-
-    return result;
-  }, [currentEdit, saveSource, saveModel, saveDimension, saveMetric, saveRelation, saveInsightConfig, saveMarkdownConfig, saveChartConfig, saveTableConfig, refreshData, clearEdit]);
+  // Use the unified save handler hook
+  const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = currentEdit !== null || isCreating;
   const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
