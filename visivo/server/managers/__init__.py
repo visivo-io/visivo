@@ -4,6 +4,7 @@ from visivo.server.managers.model_manager import ModelManager
 from visivo.server.managers.dimension_manager import DimensionManager
 from visivo.server.managers.metric_manager import MetricManager
 from visivo.server.managers.relation_manager import RelationManager
+from visivo.server.managers.input_manager import InputManager
 
 __all__ = [
     "ObjectManager",
@@ -13,4 +14,5 @@ __all__ = [
     "DimensionManager",
     "MetricManager",
     "RelationManager",
+    "InputManager",
 ]

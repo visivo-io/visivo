@@ -15,6 +15,7 @@ from visivo.server.managers.insight_manager import InsightManager
 from visivo.server.managers.markdown_manager import MarkdownManager
 from visivo.server.managers.chart_manager import ChartManager
 from visivo.server.managers.table_manager import TableManager
+from visivo.server.managers.input_manager import InputManager
 
 
 class FlaskApp:
@@ -63,6 +64,9 @@ class FlaskApp:
         self.table_manager = TableManager()
         self.table_manager.load(dag)
 
+        self.input_manager = InputManager()
+        self.input_manager.load(dag)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -90,3 +94,4 @@ class FlaskApp:
         self.markdown_manager.load(dag)
         self.chart_manager.load(dag)
         self.table_manager.load(dag)
+        self.input_manager.load(dag)
