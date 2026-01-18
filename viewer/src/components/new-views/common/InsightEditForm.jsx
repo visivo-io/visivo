@@ -15,7 +15,6 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import {
   SectionContainer,
   SectionTitle,
-  FormGroup,
   EmptyState,
   AlertContainer,
   AlertText

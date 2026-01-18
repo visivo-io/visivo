@@ -210,7 +210,7 @@ export const AlertText = tw.p`
   }}
 `;
 
-export default {
+const FormLayoutComponents = {
   SectionContainer,
   SectionTitle,
   SectionTitleNoBorder,
@@ -239,3 +239,5 @@ export default {
   AlertContainer,
   AlertText
 };
+
+export default FormLayoutComponents;
