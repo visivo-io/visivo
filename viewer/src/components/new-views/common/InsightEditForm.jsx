@@ -7,11 +7,14 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
-import { getSchema, CHART_TYPES } from '../../../schemas';
+import { getSchema, CHART_TYPES, isSchemaLoaded, preloadSchemas } from '../../../schemas/schemas';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
+import InsightPreview from './InsightPreview';
+import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
   SectionTitle,
@@ -31,13 +34,17 @@ import {
  * - onClose: Callback to close the panel
  * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
+ * - isPreviewOpen: Whether the preview panel is open
+ * - setIsPreviewOpen: Function to toggle the preview panel
+ * - setPreviewContent: Function to set the preview content in parent
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewContent }) => {
   const { deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [model, setModel] = useState('');
 
   // Props state - chart type and schema-driven props
   const [propsType, setPropsType] = useState('scatter');
@@ -53,14 +60,48 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Schema loading state
+  const [currentSchema, setCurrentSchema] = useState(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState(null);
+
+
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
   const isEmbedded = isEmbeddedObject(insight);
   const parentName = insight?._embedded?.parentName;
   const parentType = insight?._embedded?.parentType;
 
-  // Get the current schema for the selected chart type
-  const currentSchema = getSchema(propsType);
+  // Debounce the values for preview updates
+  const debouncedPropsType = useDebounce(propsType, 500);
+  const debouncedPropsValues = useDebounce(propsValues, 500);
+  const debouncedInteractions = useDebounce(interactions, 500);
+
+  // Set preview content when values change
+  useEffect(() => {
+    if (setPreviewContent) {
+      setPreviewContent(
+        <div className="h-full p-4">
+          <InsightPreview
+            insightConfig={{
+              name: name || '__preview__',
+              model: model || useStore.getState().models?.[0]?.name,
+              props: {
+                type: debouncedPropsType,
+                ...debouncedPropsValues,
+              },
+              interactions: debouncedInteractions.map(i => {
+                if (i.type === 'filter') return { filter: i.value };
+                if (i.type === 'split') return { split: i.value };
+                if (i.type === 'sort') return { sort: i.value };
+                return {};
+              }).filter(i => Object.keys(i).length > 0),
+            }}
+          />
+        </div>
+      );
+    }
+  }, [setPreviewContent, name, model, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {
@@ -70,6 +111,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
 
       const configToUse = insight.config;
       setDescription(configToUse?.description || '');
+      setModel(configToUse?.model || insight.model || '');
 
       // Props - extract type separately, rest goes to propsValues
       const props = configToUse?.props || {};
@@ -92,6 +134,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
       // Create mode - reset form
       setName('');
       setDescription('');
+      setModel('');
       setPropsType('scatter');
       setPropsValues({});
       setInteractions([]);
@@ -99,6 +142,45 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
     setErrors({});
     setSaveError(null);
   }, [insight, isCreate]);
+
+  // Load schema when propsType changes
+  useEffect(() => {
+    const loadSchemaAsync = async () => {
+      if (!propsType) return;
+
+      // Check if already cached
+      if (isSchemaLoaded(propsType)) {
+        // Get from cache immediately
+        const schema = await getSchema(propsType);
+        setCurrentSchema(schema);
+        return;
+      }
+
+      // Load schema asynchronously
+      setSchemaLoading(true);
+      setSchemaError(null);
+
+      try {
+        const schema = await getSchema(propsType);
+        setCurrentSchema(schema);
+      } catch (error) {
+        console.error('Failed to load schema:', error);
+        setSchemaError(`Failed to load schema for ${propsType}`);
+        setCurrentSchema(null);
+      } finally {
+        setSchemaLoading(false);
+      }
+    };
+
+    loadSchemaAsync();
+  }, [propsType]);
+
+  // Preload common schemas on mount for better performance
+  useEffect(() => {
+    // Preload the most common chart types
+    const commonTypes = ['scatter', 'bar', 'pie', 'heatmap', 'histogram'];
+    preloadSchemas(commonTypes).catch(console.error);
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -139,6 +221,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
     // Only include description if non-empty
     if (description) {
       config.description = description;
+    }
+
+    // Only include model if non-empty
+    if (model) {
+      config.model = model;
     }
 
     // Only include interactions if non-empty
@@ -276,6 +363,29 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
                 Description
               </label>
             </div>
+
+            {/* Model selector */}
+            <div className="relative">
+              <select
+                id="insightModel"
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">Select a model (optional)...</option>
+                {useStore.getState().models?.map(m => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <label
+                htmlFor="insightModel"
+                className="absolute text-xs font-medium text-gray-500 -top-2 left-2 bg-white px-1"
+              >
+                Model (for query data)
+              </label>
+            </div>
           </SectionContainer>
 
           {/* Props Section */}
@@ -307,14 +417,77 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
               {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
             </div>
 
-            {/* Schema-driven props editor */}
-            {currentSchema && (
-              <SchemaEditor
-                schema={currentSchema}
-                value={propsValues}
-                onChange={setPropsValues}
-                excludeProperties={['type']}
-              />
+            {/* Required fields for this chart type */}
+            {(() => {
+              const requiredFields = getRequiredFields(propsType);
+              if (requiredFields.length > 0) {
+                return (
+                  <div className="space-y-4 mt-4">
+                    <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                      Required Data Fields
+                    </div>
+                    {requiredFields.map(field => (
+                      <div key={field.name} className="relative">
+                        <RefTextArea
+                          id={`prop-${field.name}`}
+                          value={propsValues[field.name] || ''}
+                          onChange={value => setPropsValues(prev => ({
+                            ...prev,
+                            [field.name]: value
+                          }))}
+                          placeholder={field.placeholder || ' '}
+                          rows={1}
+                          className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border ${
+                            errors[`prop.${field.name}`] ? 'border-red-500' : 'border-gray-300'
+                          } appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y`}
+                        />
+                        <label
+                          htmlFor={`prop-${field.name}`}
+                          className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
+                        >
+                          {field.label}
+                          {!field.optional && <span className="text-red-500 ml-0.5">*</span>}
+                        </label>
+                        {field.description && (
+                          <p className="mt-1 text-xs text-gray-500">{field.description}</p>
+                        )}
+                        {errors[`prop.${field.name}`] && (
+                          <p className="mt-1 text-xs text-red-500">{errors[`prop.${field.name}`]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Additional optional props from schema */}
+            {schemaLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <CircularProgress size={24} />
+                <span className="ml-2 text-sm text-gray-600">Loading schema...</span>
+              </div>
+            ) : schemaError ? (
+              <AlertContainer $type="error">
+                <AlertText>{schemaError}</AlertText>
+              </AlertContainer>
+            ) : currentSchema ? (
+              <div className="mt-4">
+                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
+                  Additional Properties
+                </div>
+                <SchemaEditor
+                  schema={currentSchema}
+                  value={propsValues}
+                  onChange={setPropsValues}
+                  excludeProperties={['type', ...getAllFieldNames(propsType)]}
+                />
+              </div>
+            ) : (
+              <EmptyState>
+                Select a chart type to configure properties
+              </EmptyState>
             )}
           </SectionContainer>
 
@@ -456,6 +629,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
           </div>
         </div>
       </div>
+
     </>
   );
 };

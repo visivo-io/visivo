@@ -27,6 +27,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Lint**: `yarn lint`
 - **Format**: `yarn format`
 - **Always run yarn test when making JS changes to ensure that components are not breaking**
+- **File naming conventions**:
+  - Avoid using `index.js` files - use descriptive names instead (e.g., `schemas.js` instead of `schemas/index.js`)
+  - This makes it easier to navigate and understand the codebase
 
 ### Combined Development
 - **Deploy viewer to CLI**: `yarn deploy` (builds both local and dist versions)
