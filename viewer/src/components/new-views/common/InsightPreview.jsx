@@ -7,6 +7,7 @@ import useStore from '../../../stores/store';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { chartDataFromInsightData } from '../../../models/Insight';
 import { useDuckDB } from '../../../contexts/DuckDBContext';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * InsightPreview - Component for rendering a live preview of an insight
@@ -40,12 +41,18 @@ const InsightPreview = ({
     });
   }
 
-  // Fetch data for the insight if it's a saved insight
-  const { insightsData, isInsightsLoading, hasAllInsightData } = useInsightsData(
-    projectId,
-    shouldFetchData ? [insightName] : []
-  );
+  useInsightsData( projectId, shouldFetchData ? [insightName] : []);
 
+  const insightsData = useStore(
+    useShallow(state => {
+      const data = {};
+
+      if (state.insights[insightName]) data[insightName] = state.insights[insightName];
+
+      return data;
+    })
+  );
+  console.log('insightsData here', insightsData);
 
   // Get the insight data
   const insightData = shouldFetchData ? insightsData?.[insightName] : null;
@@ -53,7 +60,7 @@ const InsightPreview = ({
 
   // Check if we have the necessary data
   const hasData = insightData?.data && Array.isArray(insightData.data);
-  const isLoading = shouldFetchData ? isInsightsLoading : false;
+  const isLoading = shouldFetchData ? insightsData[insightName]?.isLoading : false;
   const dataError = insightData?.error;
 
 

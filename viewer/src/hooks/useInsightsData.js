@@ -128,6 +128,7 @@ const processInsight = async (db, insight, inputs) => {
 
     // Step 2: Prepare post_query with input substitution
     const preparedQuery = prepPostQuery({ query }, inputs);
+    console.log('preparedQuery here', preparedQuery);
 
     // Step 3: Execute query in DuckDB
     const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
@@ -142,6 +143,8 @@ const processInsight = async (db, insight, inputs) => {
         ])
       );
     });
+
+    console.log('processedRows', processedRows);
 
 
     // Step 5: Return structured data
@@ -341,6 +344,8 @@ export const useInsightsData = (projectId, insightNames) => {
     const results = await Promise.allSettled(
       insights.map(insight => processInsight(db, insight, freshInputs))
     );
+
+    console.log('results processed', results);
 
     // Step 3: Merge results
     const mergedData = {};
