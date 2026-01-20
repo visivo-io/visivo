@@ -12,6 +12,7 @@ from visivo.server.managers.dimension_manager import DimensionManager
 from visivo.server.managers.metric_manager import MetricManager
 from visivo.server.managers.relation_manager import RelationManager
 from visivo.server.managers.insight_manager import InsightManager
+from visivo.server.managers.input_manager import InputManager
 from visivo.server.managers.markdown_manager import MarkdownManager
 from visivo.server.managers.chart_manager import ChartManager
 from visivo.server.managers.table_manager import TableManager
@@ -54,6 +55,9 @@ class FlaskApp:
         self.insight_manager = InsightManager()
         self.insight_manager.load(dag)
 
+        self.input_manager = InputManager()
+        self.input_manager.load(dag)
+
         self.markdown_manager = MarkdownManager()
         self.markdown_manager.load(dag)
 
@@ -87,6 +91,7 @@ class FlaskApp:
         self.metric_manager.load(dag)
         self.relation_manager.load(dag)
         self.insight_manager.load(dag)
+        self.input_manager.load(dag)
         self.markdown_manager.load(dag)
         self.chart_manager.load(dag)
         self.table_manager.load(dag)

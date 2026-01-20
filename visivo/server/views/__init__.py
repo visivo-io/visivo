@@ -5,6 +5,7 @@ from visivo.server.views.data_views import register_data_views
 from visivo.server.views.dimension_views import register_dimension_views
 from visivo.server.views.editor_views import register_editor_views
 from visivo.server.views.input_views import register_input_views
+from visivo.server.views.inputs_crud_views import register_inputs_crud_views
 from visivo.server.views.insight_views import register_insight_views
 from visivo.server.views.insights_crud_views import register_insights_crud_views
 from visivo.server.views.markdowns_crud_views import register_markdowns_crud_views
@@ -29,6 +30,7 @@ def register_views(app, flask_app, output_dir):
     register_trace_views(app, flask_app, output_dir)
     register_insight_views(app, flask_app, output_dir)
     register_insights_crud_views(app, flask_app, output_dir)
+    register_inputs_crud_views(app, flask_app, output_dir)
     register_markdowns_crud_views(app, flask_app, output_dir)
     register_charts_crud_views(app, flask_app, output_dir)
     register_tables_crud_views(app, flask_app, output_dir)

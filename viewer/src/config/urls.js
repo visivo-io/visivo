@@ -73,6 +73,12 @@ const URL_PATTERNS = {
     insightSave: '/api/insights/{name}/save/',
     insightValidate: '/api/insights/{name}/validate/',
 
+    // Input management endpoints
+    inputsList: '/api/inputs/',
+    inputDetail: '/api/inputs/{name}/',
+    inputSave: '/api/inputs/{name}/save/',
+    inputValidate: '/api/inputs/{name}/validate/',
+
     // Markdown management endpoints
     markdownsList: '/api/markdowns/',
     markdownDetail: '/api/markdowns/{name}/',
@@ -165,6 +171,12 @@ const URL_PATTERNS = {
     insightDetail: null,
     insightSave: null,
     insightValidate: null,
+
+    // Input management endpoints (not available in dist)
+    inputsList: null,
+    inputDetail: null,
+    inputSave: null,
+    inputValidate: null,
 
     // Markdown management endpoints (not available in dist)
     markdownsList: null,

@@ -3,6 +3,7 @@ import Chart from '../../items/Chart';
 import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useInputsData } from '../../../hooks/useInputsData';
+import { extractInputDependenciesFromProps } from '../../../models/Insight';
 
 /**
  * InsightPreviewDashboard - A minimal dashboard for previewing a single insight
@@ -20,66 +21,10 @@ import { useInputsData } from '../../../hooks/useInputsData';
  * - layoutValues: Optional layout configuration for the chart
  */
 const InsightPreviewDashboard = ({ insightConfig, projectId, layoutValues = {} }) => {
-  // Extract input names from the insight configuration
-  const extractInputNames = (config) => {
-    if (!config) return [];
-
-    const inputNames = new Set();
-    // More specific regex patterns to identify inputs vs models
-    // Pattern 1: ${inputName.value} - simple input reference
-    const simpleInputRegex = /\$\{([^.]+)\.(value|values|min|max|first|last)\}/g;
-    // Pattern 2: ${ref(inputName).value} - ref-style input reference
-    const refInputRegex = /\$\{ref\(([^)]+)\)\.(value|values|min|max|first|last)\}/g;
-
-    // Helper to scan a value for input references
-    const scanValue = (value) => {
-      if (typeof value === 'string') {
-        // Check for ref() style inputs first
-        let match;
-        while ((match = refInputRegex.exec(value)) !== null) {
-          const name = match[1];
-          // Skip if it contains a dot (indicates model.field reference)
-          if (!name.includes('.')) {
-            inputNames.add(name);
-          }
-        }
-        refInputRegex.lastIndex = 0; // Reset regex
-
-        // Then check for simple style inputs
-        while ((match = simpleInputRegex.exec(value)) !== null) {
-          const name = match[1];
-          // Skip if it contains a dot (indicates model.field reference)
-          // or if it was already captured as ref() style
-          if (!name.includes('.') && !value.includes(`ref(${name})`)) {
-            inputNames.add(name);
-          }
-        }
-        simpleInputRegex.lastIndex = 0; // Reset regex
-      } else if (typeof value === 'object' && value !== null) {
-        Object.values(value).forEach(v => scanValue(v));
-      }
-    };
-
-    // Scan props
-    if (config.props) {
-      scanValue(config.props);
-    }
-
-    // Scan interactions
-    if (config.interactions && Array.isArray(config.interactions)) {
-      config.interactions.forEach(interaction => {
-        if (interaction) {
-          Object.values(interaction).forEach(value => scanValue(value));
-        }
-      });
-    }
-
-    return Array.from(inputNames);
-  };
-
-  // Extract required input names
+  // Extract required input names using the scan method from Insight.js
   const inputNames = useMemo(() => {
-    return extractInputNames(insightConfig);
+    if (!insightConfig?.props) return [];
+    return extractInputDependenciesFromProps(insightConfig.props);
   }, [insightConfig]);
 
   // Create synthetic input configurations

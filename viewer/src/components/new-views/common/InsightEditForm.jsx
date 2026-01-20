@@ -13,7 +13,7 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
-import InsightPreviewDashboard from './InsightPreviewDashboard';
+import InsightPreview from './InsightPreview';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
@@ -80,9 +80,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   useEffect(() => {
     if (setPreviewContent) {
       setPreviewContent(
-        <InsightPreviewDashboard
+        <InsightPreview
             insightConfig={{
-              name: name || '__preview__',
+              name: name || insight?.name || '__preview__',
               props: {
                 type: debouncedPropsType,
                 ...debouncedPropsValues,
@@ -94,11 +94,10 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                 return {};
               }).filter(i => Object.keys(i).length > 0),
             }}
-            projectId={useStore.getState().project?.id}
           />
       );
     }
-  }, [setPreviewContent, name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
+  }, [setPreviewContent, name, insight?.name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {

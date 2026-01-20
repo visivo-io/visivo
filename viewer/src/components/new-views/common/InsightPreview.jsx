@@ -5,7 +5,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import useStore from '../../../stores/store';
 import { useInsightsData } from '../../../hooks/useInsightsData';
-import { chartDataFromInsightData } from '../../../models/Insight';
+import { chartDataFromInsightData, extractInputDependenciesFromProps } from '../../../models/Insight';
 import { useDuckDB } from '../../../contexts/DuckDBContext';
 import { useShallow } from 'zustand/react/shallow';
 import { useEffect } from 'react';
@@ -26,67 +26,6 @@ import InputLabel from '@mui/material/InputLabel';
  * - insightConfig: The full insight configuration object including name, props, model, etc.
  * - layoutValues: Optional layout configuration for the chart
  */
-// Helper to extract input names from strings containing input references
-const extractInputNamesFromString = (str) => {
-  if (!str || typeof str !== 'string') return [];
-
-  const inputNames = new Set();
-  const inputRegex = /\$\{ref\(([^)]+)\)\.value\}/g;
-  const simpleInputRegex = /\$\{([^.]+)\.value\}/g;
-
-  // Extract ref(input_name) patterns
-  let match;
-  while ((match = inputRegex.exec(str)) !== null) {
-    inputNames.add(match[1]);
-  }
-  // Extract simple input_name patterns
-  inputRegex.lastIndex = 0; // Reset regex
-  while ((match = simpleInputRegex.exec(str)) !== null) {
-    // Skip if it's a ref() pattern
-    if (!str.includes(`ref(${match[1]})`)) {
-      inputNames.add(match[1]);
-    }
-  }
-  simpleInputRegex.lastIndex = 0; // Reset regex
-
-  return Array.from(inputNames);
-};
-
-// Helper to extract input names from object (props and interactions)
-const extractInputNamesFromConfig = (config) => {
-  if (!config) return [];
-
-  const inputNames = new Set();
-
-  // Check interactions
-  if (config.interactions && Array.isArray(config.interactions)) {
-    config.interactions.forEach(interaction => {
-      if (!interaction) return;
-      // Check each interaction type's value
-      const interactionValue = interaction.filter || interaction.sort || interaction.split;
-      extractInputNamesFromString(interactionValue).forEach(name => inputNames.add(name));
-    });
-  }
-
-  // Check props recursively
-  const checkProps = (obj) => {
-    if (!obj) return;
-
-    Object.values(obj).forEach(value => {
-      if (typeof value === 'string') {
-        extractInputNamesFromString(value).forEach(name => inputNames.add(name));
-      } else if (typeof value === 'object' && value !== null) {
-        checkProps(value);
-      }
-    });
-  };
-
-  if (config.props) {
-    checkProps(config.props);
-  }
-
-  return Array.from(inputNames);
-};
 
 // Component to render input controls
 const InputControls = ({ inputNames, inputs, onInputChange }) => {
@@ -154,9 +93,10 @@ const InsightPreview = ({
   const insightName = insightConfig?.name;
   const shouldFetchData = insightName && insightName !== '__preview__';
 
-  // Extract input dependencies from entire config (props and interactions)
+  // Extract input dependencies from props using the scan method from Insight.js
   const requiredInputNames = useMemo(() => {
-    return extractInputNamesFromConfig(insightConfig);
+    if (!insightConfig?.props) return [];
+    return extractInputDependenciesFromProps(insightConfig.props);
   }, [insightConfig]);
 
   // Handler for input changes
@@ -252,14 +192,15 @@ const InsightPreview = ({
       };
 
       // Use the same transformation logic as the real Chart component
-      const data = chartDataFromInsightData(syntheticInsightsData, layoutValues);
+      // Pass inputs to process input refs in static_props
+      const data = chartDataFromInsightData(syntheticInsightsData, inputs);
       return data;
     } catch (err) {
       console.error('Error transforming chart data:', err);
       setError(err.message || 'Failed to transform data');
       return [];
     }
-  }, [insightData, insightConfig, insightName, hasData, layoutValues]);
+  }, [insightData, insightConfig, insightName, hasData, inputs]);
 
   // Combine errors
   const displayError = error || dataError;
