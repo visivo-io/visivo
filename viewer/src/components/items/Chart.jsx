@@ -16,7 +16,7 @@ import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
-const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shouldLoad = true }, ref) => {
+const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shouldLoad = true, hideToolbar = false }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
@@ -144,52 +144,60 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
 
   const layout = structuredClone(chart.layout ? chart.layout : {});
 
+  // For preview mode, ensure autosize is enabled
+  if (hideToolbar && !layout.autosize) {
+    layout.autosize = true;
+  }
+
   return (
     <ItemContainer
       onMouseOver={() => setHovering(true)}
       onMouseOut={() => setHovering(false)}
       id={itemNameToSlug(chart.name)}
     >
-      <MenuContainer>
-        <Menu hovering={hovering && cohortSelectVisible}>
-          <MenuItem>
-            <CohortSelect
-              tracesData={tracesData || {}}
-              onChange={onSelectedCohortChange}
-              selector={chart.selector}
-              parentName={chart.name}
-              parentType="chart"
-              onVisible={visible => setCohortSelectVisible(visible)}
-            />
-          </MenuItem>
-        </Menu>
-        <Menu
-          hovering={hovering && cohortSelectVisible}
-          withDropDown={false}
-          buttonChildren={<FontAwesomeIcon icon={faShareAlt} />}
-          buttonProps={{
-            style: {
-              cursor: 'pointer',
-              visibility: hovering ? 'visible' : 'hidden',
-            },
-            onClick: () => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('element_id', window.scrollY);
-              copyText(url.toString());
-            },
-            onMouseLeave: resetToolTip,
-          }}
-          showToolTip
-          toolTip={toolTip}
-        ></Menu>
-      </MenuContainer>
+      {!hideToolbar && (
+        <MenuContainer>
+          <Menu hovering={hovering && cohortSelectVisible}>
+            <MenuItem>
+              <CohortSelect
+                tracesData={tracesData || {}}
+                onChange={onSelectedCohortChange}
+                selector={chart.selector}
+                parentName={chart.name}
+                parentType="chart"
+                onVisible={visible => setCohortSelectVisible(visible)}
+              />
+            </MenuItem>
+          </Menu>
+          <Menu
+            hovering={hovering && cohortSelectVisible}
+            withDropDown={false}
+            buttonChildren={<FontAwesomeIcon icon={faShareAlt} />}
+            buttonProps={{
+              style: {
+                cursor: 'pointer',
+                visibility: hovering ? 'visible' : 'hidden',
+              },
+              onClick: () => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('element_id', window.scrollY);
+                copyText(url.toString());
+              },
+              onMouseLeave: resetToolTip,
+            }}
+            showToolTip
+            toolTip={toolTip}
+          ></Menu>
+        </MenuContainer>
+      )}
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
         data={selectedPlotData}
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
-        config={{ displayModeBar: false }}
+        config={{ displayModeBar: false, responsive: true }}
+        style={{ width: '100%', height: '100%' }}
         onAfterPlot={() => {
           setIsLoading(false);
         }}

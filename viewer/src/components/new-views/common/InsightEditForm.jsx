@@ -13,7 +13,7 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
-import InsightPreview from './InsightPreview';
+import InsightPreviewDashboard from './InsightPreviewDashboard';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
@@ -44,7 +44,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   // Form state - Basic fields
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [model, setModel] = useState('');
 
   // Props state - chart type and schema-driven props
   const [propsType, setPropsType] = useState('scatter');
@@ -81,11 +80,9 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   useEffect(() => {
     if (setPreviewContent) {
       setPreviewContent(
-        <div className="h-full p-4">
-          <InsightPreview
+        <InsightPreviewDashboard
             insightConfig={{
               name: name || '__preview__',
-              model: model || useStore.getState().models?.[0]?.name,
               props: {
                 type: debouncedPropsType,
                 ...debouncedPropsValues,
@@ -97,11 +94,11 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
                 return {};
               }).filter(i => Object.keys(i).length > 0),
             }}
+            projectId={useStore.getState().project?.id}
           />
-        </div>
       );
     }
-  }, [setPreviewContent, name, model, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
+  }, [setPreviewContent, name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {
@@ -111,7 +108,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
       const configToUse = insight.config;
       setDescription(configToUse?.description || '');
-      setModel(configToUse?.model || insight.model || '');
 
       // Props - extract type separately, rest goes to propsValues
       const props = configToUse?.props || {};
@@ -134,7 +130,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
       // Create mode - reset form
       setName('');
       setDescription('');
-      setModel('');
       setPropsType('scatter');
       setPropsValues({});
       setInteractions([]);
@@ -221,11 +216,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     // Only include description if non-empty
     if (description) {
       config.description = description;
-    }
-
-    // Only include model if non-empty
-    if (model) {
-      config.model = model;
     }
 
     // Only include interactions if non-empty
@@ -364,28 +354,6 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
               </label>
             </div>
 
-            {/* Model selector */}
-            <div className="relative">
-              <select
-                id="insightModel"
-                value={model}
-                onChange={e => setModel(e.target.value)}
-                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">Select a model (optional)...</option>
-                {useStore.getState().models?.map(m => (
-                  <option key={m.name} value={m.name}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-              <label
-                htmlFor="insightModel"
-                className="absolute text-xs font-medium text-gray-500 -top-2 left-2 bg-white px-1"
-              >
-                Model (for query data)
-              </label>
-            </div>
           </SectionContainer>
 
           {/* Props Section */}
