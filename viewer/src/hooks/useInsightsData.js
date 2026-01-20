@@ -210,6 +210,14 @@ export const useInsightsData = (projectId, insightNames) => {
   const storeInsightData = useStore(state => state.insights);
   const getInputs = useStore(state => state.inputs);
 
+  // Simple debug log
+  console.log('useInsightsData - Hook called:', {
+    projectId,
+    insightNames,
+    dbReady: !!db
+  });
+
+
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInsightNames = useMemo(() => {
     if (!insightNames?.length) return [];
@@ -290,16 +298,36 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Main query function
   const queryFn = useCallback(async () => {
+    console.log('useInsightsData Debug - queryFn called');
+
     if (!db) {
+      console.log('useInsightsData Debug - No DB, returning empty');
       return {};
     }
 
     if (!stableInsightNames.length) {
+      console.log('useInsightsData Debug - No insight names, returning empty');
       return {};
     }
 
+    if (!fetchInsights) {
+      console.error('useInsightsData Debug - fetchInsights is not defined!');
+      return {};
+    }
+
+    console.log('useInsightsData Debug - Fetching insights from API:', {
+      projectId,
+      stableInsightNames,
+      fetchInsightsFunction: typeof fetchInsights
+    });
+
     // Step 1: Fetch insight metadata from API
     const insights = await fetchInsights(projectId, stableInsightNames);
+
+    console.log('useInsightsData Debug - API response:', {
+      insights,
+      insightCount: insights?.length
+    });
 
     if (!insights?.length) {
       return {};
@@ -338,7 +366,21 @@ export const useInsightsData = (projectId, insightNames) => {
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
-  const { data, isLoading, error } = useQuery({
+  const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
+
+  // Debug why query might not be enabled
+  if (stableInsightNames.length > 0 && !queryEnabled) {
+    console.log('useInsightsData Debug - Query NOT enabled because:', {
+      hasProjectId: !!projectId,
+      projectId,
+      hasInsightNames: stableInsightNames.length > 0,
+      insightNames: stableInsightNames,
+      hasDb: !!db
+    });
+  }
+
+
+  const { data, isLoading, error, isSuccess, isFetching } = useQuery({
     queryKey: [
       'insights',
       projectId,
@@ -348,7 +390,7 @@ export const useInsightsData = (projectId, insightNames) => {
       pendingInsightInputsReady,
     ],
     queryFn,
-    enabled: !!projectId && stableInsightNames.length > 0 && !!db,
+    enabled: queryEnabled,
     staleTime: Infinity,
     gcTime: Infinity, // formerly cacheTime
     refetchOnWindowFocus: false,
@@ -358,12 +400,17 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Update store when data arrives
   useEffect(() => {
+    console.log('useInsightsData Debug - Data effect triggered:', {
+      data,
+      hasData: data && Object.keys(data).length > 0
+    });
     if (data && Object.keys(data).length > 0) {
+      console.log('useInsightsData Debug - Setting insights in store:', data);
       setInsights(data);
     }
   }, [data, setInsights]);
 
-  return {
+  const returnValue = {
     insightsData: storeInsightData || {},
     isInsightsLoading: isLoading,
     // Only report hasAllInsightData=true when we have complete data without pending inputs
@@ -371,4 +418,21 @@ export const useInsightsData = (projectId, insightNames) => {
     hasAllInsightData: hasCompleteData,
     error,
   };
+
+  // Log for any insights being fetched
+  if (stableInsightNames.length > 0) {
+    console.log('useInsightsData Debug - Query state:', {
+      requestedInsights: stableInsightNames,
+      storeInsightData: storeInsightData ? Object.keys(storeInsightData) : [],
+      isLoading,
+      isFetching,
+      isSuccess,
+      queryEnabled,
+      dbReady: !!db,
+      dataFromQuery: data,
+      error
+    });
+  }
+
+  return returnValue;
 };
