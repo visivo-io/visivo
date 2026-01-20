@@ -307,15 +307,14 @@ const InsightPreview = ({
           layout={{
             autosize: true,
             margin: { l: 50, r: 20, t: 30, b: 40 },
-            showlegend: true,
+            showlegend: false,
             hovermode: 'closest',
             ...layoutValues, // Include any layout overrides from form
           }}
           config={{
             responsive: true,
-            displayModeBar: true,
+            displayModeBar: false,
             displaylogo: false,
-            modeBarButtonsToRemove: ['sendDataToCloud'],
           }}
           useResizeHandler={true}
           style={{ width: '100%', height: '100%' }}
