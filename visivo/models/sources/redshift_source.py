@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Any, Dict, List
+from typing import Literal, Optional, Any, Dict, List, ClassVar, Set
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 from visivo.logger.logger import Logger
@@ -393,6 +393,97 @@ class RedshiftSource(ServerSource):
         except Exception as e:
             Logger.instance().debug(f"Error extracting schema for Redshift table {table_name}: {e}")
             return None
+
+    # --- Granular introspection methods ---
+
+    SYSTEM_SCHEMAS: ClassVar[Set[str]] = {"information_schema", "pg_catalog", "pg_toast"}
+
+    def get_schemas(self, database_name: str) -> List[str]:
+        """Get schemas, similar pattern to existing introspect() method."""
+        with self.connect() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT schema_name FROM information_schema.schemata
+                WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                ORDER BY schema_name
+            """
+            )
+            schemas = [row[0] for row in cursor.fetchall()]
+            cursor.close()
+            return schemas
+
+    def get_tables(
+        self, database_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Get tables and views from Redshift."""
+        if schema_name:
+            schema_filter = f"= '{schema_name}'"
+        else:
+            schema_filter = "NOT IN ('information_schema', 'pg_catalog')"
+
+        with self.connect() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                f"""
+                SELECT table_name, table_type FROM information_schema.tables
+                WHERE table_schema {schema_filter}
+                ORDER BY table_name
+            """
+            )
+            tables = [
+                {"name": row[0], "type": "view" if row[1] == "VIEW" else "table"}
+                for row in cursor.fetchall()
+            ]
+            cursor.close()
+            return tables
+
+    def get_columns(
+        self, database_name: str, table_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get column info, similar pattern to existing introspect() method."""
+        if schema_name:
+            schema_filter = f"= '{schema_name}'"
+        else:
+            schema_filter = "NOT IN ('information_schema', 'pg_catalog')"
+
+        with self.connect() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                f"""
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_schema {schema_filter} AND table_name = %s
+                ORDER BY ordinal_position
+            """,
+                (table_name,),
+            )
+            columns = [
+                {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
+                for row in cursor.fetchall()
+            ]
+            cursor.close()
+            return columns
+
+    def get_table_preview(
+        self,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Preview data using existing read_sql()."""
+        # Clamp limit to valid range
+        limit = min(max(limit, 1), 1000)
+
+        if schema_name:
+            full_table = f'"{schema_name}"."{table_name}"'
+        else:
+            full_table = f'"{table_name}"'
+
+        rows = self.read_sql(f"SELECT * FROM {full_table} LIMIT {limit}")
+        columns = list(rows[0].keys()) if rows else []
+        return {"columns": columns, "rows": rows, "row_count": len(rows)}
 
 
 class RedshiftConnection:

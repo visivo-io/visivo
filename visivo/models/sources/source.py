@@ -45,6 +45,71 @@ class Source(ABC, NamedModel):
         """Return the dialect string for this source (e.g., 'postgresql', 'mysql')."""
         raise NotImplementedError(f"No get_dialect method implemented for {self.type}")
 
+    @abstractmethod
+    def get_schemas(self, database_name: str) -> List[str]:
+        """Return list of schema names for a database, filtering system schemas.
+
+        Args:
+            database_name: The database to get schemas from
+
+        Returns:
+            List of schema names (excluding system schemas like information_schema, pg_catalog)
+        """
+        raise NotImplementedError(f"No get_schemas method implemented for {self.type}")
+
+    @abstractmethod
+    def get_tables(
+        self, database_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Return list of tables and views with type info.
+
+        Args:
+            database_name: The database to get tables from
+            schema_name: Optional schema to filter by
+
+        Returns:
+            List of dicts with 'name' and 'type' keys (type is 'table' or 'view')
+        """
+        raise NotImplementedError(f"No get_tables method implemented for {self.type}")
+
+    @abstractmethod
+    def get_columns(
+        self, database_name: str, table_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Return list of columns with type and nullable info.
+
+        Args:
+            database_name: The database containing the table
+            table_name: The table to get columns from
+            schema_name: Optional schema the table belongs to
+
+        Returns:
+            List of dicts with 'name', 'type', 'nullable', and optionally 'default' keys
+        """
+        raise NotImplementedError(f"No get_columns method implemented for {self.type}")
+
+    @abstractmethod
+    def get_table_preview(
+        self,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Return preview rows from a table (max 1000 rows).
+
+        Args:
+            database_name: The database containing the table
+            table_name: The table to preview
+            schema_name: Optional schema the table belongs to
+            limit: Maximum number of rows to return (clamped to 1-1000)
+
+        Returns:
+            Dict with 'columns' (list of column names), 'rows' (list of row dicts),
+            and 'row_count' (actual number of rows returned)
+        """
+        raise NotImplementedError(f"No get_table_preview method implemented for {self.type}")
+
     def connect(self):
         return Connection(source=self)
 

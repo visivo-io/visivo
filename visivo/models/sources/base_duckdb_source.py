@@ -2,7 +2,7 @@
 Base class for sources that use DuckDB as their underlying engine.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, ClassVar, Set
 from abc import abstractmethod
 import duckdb
 import click
@@ -254,6 +254,73 @@ class BaseDuckdbSource(Source):
         except Exception as e:
             Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
             return None
+
+    # --- Granular introspection methods ---
+
+    SYSTEM_SCHEMAS: ClassVar[Set[str]] = {"information_schema", "pg_catalog"}
+
+    def get_schemas(self, database_name: str) -> List[str]:
+        """DuckDB typically has 'main' schema only."""
+        with self.connect(read_only=True) as connection:
+            result = connection.execute(
+                """
+                SELECT DISTINCT schema_name
+                FROM information_schema.schemata
+                WHERE schema_name NOT IN ('information_schema', 'pg_catalog')
+                ORDER BY schema_name
+            """
+            )
+            return [row[0] for row in result.fetchall()]
+
+    def get_tables(
+        self, database_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Get tables and views, similar to existing _get_available_tables_from_duckdb()."""
+        schema_filter = f"= '{schema_name}'" if schema_name else "= 'main'"
+
+        with self.connect(read_only=True) as connection:
+            result = connection.execute(
+                f"""
+                SELECT table_name, 'table' as type FROM information_schema.tables
+                WHERE table_schema {schema_filter}
+                AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
+                AND table_name NOT LIKE 'pragma_%'
+                UNION ALL
+                SELECT table_name, 'view' as type FROM information_schema.views
+                WHERE table_schema {schema_filter}
+                AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
+                AND table_name NOT LIKE 'pragma_%'
+                ORDER BY table_name
+            """
+            )
+            return [{"name": row[0], "type": row[1]} for row in result.fetchall()]
+
+    def get_columns(
+        self, database_name: str, table_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Use DESCRIBE, similar to existing _extract_table_schema_from_duckdb()."""
+        with self.connect(read_only=True) as connection:
+            quoted_table = f'"{table_name}"'
+            result = connection.execute(f"DESCRIBE {quoted_table}")
+            return [
+                {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
+                for row in result.fetchall()
+            ]
+
+    def get_table_preview(
+        self,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Preview data using existing read_sql()."""
+        # Clamp limit to valid range
+        limit = min(max(limit, 1), 1000)
+        quoted_table = f'"{table_name}"'
+        rows = self.read_sql(f"SELECT * FROM {quoted_table} LIMIT {limit}")
+        columns = list(rows[0].keys()) if rows else []
+        return {"columns": columns, "rows": rows, "row_count": len(rows)}
 
 
 class DuckdbConnection:
