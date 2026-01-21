@@ -14,6 +14,7 @@ import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
 import InsightPreview from './InsightPreview';
+import RequiredFieldsSection from './RequiredFieldsSection';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
@@ -386,49 +387,19 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             </div>
 
             {/* Required fields for this chart type */}
-            {(() => {
-              const requiredFields = getRequiredFields(propsType);
-              if (requiredFields.length > 0) {
-                return (
-                  <div className="space-y-4 mt-4">
-                    <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-                      Required Data Fields
-                    </div>
-                    {requiredFields.map(field => (
-                      <div key={field.name} className="relative">
-                        <RefTextArea
-                          id={`prop-${field.name}`}
-                          value={propsValues[field.name] || ''}
-                          onChange={value => setPropsValues(prev => ({
-                            ...prev,
-                            [field.name]: value
-                          }))}
-                          placeholder={field.placeholder || ' '}
-                          rows={1}
-                          className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border ${
-                            errors[`prop.${field.name}`] ? 'border-red-500' : 'border-gray-300'
-                          } appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 peer placeholder-transparent resize-y`}
-                        />
-                        <label
-                          htmlFor={`prop-${field.name}`}
-                          className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-3 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 text-gray-500 peer-focus:text-primary-500"
-                        >
-                          {field.label}
-                          {!field.optional && <span className="text-red-500 ml-0.5">*</span>}
-                        </label>
-                        {field.description && (
-                          <p className="mt-1 text-xs text-gray-500">{field.description}</p>
-                        )}
-                        {errors[`prop.${field.name}`] && (
-                          <p className="mt-1 text-xs text-red-500">{errors[`prop.${field.name}`]}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            <RequiredFieldsSection
+              fields={getRequiredFields(propsType)}
+              values={propsValues}
+              errors={Object.fromEntries(
+                Object.entries(errors)
+                  .filter(([key]) => key.startsWith('prop.'))
+                  .map(([key, value]) => [key.replace('prop.', ''), value])
+              )}
+              onChange={(fieldName, value) => setPropsValues(prev => ({
+                ...prev,
+                [fieldName]: value
+              }))}
+            />
 
             {/* Additional optional props from schema */}
             {schemaLoading ? (
