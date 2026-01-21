@@ -179,3 +179,148 @@ class SourceManager(ObjectManager[Source]):
         except Exception as e:
             Logger.instance().debug(f"Source validation failed: {e}")
             return {"valid": False, "error": str(e)}
+
+    # --- Granular introspection methods (delegate to source methods) ---
+
+    def get_databases(self, source_name: str) -> Dict[str, Any]:
+        """
+        Get list of databases for a source.
+
+        Args:
+            source_name: The name of the source
+
+        Returns:
+            Dictionary with database list or error
+        """
+        source = self.get(source_name)
+        if source is None:
+            return {"error": f"Source '{source_name}' not found", "status": "not_found"}
+        try:
+            databases = source.list_databases()
+            return {
+                "source": source_name,
+                "databases": [{"name": db} for db in databases],
+                "status": "connected",
+            }
+        except Exception as e:
+            return {"source": source_name, "error": str(e), "status": "connection_failed"}
+
+    def get_schemas(self, source_name: str, database_name: str) -> Dict[str, Any]:
+        """
+        Get list of schemas for a database in a source.
+
+        Args:
+            source_name: The name of the source
+            database_name: The database to get schemas from
+
+        Returns:
+            Dictionary with schema list or error
+        """
+        source = self.get(source_name)
+        if source is None:
+            return {"error": f"Source '{source_name}' not found", "status": "not_found"}
+        try:
+            schemas = source.get_schemas(database_name)
+            return {
+                "source": source_name,
+                "database": database_name,
+                "schemas": [{"name": s} for s in schemas],
+                "status": "connected",
+            }
+        except Exception as e:
+            return {"error": str(e), "status": "connection_failed"}
+
+    def get_tables(
+        self, source_name: str, database_name: str, schema_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get list of tables and views for a source.
+
+        Args:
+            source_name: The name of the source
+            database_name: The database to get tables from
+            schema_name: Optional schema to filter by
+
+        Returns:
+            Dictionary with table list or error
+        """
+        source = self.get(source_name)
+        if source is None:
+            return {"error": f"Source '{source_name}' not found", "status": "not_found"}
+        try:
+            tables = source.get_tables(database_name, schema_name)
+            return {
+                "source": source_name,
+                "database": database_name,
+                "schema": schema_name,
+                "tables": tables,
+                "status": "connected",
+            }
+        except Exception as e:
+            return {"error": str(e), "status": "connection_failed"}
+
+    def get_columns(
+        self,
+        source_name: str,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of columns for a table in a source.
+
+        Args:
+            source_name: The name of the source
+            database_name: The database containing the table
+            table_name: The table to get columns from
+            schema_name: Optional schema the table belongs to
+
+        Returns:
+            Dictionary with column list or error
+        """
+        source = self.get(source_name)
+        if source is None:
+            return {"error": f"Source '{source_name}' not found", "status": "not_found"}
+        try:
+            columns = source.get_columns(database_name, table_name, schema_name)
+            return {
+                "source": source_name,
+                "database": database_name,
+                "table": table_name,
+                "schema": schema_name,
+                "columns": columns,
+                "status": "connected",
+            }
+        except Exception as e:
+            return {"error": str(e), "status": "connection_failed"}
+
+    def get_table_preview(
+        self,
+        source_name: str,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Get preview rows from a table in a source.
+
+        Args:
+            source_name: The name of the source
+            database_name: The database containing the table
+            table_name: The table to preview
+            schema_name: Optional schema the table belongs to
+            limit: Maximum number of rows to return (clamped to 1-1000)
+
+        Returns:
+            Dictionary with preview data or error
+        """
+        source = self.get(source_name)
+        if source is None:
+            return {"error": f"Source '{source_name}' not found", "status": "not_found"}
+        try:
+            result = source.get_table_preview(database_name, table_name, schema_name, limit)
+            result["status"] = "connected"
+            return result
+        except Exception as e:
+            return {"error": str(e), "status": "connection_failed"}

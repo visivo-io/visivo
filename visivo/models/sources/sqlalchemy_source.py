@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict, List, ClassVar, Set
 import click
 from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
@@ -433,3 +433,99 @@ class SqlalchemySource(Source, ABC):
         except Exception as e:
             Logger.instance().debug(f"Error extracting schema for table {table_name}: {e}")
             return None
+
+    # --- Granular introspection methods ---
+
+    SYSTEM_SCHEMAS: ClassVar[Set[str]] = {
+        "information_schema",
+        "pg_catalog",
+        "pg_toast",
+        "pg_temp_1",
+        "sys",
+        "performance_schema",
+        "mysql",
+    }
+
+    def get_schemas(self, database_name: str) -> List[str]:
+        """Return list of schema names, filtering system schemas."""
+        with self.connect() as connection:
+            dialect = connection.engine.dialect.name
+
+            # Handle database context switching for MySQL/Snowflake
+            if dialect.startswith(("mysql", "snowflake")):
+                current_db = getattr(self, "database", None)
+                if current_db and database_name != current_db:
+                    connection.execute(text(f"USE {database_name}"))
+
+            inspector = inspect(connection)
+            schemas = inspector.get_schema_names()
+            return [s for s in schemas if s.lower() not in self.SYSTEM_SCHEMAS]
+
+    def get_tables(
+        self, database_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, str]]:
+        """Return list of tables and views with type info."""
+        with self.connect() as connection:
+            dialect = connection.engine.dialect.name
+
+            # Handle database context switching for MySQL/Snowflake
+            if dialect.startswith(("mysql", "snowflake")):
+                current_db = getattr(self, "database", None)
+                if current_db and database_name != current_db:
+                    connection.execute(text(f"USE {database_name}"))
+
+            inspector = inspect(connection)
+            tables = [
+                {"name": t, "type": "table"} for t in inspector.get_table_names(schema=schema_name)
+            ]
+            views = [
+                {"name": v, "type": "view"} for v in inspector.get_view_names(schema=schema_name)
+            ]
+            return sorted(tables + views, key=lambda x: x["name"])
+
+    def get_columns(
+        self, database_name: str, table_name: str, schema_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Return list of columns with type and nullable info."""
+        with self.connect() as connection:
+            dialect = connection.engine.dialect.name
+
+            # Handle database context switching for MySQL/Snowflake
+            if dialect.startswith(("mysql", "snowflake")):
+                current_db = getattr(self, "database", None)
+                if current_db and database_name != current_db:
+                    connection.execute(text(f"USE {database_name}"))
+
+            inspector = inspect(connection)
+            columns = inspector.get_columns(table_name, schema=schema_name)
+            return [
+                {
+                    "name": c["name"],
+                    "type": str(c["type"]),
+                    "nullable": c.get("nullable", True),
+                    **({"default": str(c["default"])} if c.get("default") is not None else {}),
+                }
+                for c in columns
+            ]
+
+    def get_table_preview(
+        self,
+        database_name: str,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Return preview rows using existing read_sql() method."""
+        # Clamp limit to valid range
+        limit = min(max(limit, 1), 1000)
+
+        # Build fully qualified table name
+        if schema_name:
+            full_table = f'"{schema_name}"."{table_name}"'
+        else:
+            full_table = f'"{table_name}"'
+
+        # Reuse existing read_sql() which handles connection properly
+        rows = self.read_sql(f"SELECT * FROM {full_table} LIMIT {limit}")
+        columns = list(rows[0].keys()) if rows else []
+        return {"columns": columns, "rows": rows, "row_count": len(rows)}
