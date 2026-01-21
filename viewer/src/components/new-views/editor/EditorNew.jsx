@@ -67,10 +67,6 @@ const EditorNew = () => {
   const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
   const tableConfigsError = useStore(state => state.tableConfigsError);
 
-  // Project (needed for insights preview)
-  const fetchProject = useStore(state => state.fetchProject);
-  const project = useStore(state => state.project);
-
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,7 +97,6 @@ const EditorNew = () => {
 
   // Fetch all object types on mount
   useEffect(() => {
-    fetchProject(); // Fetch project for insights preview
     fetchSources();
     fetchModels();
     fetchDimensions();

@@ -7,7 +7,7 @@ import { extractInputDependenciesFromProps } from '../../../models/Insight';
 import useStore from '../../../stores/store';
 
 /**
- * InsightPreviewDashboard - A minimal dashboard for previewing a single insight
+ * InsightPreview - A minimal dashboard for previewing a single insight
  *
  * This component creates a synthetic dashboard configuration with:
  * - Input controls for any inputs referenced in the insight
@@ -21,7 +21,7 @@ import useStore from '../../../stores/store';
  * - projectId: Project ID for data loading
  * - layoutValues: Optional layout configuration for the chart
  */
-const InsightPreviewDashboard = ({ insightConfig, projectId, layoutValues = {} }) => {
+const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   const { inputConfigs, fetchInputConfigs } = useStore();
 
   // Fetch input configs on mount
@@ -149,4 +149,4 @@ const InsightPreviewDashboard = ({ insightConfig, projectId, layoutValues = {} }
   );
 };
 
-export default InsightPreviewDashboard;
+export default InsightPreview;
