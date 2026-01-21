@@ -101,16 +101,11 @@ const InsightPreview = ({
   // Extract input dependencies from config (props and interactions) using the scan method from Insight.js
   const requiredInputNames = useMemo(() => {
     if (!insightConfig) return [];
-    console.log('InsightPreview - extracting inputs from config:', insightConfig);
     const extractedNames = extractInputDependenciesFromProps(insightConfig);
-    console.log('InsightPreview - extracted all ref names:', extractedNames);
 
     // Filter to only actual inputs (not models) by checking against inputConfigs from API
     const inputNameSet = new Set(inputConfigs.map(input => input.name));
-    console.log('InsightPreview - available input names from API:', [...inputNameSet]);
-
     const actualInputs = extractedNames.filter(name => inputNameSet.has(name));
-    console.log('InsightPreview - filtered to actual inputs:', actualInputs);
     return actualInputs;
   }, [insightConfig, inputConfigs]);
 

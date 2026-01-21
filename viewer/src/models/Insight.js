@@ -83,11 +83,11 @@ export function processInputRefsInProps(props, inputs) {
 /**
  * Extract input names referenced in insight config (props and interactions)
  * Looks for ${inputName.accessor} and ${ref(inputName).accessor} patterns
- * @param {Object} config - Insight configuration object with props and/or interactions
+ * @param {Object} configOrProps - Insight configuration object with props/interactions, or just props object
  * @returns {string[]} - Array of unique input names found
  */
-export function extractInputDependenciesFromProps(config) {
-  if (!config) return [];
+export function extractInputDependenciesFromProps(configOrProps) {
+  if (!configOrProps) return [];
 
   const allReferencedNames = new Set();
   // Match both ${inputName.accessor} and ${ref(inputName).accessor}
@@ -117,21 +117,27 @@ export function extractInputDependenciesFromProps(config) {
     }
   }
 
-  // Scan props if present
-  if (config.props) {
-    scanValue(config.props);
+  // Check if this is a config object (has props or interactions) or just props
+  const hasPropsKey = 'props' in configOrProps;
+  const hasInteractionsKey = 'interactions' in configOrProps;
+
+  if (hasPropsKey || hasInteractionsKey) {
+    // It's a config object with props and/or interactions
+    if (configOrProps.props) {
+      scanValue(configOrProps.props);
+    }
+    if (configOrProps.interactions && Array.isArray(configOrProps.interactions)) {
+      configOrProps.interactions.forEach(interaction => {
+        if (interaction) {
+          scanValue(interaction);
+        }
+      });
+    }
+  } else {
+    // It's just a props object (backward compatibility for tests)
+    scanValue(configOrProps);
   }
 
-  // Scan interactions if present
-  if (config.interactions && Array.isArray(config.interactions)) {
-    config.interactions.forEach(interaction => {
-      if (interaction) {
-        scanValue(interaction);
-      }
-    });
-  }
-
-  console.log('extractInputDependenciesFromProps - all referenced names:', [...allReferencedNames]);
   return [...allReferencedNames];
 }
 
