@@ -4381,5 +4381,18 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "a",
+      "b",
+      "c"
+    ],
+    "encoding": [
+      "marker.color",
+      "marker.size",
+      "text"
+    ],
+    "secondary": []
+  }
 }

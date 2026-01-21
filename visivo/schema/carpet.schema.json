@@ -2708,5 +2708,16 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "a",
+      "b"
+    ],
+    "encoding": [],
+    "secondary": [
+      "x",
+      "y"
+    ]
+  }
 }

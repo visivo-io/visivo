@@ -2547,5 +2547,17 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "x",
+      "y",
+      "z"
+    ],
+    "encoding": [
+      "colorscale",
+      "text"
+    ],
+    "secondary": []
+  }
 }

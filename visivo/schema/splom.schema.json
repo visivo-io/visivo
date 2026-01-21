@@ -3692,5 +3692,10 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [],
+    "encoding": [],
+    "secondary": []
+  }
 }

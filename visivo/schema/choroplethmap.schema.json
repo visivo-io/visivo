@@ -2269,5 +2269,16 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "locations",
+      "z"
+    ],
+    "encoding": [
+      "colorscale",
+      "text"
+    ],
+    "secondary": []
+  }
 }

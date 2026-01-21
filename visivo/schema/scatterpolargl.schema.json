@@ -4046,5 +4046,17 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "r",
+      "theta"
+    ],
+    "encoding": [
+      "marker.color",
+      "marker.size",
+      "text"
+    ],
+    "secondary": []
+  }
 }

@@ -3129,5 +3129,18 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "values",
+      "labels"
+    ],
+    "encoding": [
+      "marker.colors",
+      "text"
+    ],
+    "secondary": [
+      "pull"
+    ]
+  }
 }

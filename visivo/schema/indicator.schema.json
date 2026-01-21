@@ -1828,5 +1828,15 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "value"
+    ],
+    "encoding": [],
+    "secondary": [
+      "delta",
+      "gauge"
+    ]
+  }
 }

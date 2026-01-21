@@ -4220,5 +4220,19 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "values",
+      "labels",
+      "parents"
+    ],
+    "encoding": [
+      "marker.colors",
+      "text"
+    ],
+    "secondary": [
+      "ids"
+    ]
+  }
 }

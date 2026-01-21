@@ -4291,5 +4291,17 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "lon",
+      "lat"
+    ],
+    "encoding": [
+      "marker.color",
+      "marker.size",
+      "text"
+    ],
+    "secondary": []
+  }
 }

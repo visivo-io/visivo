@@ -4680,5 +4680,22 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "keyDataProps": {
+    "primary": [
+      "x",
+      "y",
+      "z"
+    ],
+    "encoding": [
+      "marker.color",
+      "marker.size",
+      "text"
+    ],
+    "secondary": [
+      "error_x",
+      "error_y",
+      "error_z"
+    ]
+  }
 }
