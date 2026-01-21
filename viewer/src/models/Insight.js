@@ -81,22 +81,34 @@ export function processInputRefsInProps(props, inputs) {
 }
 
 /**
- * Extract input names referenced in static_props
- * Looks for ${inputName.accessor} patterns
- * @param {Object} props - Static props object
- * @returns {string[]} - Array of unique input names found in props
+ * Extract input names referenced in insight config (props and interactions)
+ * Looks for ${inputName.accessor} and ${ref(inputName).accessor} patterns
+ * @param {Object} config - Insight configuration object with props and/or interactions
+ * @returns {string[]} - Array of unique input names found
  */
-export function extractInputDependenciesFromProps(props) {
-  if (!props) return [];
+export function extractInputDependenciesFromProps(config) {
+  if (!config) return [];
 
-  const inputNames = new Set();
-  const pattern = /\$\{(\w+)\.\w+\}/g;
+  const allReferencedNames = new Set();
+  // Match both ${inputName.accessor} and ${ref(inputName).accessor}
+  const simplePattern = /\$\{(\w+)\.\w+\}/g;
+  const refPattern = /\$\{ref\((\w+)\)\.\w+\}/g;
 
   function scanValue(value) {
     if (typeof value === 'string') {
-      const matches = value.matchAll(pattern);
-      for (const match of matches) {
-        inputNames.add(match[1]);
+      // Check for ref(inputName) pattern first
+      const refMatches = value.matchAll(refPattern);
+      for (const match of refMatches) {
+        allReferencedNames.add(match[1]);
+      }
+
+      // Then check for simple inputName pattern
+      const simpleMatches = value.matchAll(simplePattern);
+      for (const match of simpleMatches) {
+        // Skip if it was already matched as a ref() pattern
+        if (!value.includes(`ref(${match[1]})`)) {
+          allReferencedNames.add(match[1]);
+        }
       }
     } else if (Array.isArray(value)) {
       value.forEach(item => scanValue(item));
@@ -105,8 +117,22 @@ export function extractInputDependenciesFromProps(props) {
     }
   }
 
-  scanValue(props);
-  return [...inputNames];
+  // Scan props if present
+  if (config.props) {
+    scanValue(config.props);
+  }
+
+  // Scan interactions if present
+  if (config.interactions && Array.isArray(config.interactions)) {
+    config.interactions.forEach(interaction => {
+      if (interaction) {
+        scanValue(interaction);
+      }
+    });
+  }
+
+  console.log('extractInputDependenciesFromProps - all referenced names:', [...allReferencedNames]);
+  return [...allReferencedNames];
 }
 
 /**

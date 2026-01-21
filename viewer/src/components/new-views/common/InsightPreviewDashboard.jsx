@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import Chart from '../../items/Chart';
 import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { extractInputDependenciesFromProps } from '../../../models/Insight';
+import useStore from '../../../stores/store';
 
 /**
  * InsightPreviewDashboard - A minimal dashboard for previewing a single insight
@@ -21,41 +22,31 @@ import { extractInputDependenciesFromProps } from '../../../models/Insight';
  * - layoutValues: Optional layout configuration for the chart
  */
 const InsightPreviewDashboard = ({ insightConfig, projectId, layoutValues = {} }) => {
-  // Extract required input names using the scan method from Insight.js
-  const inputNames = useMemo(() => {
-    if (!insightConfig?.props) return [];
-    return extractInputDependenciesFromProps(insightConfig.props);
+  const { inputConfigs, fetchInputConfigs } = useStore();
+
+  // Fetch input configs on mount
+  useEffect(() => {
+    fetchInputConfigs();
+  }, [fetchInputConfigs]);
+
+  // Extract all referenced names from the insight config
+  const allReferencedNames = useMemo(() => {
+    if (!insightConfig) return [];
+    return extractInputDependenciesFromProps(insightConfig);
   }, [insightConfig]);
 
-  // Create synthetic input configurations
+  // Filter to only actual inputs and get their full configurations
   const inputs = useMemo(() => {
-    return inputNames.map(name => {
-      // Determine input type based on common patterns
-      let inputType = 'single-select';
-      let displayType = 'dropdown';
-      let label = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (!inputConfigs || inputConfigs.length === 0) return [];
 
-      // Special cases for known input types
-      if (name === 'sort_direction') {
-        return {
-          name,
-          label: 'Sort Direction',
-          type: inputType,
-          display: { type: 'radio' },
-          options: ['ASC', 'DESC']
-        };
-      } else if (name.includes('threshold') || name.includes('min') || name.includes('max')) {
-        displayType = 'slider';
-      }
+    // Create a map of input names to their configs
+    const inputConfigMap = new Map(inputConfigs.map(ic => [ic.name, ic.config]));
 
-      return {
-        name,
-        label,
-        type: inputType,
-        display: { type: displayType }
-      };
-    });
-  }, [inputNames]);
+    // Filter referenced names to only actual inputs and get their configs
+    return allReferencedNames
+      .filter(name => inputConfigMap.has(name))
+      .map(name => inputConfigMap.get(name));
+  }, [allReferencedNames, inputConfigs]);
 
   // Create synthetic chart configuration
   const chart = useMemo(() => {
@@ -106,8 +97,11 @@ const InsightPreviewDashboard = ({ insightConfig, projectId, layoutValues = {} }
   // Load insight data (this stores results in Zustand)
   useInsightsData(projectId, insightNamesToLoad);
 
+  // Get input names from the filtered input configs
+  const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);
+
   // Load input data if needed
-  useInputsData(projectId, inputNames);
+  useInputsData(projectId, inputNamesToLoad);
 
   // If this is an unsaved insight, we can't preview with real data
   if (!insightConfig?.name || insightConfig.name === '__preview__') {

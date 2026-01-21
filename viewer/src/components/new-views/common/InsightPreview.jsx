@@ -81,7 +81,7 @@ const InsightPreview = ({
   insightConfig,
   layoutValues = {},
 }) => {
-  const { project } = useStore();
+  const { project, inputConfigs, fetchInputConfigs } = useStore();
   const projectId = project?.id;
   const db = useDuckDB();
   const [error, setError] = useState(null);
@@ -89,15 +89,30 @@ const InsightPreview = ({
   const setInputValue = useStore(state => state.setInputValue);
   const inputs = useStore(state => state.inputs);
 
+  // Fetch input configs on mount
+  useEffect(() => {
+    fetchInputConfigs();
+  }, [fetchInputConfigs]);
+
   // Use the insight name if it exists (for saved insights), otherwise don't fetch
   const insightName = insightConfig?.name;
   const shouldFetchData = insightName && insightName !== '__preview__';
 
-  // Extract input dependencies from props using the scan method from Insight.js
+  // Extract input dependencies from config (props and interactions) using the scan method from Insight.js
   const requiredInputNames = useMemo(() => {
-    if (!insightConfig?.props) return [];
-    return extractInputDependenciesFromProps(insightConfig.props);
-  }, [insightConfig]);
+    if (!insightConfig) return [];
+    console.log('InsightPreview - extracting inputs from config:', insightConfig);
+    const extractedNames = extractInputDependenciesFromProps(insightConfig);
+    console.log('InsightPreview - extracted all ref names:', extractedNames);
+
+    // Filter to only actual inputs (not models) by checking against inputConfigs from API
+    const inputNameSet = new Set(inputConfigs.map(input => input.name));
+    console.log('InsightPreview - available input names from API:', [...inputNameSet]);
+
+    const actualInputs = extractedNames.filter(name => inputNameSet.has(name));
+    console.log('InsightPreview - filtered to actual inputs:', actualInputs);
+    return actualInputs;
+  }, [insightConfig, inputConfigs]);
 
   // Handler for input changes
   const handleInputChange = useCallback((inputName, value) => {
@@ -265,30 +280,10 @@ const InsightPreview = ({
     );
   }
 
-  if (!chartData || chartData.length === 0) {
-    // Check if this is a saved insight that should have data
-    const isSavedInsight = insightName && insightName !== '__preview__';
+  // Render the chart with input controls (even if no data yet)
+  const hasChartData = chartData && chartData.length > 0;
+  const isSavedInsight = insightName && insightName !== '__preview__';
 
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <InfoOutlinedIcon className="text-gray-400 mb-2" sx={{ fontSize: 48 }} />
-        <h3 className="text-lg font-medium text-gray-700 mb-2">No Data Available</h3>
-        <p className="text-sm text-gray-500 max-w-sm">
-          {isSavedInsight
-            ? "This insight needs 'visivo run' to generate preview data. The data will appear after the insight job is processed."
-            : "Configure the required fields in the form to see a preview."
-          }
-        </p>
-        {isSavedInsight && (
-          <p className="text-xs text-gray-400 mt-2">
-            Insight: {insightName}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // Render the chart with input controls
   return (
     <div className="w-full h-full flex flex-col">
       {/* Input Controls */}
@@ -300,26 +295,44 @@ const InsightPreview = ({
         />
       )}
 
-      {/* Chart */}
-      <div className="flex-1 relative">
-        <Plot
-          data={chartData}
-          layout={{
-            autosize: true,
-            margin: { l: 50, r: 20, t: 30, b: 40 },
-            showlegend: false,
-            hovermode: 'closest',
-            ...layoutValues, // Include any layout overrides from form
-          }}
-          config={{
-            responsive: true,
-            displayModeBar: false,
-            displaylogo: false,
-          }}
-          useResizeHandler={true}
-          style={{ width: '100%', height: '100%' }}
-        />
-      </div>
+      {/* Chart or No Data Message */}
+      {hasChartData ? (
+        <div className="flex-1 relative">
+          <Plot
+            data={chartData}
+            layout={{
+              autosize: true,
+              margin: { l: 50, r: 20, t: 30, b: 40 },
+              showlegend: false,
+              hovermode: 'closest',
+              ...layoutValues, // Include any layout overrides from form
+            }}
+            config={{
+              responsive: true,
+              displayModeBar: false,
+              displaylogo: false,
+            }}
+            useResizeHandler={true}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <InfoOutlinedIcon className="text-gray-400 mb-2" sx={{ fontSize: 48 }} />
+          <h3 className="text-lg font-medium text-gray-700 mb-2">No Data Available</h3>
+          <p className="text-sm text-gray-500 max-w-sm">
+            {isSavedInsight
+              ? "This insight needs 'visivo run' to generate preview data. The data will appear after the insight job is processed."
+              : "Configure the required fields in the form to see a preview."
+            }
+          </p>
+          {isSavedInsight && (
+            <p className="text-xs text-gray-400 mt-2">
+              Insight: {insightName}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
