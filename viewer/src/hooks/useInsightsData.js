@@ -123,17 +123,12 @@ const processInsight = async (db, insight, inputs) => {
       };
     }
 
-    // Step 1: Load parquet files (with caching)
     const { loaded, failed } = await loadInsightParquetFiles(db, files);
 
-    // Step 2: Prepare post_query with input substitution
     const preparedQuery = prepPostQuery({ query }, inputs);
-    console.log('preparedQuery here', preparedQuery);
 
-    // Step 3: Execute query in DuckDB
     const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
 
-    // Step 4: Process results
     const processedRows = result.toArray().map(row => {
       const rowData = row.toJSON();
       return Object.fromEntries(
@@ -144,10 +139,6 @@ const processInsight = async (db, insight, inputs) => {
       );
     });
 
-    console.log('processedRows', processedRows);
-
-
-    // Step 5: Return structured data
     return {
       [insightName]: {
         name: insightName,
@@ -212,14 +203,6 @@ export const useInsightsData = (projectId, insightNames) => {
   const setInsights = useStore(state => state.setInsights);
   const storeInsightData = useStore(state => state.insights);
   const getInputs = useStore(state => state.inputs);
-
-  // Simple debug log
-  console.log('useInsightsData - Hook called:', {
-    projectId,
-    insightNames,
-    dbReady: !!db
-  });
-
 
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInsightNames = useMemo(() => {
@@ -301,15 +284,12 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Main query function
   const queryFn = useCallback(async () => {
-    console.log('useInsightsData Debug - queryFn called');
 
     if (!db) {
-      console.log('useInsightsData Debug - No DB, returning empty');
       return {};
     }
 
     if (!stableInsightNames.length) {
-      console.log('useInsightsData Debug - No insight names, returning empty');
       return {};
     }
 
@@ -318,19 +298,7 @@ export const useInsightsData = (projectId, insightNames) => {
       return {};
     }
 
-    console.log('useInsightsData Debug - Fetching insights from API:', {
-      projectId,
-      stableInsightNames,
-      fetchInsightsFunction: typeof fetchInsights
-    });
-
-    // Step 1: Fetch insight metadata from API
     const insights = await fetchInsights(projectId, stableInsightNames);
-
-    console.log('useInsightsData Debug - API response:', {
-      insights,
-      insightCount: insights?.length
-    });
 
     if (!insights?.length) {
       return {};
@@ -340,14 +308,10 @@ export const useInsightsData = (projectId, insightNames) => {
     // This ensures we always have the latest inputs at query execution time
     const freshInputs = useStore.getState().inputs || {};
 
-    // Step 2: Process each insight in parallel
     const results = await Promise.allSettled(
       insights.map(insight => processInsight(db, insight, freshInputs))
     );
 
-    console.log('results processed', results);
-
-    // Step 3: Merge results
     const mergedData = {};
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -373,19 +337,7 @@ export const useInsightsData = (projectId, insightNames) => {
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
 
-  // Debug why query might not be enabled
-  if (stableInsightNames.length > 0 && !queryEnabled) {
-    console.log('useInsightsData Debug - Query NOT enabled because:', {
-      hasProjectId: !!projectId,
-      projectId,
-      hasInsightNames: stableInsightNames.length > 0,
-      insightNames: stableInsightNames,
-      hasDb: !!db
-    });
-  }
-
-
-  const { data, isLoading, error, isSuccess, isFetching } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: [
       'insights',
       projectId,
@@ -405,12 +357,7 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Update store when data arrives
   useEffect(() => {
-    console.log('useInsightsData Debug - Data effect triggered:', {
-      data,
-      hasData: data && Object.keys(data).length > 0
-    });
     if (data && Object.keys(data).length > 0) {
-      console.log('useInsightsData Debug - Setting insights in store:', data);
       setInsights(data);
     }
   }, [data, setInsights]);
@@ -423,21 +370,6 @@ export const useInsightsData = (projectId, insightNames) => {
     hasAllInsightData: hasCompleteData,
     error,
   };
-
-  // Log for any insights being fetched
-  if (stableInsightNames.length > 0) {
-    console.log('useInsightsData Debug - Query state:', {
-      requestedInsights: stableInsightNames,
-      storeInsightData: storeInsightData ? Object.keys(storeInsightData) : [],
-      isLoading,
-      isFetching,
-      isSuccess,
-      queryEnabled,
-      dbReady: !!db,
-      dataFromQuery: data,
-      error
-    });
-  }
 
   return returnValue;
 };

@@ -55,23 +55,12 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
   // In server mode, this will call /api/insight-jobs/ with insight names as query params
   // In dist mode, this will fetch /data/insights.json
 
-  console.log('fetchInsightJobs Debug - Called with:', {
-    projectId,
-    names,
-    retries,
-    retryDelay
-  });
-
   if (!names || names.length === 0) {
     console.warn('fetchInsightJobs called with empty names array');
     return [];
   }
 
   let url = getUrl('insightJobsQuery');
-  console.log('fetchInsightJobs Debug - URL config:', {
-    baseUrl: url,
-    environment: window.location.hostname
-  });
   const params = [];
 
   // Add insight names as query parameters for server mode
@@ -85,17 +74,12 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
     url += `?${params.join('&')}`;
   }
 
-  console.log('fetchInsightJobs Debug - Full URL:', url);
-
   let lastError;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       console.debug(`Fetching insight jobs (attempt ${attempt + 1}/${retries}):`, names);
-      console.log('fetchInsightJobs Debug - About to fetch from URL:', url);
 
       const response = await fetch(url);
-      console.log('fetchInsightJobs Debug - Response status:', response.status, response.ok);
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -105,14 +89,8 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
 
       const data = await response.json();
 
-      console.log('fetchInsightJobs Debug - Raw response data:', data);
-
-      // Ensure data is in the expected format
       let insightJobs = Array.isArray(data) ? data : [data];
 
-      console.log('fetchInsightJobs Debug - Processed insight jobs:', insightJobs);
-
-      // Validate each insight job
       const validInsightJobs = insightJobs.filter(insightJob => {
         const isValid = validateInsightJobStructure(insightJob);
         if (!isValid) {

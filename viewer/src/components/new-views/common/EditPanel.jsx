@@ -53,7 +53,7 @@ const EditPanel = ({
   // Preview state - only for types that support preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState(null);
-  const supportsPreview = ['insight', 'chart'].includes(currentObjectType);
+  const supportsPreview = ['insight'].includes(currentObjectType);
 
   // Generate title based on object type
   const getTitle = () => {

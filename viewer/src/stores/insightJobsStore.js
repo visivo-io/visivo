@@ -137,10 +137,8 @@ const createInsightJobsSlice = (set, get) => ({
     })),
 
   setInsights: newInsights => {
-    console.log('insightJobsStore Debug - setInsights called with:', newInsights);
     set(state => {
       const merged = { ...state.insights, ...newInsights };
-      console.log('insightJobsStore Debug - Merged insights:', merged);
       return { insights: merged };
     });
   },

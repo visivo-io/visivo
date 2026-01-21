@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import useStore from '../../../stores/store';
 
 /**
  * PreviewDrawer - A resizable drawer component that slides in from behind the edit panel
@@ -26,20 +24,24 @@ const PreviewDrawer = ({
   maxWidth = 800,
   editPanelWidth = 384,
 }) => {
-  const [width, setWidth] = useState(defaultWidth);
+  const previewDrawerWidth = useStore(state => state.previewDrawerWidth);
+  const setPreviewDrawerWidth = useStore(state => state.setPreviewDrawerWidth);
   const [isResizing, setIsResizing] = useState(false);
   const drawerRef = useRef(null);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
+
+  // Use global width, or default if not set
+  const width = previewDrawerWidth || defaultWidth;
 
   // Handle resize drag
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
 
-      const diff = e.clientX - startX.current;
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth.current + diff));
-      setWidth(newWidth);
+      // Calculate width based on distance from the right edge
+      // The drawer is positioned from the right (right: editPanelWidth)
+      const rightEdge = window.innerWidth - editPanelWidth;
+      const newWidth = Math.max(minWidth, Math.min(maxWidth, rightEdge - e.clientX));
+      setPreviewDrawerWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -61,12 +63,11 @@ const PreviewDrawer = ({
         document.body.style.userSelect = 'auto';
       };
     }
-  }, [isResizing, minWidth, maxWidth]);
+  }, [isResizing, minWidth, maxWidth, editPanelWidth, setPreviewDrawerWidth]);
 
   const handleResizeStart = (e) => {
+    e.preventDefault();
     setIsResizing(true);
-    startX.current = e.clientX;
-    startWidth.current = width;
   };
 
   return (
@@ -95,14 +96,14 @@ const PreviewDrawer = ({
           {children}
         </div>
 
-        {/* Resize handle */}
+        {/* Resize handle - matches explorer divider style */}
         <div
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary-500 transition-colors group"
+          className={`absolute top-0 left-0 w-1 h-full cursor-ew-resize bg-gray-200 hover:bg-gray-300 flex items-center justify-center group ${
+            isResizing ? 'bg-gray-400' : ''
+          }`}
           onMouseDown={handleResizeStart}
         >
-          <div className="absolute top-1/2 -translate-y-1/2 -left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <DragIndicatorIcon fontSize="small" className="text-gray-400" />
-          </div>
+          <div className="w-1 h-8 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
         </div>
       </div>
 
