@@ -1,9 +1,11 @@
 import json
 import os
+import threading
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
+from visivo.server.managers.preview_job_manager import PreviewJobManager, JobStatus
 
 
 def register_insight_views(app, flask_app, output_dir):
@@ -104,4 +106,200 @@ def register_insight_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error computing hash: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/insight-jobs/", methods=["POST"])
+    def run_insight_preview():
+        """Execute a preview job for an unsaved/modified insight.
+
+        POST body: {
+            "config": {...},  # Insight configuration
+            "run": true       # Flag to execute the job
+        }
+        Returns: {"job_id": "uuid"}
+        """
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"message": "Request body is required"}), 400
+
+            # Check if this is a preview job execution request
+            if not data.get("run"):
+                return jsonify({"message": "run parameter must be true to execute preview"}), 400
+
+            config = data.get("config")
+            if not config:
+                return jsonify({"message": "config field is required"}), 400
+
+            # Create job via PreviewJobManager
+            job_manager = PreviewJobManager.instance()
+            job_id = job_manager.create_job(config, object_type="insight")
+
+            # Execute job in background thread
+            def execute_job():
+                from pydantic import TypeAdapter, ValidationError
+                from visivo.models.insight import Insight
+                from visivo.jobs.run_insight_job import action
+
+                try:
+                    # Update status to running
+                    job_manager.update_status(
+                        job_id, JobStatus.RUNNING, progress=0.1, progress_message="Validating config"
+                    )
+
+                    # Validate insight config
+                    insight_adapter = TypeAdapter(Insight)
+                    insight = insight_adapter.validate_python(config)
+
+                    # If insight doesn't have a name, assign a temporary one
+                    if not insight.name:
+                        insight.name = f"preview_{job_id[:8]}"
+
+                    # Update progress: preparing
+                    job_manager.update_status(
+                        job_id,
+                        JobStatus.RUNNING,
+                        progress=0.2,
+                        progress_message="Preparing execution",
+                    )
+
+                    # Execute insight action with job_id for file naming
+                    job_manager.update_status(
+                        job_id,
+                        JobStatus.RUNNING,
+                        progress=0.5,
+                        progress_message=f"Executing query for {insight.name or 'preview'}",
+                    )
+
+                    result = action(
+                        insight=insight,
+                        dag=flask_app.project.dag(),
+                        output_dir=output_dir,
+                        job_id=job_id,
+                    )
+
+                    if result.success:
+                        # Load result metadata
+                        job_manager.update_status(
+                            job_id,
+                            JobStatus.RUNNING,
+                            progress=0.9,
+                            progress_message="Finalizing results",
+                        )
+
+                        # Load the generated insight metadata file
+                        import json
+
+                        insight_path = f"{output_dir}/insights/{job_id}.json"
+                        if os.path.exists(insight_path):
+                            with open(insight_path, "r") as f:
+                                insight_data = json.load(f)
+
+                            # Convert file paths to API URLs
+                            for file_info in insight_data.get("files", []):
+                                file_path = file_info.get("signed_data_file_url", "")
+                                if file_path:
+                                    filename = os.path.basename(file_path)
+                                    name_hash = filename.replace(".parquet", "")
+                                    file_info["signed_data_file_url"] = f"/api/files/{name_hash}/"
+
+                            job_manager.set_result(job_id, insight_data)
+                        else:
+                            raise FileNotFoundError(f"Preview result not found at {insight_path}")
+                    else:
+                        # Job failed
+                        job_manager.update_status(
+                            job_id,
+                            JobStatus.FAILED,
+                            error=str(result.message),
+                            error_details={"item_name": insight.name or "preview"},
+                        )
+
+                except ValidationError as e:
+                    error_msg = f"Invalid insight configuration: {str(e)}"
+                    Logger.instance().error(error_msg)
+                    job_manager.update_status(
+                        job_id,
+                        JobStatus.FAILED,
+                        error=error_msg,
+                        error_details={"errors": e.errors()},
+                    )
+
+                except Exception as e:
+                    error_msg = f"Preview job failed: {str(e)}"
+                    Logger.instance().error(error_msg, exc_info=True)
+                    job_manager.update_status(
+                        job_id,
+                        JobStatus.FAILED,
+                        error=error_msg,
+                        error_details={"exception": str(e)},
+                    )
+
+            # Start background thread
+            thread = threading.Thread(target=execute_job, daemon=True)
+            thread.start()
+
+            Logger.instance().info(f"Started preview job {job_id}")
+            return jsonify({"job_id": job_id}), 202  # 202 Accepted
+
+        except Exception as e:
+            Logger.instance().error(f"Error creating preview job: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/insight-jobs/<job_id>/status", methods=["GET"])
+    def get_job_status(job_id):
+        """Get status of a preview job.
+
+        Returns: {
+            "job_id": "uuid",
+            "status": "queued|running|completed|failed",
+            "progress": 0.0-1.0,
+            "progress_message": "...",
+            "error": "..." (if failed)
+        }
+        """
+        try:
+            job_manager = PreviewJobManager.instance()
+            job = job_manager.get_job(job_id)
+
+            if not job:
+                return jsonify({"message": f"Job {job_id} not found"}), 404
+
+            return jsonify(job.to_dict())
+
+        except Exception as e:
+            Logger.instance().error(f"Error getting job status: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/insight-jobs/<job_id>/result", methods=["GET"])
+    def get_job_result(job_id):
+        """Get result of a completed preview job.
+
+        Returns the insight metadata (same format as GET /api/insight-jobs/)
+        """
+        try:
+            job_manager = PreviewJobManager.instance()
+            job = job_manager.get_job(job_id)
+
+            if not job:
+                return jsonify({"message": f"Job {job_id} not found"}), 404
+
+            if job.status != JobStatus.COMPLETED:
+                return (
+                    jsonify(
+                        {
+                            "message": f"Job not completed. Current status: {job.status.value}",
+                            "status": job.status.value,
+                        }
+                    ),
+                    400,
+                )
+
+            if not job.result:
+                return jsonify({"message": "Job completed but no result available"}), 500
+
+            return jsonify(job.result)
+
+        except Exception as e:
+            Logger.instance().error(f"Error getting job result: {str(e)}")
             return jsonify({"message": str(e)}), 500

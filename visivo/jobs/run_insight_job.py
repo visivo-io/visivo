@@ -15,8 +15,15 @@ import json
 import os
 
 
-def action(insight: Insight, dag: ProjectDag, output_dir):
-    """Execute insight job - tokenize insight and generate insight.json file"""
+def action(insight: Insight, dag: ProjectDag, output_dir, job_id=None):
+    """Execute insight job - tokenize insight and generate insight.json file
+
+    Args:
+        insight: Insight object to execute
+        dag: Project DAG with dependencies
+        output_dir: Output directory for files
+        job_id: Optional job ID for preview jobs (uses job_id for file naming instead of name_hash)
+    """
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
 
@@ -50,16 +57,19 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
         start_time = time()
 
         files_directory = f"{output_dir}/files"
+        # Determine file hash: use job_id for previews, name_hash for published
+        file_hash = job_id if job_id else insight.name_hash()
+
         if insight_query_info.pre_query:
             import polars as pl
 
             data = source.read_sql(insight_query_info.pre_query)
             # Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
             os.makedirs(files_directory, exist_ok=True)
-            parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
+            parquet_path = f"{files_directory}/{file_hash}.parquet"
             df = pl.DataFrame(data)
             df.write_parquet(parquet_path)
-            files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
+            files = [{"name_hash": file_hash, "signed_data_file_url": parquet_path}]
         else:
             models = insight.get_all_dependent_models(dag=dag)
             files = [
@@ -83,7 +93,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
         }
 
         insight_directory = f"{output_dir}/insights"
-        insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")
+        insight_path = os.path.join(insight_directory, f"{file_hash}.json")
         os.makedirs(insight_directory, exist_ok=True)
         with open(insight_path, "w") as f:
             json.dump(insight_data, f, indent=2)

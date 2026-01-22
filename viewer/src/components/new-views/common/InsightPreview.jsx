@@ -1,10 +1,14 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import Chart from '../../items/Chart';
 import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { extractInputDependenciesFromProps } from '../../../models/Insight';
 import useStore from '../../../stores/store';
+import { usePreviewJob } from '../../../hooks/usePreviewJob';
+import { useDuckDB } from '../../../contexts/DuckDBContext';
+import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../../../duckdb/queries';
+import CircularProgress from '@mui/material/CircularProgress';
 
 /**
  * InsightPreview - A minimal dashboard for previewing a single insight
@@ -13,21 +17,109 @@ import useStore from '../../../stores/store';
  * - Input controls for any inputs referenced in the insight
  * - A single chart displaying the insight
  *
- * It reuses the existing Dashboard data loading patterns and Chart/Input components
- * to avoid duplicating logic.
+ * It supports two modes:
+ * 1. Saved insight mode (usePreview=false): Uses normal data loading via useInsightsData
+ * 2. Preview job mode (usePreview=true): Runs a preview job and loads result
  *
  * Props:
  * - insightConfig: The insight configuration object
  * - projectId: Project ID for data loading
  * - layoutValues: Optional layout configuration for the chart
+ * - usePreview: Boolean - if true, run a preview job instead of loading saved data
  */
-const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
-  const { inputConfigs, fetchInputConfigs } = useStore();
+const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePreview = false }) => {
+  const { inputConfigs, fetchInputConfigs, setInsights } = useStore();
+  const db = useDuckDB();
+
+  // Preview job state
+  const { jobId, status, progress, progressMessage, result, error: jobError, isRunning, isCompleted, isFailed, startJob, resetJob } = usePreviewJob();
 
   // Fetch input configs on mount
   useEffect(() => {
     fetchInputConfigs();
   }, [fetchInputConfigs]);
+
+  // Start preview job when config changes (in preview mode)
+  useEffect(() => {
+    if (!usePreview || !insightConfig) return;
+
+    // Reset previous job
+    resetJob();
+
+    // Start new preview job
+    startJob(insightConfig).catch(err => {
+      console.error('Failed to start preview job:', err);
+    });
+  }, [usePreview, insightConfig, startJob, resetJob]);
+
+  // Process preview result and load into DuckDB when completed
+  useEffect(() => {
+    if (!usePreview || !isCompleted || !result || !db) return;
+
+    const processPreviewResult = async () => {
+      try {
+        const insightName = result.name || '__preview__';
+        const { files, query, props_mapping, split_key, type, static_props } = result;
+
+        // Get current inputs from store
+        const freshInputs = useStore.getState().inputs || {};
+
+        // Load parquet files into DuckDB
+        const { loaded, failed } = await loadInsightParquetFiles(db, files);
+
+        // Execute post_query with input substitution
+        const preparedQuery = prepPostQuery({ query }, freshInputs);
+        const queryResult = await runDuckDBQuery(db, preparedQuery, 3, 1000);
+
+        // Process rows
+        const processedRows = queryResult.toArray().map(row => {
+          const rowData = row.toJSON();
+          return Object.fromEntries(
+            Object.entries(rowData).map(([key, value]) => [
+              key,
+              typeof value === 'bigint' ? value.toString() : value,
+            ])
+          );
+        });
+
+        // Store in Zustand insights store
+        const insightData = {
+          [insightName]: {
+            name: insightName,
+            data: processedRows,
+            files,
+            query,
+            props_mapping,
+            static_props,
+            split_key,
+            type,
+            loaded: loaded.length,
+            failed: failed.length,
+            error: null,
+            pendingInputs: null,
+            inputDependencies: [],
+          },
+        };
+
+        setInsights(insightData);
+      } catch (error) {
+        console.error('Failed to process preview result:', error);
+        // Store error state
+        const insightName = result.name || '__preview__';
+        setInsights({
+          [insightName]: {
+            name: insightName,
+            data: [],
+            error: error.message || String(error),
+            loaded: 0,
+            failed: result.files?.length || 0,
+          },
+        });
+      }
+    };
+
+    processPreviewResult();
+  }, [usePreview, isCompleted, result, db, setInsights]);
 
   // Extract all referenced names from the insight config
   const allReferencedNames = useMemo(() => {
@@ -50,7 +142,8 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
 
   // Create synthetic chart configuration
   const chart = useMemo(() => {
-    const insightName = insightConfig?.name;
+    // In preview mode, use the result name or fallback
+    const insightName = usePreview ? (result?.name || '__preview__') : insightConfig?.name;
 
     // Ensure autosize is enabled for preview
     const previewLayout = {
@@ -59,7 +152,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       ...layoutValues
     };
 
-    // For saved insights, use the name; for unsaved, generate a temporary structure
+    // For saved insights or completed preview jobs, use the insight name
     if (insightName && insightName !== '__preview__') {
       return {
         name: 'Preview Chart',
@@ -69,15 +162,14 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       };
     }
 
-    // For unsaved insights, we can't use the insight-based approach
-    // We'd need to handle this differently or require saving first
+    // For unsaved insights without preview data
     return {
       name: 'Preview Chart',
       insights: [],
       traces: [],
       layout: previewLayout
     };
-  }, [insightConfig, layoutValues]);
+  }, [insightConfig, layoutValues, usePreview, result]);
 
   // Create synthetic project object
   const project = useMemo(() => ({
@@ -103,8 +195,37 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   // Load input data if needed
   useInputsData(projectId, inputNamesToLoad);
 
-  // If this is an unsaved insight, we can't preview with real data
-  if (!insightConfig?.name || insightConfig.name === '__preview__') {
+  // Show preview job loading state
+  if (usePreview && isRunning) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-loading">
+        <CircularProgress size={48} className="mb-4" />
+        <h3 className="text-lg font-medium text-gray-700 mb-2">Running Preview</h3>
+        <p className="text-sm text-gray-500 max-w-sm mb-2">{progressMessage}</p>
+        <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Show preview job error state
+  if (usePreview && isFailed) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-error">
+        <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
+        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
+          {jobError}
+        </p>
+      </div>
+    );
+  }
+
+  // If this is an unsaved insight in non-preview mode, show save message
+  if (!usePreview && (!insightConfig?.name || insightConfig.name === '__preview__')) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="unsaved-insight-message">
         <h3 className="text-lg font-medium text-gray-700 mb-2">Save to Preview with Data</h3>

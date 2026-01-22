@@ -180,6 +180,7 @@ const EditPanel = ({
           <InsightPreview
             insightConfig={previewConfig.insightConfig}
             projectId={previewConfig.projectId}
+            usePreview={true}
           />
         </PreviewDrawer>
       )}
