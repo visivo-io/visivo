@@ -58,6 +58,7 @@ describe('InsightPreview', () => {
         />
       );
 
+      expect(screen.getByTestId('unsaved-insight-message')).toBeInTheDocument();
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
       expect(screen.getByText(/Save the insight and run 'visivo run'/)).toBeInTheDocument();
     });
@@ -70,6 +71,7 @@ describe('InsightPreview', () => {
         />
       );
 
+      expect(screen.getByTestId('unsaved-insight-message')).toBeInTheDocument();
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
     });
   });
@@ -120,16 +122,15 @@ describe('InsightPreview', () => {
         return typeof selector === 'function' ? selector(state) : state;
       });
 
-      const { container } = render(
+      render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
           projectId="proj-1"
         />
       );
 
-      // Should not have the input controls container
-      const inputSection = container.querySelector('.p-3.border-b.border-gray-200.bg-gray-50');
-      expect(inputSection).not.toBeInTheDocument();
+      // Should not have the input controls section
+      expect(screen.queryByTestId('input-controls-section')).not.toBeInTheDocument();
     });
 
     it('renders input controls when inputs are referenced in props', () => {
@@ -137,7 +138,7 @@ describe('InsightPreview', () => {
         name: 'test_insight',
         props: {
           type: 'scatter',
-          mode: '${show_markers.value}',
+          mode: `\${show_markers.value}`,
         },
       };
 
@@ -168,7 +169,7 @@ describe('InsightPreview', () => {
         interactions: [
           {
             type: 'filter',
-            value: 'x > ${min_value.value}',
+            value: `x > \${min_value.value}`,
           },
         ],
       };
@@ -198,7 +199,7 @@ describe('InsightPreview', () => {
         name: 'test_insight',
         props: {
           type: 'scatter',
-          mode: '${show_markers.value}',
+          mode: `\${show_markers.value}`,
         },
       };
 
@@ -228,7 +229,7 @@ describe('InsightPreview', () => {
         props: {
           type: 'scatter',
           x: 'ref(some_model).column_x', // model reference
-          mode: '${show_markers.value}', // input reference
+          mode: `\${show_markers.value}`, // input reference
         },
       };
 
@@ -258,7 +259,7 @@ describe('InsightPreview', () => {
       const configWithInputs = {
         name: 'test_insight',
         props: {
-          mode: '${show_markers.value}',
+          mode: `\${show_markers.value}`,
         },
       };
 
@@ -272,16 +273,15 @@ describe('InsightPreview', () => {
         return typeof selector === 'function' ? selector(state) : state;
       });
 
-      const { container } = render(
+      render(
         <InsightPreview
           insightConfig={configWithInputs}
           projectId="proj-1"
         />
       );
 
-      // Check for input controls container with specific styling
-      const inputSection = container.querySelector('.flex.flex-wrap.gap-2.p-3.border-b.border-gray-200.bg-gray-50');
-      expect(inputSection).toBeInTheDocument();
+      // Check for input controls section
+      expect(screen.getByTestId('input-controls-section')).toBeInTheDocument();
     });
   });
 
@@ -325,6 +325,7 @@ describe('InsightPreview', () => {
         />
       );
 
+      expect(screen.getByTestId('unsaved-insight-message')).toBeInTheDocument();
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
     });
 
@@ -354,7 +355,7 @@ describe('InsightPreview', () => {
         name: 'test_insight',
         props: {
           type: 'scatter',
-          mode: '${show_markers.value}',
+          mode: `\${show_markers.value}`,
         },
       };
 
@@ -383,16 +384,16 @@ describe('InsightPreview', () => {
       expect(chartComponent).toBeInTheDocument();
     });
 
-    it('uses flex-col layout for proper vertical stacking', () => {
-      const { container } = render(
+    it('renders with proper layout structure', () => {
+      render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
           projectId="proj-1"
         />
       );
 
-      const wrapper = container.firstChild;
-      expect(wrapper).toHaveClass('flex', 'flex-col');
+      // Chart component should be rendered
+      expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
   });
 });

@@ -106,7 +106,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   // If this is an unsaved insight, we can't preview with real data
   if (!insightConfig?.name || insightConfig.name === '__preview__') {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="unsaved-insight-message">
         <h3 className="text-lg font-medium text-gray-700 mb-2">Save to Preview with Data</h3>
         <p className="text-sm text-gray-500 max-w-sm">
           Save the insight and run 'visivo run' to generate preview data.
@@ -119,7 +119,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
     <div className="flex flex-col h-full">
       {/* Input Controls */}
       {inputs.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50" data-testid="input-controls-section">
           {inputs.map(input => (
             <Input
               key={input.name}

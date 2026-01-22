@@ -75,6 +75,7 @@ const PreviewDrawer = ({
       {/* Drawer container */}
       <div
         ref={drawerRef}
+        data-testid="preview-drawer"
         className={`fixed top-12 bottom-0 bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out`}
         style={{
           zIndex: -1, // Negative to ensure it's behind the panel
@@ -86,7 +87,7 @@ const PreviewDrawer = ({
         {/* Header */}
         <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center gap-2">
-            <VisibilityIcon fontSize="small" className="text-gray-600" />
+            <VisibilityIcon fontSize="small" className="text-gray-600" data-testid="preview-icon" />
             <h3 className="text-sm font-medium text-gray-900">{title}</h3>
           </div>
         </div>
@@ -98,12 +99,13 @@ const PreviewDrawer = ({
 
         {/* Resize handle - matches explorer divider style */}
         <div
+          data-testid="resize-handle"
           className={`absolute top-0 left-0 w-1 h-full cursor-ew-resize bg-gray-200 hover:bg-gray-300 flex items-center justify-center group ${
             isResizing ? 'bg-gray-400' : ''
           }`}
           onMouseDown={handleResizeStart}
         >
-          <div className="w-1 h-8 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
+          <div data-testid="resize-pill" className="w-1 h-8 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
         </div>
       </div>
 

@@ -44,13 +44,13 @@ describe('PreviewDrawer', () => {
   });
 
   it('applies correct width from store', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const drawer = container.querySelector('.fixed');
+    const drawer = screen.getByTestId('preview-drawer');
     expect(drawer).toHaveStyle({ width: '500px' });
   });
 
@@ -63,57 +63,58 @@ describe('PreviewDrawer', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test" defaultWidth={600}>
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const drawer = container.querySelector('.fixed');
+    const drawer = screen.getByTestId('preview-drawer');
     expect(drawer).toHaveStyle({ width: '600px' });
   });
 
   it('hides drawer when isOpen is false', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={false} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const drawer = container.querySelector('.fixed');
+    const drawer = screen.getByTestId('preview-drawer');
     expect(drawer).toHaveStyle({ transform: 'translateX(500px)' });
   });
 
   it('shows drawer when isOpen is true', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const drawer = container.querySelector('.fixed');
+    const drawer = screen.getByTestId('preview-drawer');
     expect(drawer).toHaveStyle({ transform: 'translateX(0)' });
   });
 
   it('renders resize handle', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
     expect(resizeHandle).toBeInTheDocument();
+    expect(resizeHandle).toHaveClass('cursor-ew-resize');
   });
 
   it('starts resizing on mousedown', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
     fireEvent.mouseDown(resizeHandle);
 
     // Check that resize handle gets active styling
@@ -128,13 +129,13 @@ describe('PreviewDrawer', () => {
       value: 1024,
     });
 
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test" editPanelWidth={384}>
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
 
     // Start resize
     fireEvent.mouseDown(resizeHandle, { clientX: 500 });
@@ -148,13 +149,13 @@ describe('PreviewDrawer', () => {
   });
 
   it('stops resizing on mouseup', async () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
 
     // Start resize
     fireEvent.mouseDown(resizeHandle, { clientX: 500 });
@@ -175,13 +176,13 @@ describe('PreviewDrawer', () => {
       value: 1024,
     });
 
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test" minWidth={300} editPanelWidth={384}>
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
 
     // Start resize
     fireEvent.mouseDown(resizeHandle, { clientX: 500 });
@@ -190,12 +191,13 @@ describe('PreviewDrawer', () => {
     fireEvent.mouseMove(document, { clientX: 700 });
 
     await waitFor(() => {
-      const calls = mockSetPreviewDrawerWidth.mock.calls;
-      if (calls.length > 0) {
-        const lastCall = calls[calls.length - 1];
-        expect(lastCall[0]).toBeGreaterThanOrEqual(300);
-      }
+      expect(mockSetPreviewDrawerWidth).toHaveBeenCalled();
     });
+
+    // Check the last call respects minWidth
+    const calls = mockSetPreviewDrawerWidth.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[0]).toBeGreaterThanOrEqual(300);
   });
 
   it('respects maxWidth constraint', async () => {
@@ -205,13 +207,13 @@ describe('PreviewDrawer', () => {
       value: 1024,
     });
 
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test" maxWidth={800} editPanelWidth={384}>
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const resizeHandle = container.querySelector('.cursor-ew-resize');
+    const resizeHandle = screen.getByTestId('resize-handle');
 
     // Start resize
     fireEvent.mouseDown(resizeHandle, { clientX: 500 });
@@ -220,12 +222,13 @@ describe('PreviewDrawer', () => {
     fireEvent.mouseMove(document, { clientX: 100 });
 
     await waitFor(() => {
-      const calls = mockSetPreviewDrawerWidth.mock.calls;
-      if (calls.length > 0) {
-        const lastCall = calls[calls.length - 1];
-        expect(lastCall[0]).toBeLessThanOrEqual(800);
-      }
+      expect(mockSetPreviewDrawerWidth).toHaveBeenCalled();
     });
+
+    // Check the last call respects maxWidth
+    const calls = mockSetPreviewDrawerWidth.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall[0]).toBeLessThanOrEqual(800);
   });
 
   it('renders visibility icon in header', () => {
@@ -235,31 +238,29 @@ describe('PreviewDrawer', () => {
       </PreviewDrawer>
     );
 
-    // Check for MUI VisibilityIcon by looking for svg
-    const header = screen.getByText('Test').closest('div');
-    expect(header.querySelector('svg')).toBeInTheDocument();
+    expect(screen.getByTestId('preview-icon')).toBeInTheDocument();
   });
 
   it('positions drawer relative to edit panel width', () => {
     const editPanelWidth = 400;
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test" editPanelWidth={editPanelWidth}>
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const drawer = container.querySelector('.fixed');
+    const drawer = screen.getByTestId('preview-drawer');
     expect(drawer).toHaveStyle({ right: `${editPanelWidth}px` });
   });
 
   it('renders small pill indicator on resize handle', () => {
-    const { container } = render(
+    render(
       <PreviewDrawer isOpen={true} title="Test">
         <div>Content</div>
       </PreviewDrawer>
     );
 
-    const pill = container.querySelector('.w-1.h-8.bg-gray-400');
+    const pill = screen.getByTestId('resize-pill');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveClass('rounded-full');
   });
