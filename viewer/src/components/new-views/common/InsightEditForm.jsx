@@ -13,7 +13,6 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
 import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
-import InsightPreview from './InsightPreview';
 import RequiredFieldsSection from './RequiredFieldsSection';
 import { useDebounce } from '../../../hooks/useDebounce';
 import {
@@ -37,9 +36,9 @@ import {
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
  * - isPreviewOpen: Whether the preview panel is open
  * - setIsPreviewOpen: Function to toggle the preview panel
- * - setPreviewContent: Function to set the preview content in parent
+ * - setPreviewConfig: Function to set the preview configuration in parent
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewContent }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
   const { deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -77,29 +76,27 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
   const debouncedPropsValues = useDebounce(propsValues, 500);
   const debouncedInteractions = useDebounce(interactions, 500);
 
-  // Set preview content when values change
+  // Set preview config when values change
   useEffect(() => {
-    if (setPreviewContent) {
-      setPreviewContent(
-        <InsightPreview
-            insightConfig={{
-              name: name || insight?.name || '__preview__',
-              props: {
-                type: debouncedPropsType,
-                ...debouncedPropsValues,
-              },
-              interactions: debouncedInteractions.map(i => {
-                if (i.type === 'filter') return { filter: i.value };
-                if (i.type === 'split') return { split: i.value };
-                if (i.type === 'sort') return { sort: i.value };
-                return {};
-              }).filter(i => Object.keys(i).length > 0),
-            }}
-            projectId={useStore.getState().project?.id}
-          />
-      );
+    if (setPreviewConfig) {
+      setPreviewConfig({
+        insightConfig: {
+          name: name || insight?.name || '__preview__',
+          props: {
+            type: debouncedPropsType,
+            ...debouncedPropsValues,
+          },
+          interactions: debouncedInteractions.map(i => {
+            if (i.type === 'filter') return { filter: i.value };
+            if (i.type === 'split') return { split: i.value };
+            if (i.type === 'sort') return { sort: i.value };
+            return {};
+          }).filter(i => Object.keys(i).length > 0),
+        },
+        projectId: useStore.getState().project?.id,
+      });
     }
-  }, [setPreviewContent, name, insight?.name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
+  }, [setPreviewConfig, name, insight?.name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {

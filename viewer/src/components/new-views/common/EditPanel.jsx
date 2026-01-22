@@ -4,6 +4,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { getTypeByValue } from './objectTypeConfigs';
 import PreviewDrawer from './PreviewDrawer';
+import InsightPreview from './InsightPreview';
 import ModelEditForm from './ModelEditForm';
 import SourceEditForm from './SourceEditForm';
 import DimensionEditForm from './DimensionEditForm';
@@ -52,7 +53,7 @@ const EditPanel = ({
 
   // Preview state - only for types that support preview
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewContent, setPreviewContent] = useState(null);
+  const [previewConfig, setPreviewConfig] = useState(null);
   const supportsPreview = ['insight'].includes(currentObjectType);
 
   // Generate title based on object type
@@ -116,7 +117,7 @@ const EditPanel = ({
             onGoBack={canGoBack ? onGoBack : undefined}
             isPreviewOpen={isPreviewOpen}
             setIsPreviewOpen={setIsPreviewOpen}
-            setPreviewContent={setPreviewContent}
+            setPreviewConfig={setPreviewConfig}
           />
         );
       case 'markdown':
@@ -167,7 +168,7 @@ const EditPanel = ({
   return (
     <>
       {/* Preview Drawer - rendered as sibling to EditPanel for proper z-index layering */}
-      {supportsPreview && previewContent && (
+      {supportsPreview && previewConfig && (
         <PreviewDrawer
           isOpen={isPreviewOpen}
           title="Insight Preview"
@@ -176,7 +177,10 @@ const EditPanel = ({
           maxWidth={800}
           editPanelWidth={384}
         >
-          {previewContent}
+          <InsightPreview
+            insightConfig={previewConfig.insightConfig}
+            projectId={previewConfig.projectId}
+          />
         </PreviewDrawer>
       )}
 

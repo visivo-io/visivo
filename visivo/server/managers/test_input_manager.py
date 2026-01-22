@@ -1,4 +1,5 @@
 """Tests for InputManager"""
+
 import pytest
 from pydantic import ValidationError
 
@@ -125,9 +126,7 @@ class TestInputManager:
         # Should be sorted by name
         assert result[0]["name"] <= result[1]["name"]
 
-    def test_get_all_inputs_with_status_includes_deleted(
-        self, manager, valid_select_input_config
-    ):
+    def test_get_all_inputs_with_status_includes_deleted(self, manager, valid_select_input_config):
         """Test that get_all_inputs_with_status includes deleted inputs"""
         # Save and publish an input
         input_obj = manager.save_from_config(valid_select_input_config)
