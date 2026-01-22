@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.inputs.input import Input
+from visivo.models.inputs.fields import InputField
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
@@ -13,13 +14,13 @@ class InputManager(ObjectManager[Input]):
     Manages Input objects with draft/published state tracking.
 
     Supports:
-    - Immediate validation using Pydantic TypeAdapter(Input)
+    - Immediate validation using Pydantic TypeAdapter(InputField)
     - Two-tier storage (cached/published) for edit-before-publish workflow
     """
 
     def __init__(self):
         super().__init__()
-        self._input_adapter = TypeAdapter(Input)
+        self._input_adapter = TypeAdapter(InputField)
 
     def validate_object(self, obj_data: dict) -> Input:
         """
