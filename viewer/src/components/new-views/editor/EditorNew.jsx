@@ -670,20 +670,22 @@ const EditorNew = () => {
         <CreateButton onSelect={handleCreateSelect} />
       </div>
 
-      {/* Edit Panel (right side) */}
+      {/* Edit Panel (right side) - EditPanel now renders both the panel and preview drawer */}
       {isPanelOpen && (
-        <div className="fixed top-12 right-0 bottom-0 z-20">
-          <EditPanel
-            editItem={currentEdit}
-            canGoBack={canGoBack}
-            onGoBack={popEdit}
-            onNavigateTo={pushEdit}
-            objectType={createObjectType}
-            isCreate={isCreating}
-            onClose={handlePanelClose}
-            onSave={handleObjectSave}
-          />
-        </div>
+        <>
+          <div className="fixed top-12 right-0 bottom-0 z-20">
+            <EditPanel
+              editItem={currentEdit}
+              canGoBack={canGoBack}
+              onGoBack={popEdit}
+              onNavigateTo={pushEdit}
+              objectType={createObjectType}
+              isCreate={isCreating}
+              onClose={handlePanelClose}
+              onSave={handleObjectSave}
+            />
+          </div>
+        </>
       )}
     </div>
   );

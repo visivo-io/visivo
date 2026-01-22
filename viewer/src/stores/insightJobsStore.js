@@ -136,10 +136,12 @@ const createInsightJobsSlice = (set, get) => ({
       },
     })),
 
-  setInsights: newInsights =>
-    set(state => ({
-      insights: { ...state.insights, ...newInsights },
-    })),
+  setInsights: newInsights => {
+    set(state => {
+      const merged = { ...state.insights, ...newInsights };
+      return { insights: merged };
+    });
+  },
 
   updateInsight: (insightName, dataObj) =>
     set(state => ({

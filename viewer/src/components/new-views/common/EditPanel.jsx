@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { getTypeByValue } from './objectTypeConfigs';
+import PreviewDrawer from './PreviewDrawer';
+import InsightPreview from './InsightPreview';
 import ModelEditForm from './ModelEditForm';
 import SourceEditForm from './SourceEditForm';
 import DimensionEditForm from './DimensionEditForm';
@@ -46,6 +50,11 @@ const EditPanel = ({
   const TypeIcon = typeConfig?.icon;
 
   const isEditMode = !!currentObject && !isCreate;
+
+  // Preview state - only for types that support preview
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewConfig, setPreviewConfig] = useState(null);
+  const supportsPreview = ['insight'].includes(currentObjectType);
 
   // Generate title based on object type
   const getTitle = () => {
@@ -106,6 +115,9 @@ const EditPanel = ({
             onClose={onClose}
             onSave={onSave}
             onGoBack={canGoBack ? onGoBack : undefined}
+            isPreviewOpen={isPreviewOpen}
+            setIsPreviewOpen={setIsPreviewOpen}
+            setPreviewConfig={setPreviewConfig}
           />
         );
       case 'markdown':
@@ -125,6 +137,8 @@ const EditPanel = ({
             onClose={onClose}
             onSave={onSave}
             onNavigateToEmbedded={onNavigateTo}
+            isPreviewOpen={isPreviewOpen}
+            setIsPreviewOpen={setIsPreviewOpen}
           />
         );
       case 'table':
@@ -152,19 +166,54 @@ const EditPanel = ({
   };
 
   return (
-    <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col shadow-lg">
-      {/* Header */}
+    <>
+      {/* Preview Drawer - rendered as sibling to EditPanel for proper z-index layering */}
+      {supportsPreview && previewConfig && (
+        <PreviewDrawer
+          isOpen={isPreviewOpen}
+          title="Insight Preview"
+          defaultWidth={500}
+          minWidth={400}
+          maxWidth={800}
+          editPanelWidth={384}
+        >
+          <InsightPreview
+            insightConfig={previewConfig.insightConfig}
+            projectId={previewConfig.projectId}
+          />
+        </PreviewDrawer>
+      )}
+
+      {/* Edit Panel */}
+      <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col shadow-lg" style={{ position: 'relative', zIndex: 21 }}>
+        {/* Header */}
       <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
           {TypeIcon && <TypeIcon fontSize="small" className={typeConfig?.colors?.text || 'text-gray-500'} />}
           <h2 className="text-lg font-semibold text-gray-900 truncate">{getTitle()}</h2>
         </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200"
-        >
-          <CloseIcon fontSize="small" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Preview Toggle Button */}
+          {supportsPreview && (
+            <button
+              onClick={() => setIsPreviewOpen(prev => !prev)}
+              className={`p-1 rounded transition-colors ${
+                isPreviewOpen
+                  ? 'text-primary-600 bg-primary-50 hover:bg-primary-100'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+              }`}
+              title={isPreviewOpen ? 'Hide Preview' : 'Show Preview'}
+            >
+              {isPreviewOpen ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-200"
+          >
+            <CloseIcon fontSize="small" />
+          </button>
+        </div>
       </div>
 
       {/* Form Content */}
@@ -174,6 +223,7 @@ const EditPanel = ({
         <div className="flex-1 flex flex-col overflow-hidden">{renderForm()}</div>
       )}
     </div>
+    </>
   );
 };
 

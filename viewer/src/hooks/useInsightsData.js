@@ -123,16 +123,12 @@ const processInsight = async (db, insight, inputs) => {
       };
     }
 
-    // Step 1: Load parquet files (with caching)
     const { loaded, failed } = await loadInsightParquetFiles(db, files);
 
-    // Step 2: Prepare post_query with input substitution
     const preparedQuery = prepPostQuery({ query }, inputs);
 
-    // Step 3: Execute query in DuckDB
     const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
 
-    // Step 4: Process results
     const processedRows = result.toArray().map(row => {
       const rowData = row.toJSON();
       return Object.fromEntries(
@@ -143,8 +139,6 @@ const processInsight = async (db, insight, inputs) => {
       );
     });
 
-
-    // Step 5: Return structured data
     return {
       [insightName]: {
         name: insightName,
@@ -290,6 +284,7 @@ export const useInsightsData = (projectId, insightNames) => {
 
   // Main query function
   const queryFn = useCallback(async () => {
+
     if (!db) {
       return {};
     }
@@ -298,7 +293,11 @@ export const useInsightsData = (projectId, insightNames) => {
       return {};
     }
 
-    // Step 1: Fetch insight metadata from API
+    if (!fetchInsights) {
+      console.error('useInsightsData Debug - fetchInsights is not defined!');
+      return {};
+    }
+
     const insights = await fetchInsights(projectId, stableInsightNames);
 
     if (!insights?.length) {
@@ -309,12 +308,10 @@ export const useInsightsData = (projectId, insightNames) => {
     // This ensures we always have the latest inputs at query execution time
     const freshInputs = useStore.getState().inputs || {};
 
-    // Step 2: Process each insight in parallel
     const results = await Promise.allSettled(
       insights.map(insight => processInsight(db, insight, freshInputs))
     );
 
-    // Step 3: Merge results
     const mergedData = {};
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
@@ -338,6 +335,8 @@ export const useInsightsData = (projectId, insightNames) => {
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
+  const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
+
   const { data, isLoading, error } = useQuery({
     queryKey: [
       'insights',
@@ -348,7 +347,7 @@ export const useInsightsData = (projectId, insightNames) => {
       pendingInsightInputsReady,
     ],
     queryFn,
-    enabled: !!projectId && stableInsightNames.length > 0 && !!db,
+    enabled: queryEnabled,
     staleTime: Infinity,
     gcTime: Infinity, // formerly cacheTime
     refetchOnWindowFocus: false,
@@ -363,7 +362,7 @@ export const useInsightsData = (projectId, insightNames) => {
     }
   }, [data, setInsights]);
 
-  return {
+  const returnValue = {
     insightsData: storeInsightData || {},
     isInsightsLoading: isLoading,
     // Only report hasAllInsightData=true when we have complete data without pending inputs
@@ -371,4 +370,6 @@ export const useInsightsData = (projectId, insightNames) => {
     hasAllInsightData: hasCompleteData,
     error,
   };
+
+  return returnValue;
 };

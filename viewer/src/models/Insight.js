@@ -81,22 +81,34 @@ export function processInputRefsInProps(props, inputs) {
 }
 
 /**
- * Extract input names referenced in static_props
- * Looks for ${inputName.accessor} patterns
- * @param {Object} props - Static props object
- * @returns {string[]} - Array of unique input names found in props
+ * Extract input names referenced in insight config (props and interactions)
+ * Looks for ${inputName.accessor} and ${ref(inputName).accessor} patterns
+ * @param {Object} configOrProps - Insight configuration object with props/interactions, or just props object
+ * @returns {string[]} - Array of unique input names found
  */
-export function extractInputDependenciesFromProps(props) {
-  if (!props) return [];
+export function extractInputDependenciesFromProps(configOrProps) {
+  if (!configOrProps) return [];
 
-  const inputNames = new Set();
-  const pattern = /\$\{(\w+)\.\w+\}/g;
+  const allReferencedNames = new Set();
+  // Match both ${inputName.accessor} and ${ref(inputName).accessor}
+  const simplePattern = /\$\{(\w+)\.\w+\}/g;
+  const refPattern = /\$\{ref\((\w+)\)\.\w+\}/g;
 
   function scanValue(value) {
     if (typeof value === 'string') {
-      const matches = value.matchAll(pattern);
-      for (const match of matches) {
-        inputNames.add(match[1]);
+      // Check for ref(inputName) pattern first
+      const refMatches = value.matchAll(refPattern);
+      for (const match of refMatches) {
+        allReferencedNames.add(match[1]);
+      }
+
+      // Then check for simple inputName pattern
+      const simpleMatches = value.matchAll(simplePattern);
+      for (const match of simpleMatches) {
+        // Skip if it was already matched as a ref() pattern
+        if (!value.includes(`ref(${match[1]})`)) {
+          allReferencedNames.add(match[1]);
+        }
       }
     } else if (Array.isArray(value)) {
       value.forEach(item => scanValue(item));
@@ -105,8 +117,28 @@ export function extractInputDependenciesFromProps(props) {
     }
   }
 
-  scanValue(props);
-  return [...inputNames];
+  // Check if this is a config object (has props or interactions) or just props
+  const hasPropsKey = 'props' in configOrProps;
+  const hasInteractionsKey = 'interactions' in configOrProps;
+
+  if (hasPropsKey || hasInteractionsKey) {
+    // It's a config object with props and/or interactions
+    if (configOrProps.props) {
+      scanValue(configOrProps.props);
+    }
+    if (configOrProps.interactions && Array.isArray(configOrProps.interactions)) {
+      configOrProps.interactions.forEach(interaction => {
+        if (interaction) {
+          scanValue(interaction);
+        }
+      });
+    }
+  } else {
+    // It's just a props object (backward compatibility for tests)
+    scanValue(configOrProps);
+  }
+
+  return [...allReferencedNames];
 }
 
 /**

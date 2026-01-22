@@ -80,7 +80,6 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
       console.debug(`Fetching insight jobs (attempt ${attempt + 1}/${retries}):`, names);
 
       const response = await fetch(url);
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -90,10 +89,8 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
 
       const data = await response.json();
 
-      // Ensure data is in the expected format
       let insightJobs = Array.isArray(data) ? data : [data];
 
-      // Validate each insight job
       const validInsightJobs = insightJobs.filter(insightJob => {
         const isValid = validateInsightJobStructure(insightJob);
         if (!isValid) {

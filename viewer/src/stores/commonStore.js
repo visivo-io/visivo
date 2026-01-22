@@ -14,10 +14,14 @@ const createCommonSlice = (set, get) => {
     projectFilePath: null,
     isNewProject: undefined,
     scrollPositions: {},
+    previewDrawerWidth: 500, // Default preview drawer width
     setScrollPosition: (dashName, pos) => {
       set(state => ({
         scrollPositions: { ...state.scrollPositions, [dashName]: pos },
       }));
+    },
+    setPreviewDrawerWidth: (width) => {
+      set({ previewDrawerWidth: width });
     },
     setProject: project => {
       set({ project });

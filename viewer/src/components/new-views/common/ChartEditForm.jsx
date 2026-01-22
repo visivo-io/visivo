@@ -8,7 +8,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
 import { SchemaEditor } from './SchemaEditor';
-import { getSchema } from '../../../schemas';
+import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
 
@@ -39,14 +39,45 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Layout schema loading state
+  const [layoutSchema, setLayoutSchema] = useState(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState(null);
+
   const isEditMode = !!chart && !isCreate;
   const isNewObject = chart?.status === ObjectStatus.NEW;
 
   // Get available insights from the insight store
   const availableInsights = insightConfigs?.map(i => i.name) || [];
 
-  // Get the layout schema
-  const layoutSchema = getSchema('layout');
+  // Load layout schema on mount
+  useEffect(() => {
+    const loadLayoutSchema = async () => {
+      // Check if already cached
+      if (isSchemaLoaded('layout')) {
+        const schema = await getSchema('layout');
+        setLayoutSchema(schema);
+        return;
+      }
+
+      // Load schema asynchronously
+      setSchemaLoading(true);
+      setSchemaError(null);
+
+      try {
+        const schema = await getSchema('layout');
+        setLayoutSchema(schema);
+      } catch (error) {
+        console.error('Failed to load layout schema:', error);
+        setSchemaError('Failed to load layout schema');
+        setLayoutSchema(null);
+      } finally {
+        setSchemaLoading(false);
+      }
+    };
+
+    loadLayoutSchema();
+  }, []);
 
   // Fetch insights on mount if needed
   useEffect(() => {
@@ -318,13 +349,22 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
               Layout Configuration (Optional)
             </h3>
 
-            {layoutSchema && (
+            {schemaLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <CircularProgress size={24} />
+                <span className="ml-2 text-sm text-gray-600">Loading schema...</span>
+              </div>
+            ) : schemaError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-700">{schemaError}</p>
+              </div>
+            ) : layoutSchema ? (
               <SchemaEditor
                 schema={layoutSchema}
                 value={layoutValues}
                 onChange={setLayoutValues}
               />
-            )}
+            ) : null}
             <p className="text-xs text-gray-500">
               Plotly layout configuration. See{' '}
               <a

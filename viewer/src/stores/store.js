@@ -14,6 +14,7 @@ import createDimensionSlice from './dimensionStore';
 import createMetricSlice from './metricStore';
 import createRelationSlice from './relationStore';
 import createInsightSlice from './insightStore';
+import createInputSlice from './inputStore';
 import createMarkdownSlice from './markdownStore';
 import createChartSlice from './chartStore';
 import createTableSlice from './tableStore';
@@ -36,6 +37,7 @@ const useStore = create(
     ...createMetricSlice(...a),
     ...createRelationSlice(...a),
     ...createInsightSlice(...a),
+    ...createInputSlice(...a),
     ...createMarkdownSlice(...a),
     ...createChartSlice(...a),
     ...createTableSlice(...a),

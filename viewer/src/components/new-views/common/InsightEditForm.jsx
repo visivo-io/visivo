@@ -7,11 +7,14 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
 import { SchemaEditor } from './SchemaEditor';
-import { getSchema, CHART_TYPES } from '../../../schemas';
+import { getSchema, CHART_TYPES, isSchemaLoaded, preloadSchemas } from '../../../schemas/schemas';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { isEmbeddedObject } from './embeddedObjectUtils';
 import { BackNavigationButton } from '../../styled/BackNavigationButton';
+import { getRequiredFields, getAllFieldNames } from './insightRequiredFields';
+import RequiredFieldsSection from './RequiredFieldsSection';
+import { useDebounce } from '../../../hooks/useDebounce';
 import {
   SectionContainer,
   SectionTitle,
@@ -31,8 +34,11 @@ import {
  * - onClose: Callback to close the panel
  * - onSave: Function(type, name, config) - Unified save callback
  * - onGoBack: Callback to navigate back to parent (for embedded insights)
+ * - isPreviewOpen: Whether the preview panel is open
+ * - setIsPreviewOpen: Function to toggle the preview panel
+ * - setPreviewConfig: Function to set the preview configuration in parent
  */
-const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
+const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
   const { deleteInsightConfig, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
@@ -53,14 +59,44 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Schema loading state
+  const [currentSchema, setCurrentSchema] = useState(null);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState(null);
+
+
   const isEditMode = !!insight && !isCreate;
   const isNewObject = insight?.status === ObjectStatus.NEW;
   const isEmbedded = isEmbeddedObject(insight);
   const parentName = insight?._embedded?.parentName;
   const parentType = insight?._embedded?.parentType;
 
-  // Get the current schema for the selected chart type
-  const currentSchema = getSchema(propsType);
+  // Debounce the values for preview updates
+  const debouncedPropsType = useDebounce(propsType, 500);
+  const debouncedPropsValues = useDebounce(propsValues, 500);
+  const debouncedInteractions = useDebounce(interactions, 500);
+
+  // Set preview config when values change
+  useEffect(() => {
+    if (setPreviewConfig) {
+      setPreviewConfig({
+        insightConfig: {
+          name: name || insight?.name || '__preview__',
+          props: {
+            type: debouncedPropsType,
+            ...debouncedPropsValues,
+          },
+          interactions: debouncedInteractions.map(i => {
+            if (i.type === 'filter') return { filter: i.value };
+            if (i.type === 'split') return { split: i.value };
+            if (i.type === 'sort') return { sort: i.value };
+            return {};
+          }).filter(i => Object.keys(i).length > 0),
+        },
+        projectId: useStore.getState().project?.id,
+      });
+    }
+  }, [setPreviewConfig, name, insight?.name, debouncedPropsType, debouncedPropsValues, debouncedInteractions]);
 
   // Initialize form when insight changes
   useEffect(() => {
@@ -99,6 +135,45 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
     setErrors({});
     setSaveError(null);
   }, [insight, isCreate]);
+
+  // Load schema when propsType changes
+  useEffect(() => {
+    const loadSchemaAsync = async () => {
+      if (!propsType) return;
+
+      // Check if already cached
+      if (isSchemaLoaded(propsType)) {
+        // Get from cache immediately
+        const schema = await getSchema(propsType);
+        setCurrentSchema(schema);
+        return;
+      }
+
+      // Load schema asynchronously
+      setSchemaLoading(true);
+      setSchemaError(null);
+
+      try {
+        const schema = await getSchema(propsType);
+        setCurrentSchema(schema);
+      } catch (error) {
+        console.error('Failed to load schema:', error);
+        setSchemaError(`Failed to load schema for ${propsType}`);
+        setCurrentSchema(null);
+      } finally {
+        setSchemaLoading(false);
+      }
+    };
+
+    loadSchemaAsync();
+  }, [propsType]);
+
+  // Preload common schemas on mount for better performance
+  useEffect(() => {
+    // Preload the most common chart types
+    const commonTypes = ['scatter', 'bar', 'pie', 'heatmap', 'histogram'];
+    preloadSchemas(commonTypes).catch(console.error);
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -276,6 +351,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
                 Description
               </label>
             </div>
+
           </SectionContainer>
 
           {/* Props Section */}
@@ -307,14 +383,47 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
               {errors.propsType && <p className="mt-1 text-xs text-red-500">{errors.propsType}</p>}
             </div>
 
-            {/* Schema-driven props editor */}
-            {currentSchema && (
-              <SchemaEditor
-                schema={currentSchema}
-                value={propsValues}
-                onChange={setPropsValues}
-                excludeProperties={['type']}
-              />
+            {/* Required fields for this chart type */}
+            <RequiredFieldsSection
+              fields={getRequiredFields(propsType)}
+              values={propsValues}
+              errors={Object.fromEntries(
+                Object.entries(errors)
+                  .filter(([key]) => key.startsWith('prop.'))
+                  .map(([key, value]) => [key.replace('prop.', ''), value])
+              )}
+              onChange={(fieldName, value) => setPropsValues(prev => ({
+                ...prev,
+                [fieldName]: value
+              }))}
+            />
+
+            {/* Additional optional props from schema */}
+            {schemaLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <CircularProgress size={24} />
+                <span className="ml-2 text-sm text-gray-600">Loading schema...</span>
+              </div>
+            ) : schemaError ? (
+              <AlertContainer $type="error">
+                <AlertText>{schemaError}</AlertText>
+              </AlertContainer>
+            ) : currentSchema ? (
+              <div className="mt-4">
+                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
+                  Additional Properties
+                </div>
+                <SchemaEditor
+                  schema={currentSchema}
+                  value={propsValues}
+                  onChange={setPropsValues}
+                  excludeProperties={['type', ...getAllFieldNames(propsType)]}
+                />
+              </div>
+            ) : (
+              <EmptyState>
+                Select a chart type to configure properties
+              </EmptyState>
             )}
           </SectionContainer>
 
@@ -456,6 +565,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack }) => {
           </div>
         </div>
       </div>
+
     </>
   );
 };

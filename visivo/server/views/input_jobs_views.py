@@ -6,7 +6,7 @@ from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 
 
-def register_input_views(app, flask_app, output_dir):
+def register_input_jobs_views(app, flask_app, output_dir):
 
     @app.route("/api/input-jobs/", methods=["GET"])
     def get_input_jobs_api():

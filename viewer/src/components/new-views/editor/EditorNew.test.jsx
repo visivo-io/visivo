@@ -27,12 +27,14 @@ jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
 ));
 
 describe('EditorNew', () => {
+  const mockFetchProject = jest.fn();
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
   const mockFetchDimensions = jest.fn();
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
   const mockFetchInsightConfigs = jest.fn();
+  const mockFetchInputConfigs = jest.fn();
   const mockFetchMarkdownConfigs = jest.fn();
   const mockFetchChartConfigs = jest.fn();
   const mockFetchTableConfigs = jest.fn();
@@ -41,6 +43,8 @@ describe('EditorNew', () => {
   const mockSaveTableConfig = jest.fn();
 
   const defaultStoreState = {
+    project: null,
+    fetchProject: mockFetchProject,
     sources: [],
     fetchSources: mockFetchSources,
     sourcesLoading: false,
@@ -66,6 +70,10 @@ describe('EditorNew', () => {
     fetchInsightConfigs: mockFetchInsightConfigs,
     insightConfigsLoading: false,
     insightConfigsError: null,
+    inputConfigs: [],
+    fetchInputConfigs: mockFetchInputConfigs,
+    inputConfigsLoading: false,
+    inputConfigsError: null,
     markdownConfigs: [],
     fetchMarkdownConfigs: mockFetchMarkdownConfigs,
     markdownConfigsLoading: false,
