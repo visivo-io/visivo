@@ -2815,16 +2815,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "r",
-      "theta"
-    ],
-    "encoding": [
-      "marker.color",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

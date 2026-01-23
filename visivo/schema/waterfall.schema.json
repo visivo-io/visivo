@@ -2732,19 +2732,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "y"
-    ],
-    "encoding": [
-      "marker.color",
-      "text"
-    ],
-    "secondary": [
-      "base",
-      "measure"
-    ]
-  }
+  "additionalProperties": false
 }

@@ -1379,16 +1379,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "open",
-      "high",
-      "low",
-      "close"
-    ],
-    "encoding": [],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

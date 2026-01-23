@@ -2012,16 +2012,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "a",
-      "b",
-      "z"
-    ],
-    "encoding": [
-      "colorscale"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

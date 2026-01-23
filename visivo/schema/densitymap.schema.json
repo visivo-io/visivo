@@ -2165,17 +2165,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "lon",
-      "lat"
-    ],
-    "encoding": [
-      "colorscale"
-    ],
-    "secondary": [
-      "z"
-    ]
-  }
+  "additionalProperties": false
 }

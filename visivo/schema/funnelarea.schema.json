@@ -2688,16 +2688,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "values",
-      "labels"
-    ],
-    "encoding": [
-      "marker.colors",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

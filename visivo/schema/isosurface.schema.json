@@ -2783,17 +2783,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "y",
-      "z",
-      "value"
-    ],
-    "encoding": [
-      "colorscale"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

@@ -2199,10 +2199,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [],
-    "encoding": [],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

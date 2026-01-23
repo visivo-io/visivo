@@ -4342,17 +4342,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "imag",
-      "real"
-    ],
-    "encoding": [
-      "marker.color",
-      "marker.size",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

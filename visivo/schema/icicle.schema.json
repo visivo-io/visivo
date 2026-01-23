@@ -4140,19 +4140,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "values",
-      "labels",
-      "parents"
-    ],
-    "encoding": [
-      "marker.colors",
-      "text"
-    ],
-    "secondary": [
-      "ids"
-    ]
-  }
+  "additionalProperties": false
 }

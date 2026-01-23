@@ -4381,18 +4381,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "a",
-      "b",
-      "c"
-    ],
-    "encoding": [
-      "marker.color",
-      "marker.size",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

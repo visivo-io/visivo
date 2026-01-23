@@ -1202,12 +1202,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "z"
-    ],
-    "encoding": [],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

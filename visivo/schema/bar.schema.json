@@ -4476,20 +4476,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "y"
-    ],
-    "encoding": [
-      "marker.color",
-      "text"
-    ],
-    "secondary": [
-      "error_x",
-      "error_y",
-      "base"
-    ]
-  }
+  "additionalProperties": false
 }

@@ -2849,16 +2849,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "y",
-      "z"
-    ],
-    "encoding": [
-      "colorscale"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

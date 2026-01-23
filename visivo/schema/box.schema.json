@@ -2425,21 +2425,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x",
-      "y"
-    ],
-    "encoding": [
-      "marker.color"
-    ],
-    "secondary": [
-      "q1",
-      "median",
-      "q3",
-      "lowerfence",
-      "upperfence"
-    ]
-  }
+  "additionalProperties": false
 }

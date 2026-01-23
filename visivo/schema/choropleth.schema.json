@@ -2282,16 +2282,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "locations",
-      "z"
-    ],
-    "encoding": [
-      "colorscale",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }

@@ -3796,16 +3796,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "x"
-    ],
-    "encoding": [
-      "marker.color"
-    ],
-    "secondary": [
-      "y"
-    ]
-  }
+  "additionalProperties": false
 }

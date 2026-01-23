@@ -4291,17 +4291,5 @@
   "required": [
     "type"
   ],
-  "additionalProperties": false,
-  "keyDataProps": {
-    "primary": [
-      "lon",
-      "lat"
-    ],
-    "encoding": [
-      "marker.color",
-      "marker.size",
-      "text"
-    ],
-    "secondary": []
-  }
+  "additionalProperties": false
 }
