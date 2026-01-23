@@ -24,10 +24,14 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id="main"):
         output_dir: Output directory for files
         run_id: Run ID for this execution (default: "main" for standard runs)
     """
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    source = get_source_for_model(model, dag, output_dir)
+    # Organize files by run_id
+    # Structure: {output_dir}/{run_id}/files/ and {output_dir}/{run_id}/insights/
+    run_output_dir = f"{output_dir}/{run_id}"
 
-    insight_query_info = insight.get_query_info(dag, output_dir)
+    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
+    source = get_source_for_model(model, dag, run_output_dir)
+
+    insight_query_info = insight.get_query_info(dag, run_output_dir)
 
     # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
     if insight_query_info.post_query:
@@ -45,7 +49,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id="main"):
                     insight=insight,
                     query=insight_query_info.post_query,
                     dag=dag,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     dialect=source.get_sqlglot_dialect(),  # Use source dialect for validation
                 )
             except Exception as e:
@@ -56,9 +60,6 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id="main"):
     try:
         start_time = time()
 
-        # Organize files by run_id
-        # Structure: {output_dir}/{run_id}/files/ and {output_dir}/{run_id}/insights/
-        run_output_dir = f"{output_dir}/{run_id}"
         files_directory = f"{run_output_dir}/files"
         insights_directory = f"{run_output_dir}/insights"
 
