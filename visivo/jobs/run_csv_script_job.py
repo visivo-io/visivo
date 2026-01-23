@@ -34,6 +34,9 @@ def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None, run_i
 
 
 def job(csv_script_model, output_dir: str, working_dir: str = None, run_id: str = None):
+    # Use run_id to determine the correct output directory for the source
+    run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
+
     kwargs = {
         "csv_script_model": csv_script_model,
         "output_dir": output_dir,
@@ -44,7 +47,7 @@ def job(csv_script_model, output_dir: str, working_dir: str = None, run_id: str 
 
     return Job(
         item=csv_script_model,
-        source=csv_script_model.get_duckdb_source(output_dir),
+        source=csv_script_model.get_duckdb_source(run_output_dir),
         action=action,
         **kwargs,
     )

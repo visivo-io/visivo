@@ -38,6 +38,9 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag, run_id="main"):
 
 
 def job(dag, output_dir: str, local_merge_model: LocalMergeModel, run_id: str = None):
+    # Use run_id to determine the correct output directory for the source
+    run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
+
     kwargs = {
         "local_merge_model": local_merge_model,
         "output_dir": output_dir,
@@ -48,7 +51,7 @@ def job(dag, output_dir: str, local_merge_model: LocalMergeModel, run_id: str = 
 
     return Job(
         item=local_merge_model,
-        source=local_merge_model.get_duckdb_source(output_dir=output_dir, dag=dag),
+        source=local_merge_model.get_duckdb_source(output_dir=run_output_dir, dag=dag),
         action=action,
         **kwargs,
     )
