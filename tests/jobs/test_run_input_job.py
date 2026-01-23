@@ -40,7 +40,7 @@ class TestRunInputJobSingleSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert json_path.exists()
 
         with open(json_path) as f:
@@ -70,7 +70,7 @@ class TestRunInputJobSingleSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert json_path.exists()
 
         with open(json_path) as f:
@@ -108,7 +108,7 @@ class TestRunInputJobSingleSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert json_path.exists()
 
         with open(json_path) as f:
@@ -167,8 +167,8 @@ class TestRunInputJobSingleSelect:
         assert result1.success
         assert result2.success
 
-        path1 = Path(output_dir) / "inputs" / f"{input1.name_hash()}.json"
-        path2 = Path(output_dir) / "inputs" / f"{input2.name_hash()}.json"
+        path1 = Path(output_dir) / "main" / "inputs" / f"{input1.name_hash()}.json"
+        path2 = Path(output_dir) / "main" / "inputs" / f"{input2.name_hash()}.json"
 
         assert path1.exists()
         assert path2.exists()
@@ -297,7 +297,7 @@ class TestRunInputJobMultiSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert json_path.exists()
 
         with open(json_path) as f:
@@ -322,7 +322,7 @@ class TestRunInputJobMultiSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert json_path.exists()
 
         with open(json_path) as f:
@@ -354,7 +354,7 @@ class TestRunInputJobMultiSelect:
         result = action(input_obj, dag, output_dir)
 
         assert result.success
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
 
         with open(json_path) as f:
             data = json.load(f)
@@ -383,7 +383,7 @@ class TestMetadataJSONStructure:
 
         action(input_obj, dag, output_dir)
 
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         with open(json_path) as f:
             data = json.load(f)
 
@@ -416,7 +416,7 @@ class TestMetadataJSONStructure:
 
         action(input_obj, dag, output_dir)
 
-        json_path = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        json_path = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         with open(json_path) as f:
             data = json.load(f)
 

@@ -43,7 +43,7 @@ class TestInputInteractionPipeline:
         # ASSERT - Input Job Success
         assert input_result.success, f"Input job failed: {input_result.message}"
 
-        input_json = Path(output_dir) / "inputs" / f"{input_obj.name_hash()}.json"
+        input_json = Path(output_dir) / "main" / "inputs" / f"{input_obj.name_hash()}.json"
         assert input_json.exists(), "Input JSON not created"
 
         with open(input_json, "r") as f:

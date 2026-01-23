@@ -31,4 +31,4 @@ def test_run_phase():
         output_dir=output_dir,
         dag_filter="+dashboard+",
     )
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")

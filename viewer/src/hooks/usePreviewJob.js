@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import axios from 'axios';
 
 /**
  * Hook for managing preview job execution
@@ -33,17 +32,29 @@ export const usePreviewJob = () => {
       setProgressMessage('');
       setResult(null);
 
-      const response = await axios.post('/api/insight-jobs/', {
-        config,
-        run: true,
+      const response = await fetch('/api/insight-jobs/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config,
+          run: true,
+        }),
       });
 
-      const newJobId = response.data.job_id;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to start preview job');
+      }
+
+      const data = await response.json();
+      const newJobId = data.job_id;
       setJobId(newJobId);
       setStatus('queued');
       return newJobId;
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to start preview job';
+      const errorMsg = err.message || 'Failed to start preview job';
       setError(errorMsg);
       setStatus('failed');
       throw new Error(errorMsg);
@@ -55,8 +66,14 @@ export const usePreviewJob = () => {
    */
   const pollStatus = useCallback(async currentJobId => {
     try {
-      const response = await axios.get(`/api/insight-jobs/${currentJobId}/status`);
-      const jobData = response.data;
+      const response = await fetch(`/api/insight-jobs/${currentJobId}/status`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to poll job status');
+      }
+
+      const jobData = await response.json();
 
       setStatus(jobData.status);
       setProgress(jobData.progress || 0);
@@ -71,8 +88,11 @@ export const usePreviewJob = () => {
         }
       } else if (jobData.status === 'completed') {
         // Fetch result
-        const resultResponse = await axios.get(`/api/insight-jobs/${currentJobId}/result`);
-        setResult(resultResponse.data);
+        const resultResponse = await fetch(`/api/insight-jobs/${currentJobId}/result`);
+        if (resultResponse.ok) {
+          const resultData = await resultResponse.json();
+          setResult(resultData);
+        }
         // Stop polling
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -80,7 +100,7 @@ export const usePreviewJob = () => {
         }
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to poll job status';
+      const errorMsg = err.message || 'Failed to poll job status';
       setError(errorMsg);
       setStatus('failed');
       // Stop polling on error

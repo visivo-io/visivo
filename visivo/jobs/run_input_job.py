@@ -650,9 +650,4 @@ def job(
     if run_id is not None:
         kwargs["run_id"] = run_id
 
-    return Job(
-        item=input_obj,
-        source=source,
-        action=action,
-        **kwargs
-    )
+    return Job(item=input_obj, source=source, action=action, **kwargs)

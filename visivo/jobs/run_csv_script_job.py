@@ -46,5 +46,5 @@ def job(csv_script_model, output_dir: str, working_dir: str = None, run_id: str 
         item=csv_script_model,
         source=csv_script_model.get_duckdb_source(output_dir),
         action=action,
-        **kwargs
+        **kwargs,
     )

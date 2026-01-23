@@ -83,7 +83,10 @@ def register_data_views(app, flask_app, output_dir):
             if os.path.exists(data_file):
                 return send_file(data_file)
 
-            return jsonify({"message": f"Data file not found for hash: {hash} in run: {run_id}"}), 404
+            return (
+                jsonify({"message": f"Data file not found for hash: {hash} in run: {run_id}"}),
+                404,
+            )
         except Exception as e:
             Logger.instance().error(f"Error serving data file by hash: {str(e)}")
             return jsonify({"message": str(e)}), 500

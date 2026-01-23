@@ -19,7 +19,9 @@ from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.query.sqlglot_utils import schema_from_sql
 
 
-def _build_and_write_schema(sql_model: SqlModel, source, output_dir: str, run_id: str = "main") -> dict:
+def _build_and_write_schema(
+    sql_model: SqlModel, source, output_dir: str, run_id: str = "main"
+) -> dict:
     """Build schema for a SQL model using SQLGlot and write it to disk.
 
     Args:
@@ -189,16 +191,8 @@ def job(dag, output_dir: str, sql_model: SqlModel, run_id: str = None):
             # Check if this sql_model is in the insight's dependent models
             if sql_model in insight.get_all_dependent_models(dag):
                 return Job(
-                    item=sql_model,
-                    source=source,
-                    action=model_query_and_schema_action,
-                    **kwargs
+                    item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
                 )
 
     # Not referenced by any dynamic insight, run the schema-only action
-    return Job(
-        item=sql_model,
-        source=source,
-        action=schema_only_action,
-        **kwargs
-    )
+    return Job(item=sql_model, source=source, action=schema_only_action, **kwargs)

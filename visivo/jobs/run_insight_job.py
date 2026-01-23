@@ -166,9 +166,4 @@ def job(dag, output_dir: str, insight: Insight, run_id: str = None):
     if run_id is not None:
         kwargs["run_id"] = run_id
 
-    return Job(
-        item=insight,
-        source=source,
-        action=action,
-        **kwargs
-    )
+    return Job(item=insight, source=source, action=action, **kwargs)

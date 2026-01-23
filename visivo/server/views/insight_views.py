@@ -57,7 +57,9 @@ def register_insight_views(app, flask_app, output_dir):
                                     0
                                 ]  # Remove .parquet extension
                                 # Include run_id in the API URL
-                                file_ref["signed_data_file_url"] = f"/api/files/{run_id}/{file_hash}/"
+                                file_ref["signed_data_file_url"] = (
+                                    f"/api/files/{run_id}/{file_hash}/"
+                                )
 
                     insights.append(insight_data)
                     Logger.instance().debug(
@@ -147,7 +149,10 @@ def register_insight_views(app, flask_app, output_dir):
                 try:
                     # Update status to running
                     job_manager.update_status(
-                        job_id, JobStatus.RUNNING, progress=0.1, progress_message="Validating config"
+                        job_id,
+                        JobStatus.RUNNING,
+                        progress=0.1,
+                        progress_message="Validating config",
                     )
 
                     # Validate insight config
@@ -230,7 +235,9 @@ def register_insight_views(app, flask_app, output_dir):
                             if file_path:
                                 filename = os.path.basename(file_path)
                                 file_hash = filename.replace(".parquet", "")
-                                file_info["signed_data_file_url"] = f"/api/files/{run_id}/{file_hash}/"
+                                file_info["signed_data_file_url"] = (
+                                    f"/api/files/{run_id}/{file_hash}/"
+                                )
 
                         job_manager.set_result(job_id, insight_data)
                     else:
@@ -275,7 +282,7 @@ def register_insight_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route("/api/insight-jobs/<job_id>/status", methods=["GET"])
-    def get_job_status(job_id):
+    def get_insight_job_status(job_id):
         """Get status of a preview job.
 
         Returns: {

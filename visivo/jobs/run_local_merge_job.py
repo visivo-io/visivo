@@ -20,14 +20,18 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag, run_id="main"):
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_duckdb_source(output_dir=run_output_dir, dag=dag).database,
+            full_path=local_merge_model.get_duckdb_source(
+                output_dir=run_output_dir, dag=dag
+            ).database,
         )
         return JobResult(item=local_merge_model, success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_duckdb_source(output_dir=run_output_dir, dag=dag).database,
+            full_path=local_merge_model.get_duckdb_source(
+                output_dir=run_output_dir, dag=dag
+            ).database,
             error_msg=str(repr(e)),
         )
         return JobResult(item=local_merge_model, success=False, message=failure_message)
@@ -46,5 +50,5 @@ def job(dag, output_dir: str, local_merge_model: LocalMergeModel, run_id: str = 
         item=local_merge_model,
         source=local_merge_model.get_duckdb_source(output_dir=output_dir, dag=dag),
         action=action,
-        **kwargs
+        **kwargs,
     )

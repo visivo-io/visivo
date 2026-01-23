@@ -7,6 +7,7 @@ Handles:
 - Result storage and retrieval
 - Automatic cleanup of old jobs
 """
+
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -184,7 +185,9 @@ class PreviewJobManager:
                 return
 
             job.result = result
-            self.update_status(job_id, JobStatus.COMPLETED, progress=1.0, progress_message="Complete")
+            self.update_status(
+                job_id, JobStatus.COMPLETED, progress=1.0, progress_message="Complete"
+            )
 
     def get_result(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get job result if completed"""
