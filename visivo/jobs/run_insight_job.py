@@ -15,14 +15,14 @@ import json
 import os
 
 
-def action(insight: Insight, dag: ProjectDag, output_dir, job_id=None):
+def action(insight: Insight, dag: ProjectDag, output_dir, run_id=None):
     """Execute insight job - tokenize insight and generate insight.json file
 
     Args:
         insight: Insight object to execute
         dag: Project DAG with dependencies
         output_dir: Output directory for files
-        job_id: Optional job ID for preview jobs (uses job_id for file naming instead of name_hash)
+        run_id: Optional run ID for preview runs (uses run_id for file naming instead of name_hash)
     """
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
     source = get_source_for_model(model, dag, output_dir)
@@ -57,8 +57,8 @@ def action(insight: Insight, dag: ProjectDag, output_dir, job_id=None):
         start_time = time()
 
         files_directory = f"{output_dir}/files"
-        # Determine file hash: use job_id for previews, name_hash for published
-        file_hash = job_id if job_id else insight.name_hash()
+        # Determine file hash: use run_id for preview runs, name_hash for published runs
+        file_hash = run_id if run_id else insight.name_hash()
 
         if insight_query_info.pre_query:
             import polars as pl
@@ -147,14 +147,27 @@ def _get_source(insight, dag, output_dir):
     return get_source_for_model(model, dag, output_dir)
 
 
-def job(dag, output_dir: str, insight: Insight):
-    """Create insight job for execution in the DAG runner"""
+def job(dag, output_dir: str, insight: Insight, run_id: str = None):
+    """Create insight job for execution in the DAG runner
+
+    Args:
+        dag: Project DAG
+        output_dir: Output directory for files
+        insight: Insight object to execute
+        run_id: Optional run ID for preview runs (passed to action for custom file naming)
+    """
     source = _get_source(insight, dag, output_dir)
+    kwargs = {
+        "insight": insight,
+        "dag": dag,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+
     return Job(
         item=insight,
         source=source,
         action=action,
-        insight=insight,
-        dag=dag,
-        output_dir=output_dir,
+        **kwargs
     )

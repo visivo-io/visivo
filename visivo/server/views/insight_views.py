@@ -139,7 +139,7 @@ def register_insight_views(app, flask_app, output_dir):
             def execute_job():
                 from pydantic import TypeAdapter, ValidationError
                 from visivo.models.insight import Insight
-                from visivo.jobs.run_insight_job import action
+                from visivo.jobs.filtered_runner import FilteredRunner
 
                 try:
                     # Update status to running
@@ -163,7 +163,22 @@ def register_insight_views(app, flask_app, output_dir):
                         progress_message="Preparing execution",
                     )
 
-                    # Execute insight action with job_id for file naming
+                    # Add the insight to the project DAG temporarily
+                    project_dag = flask_app.project.dag()
+                    project_dag.add_node(insight)
+
+                    # Get dependent models and add edges
+                    from visivo.models.dag import all_descendants_of_type
+                    from visivo.models.models.model import Model
+
+                    dependent_models = all_descendants_of_type(
+                        type=Model, dag=project_dag, from_node=insight
+                    )
+                    for model in dependent_models:
+                        project_dag.add_edge(model, insight)
+
+                    # Execute with FilteredRunner using run_id for custom file naming
+                    # Use dag_filter to run only this specific insight
                     job_manager.update_status(
                         job_id,
                         JobStatus.RUNNING,
@@ -171,14 +186,25 @@ def register_insight_views(app, flask_app, output_dir):
                         progress_message=f"Executing query for {insight.name or 'preview'}",
                     )
 
-                    result = action(
-                        insight=insight,
-                        dag=flask_app.project.dag(),
+                    runner = FilteredRunner(
+                        project=flask_app.project,
                         output_dir=output_dir,
-                        job_id=job_id,
+                        threads=1,
+                        soft_failure=True,
+                        dag_filter=f"+{insight.name}+",  # Filter to run only this insight
+                        server_url="",
+                        working_dir=flask_app.project.path or "",
+                        run_id=job_id,
                     )
 
-                    if result.success:
+                    # Run the filtered DAG (this will execute the insight job with dependencies)
+                    runner.run()
+
+                    # Check if job succeeded by looking at the DagRunner results
+                    # FilteredRunner iterates over filtered DAGs, so we need to check if any failed
+                    # For preview, we only have one insight, so we can check the file output
+                    insight_path = f"{output_dir}/insights/{job_id}.json"
+                    if os.path.exists(insight_path):
                         # Load result metadata
                         job_manager.update_status(
                             job_id,
@@ -187,31 +213,27 @@ def register_insight_views(app, flask_app, output_dir):
                             progress_message="Finalizing results",
                         )
 
-                        # Load the generated insight metadata file
                         import json
 
-                        insight_path = f"{output_dir}/insights/{job_id}.json"
-                        if os.path.exists(insight_path):
-                            with open(insight_path, "r") as f:
-                                insight_data = json.load(f)
+                        with open(insight_path, "r") as f:
+                            insight_data = json.load(f)
 
-                            # Convert file paths to API URLs
-                            for file_info in insight_data.get("files", []):
-                                file_path = file_info.get("signed_data_file_url", "")
-                                if file_path:
-                                    filename = os.path.basename(file_path)
-                                    name_hash = filename.replace(".parquet", "")
-                                    file_info["signed_data_file_url"] = f"/api/files/{name_hash}/"
+                        # Convert file paths to API URLs
+                        for file_info in insight_data.get("files", []):
+                            file_path = file_info.get("signed_data_file_url", "")
+                            if file_path:
+                                filename = os.path.basename(file_path)
+                                name_hash = filename.replace(".parquet", "")
+                                file_info["signed_data_file_url"] = f"/api/files/{name_hash}/"
 
-                            job_manager.set_result(job_id, insight_data)
-                        else:
-                            raise FileNotFoundError(f"Preview result not found at {insight_path}")
+                        job_manager.set_result(job_id, insight_data)
                     else:
-                        # Job failed
+                        # Job failed - file not created
+                        error_msg = f"Preview job failed: output file not created"
                         job_manager.update_status(
                             job_id,
                             JobStatus.FAILED,
-                            error=str(result.message),
+                            error=error_msg,
                             error_details={"item_name": insight.name or "preview"},
                         )
 

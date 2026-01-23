@@ -40,6 +40,7 @@ class DagRunner:
         server_url: str,
         job_dag: Any,
         working_dir: str,
+        run_id: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -48,6 +49,7 @@ class DagRunner:
         self.server_url = server_url
         self.job_dag = job_dag
         self.working_dir = working_dir
+        self.run_id = run_id
         self.job_tracking_dag = job_dag.copy()
         self.project_dag = project.dag()
         self.failed_job_results = []
@@ -138,7 +140,9 @@ class DagRunner:
         if isinstance(item, Trace):
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Insight):
-            return insight_job(insight=item, output_dir=self.output_dir, dag=self.project_dag)
+            return insight_job(
+                insight=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
+            )
         elif isinstance(item, Input):
             return input_job(dag=self.project_dag, output_dir=self.output_dir, input_obj=item)
         elif isinstance(item, CsvScriptModel):
