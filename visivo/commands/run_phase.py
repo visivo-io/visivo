@@ -26,6 +26,7 @@ def run_phase(
     project: Project = None,
     server_url: str = None,
     no_deprecation_warnings: bool = False,
+    run_id: str = "main",
 ):
     from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
@@ -91,6 +92,7 @@ def run_phase(
         dag_filter=dag_filter,
         server_url=server_url,
         working_dir=working_dir,
+        run_id=run_id,
     )
     runner.run()
     return runner

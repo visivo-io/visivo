@@ -73,24 +73,26 @@ def register_data_views(app, flask_app, output_dir):
 
         return html
 
-    @app.route("/api/files/<hash>/")
-    def serve_file_data_by_hash(hash):
-        """API endpoint to serve data file by hash"""
+    @app.route("/api/files/<run_id>/<hash>/")
+    def serve_file_data_by_hash(run_id, hash):
+        """API endpoint to serve data file by hash from a specific run"""
         try:
-            # Find data file by hash
-            files = glob.glob(os.path.join(output_dir, "files", "*"))
+            # Find data file by hash in the run_id directory
+            data_file = os.path.join(output_dir, run_id, "files", f"{hash}.parquet")
 
-            for file in files:
-                if hash in file:
-                    data_file = os.path.join(output_dir, "files", f"{hash}.parquet")
-                    if os.path.exists(data_file):
-                        return send_file(data_file)
-                    break
+            if os.path.exists(data_file):
+                return send_file(data_file)
 
-            return jsonify({"message": f"Data file not found for hash: {hash}"}), 404
+            return jsonify({"message": f"Data file not found for hash: {hash} in run: {run_id}"}), 404
         except Exception as e:
             Logger.instance().error(f"Error serving data file by hash: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    # Backward compatibility: default to "main" run if no run_id specified
+    @app.route("/api/files/<hash>/")
+    def serve_file_data_by_hash_default(hash):
+        """API endpoint to serve data file by hash (defaults to main run for backward compatibility)"""
+        return serve_file_data_by_hash("main", hash)
 
     @app.route("/api/insight-jobs/<insight_hash>/")
     def serve_insight_data_by_hash(insight_hash):

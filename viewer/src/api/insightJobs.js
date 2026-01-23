@@ -47,11 +47,12 @@ const validateInsightJobStructure = insightJob => {
  * Fetch insight jobs data with retry logic
  * @param {string} projectId - Project ID
  * @param {string[]} names - Array of insight names
+ * @param {string} runId - Run ID to fetch data from (default: "main")
  * @param {number} retries - Number of retries (default 3)
  * @param {number} retryDelay - Delay between retries in ms (default 1000)
  * @returns {Promise<Object[]>} Array of insight job objects with data URLs
  */
-export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay = 1000) => {
+export const fetchInsightJobs = async (projectId, names, runId = "main", retries = 3, retryDelay = 1000) => {
   // In server mode, this will call /api/insight-jobs/ with insight names as query params
   // In dist mode, this will fetch /data/insights.json
 
@@ -68,6 +69,11 @@ export const fetchInsightJobs = async (projectId, names, retries = 3, retryDelay
 
   if (projectId) {
     params.push(`project_id=${encodeURIComponent(projectId)}`);
+  }
+
+  // Add run_id parameter
+  if (runId) {
+    params.push(`run_id=${encodeURIComponent(runId)}`);
   }
 
   if (params.length > 0) {

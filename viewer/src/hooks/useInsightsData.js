@@ -195,9 +195,10 @@ const processInsight = async (db, insight, inputs) => {
  *
  * @param {string} projectId - Project ID
  * @param {string[]} insightNames - Array of insight names to load
+ * @param {string} runId - Run ID to load data from (default: "main")
  * @returns {Object} Insights data and loading state
  */
-export const useInsightsData = (projectId, insightNames) => {
+export const useInsightsData = (projectId, insightNames, runId = "main") => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsights();
   const setInsights = useStore(state => state.setInsights);
@@ -298,7 +299,7 @@ export const useInsightsData = (projectId, insightNames) => {
       return {};
     }
 
-    const insights = await fetchInsights(projectId, stableInsightNames);
+    const insights = await fetchInsights(projectId, stableInsightNames, runId);
 
     if (!insights?.length) {
       return {};
@@ -330,17 +331,19 @@ export const useInsightsData = (projectId, insightNames) => {
     return mergedData;
     // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
     // The queryKey still changes when inputs change (via stableRelevantInputs/pendingInsightInputsReady)
-  }, [db, projectId, stableInsightNames, fetchInsights]);
+  }, [db, projectId, stableInsightNames, fetchInsights, runId]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
+  // Also includes runId to separate cache for different runs
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
       'insights',
       projectId,
+      runId,
       stableInsightNames,
       !!db,
       stableRelevantInputs,

@@ -180,14 +180,23 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     }
   }), [projectId]);
 
-  // Determine which data to load
+  // Determine which data to load and which run_id to use
   const insightNamesToLoad = useMemo(() => {
     const name = insightConfig?.name;
     return (name && name !== '__preview__') ? [name] : [];
   }, [insightConfig]);
 
+  // Determine run_id: use preview run for preview mode, "main" for regular mode
+  const loadRunId = useMemo(() => {
+    if (usePreview && result?.name) {
+      return `preview-${result.name}`;
+    }
+    return "main";
+  }, [usePreview, result]);
+
   // Load insight data (this stores results in Zustand)
-  useInsightsData(projectId, insightNamesToLoad);
+  // In preview mode, we don't use this hook since we manually load the data after job completes
+  useInsightsData(projectId, usePreview ? [] : insightNamesToLoad, loadRunId);
 
   // Get input names from the filtered input configs
   const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);

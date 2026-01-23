@@ -15,6 +15,7 @@ def register_insight_views(app, flask_app, output_dir):
         try:
             insight_names = request.args.getlist("insight_names")
             project_id = request.args.get("project_id")
+            run_id = request.args.get("run_id", "main")  # Default to "main" run
 
             if not insight_names:
                 return jsonify({"message": "insight_names parameter is required"}), 400
@@ -25,7 +26,8 @@ def register_insight_views(app, flask_app, output_dir):
             for name in insight_names:
                 # Use alpha_hash to match backend name_hash() method
                 name_hash = alpha_hash(name)
-                insight_file = os.path.join(output_dir, "insights", f"{name_hash}.json")
+                # Look in the run_id subdirectory
+                insight_file = os.path.join(output_dir, run_id, "insights", f"{name_hash}.json")
 
                 if not os.path.exists(insight_file):
                     Logger.instance().info(f"Insight file not found: {insight_file}")
@@ -48,13 +50,14 @@ def register_insight_views(app, flask_app, output_dir):
                             if "signed_data_file_url" in file_ref:
                                 file_path = file_ref["signed_data_file_url"]
                                 # Convert absolute paths to API URLs
-                                # file_path format: {output_dir}/files/{hash}.parquet
+                                # file_path format: {output_dir}/{run_id}/files/{hash}.parquet
                                 # Extract hash (filename without extension)
                                 filename = os.path.basename(file_path)
                                 file_hash = os.path.splitext(filename)[
                                     0
                                 ]  # Remove .parquet extension
-                                file_ref["signed_data_file_url"] = f"/api/files/{file_hash}/"
+                                # Include run_id in the API URL
+                                file_ref["signed_data_file_url"] = f"/api/files/{run_id}/{file_hash}/"
 
                     insights.append(insight_data)
                     Logger.instance().debug(
@@ -155,6 +158,9 @@ def register_insight_views(app, flask_app, output_dir):
                     if not insight.name:
                         insight.name = f"preview_{job_id[:8]}"
 
+                    # Use preview-{insight_name} as run_id
+                    run_id = f"preview-{insight.name}"
+
                     # Update progress: preparing
                     job_manager.update_status(
                         job_id,
@@ -194,16 +200,16 @@ def register_insight_views(app, flask_app, output_dir):
                         dag_filter=f"+{insight.name}+",  # Filter to run only this insight
                         server_url="",
                         working_dir=flask_app.project.path or "",
-                        run_id=job_id,
+                        run_id=run_id,
                     )
 
                     # Run the filtered DAG (this will execute the insight job with dependencies)
                     runner.run()
 
                     # Check if job succeeded by looking at the DagRunner results
-                    # FilteredRunner iterates over filtered DAGs, so we need to check if any failed
-                    # For preview, we only have one insight, so we can check the file output
-                    insight_path = f"{output_dir}/insights/{job_id}.json"
+                    # Files are now stored in: {output_dir}/{run_id}/insights/{name_hash}.json
+                    name_hash = alpha_hash(insight.name)
+                    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
                     if os.path.exists(insight_path):
                         # Load result metadata
                         job_manager.update_status(
@@ -218,13 +224,13 @@ def register_insight_views(app, flask_app, output_dir):
                         with open(insight_path, "r") as f:
                             insight_data = json.load(f)
 
-                        # Convert file paths to API URLs
+                        # Convert file paths to API URLs with run_id
                         for file_info in insight_data.get("files", []):
                             file_path = file_info.get("signed_data_file_url", "")
                             if file_path:
                                 filename = os.path.basename(file_path)
-                                name_hash = filename.replace(".parquet", "")
-                                file_info["signed_data_file_url"] = f"/api/files/{name_hash}/"
+                                file_hash = filename.replace(".parquet", "")
+                                file_info["signed_data_file_url"] = f"/api/files/{run_id}/{file_hash}/"
 
                         job_manager.set_result(job_id, insight_data)
                     else:
