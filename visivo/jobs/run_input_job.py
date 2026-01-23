@@ -41,6 +41,7 @@ def _write_parquet_file(
     output_dir: str,
     input_hash: str,
     key: str,
+    run_id: str = "main",
 ) -> str:
     """
     Write a DataFrame to a parquet file.
@@ -50,11 +51,14 @@ def _write_parquet_file(
         output_dir: Base output directory
         input_hash: Hash of the input name
         key: File key (options, defaults)
+        run_id: Run ID for organizing output files
 
     Returns:
         Full path to the written parquet file
     """
-    files_directory = f"{output_dir}/files"
+    # Organize files by run_id
+    run_output_dir = f"{output_dir}/{run_id}"
+    files_directory = f"{run_output_dir}/files"
     os.makedirs(files_directory, exist_ok=True)
     parquet_path = f"{files_directory}/{input_hash}_{key}.parquet"
     df.write_parquet(parquet_path)

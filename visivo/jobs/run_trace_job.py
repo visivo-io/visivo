@@ -20,11 +20,13 @@ from visivo.query.query_string_factory import QueryStringFactory
 from visivo.jobs.utils import get_source_for_model
 
 
-def action(trace, dag, output_dir):
+def action(trace, dag, output_dir, run_id="main"):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     source = get_source_for_model(model, dag, output_dir)
 
-    trace_directory = f"{output_dir}/traces/{trace.name}"
+    # Organize files by run_id
+    run_output_dir = f"{output_dir}/{run_id}"
+    trace_directory = f"{run_output_dir}/traces/{trace.name}"
     query_string = _get_query_string(trace, dag, output_dir)
     try:
         start_time = time()
@@ -62,13 +64,19 @@ def _get_source(trace, dag, output_dir):
     return get_source_for_model(model, dag, output_dir)
 
 
-def job(dag, output_dir: str, trace: Trace):
+def job(dag, output_dir: str, trace: Trace, run_id: str = None):
     source = _get_source(trace, dag, output_dir)
+    kwargs = {
+        "trace": trace,
+        "dag": dag,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+
     return Job(
         item=trace,
         source=source,
         action=action,
-        trace=trace,
-        dag=dag,
-        output_dir=output_dir,
+        **kwargs
     )
