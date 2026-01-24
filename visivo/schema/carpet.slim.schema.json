@@ -201,7 +201,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "a",
+    "b"
   ],
   "additionalProperties": false
 }

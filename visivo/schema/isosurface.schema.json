@@ -2781,7 +2781,11 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x",
+    "y",
+    "z",
+    "value"
   ],
   "additionalProperties": false
 }

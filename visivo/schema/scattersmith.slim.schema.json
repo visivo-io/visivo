@@ -242,7 +242,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "imag",
+    "real"
   ],
   "additionalProperties": false
 }

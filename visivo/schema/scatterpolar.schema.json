@@ -4387,7 +4387,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "r",
+    "theta"
   ],
   "additionalProperties": false
 }

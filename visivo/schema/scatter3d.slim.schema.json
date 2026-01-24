@@ -827,7 +827,10 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x",
+    "y",
+    "z"
   ],
   "additionalProperties": false
 }

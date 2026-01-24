@@ -207,7 +207,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "values",
+    "labels"
   ],
   "additionalProperties": false
 }

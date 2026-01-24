@@ -258,7 +258,13 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x",
+    "y",
+    "z",
+    "u",
+    "v",
+    "w"
   ],
   "additionalProperties": false
 }

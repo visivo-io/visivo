@@ -215,7 +215,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x",
+    "y"
   ],
   "additionalProperties": false
 }
