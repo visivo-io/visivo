@@ -73,8 +73,8 @@ def register_data_views(app, flask_app, output_dir):
 
         return html
 
-    @app.route("/api/files/<run_id>/<hash>/")
-    def serve_file_data_by_hash(run_id, hash):
+    @app.route("/api/files/<hash>/<run_id>/")
+    def serve_file_data_by_hash_with_run(hash, run_id):
         """API endpoint to serve data file by hash from a specific run"""
         try:
             # Find data file by hash in the run_id directory
@@ -93,9 +93,9 @@ def register_data_views(app, flask_app, output_dir):
 
     # Backward compatibility: default to "main" run if no run_id specified
     @app.route("/api/files/<hash>/")
-    def serve_file_data_by_hash_default(hash):
+    def serve_file_data_by_hash(hash):
         """API endpoint to serve data file by hash (defaults to main run for backward compatibility)"""
-        return serve_file_data_by_hash("main", hash)
+        return serve_file_data_by_hash_with_run(hash, "main")
 
     @app.route("/api/insight-jobs/<insight_hash>/")
     def serve_insight_data_by_hash(insight_hash):

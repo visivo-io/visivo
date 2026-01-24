@@ -6,6 +6,7 @@ from flask import jsonify, request
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 from visivo.server.managers.preview_job_manager import PreviewJobManager, JobStatus
+from visivo.server.jobs.preview_job_executor import execute_insight_preview_job
 
 
 def register_insight_views(app, flask_app, output_dir):
@@ -56,9 +57,9 @@ def register_insight_views(app, flask_app, output_dir):
                                 file_hash = os.path.splitext(filename)[
                                     0
                                 ]  # Remove .parquet extension
-                                # Include run_id in the API URL
+                                # Include run_id in the API URL (hash first for backward compatibility)
                                 file_ref["signed_data_file_url"] = (
-                                    f"/api/files/{run_id}/{file_hash}/"
+                                    f"/api/files/{file_hash}/{run_id}/"
                                 )
 
                     insights.append(insight_data)
@@ -136,142 +137,24 @@ def register_insight_views(app, flask_app, output_dir):
             if not config:
                 return jsonify({"message": "config field is required"}), 400
 
-            # Create job via PreviewJobManager
+            # Create job via PreviewJobManager (or get existing job if already running)
             job_manager = PreviewJobManager.instance()
+            existing_job_id = job_manager.find_existing_job(config, object_type="insight")
+
+            if existing_job_id:
+                # Job with this config already exists and is running
+                Logger.instance().info(f"Returning existing preview job {existing_job_id}")
+                return jsonify({"job_id": existing_job_id}), 202  # 202 Accepted
+
+            # Create new job
             job_id = job_manager.create_job(config, object_type="insight")
 
             # Execute job in background thread
-            def execute_job():
-                from pydantic import TypeAdapter, ValidationError
-                from visivo.models.insight import Insight
-                from visivo.jobs.filtered_runner import FilteredRunner
-
-                try:
-                    # Update status to running
-                    job_manager.update_status(
-                        job_id,
-                        JobStatus.RUNNING,
-                        progress=0.1,
-                        progress_message="Validating config",
-                    )
-
-                    # Validate insight config
-                    insight_adapter = TypeAdapter(Insight)
-                    insight = insight_adapter.validate_python(config)
-
-                    # If insight doesn't have a name, assign a temporary one
-                    if not insight.name:
-                        insight.name = f"preview_{job_id[:8]}"
-
-                    # Use preview-{insight_name} as run_id
-                    run_id = f"preview-{insight.name}"
-
-                    # Update progress: preparing
-                    job_manager.update_status(
-                        job_id,
-                        JobStatus.RUNNING,
-                        progress=0.2,
-                        progress_message="Preparing execution",
-                    )
-
-                    # Add the insight to the project DAG temporarily
-                    project_dag = flask_app.project.dag()
-                    project_dag.add_node(insight)
-
-                    # Get dependent models and add edges
-                    from visivo.models.dag import all_descendants_of_type
-                    from visivo.models.models.model import Model
-
-                    dependent_models = all_descendants_of_type(
-                        type=Model, dag=project_dag, from_node=insight
-                    )
-                    for model in dependent_models:
-                        project_dag.add_edge(model, insight)
-
-                    # Execute with FilteredRunner using run_id for custom file naming
-                    # Use dag_filter to run only this specific insight
-                    job_manager.update_status(
-                        job_id,
-                        JobStatus.RUNNING,
-                        progress=0.5,
-                        progress_message=f"Executing query for {insight.name or 'preview'}",
-                    )
-
-                    runner = FilteredRunner(
-                        project=flask_app.project,
-                        output_dir=output_dir,
-                        threads=1,
-                        soft_failure=True,
-                        dag_filter=f"+{insight.name}+",  # Filter to run only this insight
-                        server_url="",
-                        working_dir=flask_app.project.path or "",
-                        run_id=run_id,
-                    )
-
-                    # Run the filtered DAG (this will execute the insight job with dependencies)
-                    runner.run()
-
-                    # Check if job succeeded by looking at the DagRunner results
-                    # Files are now stored in: {output_dir}/{run_id}/insights/{name_hash}.json
-                    name_hash = alpha_hash(insight.name)
-                    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
-                    if os.path.exists(insight_path):
-                        # Load result metadata
-                        job_manager.update_status(
-                            job_id,
-                            JobStatus.RUNNING,
-                            progress=0.9,
-                            progress_message="Finalizing results",
-                        )
-
-                        import json
-
-                        with open(insight_path, "r") as f:
-                            insight_data = json.load(f)
-
-                        # Convert file paths to API URLs with run_id
-                        for file_info in insight_data.get("files", []):
-                            file_path = file_info.get("signed_data_file_url", "")
-                            if file_path:
-                                filename = os.path.basename(file_path)
-                                file_hash = filename.replace(".parquet", "")
-                                file_info["signed_data_file_url"] = (
-                                    f"/api/files/{run_id}/{file_hash}/"
-                                )
-
-                        job_manager.set_result(job_id, insight_data)
-                    else:
-                        # Job failed - file not created
-                        error_msg = f"Preview job failed: output file not created"
-                        job_manager.update_status(
-                            job_id,
-                            JobStatus.FAILED,
-                            error=error_msg,
-                            error_details={"item_name": insight.name or "preview"},
-                        )
-
-                except ValidationError as e:
-                    error_msg = f"Invalid insight configuration: {str(e)}"
-                    Logger.instance().error(error_msg)
-                    job_manager.update_status(
-                        job_id,
-                        JobStatus.FAILED,
-                        error=error_msg,
-                        error_details={"errors": e.errors()},
-                    )
-
-                except Exception as e:
-                    error_msg = f"Preview job failed: {str(e)}"
-                    Logger.instance().error(error_msg, exc_info=True)
-                    job_manager.update_status(
-                        job_id,
-                        JobStatus.FAILED,
-                        error=error_msg,
-                        error_details={"exception": str(e)},
-                    )
-
-            # Start background thread
-            thread = threading.Thread(target=execute_job, daemon=True)
+            thread = threading.Thread(
+                target=execute_insight_preview_job,
+                args=(job_id, config, flask_app, output_dir, job_manager),
+                daemon=True,
+            )
             thread.start()
 
             Logger.instance().info(f"Started preview job {job_id}")
@@ -281,7 +164,7 @@ def register_insight_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error creating preview job: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/insight-jobs/<job_id>/status", methods=["GET"])
+    @app.route("/api/insight-jobs/<job_id>/", methods=["GET"])
     def get_insight_job_status(job_id):
         """Get status of a preview job.
 

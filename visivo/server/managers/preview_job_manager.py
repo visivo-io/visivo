@@ -8,6 +8,8 @@ Handles:
 - Automatic cleanup of old jobs
 """
 
+import hashlib
+import json
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -34,6 +36,7 @@ class PreviewJob:
         self.job_id = job_id
         self.config = config
         self.object_type = object_type
+        self.config_hash = self._compute_config_hash(config)
         self.status = JobStatus.QUEUED
         self.created_at = datetime.now()
         self.started_at: Optional[datetime] = None
@@ -43,6 +46,13 @@ class PreviewJob:
         self.result: Optional[Dict[str, Any]] = None
         self.error: Optional[str] = None
         self.error_details: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def _compute_config_hash(config: Dict[str, Any]) -> str:
+        """Compute a stable hash of the config for deduplication"""
+        # Sort keys to ensure consistent ordering
+        config_str = json.dumps(config, sort_keys=True)
+        return hashlib.sha256(config_str.encode()).hexdigest()
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize job to dictionary"""
@@ -94,9 +104,36 @@ class PreviewJobManager:
         """Get singleton instance"""
         return cls()
 
+    def find_existing_job(self, config: Dict[str, Any], object_type: str) -> Optional[str]:
+        """
+        Find an existing job with the same config that is queued or running.
+
+        Args:
+            config: Object configuration
+            object_type: Type of object
+
+        Returns:
+            Job ID if found, None otherwise
+        """
+        config_hash = PreviewJob._compute_config_hash(config)
+
+        with self._jobs_lock:
+            for job_id, job in self._jobs.items():
+                if (
+                    job.object_type == object_type
+                    and job.config_hash == config_hash
+                    and job.status in (JobStatus.QUEUED, JobStatus.RUNNING)
+                ):
+                    Logger.instance().debug(
+                        f"Found existing {job.status.value} job {job_id} with matching config"
+                    )
+                    return job_id
+
+        return None
+
     def create_job(self, config: Dict[str, Any], object_type: str = "insight") -> str:
         """
-        Create a new preview job.
+        Create a new preview job, or return existing job if one with same config is running.
 
         Args:
             config: Object configuration to preview
@@ -105,13 +142,22 @@ class PreviewJobManager:
         Returns:
             Job ID (UUID string)
         """
+        # Check for existing job with same config
+        existing_job_id = self.find_existing_job(config, object_type)
+        if existing_job_id:
+            Logger.instance().info(
+                f"Reusing existing preview job {existing_job_id} for {object_type}"
+            )
+            return existing_job_id
+
+        # Create new job
         job_id = str(uuid.uuid4())
         job = PreviewJob(job_id, config, object_type)
 
         with self._jobs_lock:
             self._jobs[job_id] = job
 
-        Logger.instance().debug(f"Created preview job {job_id} for {object_type}")
+        Logger.instance().debug(f"Created new preview job {job_id} for {object_type}")
         return job_id
 
     def get_job(self, job_id: str) -> Optional[PreviewJob]:
