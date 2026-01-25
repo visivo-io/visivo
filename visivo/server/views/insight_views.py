@@ -166,14 +166,15 @@ def register_insight_views(app, flask_app, output_dir):
 
     @app.route("/api/insight-jobs/<job_id>/", methods=["GET"])
     def get_insight_job_status(job_id):
-        """Get status of a preview job.
+        """Get status and result of a preview job.
 
         Returns: {
             "job_id": "uuid",
             "status": "queued|running|completed|failed",
             "progress": 0.0-1.0,
             "progress_message": "...",
-            "error": "..." (if failed)
+            "error": "..." (if failed),
+            "result": {...} (only present when status is "completed")
         }
         """
         try:
@@ -187,37 +188,4 @@ def register_insight_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error getting job status: {str(e)}")
-            return jsonify({"message": str(e)}), 500
-
-    @app.route("/api/insight-jobs/<job_id>/result", methods=["GET"])
-    def get_job_result(job_id):
-        """Get result of a completed preview job.
-
-        Returns the insight metadata (same format as GET /api/insight-jobs/)
-        """
-        try:
-            job_manager = PreviewJobManager.instance()
-            job = job_manager.get_job(job_id)
-
-            if not job:
-                return jsonify({"message": f"Job {job_id} not found"}), 404
-
-            if job.status != JobStatus.COMPLETED:
-                return (
-                    jsonify(
-                        {
-                            "message": f"Job not completed. Current status: {job.status.value}",
-                            "status": job.status.value,
-                        }
-                    ),
-                    400,
-                )
-
-            if not job.result:
-                return jsonify({"message": "Job completed but no result available"}), 500
-
-            return jsonify(job.result)
-
-        except Exception as e:
-            Logger.instance().error(f"Error getting job result: {str(e)}")
             return jsonify({"message": str(e)}), 500

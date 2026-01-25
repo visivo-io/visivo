@@ -56,7 +56,7 @@ class PreviewJob:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize job to dictionary"""
-        return {
+        data = {
             "job_id": self.job_id,
             "object_type": self.object_type,
             "status": self.status.value,
@@ -68,6 +68,12 @@ class PreviewJob:
             "error": self.error,
             "error_details": self.error_details,
         }
+
+        # Include result if job is completed
+        if self.status == JobStatus.COMPLETED and self.result is not None:
+            data["result"] = self.result
+
+        return data
 
 
 class PreviewJobManager:
