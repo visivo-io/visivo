@@ -24,8 +24,9 @@ from typing import Dict, Any, List
 class VisivoRunValidator:
     """Validates the results of a visivo run execution."""
 
-    def __init__(self, target_dir: str = "target", source_name: str = None):
+    def __init__(self, target_dir: str = "target", source_name: str = None, run_id: str = "main"):
         self.target_dir = Path(target_dir)
+        self.run_dir = self.target_dir / run_id
         self.source_name = source_name
         self.errors = []
         self.warnings = []
@@ -100,7 +101,7 @@ class VisivoRunValidator:
         schemas_dir = self.target_dir / "schemas"
 
         if not schemas_dir.exists():
-            self.log_error("Schemas directory does not exist")
+            self.log_error(f"Schemas directory does not exist at {schemas_dir}")
             return False
 
         # Dynamically determine which sources should have schemas
@@ -221,10 +222,10 @@ class VisivoRunValidator:
 
     def validate_traces(self) -> bool:
         """Validate trace data generation results."""
-        traces_dir = self.target_dir / "traces"
+        traces_dir = self.run_dir / "traces"
 
         if not traces_dir.exists():
-            self.log_error("Traces directory does not exist")
+            self.log_error(f"Traces directory does not exist at {traces_dir}")
             return False
 
         # Expected trace names based on traces.visivo.yml and inline traces
@@ -297,10 +298,10 @@ class VisivoRunValidator:
 
     def validate_models(self) -> bool:
         """Validate model generation results."""
-        models_dir = self.target_dir / "models"
+        models_dir = self.run_dir / "models"
 
         if not models_dir.exists():
-            self.log_error("Models directory does not exist")
+            self.log_error(f"Models directory does not exist at {models_dir}")
             return False
 
         # Expected models based on models.visivo.yml
@@ -398,6 +399,9 @@ def main():
     parser.add_argument(
         "--target-dir", default="target", help="Target directory to validate (default: target)"
     )
+    parser.add_argument(
+        "--run-id", default="main", help="Run ID to validate (default: main)"
+    )
     args = parser.parse_args()
 
     # Check if we're in the right directory
@@ -407,7 +411,7 @@ def main():
         )
         sys.exit(1)
 
-    validator = VisivoRunValidator(target_dir=args.target_dir, source_name=args.source)
+    validator = VisivoRunValidator(target_dir=args.target_dir, source_name=args.source, run_id=args.run_id)
     success = validator.run_validation()
 
     sys.exit(0 if success else 1)

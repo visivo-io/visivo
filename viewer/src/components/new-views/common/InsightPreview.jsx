@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import Chart from '../../items/Chart';
 import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
@@ -32,7 +32,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
   const db = useDuckDB();
 
   // Preview job state
-  const { jobId, status, progress, progressMessage, result, error: jobError, isRunning, isCompleted, isFailed, startJob, resetJob } = usePreviewJob();
+  const { progress, progressMessage, result, error: jobError, isRunning, isCompleted, isFailed, startJob, resetJob } = usePreviewJob();
 
   // Fetch input configs on mount
   useEffect(() => {
