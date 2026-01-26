@@ -25,9 +25,7 @@ def register_insight_views(app, flask_app, output_dir):
             missing_insights = []
 
             for name in insight_names:
-                # Use alpha_hash to match backend name_hash() method
                 name_hash = alpha_hash(name)
-                # Look in the run_id subdirectory
                 insight_file = os.path.join(output_dir, run_id, "insights", f"{name_hash}.json")
 
                 if not os.path.exists(insight_file):
@@ -39,25 +37,15 @@ def register_insight_views(app, flask_app, output_dir):
                     with open(insight_file, "r") as f:
                         file_contents = json.load(f)
 
-                    # Start with ID
                     insight_data = {"id": name}
-
-                    # Merge file contents
                     insight_data.update(file_contents)
 
-                    # Convert file paths to proper API URLs
                     if "files" in insight_data:
                         for file_ref in insight_data["files"]:
                             if "signed_data_file_url" in file_ref:
                                 file_path = file_ref["signed_data_file_url"]
-                                # Convert absolute paths to API URLs
-                                # file_path format: {output_dir}/{run_id}/files/{hash}.parquet
-                                # Extract hash (filename without extension)
                                 filename = os.path.basename(file_path)
-                                file_hash = os.path.splitext(filename)[
-                                    0
-                                ]  # Remove .parquet extension
-                                # Include run_id in the API URL (hash first for backward compatibility)
+                                file_hash = os.path.splitext(filename)[0]
                                 file_ref["signed_data_file_url"] = (
                                     f"/api/files/{file_hash}/{run_id}/"
                                 )
@@ -104,7 +92,6 @@ def register_insight_views(app, flask_app, output_dir):
                 return jsonify({"message": "name field is required in request body"}), 400
 
             name = data["name"]
-            # Use alpha_hash to match backend name_hash() method
             name_hash = alpha_hash(name)
 
             Logger.instance().debug(f"Computed hash for '{name}': {name_hash}")

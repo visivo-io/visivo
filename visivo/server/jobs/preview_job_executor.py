@@ -26,7 +26,6 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
         None (updates job status via job_manager)
     """
     try:
-        # Update status to running
         job_manager.update_status(
             job_id,
             JobStatus.RUNNING,
@@ -34,18 +33,14 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
             progress_message="Validating config",
         )
 
-        # Validate insight config
         insight_adapter = TypeAdapter(Insight)
         insight = insight_adapter.validate_python(config)
 
-        # If insight doesn't have a name, assign a temporary one
         if not insight.name:
             insight.name = f"preview_{job_id[:8]}"
 
-        # Use preview-{insight_name} as run_id
         run_id = f"preview-{insight.name}"
 
-        # Update progress: preparing
         job_manager.update_status(
             job_id,
             JobStatus.RUNNING,
@@ -53,19 +48,15 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
             progress_message="Preparing execution",
         )
 
-        # Add the insight to the project DAG temporarily
         project_dag = flask_app.project.dag()
         project_dag.add_node(insight)
 
-        # Get dependent models and add edges
         dependent_models = all_descendants_of_type(
             type=Model, dag=project_dag, from_node=insight
         )
         for model in dependent_models:
             project_dag.add_edge(model, insight)
 
-        # Execute with FilteredRunner using run_id for custom file naming
-        # Use dag_filter to run only this specific insight
         job_manager.update_status(
             job_id,
             JobStatus.RUNNING,
@@ -78,21 +69,17 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
             output_dir=output_dir,
             threads=1,
             soft_failure=True,
-            dag_filter=f"+{insight.name}+",  # Filter to run only this insight
+            dag_filter=f"+{insight.name}+",
             server_url="",
             working_dir=flask_app.project.path or "",
             run_id=run_id,
         )
 
-        # Run the filtered DAG (this will execute the insight job with dependencies)
         runner.run()
 
-        # Check if job succeeded by looking at the DagRunner results
-        # Files are now stored in: {output_dir}/{run_id}/insights/{name_hash}.json
         name_hash = alpha_hash(insight.name)
         insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
         if os.path.exists(insight_path):
-            # Load result metadata
             job_manager.update_status(
                 job_id,
                 JobStatus.RUNNING,
@@ -103,7 +90,6 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
             with open(insight_path, "r") as f:
                 insight_data = json.load(f)
 
-            # Convert file paths to API URLs with run_id
             for file_info in insight_data.get("files", []):
                 file_path = file_info.get("signed_data_file_url", "")
                 if file_path:
