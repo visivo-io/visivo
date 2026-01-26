@@ -8,7 +8,7 @@ from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.server.managers.preview_job_manager import JobStatus
-from visivo.utils.alpha_hash import alpha_hash
+from visivo.models.base.named_model import alpha_hash
 
 
 def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manager):
@@ -51,9 +51,7 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
         project_dag = flask_app.project.dag()
         project_dag.add_node(insight)
 
-        dependent_models = all_descendants_of_type(
-            type=Model, dag=project_dag, from_node=insight
-        )
+        dependent_models = all_descendants_of_type(type=Model, dag=project_dag, from_node=insight)
         for model in dependent_models:
             project_dag.add_edge(model, insight)
 
