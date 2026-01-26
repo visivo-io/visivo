@@ -399,9 +399,7 @@ def main():
     parser.add_argument(
         "--target-dir", default="target", help="Target directory to validate (default: target)"
     )
-    parser.add_argument(
-        "--run-id", default="main", help="Run ID to validate (default: main)"
-    )
+    parser.add_argument("--run-id", default="main", help="Run ID to validate (default: main)")
     args = parser.parse_args()
 
     # Check if we're in the right directory
@@ -411,7 +409,9 @@ def main():
         )
         sys.exit(1)
 
-    validator = VisivoRunValidator(target_dir=args.target_dir, source_name=args.source, run_id=args.run_id)
+    validator = VisivoRunValidator(
+        target_dir=args.target_dir, source_name=args.source, run_id=args.run_id
+    )
     success = validator.run_validation()
 
     sys.exit(0 if success else 1)
