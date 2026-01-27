@@ -17,10 +17,11 @@ from visivo.models.insight import Insight
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.query.sqlglot_utils import schema_from_sql
+from visivo.constants import DEFAULT_RUN_ID
 
 
 def _build_and_write_schema(
-    sql_model: SqlModel, source, output_dir: str, run_id: str = "main"
+    sql_model: SqlModel, source, output_dir: str, run_id: str = DEFAULT_RUN_ID
 ) -> dict:
     """Build schema for a SQL model using SQLGlot and write it to disk.
 
@@ -71,7 +72,9 @@ def _get_error_message(e: Exception) -> str:
     return repr(e)
 
 
-def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_dir, run_id="main"):
+def model_query_and_schema_action(
+    sql_model: SqlModel, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID
+):
     """Execute the SQL model query and save result to parquet file.
 
     Args:
@@ -118,7 +121,7 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         return JobResult(item=sql_model, success=False, message=failure_message)
 
 
-def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir, run_id="main"):
+def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID):
     """Build and write schema only, without executing the query.
 
     Args:

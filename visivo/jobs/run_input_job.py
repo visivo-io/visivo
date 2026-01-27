@@ -29,9 +29,9 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.source import Source
 from visivo.query.patterns import extract_ref_names, replace_refs
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
+from visivo.constants import DEFAULT_RUN_ID
 
 
-# Constants for option count limits
 OPTION_COUNT_WARNING_THRESHOLD = 10000
 OPTION_COUNT_ERROR_THRESHOLD = 100000
 
@@ -41,7 +41,7 @@ def _write_parquet_file(
     output_dir: str,
     input_hash: str,
     key: str,
-    run_id: str = "main",
+    run_id: str = DEFAULT_RUN_ID,
 ) -> str:
     """
     Write a DataFrame to a parquet file.
@@ -228,7 +228,7 @@ def _process_single_select(
     input_obj: SingleSelectInput,
     dag,
     output_dir: str,
-    run_id: str = "main",
+    run_id: str = DEFAULT_RUN_ID,
 ) -> Dict[str, Any]:
     """
     Process a single-select input and return metadata structure.
@@ -312,7 +312,7 @@ def _process_multi_select(
     input_obj: MultiSelectInput,
     dag,
     output_dir: str,
-    run_id: str = "main",
+    run_id: str = DEFAULT_RUN_ID,
 ) -> Dict[str, Any]:
     """
     Process a multi-select input and return metadata structure.
@@ -481,7 +481,7 @@ def action(
     input_obj: Union[SingleSelectInput, MultiSelectInput],
     dag,
     output_dir: str,
-    run_id: str = "main",
+    run_id: str = DEFAULT_RUN_ID,
 ) -> JobResult:
     """
     Execute input job - compute options/range and store results as parquet + JSON metadata.

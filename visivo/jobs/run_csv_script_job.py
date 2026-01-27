@@ -8,9 +8,10 @@ from visivo.jobs.job import (
     start_message,
 )
 from time import time
+from visivo.constants import DEFAULT_RUN_ID
 
 
-def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None, run_id="main"):
+def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None, run_id=DEFAULT_RUN_ID):
     Logger.instance().info(start_message("CsvScriptModel", csv_script_model))
     try:
         start_time = time()

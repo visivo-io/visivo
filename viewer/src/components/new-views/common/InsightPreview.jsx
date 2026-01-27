@@ -9,6 +9,7 @@ import { usePreviewJob } from '../../../hooks/usePreviewJob';
 import { useDuckDB } from '../../../contexts/DuckDBContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../../../duckdb/queries';
 import CircularProgress from '@mui/material/CircularProgress';
+import { DEFAULT_RUN_ID } from '../../../constants';
 
 /**
  * InsightPreview - A minimal dashboard for previewing a single insight
@@ -167,7 +168,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     if (usePreview && result?.name) {
       return `preview-${result.name}`;
     }
-    return "main";
+    return DEFAULT_RUN_ID;
   }, [usePreview, result]);
 
   useInsightsData(projectId, usePreview ? [] : insightNamesToLoad, loadRunId);

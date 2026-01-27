@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { DEFAULT_RUN_ID } from '../constants';
 
 /**
  * Validates an insight job object has the required structure
@@ -52,7 +53,7 @@ const validateInsightJobStructure = insightJob => {
  * @param {number} retryDelay - Delay between retries in ms (default 1000)
  * @returns {Promise<Object[]>} Array of insight job objects with data URLs
  */
-export const fetchInsightJobs = async (projectId, names, runId = "main", retries = 3, retryDelay = 1000) => {
+export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID, retries = 3, retryDelay = 1000) => {
   // In server mode, this will call /api/insight-jobs/ with insight names as query params
   // In dist mode, this will fetch /data/insights.json
 

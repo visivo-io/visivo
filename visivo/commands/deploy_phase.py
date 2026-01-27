@@ -22,6 +22,7 @@ from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.utils import get_dashboards_dir, sanitize_filename
 from visivo.server.store import background_jobs, background_jobs_lock
+from visivo.constants import DEFAULT_RUN_ID
 
 # Limit concurrent uploads to avoid overloading the API
 semaphore_3 = asyncio.Semaphore(3)
@@ -799,7 +800,9 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
     return list(parquet_files.values())
 
 
-def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id="main"):
+def deploy_phase(
+    working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id=DEFAULT_RUN_ID
+):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
 

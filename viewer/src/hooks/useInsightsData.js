@@ -4,6 +4,7 @@ import { useFetchInsights } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
+import { DEFAULT_RUN_ID } from '../constants';
 
 /**
  * Extract input names from a string containing ${inputName.accessor} patterns
@@ -198,7 +199,7 @@ const processInsight = async (db, insight, inputs) => {
  * @param {string} runId - Run ID to load data from (default: "main")
  * @returns {Object} Insights data and loading state
  */
-export const useInsightsData = (projectId, insightNames, runId = "main") => {
+export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsights();
   const setInsights = useStore(state => state.setInsights);

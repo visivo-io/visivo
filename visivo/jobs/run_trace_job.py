@@ -18,9 +18,10 @@ from time import time
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.jobs.utils import get_source_for_model
+from visivo.constants import DEFAULT_RUN_ID
 
 
-def action(trace, dag, output_dir, run_id="main"):
+def action(trace, dag, output_dir, run_id=DEFAULT_RUN_ID):
     # Organize files by run_id
     run_output_dir = f"{output_dir}/{run_id}"
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]

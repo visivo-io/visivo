@@ -8,9 +8,10 @@ from visivo.jobs.job import (
 )
 from time import time
 from visivo.logger.logger import Logger
+from visivo.constants import DEFAULT_RUN_ID
 
 
-def action(local_merge_model: LocalMergeModel, output_dir, dag, run_id="main"):
+def action(local_merge_model: LocalMergeModel, output_dir, dag, run_id=DEFAULT_RUN_ID):
     Logger.instance().info(start_message("LocalMergeModel", local_merge_model))
     try:
         start_time = time()

@@ -7,6 +7,7 @@ from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 from visivo.server.managers.preview_job_manager import PreviewJobManager, JobStatus
 from visivo.server.jobs.preview_job_executor import execute_insight_preview_job
+from visivo.constants import DEFAULT_RUN_ID
 
 
 def register_insight_views(app, flask_app, output_dir):
@@ -16,7 +17,7 @@ def register_insight_views(app, flask_app, output_dir):
         try:
             insight_names = request.args.getlist("insight_names")
             project_id = request.args.get("project_id")
-            run_id = request.args.get("run_id", "main")  # Default to "main" run
+            run_id = request.args.get("run_id", DEFAULT_RUN_ID)
 
             if not insight_names:
                 return jsonify({"message": "insight_names parameter is required"}), 400

@@ -11,11 +11,12 @@ from visivo.jobs.job import (
 from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
 from visivo.jobs.utils import get_source_for_model
+from visivo.constants import DEFAULT_RUN_ID
 import json
 import os
 
 
-def action(insight: Insight, dag: ProjectDag, output_dir, run_id="main"):
+def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID):
     """Execute insight job - tokenize insight and generate insight.json file
 
     Args:
