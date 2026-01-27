@@ -73,6 +73,32 @@ def register_data_views(app, flask_app, output_dir):
 
         return html
 
+    @app.route("/api/files/")
+    def list_files():
+        """List all parquet files in the output directory."""
+        try:
+            files_dir = os.path.join(output_dir, "files")
+            if not os.path.isdir(files_dir):
+                return jsonify([])
+            entries = []
+            for name in sorted(os.listdir(files_dir)):
+                if name.endswith(".parquet"):
+                    file_hash = name[: -len(".parquet")]
+                    full_path = os.path.join(files_dir, name)
+                    stat = os.stat(full_path)
+                    entries.append(
+                        {
+                            "hash": file_hash,
+                            "filename": name,
+                            "size": stat.st_size,
+                            "modified": stat.st_mtime,
+                        }
+                    )
+            return jsonify(entries)
+        except Exception as e:
+            Logger.instance().error(f"Error listing files: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
     @app.route("/api/files/<hash>/")
     def serve_file_data_by_hash(hash):
         """API endpoint to serve data file by hash"""
