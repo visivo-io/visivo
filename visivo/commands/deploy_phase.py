@@ -799,10 +799,21 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
     return list(parquet_files.values())
 
 
-def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None):
+def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id="main"):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
+
+    Args:
+        working_dir: Working directory path
+        user_dir: User directory path
+        output_dir: Output directory path
+        stage: Deployment stage
+        host: Deployment host
+        deploy_id: Optional deployment ID for tracking
+        run_id: Run ID for file organization (default: "main")
     """
+
+    run_output_dir = f"{output_dir}/{run_id}"
 
     def send_progress(message, level="info", status=200, project_url=None):
         if deploy_id:
@@ -878,7 +889,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
         asyncio.run(
             process_traces_async(
                 traces=traces,
-                output_dir=output_dir,
+                output_dir=run_output_dir,
                 project_id=project_id,
                 form_headers=form_headers,
                 json_headers=json_headers,
@@ -918,7 +929,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
             asyncio.run(
                 process_insights_async(
                     insights=insights,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
                     json_headers=json_headers,
@@ -939,7 +950,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
             asyncio.run(
                 process_inputs_async(
                     inputs=inputs,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
                     json_headers=json_headers,
@@ -955,12 +966,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
         Logger.instance().info(f"")
         send_progress("Processing input parquet files...", "info")
         process_input_parquet_start_time = time()
-        input_parquet_files = collect_parquet_files_for_inputs(inputs, output_dir)
+        input_parquet_files = collect_parquet_files_for_inputs(inputs, run_output_dir)
         if input_parquet_files:
             asyncio.run(
                 process_models_async(
                     models=input_parquet_files,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
                     json_headers=json_headers,
@@ -976,12 +987,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None)
         Logger.instance().info(f"")
         send_progress("Processing model uploads...", "info")
         process_models_start_time = time()
-        models = collect_models_for_insights(insights, dag, output_dir)
+        models = collect_models_for_insights(insights, dag, run_output_dir)
         if models:
             asyncio.run(
                 process_models_async(
                     models=models,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     project_id=project_id,
                     form_headers=form_headers,
                     json_headers=json_headers,
