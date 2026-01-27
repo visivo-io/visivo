@@ -31,28 +31,22 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
   const { inputConfigs, fetchInputConfigs, setInsights } = useStore();
   const db = useDuckDB();
 
-  // Preview job state
   const { progress, progressMessage, result, error: jobError, isRunning, isCompleted, isFailed, startJob, resetJob } = usePreviewJob();
 
-  // Fetch input configs on mount
   useEffect(() => {
     fetchInputConfigs();
   }, [fetchInputConfigs]);
 
-  // Start preview job when config changes (in preview mode)
   useEffect(() => {
     if (!usePreview || !insightConfig) return;
 
-    // Reset previous job
     resetJob();
 
-    // Start new preview job
     startJob(insightConfig).catch(err => {
       console.error('Failed to start preview job:', err);
     });
   }, [usePreview, insightConfig, startJob, resetJob]);
 
-  // Process preview result and load into DuckDB when completed
   useEffect(() => {
     if (!usePreview || !isCompleted || !result || !db) return;
 
@@ -61,17 +55,13 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
         const insightName = result.name || '__preview__';
         const { files, query, props_mapping, split_key, type, static_props } = result;
 
-        // Get current inputs from store
         const freshInputs = useStore.getState().inputs || {};
 
-        // Load parquet files into DuckDB
         const { loaded, failed } = await loadInsightParquetFiles(db, files);
 
-        // Execute post_query with input substitution
         const preparedQuery = prepPostQuery({ query }, freshInputs);
         const queryResult = await runDuckDBQuery(db, preparedQuery, 3, 1000);
 
-        // Process rows
         const processedRows = queryResult.toArray().map(row => {
           const rowData = row.toJSON();
           return Object.fromEntries(
@@ -82,7 +72,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
           );
         });
 
-        // Store in Zustand insights store
         const insightData = {
           [insightName]: {
             name: insightName,
@@ -104,7 +93,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
         setInsights(insightData);
       } catch (error) {
         console.error('Failed to process preview result:', error);
-        // Store error state
         const insightName = result.name || '__preview__';
         setInsights({
           [insightName]: {
@@ -121,38 +109,30 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     processPreviewResult();
   }, [usePreview, isCompleted, result, db, setInsights]);
 
-  // Extract all referenced names from the insight config
   const allReferencedNames = useMemo(() => {
     if (!insightConfig) return [];
     return extractInputDependenciesFromProps(insightConfig);
   }, [insightConfig]);
 
-  // Filter to only actual inputs and get their full configurations
   const inputs = useMemo(() => {
     if (!inputConfigs || inputConfigs.length === 0) return [];
 
-    // Create a map of input names to their configs
     const inputConfigMap = new Map(inputConfigs.map(ic => [ic.name, ic.config]));
 
-    // Filter referenced names to only actual inputs and get their configs
     return allReferencedNames
       .filter(name => inputConfigMap.has(name))
       .map(name => inputConfigMap.get(name));
   }, [allReferencedNames, inputConfigs]);
 
-  // Create synthetic chart configuration
   const chart = useMemo(() => {
-    // In preview mode, use the result name or fallback
     const insightName = usePreview ? (result?.name || '__preview__') : insightConfig?.name;
 
-    // Ensure autosize is enabled for preview
     const previewLayout = {
       autosize: true,
-      margin: { l: 40, r: 10, t: 20, b: 30 },  // Smaller margins for preview
+      margin: { l: 40, r: 10, t: 20, b: 30 },
       ...layoutValues
     };
 
-    // For saved insights or completed preview jobs, use the insight name
     if (insightName && insightName !== '__preview__') {
       return {
         name: 'Preview Chart',
@@ -162,7 +142,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
       };
     }
 
-    // For unsaved insights without preview data
     return {
       name: 'Preview Chart',
       insights: [],
@@ -171,7 +150,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     };
   }, [insightConfig, layoutValues, usePreview, result]);
 
-  // Create synthetic project object
   const project = useMemo(() => ({
     id: projectId,
     project_json: {
@@ -180,13 +158,11 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     }
   }), [projectId]);
 
-  // Determine which data to load and which run_id to use
   const insightNamesToLoad = useMemo(() => {
     const name = insightConfig?.name;
     return (name && name !== '__preview__') ? [name] : [];
   }, [insightConfig]);
 
-  // Determine run_id: use preview run for preview mode, "main" for regular mode
   const loadRunId = useMemo(() => {
     if (usePreview && result?.name) {
       return `preview-${result.name}`;
@@ -194,17 +170,12 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     return "main";
   }, [usePreview, result]);
 
-  // Load insight data (this stores results in Zustand)
-  // In preview mode, we don't use this hook since we manually load the data after job completes
   useInsightsData(projectId, usePreview ? [] : insightNamesToLoad, loadRunId);
 
-  // Get input names from the filtered input configs
   const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);
 
-  // Load input data if needed
   useInputsData(projectId, inputNamesToLoad);
 
-  // Show preview job loading state
   if (usePreview && isRunning) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-loading">
@@ -221,7 +192,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     );
   }
 
-  // Show preview job error state
   if (usePreview && isFailed) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-error">
@@ -233,7 +203,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     );
   }
 
-  // If this is an unsaved insight in non-preview mode, show save message
   if (!usePreview && (!insightConfig?.name || insightConfig.name === '__preview__')) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="unsaved-insight-message">
@@ -247,7 +216,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
 
   return (
     <div className="flex flex-col h-full">
-      {/* Input Controls */}
       {inputs.length > 0 && (
         <div className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50" data-testid="input-controls-section">
           {inputs.map(input => (
@@ -261,17 +229,16 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
         </div>
       )}
 
-      {/* Chart */}
       <div className="flex-1 min-h-0 p-4 overflow-hidden">
         <div className="w-full h-full relative" style={{ minWidth: 0 }}>
           <Chart
             chart={chart}
             project={project}
             itemWidth={1}
-            height={400}  // Use fixed height for Plotly
-            width={undefined}  // Let Plotly handle width with autosize
+            height={400}
+            width={undefined}
             shouldLoad={true}
-            hideToolbar={true}  // Hide selector and share button in preview
+            hideToolbar={true}
           />
         </div>
       </div>

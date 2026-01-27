@@ -621,3 +621,25 @@ def test_serve_insight_data_by_name_not_found(client):
     resp = client.get("/api/insight-jobs/?insight_names=unknown&run_id=main")
     assert resp.status_code == 404
     assert "No insight files found" in resp.get_json()["message"]
+
+
+def test_serve_insight_data_by_name_default_run_id(client, output_dir):
+    """Test serve insight data by name defaults to main run when run_id not provided"""
+    from visivo.models.base.named_model import alpha_hash
+
+    insight_name = "my_insight"
+    name_hash = alpha_hash(insight_name)
+
+    insight_dir = Path(output_dir) / "main" / "insights"
+    insight_dir.mkdir(parents=True, exist_ok=True)
+
+    insight_file = insight_dir / f"{name_hash}.json"
+    insight_file.write_text(json.dumps({"hello": "world", "default": "run"}))
+
+    resp = client.get(f"/api/insight-jobs/?insight_names={insight_name}")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 1
+    assert data[0]["id"] == insight_name
+    assert data[0]["hello"] == "world"
+    assert data[0]["default"] == "run"
