@@ -908,7 +908,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None,
         asyncio.run(
             process_dashboards_async(
                 dashboards=dashboards,
-                output_dir=output_dir,
+                output_dir=run_output_dir,
                 project_id=project_id,
                 form_headers=form_headers,
                 json_headers=json_headers,
