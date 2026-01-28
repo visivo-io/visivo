@@ -46,7 +46,10 @@ jobs:
 
       - name: Build App
         run: |
-          cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
+          export NODE_OPTIONS="--max-old-space-size=4096"
+          cd viewer 
+          yarn install --network-timeout 600000 && yarn deploy 
+          cd ..
           poetry install
           poetry run write-schema-json
           poetry run copy-install-script
