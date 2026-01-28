@@ -294,3 +294,11 @@ tasks:
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       DB_USERNAME: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       DB_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+
+  - key: test-installer
+    use: [visivo-install]
+    run: |
+      poetry run build
+      chmod +x dist/visivo/visivo
+      dist/visivo/visivo --version
+      dist/visivo/visivo --help
