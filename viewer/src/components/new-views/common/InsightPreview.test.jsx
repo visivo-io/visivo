@@ -85,7 +85,7 @@ describe('InsightPreview', () => {
         />
       );
 
-      expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['test_insight']);
+      expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['test_insight'], 'main');
     });
 
     it('fetches input configs on mount', () => {

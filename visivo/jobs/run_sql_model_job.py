@@ -17,15 +17,19 @@ from visivo.models.insight import Insight
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.query.sqlglot_utils import schema_from_sql
+from visivo.constants import DEFAULT_RUN_ID
 
 
-def _build_and_write_schema(sql_model: SqlModel, source, output_dir: str) -> dict:
+def _build_and_write_schema(
+    sql_model: SqlModel, source, output_dir: str, run_id: str = DEFAULT_RUN_ID
+) -> dict:
     """Build schema for a SQL model using SQLGlot and write it to disk.
 
     Args:
         sql_model: The SqlModel to build schema for
         source: The source to get SQLGlot dialect from
         output_dir: Directory to save schema files
+        run_id: Run ID for organizing output files
 
     Returns:
         The computed query result schema dict
@@ -50,7 +54,9 @@ def _build_and_write_schema(sql_model: SqlModel, source, output_dir: str) -> dic
         sqlglot_dialect=sqlglot_dialect, sql=sql, schema=schema, model_hash=model_hash
     )
 
-    schema_directory = f"{output_dir}/schema/{sql_model.name}/"
+    # Organize by run_id
+    run_output_dir = f"{output_dir}/{run_id}"
+    schema_directory = f"{run_output_dir}/schema/{sql_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
     with open(schema_file, "w") as fp:
@@ -66,24 +72,30 @@ def _get_error_message(e: Exception) -> str:
     return repr(e)
 
 
-def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
+def model_query_and_schema_action(
+    sql_model: SqlModel, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID
+):
     """Execute the SQL model query and save result to parquet file.
 
     Args:
         sql_model: The SqlModel to execute
         dag: The project DAG
         output_dir: Directory to save output files
+        run_id: Run ID for organizing output files
 
     Returns:
         JobResult indicating success or failure
     """
     source = get_source_for_model(sql_model, dag, output_dir)
-    files_directory = f"{output_dir}/files"
+
+    # Organize files by run_id
+    run_output_dir = f"{output_dir}/{run_id}"
+    files_directory = f"{run_output_dir}/files"
     start_time = time()
 
     try:
         # Build and write schema
-        _build_and_write_schema(sql_model, source, output_dir)
+        _build_and_write_schema(sql_model, source, output_dir, run_id)
 
         # Execute query and write parquet
         data = source.read_sql(sql_model.sql)
@@ -109,13 +121,14 @@ def model_query_and_schema_action(sql_model: SqlModel, dag: ProjectDag, output_d
         return JobResult(item=sql_model, success=False, message=failure_message)
 
 
-def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
+def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID):
     """Build and write schema only, without executing the query.
 
     Args:
         sql_model: The SqlModel to build schema for
         dag: The project DAG
         output_dir: Directory to save schema files
+        run_id: Run ID for organizing output files
 
     Returns:
         JobResult indicating success or failure
@@ -126,9 +139,11 @@ def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
         source = get_source_for_model(sql_model, dag, output_dir)
 
         # Build and write schema
-        _build_and_write_schema(sql_model, source, output_dir)
+        _build_and_write_schema(sql_model, source, output_dir, run_id)
 
-        schema_file = f"{output_dir}/schema/{sql_model.name}/schema.json"
+        # Organize by run_id
+        run_output_dir = f"{output_dir}/{run_id}"
+        schema_file = f"{run_output_dir}/schema/{sql_model.name}/schema.json"
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,
@@ -146,13 +161,14 @@ def schema_only_action(sql_model: SqlModel, dag: ProjectDag, output_dir):
         return JobResult(item=sql_model, success=False, message=failure_message)
 
 
-def job(dag, output_dir: str, sql_model: SqlModel):
+def job(dag, output_dir: str, sql_model: SqlModel, run_id: str = None):
     """Create a Job for the SQL model if it's referenced by a dynamic insight.
 
     Args:
         dag: The project DAG
         output_dir: Directory to save output files
         sql_model: The SqlModel to potentially create a job for
+        run_id: Optional run ID for organizing output files
 
     Returns:
         Job object with appropriate action (parquet + schema or schema-only)
@@ -163,26 +179,23 @@ def job(dag, output_dir: str, sql_model: SqlModel):
     # Get source for the model
     source = get_source_for_model(sql_model, dag, output_dir)
 
+    # Build kwargs
+    kwargs = {
+        "sql_model": sql_model,
+        "dag": dag,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+
     # Check if any insight is dynamic and references this sql_model
     for insight in insights:
         if insight.is_dynamic(dag):
             # Check if this sql_model is in the insight's dependent models
             if sql_model in insight.get_all_dependent_models(dag):
                 return Job(
-                    item=sql_model,
-                    source=source,
-                    action=model_query_and_schema_action,
-                    sql_model=sql_model,
-                    dag=dag,
-                    output_dir=output_dir,
+                    item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
                 )
 
     # Not referenced by any dynamic insight, run the schema-only action
-    return Job(
-        item=sql_model,
-        source=source,
-        action=schema_only_action,
-        sql_model=sql_model,
-        dag=dag,
-        output_dir=output_dir,
-    )
+    return Job(item=sql_model, source=source, action=schema_only_action, **kwargs)

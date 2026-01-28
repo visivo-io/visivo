@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run CLI**: `visivo [command]`
 - **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
 - When editing the python in @visivo/ remember to run - `poetry run black .`
+- **Code comments**: Use comments sparingly. Avoid redundant comments that simply restate what the code does (e.g., `# Use preview-{insight_name} as run_id` followed by `run_id = f"preview-{insight.name}"`). Comments should provide context, explain "why" rather than "what", or document complex logic. Prefer clear variable names and function signatures with docstrings over inline comments.
 
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)

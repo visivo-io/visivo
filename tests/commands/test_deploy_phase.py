@@ -72,14 +72,15 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
 
     # create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     project.traces.append(TraceFactory(name="trace-two", model="ref(model)"))
+    run_id = "main"
     for trace in ["trace", "trace-two"]:
-        data_file = os.path.join(output_dir, "traces", trace, "data.json")
+        data_file = os.path.join(output_dir, run_id, "traces", trace, "data.json")
         os.makedirs(os.path.dirname(data_file), exist_ok=True)
         with open(data_file, "w") as f:
             json.dump({trace: {"x": [1, 2, 3], "y": [1, 2, 3]}}, f)
 
-    os.makedirs(os.path.join(output_dir, "dashboards"), exist_ok=True)
-    thumbnail_path = os.path.join(output_dir, "dashboards", f"{sanitized_name}.png")
+    os.makedirs(os.path.join(output_dir, run_id, "dashboards"), exist_ok=True)
+    thumbnail_path = os.path.join(output_dir, run_id, "dashboards", f"{sanitized_name}.png")
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
@@ -207,27 +208,28 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     ]
 
     # Create trace data files
+    run_id = "main"
     for trace in ["trace"]:
-        data_file = os.path.join(output_dir, "traces", trace, "data.json")
+        data_file = os.path.join(output_dir, run_id, "traces", trace, "data.json")
         os.makedirs(os.path.dirname(data_file), exist_ok=True)
         with open(data_file, "w") as f:
             json.dump({trace: {"x": [1, 2, 3], "y": [1, 2, 3]}}, f)
 
     # Create dashboard thumbnail
-    os.makedirs(os.path.join(output_dir, "dashboards"), exist_ok=True)
-    thumbnail_path = os.path.join(output_dir, "dashboards", f"{sanitized_name}.png")
+    os.makedirs(os.path.join(output_dir, run_id, "dashboards"), exist_ok=True)
+    thumbnail_path = os.path.join(output_dir, run_id, "dashboards", f"{sanitized_name}.png")
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
     # Create insight JSON file
-    os.makedirs(os.path.join(output_dir, "insights"), exist_ok=True)
-    insight_path = os.path.join(output_dir, "insights", f"{insight.name_hash()}.json")
+    os.makedirs(os.path.join(output_dir, run_id, "insights"), exist_ok=True)
+    insight_path = os.path.join(output_dir, run_id, "insights", f"{insight.name_hash()}.json")
     with open(insight_path, "w") as f:
         json.dump({"name": insight.name, "query": "SELECT * FROM test"}, f)
 
     # Create input JSON file
-    os.makedirs(os.path.join(output_dir, "inputs"), exist_ok=True)
-    input_path = os.path.join(output_dir, "inputs", f"{input_obj.name_hash()}.json")
+    os.makedirs(os.path.join(output_dir, run_id, "inputs"), exist_ok=True)
+    input_path = os.path.join(output_dir, run_id, "inputs", f"{input_obj.name_hash()}.json")
     with open(input_path, "w") as f:
         json.dump({"type": "single-select", "options": ["A", "B", "C"]}, f)
 

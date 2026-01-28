@@ -40,6 +40,7 @@ class DagRunner:
         server_url: str,
         job_dag: Any,
         working_dir: str,
+        run_id: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -48,6 +49,7 @@ class DagRunner:
         self.server_url = server_url
         self.job_dag = job_dag
         self.working_dir = working_dir
+        self.run_id = run_id
         self.job_tracking_dag = job_dag.copy()
         self.project_dag = project.dag()
         self.failed_job_results = []
@@ -136,21 +138,35 @@ class DagRunner:
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Trace):
-            return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
+            return trace_job(
+                trace=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
+            )
         elif isinstance(item, Insight):
-            return insight_job(insight=item, output_dir=self.output_dir, dag=self.project_dag)
+            return insight_job(
+                insight=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
+            )
         elif isinstance(item, Input):
-            return input_job(dag=self.project_dag, output_dir=self.output_dir, input_obj=item)
+            return input_job(
+                dag=self.project_dag, output_dir=self.output_dir, input_obj=item, run_id=self.run_id
+            )
         elif isinstance(item, CsvScriptModel):
             return csv_script_job(
-                csv_script_model=item, output_dir=self.output_dir, working_dir=self.working_dir
+                csv_script_model=item,
+                output_dir=self.output_dir,
+                working_dir=self.working_dir,
+                run_id=self.run_id,
             )
         elif isinstance(item, LocalMergeModel):
             return local_merge_job(
-                local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
+                local_merge_model=item,
+                output_dir=self.output_dir,
+                dag=self.project_dag,
+                run_id=self.run_id,
             )
         elif isinstance(item, SqlModel):
-            return sql_model_job(sql_model=item, output_dir=self.output_dir, dag=self.project_dag)
+            return sql_model_job(
+                sql_model=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
+            )
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir)
         return None

@@ -29,9 +29,9 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.source import Source
 from visivo.query.patterns import extract_ref_names, replace_refs
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
+from visivo.constants import DEFAULT_RUN_ID
 
 
-# Constants for option count limits
 OPTION_COUNT_WARNING_THRESHOLD = 10000
 OPTION_COUNT_ERROR_THRESHOLD = 100000
 
@@ -41,6 +41,7 @@ def _write_parquet_file(
     output_dir: str,
     input_hash: str,
     key: str,
+    run_id: str = DEFAULT_RUN_ID,
 ) -> str:
     """
     Write a DataFrame to a parquet file.
@@ -50,11 +51,14 @@ def _write_parquet_file(
         output_dir: Base output directory
         input_hash: Hash of the input name
         key: File key (options, defaults)
+        run_id: Run ID for organizing output files
 
     Returns:
         Full path to the written parquet file
     """
-    files_directory = f"{output_dir}/files"
+    # Organize files by run_id
+    run_output_dir = f"{output_dir}/{run_id}"
+    files_directory = f"{run_output_dir}/files"
     os.makedirs(files_directory, exist_ok=True)
     parquet_path = f"{files_directory}/{input_hash}_{key}.parquet"
     df.write_parquet(parquet_path)
@@ -224,6 +228,7 @@ def _process_single_select(
     input_obj: SingleSelectInput,
     dag,
     output_dir: str,
+    run_id: str = DEFAULT_RUN_ID,
 ) -> Dict[str, Any]:
     """
     Process a single-select input and return metadata structure.
@@ -232,6 +237,7 @@ def _process_single_select(
         input_obj: The SingleSelectInput object
         dag: Project DAG
         output_dir: Output directory
+        run_id: Run ID for organizing output files
 
     Returns:
         Dict with metadata for JSON output (files, static_props, display, warnings)
@@ -250,7 +256,7 @@ def _process_single_select(
         )
 
         # Write parquet file
-        parquet_path = _write_parquet_file(df, output_dir, input_hash, "options")
+        parquet_path = _write_parquet_file(df, output_dir, input_hash, "options", run_id)
         files.append(
             {
                 "name_hash": f"{input_hash}_options",
@@ -306,6 +312,7 @@ def _process_multi_select(
     input_obj: MultiSelectInput,
     dag,
     output_dir: str,
+    run_id: str = DEFAULT_RUN_ID,
 ) -> Dict[str, Any]:
     """
     Process a multi-select input and return metadata structure.
@@ -314,6 +321,7 @@ def _process_multi_select(
         input_obj: The MultiSelectInput object
         dag: Project DAG
         output_dir: Output directory
+        run_id: Run ID for organizing output files
 
     Returns:
         Dict with metadata for JSON output (structure, files, static_props, display, warnings)
@@ -336,7 +344,7 @@ def _process_multi_select(
             )
 
             # Write parquet file
-            parquet_path = _write_parquet_file(df, output_dir, input_hash, "options")
+            parquet_path = _write_parquet_file(df, output_dir, input_hash, "options", run_id)
             files.append(
                 {
                     "name_hash": f"{input_hash}_options",
@@ -381,7 +389,7 @@ def _process_multi_select(
 
                     # Write parquet file for defaults
                     parquet_path = _write_parquet_file(
-                        defaults_df, output_dir, input_hash, "defaults"
+                        defaults_df, output_dir, input_hash, "defaults", run_id
                     )
                     files.append(
                         {
@@ -473,18 +481,20 @@ def action(
     input_obj: Union[SingleSelectInput, MultiSelectInput],
     dag,
     output_dir: str,
+    run_id: str = DEFAULT_RUN_ID,
 ) -> JobResult:
     """
     Execute input job - compute options/range and store results as parquet + JSON metadata.
 
     Output structure follows the insights pattern:
-    - Parquet files in {output_dir}/files/{hash}_{key}.parquet
-    - Metadata JSON in {output_dir}/inputs/{hash}.json
+    - Parquet files in {output_dir}/{run_id}/files/{hash}_{key}.parquet
+    - Metadata JSON in {output_dir}/{run_id}/inputs/{hash}.json
 
     Args:
         input_obj: The input object to process
         dag: The project DAG for reference resolution
         output_dir: Directory to save output files
+        run_id: Run ID for organizing output files
 
     Returns:
         JobResult indicating success or failure
@@ -493,17 +503,20 @@ def action(
         start_time = time()
         input_name = input_obj.name
         input_hash = input_obj.name_hash()
-        inputs_directory = f"{output_dir}/inputs"
+
+        # Organize files by run_id
+        run_output_dir = f"{output_dir}/{run_id}"
+        inputs_directory = f"{run_output_dir}/inputs"
         os.makedirs(inputs_directory, exist_ok=True)
         json_path = f"{inputs_directory}/{input_hash}.json"
 
         # Process based on input type
         if isinstance(input_obj, SingleSelectInput):
-            result = _process_single_select(input_obj, dag, output_dir)
+            result = _process_single_select(input_obj, dag, output_dir, run_id)
             input_type = "single-select"
             structure = "options"
         elif isinstance(input_obj, MultiSelectInput):
-            result = _process_multi_select(input_obj, dag, output_dir)
+            result = _process_multi_select(input_obj, dag, output_dir, run_id)
             input_type = "multi-select"
             structure = result.get("structure", "options")
         else:
@@ -557,6 +570,7 @@ def job(
     dag,
     output_dir: str,
     input_obj: Union[SingleSelectInput, MultiSelectInput],
+    run_id: str = None,
 ) -> Job:
     """
     Create input job for execution in DAG runner.
@@ -568,6 +582,7 @@ def job(
         dag: The project DAG
         output_dir: Directory to save output files
         input_obj: The input object to create a job for
+        run_id: Optional run ID for organizing output files
 
     Returns:
         Job object with appropriate source (or None for static inputs)
@@ -627,11 +642,12 @@ def job(
                 # If we can't find the model or source here, it will fail in action()
                 pass
 
-    return Job(
-        item=input_obj,
-        source=source,
-        action=action,
-        input_obj=input_obj,
-        dag=dag,
-        output_dir=output_dir,
-    )
+    kwargs = {
+        "input_obj": input_obj,
+        "dag": dag,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+
+    return Job(item=input_obj, source=source, action=action, **kwargs)

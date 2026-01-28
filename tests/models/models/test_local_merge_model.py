@@ -19,7 +19,9 @@ def test_LocalMergeModel_simple_data():
 
 
 def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
-    output_dir = temp_folder()
+    base_output_dir = temp_folder()
+    # Simulate run_id directory structure (default is "main")
+    output_dir = f"{base_output_dir}/main"
     os.makedirs(output_dir, exist_ok=True)
 
     data = {
@@ -51,7 +53,9 @@ def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
 
 
 def test_local_merge_model_get_duckdb_source():
-    output_dir = temp_folder()
+    base_output_dir = temp_folder()
+    # Simulate run_id directory structure (default is "main")
+    output_dir = f"{base_output_dir}/main"
     os.makedirs(output_dir, exist_ok=True)
 
     source1 = PostgresqlSource(database="test", type="postgresql")
