@@ -23,9 +23,6 @@ jobs:
           - os: macos-latest
             artifact_name: darwin-arm64
             version_file: visivo/version.py
-          - os: macos-13
-            artifact_name: darwin-x86
-            version_file: visivo/version.py
           - os: windows-latest
             artifact_name: windows-x86
             version_file: visivo\\version.py
