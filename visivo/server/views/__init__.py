@@ -14,6 +14,7 @@ from visivo.server.views.charts_crud_views import register_charts_crud_views
 from visivo.server.views.tables_crud_views import register_tables_crud_views
 from visivo.server.views.metric_views import register_metric_views
 from visivo.server.views.model_views import register_model_views
+from visivo.server.views.profiling_views import register_profiling_views
 from visivo.server.views.project_views import register_project_views
 from visivo.server.views.publish_views import register_publish_views
 from visivo.server.views.relation_views import register_relation_views
@@ -42,6 +43,7 @@ def register_views(app, flask_app, output_dir):
     register_dimension_views(app, flask_app, output_dir)
     register_metric_views(app, flask_app, output_dir)
     register_relation_views(app, flask_app, output_dir)
+    register_profiling_views(app, flask_app, output_dir)
     register_publish_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)
