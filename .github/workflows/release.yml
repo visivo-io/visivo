@@ -44,9 +44,11 @@ jobs:
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
 
+      - name: Set Node options
+        run: echo "NODE_OPTIONS=--max-old-space-size=4096" >> $GITHUB_ENV 
+
       - name: Build App
         run: |
-          export NODE_OPTIONS="--max-old-space-size=4096"
           cd viewer 
           yarn install --network-timeout 600000 && yarn deploy 
           cd ..
