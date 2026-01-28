@@ -14,7 +14,7 @@ description = "Visivo CLI for BI and visualizations as code"
 authors = [
     {name = "Visivo People"}
 ]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 readme = "README.md"
 
 [tool.poetry.scripts]
@@ -24,7 +24,7 @@ copy-install-script = "visivo.copy_install_script:copy_script"
 build = "visivo.build:build"
 
 [tool.poetry.dependencies]
-python = " >=3.12,<3.13"
+python = " >=3.12,<3.14"
 Flask = ">=2.2.3"
 Jinja2 = ">=3.1.2"
 PyYAML = ">=6.0"
