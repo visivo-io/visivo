@@ -57,6 +57,7 @@ tasks:
     run: |
       poetry install --with dev
       poetry build
+      poetry run build
       pip install dist/visivo-*-py3-none-any.whl
 
   - key: test-cli
@@ -106,33 +107,6 @@ tasks:
     outputs:
       problems:
         - matcher: eslint
-
-  - key: test-snowflake
-    use: visivo-install
-    run: |
-      cd test-projects/integration
-      visivo run -s remote-snowflake
-      python validate_run_results.py --source remote-snowflake
-    env:
-      STACKTRACE: true
-      DEBUG: true
-      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
-      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
-    filter: [test-projects/integration]
-
-  - key: test-bigquery
-    use: visivo-install
-    run: |
-      cd test-projects/integration
-      visivo run -s remote-bigquery
-      python validate_run_results.py --source remote-bigquery
-    env:
-      STACKTRACE: true
-      DEBUG: true
-      BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
-      BIGQUERY_PROJECT: ${{ secrets.BIGQUERY_PROJECT }}
-    filter: [test-projects/integration]
 
   - key: test-complex-project
     use: visivo-install
@@ -211,8 +185,9 @@ tasks:
         ready-check: PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -c 'SELECT 1'
     run: |
       PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -f tests/setup/populate_ci_postgres.sql
+      ls
       cd test-projects/integration
-      visivo run -s local-postgres --threads 1
+      ../../dist/visivo/visivo run -s local-postgres --threads 1
       python validate_run_results.py --source local-postgres
     env:
       PGPASSWORD: postgres
@@ -222,6 +197,7 @@ tasks:
       STACKTRACE: true
       DEBUG: true
     filter:
+      - dist
       - test-projects/integration
       - tests/setup/populate_ci_postgres.sql
 
@@ -241,7 +217,7 @@ tasks:
     run: |
       mysql --protocol tcp -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
       cd test-projects/integration
-      visivo run -s local-mysql --threads 1
+      ../../dist/visivo/visivo run -s local-mysql --threads 1
       python validate_run_results.py --source local-mysql
     env:
       MYSQL_PASSWORD: mysql
@@ -249,6 +225,7 @@ tasks:
       STACKTRACE: true
       DEBUG: true
     filter:
+      - dist
       - test-projects/integration
       - tests/setup/populate_ci_mysql.sql
 
@@ -262,14 +239,46 @@ tasks:
     run: |
       docker exec -i clickhouse clickhouse-client --user default --password clickhouse --multiquery < tests/setup/populate_ci_clickhouse.sql
       cd test-projects/integration
-      visivo run -s local-clickhouse --threads 1
+      ../../dist/visivo/visivo run -s local-clickhouse --threads 1
       python validate_run_results.py --source local-clickhouse
     env:
       STACKTRACE: true
       DEBUG: true
     filter:
+      - dist
       - test-projects/integration
       - tests/setup/populate_ci_clickhouse.sql
+
+  - key: test-snowflake
+    use: visivo-install
+    run: |
+      cd test-projects/integration
+      ../../dist/visivo/visivo run -s remote-snowflake
+      python validate_run_results.py --source remote-snowflake
+    env:
+      STACKTRACE: true
+      DEBUG: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+    filter: 
+      - dist
+      - test-projects/integration
+
+  - key: test-bigquery
+    use: visivo-install
+    run: |
+      cd test-projects/integration
+      ../../dist/visivo/visivo run -s remote-bigquery
+      python validate_run_results.py --source remote-bigquery
+    env:
+      STACKTRACE: true
+      DEBUG: true
+      BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
+      BIGQUERY_PROJECT: ${{ secrets.BIGQUERY_PROJECT }}
+    filter: 
+      - dist
+      - test-projects/integration
 
   - key: dbt-dependencies
     use: [code, poetry]
