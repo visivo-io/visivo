@@ -1,4 +1,4 @@
-"""Preview job execution logic for insights."""
+"""Preview run execution logic for insights."""
 
 import os
 import json
@@ -7,28 +7,28 @@ from visivo.models.insight import Insight
 from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
-from visivo.server.managers.preview_job_manager import JobStatus
+from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.models.base.named_model import alpha_hash
 
 
-def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manager):
+def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manager):
     """
-    Execute a preview job for an insight configuration.
+    Execute a preview run for an insight configuration.
 
     Args:
-        job_id: Unique job identifier
+        job_id: Unique run identifier (kept as job_id for API compatibility)
         config: Insight configuration dict
         flask_app: Flask application instance with project
         output_dir: Output directory for files
-        job_manager: PreviewJobManager instance
+        run_manager: PreviewRunManager instance
 
     Returns:
-        None (updates job status via job_manager)
+        None (updates run status via run_manager)
     """
     try:
-        job_manager.update_status(
+        run_manager.update_status(
             job_id,
-            JobStatus.RUNNING,
+            RunStatus.RUNNING,
             progress=0.1,
             progress_message="Validating config",
         )
@@ -41,9 +41,9 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
 
         run_id = f"preview-{insight.name}"
 
-        job_manager.update_status(
+        run_manager.update_status(
             job_id,
-            JobStatus.RUNNING,
+            RunStatus.RUNNING,
             progress=0.2,
             progress_message="Preparing execution",
         )
@@ -55,9 +55,9 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
         for model in dependent_models:
             project_dag.add_edge(model, insight)
 
-        job_manager.update_status(
+        run_manager.update_status(
             job_id,
-            JobStatus.RUNNING,
+            RunStatus.RUNNING,
             progress=0.5,
             progress_message=f"Executing query for {insight.name or 'preview'}",
         )
@@ -78,9 +78,9 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
         name_hash = alpha_hash(insight.name)
         insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
         if os.path.exists(insight_path):
-            job_manager.update_status(
+            run_manager.update_status(
                 job_id,
-                JobStatus.RUNNING,
+                RunStatus.RUNNING,
                 progress=0.9,
                 progress_message="Finalizing results",
             )
@@ -95,10 +95,10 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
                     file_hash = filename.replace(".parquet", "")
                     file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
 
-            job_manager.set_result(job_id, insight_data)
-            job_manager.update_status(
+            run_manager.set_result(job_id, insight_data)
+            run_manager.update_status(
                 job_id,
-                JobStatus.COMPLETED,
+                RunStatus.COMPLETED,
                 progress=1.0,
                 progress_message="Preview completed successfully",
             )
@@ -107,11 +107,11 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, job_manag
 
     except ValidationError as e:
         error_msg = f"Invalid insight configuration: {str(e)}"
-        job_manager.update_status(
-            job_id, JobStatus.FAILED, error=error_msg, progress_message="Validation failed"
+        run_manager.update_status(
+            job_id, RunStatus.FAILED, error=error_msg, progress_message="Validation failed"
         )
     except Exception as e:
         error_msg = f"Preview execution failed: {str(e)}"
-        job_manager.update_status(
-            job_id, JobStatus.FAILED, error=error_msg, progress_message="Execution failed"
+        run_manager.update_status(
+            job_id, RunStatus.FAILED, error=error_msg, progress_message="Execution failed"
         )

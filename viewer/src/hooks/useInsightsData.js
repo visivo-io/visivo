@@ -160,10 +160,7 @@ const processInsight = async (db, insight, inputs) => {
   } catch (error) {
     const insightName = insight.name;
     // Extract input dependencies even in error case for Chart.jsx selective subscriptions
-    const errorInputDependencies = extractInputDependencies(
-      insight.query,
-      insight.static_props
-    );
+    const errorInputDependencies = extractInputDependencies(insight.query, insight.static_props);
 
     return {
       [insightName]: {
@@ -189,7 +186,7 @@ const processInsight = async (db, insight, inputs) => {
  * Hook for loading and managing insights data
  *
  * Orchestrates the complete insight loading pipeline:
- * 1. Fetch insight metadata from API
+ * 1. Fetch insight metadata from API (or use provided preview result)
  * 2. Load required parquet files into DuckDB as tables (using name_hash as table name)
  * 3. Execute post_query with input substitution (query already references table names)
  * 4. Store results in Zustand store
@@ -197,9 +194,15 @@ const processInsight = async (db, insight, inputs) => {
  * @param {string} projectId - Project ID
  * @param {string[]} insightNames - Array of insight names to load
  * @param {string} runId - Run ID to load data from (default: "main")
+ * @param {Object} previewResult - Optional preview result to use instead of fetching
  * @returns {Object} Insights data and loading state
  */
-export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID) => {
+export const useInsightsData = (
+  projectId,
+  insightNames,
+  runId = DEFAULT_RUN_ID,
+  previewResult = null
+) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsights();
   const setInsights = useStore(state => state.setInsights);
@@ -286,7 +289,6 @@ export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID)
 
   // Main query function
   const queryFn = useCallback(async () => {
-
     if (!db) {
       return {};
     }
@@ -295,15 +297,21 @@ export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID)
       return {};
     }
 
-    if (!fetchInsights) {
-      console.error('useInsightsData Debug - fetchInsights is not defined!');
-      return {};
-    }
+    let insights;
 
-    const insights = await fetchInsights(projectId, stableInsightNames, runId);
+    if (previewResult) {
+      insights = [previewResult];
+    } else {
+      if (!fetchInsights) {
+        console.error('useInsightsData Debug - fetchInsights is not defined!');
+        return {};
+      }
 
-    if (!insights?.length) {
-      return {};
+      insights = await fetchInsights(projectId, stableInsightNames, runId);
+
+      if (!insights?.length) {
+        return {};
+      }
     }
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
@@ -332,12 +340,13 @@ export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID)
     return mergedData;
     // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
     // The queryKey still changes when inputs change (via stableRelevantInputs/pendingInsightInputsReady)
-  }, [db, projectId, stableInsightNames, fetchInsights, runId]);
+  }, [db, projectId, stableInsightNames, fetchInsights, runId, previewResult]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   // Also includes runId to separate cache for different runs
+  // Also includes previewResult to trigger refetch when preview result changes
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
 
   const { data, isLoading, error } = useQuery({
@@ -349,6 +358,7 @@ export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID)
       !!db,
       stableRelevantInputs,
       pendingInsightInputsReady,
+      previewResult,
     ],
     queryFn,
     enabled: queryEnabled,
@@ -367,6 +377,7 @@ export const useInsightsData = (projectId, insightNames, runId = DEFAULT_RUN_ID)
   }, [data, setInsights]);
 
   const returnValue = {
+    insights: storeInsightData || {},
     insightsData: storeInsightData || {},
     isInsightsLoading: isLoading,
     // Only report hasAllInsightData=true when we have complete data without pending inputs

@@ -1,15 +1,11 @@
 import React, { useMemo, useEffect } from 'react';
 import Chart from '../../items/Chart';
 import Input from '../../items/Input';
-import { useInsightsData } from '../../../hooks/useInsightsData';
+import { useInsightPreviewData } from '../../../hooks/usePreviewData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { extractInputDependenciesFromProps } from '../../../models/Insight';
 import useStore from '../../../stores/store';
-import { usePreviewJob } from '../../../hooks/usePreviewJob';
-import { useDuckDB } from '../../../contexts/DuckDBContext';
-import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../../../duckdb/queries';
 import CircularProgress from '@mui/material/CircularProgress';
-import { DEFAULT_RUN_ID } from '../../../constants';
 
 /**
  * InsightPreview - A minimal dashboard for previewing a single insight
@@ -18,97 +14,28 @@ import { DEFAULT_RUN_ID } from '../../../constants';
  * - Input controls for any inputs referenced in the insight
  * - A single chart displaying the insight
  *
- * It supports two modes:
- * 1. Saved insight mode (usePreview=false): Uses normal data loading via useInsightsData
- * 2. Preview job mode (usePreview=true): Runs a preview job and loads result
+ * The preview flow:
+ * 1. User edits insight config in the editor
+ * 2. useInsightPreviewData detects changes in query-affecting properties
+ * 3. Only triggers preview run when necessary
+ * 4. Displays loading/error states and chart when ready
  *
  * Props:
  * - insightConfig: The insight configuration object
  * - projectId: Project ID for data loading
  * - layoutValues: Optional layout configuration for the chart
- * - usePreview: Boolean - if true, run a preview job instead of loading saved data
  */
-const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePreview = false }) => {
-  const { inputConfigs, fetchInputConfigs, setInsights } = useStore();
-  const db = useDuckDB();
+const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
+  const { inputConfigs, fetchInputConfigs } = useStore();
 
-  const { progress, progressMessage, result, error: jobError, isRunning, isCompleted, isFailed, startJob, resetJob } = usePreviewJob();
+  const { isLoading, error, insight, progress, progressMessage } = useInsightPreviewData(
+    insightConfig,
+    { projectId }
+  );
 
   useEffect(() => {
     fetchInputConfigs();
   }, [fetchInputConfigs]);
-
-  useEffect(() => {
-    if (!usePreview || !insightConfig) return;
-
-    resetJob();
-
-    startJob(insightConfig).catch(err => {
-      console.error('Failed to start preview job:', err);
-    });
-  }, [usePreview, insightConfig, startJob, resetJob]);
-
-  useEffect(() => {
-    if (!usePreview || !isCompleted || !result || !db) return;
-
-    const processPreviewResult = async () => {
-      try {
-        const insightName = result.name || '__preview__';
-        const { files, query, props_mapping, split_key, type, static_props } = result;
-
-        const freshInputs = useStore.getState().inputs || {};
-
-        const { loaded, failed } = await loadInsightParquetFiles(db, files);
-
-        const preparedQuery = prepPostQuery({ query }, freshInputs);
-        const queryResult = await runDuckDBQuery(db, preparedQuery, 3, 1000);
-
-        const processedRows = queryResult.toArray().map(row => {
-          const rowData = row.toJSON();
-          return Object.fromEntries(
-            Object.entries(rowData).map(([key, value]) => [
-              key,
-              typeof value === 'bigint' ? value.toString() : value,
-            ])
-          );
-        });
-
-        const insightData = {
-          [insightName]: {
-            name: insightName,
-            data: processedRows,
-            files,
-            query,
-            props_mapping,
-            static_props,
-            split_key,
-            type,
-            loaded: loaded.length,
-            failed: failed.length,
-            error: null,
-            pendingInputs: null,
-            inputDependencies: [],
-          },
-        };
-
-        setInsights(insightData);
-      } catch (error) {
-        console.error('Failed to process preview result:', error);
-        const insightName = result.name || '__preview__';
-        setInsights({
-          [insightName]: {
-            name: insightName,
-            data: [],
-            error: error.message || String(error),
-            loaded: 0,
-            failed: result.files?.length || 0,
-          },
-        });
-      }
-    };
-
-    processPreviewResult();
-  }, [usePreview, isCompleted, result, db, setInsights]);
 
   const allReferencedNames = useMemo(() => {
     if (!insightConfig) return [];
@@ -126,12 +53,12 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
   }, [allReferencedNames, inputConfigs]);
 
   const chart = useMemo(() => {
-    const insightName = usePreview ? (result?.name || '__preview__') : insightConfig?.name;
+    const insightName = insightConfig?.name;
 
     const previewLayout = {
       autosize: true,
       margin: { l: 40, r: 10, t: 20, b: 30 },
-      ...layoutValues
+      ...layoutValues,
     };
 
     if (insightName && insightName !== '__preview__') {
@@ -139,7 +66,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
         name: 'Preview Chart',
         insights: [{ name: insightName }],
         traces: [],
-        layout: previewLayout
+        layout: previewLayout,
       };
     }
 
@@ -147,39 +74,31 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
       name: 'Preview Chart',
       insights: [],
       traces: [],
-      layout: previewLayout
+      layout: previewLayout,
     };
-  }, [insightConfig, layoutValues, usePreview, result]);
+  }, [insightConfig, layoutValues]);
 
-  const project = useMemo(() => ({
-    id: projectId,
-    project_json: {
-      name: 'Preview Project',
-      dashboards: []
-    }
-  }), [projectId]);
-
-  const insightNamesToLoad = useMemo(() => {
-    const name = insightConfig?.name;
-    return (name && name !== '__preview__') ? [name] : [];
-  }, [insightConfig]);
-
-  const loadRunId = useMemo(() => {
-    if (usePreview && result?.name) {
-      return `preview-${result.name}`;
-    }
-    return DEFAULT_RUN_ID;
-  }, [usePreview, result]);
-
-  useInsightsData(projectId, usePreview ? [] : insightNamesToLoad, loadRunId);
+  const project = useMemo(
+    () => ({
+      id: projectId,
+      project_json: {
+        name: 'Preview Project',
+        dashboards: [],
+      },
+    }),
+    [projectId]
+  );
 
   const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);
 
   useInputsData(projectId, inputNamesToLoad);
 
-  if (usePreview && isRunning) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-loading">
+      <div
+        className="flex flex-col items-center justify-center h-full p-8 text-center"
+        data-testid="preview-loading"
+      >
         <CircularProgress size={48} className="mb-4" />
         <h3 className="text-lg font-medium text-gray-700 mb-2">Running Preview</h3>
         <p className="text-sm text-gray-500 max-w-sm mb-2">{progressMessage}</p>
@@ -193,20 +112,24 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
     );
   }
 
-  if (usePreview && isFailed) {
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="preview-error">
+      <div
+        className="flex flex-col items-center justify-center h-full p-8 text-center"
+        data-testid="preview-error"
+      >
         <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
-        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
-          {jobError}
-        </p>
+        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">{error}</p>
       </div>
     );
   }
 
-  if (!usePreview && (!insightConfig?.name || insightConfig.name === '__preview__')) {
+  if (!insightConfig?.name || insightConfig.name === '__preview__') {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="unsaved-insight-message">
+      <div
+        className="flex flex-col items-center justify-center h-full p-8 text-center"
+        data-testid="unsaved-insight-message"
+      >
         <h3 className="text-lg font-medium text-gray-700 mb-2">Save to Preview with Data</h3>
         <p className="text-sm text-gray-500 max-w-sm">
           Save the insight and run 'visivo run' to generate preview data.
@@ -218,14 +141,12 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {}, usePrevie
   return (
     <div className="flex flex-col h-full">
       {inputs.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50" data-testid="input-controls-section">
+        <div
+          className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50"
+          data-testid="input-controls-section"
+        >
           {inputs.map(input => (
-            <Input
-              key={input.name}
-              input={input}
-              project={project}
-              itemWidth={1}
-            />
+            <Input key={input.name} input={input} project={project} itemWidth={1} />
           ))}
         </div>
       )}

@@ -5,7 +5,7 @@ from flask import jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
-from visivo.server.managers.preview_job_manager import PreviewJobManager, JobStatus
+from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
 from visivo.server.jobs.preview_job_executor import execute_insight_preview_job
 from visivo.constants import DEFAULT_RUN_ID
 
@@ -126,8 +126,8 @@ def register_insight_views(app, flask_app, output_dir):
                 return jsonify({"message": "config field is required"}), 400
 
             # Create job via PreviewJobManager (or get existing job if already running)
-            job_manager = PreviewJobManager.instance()
-            existing_job_id = job_manager.find_existing_job(config, object_type="insight")
+            run_manager = PreviewRunManager.instance()
+            existing_job_id = run_manager.find_existing_job(config, object_type="insight")
 
             if existing_job_id:
                 # Job with this config already exists and is running
@@ -135,12 +135,12 @@ def register_insight_views(app, flask_app, output_dir):
                 return jsonify({"job_id": existing_job_id}), 202  # 202 Accepted
 
             # Create new job
-            job_id = job_manager.create_job(config, object_type="insight")
+            job_id = run_manager.create_job(config, object_type="insight")
 
             # Execute job in background thread
             thread = threading.Thread(
                 target=execute_insight_preview_job,
-                args=(job_id, config, flask_app, output_dir, job_manager),
+                args=(job_id, config, flask_app, output_dir, run_manager),
                 daemon=True,
             )
             thread.start()
@@ -166,8 +166,8 @@ def register_insight_views(app, flask_app, output_dir):
         }
         """
         try:
-            job_manager = PreviewJobManager.instance()
-            job = job_manager.get_job(job_id)
+            run_manager = PreviewRunManager.instance()
+            job = run_manager.get_job(job_id)
 
             if not job:
                 return jsonify({"message": f"Job {job_id} not found"}), 404
