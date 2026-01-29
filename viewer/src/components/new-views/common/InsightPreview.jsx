@@ -113,13 +113,16 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   }
 
   if (error) {
+    const errorMessage = typeof error === 'string' ? error : error?.message || String(error);
     return (
       <div
         className="flex flex-col items-center justify-center h-full p-8 text-center"
         data-testid="preview-error"
       >
         <h3 className="text-lg font-medium text-red-600 mb-2">Preview Failed</h3>
-        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">{error}</p>
+        <p className="text-sm text-gray-700 max-w-sm font-mono bg-red-50 p-3 rounded">
+          {errorMessage}
+        </p>
       </div>
     );
   }

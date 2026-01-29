@@ -66,7 +66,7 @@ export const usePreviewJob = () => {
    */
   const pollStatus = useCallback(async currentJobId => {
     try {
-      const response = await fetch(`/api/insight-jobs/${currentJobId}/status`);
+      const response = await fetch(`/api/insight-jobs/${currentJobId}/`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -87,11 +87,9 @@ export const usePreviewJob = () => {
           pollingIntervalRef.current = null;
         }
       } else if (jobData.status === 'completed') {
-        // Fetch result
-        const resultResponse = await fetch(`/api/insight-jobs/${currentJobId}/result`);
-        if (resultResponse.ok) {
-          const resultData = await resultResponse.json();
-          setResult(resultData);
+        // Result is included in the response when completed
+        if (jobData.result) {
+          setResult(jobData.result);
         }
         // Stop polling
         if (pollingIntervalRef.current) {

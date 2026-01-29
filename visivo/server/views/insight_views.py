@@ -113,7 +113,9 @@ def register_insight_views(app, flask_app, output_dir):
         Returns: {"job_id": "uuid"}
         """
         try:
+            Logger.instance().info("Received POST to /api/insight-jobs/")
             data = request.get_json()
+            Logger.instance().info(f"Request data parsed: {bool(data)}")
             if not data:
                 return jsonify({"message": "Request body is required"}), 400
 
@@ -125,17 +127,21 @@ def register_insight_views(app, flask_app, output_dir):
             if not config:
                 return jsonify({"message": "config field is required"}), 400
 
-            # Create job via PreviewJobManager (or get existing job if already running)
+            # Create run via PreviewRunManager (or get existing run if already running)
+            Logger.instance().info("Getting PreviewRunManager instance")
             run_manager = PreviewRunManager.instance()
-            existing_job_id = run_manager.find_existing_job(config, object_type="insight")
+            Logger.instance().info("Checking for existing run")
+            existing_run_id = run_manager.find_existing_run(config, object_type="insight")
 
-            if existing_job_id:
-                # Job with this config already exists and is running
-                Logger.instance().info(f"Returning existing preview job {existing_job_id}")
-                return jsonify({"job_id": existing_job_id}), 202  # 202 Accepted
+            if existing_run_id:
+                # Run with this config already exists and is running
+                Logger.instance().info(f"Returning existing preview run {existing_run_id}")
+                return jsonify({"job_id": existing_run_id}), 202  # 202 Accepted
 
-            # Create new job
-            job_id = run_manager.create_job(config, object_type="insight")
+            # Create new run
+            Logger.instance().info("Creating new run")
+            job_id = run_manager.create_run(config, object_type="insight")
+            Logger.instance().info(f"Created run with job_id: {job_id}")
 
             # Execute job in background thread
             thread = threading.Thread(
@@ -154,10 +160,11 @@ def register_insight_views(app, flask_app, output_dir):
 
     @app.route("/api/insight-jobs/<job_id>/", methods=["GET"])
     def get_insight_job_status(job_id):
-        """Get status and result of a preview job.
+        """Get status and result of a preview run.
 
         Returns: {
             "job_id": "uuid",
+            "run_id": "uuid",
             "status": "queued|running|completed|failed",
             "progress": 0.0-1.0,
             "progress_message": "...",
@@ -166,14 +173,19 @@ def register_insight_views(app, flask_app, output_dir):
         }
         """
         try:
+            Logger.instance().info(f"GET /api/insight-jobs/{job_id}/ - fetching status")
             run_manager = PreviewRunManager.instance()
-            job = run_manager.get_job(job_id)
+            Logger.instance().info(f"Got run manager, getting run {job_id}")
+            run = run_manager.get_run(job_id)
+            Logger.instance().info(f"Got run: {run is not None}")
 
-            if not job:
-                return jsonify({"message": f"Job {job_id} not found"}), 404
+            if not run:
+                Logger.instance().info(f"Run {job_id} not found")
+                return jsonify({"message": f"Run {job_id} not found"}), 404
 
-            return jsonify(job.to_dict())
+            Logger.instance().info(f"Returning run status: {run.status}")
+            return jsonify(run.to_dict())
 
         except Exception as e:
-            Logger.instance().error(f"Error getting job status: {str(e)}")
+            Logger.instance().error(f"Error getting run status: {str(e)}")
             return jsonify({"message": str(e)}), 500

@@ -96,15 +96,20 @@ class PreviewRunManager:
         return cls._instance
 
     def __init__(self):
-        if self._initialized:
+        Logger.instance().info(f"PreviewRunManager.__init__ called, _initialized={getattr(self, '_initialized', 'NOT SET')}")
+        if getattr(self, '_initialized', False):
+            Logger.instance().info("Already initialized, returning")
             return
 
+        Logger.instance().info("Initializing PreviewRunManager")
         self._initialized = True
         self._runs: Dict[str, PreviewRun] = {}
         self._runs_lock = threading.Lock()
+        Logger.instance().info("Created runs lock")
         self._cleanup_interval = 3600  # 1 hour in seconds
         self._max_run_age = timedelta(hours=2)  # Runs older than 2 hours are cleaned up
         self._start_cleanup_thread()
+        Logger.instance().info("PreviewRunManager initialization complete")
 
     @classmethod
     def instance(cls) -> "PreviewRunManager":
@@ -122,9 +127,12 @@ class PreviewRunManager:
         Returns:
             Run ID if found, None otherwise
         """
+        Logger.instance().info("Computing config hash")
         config_hash = PreviewRun._compute_config_hash(config)
 
+        Logger.instance().info("Attempting to acquire runs lock")
         with self._runs_lock:
+            Logger.instance().info("Acquired runs lock, checking for existing runs")
             for run_id, run in self._runs.items():
                 if (
                     run.object_type == object_type
@@ -236,9 +244,14 @@ class PreviewRunManager:
                 return
 
             run.result = result
-            self.update_status(
-                run_id, RunStatus.COMPLETED, progress=1.0, progress_message="Complete"
-            )
+            # Update status directly without re-acquiring lock (to avoid deadlock)
+            run.status = RunStatus.COMPLETED
+            run.progress = 1.0
+            run.progress_message = "Complete"
+            if not run.completed_at:
+                run.completed_at = datetime.now()
+
+        Logger.instance().debug(f"Run {run_id} result set and marked as completed")
 
     def get_result(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get run result if completed"""
@@ -277,9 +290,11 @@ class PreviewRunManager:
                 if (now - run.created_at) > self._max_run_age
             ]
 
-        for run_id in expired_runs:
-            Logger.instance().debug(f"Cleaning up expired run {run_id}")
-            self.delete_run(run_id)
+            # Delete expired runs while holding the lock (don't call delete_run to avoid deadlock)
+            for run_id in expired_runs:
+                if run_id in self._runs:
+                    del self._runs[run_id]
+                    Logger.instance().debug(f"Cleaning up expired run {run_id}")
 
         if expired_runs:
             Logger.instance().info(f"Cleaned up {len(expired_runs)} expired preview runs")
@@ -290,13 +305,16 @@ class PreviewRunManager:
         def cleanup_loop():
             import time
 
+            Logger.instance().info("Cleanup thread started, waiting for first interval")
             while True:
                 time.sleep(self._cleanup_interval)
+                Logger.instance().info("Cleanup thread woke up, attempting cleanup")
                 try:
                     self._cleanup_old_runs()
                 except Exception as e:
                     Logger.instance().error(f"Error in preview run cleanup: {e}")
 
         cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True)
+        Logger.instance().info("Starting preview run cleanup thread")
         cleanup_thread.start()
         Logger.instance().info("Started preview run cleanup thread")
