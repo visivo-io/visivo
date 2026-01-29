@@ -44,5 +44,5 @@ jobs:
           ls assets
           netlify deploy --prod --dir . --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NEW_NETLIFY_JARED_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: 205cbb07-07a8-49ba-92af-0ffb25b47451
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 283d65f3-f89a-4a70-a44c-a3ee4cb297d0
