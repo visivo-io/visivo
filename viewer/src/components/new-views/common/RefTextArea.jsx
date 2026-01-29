@@ -227,7 +227,9 @@ const RefTextArea = ({
 
   // Handle editor change
   const handleEditorChange = newValue => {
-    onChange(newValue || '');
+    // Strip leading/trailing whitespace and newlines from the value
+    const cleanedValue = (newValue || '').trim();
+    onChange(cleanedValue);
   };
 
   // Close selector

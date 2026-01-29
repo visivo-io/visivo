@@ -11,6 +11,18 @@ from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.models.base.named_model import alpha_hash
 
 
+def clean_config_strings(obj):
+    """Recursively clean newlines from string values in config."""
+    if isinstance(obj, dict):
+        return {k: clean_config_strings(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_config_strings(item) for item in obj]
+    elif isinstance(obj, str):
+        # Strip trailing/leading newlines and whitespace
+        return obj.strip()
+    return obj
+
+
 def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manager):
     """
     Execute a preview run for an insight configuration.
@@ -33,6 +45,9 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
             progress_message="Validating config",
         )
 
+        # Clean newlines and whitespace from config strings
+        config = clean_config_strings(config)
+
         insight_adapter = TypeAdapter(Insight)
         insight = insight_adapter.validate_python(config)
 
@@ -48,12 +63,20 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
             progress_message="Preparing execution",
         )
 
-        project_dag = flask_app.project.dag()
-        project_dag.add_node(insight)
+        # Create a modified project with the preview insight replacing any existing one
+        from copy import deepcopy
+        preview_project = deepcopy(flask_app.project)
 
-        dependent_models = all_descendants_of_type(type=Model, dag=project_dag, from_node=insight)
-        for model in dependent_models:
-            project_dag.add_edge(model, insight)
+        # Remove existing insight with same name if it exists
+        preview_project.insights = [
+            i for i in (preview_project.insights or [])
+            if i.name != insight.name
+        ]
+
+        # Add the preview insight
+        if preview_project.insights is None:
+            preview_project.insights = []
+        preview_project.insights.append(insight)
 
         run_manager.update_status(
             job_id,
@@ -63,13 +86,13 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
         )
 
         runner = FilteredRunner(
-            project=flask_app.project,
+            project=preview_project,  # Use modified project with preview insight
             output_dir=output_dir,
             threads=1,
             soft_failure=True,
             dag_filter=f"+{insight.name}+",
             server_url="",
-            working_dir=flask_app.project.path or "",
+            working_dir=preview_project.path or "",
             run_id=run_id,
         )
 

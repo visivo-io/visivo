@@ -190,12 +190,13 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     if (insightsDataState.isInsightsLoading) return;
 
     const insight = insightsDataState.insights?.[insightConfig?.name];
+    const hasError = insightsDataState.error;
 
     // Mark that we've checked main
     setHasCheckedMain(true);
 
-    // If no insight found in main run, trigger initial preview
-    if (!insight) {
+    // If no insight found in main run OR there was an error, trigger initial preview
+    if (!insight || hasError) {
       setInsightNotInMain(true);
       setShouldEnableQuery(false); // Disable query while preview runs
     }
