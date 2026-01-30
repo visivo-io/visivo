@@ -65,12 +65,12 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
 
         # Create a modified project with the preview insight replacing any existing one
         from copy import deepcopy
+
         preview_project = deepcopy(flask_app.project)
 
         # Remove existing insight with same name if it exists
         preview_project.insights = [
-            i for i in (preview_project.insights or [])
-            if i.name != insight.name
+            i for i in (preview_project.insights or []) if i.name != insight.name
         ]
 
         # Add the preview insight

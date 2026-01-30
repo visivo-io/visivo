@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import { queryPropsHaveChanged, hashQueryProps } from '../utils/queryPropertyDetection';
-import { DEFAULT_RUN_ID } from '../constants';
 import useStore from '../stores/store';
 
 /**
@@ -24,11 +23,10 @@ import useStore from '../stores/store';
  * @returns {Object} Preview data state
  */
 export const usePreviewData = (type, config, options = {}) => {
-  const { projectId, savedConfig, needsInitialPreview = false } = options;
+  const { savedConfig, needsInitialPreview = false } = options;
 
   const [lastPreviewConfig, setLastPreviewConfig] = useState(null);
   const [lastPreviewHash, setLastPreviewHash] = useState(null);
-  const [shouldRunPreview, setShouldRunPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -69,7 +67,7 @@ export const usePreviewData = (type, config, options = {}) => {
 
     if (needsPreviewRun && !previewJob.isRunning && !previewJobInitializedRef.current) {
       previewJobInitializedRef.current = true;
-      setShouldRunPreview(true);
+
       setIsLoading(true);
       setError(null);
 
@@ -93,11 +91,11 @@ export const usePreviewData = (type, config, options = {}) => {
   useEffect(() => {
     if (previewJob.status === 'completed') {
       setIsLoading(false);
-      setShouldRunPreview(false);
+
       setError(null);
     } else if (previewJob.status === 'failed') {
       setIsLoading(false);
-      setShouldRunPreview(false);
+
       setError(previewJob.error || 'Preview failed');
     }
   }, [previewJob.status, previewJob.error]);
@@ -106,7 +104,6 @@ export const usePreviewData = (type, config, options = {}) => {
     previewJob.resetRun();
     setLastPreviewConfig(null);
     setLastPreviewHash(null);
-    setShouldRunPreview(false);
     setIsLoading(false);
     setError(null);
   }, [previewJob]);

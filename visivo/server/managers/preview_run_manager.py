@@ -95,8 +95,10 @@ class PreviewRunManager:
         return cls._instance
 
     def __init__(self):
-        Logger.instance().info(f"PreviewRunManager.__init__ called, _initialized={getattr(self, '_initialized', 'NOT SET')}")
-        if getattr(self, '_initialized', False):
+        Logger.instance().info(
+            f"PreviewRunManager.__init__ called, _initialized={getattr(self, '_initialized', 'NOT SET')}"
+        )
+        if getattr(self, "_initialized", False):
             Logger.instance().info("Already initialized, returning")
             return
 
@@ -295,10 +297,14 @@ class PreviewRunManager:
 
             for run_id in runs_to_delete:
                 del self._runs[run_id]
-                Logger.instance().debug(f"Invalidated completed run {run_id} for insight {insight_name}")
+                Logger.instance().debug(
+                    f"Invalidated completed run {run_id} for insight {insight_name}"
+                )
 
             if runs_to_delete:
-                Logger.instance().info(f"Invalidated {len(runs_to_delete)} completed runs for insight {insight_name}")
+                Logger.instance().info(
+                    f"Invalidated {len(runs_to_delete)} completed runs for insight {insight_name}"
+                )
 
     def _cleanup_old_runs(self):
         """Remove runs older than max_run_age"""

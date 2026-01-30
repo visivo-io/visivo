@@ -91,7 +91,7 @@ const extractInputDependencies = (query, staticProps = null, knownInputNames = n
  * @param {Object} inputs - Current input values
  * @returns {Promise<Object>} Processed insight data
  */
-const processInsight = async (db, insight, inputs) => {
+const processInsight = async (db, insight, inputs, { forceReload = false } = {}) => {
   try {
     const { name, files, query, props_mapping, split_key, type, static_props } = insight;
     const insightName = name;
@@ -124,7 +124,7 @@ const processInsight = async (db, insight, inputs) => {
       };
     }
 
-    const { loaded, failed } = await loadInsightParquetFiles(db, files);
+    const { loaded, failed } = await loadInsightParquetFiles(db, files, forceReload);
 
     const preparedQuery = prepPostQuery({ query }, inputs);
 
@@ -313,7 +313,7 @@ export const useInsightsData = (
     const freshInputs = useStore.getState().inputs || {};
 
     const results = await Promise.allSettled(
-      insights.map(insight => processInsight(db, insight, freshInputs))
+      insights.map(insight => processInsight(db, insight, freshInputs, { forceReload: !!previewResult }))
     );
 
     const mergedData = {};

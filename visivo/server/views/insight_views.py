@@ -141,7 +141,9 @@ def register_insight_views(app, flask_app, output_dir):
             # Invalidate any completed runs for this insight to force fresh execution with new config
             insight_name = config.get("name")
             if insight_name:
-                Logger.instance().info(f"Invalidating any completed runs for insight: {insight_name}")
+                Logger.instance().info(
+                    f"Invalidating any completed runs for insight: {insight_name}"
+                )
                 run_manager.invalidate_completed_runs_for_insight(insight_name)
 
             # Create new run
