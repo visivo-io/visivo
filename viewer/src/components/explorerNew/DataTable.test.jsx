@@ -110,4 +110,29 @@ describe('DataTable', () => {
     // The exact format depends on locale, but should contain separators
     expect(screen.getByTitle('1000000')).toBeInTheDocument();
   });
+
+  it('renders resize handles in header cells', () => {
+    render(<DataTable {...defaultProps} />);
+    const resizeHandles = screen.getAllByRole('separator');
+    expect(resizeHandles).toHaveLength(defaultColumns.length);
+  });
+
+  it('renders column visibility toggle button with correct count', () => {
+    render(<DataTable {...defaultProps} />);
+    expect(screen.getByText('Columns (3/3)')).toBeInTheDocument();
+  });
+
+  it('opens column visibility dropdown on click', () => {
+    render(<DataTable {...defaultProps} />);
+    const columnsButton = screen.getByText('Columns (3/3)');
+    fireEvent.click(columnsButton);
+
+    // Should show checkboxes for each column
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(3);
+    // All should be checked by default
+    checkboxes.forEach(cb => {
+      expect(cb).toBeChecked();
+    });
+  });
 });

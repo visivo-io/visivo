@@ -74,3 +74,20 @@ export const parseSchema = describeRows => {
     normalizedType: normalizeColumnType(row.column_type),
   }));
 };
+
+// Approximate character width for text-sm (14px) font
+const CHAR_WIDTH_PX = 7;
+// Overhead: type icon (14) + gap (6) + gap (6) + sort icon space (14) + gap (6) + info button (22) + padding (24)
+const HEADER_OVERHEAD_PX = 92;
+const MIN_COLUMN_WIDTH = 120;
+
+/**
+ * Calculate an appropriate column width based on the column name length.
+ * @param {string} columnName - The column header text
+ * @param {string} normalizedType - One of COLUMN_TYPES values (unused for now, reserved for future)
+ * @returns {number} Width in pixels
+ */
+export const calculateColumnWidth = (columnName, normalizedType) => {
+  const textWidth = columnName.length * CHAR_WIDTH_PX;
+  return Math.max(MIN_COLUMN_WIDTH, textWidth + HEADER_OVERHEAD_PX);
+};

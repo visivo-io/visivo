@@ -1,4 +1,4 @@
-import { normalizeColumnType, parseSchema, COLUMN_TYPES } from './schemaUtils';
+import { normalizeColumnType, parseSchema, calculateColumnWidth, COLUMN_TYPES } from './schemaUtils';
 
 describe('normalizeColumnType', () => {
   it('maps INTEGER to number', () => {
@@ -39,6 +39,30 @@ describe('normalizeColumnType', () => {
   });
   it('handles null input', () => {
     expect(normalizeColumnType(null)).toBe(COLUMN_TYPES.UNKNOWN);
+  });
+});
+
+describe('calculateColumnWidth', () => {
+  it('returns minimum width for short names', () => {
+    const width = calculateColumnWidth('id', 'number');
+    expect(width).toBe(120);
+  });
+
+  it('scales width with name length', () => {
+    const shortWidth = calculateColumnWidth('id', 'string');
+    const longWidth = calculateColumnWidth('customer_email_address', 'string');
+    expect(longWidth).toBeGreaterThan(shortWidth);
+  });
+
+  it('gives enough width for long column names', () => {
+    const width = calculateColumnWidth('very_long_column_name_here', 'string');
+    // 26 chars * 7 + 92 = 274
+    expect(width).toBe(274);
+  });
+
+  it('never goes below minimum width', () => {
+    const width = calculateColumnWidth('x', 'number');
+    expect(width).toBe(120);
   });
 });
 

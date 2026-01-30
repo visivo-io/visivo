@@ -1,8 +1,8 @@
-import React, { useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import DataTableHeader from './DataTableHeader';
-import DataTableCell from './DataTableCell';
+import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
+import ColumnVisibilityPicker from './ColumnVisibilityPicker';
 import { PiCaretLeft, PiCaretRight, PiSpinner } from 'react-icons/pi';
 
 const ROW_HEIGHT = 36;
@@ -32,27 +32,16 @@ const DataTable = ({
 }) => {
   const parentRef = useRef(null);
 
-  // Build tanstack column definitions from columns prop
-  const tableColumns = useMemo(
-    () =>
-      columns.map(col => ({
-        id: col.name,
-        accessorKey: col.name,
-        header: () => (
-          <DataTableHeader
-            column={col}
-            sorting={sorting}
-            onSortChange={onSortChange}
-            onInfoClick={onColumnProfileRequest}
-          />
-        ),
-        cell: ({ getValue }) => (
-          <DataTableCell value={getValue()} columnType={col.normalizedType} />
-        ),
-        size: col.normalizedType === 'string' ? 200 : 130,
-      })),
-    [columns, sorting, onSortChange, onColumnProfileRequest]
-  );
+  // Build tanstack column definitions via hook
+  const tableColumns = useDataTableColumns({
+    columns,
+    sorting,
+    onSortChange,
+    onColumnProfileRequest,
+  });
+
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState({});
 
   // Create tanstack table instance
   const table = useReactTable({
@@ -62,9 +51,13 @@ const DataTable = ({
     manualPagination: true,
     manualSorting: true,
     pageCount,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
     state: {
       pagination: { pageIndex: page, pageSize },
+      columnVisibility,
     },
+    onColumnVisibilityChange: setColumnVisibility,
   });
 
   const tableRows = table.getRowModel().rows;
@@ -139,10 +132,18 @@ const DataTable = ({
                 {headerGroup.headers.map(header => (
                   <div
                     key={header.id}
-                    className="border-r border-secondary-200 last:border-r-0"
+                    className="border-r border-secondary-200 last:border-r-0 relative"
                     style={{ width: header.getSize() }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
+                    <div
+                      role="separator"
+                      aria-orientation="vertical"
+                      onMouseDown={header.getResizeHandler()}
+                      onTouchStart={header.getResizeHandler()}
+                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none
+                        ${header.column.getIsResizing() ? 'bg-primary-400' : 'hover:bg-secondary-300'}`}
+                    />
                   </div>
                 ))}
               </div>
@@ -189,9 +190,12 @@ const DataTable = ({
 
       {/* Footer */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-secondary-200 bg-secondary-50 flex-shrink-0">
-        <span className="text-xs text-secondary-500">
-          {totalRowCount.toLocaleString()} total rows
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-secondary-500">
+            {totalRowCount.toLocaleString()} total rows
+          </span>
+          <ColumnVisibilityPicker table={table} />
+        </div>
 
         <div className="flex items-center gap-3">
           {/* Page size selector */}
