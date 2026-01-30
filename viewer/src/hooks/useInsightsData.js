@@ -203,7 +203,8 @@ export const useInsightsData = (
   insightNames,
   runId = DEFAULT_RUN_ID,
   previewResult = null,
-  enabled = true
+  enabled = true,
+  { storeKeyPrefix = '' } = {}
 ) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsightJobs();
@@ -291,23 +292,15 @@ export const useInsightsData = (
 
   // Main query function
   const queryFn = useCallback(async () => {
-    if (!db) {
-      return {};
-    }
-
-    if (!stableInsightNames.length) {
-      return {};
-    }
+    if (!db) return {};
+    if (!stableInsightNames.length) return {};
 
     let insights;
 
     if (previewResult) {
       insights = [previewResult];
     } else {
-      if (!fetchInsights) {
-        console.error('useInsightsData Debug - fetchInsights is not defined!');
-        return {};
-      }
+      if (!fetchInsights) return {};
 
       insights = await fetchInsights(projectId, stableInsightNames, runId);
 
@@ -317,7 +310,6 @@ export const useInsightsData = (
     }
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
-    // This ensures we always have the latest inputs at query execution time
     const freshInputs = useStore.getState().inputs || {};
 
     const results = await Promise.allSettled(
@@ -330,7 +322,6 @@ export const useInsightsData = (
         Object.assign(mergedData, result.value);
       } else {
         const insightName = stableInsightNames[index];
-        // Add error state for this insight
         mergedData[insightName] = {
           name: insightName,
           data: [],
@@ -340,8 +331,6 @@ export const useInsightsData = (
     });
 
     return mergedData;
-    // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
-    // The queryKey still changes when inputs change (via stableRelevantInputs/pendingInsightInputsReady)
   }, [db, projectId, stableInsightNames, fetchInsights, runId, previewResult]);
 
   // React Query for data fetching
@@ -374,9 +363,17 @@ export const useInsightsData = (
   // Update store when data arrives
   useEffect(() => {
     if (data && Object.keys(data).length > 0) {
-      setInsights(data);
+      if (storeKeyPrefix) {
+        const prefixed = {};
+        for (const [key, value] of Object.entries(data)) {
+          prefixed[storeKeyPrefix + key] = value;
+        }
+        setInsights(prefixed);
+      } else {
+        setInsights(data);
+      }
     }
-  }, [data, setInsights]);
+  }, [data, setInsights, storeKeyPrefix]);
 
   const returnValue = {
     insights: storeInsightData || {},

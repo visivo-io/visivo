@@ -94,6 +94,7 @@ export const usePreviewData = (type, config, options = {}) => {
     if (previewJob.status === 'completed') {
       setIsLoading(false);
       setShouldRunPreview(false);
+      setError(null);
     } else if (previewJob.status === 'failed') {
       setIsLoading(false);
       setShouldRunPreview(false);
@@ -139,15 +140,20 @@ export const usePreviewData = (type, config, options = {}) => {
  * @param {Object} options.savedConfig - Pre-fetched saved config
  * @returns {Object} Combined preview and data state
  */
+const PREVIEW_STORE_PREFIX = '__preview__';
+
 export const useInsightPreviewData = (insightConfig, options = {}) => {
-  const insightJobStore = useStore(state => state.insightJobs);
   const storeInsightData = useStore(state => state.insights);
 
-  // Check if insight exists in the insight job store (loaded from main run)
+  const previewInsightKey = insightConfig?.name
+    ? PREVIEW_STORE_PREFIX + insightConfig.name
+    : null;
+
+  // Check if insight exists in the store (loaded from main run)
   const insightNotInMain = useMemo(() => {
     if (!insightConfig?.name) return false;
-    return !insightJobStore?.[insightConfig.name];
-  }, [insightConfig, insightJobStore]);
+    return !storeInsightData?.[insightConfig.name];
+  }, [insightConfig, storeInsightData]);
 
   // Run preview logic - will trigger initial preview if needsInitialPreview is true
   const previewState = usePreviewData('insights', insightConfig, {
@@ -155,19 +161,22 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     needsInitialPreview: insightNotInMain,
   });
 
-  // Only load insights data when we have a preview result
+  // Load insights data when we have a preview result.
+  // Store under a prefixed key so preview data doesn't overwrite the main run data.
   const insightsDataState = useInsightsData(
     options.projectId,
     insightConfig?.name ? [insightConfig.name] : [],
     `preview-${insightConfig?.name}`,
     previewState.result,
-    !!previewState.result // Only enable when we have a preview result
+    !!previewState.result,
+    { storeKeyPrefix: PREVIEW_STORE_PREFIX }
   );
 
   return {
     ...previewState,
     ...insightsDataState,
-    data: storeInsightData?.[insightConfig?.name]?.data || null,
-    insight: storeInsightData?.[insightConfig?.name] || null,
+    previewInsightKey,
+    data: storeInsightData?.[previewInsightKey]?.data || null,
+    insight: storeInsightData?.[previewInsightKey] || null,
   };
 };

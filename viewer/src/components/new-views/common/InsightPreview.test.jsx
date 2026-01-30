@@ -2,12 +2,14 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import InsightPreview from './InsightPreview';
 import useStore from '../../../stores/store';
-import { useInsightsData } from '../../../hooks/useInsightsData';
+import { useInsightPreviewData } from '../../../hooks/usePreviewData';
 import { useInputsData } from '../../../hooks/useInputsData';
 
 // Mock dependencies
 jest.mock('../../../stores/store');
-jest.mock('../../../hooks/useInsightsData');
+jest.mock('../../../hooks/usePreviewData', () => ({
+  useInsightPreviewData: jest.fn(),
+}));
 jest.mock('../../../hooks/useInputsData');
 jest.mock('../../items/Chart', () => ({ chart, project }) => (
   <div data-testid="chart-component">
@@ -45,12 +47,26 @@ describe('InsightPreview', () => {
     });
 
     // Default hook implementations
-    useInsightsData.mockReturnValue(undefined);
+    useInsightPreviewData.mockReturnValue({
+      isLoading: false,
+      error: null,
+      progress: 0,
+      progressMessage: '',
+      previewInsightKey: '__preview__test_insight',
+    });
     useInputsData.mockReturnValue(undefined);
   });
 
   describe('Unsaved insights', () => {
     it('shows message for unsaved insights without name', () => {
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: null,
+      });
+
       render(
         <InsightPreview
           insightConfig={{ props: { type: 'scatter' } }}
@@ -64,6 +80,14 @@ describe('InsightPreview', () => {
     });
 
     it('shows message for preview placeholder name', () => {
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview____preview__',
+      });
+
       render(
         <InsightPreview
           insightConfig={{ name: '__preview__', props: { type: 'scatter' } }}
@@ -77,7 +101,7 @@ describe('InsightPreview', () => {
   });
 
   describe('Saved insights', () => {
-    it('calls useInsightsData with insight name', () => {
+    it('calls useInsightPreviewData with insight config and projectId', () => {
       render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
@@ -85,7 +109,10 @@ describe('InsightPreview', () => {
         />
       );
 
-      expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['test_insight'], 'main');
+      expect(useInsightPreviewData).toHaveBeenCalledWith(
+        defaultInsightConfig,
+        { projectId: 'proj-1' }
+      );
     });
 
     it('fetches input configs on mount', () => {
@@ -109,6 +136,50 @@ describe('InsightPreview', () => {
       );
 
       expect(screen.getByTestId('chart-component')).toBeInTheDocument();
+    });
+  });
+
+  describe('Loading and error states', () => {
+    it('shows loading state when preview is running', () => {
+      useInsightPreviewData.mockReturnValue({
+        isLoading: true,
+        error: null,
+        progress: 0.5,
+        progressMessage: 'Running query...',
+        previewInsightKey: '__preview__test_insight',
+      });
+
+      render(
+        <InsightPreview
+          insightConfig={defaultInsightConfig}
+          projectId="proj-1"
+        />
+      );
+
+      expect(screen.getByTestId('preview-loading')).toBeInTheDocument();
+      expect(screen.getByText('Running Preview')).toBeInTheDocument();
+      expect(screen.getByText('Running query...')).toBeInTheDocument();
+    });
+
+    it('shows error state when preview fails', () => {
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: 'Query syntax error',
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
+
+      render(
+        <InsightPreview
+          insightConfig={defaultInsightConfig}
+          projectId="proj-1"
+        />
+      );
+
+      expect(screen.getByTestId('preview-error')).toBeInTheDocument();
+      expect(screen.getByText('Preview Failed')).toBeInTheDocument();
+      expect(screen.getByText('Query syntax error')).toBeInTheDocument();
     });
   });
 
@@ -142,6 +213,14 @@ describe('InsightPreview', () => {
         },
       };
 
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
+
       useStore.mockImplementation(selector => {
         const state = {
           inputConfigs: [
@@ -174,6 +253,14 @@ describe('InsightPreview', () => {
         ],
       };
 
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
+
       useStore.mockImplementation(selector => {
         const state = {
           inputConfigs: [
@@ -202,6 +289,14 @@ describe('InsightPreview', () => {
           mode: `\${show_markers.value}`,
         },
       };
+
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
 
       useStore.mockImplementation(selector => {
         const state = {
@@ -233,6 +328,14 @@ describe('InsightPreview', () => {
         },
       };
 
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
+
       useStore.mockImplementation(selector => {
         const state = {
           inputConfigs: [
@@ -262,6 +365,14 @@ describe('InsightPreview', () => {
           mode: `\${show_markers.value}`,
         },
       };
+
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
 
       useStore.mockImplementation(selector => {
         const state = {
@@ -318,6 +429,14 @@ describe('InsightPreview', () => {
 
   describe('Error handling', () => {
     it('renders without crashing when insightConfig is null', () => {
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: null,
+      });
+
       render(
         <InsightPreview
           insightConfig={null}
@@ -358,6 +477,14 @@ describe('InsightPreview', () => {
           mode: `\${show_markers.value}`,
         },
       };
+
+      useInsightPreviewData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        progress: 0,
+        progressMessage: '',
+        previewInsightKey: '__preview__test_insight',
+      });
 
       useStore.mockImplementation(selector => {
         const state = {

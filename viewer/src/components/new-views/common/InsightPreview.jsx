@@ -28,10 +28,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   const { inputConfigs, fetchInputConfigs } = useStore();
 
-  const { isLoading, error, insight, progress, progressMessage } = useInsightPreviewData(
-    insightConfig,
-    { projectId }
-  );
+  const { isLoading, error, progress, progressMessage, previewInsightKey } =
+    useInsightPreviewData(insightConfig, { projectId });
 
   useEffect(() => {
     fetchInputConfigs();
@@ -53,18 +51,16 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   }, [allReferencedNames, inputConfigs]);
 
   const chart = useMemo(() => {
-    const insightName = insightConfig?.name;
-
     const previewLayout = {
       autosize: true,
       margin: { l: 40, r: 10, t: 20, b: 30 },
       ...layoutValues,
     };
 
-    if (insightName && insightName !== '__preview__') {
+    if (previewInsightKey) {
       return {
         name: 'Preview Chart',
-        insights: [{ name: insightName }],
+        insights: [{ name: previewInsightKey }],
         traces: [],
         layout: previewLayout,
       };
@@ -76,7 +72,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       traces: [],
       layout: previewLayout,
     };
-  }, [insightConfig, layoutValues]);
+  }, [previewInsightKey, layoutValues]);
 
   const project = useMemo(
     () => ({

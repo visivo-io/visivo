@@ -79,15 +79,18 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
     })
   );
 
+  console.log("insightData", JSON.stringify(insightsData))
+
   // Check if all insight data is loaded (data !== null means loaded, data === null means pending)
   const hasAllInsightData = useMemo(() => {
     if (!chartInsightNames.length) return true;
-    return chartInsightNames.every(
+    const result = chartInsightNames.every(
       name =>
         insightsData[name]?.data !== undefined &&
         insightsData[name]?.data !== null &&
         !insightsData[name]?.pendingInputs?.length
     );
+    return result;
   }, [chartInsightNames, insightsData]);
 
   // For insight-only charts (no traces), don't wait for tracesData
@@ -149,6 +152,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
     layout.autosize = true;
   }
 
+  console.log("selectedPlotData", JSON.stringify(selectedPlotData))
   return (
     <ItemContainer
       onMouseOver={() => setHovering(true)}

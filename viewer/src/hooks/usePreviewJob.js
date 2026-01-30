@@ -18,6 +18,7 @@ export const usePreviewJob = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const pollingIntervalRef = useRef(null);
+  const currentRunIdRef = useRef(null);
 
   /**
    * Start a preview run
@@ -50,6 +51,7 @@ export const usePreviewJob = () => {
 
       const data = await response.json();
       const newRunInstanceId = data.run_instance_id;
+      currentRunIdRef.current = newRunInstanceId;
       setRunInstanceId(newRunInstanceId);
       setStatus('queued');
       return newRunInstanceId;
@@ -62,11 +64,16 @@ export const usePreviewJob = () => {
   }, []);
 
   /**
-   * Poll for run status
+   * Poll for run status.
+   * Ignores responses from stale runs (where the run ID no longer matches
+   * the current run) to prevent old 404s from contaminating state.
    */
   const pollStatus = useCallback(async currentRunInstanceId => {
     try {
       const response = await fetch(`/api/insight-jobs/${currentRunInstanceId}/`);
+
+      // Ignore stale responses from previous runs
+      if (currentRunIdRef.current !== currentRunInstanceId) return;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -81,27 +88,27 @@ export const usePreviewJob = () => {
 
       if (runData.status === 'failed') {
         setError(runData.error || 'Run failed');
-        // Stop polling
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
       } else if (runData.status === 'completed') {
-        // Result is included in the response when completed
+        setError(null);
         if (runData.result) {
           setResult(runData.result);
         }
-        // Stop polling
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
       }
     } catch (err) {
+      // Ignore errors from stale runs
+      if (currentRunIdRef.current !== currentRunInstanceId) return;
+
       const errorMsg = err.message || 'Failed to poll run status';
       setError(errorMsg);
       setStatus('failed');
-      // Stop polling on error
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -116,8 +123,6 @@ export const usePreviewJob = () => {
     if (!runInstanceId) return;
     if (status === 'completed' || status === 'failed') return;
 
-    console.log("Polling", status, runInstanceId)
-    // Start polling every 500ms
     pollingIntervalRef.current = setInterval(() => {
       pollStatus(runInstanceId);
     }, 500);
@@ -125,7 +130,6 @@ export const usePreviewJob = () => {
     // Immediate first poll
     pollStatus(runInstanceId);
 
-    // Cleanup on unmount or when run changes
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
