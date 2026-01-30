@@ -58,8 +58,7 @@ class PreviewRun:
     def to_dict(self) -> Dict[str, Any]:
         """Serialize run to dictionary"""
         data = {
-            "job_id": self.run_id,  # Keep 'job_id' for API backwards compatibility
-            "run_id": self.run_id,
+            "run_instance_id": self.run_id,
             "object_type": self.object_type,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
@@ -279,6 +278,27 @@ class PreviewRunManager:
             if run_id in self._runs:
                 del self._runs[run_id]
                 Logger.instance().debug(f"Deleted run {run_id}")
+
+    def invalidate_completed_runs_for_insight(self, insight_name: str):
+        """
+        Remove any completed or failed runs for the given insight name.
+        This forces a fresh execution when the insight config changes.
+        """
+        with self._runs_lock:
+            runs_to_delete = [
+                run_id
+                for run_id, run in self._runs.items()
+                if run.object_type == "insight"
+                and run.config.get("name") == insight_name
+                and run.status in (RunStatus.COMPLETED, RunStatus.FAILED)
+            ]
+
+            for run_id in runs_to_delete:
+                del self._runs[run_id]
+                Logger.instance().debug(f"Invalidated completed run {run_id} for insight {insight_name}")
+
+            if runs_to_delete:
+                Logger.instance().info(f"Invalidated {len(runs_to_delete)} completed runs for insight {insight_name}")
 
     def _cleanup_old_runs(self):
         """Remove runs older than max_run_age"""

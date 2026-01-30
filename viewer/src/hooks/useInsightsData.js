@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useFetchInsights } from '../contexts/QueryContext';
+import { useFetchInsightJobs } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
@@ -206,7 +206,7 @@ export const useInsightsData = (
   enabled = true
 ) => {
   const db = useDuckDB();
-  const fetchInsights = useFetchInsights();
+  const fetchInsights = useFetchInsightJobs();
   const setInsights = useStore(state => state.setInsights);
   const storeInsightData = useStore(state => state.insights);
   const getInputs = useStore(state => state.inputs);

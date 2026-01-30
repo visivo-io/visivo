@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useInsightsData } from './useInsightsData';
-import { useFetchInsights } from '../contexts/QueryContext';
+import { useFetchInsightJobs } from '../contexts/QueryContext';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { tableDuckDBExists, insertDuckDBFile } from '../duckdb/queries';
 import useStore from '../stores/store';

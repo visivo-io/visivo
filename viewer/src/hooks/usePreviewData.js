@@ -73,13 +73,13 @@ export const usePreviewData = (type, config, options = {}) => {
       setError(null);
 
       previewJob
-        .startJob(config)
+        .startRun(config)
         .then(() => {
           setLastPreviewConfig(config);
           setLastPreviewHash(currentHash);
         })
         .catch(err => {
-          console.error('Failed to start preview job:', err);
+          console.error('Failed to start preview run:', err);
           setError(err.message || 'Failed to start preview');
           setIsLoading(false);
         })
@@ -101,7 +101,7 @@ export const usePreviewData = (type, config, options = {}) => {
   }, [previewJob.status, previewJob.error]);
 
   const resetPreview = useCallback(() => {
-    previewJob.resetJob();
+    previewJob.resetRun();
     setLastPreviewConfig(null);
     setLastPreviewHash(null);
     setShouldRunPreview(false);

@@ -1,17 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 /**
- * Hook for managing preview job execution
+ * Hook for managing preview run execution
  *
  * Handles the async workflow:
- * 1. POST config to start job → get job_id
+ * 1. POST config to start run → get run_instance_id
  * 2. Poll GET /status until completed/failed
- * 3. GET /result when completed
+ * 3. Result is included in completed response
  *
- * @returns {Object} Preview job state and control functions
+ * @returns {Object} Preview run state and control functions
  */
 export const usePreviewJob = () => {
-  const [jobId, setJobId] = useState(null);
+  const [runInstanceId, setRunInstanceId] = useState(null);
   const [status, setStatus] = useState(null); // 'queued' | 'running' | 'completed' | 'failed'
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
@@ -20,11 +20,11 @@ export const usePreviewJob = () => {
   const pollingIntervalRef = useRef(null);
 
   /**
-   * Start a preview job
+   * Start a preview run
    * @param {Object} config - Insight configuration to preview
-   * @returns {Promise<string>} job_id
+   * @returns {Promise<string>} run_instance_id
    */
-  const startJob = useCallback(async config => {
+  const startRun = useCallback(async config => {
     try {
       setError(null);
       setStatus(null);
@@ -45,16 +45,16 @@ export const usePreviewJob = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to start preview job');
+        throw new Error(errorData.message || 'Failed to start preview run');
       }
 
       const data = await response.json();
-      const newJobId = data.job_id;
-      setJobId(newJobId);
+      const newRunInstanceId = data.run_instance_id;
+      setRunInstanceId(newRunInstanceId);
       setStatus('queued');
-      return newJobId;
+      return newRunInstanceId;
     } catch (err) {
-      const errorMsg = err.message || 'Failed to start preview job';
+      const errorMsg = err.message || 'Failed to start preview run';
       setError(errorMsg);
       setStatus('failed');
       throw new Error(errorMsg);
@@ -62,34 +62,34 @@ export const usePreviewJob = () => {
   }, []);
 
   /**
-   * Poll for job status
+   * Poll for run status
    */
-  const pollStatus = useCallback(async currentJobId => {
+  const pollStatus = useCallback(async currentRunInstanceId => {
     try {
-      const response = await fetch(`/api/insight-jobs/${currentJobId}/`);
+      const response = await fetch(`/api/insight-jobs/${currentRunInstanceId}/`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to poll job status');
+        throw new Error(errorData.message || 'Failed to poll run status');
       }
 
-      const jobData = await response.json();
+      const runData = await response.json();
 
-      setStatus(jobData.status);
-      setProgress(jobData.progress || 0);
-      setProgressMessage(jobData.progress_message || '');
+      setStatus(runData.status);
+      setProgress(runData.progress || 0);
+      setProgressMessage(runData.progress_message || '');
 
-      if (jobData.status === 'failed') {
-        setError(jobData.error || 'Job failed');
+      if (runData.status === 'failed') {
+        setError(runData.error || 'Run failed');
         // Stop polling
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
-      } else if (jobData.status === 'completed') {
+      } else if (runData.status === 'completed') {
         // Result is included in the response when completed
-        if (jobData.result) {
-          setResult(jobData.result);
+        if (runData.result) {
+          setResult(runData.result);
         }
         // Stop polling
         if (pollingIntervalRef.current) {
@@ -98,7 +98,7 @@ export const usePreviewJob = () => {
         }
       }
     } catch (err) {
-      const errorMsg = err.message || 'Failed to poll job status';
+      const errorMsg = err.message || 'Failed to poll run status';
       setError(errorMsg);
       setStatus('failed');
       // Stop polling on error
@@ -110,38 +110,39 @@ export const usePreviewJob = () => {
   }, []);
 
   /**
-   * Start polling when job is started
+   * Start polling when run is started
    */
   useEffect(() => {
-    if (!jobId) return;
+    if (!runInstanceId) return;
     if (status === 'completed' || status === 'failed') return;
 
+    console.log("Polling", status, runInstanceId)
     // Start polling every 500ms
     pollingIntervalRef.current = setInterval(() => {
-      pollStatus(jobId);
+      pollStatus(runInstanceId);
     }, 500);
 
     // Immediate first poll
-    pollStatus(jobId);
+    pollStatus(runInstanceId);
 
-    // Cleanup on unmount or when job changes
+    // Cleanup on unmount or when run changes
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
     };
-  }, [jobId, status, pollStatus]);
+  }, [runInstanceId, status, pollStatus]);
 
   /**
-   * Cancel/reset current job
+   * Cancel/reset current run
    */
-  const resetJob = useCallback(() => {
+  const resetRun = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    setJobId(null);
+    setRunInstanceId(null);
     setStatus(null);
     setProgress(0);
     setProgressMessage('');
@@ -151,7 +152,7 @@ export const usePreviewJob = () => {
 
   return {
     // State
-    jobId,
+    runInstanceId,
     status,
     progress,
     progressMessage,
@@ -162,7 +163,7 @@ export const usePreviewJob = () => {
     isCompleted: status === 'completed',
     isFailed: status === 'failed',
     // Actions
-    startJob,
-    resetJob,
+    startRun,
+    resetRun,
   };
 };

@@ -136,7 +136,13 @@ def register_insight_views(app, flask_app, output_dir):
             if existing_run_id:
                 # Run with this config already exists and is running
                 Logger.instance().info(f"Returning existing preview run {existing_run_id}")
-                return jsonify({"job_id": existing_run_id}), 202  # 202 Accepted
+                return jsonify({"run_instance_id": existing_run_id}), 202  # 202 Accepted
+
+            # Invalidate any completed runs for this insight to force fresh execution with new config
+            insight_name = config.get("name")
+            if insight_name:
+                Logger.instance().info(f"Invalidating any completed runs for insight: {insight_name}")
+                run_manager.invalidate_completed_runs_for_insight(insight_name)
 
             # Create new run
             Logger.instance().info("Creating new run")
@@ -152,7 +158,7 @@ def register_insight_views(app, flask_app, output_dir):
             thread.start()
 
             Logger.instance().info(f"Started preview job {job_id}")
-            return jsonify({"job_id": job_id}), 202  # 202 Accepted
+            return jsonify({"run_instance_id": job_id}), 202  # 202 Accepted
 
         except Exception as e:
             Logger.instance().error(f"Error creating preview job: {str(e)}")
