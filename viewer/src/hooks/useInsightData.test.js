@@ -48,7 +48,7 @@ describe('useInsightsData Hook', () => {
     mockSetInsights = jest.fn();
 
     // Setup mock returns
-    useFetchInsights.mockReturnValue(mockFetchInsight);
+    useFetchInsightJobs.mockReturnValue(mockFetchInsight);
     useDuckDB.mockReturnValue(mockDb);
 
     tableDuckDBExists.mockResolvedValue(false);

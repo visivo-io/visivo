@@ -3,6 +3,7 @@ import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import { queryPropsHaveChanged, hashQueryProps } from '../utils/queryPropertyDetection';
 import { DEFAULT_RUN_ID } from '../constants';
+import useStore from '../stores/store';
 
 /**
  * Generic hook for managing preview data with smart diff detection.
@@ -126,11 +127,11 @@ export const usePreviewData = (type, config, options = {}) => {
 /**
  * Specialized hook for insight previews that combines usePreviewData with useInsightsData.
  *
- * Flow:
- * 1. Try to load from "main" run_id first
- * 2. If insight doesn't exist in main (not on dashboard), trigger initial preview with saved config
- * 3. After initial load, only trigger new previews when query properties change
- * 4. Once a preview completes, use preview result for data
+ * Simple flow:
+ * 1. Check if insight exists in insight job store (from "main" run)
+ * 2. If not in store, trigger preview
+ * 3. When preview completes, load the preview result data
+ * 4. On config changes, re-run preview and reload data
  *
  * @param {Object} insightConfig - Insight configuration
  * @param {Object} options - Optional configuration
@@ -139,14 +140,14 @@ export const usePreviewData = (type, config, options = {}) => {
  * @returns {Object} Combined preview and data state
  */
 export const useInsightPreviewData = (insightConfig, options = {}) => {
-  const [hasCheckedMain, setHasCheckedMain] = useState(false);
-  const [insightNotInMain, setInsightNotInMain] = useState(false);
-  const [shouldEnableQuery, setShouldEnableQuery] = useState(true);
+  const insightJobStore = useStore(state => state.insightJobs);
+  const storeInsightData = useStore(state => state.insights);
 
-  const insightNames = useMemo(() => {
-    if (!insightConfig?.name) return [];
-    return [insightConfig.name];
-  }, [insightConfig]);
+  // Check if insight exists in the insight job store (loaded from main run)
+  const insightNotInMain = useMemo(() => {
+    if (!insightConfig?.name) return false;
+    return !insightJobStore?.[insightConfig.name];
+  }, [insightConfig, insightJobStore]);
 
   // Run preview logic - will trigger initial preview if needsInitialPreview is true
   const previewState = usePreviewData('insights', insightConfig, {
@@ -154,65 +155,19 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     needsInitialPreview: insightNotInMain,
   });
 
-  // Use preview run_id if:
-  // 1. Preview has completed, OR
-  // 2. Insight not in main and we're running/have started a preview
-  const runId = useMemo(() => {
-    if (!insightConfig?.name) return DEFAULT_RUN_ID;
-
-    // If preview completed, use preview run_id
-    if (previewState.isCompleted && previewState.result) {
-      return `preview-${insightConfig.name}`;
-    }
-
-    // If insight not in main and preview is running, use preview run_id
-    if (insightNotInMain && previewState.isLoading) {
-      return `preview-${insightConfig.name}`;
-    }
-
-    return DEFAULT_RUN_ID;
-  }, [insightConfig, previewState.isCompleted, previewState.result, previewState.isLoading, insightNotInMain]);
-
-  // Load insights data - disable while waiting for initial check or preview
+  // Only load insights data when we have a preview result
   const insightsDataState = useInsightsData(
     options.projectId,
-    insightNames,
-    runId,
+    insightConfig?.name ? [insightConfig.name] : [],
+    `preview-${insightConfig?.name}`,
     previewState.result,
-    shouldEnableQuery
+    !!previewState.result // Only enable when we have a preview result
   );
-
-  // Check if the insight exists in main run (only check once on first load)
-  useEffect(() => {
-    if (hasCheckedMain) return;
-
-    // Wait for initial query to complete
-    if (insightsDataState.isInsightsLoading) return;
-
-    const insight = insightsDataState.insights?.[insightConfig?.name];
-    const hasError = insightsDataState.error;
-
-    // Mark that we've checked main
-    setHasCheckedMain(true);
-
-    // If no insight found in main run OR there was an error, trigger initial preview
-    if (!insight || hasError) {
-      setInsightNotInMain(true);
-      setShouldEnableQuery(false); // Disable query while preview runs
-    }
-  }, [hasCheckedMain, insightsDataState, insightConfig]);
-
-  // Re-enable query when preview completes
-  useEffect(() => {
-    if (previewState.isCompleted && previewState.result) {
-      setShouldEnableQuery(true);
-    }
-  }, [previewState.isCompleted, previewState.result]);
 
   return {
     ...previewState,
     ...insightsDataState,
-    data: insightsDataState.insights?.[insightConfig?.name]?.data || null,
-    insight: insightsDataState.insights?.[insightConfig?.name] || null,
+    data: storeInsightData?.[insightConfig?.name]?.data || null,
+    insight: storeInsightData?.[insightConfig?.name] || null,
   };
 };
