@@ -79,6 +79,42 @@ export function queryPropsHaveChanged(config1, config2) {
 }
 
 /**
+ * Recursively walk a props object and remove leaf string values matching ?{...}.
+ * Returns only the non-query (static) properties, suitable for direct store updates.
+ *
+ * @param {Object} obj - Props object to filter
+ * @returns {Object} - Object with query-pattern values removed
+ */
+export function extractNonQueryProps(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+
+  function recurse(value) {
+    if (typeof value === 'string') {
+      return QUERY_PATTERN.test(value) ? undefined : value;
+    }
+    if (Array.isArray(value)) {
+      if (value.some(item => typeof item === 'string' && QUERY_PATTERN.test(item))) {
+        return undefined;
+      }
+      const result = value.map(item => recurse(item)).filter(item => item !== undefined);
+      return result.length > 0 ? result : undefined;
+    }
+    if (typeof value === 'object' && value !== null) {
+      const result = {};
+      for (const [key, val] of Object.entries(value)) {
+        const filtered = recurse(val);
+        if (filtered !== undefined) result[key] = filtered;
+      }
+      return Object.keys(result).length > 0 ? result : undefined;
+    }
+    return value;
+  }
+
+  const result = recurse(obj);
+  return result !== undefined ? result : {};
+}
+
+/**
  * Create a hash of query-affecting properties for comparison/caching.
  *
  * @param {Object} config - Config to hash

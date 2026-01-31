@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
-import { queryPropsHaveChanged, hashQueryProps } from '../utils/queryPropertyDetection';
+import { queryPropsHaveChanged, hashQueryProps, extractNonQueryProps } from '../utils/queryPropertyDetection';
 import useStore from '../stores/store';
 
 /**
@@ -168,6 +168,27 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     !!previewState.result,
     { storeKeyPrefix: PREVIEW_STORE_PREFIX }
   );
+
+  useEffect(() => {
+    if (!insightConfig?.props || !previewInsightKey) return;
+    if (previewState.needsPreviewRun || previewState.isLoading) return;
+
+    const existing = useStore.getState().insights?.[previewInsightKey];
+    if (!existing?.data) return;
+
+    const { type: newType, ...restProps } = insightConfig.props;
+    const newStaticProps = extractNonQueryProps(restProps);
+
+    const typeChanged = newType !== existing.type;
+    const staticChanged = JSON.stringify(newStaticProps) !== JSON.stringify(existing.static_props);
+    if (!typeChanged && !staticChanged) return;
+
+    const payload = {};
+    if (typeChanged) payload.type = newType;
+    if (staticChanged) payload.static_props = newStaticProps;
+
+    useStore.getState().updateInsight(previewInsightKey, payload);
+  }, [insightConfig, previewInsightKey, previewState.needsPreviewRun, previewState.isLoading]);
 
   return {
     ...previewState,
