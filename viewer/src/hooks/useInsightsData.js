@@ -186,7 +186,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
  * Hook for loading and managing insights data
  *
  * Orchestrates the complete insight loading pipeline:
- * 1. Fetch insight metadata from API (or use provided preview result)
+ * 1. Fetch insight metadata from API
  * 2. Load required parquet files into DuckDB as tables (using name_hash as table name)
  * 3. Execute post_query with input substitution (query already references table names)
  * 4. Store results in Zustand store
@@ -194,15 +194,16 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
  * @param {string} projectId - Project ID
  * @param {string[]} insightNames - Array of insight names to load
  * @param {string} runId - Run ID to load data from (default: "main")
- * @param {Object} previewResult - Optional preview result to use instead of fetching
+ * @param {Object} options - Optional configuration
+ * @param {string} options.storeKeyPrefix - Prefix for Zustand store keys (e.g., '__preview__')
+ * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runInstanceId)
  * @returns {Object} Insights data and loading state
  */
 export const useInsightsData = (
   projectId,
   insightNames,
   runId = DEFAULT_RUN_ID,
-  previewResult = null,
-  { storeKeyPrefix = '' } = {}
+  { storeKeyPrefix = '', cacheKey = null } = {}
 ) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsightJobs();
@@ -288,30 +289,24 @@ export const useInsightsData = (
     return JSON.stringify(relevantInputValues);
   }, [hasQueryMetadata, relevantInputValues]);
 
+  const isPreviewMode = storeKeyPrefix !== '';
+
   // Main query function
   const queryFn = useCallback(async () => {
     if (!db) return {};
     if (!stableInsightNames.length) return {};
+    if (!fetchInsights) return {};
 
-    let insights;
-
-    if (previewResult) {
-      insights = [previewResult];
-    } else {
-      if (!fetchInsights) return {};
-
-      insights = await fetchInsights(projectId, stableInsightNames, runId);
-
-      if (!insights?.length) {
-        return {};
-      }
-    }
+    const insights = await fetchInsights(projectId, stableInsightNames, runId);
+    if (!insights?.length) return {};
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
     const freshInputs = useStore.getState().inputs || {};
 
     const results = await Promise.allSettled(
-      insights.map(insight => processInsight(db, insight, freshInputs, { forceReload: !!previewResult }))
+      insights.map(insight =>
+        processInsight(db, insight, freshInputs, { forceReload: isPreviewMode })
+      )
     );
 
     const mergedData = {};
@@ -329,16 +324,14 @@ export const useInsightsData = (
     });
 
     return mergedData;
-  }, [db, projectId, stableInsightNames, fetchInsights, runId, previewResult]);
+  }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   // Also includes runId to separate cache for different runs
-  // Also includes previewResult to trigger refetch when preview result changes
-  const isPreviewMode = storeKeyPrefix !== '';
-  const queryEnabled =
-    !!projectId && stableInsightNames.length > 0 && !!db && (!isPreviewMode || !!previewResult);
+  // Also includes cacheKey for preview cache busting (runInstanceId changes each preview run)
+  const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
@@ -349,7 +342,7 @@ export const useInsightsData = (
       !!db,
       stableRelevantInputs,
       pendingInsightInputsReady,
-      previewResult,
+      cacheKey,
     ],
     queryFn,
     enabled: queryEnabled,

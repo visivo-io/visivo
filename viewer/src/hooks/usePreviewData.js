@@ -116,6 +116,7 @@ export const usePreviewData = (type, config, options = {}) => {
     progress: previewJob.progress,
     progressMessage: previewJob.progressMessage,
     result: previewJob.result,
+    runInstanceId: previewJob.runInstanceId,
     needsPreviewRun,
     resetPreview,
     status: previewJob.status,
@@ -158,14 +159,17 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     needsInitialPreview: insightNotInMain,
   });
 
-  // Load insights data when we have a preview result.
-  // Store under a prefixed key so preview data doesn't overwrite the main run data.
+  // Load insights data when preview completes.
+  // runId is null until preview completes, so useInsightsData won't fetch before data is on disk.
+  // cacheKey = runInstanceId ensures React Query re-fetches on each new preview run
+  // (since runId is the same preview-{name} string every time).
+  const previewRunId = previewState.isCompleted ? `preview-${insightConfig?.name}` : null;
+
   const insightsDataState = useInsightsData(
     options.projectId,
     insightConfig?.name ? [insightConfig.name] : [],
-    `preview-${insightConfig?.name}`,
-    previewState.result,
-    { storeKeyPrefix: PREVIEW_STORE_PREFIX }
+    previewRunId,
+    { storeKeyPrefix: PREVIEW_STORE_PREFIX, cacheKey: previewState.runInstanceId }
   );
 
   useEffect(() => {
