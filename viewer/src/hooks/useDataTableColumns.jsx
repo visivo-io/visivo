@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import DataTableHeader from '../components/explorerNew/DataTableHeader';
-import DataTableCell from '../components/explorerNew/DataTableCell';
+import DataTableHeader from '../components/common/DataTableHeader';
+import DataTableCell from '../components/common/DataTableCell';
 import { calculateColumnWidth } from '../duckdb/schemaUtils';
 
 const MIN_RESIZE_WIDTH = 60;

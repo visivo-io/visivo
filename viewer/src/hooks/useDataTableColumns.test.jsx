@@ -3,13 +3,13 @@ import { useDataTableColumns } from './useDataTableColumns.jsx';
 import { calculateColumnWidth } from '../duckdb/schemaUtils';
 
 // Mock the child components to avoid importing their full dependency trees
-jest.mock('../components/explorerNew/DataTableHeader', () => {
+jest.mock('../components/common/DataTableHeader', () => {
   return function MockDataTableHeader() {
     return null;
   };
 });
 
-jest.mock('../components/explorerNew/DataTableCell', () => {
+jest.mock('../components/common/DataTableCell', () => {
   return function MockDataTableCell() {
     return null;
   };

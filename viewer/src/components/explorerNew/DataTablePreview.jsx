@@ -1,22 +1,30 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useParquetData } from '../../hooks/useParquetData';
-import DataTable from './DataTable';
-import { PiArrowClockwise } from 'react-icons/pi';
-
-const formatBytes = bytes => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
+import { useDuckDB } from '../../contexts/DuckDBContext';
+import { loadParquetFromURL } from '../../duckdb/queries';
+import { alphaHash } from '../../utils/alphaHash';
+import { useTableData } from '../../hooks/useTableData';
+import DataTable from '../common/DataTable';
+import useStore from '../../stores/store';
+import { PiSpinner } from 'react-icons/pi';
 
 const DataTablePreview = () => {
+  const db = useDuckDB();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialHash = searchParams.get('hash') ?? '';
-  const [activeHash, setActiveHash] = useState(initialHash);
-  const [files, setFiles] = useState([]);
-  const [filesLoading, setFilesLoading] = useState(true);
-  const [filesError, setFilesError] = useState(null);
+  const initialName = searchParams.get('name') ?? '';
+
+  const [selectedName, setSelectedName] = useState(initialName);
+  const [tableName, setTableName] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [loadingParquet, setLoadingParquet] = useState(false);
+
+  const insightConfigs = useStore(s => s.insightConfigs);
+  const insightConfigsLoading = useStore(s => s.insightConfigsLoading);
+  const fetchInsightConfigs = useStore(s => s.fetchInsightConfigs);
+
+  const models = useStore(s => s.models);
+  const modelsLoading = useStore(s => s.modelsLoading);
+  const fetchModels = useStore(s => s.fetchModels);
 
   const {
     rows,
@@ -32,97 +40,87 @@ const DataTablePreview = () => {
     isLoading,
     isQuerying,
     error,
-    reload,
-  } = useParquetData({
-    url: activeHash ? `/api/files/${activeHash}/` : null,
-    tableName: activeHash || 'preview',
-  });
+  } = useTableData({ tableName });
 
-  // Fetch file list on mount
   useEffect(() => {
-    let cancelled = false;
-    const fetchFiles = async () => {
-      setFilesLoading(true);
-      setFilesError(null);
+    fetchInsightConfigs();
+    fetchModels();
+  }, [fetchInsightConfigs, fetchModels]);
+
+  useEffect(() => {
+    if (selectedName) {
+      setSearchParams({ name: selectedName }, { replace: true });
+    }
+  }, [selectedName, setSearchParams]);
+
+  const handleSelect = useCallback(
+    async e => {
+      const name = e.target.value;
+      if (!name || !db) return;
+
+      setSelectedName(name);
+      setLoadError(null);
+      setLoadingParquet(true);
+      setTableName(null);
+
       try {
-        const res = await fetch('/api/files/');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!cancelled) setFiles(data);
+        const hash = alphaHash(name);
+        await loadParquetFromURL(db, `/api/files/${hash}/`, hash, true);
+        setTableName(hash);
       } catch (err) {
-        if (!cancelled) setFilesError(err.message || String(err));
+        setLoadError(err.message || String(err));
       } finally {
-        if (!cancelled) setFilesLoading(false);
+        setLoadingParquet(false);
       }
-    };
-    fetchFiles();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    },
+    [db]
+  );
 
-  // Sync hash to URL when it changes
-  useEffect(() => {
-    if (activeHash) {
-      setSearchParams({ hash: activeHash }, { replace: true });
-    }
-  }, [activeHash, setSearchParams]);
-
-  const handleFileSelect = useCallback(e => {
-    const hash = e.target.value;
-    if (hash) {
-      setActiveHash(hash);
-    }
-  }, []);
-
-  const handleColumnProfileRequest = useCallback(columnName => {
-    console.log('[DataTablePreview] Column profile requested:', columnName);
-  }, []);
+  const listsLoading = insightConfigsLoading || modelsLoading;
+  const displayError = loadError || error;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
       {/* Top bar */}
       <div className="flex-shrink-0 border-b border-secondary-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3">
-          {/* File picker */}
           <label className="text-xs font-medium text-secondary-500 whitespace-nowrap">
-            Parquet File:
+            Data Source:
           </label>
           <select
-            value={activeHash}
-            onChange={handleFileSelect}
-            disabled={filesLoading}
+            value={selectedName}
+            onChange={handleSelect}
+            disabled={listsLoading}
             className="text-sm border border-secondary-300 rounded-lg px-3 py-1.5 min-w-[300px] focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all bg-white"
           >
             <option value="">
-              {filesLoading ? 'Loading files...' : '-- Select a file --'}
+              {listsLoading ? 'Loading...' : '-- Select an insight or model --'}
             </option>
-            {files.map(f => (
-              <option key={f.hash} value={f.hash}>
-                {f.hash} ({formatBytes(f.size)})
-              </option>
-            ))}
+            {insightConfigs.length > 0 && (
+              <optgroup label="Insights">
+                {insightConfigs.map(i => (
+                  <option key={`insight-${i.name}`} value={i.name}>
+                    {i.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {models.length > 0 && (
+              <optgroup label="Models">
+                {models.map(m => (
+                  <option key={`model-${m.name}`} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
 
-          {activeHash && (
-            <button
-              onClick={reload}
-              className="flex items-center gap-1 text-sm text-secondary-500 hover:text-secondary-700 rounded-lg px-2 py-1.5 hover:bg-secondary-100 transition-colors"
-              title="Reload data"
-            >
-              <PiArrowClockwise size={14} />
-            </button>
-          )}
+          {loadingParquet && <PiSpinner className="animate-spin text-secondary-400" size={16} />}
 
-          {/* Status info */}
-          {activeHash && !isLoading && !error && columns.length > 0 && (
+          {tableName && !isLoading && !displayError && columns.length > 0 && (
             <span className="text-xs text-secondary-400 ml-auto">
               {columns.length} columns, {totalRowCount.toLocaleString()} rows
-            </span>
-          )}
-          {filesError && (
-            <span className="text-xs text-highlight ml-auto">
-              Failed to load file list: {filesError}
             </span>
           )}
         </div>
@@ -130,13 +128,15 @@ const DataTablePreview = () => {
 
       {/* DataTable area */}
       <div className="flex-1 min-h-0 p-4">
-        {!activeHash ? (
+        {!tableName && !loadingParquet && !displayError ? (
           <div className="flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
-            <span className="text-sm text-secondary-400">Select a parquet file to preview</span>
+            <span className="text-sm text-secondary-400">
+              Select an insight or model to preview its data
+            </span>
           </div>
-        ) : error ? (
+        ) : displayError ? (
           <div className="flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
-            <span className="text-sm text-highlight">{error}</span>
+            <span className="text-sm text-highlight">{displayError}</span>
           </div>
         ) : (
           <DataTable
@@ -150,8 +150,7 @@ const DataTablePreview = () => {
             onPageSizeChange={setPageSize}
             sorting={sorting}
             onSortChange={setSorting}
-            onColumnProfileRequest={handleColumnProfileRequest}
-            isLoading={isLoading}
+            isLoading={isLoading || loadingParquet}
             isQuerying={isQuerying}
             height="100%"
           />
