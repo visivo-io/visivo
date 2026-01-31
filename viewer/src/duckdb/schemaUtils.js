@@ -18,44 +18,44 @@ export const COLUMN_TYPES = {
 export const normalizeColumnType = duckdbType => {
   if (!duckdbType) return COLUMN_TYPES.UNKNOWN;
 
-  const upper = duckdbType.toUpperCase();
+  const upperDuckdbType = duckdbType.toUpperCase();
 
   // Numeric types
   if (
-    upper.includes('INT') ||
-    upper.includes('FLOAT') ||
-    upper.includes('DOUBLE') ||
-    upper.includes('DECIMAL') ||
-    upper.includes('NUMERIC') ||
-    upper === 'REAL' ||
-    upper === 'HUGEINT' ||
-    upper === 'UHUGEINT'
+    upperDuckdbType.includes('INT') ||
+    upperDuckdbType.includes('FLOAT') ||
+    upperDuckdbType.includes('DOUBLE') ||
+    upperDuckdbType.includes('DECIMAL') ||
+    upperDuckdbType.includes('NUMERIC') ||
+    upperDuckdbType === 'REAL' ||
+    upperDuckdbType === 'HUGEINT' ||
+    upperDuckdbType === 'UHUGEINT'
   ) {
     return COLUMN_TYPES.NUMBER;
   }
 
   // String types
   if (
-    upper.includes('VARCHAR') ||
-    upper.includes('TEXT') ||
-    upper.includes('CHAR') ||
-    upper === 'BLOB'
+    upperDuckdbType.includes('VARCHAR') ||
+    upperDuckdbType.includes('TEXT') ||
+    upperDuckdbType.includes('CHAR') ||
+    upperDuckdbType === 'BLOB'
   ) {
     return COLUMN_TYPES.STRING;
   }
 
   // Date type (must check before timestamp since TIMESTAMP contains no 'DATE' substring issue)
-  if (upper === 'DATE') {
+  if (upperDuckdbType === 'DATE') {
     return COLUMN_TYPES.DATE;
   }
 
   // Timestamp types
-  if (upper.includes('TIMESTAMP') || upper.includes('DATETIME') || upper === 'TIME') {
+  if (upperDuckdbType.includes('TIMESTAMP') || upperDuckdbType.includes('DATETIME') || upperDuckdbType === 'TIME') {
     return COLUMN_TYPES.TIMESTAMP;
   }
 
   // Boolean
-  if (upper === 'BOOLEAN' || upper === 'BOOL') {
+  if (upperDuckdbType === 'BOOLEAN' || upperDuckdbType === 'BOOL') {
     return COLUMN_TYPES.BOOLEAN;
   }
 

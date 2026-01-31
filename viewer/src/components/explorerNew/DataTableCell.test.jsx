@@ -42,4 +42,39 @@ describe('DataTableCell', () => {
     render(<DataTableCell value={{ key: 'val' }} columnType="unknown" />);
     expect(screen.getByText('{"key":"val"}')).toBeInTheDocument();
   });
+
+  it('formats numeric epoch date values as YYYY-MM-DD', () => {
+    // 1704067200 seconds = 2024-01-01 00:00:00 UTC
+    render(<DataTableCell value={1704067200} columnType="date" />);
+    expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+  });
+
+  it('formats numeric epoch timestamp values as YYYY-MM-DD HH:MM:SS.sss', () => {
+    // 1704067200 seconds = 2024-01-01 00:00:00.000 UTC
+    render(<DataTableCell value={1704067200} columnType="timestamp" />);
+    expect(screen.getByText('2024-01-01 00:00:00.000')).toBeInTheDocument();
+  });
+
+  it('formats millisecond epoch dates correctly', () => {
+    // 1704067200000 ms = 2024-01-01 00:00:00 UTC
+    render(<DataTableCell value={1704067200000} columnType="date" />);
+    expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+  });
+
+  it('formats bigint epoch dates correctly', () => {
+    // BigInt microseconds: 1704067200000000n = 2024-01-01
+    // eslint-disable-next-line no-undef
+    render(<DataTableCell value={BigInt('1704067200000000')} columnType="date" />);
+    expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+  });
+
+  it('formats string date values as YYYY-MM-DD', () => {
+    render(<DataTableCell value="2024-01-01" columnType="date" />);
+    expect(screen.getByText('2024-01-01')).toBeInTheDocument();
+  });
+
+  it('shows formatted date in title attribute', () => {
+    render(<DataTableCell value={1704067200} columnType="date" />);
+    expect(screen.getByTitle('2024-01-01')).toBeInTheDocument();
+  });
 });

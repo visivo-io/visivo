@@ -1,9 +1,64 @@
 import React from 'react';
 import { COLUMN_TYPES } from '../../duckdb/schemaUtils';
 
+/**
+ * Convert a numeric epoch value to a Date, detecting the scale automatically.
+ * DuckDB-WASM Arrow output can return dates/timestamps as epoch numbers at
+ * various scales depending on the underlying Arrow type.
+ */
+const numericToDate = value => {
+  const num = typeof value === 'bigint' ? Number(value) : value;
+  let ms;
+  if (Math.abs(num) > 1e15) {
+    ms = num / 1000; // microseconds → milliseconds
+  } else if (Math.abs(num) > 1e12) {
+    ms = num; // already milliseconds
+  } else if (Math.abs(num) > 1e8) {
+    ms = num * 1000; // seconds → milliseconds
+  } else {
+    ms = num * 86400000; // days → milliseconds
+  }
+  return new Date(ms);
+};
+
+/**
+ * Format a Date as YYYY-MM-DD (Snowflake DATE default).
+ */
+const formatDateOnly = date => {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Format a Date as YYYY-MM-DD HH:MM:SS.sss (Snowflake TIMESTAMP default).
+ */
+const formatTimestamp = date => {
+  const datePart = formatDateOnly(date);
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const min = String(date.getUTCMinutes()).padStart(2, '0');
+  const s = String(date.getUTCSeconds()).padStart(2, '0');
+  const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
+  return `${datePart} ${h}:${min}:${s}.${ms}`;
+};
+
 const formatValue = (value, columnType) => {
   if (value === null || value === undefined) {
     return <span className="text-secondary-300 italic">null</span>;
+  }
+
+  // Handle date/timestamp columns first — values may arrive as epoch numbers
+  if (columnType === COLUMN_TYPES.DATE || columnType === COLUMN_TYPES.TIMESTAMP) {
+    let date;
+    if (typeof value === 'number' || typeof value === 'bigint') {
+      date = numericToDate(value);
+    } else {
+      date = new Date(String(value));
+    }
+    if (!isNaN(date.getTime())) {
+      return columnType === COLUMN_TYPES.DATE ? formatDateOnly(date) : formatTimestamp(date);
+    }
   }
 
   if (typeof value === 'bigint') {
@@ -27,21 +82,6 @@ const formatValue = (value, columnType) => {
 
   const str = String(value);
 
-  // Format dates and timestamps
-  if (columnType === COLUMN_TYPES.DATE) {
-    const date = new Date(str);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleDateString();
-    }
-  }
-
-  if (columnType === COLUMN_TYPES.TIMESTAMP) {
-    const date = new Date(str);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleString();
-    }
-  }
-
   // Truncate long strings
   if (str.length > 200) {
     return str.substring(0, 200) + '...';
@@ -64,13 +104,27 @@ const getAlignmentClass = columnType => {
   }
 };
 
+const getTitleText = (value, columnType) => {
+  // For date/timestamp columns with numeric epoch values, show the formatted date
+  if (
+    (columnType === COLUMN_TYPES.DATE || columnType === COLUMN_TYPES.TIMESTAMP) &&
+    (typeof value === 'number' || typeof value === 'bigint')
+  ) {
+    const date = numericToDate(value);
+    if (!isNaN(date.getTime())) {
+      return columnType === COLUMN_TYPES.DATE ? formatDateOnly(date) : formatTimestamp(date);
+    }
+  }
+  return String(value);
+};
+
 const DataTableCell = ({ value, columnType }) => {
   const isNull = value === null || value === undefined;
 
   return (
     <div
       className={`px-3 py-2 text-sm truncate ${isNull ? 'text-center' : getAlignmentClass(columnType)}`}
-      title={isNull ? 'null' : String(value)}
+      title={isNull ? 'null' : getTitleText(value, columnType)}
     >
       {formatValue(value, columnType)}
     </div>
