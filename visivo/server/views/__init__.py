@@ -1,12 +1,15 @@
 from visivo.server.views.auth_views import register_auth_views
 from visivo.server.views.cloud_views import register_cloud_views
+from visivo.server.views.csv_script_model_views import register_csv_script_model_views
 from visivo.server.views.dashboard_views import register_dashboard_views
+from visivo.server.views.defaults_views import register_defaults_views
 from visivo.server.views.data_views import register_data_views
 from visivo.server.views.dimension_views import register_dimension_views
 from visivo.server.views.editor_views import register_editor_views
 from visivo.server.views.file_views import register_file_views
 from visivo.server.views.input_jobs_views import register_input_jobs_views
 from visivo.server.views.inputs_views import register_inputs_views
+from visivo.server.views.local_merge_model_views import register_local_merge_model_views
 from visivo.server.views.insight_views import register_insight_views
 from visivo.server.views.insights_crud_views import register_insights_crud_views
 from visivo.server.views.markdowns_crud_views import register_markdowns_crud_views
@@ -45,5 +48,8 @@ def register_views(app, flask_app, output_dir):
     register_relation_views(app, flask_app, output_dir)
     register_profiling_views(app, flask_app, output_dir)
     register_publish_views(app, flask_app, output_dir)
+    register_defaults_views(app, flask_app, output_dir)
+    register_csv_script_model_views(app, flask_app, output_dir)
+    register_local_merge_model_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)

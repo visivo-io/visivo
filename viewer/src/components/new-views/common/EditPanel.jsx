@@ -14,6 +14,10 @@ import InsightEditForm from './InsightEditForm';
 import MarkdownEditForm from './MarkdownEditForm';
 import ChartEditForm from './ChartEditForm';
 import TableEditForm from './TableEditForm';
+import DashboardEditForm from './DashboardEditForm';
+import CsvScriptModelEditForm from './CsvScriptModelEditForm';
+import LocalMergeModelEditForm from './LocalMergeModelEditForm';
+import ProjectDefaultsEditForm from './ProjectDefaultsEditForm';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources, models, and semantic objects
@@ -149,6 +153,41 @@ const EditPanel = ({
             onClose={onClose}
             onSave={onSave}
             onNavigateToEmbedded={onNavigateTo}
+          />
+        );
+      case 'dashboard':
+        return (
+          <DashboardEditForm
+            dashboard={currentObject}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
+      case 'csvScriptModel':
+        return (
+          <CsvScriptModelEditForm
+            model={currentObject}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
+      case 'localMergeModel':
+        return (
+          <LocalMergeModelEditForm
+            model={currentObject}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
+      case 'defaults':
+        return (
+          <ProjectDefaultsEditForm
+            defaults={currentObject?.config || currentObject}
+            onClose={onClose}
+            onSave={onSave}
           />
         );
       case 'source':

@@ -38,9 +38,16 @@ describe('EditorNew', () => {
   const mockFetchMarkdowns = jest.fn();
   const mockFetchCharts = jest.fn();
   const mockFetchTables = jest.fn();
+  const mockFetchDashboards = jest.fn();
+  const mockFetchCsvScriptModels = jest.fn();
+  const mockFetchLocalMergeModels = jest.fn();
+  const mockFetchDefaults = jest.fn();
   const mockSaveModel = jest.fn();
   const mockSaveChart = jest.fn();
   const mockSaveTable = jest.fn();
+  const mockSaveDashboard = jest.fn();
+  const mockSaveCsvScriptModel = jest.fn();
+  const mockSaveLocalMergeModel = jest.fn();
 
   const defaultStoreState = {
     project: null,
@@ -88,6 +95,25 @@ describe('EditorNew', () => {
     saveTable: mockSaveTable,
     tablesLoading: false,
     tablesError: null,
+    dashboards: [],
+    fetchDashboards: mockFetchDashboards,
+    saveDashboard: mockSaveDashboard,
+    dashboardsLoading: false,
+    dashboardsError: null,
+    csvScriptModels: [],
+    fetchCsvScriptModels: mockFetchCsvScriptModels,
+    saveCsvScriptModel: mockSaveCsvScriptModel,
+    csvScriptModelsLoading: false,
+    csvScriptModelsError: null,
+    localMergeModels: [],
+    fetchLocalMergeModels: mockFetchLocalMergeModels,
+    saveLocalMergeModel: mockSaveLocalMergeModel,
+    localMergeModelsLoading: false,
+    localMergeModelsError: null,
+    defaults: null,
+    fetchDefaults: mockFetchDefaults,
+    defaultsLoading: false,
+    defaultsError: null,
   };
 
   beforeEach(() => {

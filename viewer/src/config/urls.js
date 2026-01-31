@@ -97,6 +97,28 @@ const URL_PATTERNS = {
     tableSave: '/api/tables/{name}/save/',
     tableValidate: '/api/tables/{name}/validate/',
 
+    // Dashboard management endpoints
+    dashboardsList: '/api/dashboards/',
+    dashboardSave: '/api/dashboards/{name}/save/',
+    dashboardDelete: '/api/dashboards/{name}/delete/',
+    dashboardValidate: '/api/dashboards/{name}/validate/',
+
+    // CsvScriptModel management endpoints
+    csvScriptModelsList: '/api/csv-script-models/',
+    csvScriptModelDetail: '/api/csv-script-models/{name}/',
+    csvScriptModelSave: '/api/csv-script-models/{name}/save/',
+    csvScriptModelValidate: '/api/csv-script-models/{name}/validate/',
+
+    // LocalMergeModel management endpoints
+    localMergeModelsList: '/api/local-merge-models/',
+    localMergeModelDetail: '/api/local-merge-models/{name}/',
+    localMergeModelSave: '/api/local-merge-models/{name}/save/',
+    localMergeModelValidate: '/api/local-merge-models/{name}/validate/',
+
+    // Defaults management endpoints
+    defaultsGet: '/api/defaults/',
+    defaultsSave: '/api/defaults/save/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
@@ -195,6 +217,28 @@ const URL_PATTERNS = {
     tableDetail: null,
     tableSave: null,
     tableValidate: null,
+
+    // Dashboard management endpoints (not available in dist)
+    dashboardsList: null,
+    dashboardSave: null,
+    dashboardDelete: null,
+    dashboardValidate: null,
+
+    // CsvScriptModel management endpoints (not available in dist)
+    csvScriptModelsList: null,
+    csvScriptModelDetail: null,
+    csvScriptModelSave: null,
+    csvScriptModelValidate: null,
+
+    // LocalMergeModel management endpoints (not available in dist)
+    localMergeModelsList: null,
+    localMergeModelDetail: null,
+    localMergeModelSave: null,
+    localMergeModelValidate: null,
+
+    // Defaults management endpoints (not available in dist)
+    defaultsGet: null,
+    defaultsSave: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,

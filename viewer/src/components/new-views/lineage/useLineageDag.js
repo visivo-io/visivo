@@ -68,6 +68,9 @@ export function useLineageDag() {
   const markdowns = useStore(state => state.markdowns);
   const charts = useStore(state => state.charts);
   const tables = useStore(state => state.tables);
+  const defaults = useStore(state => state.defaults);
+  const csvScriptModels = useStore(state => state.csvScriptModels);
+  const localMergeModels = useStore(state => state.localMergeModels);
 
   const dag = useMemo(() => {
     const nodes = [];
@@ -84,6 +87,8 @@ export function useLineageDag() {
     (markdowns || []).forEach(m => { objectTypeByName[m.name] = 'markdown'; });
     (charts || []).forEach(c => { objectTypeByName[c.name] = 'chart'; });
     (tables || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
+    (csvScriptModels || []).forEach(m => { objectTypeByName[m.name] = 'csvScriptModel'; });
+    (localMergeModels || []).forEach(m => { objectTypeByName[m.name] = 'localMergeModel'; });
 
     /**
      * Add a node to the DAG
@@ -130,12 +135,59 @@ export function useLineageDag() {
         model: model,
       });
 
-      // Create edges from model's child_item_names (sources it depends on)
+      // Create edges from model's child_item_names
       const childNames = model.child_item_names || [];
       childNames.forEach(childName => {
-        addEdge(childName, 'source', model.name, 'model');
+        const childType = objectTypeByName[childName] || 'source';
+        addEdge(childName, childType, model.name, 'model');
       });
     });
+
+    // Build csvScriptModel nodes
+    (csvScriptModels || []).forEach(model => {
+      addNode(model.name, 'csvScriptModel', 'csvScriptModelNode', {
+        status: model.status,
+        model: model,
+      });
+
+      const childNames = model.child_item_names || [];
+      childNames.forEach(childName => {
+        const childType = objectTypeByName[childName] || 'source';
+        addEdge(childName, childType, model.name, 'csvScriptModel');
+      });
+    });
+
+    // Build localMergeModel nodes
+    (localMergeModels || []).forEach(model => {
+      addNode(model.name, 'localMergeModel', 'localMergeModelNode', {
+        sql: model.config?.sql,
+        status: model.status,
+        model: model,
+      });
+
+      const childNames = model.child_item_names || [];
+      childNames.forEach(childName => {
+        const childType = objectTypeByName[childName] || 'model';
+        addEdge(childName, childType, model.name, 'localMergeModel');
+      });
+    });
+
+    // Default source inference: models without explicit sources get dashed edge to default source
+    const defaultSourceName = defaults?.source_name;
+    if (defaultSourceName && objectTypeByName[defaultSourceName] === 'source') {
+      (models || []).forEach(model => {
+        const childNames = model.child_item_names || [];
+        if (childNames.length === 0) {
+          edges.push({
+            id: getEdgeId('source', defaultSourceName, 'model', model.name),
+            source: getNodeId('source', defaultSourceName),
+            target: getNodeId('model', model.name),
+            style: { strokeDasharray: '5 5' },
+            data: { isImplicit: true },
+          });
+        }
+      });
+    }
 
     // Build dimension nodes and edges to parent models
     (dimensions || []).forEach(dimension => {
@@ -246,7 +298,7 @@ export function useLineageDag() {
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, defaults, csvScriptModels, localMergeModels]);
 
   return dag;
 }

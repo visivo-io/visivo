@@ -21,6 +21,10 @@ def register_publish_views(app, flask_app, output_dir):
                 or flask_app.markdown_manager.has_unpublished_changes()
                 or flask_app.chart_manager.has_unpublished_changes()
                 or flask_app.table_manager.has_unpublished_changes()
+                or flask_app.dashboard_manager.has_unpublished_changes()
+                or flask_app.csv_script_model_manager.has_unpublished_changes()
+                or flask_app.local_merge_model_manager.has_unpublished_changes()
+                or flask_app._cached_defaults is not None
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
@@ -134,6 +138,55 @@ def register_publish_views(app, flask_app, output_dir):
                         "status": status.value,
                     }
                     pending.append(table_info)
+
+            # Get dashboards with changes
+            for name, dashboard in flask_app.dashboard_manager.cached_objects.items():
+                status = flask_app.dashboard_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    dashboard_info = {
+                        "name": name,
+                        "type": "dashboard",
+                        "status": status.value,
+                    }
+                    pending.append(dashboard_info)
+
+            # Get csv script models with changes
+            for (
+                name,
+                model,
+            ) in flask_app.csv_script_model_manager.cached_objects.items():
+                status = flask_app.csv_script_model_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    model_info = {
+                        "name": name,
+                        "type": "csvScriptModel",
+                        "status": status.value,
+                    }
+                    pending.append(model_info)
+
+            # Get local merge models with changes
+            for (
+                name,
+                model,
+            ) in flask_app.local_merge_model_manager.cached_objects.items():
+                status = flask_app.local_merge_model_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    model_info = {
+                        "name": name,
+                        "type": "localMergeModel",
+                        "status": status.value,
+                    }
+                    pending.append(model_info)
+
+            # Get defaults changes
+            if flask_app._cached_defaults is not None:
+                pending.append(
+                    {
+                        "name": "defaults",
+                        "type": "defaults",
+                        "status": "modified",
+                    }
+                )
 
             return jsonify({"pending": pending, "count": len(pending)})
         except Exception as e:
@@ -283,6 +336,75 @@ def register_publish_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
+            # Process dashboards
+            for name, dashboard in flask_app.dashboard_manager.cached_objects.items():
+                status = flask_app.dashboard_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=dashboard,
+                        status=status,
+                        published_obj=flask_app.dashboard_manager.published_objects.get(name),
+                        type_key="dashboards",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process csv script models (stored under "models" in YAML)
+            for (
+                name,
+                model,
+            ) in flask_app.csv_script_model_manager.cached_objects.items():
+                status = flask_app.csv_script_model_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=model,
+                        status=status,
+                        published_obj=flask_app.csv_script_model_manager.published_objects.get(
+                            name
+                        ),
+                        type_key="models",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process local merge models (stored under "models" in YAML)
+            for (
+                name,
+                model,
+            ) in flask_app.local_merge_model_manager.cached_objects.items():
+                status = flask_app.local_merge_model_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=model,
+                        status=status,
+                        published_obj=flask_app.local_merge_model_manager.published_objects.get(
+                            name
+                        ),
+                        type_key="models",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
+            # Process defaults
+            if flask_app._cached_defaults is not None:
+                exclude_fields = {"path", "file_path"}
+                named_children["defaults"] = {
+                    "status": "Modified",
+                    "file_path": flask_app.project.project_file_path,
+                    "new_file_path": flask_app.project.project_file_path,
+                    "type_key": "defaults",
+                    "config": flask_app._cached_defaults.model_dump(
+                        exclude_none=True, exclude=exclude_fields
+                    ),
+                }
+                published_count += 1
+
             if not named_children:
                 return jsonify({"message": "No changes to publish", "published_count": 0})
 
@@ -301,6 +423,10 @@ def register_publish_views(app, flask_app, output_dir):
             flask_app.markdown_manager.clear_cache()
             flask_app.chart_manager.clear_cache()
             flask_app.table_manager.clear_cache()
+            flask_app.dashboard_manager.clear_cache()
+            flask_app.csv_script_model_manager.clear_cache()
+            flask_app.local_merge_model_manager.clear_cache()
+            flask_app._cached_defaults = None
 
             # Trigger project reload via hot reload server if available
             if flask_app.hot_reload_server:
