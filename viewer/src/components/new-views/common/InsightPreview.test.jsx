@@ -23,7 +23,7 @@ jest.mock('../../items/Input', () => ({ input }) => (
 ));
 
 describe('InsightPreview', () => {
-  const mockFetchInputConfigs = jest.fn();
+  const mockFetchInputs = jest.fn();
   const defaultInsightConfig = {
     name: 'test_insight',
     props: {
@@ -40,8 +40,8 @@ describe('InsightPreview', () => {
     // Default store state
     useStore.mockImplementation(selector => {
       const state = {
-        inputConfigs: [],
-        fetchInputConfigs: mockFetchInputConfigs,
+        inputs: [],
+        fetchInputs: mockFetchInputs,
       };
       return typeof selector === 'function' ? selector(state) : state;
     });
@@ -115,7 +115,7 @@ describe('InsightPreview', () => {
       );
     });
 
-    it('fetches input configs on mount', () => {
+    it('fetches inputs on mount', () => {
       render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
@@ -123,7 +123,7 @@ describe('InsightPreview', () => {
         />
       );
 
-      expect(mockFetchInputConfigs).toHaveBeenCalled();
+      expect(mockFetchInputs).toHaveBeenCalled();
     });
 
     it('renders chart when insight has name', () => {
@@ -187,8 +187,8 @@ describe('InsightPreview', () => {
     it('does not render input controls section when no inputs referenced', () => {
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [],
-          fetchInputConfigs: mockFetchInputConfigs,
+          inputs: [],
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -223,10 +223,10 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -263,10 +263,10 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             { name: 'min_value', config: { name: 'min_value', type: 'number' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -300,10 +300,10 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -338,11 +338,11 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             // Only show_markers is an actual input
             { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -376,10 +376,10 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -448,11 +448,11 @@ describe('InsightPreview', () => {
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
     });
 
-    it('renders without crashing when inputConfigs fail to load', () => {
+    it('renders without crashing when inputs fail to load', () => {
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: null,
-          fetchInputConfigs: mockFetchInputConfigs,
+          inputs: null,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });
@@ -488,10 +488,10 @@ describe('InsightPreview', () => {
 
       useStore.mockImplementation(selector => {
         const state = {
-          inputConfigs: [
+          inputs: [
             { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
           ],
-          fetchInputConfigs: mockFetchInputConfigs,
+          fetchInputs: mockFetchInputs,
         };
         return typeof selector === 'function' ? selector(state) : state;
       });

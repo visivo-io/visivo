@@ -76,7 +76,7 @@ const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) 
       if (!insightNames.length) return null;
       const data = {};
       for (const name of insightNames) {
-        if (state.insights[name]) data[name] = state.insights[name];
+        if (state.insightJobs[name]) data[name] = state.insightJobs[name];
       }
       return Object.keys(data).length > 0 ? data : null;
     })

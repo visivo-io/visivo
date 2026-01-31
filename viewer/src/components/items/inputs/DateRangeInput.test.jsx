@@ -8,7 +8,7 @@ describe('DateRangeInput', () => {
     options: ['2024-06-01', '2024-06-02', '2024-06-03', '2024-06-04', '2024-06-05'],
     selectedValues: ['2024-06-02', '2024-06-03', '2024-06-04'],
     name: 'test-date-range',
-    setInputValue: jest.fn(),
+    setInputJobValue: jest.fn(),
   };
 
   beforeEach(() => {
@@ -66,9 +66,9 @@ describe('DateRangeInput', () => {
     expect(screen.getByText('June 2024')).toBeInTheDocument();
   });
 
-  it('calls setInputValue when date is selected', () => {
-    const setInputValue = jest.fn();
-    render(<DateRangeInput {...defaultProps} setInputValue={setInputValue} />);
+  it('calls setInputJobValue when date is selected', () => {
+    const setInputJobValue = jest.fn();
+    render(<DateRangeInput {...defaultProps} setInputJobValue={setInputJobValue} />);
 
     // Open start date picker - find button containing the start date text
     const buttons = screen.getAllByRole('button');
@@ -79,18 +79,18 @@ describe('DateRangeInput', () => {
     const day1Button = screen.getByRole('button', { name: '1' });
     fireEvent.click(day1Button);
 
-    // Should call setInputValue with all dates in the new range
-    expect(setInputValue).toHaveBeenCalledWith('test-date-range', expect.any(Array));
+    // Should call setInputJobValue with all dates in the new range
+    expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', expect.any(Array));
   });
 
   it('clears selection when clear button is clicked', () => {
-    const setInputValue = jest.fn();
-    render(<DateRangeInput {...defaultProps} setInputValue={setInputValue} />);
+    const setInputJobValue = jest.fn();
+    render(<DateRangeInput {...defaultProps} setInputJobValue={setInputJobValue} />);
 
     const clearButton = screen.getByLabelText('Clear selection');
     fireEvent.click(clearButton);
 
-    expect(setInputValue).toHaveBeenCalledWith('test-date-range', []);
+    expect(setInputJobValue).toHaveBeenCalledWith('test-date-range', []);
   });
 
   it('does not show clear button when no dates are selected', () => {
@@ -173,12 +173,12 @@ describe('DateRangeInput', () => {
   });
 
   it('swaps dates when start is after end', () => {
-    const setInputValue = jest.fn();
+    const setInputJobValue = jest.fn();
     render(
       <DateRangeInput
         {...defaultProps}
         selectedValues={['2024-06-03']}
-        setInputValue={setInputValue}
+        setInputJobValue={setInputJobValue}
       />
     );
 
@@ -193,20 +193,20 @@ describe('DateRangeInput', () => {
     // This is covered by the updateSelection logic
   });
 
-  it('does not call setInputValue without name', () => {
-    const setInputValue = jest.fn();
+  it('does not call setInputJobValue without name', () => {
+    const setInputJobValue = jest.fn();
     const props = {
       ...defaultProps,
       name: undefined,
-      setInputValue,
+      setInputJobValue,
     };
     render(<DateRangeInput {...props} />);
 
     const clearButton = screen.getByLabelText('Clear selection');
     fireEvent.click(clearButton);
 
-    // Should not call setInputValue because name is undefined
-    expect(setInputValue).not.toHaveBeenCalled();
+    // Should not call setInputJobValue because name is undefined
+    expect(setInputJobValue).not.toHaveBeenCalled();
   });
 
   it('shows month navigation buttons in picker', () => {

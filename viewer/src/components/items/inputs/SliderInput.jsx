@@ -5,7 +5,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * SliderInput - Single-select input displayed as a slider.
  *
  * This is a display-only component - it receives selectedValue from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Single-select inputs with numeric options where users want to
  * slide between discrete values. Shows tick marks for each option.
@@ -15,7 +15,7 @@ const SliderInput = ({
   options: rawOptions,
   selectedValue, // Current value from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [numericOptions, setNumericOptions] = useState([]);
 
@@ -67,8 +67,8 @@ const SliderInput = ({
     const index = parseInt(e.target.value, 10);
     const value = numericOptions[index];
 
-    if (setInputValue && name) {
-      setInputValue(name, value);
+    if (setInputJobValue && name) {
+      setInputJobValue(name, value);
     }
   };
 

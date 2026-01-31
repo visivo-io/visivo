@@ -8,29 +8,29 @@ import * as inputsApi from '../api/inputs';
  */
 const createInputSlice = (set, get) => ({
   // State
-  inputConfigs: [], // All inputs with status (NEW, MODIFIED, PUBLISHED)
-  inputConfigsLoading: false,
-  inputConfigsError: null,
-  editingInputConfig: null, // Input being edited (null = create mode)
-  inputConfigModalOpen: false,
+  inputs: [], // All inputs with status (NEW, MODIFIED, PUBLISHED)
+  inputsLoading: false,
+  inputsError: null,
+  editingInput: null, // Input being edited (null = create mode)
+  inputModalOpen: false,
 
   // Fetch all inputs from API
-  fetchInputConfigs: async () => {
-    set({ inputConfigsLoading: true, inputConfigsError: null });
+  fetchInputs: async () => {
+    set({ inputsLoading: true, inputsError: null });
     try {
       const data = await inputsApi.fetchAllInputs();
-      set({ inputConfigs: data.inputs || [], inputConfigsLoading: false });
+      set({ inputs: data.inputs || [], inputsLoading: false });
     } catch (error) {
-      set({ inputConfigsError: error.message, inputConfigsLoading: false });
+      set({ inputsError: error.message, inputsLoading: false });
     }
   },
 
   // Save input to cache
-  saveInputConfig: async (name, config) => {
+  saveInput: async (name, config) => {
     try {
       const result = await inputsApi.saveInput(name, config);
       // Refresh inputs list to get updated status
-      await get().fetchInputConfigs();
+      await get().fetchInputs();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -42,10 +42,10 @@ const createInputSlice = (set, get) => ({
   },
 
   // Mark input for deletion (will be removed from YAML on publish)
-  deleteInputConfig: async name => {
+  deleteInput: async name => {
     try {
       await inputsApi.deleteInput(name);
-      await get().fetchInputConfigs();
+      await get().fetchInputs();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -57,38 +57,38 @@ const createInputSlice = (set, get) => ({
   },
 
   // Open modal for editing existing input
-  openEditInputConfigModal: input => {
+  openEditInputModal: input => {
     set({
-      editingInputConfig: input,
-      inputConfigModalOpen: true,
+      editingInput: input,
+      inputModalOpen: true,
     });
   },
 
   // Open modal for creating new input
-  openCreateInputConfigModal: () => {
+  openCreateInputModal: () => {
     set({
-      editingInputConfig: null,
-      inputConfigModalOpen: true,
+      editingInput: null,
+      inputModalOpen: true,
     });
   },
 
   // Close modal
-  closeInputConfigModal: () => {
+  closeInputModal: () => {
     set({
-      editingInputConfig: null,
-      inputConfigModalOpen: false,
+      editingInput: null,
+      inputModalOpen: false,
     });
   },
 
   // Get input by name
-  getInputConfigByName: name => {
-    const { inputConfigs } = get();
-    return inputConfigs.find(i => i.name === name);
+  getInputByName: name => {
+    const { inputs } = get();
+    return inputs.find(i => i.name === name);
   },
 
   // Get status for a specific input
-  getInputConfigStatus: name => {
-    const input = get().getInputConfigByName(name);
+  getInputStatus: name => {
+    const input = get().getInputByName(name);
     return input?.status || null;
   },
 });

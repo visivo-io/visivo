@@ -6,7 +6,7 @@ import { DropdownLabel, DropdownMenu } from '../../styled/DropdownButton';
  * AutocompleteInput - Single-select input with searchable dropdown.
  *
  * This is a display-only component - it receives selectedValue from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Large option sets (10+ options) where users need to search/filter.
  * The search input is always visible, making it faster to find options.
@@ -17,7 +17,7 @@ const AutocompleteInput = ({
   selectedValue, // Current value from store (via parent)
   placeholder = 'Search or select...',
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState([]);
@@ -120,8 +120,8 @@ const AutocompleteInput = ({
   };
 
   const selectOption = option => {
-    if (setInputValue && name) {
-      setInputValue(name, option.id);
+    if (setInputJobValue && name) {
+      setInputJobValue(name, option.id);
     }
     setIsOpen(false);
     setSearchTerm('');
@@ -130,8 +130,8 @@ const AutocompleteInput = ({
 
   const clearSelection = e => {
     e.stopPropagation();
-    if (setInputValue && name) {
-      setInputValue(name, null);
+    if (setInputJobValue && name) {
+      setInputJobValue(name, null);
     }
     setSearchTerm('');
     inputRef.current?.focus();

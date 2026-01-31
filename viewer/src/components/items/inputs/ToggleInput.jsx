@@ -5,7 +5,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * ToggleInput - Single-select input displayed as a toggle switch.
  *
  * This is a display-only component - it receives selectedValue from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Binary choices (exactly 2 options) like on/off, yes/no, enabled/disabled.
  * The first option is shown when toggle is OFF (left), second when ON (right).
@@ -15,7 +15,7 @@ const ToggleInput = ({
   options: rawOptions,
   selectedValue, // Current value from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [options, setOptions] = useState([]);
 
@@ -43,9 +43,9 @@ const ToggleInput = ({
 
     const newValue = isOn ? options[0].id : options[1].id;
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, newValue);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, newValue);
     }
   };
 

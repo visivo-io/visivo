@@ -21,17 +21,17 @@ jest.mock('./inputs/RangeSliderInput', () => ({ label }) => (
 ));
 
 // Store mock state - needs to be accessible both inside mock factory and in tests
-const mockSetInputValue = jest.fn();
+const mockSetInputJobValue = jest.fn();
 
 jest.mock('../../stores/store', () => {
   const storeState = {
-    setInputValue: jest.fn(),
+    setInputJobValue: jest.fn(),
     inputs: {},
-    inputOptions: {},
-    inputData: {},
-    setInputOptions: jest.fn(),
-    setDefaultInputValue: jest.fn(),
-    setInputData: jest.fn(),
+    inputJobOptions: {},
+    inputJobData: {},
+    setInputJobOptions: jest.fn(),
+    setDefaultInputJobValue: jest.fn(),
+    setInputJobData: jest.fn(),
     inputSelectedValues: {},
   };
 
@@ -242,9 +242,9 @@ describe('Input component', () => {
       rerender(<Input input={input} itemWidth={2} />);
       expect(screen.getByTestId('dropdown')).toBeInTheDocument();
 
-      // Input should NOT call setInputValue on its own (Dropdown only calls on user selection)
+      // Input should NOT call setInputJobValue on its own (Dropdown only calls on user selection)
       // So calls should be 0 without user interaction
-      expect(mockSetInputValue.mock.calls.length).toBe(0);
+      expect(mockSetInputJobValue.mock.calls.length).toBe(0);
     });
 
     it('handles re-renders with updated input without infinite loops', () => {
@@ -268,14 +268,14 @@ describe('Input component', () => {
       expect(screen.getByTestId('dropdown')).toBeInTheDocument();
 
       // Clear mock calls before rerender
-      mockSetInputValue.mockClear();
+      mockSetInputJobValue.mockClear();
 
       // Re-render with different input
       rerender(<Input input={input2} itemWidth={2} />);
       expect(screen.getByTestId('dropdown')).toBeInTheDocument();
 
-      // Input should NOT call setInputValue on re-renders (only on user selection)
-      expect(mockSetInputValue.mock.calls.length).toBe(0);
+      // Input should NOT call setInputJobValue on re-renders (only on user selection)
+      expect(mockSetInputJobValue.mock.calls.length).toBe(0);
     });
   });
 });

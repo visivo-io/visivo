@@ -207,9 +207,9 @@ export const useInsightsData = (
 ) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsightJobs();
-  const setInsights = useStore(state => state.setInsights);
-  const storeInsightData = useStore(state => state.insights);
-  const getInputs = useStore(state => state.inputs);
+  const setInsightJobs = useStore(state => state.setInsightJobs);
+  const storeInsightData = useStore(state => state.insightJobs);
+  const getInputs = useStore(state => state.inputJobs);
 
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInsightNames = useMemo(() => {
@@ -301,7 +301,7 @@ export const useInsightsData = (
     if (!insights?.length) return {};
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
-    const freshInputs = useStore.getState().inputs || {};
+    const freshInputs = useStore.getState().inputJobs || {};
 
     const results = await Promise.allSettled(
       insights.map(insight =>
@@ -361,12 +361,12 @@ export const useInsightsData = (
         for (const [key, value] of Object.entries(data)) {
           prefixed[storeKeyPrefix + key] = value;
         }
-        setInsights(prefixed);
+        setInsightJobs(prefixed);
       } else {
-        setInsights(data);
+        setInsightJobs(data);
       }
     }
-  }, [data, setInsights, storeKeyPrefix]);
+  }, [data, setInsightJobs, storeKeyPrefix]);
 
   const returnValue = {
     insights: storeInsightData || {},

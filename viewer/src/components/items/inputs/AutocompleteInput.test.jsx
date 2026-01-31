@@ -8,7 +8,7 @@ describe('AutocompleteInput', () => {
     options: ['Apple', 'Banana', 'Cherry', 'Date', 'Elderberry'],
     selectedValue: 'Banana',
     name: 'test-autocomplete',
-    setInputValue: jest.fn(),
+    setInputJobValue: jest.fn(),
     placeholder: 'Search...',
   };
 
@@ -69,9 +69,9 @@ describe('AutocompleteInput', () => {
     expect(cherryElements.length).toBeGreaterThan(0);
   });
 
-  it('calls setInputValue when option is selected', () => {
-    const setInputValue = jest.fn();
-    render(<AutocompleteInput {...defaultProps} setInputValue={setInputValue} />);
+  it('calls setInputJobValue when option is selected', () => {
+    const setInputJobValue = jest.fn();
+    render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
 
     const input = screen.getByRole('textbox');
     fireEvent.focus(input);
@@ -79,17 +79,17 @@ describe('AutocompleteInput', () => {
     const option = screen.getByText('Cherry');
     fireEvent.click(option);
 
-    expect(setInputValue).toHaveBeenCalledWith('test-autocomplete', 'Cherry');
+    expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', 'Cherry');
   });
 
   it('clears selection when clear button is clicked', () => {
-    const setInputValue = jest.fn();
-    render(<AutocompleteInput {...defaultProps} setInputValue={setInputValue} />);
+    const setInputJobValue = jest.fn();
+    render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
 
     const clearButton = screen.getByLabelText('Clear selection');
     fireEvent.click(clearButton);
 
-    expect(setInputValue).toHaveBeenCalledWith('test-autocomplete', null);
+    expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', null);
   });
 
   it('shows no matching options message when search has no results', () => {
@@ -137,27 +137,27 @@ describe('AutocompleteInput', () => {
   });
 
   it('selects highlighted option on Enter', () => {
-    const setInputValue = jest.fn();
-    render(<AutocompleteInput {...defaultProps} setInputValue={setInputValue} />);
+    const setInputJobValue = jest.fn();
+    render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
     const input = screen.getByRole('textbox');
 
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: 'ArrowDown' }); // Highlight first option (Apple)
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(setInputValue).toHaveBeenCalledWith('test-autocomplete', 'Apple');
+    expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', 'Apple');
   });
 
   it('auto-selects single matching option on Enter', () => {
-    const setInputValue = jest.fn();
-    render(<AutocompleteInput {...defaultProps} setInputValue={setInputValue} />);
+    const setInputJobValue = jest.fn();
+    render(<AutocompleteInput {...defaultProps} setInputJobValue={setInputJobValue} />);
     const input = screen.getByRole('textbox');
 
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'Cherry' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    expect(setInputValue).toHaveBeenCalledWith('test-autocomplete', 'Cherry');
+    expect(setInputJobValue).toHaveBeenCalledWith('test-autocomplete', 'Cherry');
   });
 
   it('toggles dropdown when chevron button is clicked', () => {

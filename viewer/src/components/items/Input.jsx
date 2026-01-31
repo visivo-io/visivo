@@ -25,10 +25,10 @@ export const MULTI_SELECT = 'multi-select';
  *
  * Default values are set by the useInputOptions hook (which loads from JSON).
  * This component reads the current value from the store and passes it to the display component.
- * Display components only call setInputValue when the user actively selects a new option.
+ * Display components only call setInputJobValue when the user actively selects a new option.
  */
 const Input = ({ input, itemWidth, project }) => {
-  const setInputValue = useStore(state => state.setInputValue);
+  const setInputJobValue = useStore(state => state.setInputJobValue);
   // Performance optimization: Only subscribe to THIS input's value, not all inputs
   // This prevents re-rendering when other inputs change
   const mySelectedValue = useStore(
@@ -43,12 +43,12 @@ const Input = ({ input, itemWidth, project }) => {
   const isMulti = inputType === MULTI_SELECT;
   const displayType = input?.display?.type || 'dropdown';
 
-  // Memoized wrapper for setInputValue that passes the input type
-  const handleSetInputValue = useCallback(
+  // Memoized wrapper for setInputJobValue that passes the input type
+  const handleSetInputJobValue = useCallback(
     (name, value) => {
-      setInputValue(name, value, isMulti ? MULTI_SELECT : SINGLE_SELECT);
+      setInputJobValue(name, value, isMulti ? MULTI_SELECT : SINGLE_SELECT);
     },
-    [setInputValue, isMulti]
+    [setInputJobValue, isMulti]
   );
 
   // Get current selected value(s) from store (for display)
@@ -86,7 +86,7 @@ const Input = ({ input, itemWidth, project }) => {
     label: input?.label,
     options,
     name: input.name,
-    setInputValue: handleSetInputValue,
+    setInputJobValue: handleSetInputJobValue,
   };
 
   // Render the appropriate display component based on type and display config

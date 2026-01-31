@@ -39,7 +39,7 @@ import {
  * - setPreviewConfig: Function to set the preview configuration in parent
  */
 const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
-  const { deleteInsightConfig, checkPublishStatus } = useStore();
+  const { deleteInsight, checkPublishStatus } = useStore();
 
   // Form state - Basic fields
   const [name, setName] = useState('');
@@ -237,7 +237,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
   const handleDelete = async () => {
     setDeleting(true);
-    const result = await deleteInsightConfig(insight.name);
+    const result = await deleteInsight(insight.name);
     setDeleting(false);
 
     if (result?.success) {

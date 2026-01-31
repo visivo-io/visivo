@@ -223,14 +223,14 @@ describe('useInsightPreviewData', () => {
     extractNonQueryProps.mockReturnValue({});
 
     useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insights')) {
+      if (selector.toString().includes('insightJobs')) {
         return {};
       }
       return null;
     });
     useStore.getState = jest.fn().mockReturnValue({
-      insights: {},
-      updateInsight: jest.fn(),
+      insightJobs: {},
+      updateInsightJob: jest.fn(),
     });
   });
 
@@ -331,7 +331,7 @@ describe('useInsightPreviewData', () => {
     };
 
     useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insights')) {
+      if (selector.toString().includes('insightJobs')) {
         return previewStoreData;
       }
       return null;
@@ -347,7 +347,7 @@ describe('useInsightPreviewData', () => {
 
   test('returns null data when store has no preview data', () => {
     useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insights')) {
+      if (selector.toString().includes('insightJobs')) {
         return {};
       }
       return null;
@@ -363,7 +363,7 @@ describe('useInsightPreviewData', () => {
 
   test('detects insight not in main store and sets needsInitialPreview', () => {
     useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insights')) {
+      if (selector.toString().includes('insightJobs')) {
         return {};
       }
       return null;
@@ -378,7 +378,7 @@ describe('useInsightPreviewData', () => {
 
   test('does not trigger initial preview when insight exists in main store', () => {
     useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insights')) {
+      if (selector.toString().includes('insightJobs')) {
         return {
           'existing-insight': { data: [{ x: 1 }], query: 'SELECT 1' },
         };

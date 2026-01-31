@@ -17,7 +17,7 @@ import { validateName } from './namedModel';
  * - onSave: Callback after successful save
  */
 const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
-  const { saveMarkdownConfig, deleteMarkdownConfig, checkPublishStatus } = useStore();
+  const { saveMarkdown, deleteMarkdown, checkPublishStatus } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -85,7 +85,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
         justify,
       };
 
-      const result = await saveMarkdownConfig(name, config);
+      const result = await saveMarkdown(name, config);
 
       if (result?.success) {
         onSave && onSave(config);
@@ -102,7 +102,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   const handleDelete = async () => {
     setDeleting(true);
-    const result = await deleteMarkdownConfig(markdown.name);
+    const result = await deleteMarkdown(markdown.name);
     setDeleting(false);
 
     if (result?.success) {

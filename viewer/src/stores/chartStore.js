@@ -8,29 +8,29 @@ import * as chartsApi from '../api/charts';
  */
 const createChartSlice = (set, get) => ({
   // State
-  chartConfigs: [], // All charts with status (NEW, MODIFIED, PUBLISHED)
-  chartConfigsLoading: false,
-  chartConfigsError: null,
-  editingChartConfig: null, // Chart being edited (null = create mode)
-  chartConfigModalOpen: false,
+  charts: [], // All charts with status (NEW, MODIFIED, PUBLISHED)
+  chartsLoading: false,
+  chartsError: null,
+  editingChart: null, // Chart being edited (null = create mode)
+  chartModalOpen: false,
 
   // Fetch all charts from API
-  fetchChartConfigs: async () => {
-    set({ chartConfigsLoading: true, chartConfigsError: null });
+  fetchCharts: async () => {
+    set({ chartsLoading: true, chartsError: null });
     try {
       const data = await chartsApi.fetchAllCharts();
-      set({ chartConfigs: data.charts || [], chartConfigsLoading: false });
+      set({ charts: data.charts || [], chartsLoading: false });
     } catch (error) {
-      set({ chartConfigsError: error.message, chartConfigsLoading: false });
+      set({ chartsError: error.message, chartsLoading: false });
     }
   },
 
   // Save chart to cache
-  saveChartConfig: async (name, config) => {
+  saveChart: async (name, config) => {
     try {
       const result = await chartsApi.saveChart(name, config);
       // Refresh charts list to get updated status
-      await get().fetchChartConfigs();
+      await get().fetchCharts();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -42,10 +42,10 @@ const createChartSlice = (set, get) => ({
   },
 
   // Mark chart for deletion (will be removed from YAML on publish)
-  deleteChartConfig: async name => {
+  deleteChart: async name => {
     try {
       await chartsApi.deleteChart(name);
-      await get().fetchChartConfigs();
+      await get().fetchCharts();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -57,38 +57,38 @@ const createChartSlice = (set, get) => ({
   },
 
   // Open modal for editing existing chart
-  openEditChartConfigModal: chart => {
+  openEditChartModal: chart => {
     set({
-      editingChartConfig: chart,
-      chartConfigModalOpen: true,
+      editingChart: chart,
+      chartModalOpen: true,
     });
   },
 
   // Open modal for creating new chart
-  openCreateChartConfigModal: () => {
+  openCreateChartModal: () => {
     set({
-      editingChartConfig: null,
-      chartConfigModalOpen: true,
+      editingChart: null,
+      chartModalOpen: true,
     });
   },
 
   // Close modal
-  closeChartConfigModal: () => {
+  closeChartModal: () => {
     set({
-      editingChartConfig: null,
-      chartConfigModalOpen: false,
+      editingChart: null,
+      chartModalOpen: false,
     });
   },
 
   // Get chart by name
-  getChartConfigByName: name => {
-    const { chartConfigs } = get();
-    return chartConfigs.find(c => c.name === name);
+  getChartByName: name => {
+    const { charts } = get();
+    return charts.find(c => c.name === name);
   },
 
   // Get status for a specific chart
-  getChartConfigStatus: name => {
-    const chart = get().getChartConfigByName(name);
+  getChartStatus: name => {
+    const chart = get().getChartByName(name);
     return chart?.status || null;
   },
 });

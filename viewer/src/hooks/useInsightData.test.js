@@ -58,10 +58,10 @@ describe('useInsightsData Hook', () => {
   describe('Basic functionality', () => {
     test('should return default values when no projectId or insightNames provided', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -91,10 +91,10 @@ describe('useInsightsData Hook', () => {
       };
 
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return completeStoreData;
         }
         return null;
@@ -113,10 +113,10 @@ describe('useInsightsData Hook', () => {
 
     test('should start loading when conditions are met but data is incomplete', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {}; // Empty store = incomplete data
         }
         return null;
@@ -136,10 +136,10 @@ describe('useInsightsData Hook', () => {
   describe('Data processing edge cases', () => {
     test('should handle empty insight names array', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -156,10 +156,10 @@ describe('useInsightsData Hook', () => {
 
     test('should handle null insightNames', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -192,10 +192,10 @@ describe('useInsightsData Hook', () => {
       };
 
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return storeData;
         }
         return null;
@@ -222,10 +222,10 @@ describe('useInsightsData Hook', () => {
       };
 
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return incompleteStoreData;
         }
         return null;
@@ -244,10 +244,10 @@ describe('useInsightsData Hook', () => {
   describe('Stable key generation', () => {
     test('should handle insight names in different orders consistently', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -271,7 +271,7 @@ describe('useInsightsData Hook', () => {
 
   describe('Race condition handling', () => {
     test('should use fresh inputs from store.getState() not closure value', () => {
-      // This test verifies that the hook uses useStore.getState().inputs
+      // This test verifies that the hook uses useStore.getState().inputJobs
       // instead of the closure-captured value, preventing race conditions
       // where inputs load after the query starts
 
@@ -279,24 +279,24 @@ describe('useInsightsData Hook', () => {
       const freshInputs = { testInput: { value: 'test' } };
 
       // Mock getState to return fresh inputs (simulating inputs that loaded during query)
-      useStore.getState = jest.fn().mockReturnValue({ inputs: freshInputs });
+      useStore.getState = jest.fn().mockReturnValue({ inputJobs: freshInputs });
 
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         // Return stale empty inputs via selector (simulating closure capture)
-        if (selector.toString().includes('inputs')) {
+        if (selector.toString().includes('inputJobs')) {
           return initialInputs;
         }
         return null;
       });
 
       // Verify getState returns fresh inputs
-      expect(useStore.getState().inputs).toEqual(freshInputs);
+      expect(useStore.getState().inputJobs).toEqual(freshInputs);
 
       // The hook should be able to be created without errors
       const { result } = renderHook(() => useInsightsData('project1', ['insight1']), {
@@ -323,10 +323,10 @@ describe('useInsightsData Hook', () => {
       });
 
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -341,10 +341,10 @@ describe('useInsightsData Hook', () => {
       // Simulate data becoming available in store
       act(() => {
         useStore.mockImplementation(selector => {
-          if (selector.toString().includes('setInsights')) {
+          if (selector.toString().includes('setInsightJobs')) {
             return mockSetInsights;
           }
-          if (selector.toString().includes('insights')) {
+          if (selector.toString().includes('insightJobs')) {
             return mockData;
           }
           return null;
@@ -359,10 +359,10 @@ describe('useInsightsData Hook', () => {
   describe('runId gating', () => {
     test('should not fetch when runId is null', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -379,10 +379,10 @@ describe('useInsightsData Hook', () => {
 
     test('should use default runId when runId is undefined', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -402,10 +402,10 @@ describe('useInsightsData Hook', () => {
 
     test('should accept explicit runId for preview mode', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -426,10 +426,10 @@ describe('useInsightsData Hook', () => {
   describe('options parameter', () => {
     test('should accept options object as fourth parameter', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -451,10 +451,10 @@ describe('useInsightsData Hook', () => {
 
     test('should work with empty options object', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;
@@ -470,10 +470,10 @@ describe('useInsightsData Hook', () => {
 
     test('should work without options parameter (uses defaults)', () => {
       useStore.mockImplementation(selector => {
-        if (selector.toString().includes('setInsights')) {
+        if (selector.toString().includes('setInsightJobs')) {
           return mockSetInsights;
         }
-        if (selector.toString().includes('insights')) {
+        if (selector.toString().includes('insightJobs')) {
           return {};
         }
         return null;

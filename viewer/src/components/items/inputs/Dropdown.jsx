@@ -15,14 +15,14 @@ import {
  *
  * This component is DISPLAY ONLY for the current selection.
  * It does NOT set default values - that is handled by useInputOptions hook.
- * It ONLY calls setInputValue when the user actively selects a new option.
+ * It ONLY calls setInputJobValue when the user actively selects a new option.
  *
  * @param {string} label - Label to display above the dropdown
  * @param {Array} options - Array of option strings
  * @param {string} selectedValue - Current selected value from store (for display)
  * @param {string} placeholder - Placeholder text when nothing selected
  * @param {string} name - Input name for store updates
- * @param {function} setInputValue - Callback for user selection changes ONLY
+ * @param {function} setInputJobValue - Callback for user selection changes ONLY
  */
 const Dropdown = ({
   label = '',
@@ -30,7 +30,7 @@ const Dropdown = ({
   selectedValue,
   placeholder = 'Select option...',
   name,
-  setInputValue,
+  setInputJobValue,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState([]);
@@ -116,8 +116,8 @@ const Dropdown = ({
 
   const toggleSelection = option => {
     // User actively selected an option - notify store
-    if (setInputValue && name) {
-      setInputValue(name, option.id);
+    if (setInputJobValue && name) {
+      setInputJobValue(name, option.id);
     }
     setIsOpen(false);
   };

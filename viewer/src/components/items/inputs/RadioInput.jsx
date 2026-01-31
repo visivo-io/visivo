@@ -5,7 +5,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * RadioInput - Single-select input displayed as radio buttons.
  *
  * This is a display-only component - it receives selectedValue from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Small option sets (2-5 options) where all choices should be visible.
  */
@@ -14,7 +14,7 @@ const RadioInput = ({
   options: rawOptions,
   selectedValue, // Current value from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [options, setOptions] = useState([]);
 
@@ -30,9 +30,9 @@ const RadioInput = ({
   }, [rawOptions]);
 
   const handleChange = value => {
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, value);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, value);
     }
   };
 

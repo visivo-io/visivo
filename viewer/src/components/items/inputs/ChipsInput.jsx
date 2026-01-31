@@ -6,7 +6,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * ChipsInput - Multi-select input displayed as clickable chips/tags.
  *
  * This is a display-only component - it receives selectedValues from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Medium option sets (3-15 options) where a compact, visual
  * representation of selections is preferred.
@@ -16,7 +16,7 @@ const ChipsInput = ({
   options: rawOptions,
   selectedValues: propSelectedValues, // Current values from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [options, setOptions] = useState([]);
 
@@ -45,15 +45,15 @@ const ChipsInput = ({
       newValues = [...selectedValues, value];
     }
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, newValues);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, newValues);
     }
   };
 
   const handleClearAll = () => {
-    if (setInputValue) {
-      setInputValue(name, []);
+    if (setInputJobValue) {
+      setInputJobValue(name, []);
     }
   };
 

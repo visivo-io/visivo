@@ -71,10 +71,10 @@ describe('LineageNew', () => {
   const mockFetchDimensions = jest.fn();
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
-  const mockFetchInsightConfigs = jest.fn();
-  const mockFetchMarkdownConfigs = jest.fn();
-  const mockFetchChartConfigs = jest.fn();
-  const mockFetchTableConfigs = jest.fn();
+  const mockFetchInsights = jest.fn();
+  const mockFetchMarkdowns = jest.fn();
+  const mockFetchCharts = jest.fn();
+  const mockFetchTables = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -95,18 +95,18 @@ describe('LineageNew', () => {
     relations: [],
     fetchRelations: mockFetchRelations,
     relationsLoading: false,
-    insightConfigs: [],
-    fetchInsightConfigs: mockFetchInsightConfigs,
-    insightConfigsLoading: false,
-    markdownConfigs: [],
-    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
-    markdownConfigsLoading: false,
-    chartConfigs: [],
-    fetchChartConfigs: mockFetchChartConfigs,
-    chartConfigsLoading: false,
-    tableConfigs: [],
-    fetchTableConfigs: mockFetchTableConfigs,
-    tableConfigsLoading: false,
+    insights: [],
+    fetchInsights: mockFetchInsights,
+    insightsLoading: false,
+    markdowns: [],
+    fetchMarkdowns: mockFetchMarkdowns,
+    markdownsLoading: false,
+    charts: [],
+    fetchCharts: mockFetchCharts,
+    chartsLoading: false,
+    tables: [],
+    fetchTables: mockFetchTables,
+    tablesLoading: false,
   };
 
   const emptyDagData = {

@@ -141,7 +141,7 @@ export const usePreviewData = (type, config, options = {}) => {
 const PREVIEW_STORE_PREFIX = '__preview__';
 
 export const useInsightPreviewData = (insightConfig, options = {}) => {
-  const storeInsightData = useStore(state => state.insights);
+  const storeInsightData = useStore(state => state.insightJobs);
 
   const previewInsightKey = insightConfig?.name
     ? PREVIEW_STORE_PREFIX + insightConfig.name
@@ -176,7 +176,7 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     if (!insightConfig?.props || !previewInsightKey) return;
     if (previewState.needsPreviewRun || previewState.isLoading) return;
 
-    const existing = useStore.getState().insights?.[previewInsightKey];
+    const existing = useStore.getState().insightJobs?.[previewInsightKey];
     if (!existing?.data) return;
 
     const { type: newType, ...restProps } = insightConfig.props;
@@ -190,7 +190,7 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     if (typeChanged) payload.type = newType;
     if (staticChanged) payload.static_props = newStaticProps;
 
-    useStore.getState().updateInsight(previewInsightKey, payload);
+    useStore.getState().updateInsightJob(previewInsightKey, payload);
   }, [insightConfig, previewInsightKey, previewState.needsPreviewRun, previewState.isLoading]);
 
   return {

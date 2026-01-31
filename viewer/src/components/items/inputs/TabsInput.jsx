@@ -5,7 +5,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * TabsInput - Single-select input displayed as segmented tabs.
  *
  * This is a display-only component - it receives selectedValue from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Small to medium option sets (2-6 options) where a horizontal
  * button group is preferred over a dropdown.
@@ -15,7 +15,7 @@ const TabsInput = ({
   options: rawOptions,
   selectedValue, // Current value from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [options, setOptions] = useState([]);
 
@@ -31,9 +31,9 @@ const TabsInput = ({
   }, [rawOptions]);
 
   const handleSelect = value => {
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, value);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, value);
     }
   };
 

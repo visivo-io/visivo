@@ -27,15 +27,15 @@ describe('Dropdown Component', () => {
     expect(screen.queryByText('Option A')).not.toBeInTheDocument();
   });
 
-  it('selects single option and calls setInputValue', () => {
-    const setInputValue = jest.fn();
-    render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
+  it('selects single option and calls setInputJobValue', () => {
+    const setInputJobValue = jest.fn();
+    render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
     fireEvent.click(screen.getByRole('button'));
 
     fireEvent.click(screen.getByText('Option A'));
 
-    // setInputValue should be called with the selected option
-    expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
+    // setInputJobValue should be called with the selected option
+    expect(setInputJobValue).toHaveBeenCalledWith('test', 'Option A');
   });
 
   it('displays selectedValue from props (not managing its own default)', () => {
@@ -45,13 +45,13 @@ describe('Dropdown Component', () => {
   });
 
   it('can change selection to a different option', () => {
-    const setInputValue = jest.fn();
+    const setInputJobValue = jest.fn();
     render(
       <Dropdown
         options={options}
         selectedValue="Option A"
         name="test"
-        setInputValue={setInputValue}
+        setInputJobValue={setInputJobValue}
       />
     );
 
@@ -63,13 +63,13 @@ describe('Dropdown Component', () => {
     // Select Option B
     fireEvent.click(screen.getByText('Option B'));
 
-    // setInputValue should be called with the new selection
-    expect(setInputValue).toHaveBeenCalledWith('test', 'Option B');
+    // setInputJobValue should be called with the new selection
+    expect(setInputJobValue).toHaveBeenCalledWith('test', 'Option B');
   });
 
   it('supports keyboard navigation (ArrowDown + Enter)', () => {
-    const setInputValue = jest.fn();
-    render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
+    const setInputJobValue = jest.fn();
+    render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
     const button = screen.getByRole('button');
 
     fireEvent.keyDown(button, { key: 'ArrowDown' });
@@ -78,43 +78,43 @@ describe('Dropdown Component', () => {
     fireEvent.keyDown(button, { key: 'ArrowDown' });
     fireEvent.keyDown(button, { key: 'Enter' });
 
-    // setInputValue should be called after keyboard selection
-    expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
+    // setInputJobValue should be called after keyboard selection
+    expect(setInputJobValue).toHaveBeenCalledWith('test', 'Option A');
   });
 
   describe('display-only behavior', () => {
-    it('does NOT call setInputValue on initial render (display only)', () => {
+    it('does NOT call setInputJobValue on initial render (display only)', () => {
       // Dropdown should NOT set defaults - that's handled by useInputOptions hook
-      const setInputValue = jest.fn();
+      const setInputJobValue = jest.fn();
 
       render(
         <Dropdown
           options={options}
           selectedValue="Option A"
           name="test"
-          setInputValue={setInputValue}
+          setInputJobValue={setInputJobValue}
         />
       );
 
-      // setInputValue should NOT be called on render (no default setting)
-      expect(setInputValue).not.toHaveBeenCalled();
+      // setInputJobValue should NOT be called on render (no default setting)
+      expect(setInputJobValue).not.toHaveBeenCalled();
     });
 
-    it('calls setInputValue ONLY on user selection', () => {
-      const setInputValue = jest.fn();
+    it('calls setInputJobValue ONLY on user selection', () => {
+      const setInputJobValue = jest.fn();
 
-      render(<Dropdown options={options} name="test" setInputValue={setInputValue} />);
+      render(<Dropdown options={options} name="test" setInputJobValue={setInputJobValue} />);
 
-      // Initial render - setInputValue NOT called
-      expect(setInputValue).not.toHaveBeenCalled();
+      // Initial render - setInputJobValue NOT called
+      expect(setInputJobValue).not.toHaveBeenCalled();
 
       // User selects an option
       fireEvent.click(screen.getByRole('button'));
       fireEvent.click(screen.getByText('Option A'));
 
-      // Now setInputValue should be called once
-      expect(setInputValue).toHaveBeenCalledTimes(1);
-      expect(setInputValue).toHaveBeenCalledWith('test', 'Option A');
+      // Now setInputJobValue should be called once
+      expect(setInputJobValue).toHaveBeenCalledTimes(1);
+      expect(setInputJobValue).toHaveBeenCalledWith('test', 'Option A');
     });
 
     it('re-renders correctly when selectedValue prop changes', () => {

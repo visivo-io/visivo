@@ -183,10 +183,10 @@ const loadExtractComputeInput = async (db, inputData) => {
 export const useInputsData = (projectId, inputNames) => {
   const db = useDuckDB();
   const fetchInputs = useFetchInputs();
-  const setInputOptions = useStore(state => state.setInputOptions);
-  const setDefaultInputValues = useStore(state => state.setDefaultInputValues);
-  const setInputData = useStore(state => state.setInputData);
-  const storeInputOptions = useStore(state => state.inputOptions);
+  const setInputJobOptions = useStore(state => state.setInputJobOptions);
+  const setDefaultInputJobValues = useStore(state => state.setDefaultInputJobValues);
+  const setInputJobData = useStore(state => state.setInputJobData);
+  const storeInputOptions = useStore(state => state.inputJobOptions);
 
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInputNames = useMemo(() => {
@@ -256,9 +256,9 @@ export const useInputsData = (projectId, inputNames) => {
     if (data?.processed?.length > 0) {
       // Batch set all options
       data.processed.forEach(({ name, options, data: inputData }) => {
-        setInputOptions(name, options);
+        setInputJobOptions(name, options);
         if (inputData) {
-          setInputData(name, inputData);
+          setInputJobData(name, inputData);
         }
       });
 
@@ -272,10 +272,10 @@ export const useInputsData = (projectId, inputNames) => {
         }));
 
       if (inputDefaults.length > 0) {
-        setDefaultInputValues(inputDefaults);
+        setDefaultInputJobValues(inputDefaults);
       }
     }
-  }, [data, setInputOptions, setInputData, setDefaultInputValues]);
+  }, [data, setInputJobOptions, setInputJobData, setDefaultInputJobValues]);
 
   return {
     isInputsLoading: isLoading,

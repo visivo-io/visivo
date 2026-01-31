@@ -37,11 +37,11 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
       const result = {};
       // Get input names from pre-computed insight dependencies
       for (const insightName of chartInsightNames) {
-        const insight = state.insights[insightName];
+        const insight = state.insightJobs[insightName];
         if (insight?.inputDependencies) {
           for (const inputName of insight.inputDependencies) {
-            if (state.inputs[inputName]) {
-              result[inputName] = state.inputs[inputName];
+            if (state.inputJobs[inputName]) {
+              result[inputName] = state.inputJobs[inputName];
             }
           }
         }
@@ -73,7 +73,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
       if (!chartInsightNames.length) return {};
       const data = {};
       for (const name of chartInsightNames) {
-        if (state.insights[name]) data[name] = state.insights[name];
+        if (state.insightJobs[name]) data[name] = state.insightJobs[name];
       }
       return data;
     })
