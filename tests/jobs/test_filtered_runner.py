@@ -36,7 +36,7 @@ def test_Runner_trace_with_default():
     server_url = f"http://localhost:{port}"
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
 
 
 def test_Runner_trace_given_source():
@@ -52,7 +52,7 @@ def test_Runner_trace_given_source():
 
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
 
 
 def test_runner_with_csv_script_model():
@@ -68,8 +68,8 @@ def test_runner_with_csv_script_model():
 
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
-    assert os.path.exists(f"{output_dir}/models/{model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/models/{model.name}.duckdb")
 
 
 def test_runner_with_local_merge_model():
@@ -93,7 +93,7 @@ def test_runner_with_local_merge_model():
 
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
 
 
 def test_runner_dag_filter():
@@ -124,7 +124,7 @@ def test_runner_dag_filter():
         server_url=server_url,
     )
     runner.run()
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
 
 
 def test_runner_dag_filter_with_no_jobs():
@@ -168,9 +168,9 @@ def test_runner_with_local_merge_and_csv_model():
     runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
 
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
-    assert os.path.exists(f"{output_dir}/models/{csv_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/models/{local_merge_model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/models/{csv_model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/models/{local_merge_model.name}.duckdb")
 
 
 def test_runner_with_nested_local_merge_models():
@@ -196,12 +196,12 @@ def test_runner_with_nested_local_merge_models():
     trace = TraceFactory(name="trace1", model=outer_merge_model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
 
-    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    os.makedirs(f"{output_dir}/main/traces/{trace.name}", exist_ok=True)
 
     runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
 
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
-    assert os.path.exists(f"{output_dir}/models/{csv_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/models/{inner_merge_model.name}.duckdb")
-    assert os.path.exists(f"{output_dir}/models/{outer_merge_model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/traces/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/main/models/{csv_model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/models/{inner_merge_model.name}.duckdb")
+    assert os.path.exists(f"{output_dir}/main/models/{outer_merge_model.name}.duckdb")

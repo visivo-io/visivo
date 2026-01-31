@@ -47,6 +47,7 @@ const RefTextArea = ({
   hideAddButton = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [internalValue, setInternalValue] = useState('');
   const [showSelector, setShowSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState(null);
@@ -56,8 +57,11 @@ const RefTextArea = ({
   const containerRef = useRef(null);
   const keepEditModeRef = useRef(false); // Ref to track if we should stay in edit mode after operations
 
-  // Parse value into segments for display mode
-  const parsedSegments = useMemo(() => parseTextWithRefs(value), [value]);
+  // Parse value into segments - use internalValue while editing for cursor tracking
+  const parsedSegments = useMemo(
+    () => parseTextWithRefs(isEditing ? internalValue : value),
+    [isEditing, internalValue, value]
+  );
 
   // Find which ref segment the cursor is currently inside (if any)
   const currentRefAtCursor = useMemo(() => {
@@ -162,32 +166,33 @@ const RefTextArea = ({
       // If we're in replace mode, replace the entire ref segment
       if (replaceRefSegment) {
         const newValue =
-          value.slice(0, replaceRefSegment.start) +
+          internalValue.slice(0, replaceRefSegment.start) +
           fullRefString +
-          value.slice(replaceRefSegment.end);
-        onChange(newValue);
+          internalValue.slice(replaceRefSegment.end);
+        setInternalValue(newValue);
         setReplaceRefSegment(null);
       } else if (cursorPosition !== null) {
         // Insert at cursor position
         const insertPosition = cursorPosition;
 
         // Check if we're already inside a ${}
-        if (isInsideDollarBrace(value, insertPosition)) {
+        if (isInsideDollarBrace(internalValue, insertPosition)) {
           // Just insert ref() without ${}
-          const newValue = value.slice(0, insertPosition) + refString + value.slice(insertPosition);
-          onChange(newValue);
+          const newValue =
+            internalValue.slice(0, insertPosition) + refString + internalValue.slice(insertPosition);
+          setInternalValue(newValue);
         } else {
           // Wrap with ${}
           const newValue =
-            value.slice(0, insertPosition) + fullRefString + value.slice(insertPosition);
-          onChange(newValue);
+            internalValue.slice(0, insertPosition) + fullRefString + internalValue.slice(insertPosition);
+          setInternalValue(newValue);
         }
       } else {
         // Append to end
-        if (isInsideDollarBrace(value, value.length)) {
-          onChange(value + refString);
+        if (isInsideDollarBrace(internalValue, internalValue.length)) {
+          setInternalValue(internalValue + refString);
         } else {
-          onChange(value + fullRefString);
+          setInternalValue(internalValue + fullRefString);
         }
       }
 
@@ -200,7 +205,7 @@ const RefTextArea = ({
         keepEditModeRef.current = false;
       }, 200);
     },
-    [value, onChange, cursorPosition, replaceRefSegment]
+    [internalValue, setInternalValue, cursorPosition, replaceRefSegment]
   );
 
   // Start replacing a ref - opens selector in replace mode
@@ -225,9 +230,11 @@ const RefTextArea = ({
     });
   };
 
-  // Handle editor change
+  // Handle editor change - buffer internally, only commit on blur
   const handleEditorChange = newValue => {
-    onChange(newValue || '');
+    // Strip leading/trailing whitespace and newlines from the value
+    const cleanedValue = (newValue || '').trim();
+    setInternalValue(cleanedValue);
   };
 
   // Close selector
@@ -262,31 +269,34 @@ const RefTextArea = ({
 
   // Check if we should show the add button
   // Hide when: hideAddButton prop is true, or cursor is inside ${}, or cursor is on a ref
+  const activeValue = isEditing ? internalValue : value;
   const showAddButton =
     !hideAddButton &&
-    !isInsideDollarBrace(value, cursorPosition ?? value.length) &&
+    !isInsideDollarBrace(activeValue, cursorPosition ?? activeValue.length) &&
     !currentRefAtCursor;
 
   // Show swap button when cursor is on a ref (in edit mode)
   const showSwapButton = isEditing && currentRefAtCursor && !hideAddButton;
 
-  // Enter edit mode
+  // Enter edit mode - initialize internalValue from prop
   const enterEditMode = useCallback(() => {
     if (!disabled) {
+      setInternalValue(value);
       setIsEditing(true);
     }
-  }, [disabled]);
+  }, [disabled, value]);
 
-  // Exit edit mode on blur (with small delay for click handling)
+  // Exit edit mode on blur - commit internalValue to parent
   const handleEditorBlur = useCallback(() => {
     // Small delay to allow click events to fire first (onMouseDown sets keepEditModeRef)
     setTimeout(() => {
       // Don't exit edit mode if keepEditModeRef is true (button was clicked)
       if (!keepEditModeRef.current) {
+        onChange(internalValue);
         setIsEditing(false);
       }
     }, 150);
-  }, []);
+  }, [onChange, internalValue]);
 
   // Render a ref pill for display mode
   const renderRefPill = (name, property, key) => {
@@ -391,7 +401,7 @@ const RefTextArea = ({
               height={editorHeight}
               language="sql"
               theme="vs-dark"
-              value={value}
+              value={internalValue}
               onChange={handleEditorChange}
               onMount={handleEditorMount}
               options={{

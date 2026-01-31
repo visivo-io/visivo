@@ -1,9 +1,10 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useFetchInsights } from '../contexts/QueryContext';
+import { useFetchInsightJobs } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
+import { DEFAULT_RUN_ID } from '../constants';
 
 /**
  * Extract input names from a string containing ${inputName.accessor} patterns
@@ -90,7 +91,7 @@ const extractInputDependencies = (query, staticProps = null, knownInputNames = n
  * @param {Object} inputs - Current input values
  * @returns {Promise<Object>} Processed insight data
  */
-const processInsight = async (db, insight, inputs) => {
+const processInsight = async (db, insight, inputs, { forceReload = false } = {}) => {
   try {
     const { name, files, query, props_mapping, split_key, type, static_props } = insight;
     const insightName = name;
@@ -123,7 +124,7 @@ const processInsight = async (db, insight, inputs) => {
       };
     }
 
-    const { loaded, failed } = await loadInsightParquetFiles(db, files);
+    const { loaded, failed } = await loadInsightParquetFiles(db, files, forceReload);
 
     const preparedQuery = prepPostQuery({ query }, inputs);
 
@@ -159,10 +160,7 @@ const processInsight = async (db, insight, inputs) => {
   } catch (error) {
     const insightName = insight.name;
     // Extract input dependencies even in error case for Chart.jsx selective subscriptions
-    const errorInputDependencies = extractInputDependencies(
-      insight.query,
-      insight.static_props
-    );
+    const errorInputDependencies = extractInputDependencies(insight.query, insight.static_props);
 
     return {
       [insightName]: {
@@ -195,11 +193,20 @@ const processInsight = async (db, insight, inputs) => {
  *
  * @param {string} projectId - Project ID
  * @param {string[]} insightNames - Array of insight names to load
+ * @param {string} runId - Run ID to load data from (default: "main")
+ * @param {Object} options - Optional configuration
+ * @param {string} options.storeKeyPrefix - Prefix for Zustand store keys (e.g., '__preview__')
+ * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runInstanceId)
  * @returns {Object} Insights data and loading state
  */
-export const useInsightsData = (projectId, insightNames) => {
+export const useInsightsData = (
+  projectId,
+  insightNames,
+  runId = DEFAULT_RUN_ID,
+  { storeKeyPrefix = '', cacheKey = null } = {}
+) => {
   const db = useDuckDB();
-  const fetchInsights = useFetchInsights();
+  const fetchInsights = useFetchInsightJobs();
   const setInsights = useStore(state => state.setInsights);
   const storeInsightData = useStore(state => state.insights);
   const getInputs = useStore(state => state.inputs);
@@ -282,34 +289,24 @@ export const useInsightsData = (projectId, insightNames) => {
     return JSON.stringify(relevantInputValues);
   }, [hasQueryMetadata, relevantInputValues]);
 
+  const isPreviewMode = storeKeyPrefix !== '';
+
   // Main query function
   const queryFn = useCallback(async () => {
+    if (!db) return {};
+    if (!stableInsightNames.length) return {};
+    if (!fetchInsights) return {};
 
-    if (!db) {
-      return {};
-    }
-
-    if (!stableInsightNames.length) {
-      return {};
-    }
-
-    if (!fetchInsights) {
-      console.error('useInsightsData Debug - fetchInsights is not defined!');
-      return {};
-    }
-
-    const insights = await fetchInsights(projectId, stableInsightNames);
-
-    if (!insights?.length) {
-      return {};
-    }
+    const insights = await fetchInsights(projectId, stableInsightNames, runId);
+    if (!insights?.length) return {};
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
-    // This ensures we always have the latest inputs at query execution time
     const freshInputs = useStore.getState().inputs || {};
 
     const results = await Promise.allSettled(
-      insights.map(insight => processInsight(db, insight, freshInputs))
+      insights.map(insight =>
+        processInsight(db, insight, freshInputs, { forceReload: isPreviewMode })
+      )
     );
 
     const mergedData = {};
@@ -318,7 +315,6 @@ export const useInsightsData = (projectId, insightNames) => {
         Object.assign(mergedData, result.value);
       } else {
         const insightName = stableInsightNames[index];
-        // Add error state for this insight
         mergedData[insightName] = {
           name: insightName,
           data: [],
@@ -328,23 +324,25 @@ export const useInsightsData = (projectId, insightNames) => {
     });
 
     return mergedData;
-    // Note: getInputs removed from deps since we use useStore.getState().inputs for fresh values
-    // The queryKey still changes when inputs change (via stableRelevantInputs/pendingInsightInputsReady)
-  }, [db, projectId, stableInsightNames, fetchInsights]);
+  }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
-  const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db;
+  // Also includes runId to separate cache for different runs
+  // Also includes cacheKey for preview cache busting (runInstanceId changes each preview run)
+  const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({
     queryKey: [
       'insights',
       projectId,
+      runId,
       stableInsightNames,
       !!db,
       stableRelevantInputs,
       pendingInsightInputsReady,
+      cacheKey,
     ],
     queryFn,
     enabled: queryEnabled,
@@ -358,11 +356,20 @@ export const useInsightsData = (projectId, insightNames) => {
   // Update store when data arrives
   useEffect(() => {
     if (data && Object.keys(data).length > 0) {
-      setInsights(data);
+      if (storeKeyPrefix) {
+        const prefixed = {};
+        for (const [key, value] of Object.entries(data)) {
+          prefixed[storeKeyPrefix + key] = value;
+        }
+        setInsights(prefixed);
+      } else {
+        setInsights(data);
+      }
     }
-  }, [data, setInsights]);
+  }, [data, setInsights, storeKeyPrefix]);
 
   const returnValue = {
+    insights: storeInsightData || {},
     insightsData: storeInsightData || {},
     isInsightsLoading: isLoading,
     // Only report hasAllInsightData=true when we have complete data without pending inputs

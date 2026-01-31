@@ -11,16 +11,28 @@ from visivo.jobs.job import (
 from visivo.logger.query_error_logger import log_failed_query, extract_error_location
 from time import time
 from visivo.jobs.utils import get_source_for_model
+from visivo.constants import DEFAULT_RUN_ID
 import json
 import os
 
 
-def action(insight: Insight, dag: ProjectDag, output_dir):
-    """Execute insight job - tokenize insight and generate insight.json file"""
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    source = get_source_for_model(model, dag, output_dir)
+def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID):
+    """Execute insight job - tokenize insight and generate insight.json file
 
-    insight_query_info = insight.get_query_info(dag, output_dir)
+    Args:
+        insight: Insight object to execute
+        dag: Project DAG with dependencies
+        output_dir: Output directory for files
+        run_id: Run ID for this execution (default: "main" for standard runs)
+    """
+    # Organize files by run_id
+    # Structure: {output_dir}/{run_id}/files/ and {output_dir}/{run_id}/insights/
+    run_output_dir = f"{output_dir}/{run_id}"
+
+    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
+    source = get_source_for_model(model, dag, run_output_dir)
+
+    insight_query_info = insight.get_query_info(dag, run_output_dir)
 
     # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
     if insight_query_info.post_query:
@@ -38,7 +50,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
                     insight=insight,
                     query=insight_query_info.post_query,
                     dag=dag,
-                    output_dir=output_dir,
+                    output_dir=run_output_dir,
                     dialect=source.get_sqlglot_dialect(),  # Use source dialect for validation
                 )
             except Exception as e:
@@ -49,13 +61,15 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
     try:
         start_time = time()
 
-        files_directory = f"{output_dir}/files"
+        files_directory = f"{run_output_dir}/files"
+        insights_directory = f"{run_output_dir}/insights"
+
         if insight_query_info.pre_query:
             import polars as pl
 
             data = source.read_sql(insight_query_info.pre_query)
-            # Don't need to serialize for JSON since were writing to parquet now... although may get new errors... tbd... logic here was redundant with Aggregator anyways
             os.makedirs(files_directory, exist_ok=True)
+            # Use name_hash for file naming within the run directory
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
             df = pl.DataFrame(data)
             df.write_parquet(parquet_path)
@@ -82,9 +96,8 @@ def action(insight: Insight, dag: ProjectDag, output_dir):
             "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }
 
-        insight_directory = f"{output_dir}/insights"
-        insight_path = os.path.join(insight_directory, f"{insight.name_hash()}.json")
-        os.makedirs(insight_directory, exist_ok=True)
+        os.makedirs(insights_directory, exist_ok=True)
+        insight_path = os.path.join(insights_directory, f"{insight.name_hash()}.json")
         with open(insight_path, "w") as f:
             json.dump(insight_data, f, indent=2)
 
@@ -137,14 +150,22 @@ def _get_source(insight, dag, output_dir):
     return get_source_for_model(model, dag, output_dir)
 
 
-def job(dag, output_dir: str, insight: Insight):
-    """Create insight job for execution in the DAG runner"""
+def job(dag, output_dir: str, insight: Insight, run_id: str = None):
+    """Create insight job for execution in the DAG runner
+
+    Args:
+        dag: Project DAG
+        output_dir: Output directory for files
+        insight: Insight object to execute
+        run_id: Optional run ID for preview runs (passed to action for custom file naming)
+    """
     source = _get_source(insight, dag, output_dir)
-    return Job(
-        item=insight,
-        source=source,
-        action=action,
-        insight=insight,
-        dag=dag,
-        output_dir=output_dir,
-    )
+    kwargs = {
+        "insight": insight,
+        "dag": dag,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+
+    return Job(item=insight, source=source, action=action, **kwargs)

@@ -12,6 +12,7 @@ class FilteredRunner:
         dag_filter: str = None,
         server_url: str = None,
         working_dir: str = None,
+        run_id: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -20,6 +21,7 @@ class FilteredRunner:
         self.dag_filter = dag_filter
         self.server_url = server_url
         self.working_dir = working_dir
+        self.run_id = run_id
         self.project_dag = project.dag()
 
     def run(self):
@@ -32,5 +34,6 @@ class FilteredRunner:
                 server_url=self.server_url,
                 job_dag=job_dag,
                 working_dir=self.working_dir,
+                run_id=self.run_id,
             )
             dag_runner.run()
