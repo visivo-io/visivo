@@ -56,7 +56,7 @@ def register_data_views(app, flask_app, output_dir):
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")
     def viewer_file(path):
-        regex = r"\S*(\.png|\.ico|\.js|\.css|\.webmanifest|\.js\.map|\.css\.map)$"
+        regex = r"\S*(\.png|\.ico|\.js|\.css|\.wasm|\.webmanifest|\.js\.map|\.css\.map)$"
         if re.match(regex, path):
             return send_from_directory(VIEWER_PATH, path)
 
