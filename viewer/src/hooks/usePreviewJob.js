@@ -32,6 +32,7 @@ export const usePreviewJob = () => {
       setProgress(0);
       setProgressMessage('');
       setResult(null);
+      setRunInstanceId(null);
 
       const response = await fetch('/api/insight-jobs/', {
         method: 'POST',

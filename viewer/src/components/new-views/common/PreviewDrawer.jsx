@@ -78,7 +78,7 @@ const PreviewDrawer = ({
         data-testid="preview-drawer"
         className={`fixed top-12 bottom-0 bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out`}
         style={{
-          zIndex: 20, // Below edit panel (z-index 21) but above normal content
+          zIndex: -1, // Negative to ensure it's behind the panel
           width: `${width}px`,
           right: `${editPanelWidth}px`, // Position at the left edge of edit panel
           transform: isOpen ? 'translateX(0)' : `translateX(${width}px)`, // Slide right to hide behind panel
