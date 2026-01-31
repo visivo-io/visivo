@@ -355,4 +355,138 @@ describe('useInsightsData Hook', () => {
       expect(result.current.insightsData).toEqual({});
     });
   });
+
+  describe('runId gating', () => {
+    test('should not fetch when runId is null', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      const { result } = renderHook(
+        () => useInsightsData('project1', ['insight1'], null),
+        { wrapper: createWrapper() }
+      );
+
+      expect(mockFetchInsight).not.toHaveBeenCalled();
+      expect(result.current.isInsightsLoading).toBe(false);
+    });
+
+    test('should use default runId when runId is undefined', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      mockFetchInsight.mockImplementation(() => new Promise(() => {}));
+
+      const { result } = renderHook(
+        () => useInsightsData('project1', ['insight1'], undefined),
+        { wrapper: createWrapper() }
+      );
+
+      // undefined runId uses the DEFAULT_RUN_ID default parameter ('main'),
+      // so the query should be enabled and data should be incomplete
+      expect(result.current.hasAllInsightData).toBe(false);
+    });
+
+    test('should accept explicit runId for preview mode', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      mockFetchInsight.mockImplementation(() => new Promise(() => {}));
+
+      const { result } = renderHook(
+        () => useInsightsData('project1', ['insight1'], 'preview-my-insight'),
+        { wrapper: createWrapper() }
+      );
+
+      // Query should be enabled with a custom runId
+      expect(result.current.hasAllInsightData).toBe(false);
+    });
+  });
+
+  describe('options parameter', () => {
+    test('should accept options object as fourth parameter', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      // This verifies the new signature works: (projectId, names, runId, { storeKeyPrefix, cacheKey })
+      const { result } = renderHook(
+        () =>
+          useInsightsData('project1', ['insight1'], 'preview-test', {
+            storeKeyPrefix: '__preview__',
+            cacheKey: 'run-instance-abc',
+          }),
+        { wrapper: createWrapper() }
+      );
+
+      expect(result.current).toBeDefined();
+      expect(result.current.insightsData).toEqual({});
+    });
+
+    test('should work with empty options object', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      const { result } = renderHook(
+        () => useInsightsData('project1', ['insight1'], 'main', {}),
+        { wrapper: createWrapper() }
+      );
+
+      expect(result.current).toBeDefined();
+    });
+
+    test('should work without options parameter (uses defaults)', () => {
+      useStore.mockImplementation(selector => {
+        if (selector.toString().includes('setInsights')) {
+          return mockSetInsights;
+        }
+        if (selector.toString().includes('insights')) {
+          return {};
+        }
+        return null;
+      });
+
+      // Only passing projectId and insightNames, like Dashboard.jsx does
+      const { result } = renderHook(
+        () => useInsightsData('project1', ['insight1']),
+        { wrapper: createWrapper() }
+      );
+
+      expect(result.current).toBeDefined();
+      expect(result.current.insightsData).toEqual({});
+    });
+  });
 });
