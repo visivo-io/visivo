@@ -195,7 +195,6 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
  * @param {string[]} insightNames - Array of insight names to load
  * @param {string} runId - Run ID to load data from (default: "main")
  * @param {Object} previewResult - Optional preview result to use instead of fetching
- * @param {boolean} enabled - Whether to enable the query (default: true)
  * @returns {Object} Insights data and loading state
  */
 export const useInsightsData = (
@@ -203,7 +202,6 @@ export const useInsightsData = (
   insightNames,
   runId = DEFAULT_RUN_ID,
   previewResult = null,
-  enabled = true,
   { storeKeyPrefix = '' } = {}
 ) => {
   const db = useDuckDB();
@@ -338,7 +336,9 @@ export const useInsightsData = (
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   // Also includes runId to separate cache for different runs
   // Also includes previewResult to trigger refetch when preview result changes
-  const queryEnabled = enabled && !!projectId && stableInsightNames.length > 0 && !!db;
+  const isPreviewMode = storeKeyPrefix !== '';
+  const queryEnabled =
+    !!projectId && stableInsightNames.length > 0 && !!db && (!isPreviewMode || !!previewResult);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [

@@ -165,7 +165,6 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     insightConfig?.name ? [insightConfig.name] : [],
     `preview-${insightConfig?.name}`,
     previewState.result,
-    !!previewState.result,
     { storeKeyPrefix: PREVIEW_STORE_PREFIX }
   );
 
