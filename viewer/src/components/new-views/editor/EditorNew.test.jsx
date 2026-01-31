@@ -33,14 +33,14 @@ describe('EditorNew', () => {
   const mockFetchDimensions = jest.fn();
   const mockFetchMetrics = jest.fn();
   const mockFetchRelations = jest.fn();
-  const mockFetchInsightConfigs = jest.fn();
-  const mockFetchInputConfigs = jest.fn();
-  const mockFetchMarkdownConfigs = jest.fn();
-  const mockFetchChartConfigs = jest.fn();
-  const mockFetchTableConfigs = jest.fn();
+  const mockFetchInsights = jest.fn();
+  const mockFetchInputs = jest.fn();
+  const mockFetchMarkdowns = jest.fn();
+  const mockFetchCharts = jest.fn();
+  const mockFetchTables = jest.fn();
   const mockSaveModel = jest.fn();
-  const mockSaveChartConfig = jest.fn();
-  const mockSaveTableConfig = jest.fn();
+  const mockSaveChart = jest.fn();
+  const mockSaveTable = jest.fn();
 
   const defaultStoreState = {
     project: null,
@@ -66,28 +66,28 @@ describe('EditorNew', () => {
     fetchRelations: mockFetchRelations,
     relationsLoading: false,
     relationsError: null,
-    insightConfigs: [],
-    fetchInsightConfigs: mockFetchInsightConfigs,
-    insightConfigsLoading: false,
-    insightConfigsError: null,
-    inputConfigs: [],
-    fetchInputConfigs: mockFetchInputConfigs,
-    inputConfigsLoading: false,
-    inputConfigsError: null,
-    markdownConfigs: [],
-    fetchMarkdownConfigs: mockFetchMarkdownConfigs,
-    markdownConfigsLoading: false,
-    markdownConfigsError: null,
-    chartConfigs: [],
-    fetchChartConfigs: mockFetchChartConfigs,
-    saveChartConfig: mockSaveChartConfig,
-    chartConfigsLoading: false,
-    chartConfigsError: null,
-    tableConfigs: [],
-    fetchTableConfigs: mockFetchTableConfigs,
-    saveTableConfig: mockSaveTableConfig,
-    tableConfigsLoading: false,
-    tableConfigsError: null,
+    insights: [],
+    fetchInsights: mockFetchInsights,
+    insightsLoading: false,
+    insightsError: null,
+    inputs: [],
+    fetchInputs: mockFetchInputs,
+    inputsLoading: false,
+    inputsError: null,
+    markdowns: [],
+    fetchMarkdowns: mockFetchMarkdowns,
+    markdownsLoading: false,
+    markdownsError: null,
+    charts: [],
+    fetchCharts: mockFetchCharts,
+    saveChart: mockSaveChart,
+    chartsLoading: false,
+    chartsError: null,
+    tables: [],
+    fetchTables: mockFetchTables,
+    saveTable: mockSaveTable,
+    tablesLoading: false,
+    tablesError: null,
   };
 
   beforeEach(() => {

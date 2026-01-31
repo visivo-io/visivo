@@ -20,7 +20,7 @@ import {
  * DateRangeInput - Multi-select input displayed as a date range picker.
  *
  * This is a display-only component - it receives selectedValues from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Multi-select inputs with date options where users want to select a
  * contiguous date range. Shows calendar-style date pickers for start and end dates.
@@ -30,7 +30,7 @@ const DateRangeInput = ({
   options: rawOptions,
   selectedValues, // Current values from store (via parent) - array of ISO date strings
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [dateOptions, setDateOptions] = useState([]);
   const [isStartOpen, setIsStartOpen] = useState(false);
@@ -110,7 +110,7 @@ const DateRangeInput = ({
 
   // Update selection when dates change
   const updateSelection = (newStart, newEnd) => {
-    if (!setInputValue || !name) return;
+    if (!setInputJobValue || !name) return;
 
     // Ensure start is before end
     let effectiveStart = newStart;
@@ -136,7 +136,7 @@ const DateRangeInput = ({
       })
       .map(opt => opt.iso);
 
-    setInputValue(name, selectedOptions);
+    setInputJobValue(name, selectedOptions);
   };
 
   const handleStartSelect = dateOpt => {
@@ -151,8 +151,8 @@ const DateRangeInput = ({
 
   const clearSelection = e => {
     e.stopPropagation();
-    if (setInputValue && name) {
-      setInputValue(name, []);
+    if (setInputJobValue && name) {
+      setInputJobValue(name, []);
     }
   };
 

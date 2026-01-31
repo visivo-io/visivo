@@ -8,29 +8,29 @@ import * as tablesApi from '../api/tables';
  */
 const createTableSlice = (set, get) => ({
   // State
-  tableConfigs: [], // All tables with status (NEW, MODIFIED, PUBLISHED)
-  tableConfigsLoading: false,
-  tableConfigsError: null,
-  editingTableConfig: null, // Table being edited (null = create mode)
-  tableConfigModalOpen: false,
+  tables: [], // All tables with status (NEW, MODIFIED, PUBLISHED)
+  tablesLoading: false,
+  tablesError: null,
+  editingTable: null, // Table being edited (null = create mode)
+  tableModalOpen: false,
 
   // Fetch all tables from API
-  fetchTableConfigs: async () => {
-    set({ tableConfigsLoading: true, tableConfigsError: null });
+  fetchTables: async () => {
+    set({ tablesLoading: true, tablesError: null });
     try {
       const data = await tablesApi.fetchAllTables();
-      set({ tableConfigs: data.tables || [], tableConfigsLoading: false });
+      set({ tables: data.tables || [], tablesLoading: false });
     } catch (error) {
-      set({ tableConfigsError: error.message, tableConfigsLoading: false });
+      set({ tablesError: error.message, tablesLoading: false });
     }
   },
 
   // Save table to cache
-  saveTableConfig: async (name, config) => {
+  saveTable: async (name, config) => {
     try {
       const result = await tablesApi.saveTable(name, config);
       // Refresh tables list to get updated status
-      await get().fetchTableConfigs();
+      await get().fetchTables();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -42,10 +42,10 @@ const createTableSlice = (set, get) => ({
   },
 
   // Mark table for deletion (will be removed from YAML on publish)
-  deleteTableConfig: async name => {
+  deleteTable: async name => {
     try {
       await tablesApi.deleteTable(name);
-      await get().fetchTableConfigs();
+      await get().fetchTables();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -57,38 +57,38 @@ const createTableSlice = (set, get) => ({
   },
 
   // Open modal for editing existing table
-  openEditTableConfigModal: table => {
+  openEditTableModal: table => {
     set({
-      editingTableConfig: table,
-      tableConfigModalOpen: true,
+      editingTable: table,
+      tableModalOpen: true,
     });
   },
 
   // Open modal for creating new table
-  openCreateTableConfigModal: () => {
+  openCreateTableModal: () => {
     set({
-      editingTableConfig: null,
-      tableConfigModalOpen: true,
+      editingTable: null,
+      tableModalOpen: true,
     });
   },
 
   // Close modal
-  closeTableConfigModal: () => {
+  closeTableModal: () => {
     set({
-      editingTableConfig: null,
-      tableConfigModalOpen: false,
+      editingTable: null,
+      tableModalOpen: false,
     });
   },
 
   // Get table by name
-  getTableConfigByName: name => {
-    const { tableConfigs } = get();
-    return tableConfigs.find(t => t.name === name);
+  getTableByName: name => {
+    const { tables } = get();
+    return tables.find(t => t.name === name);
   },
 
   // Get status for a specific table
-  getTableConfigStatus: name => {
-    const table = get().getTableConfigByName(name);
+  getTableStatus: name => {
+    const table = get().getTableByName(name);
     return table?.status || null;
   },
 });

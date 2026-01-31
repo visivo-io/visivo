@@ -44,28 +44,28 @@ const EditorNew = () => {
   const relationsError = useStore(state => state.relationsError);
 
   // Insights
-  const insightConfigs = useStore(state => state.insightConfigs);
-  const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
-  const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
-  const insightConfigsError = useStore(state => state.insightConfigsError);
+  const insights = useStore(state => state.insights);
+  const fetchInsights = useStore(state => state.fetchInsights);
+  const insightsLoading = useStore(state => state.insightsLoading);
+  const insightsError = useStore(state => state.insightsError);
 
   // Markdowns
-  const markdownConfigs = useStore(state => state.markdownConfigs);
-  const fetchMarkdownConfigs = useStore(state => state.fetchMarkdownConfigs);
-  const markdownConfigsLoading = useStore(state => state.markdownConfigsLoading);
-  const markdownConfigsError = useStore(state => state.markdownConfigsError);
+  const markdowns = useStore(state => state.markdowns);
+  const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
+  const markdownsLoading = useStore(state => state.markdownsLoading);
+  const markdownsError = useStore(state => state.markdownsError);
 
   // Charts
-  const chartConfigs = useStore(state => state.chartConfigs);
-  const fetchChartConfigs = useStore(state => state.fetchChartConfigs);
-  const chartConfigsLoading = useStore(state => state.chartConfigsLoading);
-  const chartConfigsError = useStore(state => state.chartConfigsError);
+  const charts = useStore(state => state.charts);
+  const fetchCharts = useStore(state => state.fetchCharts);
+  const chartsLoading = useStore(state => state.chartsLoading);
+  const chartsError = useStore(state => state.chartsError);
 
   // Tables
-  const tableConfigs = useStore(state => state.tableConfigs);
-  const fetchTableConfigs = useStore(state => state.fetchTableConfigs);
-  const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
-  const tableConfigsError = useStore(state => state.tableConfigsError);
+  const tables = useStore(state => state.tables);
+  const fetchTables = useStore(state => state.fetchTables);
+  const tablesLoading = useStore(state => state.tablesLoading);
+  const tablesError = useStore(state => state.tablesError);
 
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState([]);
@@ -102,11 +102,11 @@ const EditorNew = () => {
     fetchDimensions();
     fetchMetrics();
     fetchRelations();
-    fetchInsightConfigs();
-    fetchMarkdownConfigs();
-    fetchChartConfigs();
-    fetchTableConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
+    fetchInsights();
+    fetchMarkdowns();
+    fetchCharts();
+    fetchTables();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
 
   // Compute object type counts
   const typeCounts = useMemo(() => {
@@ -116,12 +116,12 @@ const EditorNew = () => {
       dimension: dimensions?.length || 0,
       metric: metrics?.length || 0,
       relation: relations?.length || 0,
-      insight: insightConfigs?.length || 0,
-      markdown: markdownConfigs?.length || 0,
-      chart: chartConfigs?.length || 0,
-      table: tableConfigs?.length || 0,
+      insight: insights?.length || 0,
+      markdown: markdowns?.length || 0,
+      chart: charts?.length || 0,
+      table: tables?.length || 0,
     };
-  }, [sources, models, dimensions, metrics, relations, insightConfigs, markdownConfigs, chartConfigs, tableConfigs]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables]);
 
   // Filter sources by type and search query
   const filteredSources = useMemo(() => {
@@ -246,14 +246,14 @@ const EditorNew = () => {
 
   // Filter insights by type and search query
   const filteredInsights = useMemo(() => {
-    if (!insightConfigs) return [];
+    if (!insights) return [];
 
     // If types are selected and insight is not included, return empty
     if (selectedTypes.length > 0 && !selectedTypes.includes('insight')) {
       return [];
     }
 
-    let filtered = insightConfigs;
+    let filtered = insights;
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -267,18 +267,18 @@ const EditorNew = () => {
     }
 
     return filtered;
-  }, [insightConfigs, selectedTypes, searchQuery]);
+  }, [insights, selectedTypes, searchQuery]);
 
   // Filter markdowns by type and search query
   const filteredMarkdowns = useMemo(() => {
-    if (!markdownConfigs) return [];
+    if (!markdowns) return [];
 
     // If types are selected and markdown is not included, return empty
     if (selectedTypes.length > 0 && !selectedTypes.includes('markdown')) {
       return [];
     }
 
-    let filtered = markdownConfigs;
+    let filtered = markdowns;
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -291,18 +291,18 @@ const EditorNew = () => {
     }
 
     return filtered;
-  }, [markdownConfigs, selectedTypes, searchQuery]);
+  }, [markdowns, selectedTypes, searchQuery]);
 
   // Filter charts by type and search query
   const filteredCharts = useMemo(() => {
-    if (!chartConfigs) return [];
+    if (!charts) return [];
 
     // If types are selected and chart is not included, return empty
     if (selectedTypes.length > 0 && !selectedTypes.includes('chart')) {
       return [];
     }
 
-    let filtered = chartConfigs;
+    let filtered = charts;
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -313,18 +313,18 @@ const EditorNew = () => {
     }
 
     return filtered;
-  }, [chartConfigs, selectedTypes, searchQuery]);
+  }, [charts, selectedTypes, searchQuery]);
 
   // Filter tables by type and search query
   const filteredTables = useMemo(() => {
-    if (!tableConfigs) return [];
+    if (!tables) return [];
 
     // If types are selected and table is not included, return empty
     if (selectedTypes.length > 0 && !selectedTypes.includes('table')) {
       return [];
     }
 
-    let filtered = tableConfigs;
+    let filtered = tables;
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -335,7 +335,7 @@ const EditorNew = () => {
     }
 
     return filtered;
-  }, [tableConfigs, selectedTypes, searchQuery]);
+  }, [tables, selectedTypes, searchQuery]);
 
   // Handle source selection
   const handleSourceSelect = useCallback(source => {
@@ -411,11 +411,11 @@ const EditorNew = () => {
     await fetchDimensions();
     await fetchMetrics();
     await fetchRelations();
-    await fetchInsightConfigs();
-    await fetchMarkdownConfigs();
-    await fetchChartConfigs();
-    await fetchTableConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
+    await fetchInsights();
+    await fetchMarkdowns();
+    await fetchCharts();
+    await fetchTables();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
 
   // Callback for successful saves - refresh data and clear edit state
   const onSuccessfulSave = useCallback(async () => {
@@ -428,7 +428,7 @@ const EditorNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = currentEdit !== null || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -451,10 +451,10 @@ const EditorNew = () => {
   const insightTypeConfig = getTypeByValue('insight');
   const InsightIcon = insightTypeConfig?.icon;
 
-  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insightConfigs?.length && !markdownConfigs?.length && !chartConfigs?.length && !tableConfigs?.length;
+  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insights?.length && !markdowns?.length && !charts?.length && !tables?.length;
   const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length && !filteredMarkdowns.length && !filteredCharts.length && !filteredTables.length;
 
-  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError || markdownConfigsError || chartConfigsError || tableConfigsError;
+  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError;
 
   return (
     <div className="flex h-[calc(100vh-48px)]">
@@ -490,7 +490,7 @@ const EditorNew = () => {
         {/* Error state */}
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightConfigsError || markdownConfigsError || chartConfigsError || tableConfigsError}
+            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError}
           </div>
         )}
 

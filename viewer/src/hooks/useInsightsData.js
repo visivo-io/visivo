@@ -207,9 +207,9 @@ export const useInsightsData = (
 ) => {
   const db = useDuckDB();
   const fetchInsights = useFetchInsightJobs();
-  const setInsights = useStore(state => state.setInsights);
-  const storeInsightData = useStore(state => state.insights);
-  const getInputs = useStore(state => state.inputs);
+  const setInsightJobs = useStore(state => state.setInsightJobs);
+  const storeInsightData = useStore(state => state.insightJobs);
+  const getInputs = useStore(state => state.inputJobs);
 
   // Stable sorted array to prevent unnecessary re-fetches
   const stableInsightNames = useMemo(() => {
@@ -219,12 +219,15 @@ export const useInsightsData = (
 
   // Check if we have query metadata for all requested insights
   // This is used to determine if we can compute input dependencies
+  // Use storeKeyPrefix to look up the correct keys (e.g., '__preview__' prefix in preview mode)
   const hasQueryMetadata = useMemo(() => {
     if (!stableInsightNames.length) return false;
     if (!storeInsightData) return false;
 
-    return stableInsightNames.every(name => storeInsightData[name]?.query !== undefined);
-  }, [storeInsightData, stableInsightNames]);
+    return stableInsightNames.every(
+      name => storeInsightData[storeKeyPrefix + name]?.query !== undefined
+    );
+  }, [storeInsightData, stableInsightNames, storeKeyPrefix]);
 
   // Check if we have complete data for all requested insights
   // This is used to determine the hasAllInsightData return value
@@ -233,13 +236,11 @@ export const useInsightsData = (
     if (!stableInsightNames.length) return true; // No insights = complete
     if (!storeInsightData) return false;
 
-    return stableInsightNames.every(
-      name =>
-        storeInsightData[name]?.data !== null &&
-        storeInsightData[name]?.data !== undefined &&
-        !storeInsightData[name]?.pendingInputs?.length
-    );
-  }, [storeInsightData, stableInsightNames]);
+    return stableInsightNames.every(name => {
+      const entry = storeInsightData[storeKeyPrefix + name];
+      return entry?.data !== null && entry?.data !== undefined && !entry?.pendingInputs?.length;
+    });
+  }, [storeInsightData, stableInsightNames, storeKeyPrefix]);
 
   // Check if any insights are waiting for inputs that are now available
   // This triggers a refetch when inputs become ready
@@ -247,7 +248,7 @@ export const useInsightsData = (
     if (!storeInsightData || !getInputs) return false;
 
     for (const insightName of stableInsightNames) {
-      const insight = storeInsightData[insightName];
+      const insight = storeInsightData[storeKeyPrefix + insightName];
       if (insight?.pendingInputs?.length) {
         // Check if all pending inputs are now available
         const allReady = insight.pendingInputs.every(inputName => getInputs[inputName]);
@@ -257,7 +258,7 @@ export const useInsightsData = (
       }
     }
     return false;
-  }, [storeInsightData, getInputs, stableInsightNames]);
+  }, [storeInsightData, getInputs, stableInsightNames, storeKeyPrefix]);
 
   // Compute relevant input values based on which inputs each insight actually uses
   // This enables selective refetch - only refetch when inputs that matter change
@@ -270,7 +271,7 @@ export const useInsightsData = (
 
     // Check each insight's query and static_props for input dependencies
     for (const insightName of stableInsightNames) {
-      const insight = storeInsightData[insightName];
+      const insight = storeInsightData[storeKeyPrefix + insightName];
       if (insight?.query || insight?.static_props) {
         const deps = extractInputDependencies(insight.query, insight.static_props, knownInputNames);
         deps.forEach(inputName => {
@@ -280,7 +281,7 @@ export const useInsightsData = (
     }
 
     return relevantInputs;
-  }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata]);
+  }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata, storeKeyPrefix]);
 
   // Create a stable string representation of relevant inputs for the queryKey
   // On initial load (no query metadata yet), use 'initial' to force first fetch
@@ -301,7 +302,7 @@ export const useInsightsData = (
     if (!insights?.length) return {};
 
     // Get FRESH inputs from store (not closure value) to avoid race condition
-    const freshInputs = useStore.getState().inputs || {};
+    const freshInputs = useStore.getState().inputJobs || {};
 
     const results = await Promise.allSettled(
       insights.map(insight =>
@@ -361,12 +362,12 @@ export const useInsightsData = (
         for (const [key, value] of Object.entries(data)) {
           prefixed[storeKeyPrefix + key] = value;
         }
-        setInsights(prefixed);
+        setInsightJobs(prefixed);
       } else {
-        setInsights(data);
+        setInsightJobs(data);
       }
     }
-  }, [data, setInsights, storeKeyPrefix]);
+  }, [data, setInsightJobs, storeKeyPrefix]);
 
   const returnValue = {
     insights: storeInsightData || {},

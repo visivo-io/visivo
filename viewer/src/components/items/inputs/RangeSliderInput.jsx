@@ -5,7 +5,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * RangeSliderInput - Multi-select input displayed as a two-handle range slider.
  *
  * This is a display-only component - it receives selectedValues from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Numeric ranges where users need to select a min and max value.
  * Options should be numeric or convertible to numbers.
@@ -15,7 +15,7 @@ const RangeSliderInput = ({
   options: rawOptions,
   selectedValues: propSelectedValues, // Current values from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [numericOptions, setNumericOptions] = useState([]);
   const sliderRef = useRef(null);
@@ -67,9 +67,9 @@ const RangeSliderInput = ({
     // Get all values within the new range
     const selectedValues = numericOptions.filter(v => v >= newMin && v <= maxValue);
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, selectedValues);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, selectedValues);
     }
   };
 
@@ -80,9 +80,9 @@ const RangeSliderInput = ({
     // Get all values within the new range
     const selectedValues = numericOptions.filter(v => v >= minValue && v <= newMax);
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, selectedValues);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, selectedValues);
     }
   };
 

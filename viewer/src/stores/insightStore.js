@@ -8,29 +8,29 @@ import * as insightsApi from '../api/insights';
  */
 const createInsightSlice = (set, get) => ({
   // State
-  insightConfigs: [], // All insights with status (NEW, MODIFIED, PUBLISHED)
-  insightConfigsLoading: false,
-  insightConfigsError: null,
-  editingInsightConfig: null, // Insight being edited (null = create mode)
-  insightConfigModalOpen: false,
+  insights: [], // All insights with status (NEW, MODIFIED, PUBLISHED)
+  insightsLoading: false,
+  insightsError: null,
+  editingInsight: null, // Insight being edited (null = create mode)
+  insightModalOpen: false,
 
   // Fetch all insights from API
-  fetchInsightConfigs: async () => {
-    set({ insightConfigsLoading: true, insightConfigsError: null });
+  fetchInsights: async () => {
+    set({ insightsLoading: true, insightsError: null });
     try {
       const data = await insightsApi.fetchAllInsights();
-      set({ insightConfigs: data.insights || [], insightConfigsLoading: false });
+      set({ insights: data.insights || [], insightsLoading: false });
     } catch (error) {
-      set({ insightConfigsError: error.message, insightConfigsLoading: false });
+      set({ insightsError: error.message, insightsLoading: false });
     }
   },
 
   // Save insight to cache
-  saveInsightConfig: async (name, config) => {
+  saveInsight: async (name, config) => {
     try {
       const result = await insightsApi.saveInsight(name, config);
       // Refresh insights list to get updated status
-      await get().fetchInsightConfigs();
+      await get().fetchInsights();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -42,10 +42,10 @@ const createInsightSlice = (set, get) => ({
   },
 
   // Mark insight for deletion (will be removed from YAML on publish)
-  deleteInsightConfig: async name => {
+  deleteInsight: async name => {
     try {
       await insightsApi.deleteInsight(name);
-      await get().fetchInsightConfigs();
+      await get().fetchInsights();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -57,38 +57,38 @@ const createInsightSlice = (set, get) => ({
   },
 
   // Open modal for editing existing insight
-  openEditInsightConfigModal: insight => {
+  openEditInsightModal: insight => {
     set({
-      editingInsightConfig: insight,
-      insightConfigModalOpen: true,
+      editingInsight: insight,
+      insightModalOpen: true,
     });
   },
 
   // Open modal for creating new insight
-  openCreateInsightConfigModal: () => {
+  openCreateInsightModal: () => {
     set({
-      editingInsightConfig: null,
-      insightConfigModalOpen: true,
+      editingInsight: null,
+      insightModalOpen: true,
     });
   },
 
   // Close modal
-  closeInsightConfigModal: () => {
+  closeInsightModal: () => {
     set({
-      editingInsightConfig: null,
-      insightConfigModalOpen: false,
+      editingInsight: null,
+      insightModalOpen: false,
     });
   },
 
   // Get insight by name
-  getInsightConfigByName: name => {
-    const { insightConfigs } = get();
-    return insightConfigs.find(i => i.name === name);
+  getInsightByName: name => {
+    const { insights } = get();
+    return insights.find(i => i.name === name);
   },
 
   // Get status for a specific insight
-  getInsightConfigStatus: name => {
-    const insight = get().getInsightConfigByName(name);
+  getInsightStatus: name => {
+    const insight = get().getInsightByName(name);
     return insight?.status || null;
   },
 });

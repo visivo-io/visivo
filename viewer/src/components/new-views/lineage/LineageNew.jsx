@@ -48,20 +48,20 @@ const LineageNew = () => {
   const relationsLoading = useStore(state => state.relationsLoading);
 
   // Insights
-  const fetchInsightConfigs = useStore(state => state.fetchInsightConfigs);
-  const insightConfigsLoading = useStore(state => state.insightConfigsLoading);
+  const fetchInsights = useStore(state => state.fetchInsights);
+  const insightsLoading = useStore(state => state.insightsLoading);
 
   // Markdowns
-  const fetchMarkdownConfigs = useStore(state => state.fetchMarkdownConfigs);
-  const markdownConfigsLoading = useStore(state => state.markdownConfigsLoading);
+  const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
+  const markdownsLoading = useStore(state => state.markdownsLoading);
 
   // Charts
-  const fetchChartConfigs = useStore(state => state.fetchChartConfigs);
-  const chartConfigsLoading = useStore(state => state.chartConfigsLoading);
+  const fetchCharts = useStore(state => state.fetchCharts);
+  const chartsLoading = useStore(state => state.chartsLoading);
 
   // Tables
-  const fetchTableConfigs = useStore(state => state.fetchTableConfigs);
-  const tableConfigsLoading = useStore(state => state.tableConfigsLoading);
+  const fetchTables = useStore(state => state.fetchTables);
+  const tablesLoading = useStore(state => state.tablesLoading);
 
   // Navigation stack for editing - supports drilling into embedded objects
   // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
@@ -101,11 +101,11 @@ const LineageNew = () => {
     fetchDimensions();
     fetchMetrics();
     fetchRelations();
-    fetchInsightConfigs();
-    fetchMarkdownConfigs();
-    fetchChartConfigs();
-    fetchTableConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
+    fetchInsights();
+    fetchMarkdowns();
+    fetchCharts();
+    fetchTables();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -367,11 +367,11 @@ const LineageNew = () => {
     await fetchDimensions();
     await fetchMetrics();
     await fetchRelations();
-    await fetchInsightConfigs();
-    await fetchMarkdownConfigs();
-    await fetchChartConfigs();
-    await fetchTableConfigs();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsightConfigs, fetchMarkdownConfigs, fetchChartConfigs, fetchTableConfigs]);
+    await fetchInsights();
+    await fetchMarkdowns();
+    await fetchCharts();
+    await fetchTables();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
 
   // Create success callback for the save handler
   const onSuccessfulSave = useCallback(async () => {
@@ -384,7 +384,7 @@ const LineageNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightConfigsLoading || markdownConfigsLoading || chartConfigsLoading || tableConfigsLoading;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">

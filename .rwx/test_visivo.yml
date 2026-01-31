@@ -52,13 +52,17 @@ tasks:
       - poetry.lock
       - pyproject.toml
 
-  - key: visivo-install
+  - key: visivo-pip-install
     use: cli-dependencies
     run: |
       poetry install --with dev
       poetry build
-      poetry run build
       pip install dist/visivo-*-py3-none-any.whl
+
+  - key: visivo-install
+    use: visivo-pip-install
+    run: |
+      poetry run build
 
   - key: test-cli
     use: [cli-dependencies]
@@ -121,7 +125,7 @@ tasks:
     filter: [test-projects/complex-project]
   
   - key: test-docs-examples-project
-    use: [visivo-install ]
+    use: [visivo-pip-install ]
     run: |
       cd test-projects/docs-examples
       visivo run -th 3 

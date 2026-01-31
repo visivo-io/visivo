@@ -26,14 +26,14 @@ import CircularProgress from '@mui/material/CircularProgress';
  * - layoutValues: Optional layout configuration for the chart
  */
 const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
-  const { inputConfigs, fetchInputConfigs } = useStore();
+  const { inputs: storeInputs, fetchInputs } = useStore();
 
   const { isLoading, error, progress, progressMessage, previewInsightKey } =
     useInsightPreviewData(insightConfig, { projectId });
 
   useEffect(() => {
-    fetchInputConfigs();
-  }, [fetchInputConfigs]);
+    fetchInputs();
+  }, [fetchInputs]);
 
   const allReferencedNames = useMemo(() => {
     if (!insightConfig) return [];
@@ -41,14 +41,14 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   }, [insightConfig]);
 
   const inputs = useMemo(() => {
-    if (!inputConfigs || inputConfigs.length === 0) return [];
+    if (!storeInputs || storeInputs.length === 0) return [];
 
-    const inputConfigMap = new Map(inputConfigs.map(ic => [ic.name, ic.config]));
+    const inputConfigMap = new Map(storeInputs.map(ic => [ic.name, ic.config]));
 
     return allReferencedNames
       .filter(name => inputConfigMap.has(name))
       .map(name => inputConfigMap.get(name));
-  }, [allReferencedNames, inputConfigs]);
+  }, [allReferencedNames, storeInputs]);
 
   const chart = useMemo(() => {
     const previewLayout = {

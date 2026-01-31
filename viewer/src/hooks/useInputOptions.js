@@ -13,7 +13,7 @@ import useStore from '../stores/store';
  */
 export const useInputOptions = (input, projectId) => {
   // Use specific selector to only get THIS input's options
-  const thisInputOptions = useStore(state => state.inputOptions[input?.name]);
+  const thisInputOptions = useStore(state => state.inputJobOptions[input?.name]);
 
   // Return options from store or fallback to static options from input object
   return thisInputOptions || input?.options || [];
@@ -31,6 +31,6 @@ export const useInputOptions = (input, projectId) => {
  */
 export const useInputData = (input, projectId) => {
   // Use specific selector to only get THIS input's data
-  const thisInputData = useStore(state => state.inputData?.[input?.name]);
+  const thisInputData = useStore(state => state.inputJobData?.[input?.name]);
   return thisInputData || null;
 };

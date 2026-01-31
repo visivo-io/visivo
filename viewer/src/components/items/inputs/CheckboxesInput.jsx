@@ -6,7 +6,7 @@ import { DropdownLabel } from '../../styled/DropdownButton';
  * CheckboxesInput - Multi-select input displayed as checkboxes.
  *
  * This is a display-only component - it receives selectedValues from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Small to medium option sets (2-10 options) where multiple
  * selections are needed and all options should be visible.
@@ -16,7 +16,7 @@ const CheckboxesInput = ({
   options: rawOptions,
   selectedValues: propSelectedValues, // Current values from store (via parent)
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [options, setOptions] = useState([]);
 
@@ -45,9 +45,9 @@ const CheckboxesInput = ({
       newValues = [...selectedValues, value];
     }
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, newValues);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, newValues);
     }
   };
 
@@ -59,8 +59,8 @@ const CheckboxesInput = ({
       newValues = options.map(o => o.id);
     }
 
-    if (setInputValue) {
-      setInputValue(name, newValues);
+    if (setInputJobValue) {
+      setInputJobValue(name, newValues);
     }
   };
 

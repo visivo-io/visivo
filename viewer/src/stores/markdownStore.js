@@ -8,29 +8,29 @@ import * as markdownsApi from '../api/markdowns';
  */
 const createMarkdownSlice = (set, get) => ({
   // State
-  markdownConfigs: [], // All markdowns with status (NEW, MODIFIED, PUBLISHED)
-  markdownConfigsLoading: false,
-  markdownConfigsError: null,
-  editingMarkdownConfig: null, // Markdown being edited (null = create mode)
-  markdownConfigModalOpen: false,
+  markdowns: [], // All markdowns with status (NEW, MODIFIED, PUBLISHED)
+  markdownsLoading: false,
+  markdownsError: null,
+  editingMarkdown: null, // Markdown being edited (null = create mode)
+  markdownModalOpen: false,
 
   // Fetch all markdowns from API
-  fetchMarkdownConfigs: async () => {
-    set({ markdownConfigsLoading: true, markdownConfigsError: null });
+  fetchMarkdowns: async () => {
+    set({ markdownsLoading: true, markdownsError: null });
     try {
       const data = await markdownsApi.fetchAllMarkdowns();
-      set({ markdownConfigs: data.markdowns || [], markdownConfigsLoading: false });
+      set({ markdowns: data.markdowns || [], markdownsLoading: false });
     } catch (error) {
-      set({ markdownConfigsError: error.message, markdownConfigsLoading: false });
+      set({ markdownsError: error.message, markdownsLoading: false });
     }
   },
 
   // Save markdown to cache
-  saveMarkdownConfig: async (name, config) => {
+  saveMarkdown: async (name, config) => {
     try {
       const result = await markdownsApi.saveMarkdown(name, config);
       // Refresh markdowns list to get updated status
-      await get().fetchMarkdownConfigs();
+      await get().fetchMarkdowns();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -42,10 +42,10 @@ const createMarkdownSlice = (set, get) => ({
   },
 
   // Mark markdown for deletion (will be removed from YAML on publish)
-  deleteMarkdownConfig: async name => {
+  deleteMarkdown: async name => {
     try {
       await markdownsApi.deleteMarkdown(name);
-      await get().fetchMarkdownConfigs();
+      await get().fetchMarkdowns();
       // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -57,38 +57,38 @@ const createMarkdownSlice = (set, get) => ({
   },
 
   // Open modal for editing existing markdown
-  openEditMarkdownConfigModal: markdown => {
+  openEditMarkdownModal: markdown => {
     set({
-      editingMarkdownConfig: markdown,
-      markdownConfigModalOpen: true,
+      editingMarkdown: markdown,
+      markdownModalOpen: true,
     });
   },
 
   // Open modal for creating new markdown
-  openCreateMarkdownConfigModal: () => {
+  openCreateMarkdownModal: () => {
     set({
-      editingMarkdownConfig: null,
-      markdownConfigModalOpen: true,
+      editingMarkdown: null,
+      markdownModalOpen: true,
     });
   },
 
   // Close modal
-  closeMarkdownConfigModal: () => {
+  closeMarkdownModal: () => {
     set({
-      editingMarkdownConfig: null,
-      markdownConfigModalOpen: false,
+      editingMarkdown: null,
+      markdownModalOpen: false,
     });
   },
 
   // Get markdown by name
-  getMarkdownConfigByName: name => {
-    const { markdownConfigs } = get();
-    return markdownConfigs.find(m => m.name === name);
+  getMarkdownByName: name => {
+    const { markdowns } = get();
+    return markdowns.find(m => m.name === name);
   },
 
   // Get status for a specific markdown
-  getMarkdownConfigStatus: name => {
-    const markdown = get().getMarkdownConfigByName(name);
+  getMarkdownStatus: name => {
+    const markdown = get().getMarkdownByName(name);
     return markdown?.status || null;
   },
 });

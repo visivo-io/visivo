@@ -11,7 +11,7 @@ import {
  * MultiSelectDropdown - Multi-select input displayed as a dropdown with checkboxes.
  *
  * This is a display-only component - it receives selectedValues from props (store via parent)
- * and only calls setInputValue on user interaction.
+ * and only calls setInputJobValue on user interaction.
  *
  * Best for: Medium to large option sets where multiple selections are needed
  * and a compact UI is preferred over showing all options.
@@ -22,7 +22,7 @@ const MultiSelectDropdown = ({
   selectedValues: propSelectedValues, // Current values from store (via parent)
   placeholder = 'Select options...',
   name,
-  setInputValue, // Only called on user interaction
+  setInputJobValue, // Only called on user interaction
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState([]);
@@ -110,9 +110,9 @@ const MultiSelectDropdown = ({
       newValues = [...currentValues, option.id];
     }
 
-    // Only call setInputValue on user interaction
-    if (setInputValue) {
-      setInputValue(name, newValues);
+    // Only call setInputJobValue on user interaction
+    if (setInputJobValue) {
+      setInputJobValue(name, newValues);
     }
   };
 
@@ -121,8 +121,8 @@ const MultiSelectDropdown = ({
     const currentValues = selectedItems.map(item => item.id);
     const newValues = currentValues.filter(v => v !== option.id);
 
-    if (setInputValue) {
-      setInputValue(name, newValues);
+    if (setInputJobValue) {
+      setInputJobValue(name, newValues);
     }
   };
 
@@ -132,14 +132,14 @@ const MultiSelectDropdown = ({
 
   const selectAll = () => {
     const allValues = options.map(o => o.id);
-    if (setInputValue) {
-      setInputValue(name, allValues);
+    if (setInputJobValue) {
+      setInputJobValue(name, allValues);
     }
   };
 
   const clearAll = () => {
-    if (setInputValue) {
-      setInputValue(name, []);
+    if (setInputJobValue) {
+      setInputJobValue(name, []);
     }
   };
 

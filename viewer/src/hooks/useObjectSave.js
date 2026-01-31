@@ -18,10 +18,10 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
   const saveDimension = useStore(state => state.saveDimension);
   const saveMetric = useStore(state => state.saveMetric);
   const saveRelation = useStore(state => state.saveRelation);
-  const saveInsightConfig = useStore(state => state.saveInsightConfig);
-  const saveMarkdownConfig = useStore(state => state.saveMarkdownConfig);
-  const saveChartConfig = useStore(state => state.saveChartConfig);
-  const saveTableConfig = useStore(state => state.saveTableConfig);
+  const saveInsight = useStore(state => state.saveInsight);
+  const saveMarkdown = useStore(state => state.saveMarkdown);
+  const saveChart = useStore(state => state.saveChart);
+  const saveTable = useStore(state => state.saveTable);
 
   // Unified save handler - handles both standalone and embedded objects
   const handleObjectSave = useCallback(async (type, name, config) => {
@@ -71,16 +71,16 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
         result = await saveRelation(name, config);
         break;
       case 'insight':
-        result = await saveInsightConfig(name, config);
+        result = await saveInsight(name, config);
         break;
       case 'markdown':
-        result = await saveMarkdownConfig(name, config);
+        result = await saveMarkdown(name, config);
         break;
       case 'chart':
-        result = await saveChartConfig(name, config);
+        result = await saveChart(name, config);
         break;
       case 'table':
-        result = await saveTableConfig(name, config);
+        result = await saveTable(name, config);
         break;
       default:
         result = { success: false, error: `Unknown object type: ${type}` };
@@ -101,10 +101,10 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
     saveDimension,
     saveMetric,
     saveRelation,
-    saveInsightConfig,
-    saveMarkdownConfig,
-    saveChartConfig,
-    saveTableConfig,
+    saveInsight,
+    saveMarkdown,
+    saveChart,
+    saveTable,
   ]);
 
   return handleObjectSave;

@@ -23,7 +23,7 @@ import { setAtPath } from './embeddedObjectUtils';
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
-  const { deleteTableConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
+  const { deleteTable, checkPublishStatus, insights: storeInsights, fetchInsights } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -41,17 +41,17 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
   const isNewObject = table?.status === ObjectStatus.NEW;
 
   // Get available insights from the insight store
-  const availableInsights = insightConfigs?.map(i => i.name) || [];
+  const availableInsights = storeInsights?.map(i => i.name) || [];
 
   // Rows per page options
   const ROWS_PER_PAGE_OPTIONS = [3, 5, 15, 25, 50, 100, 500, 1000];
 
   // Fetch insights on mount if needed
   useEffect(() => {
-    if (!insightConfigs || insightConfigs.length === 0) {
-      fetchInsightConfigs();
+    if (!storeInsights || storeInsights.length === 0) {
+      fetchInsights();
     }
-  }, [insightConfigs, fetchInsightConfigs]);
+  }, [storeInsights, fetchInsights]);
 
   // Detect embedded insights (objects vs refs)
   const rawInsights = table?.config?.insights || table?.insights || [];
@@ -133,7 +133,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
   const handleDelete = async () => {
     setDeleting(true);
-    const result = await deleteTableConfig(table.name);
+    const result = await deleteTable(table.name);
     setDeleting(false);
 
     if (result?.success) {

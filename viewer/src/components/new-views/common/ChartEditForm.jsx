@@ -25,7 +25,7 @@ import { setAtPath } from './embeddedObjectUtils';
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
-  const { deleteChartConfig, checkPublishStatus, insightConfigs, fetchInsightConfigs } = useStore();
+  const { deleteChart, checkPublishStatus, insights: storeInsights, fetchInsights } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -48,7 +48,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
   const isNewObject = chart?.status === ObjectStatus.NEW;
 
   // Get available insights from the insight store
-  const availableInsights = insightConfigs?.map(i => i.name) || [];
+  const availableInsights = storeInsights?.map(i => i.name) || [];
 
   // Load layout schema on mount
   useEffect(() => {
@@ -81,10 +81,10 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
 
   // Fetch insights on mount if needed
   useEffect(() => {
-    if (!insightConfigs || insightConfigs.length === 0) {
-      fetchInsightConfigs();
+    if (!storeInsights || storeInsights.length === 0) {
+      fetchInsights();
     }
-  }, [insightConfigs, fetchInsightConfigs]);
+  }, [storeInsights, fetchInsights]);
 
   // Detect embedded insights (objects vs refs)
   const rawInsights = chart?.config?.insights || chart?.insights || [];
@@ -171,7 +171,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
 
   const handleDelete = async () => {
     setDeleting(true);
-    const result = await deleteChartConfig(chart.name);
+    const result = await deleteChart(chart.name);
     setDeleting(false);
 
     if (result?.success) {

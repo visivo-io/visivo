@@ -8,7 +8,7 @@ describe('SliderInput', () => {
     options: ['0', '25', '50', '75', '100'],
     selectedValue: '50',
     name: 'test-slider',
-    setInputValue: jest.fn(),
+    setInputJobValue: jest.fn(),
   };
 
   beforeEach(() => {
@@ -47,14 +47,14 @@ describe('SliderInput', () => {
     expect(screen.getByText('75', { selector: '.text-lg' })).toBeInTheDocument();
   });
 
-  it('calls setInputValue when slider is changed', () => {
-    const setInputValue = jest.fn();
-    render(<SliderInput {...defaultProps} setInputValue={setInputValue} />);
+  it('calls setInputJobValue when slider is changed', () => {
+    const setInputJobValue = jest.fn();
+    render(<SliderInput {...defaultProps} setInputJobValue={setInputJobValue} />);
 
     const slider = screen.getByRole('slider');
     fireEvent.change(slider, { target: { value: '3' } }); // Index 3 = 75
 
-    expect(setInputValue).toHaveBeenCalledWith('test-slider', 75);
+    expect(setInputJobValue).toHaveBeenCalledWith('test-slider', 75);
   });
 
   it('shows error message with fewer than 2 options', () => {
@@ -117,18 +117,18 @@ describe('SliderInput', () => {
     expect(screen.getByText('50', { selector: '.text-lg' })).toBeInTheDocument();
   });
 
-  it('does not call setInputValue without name', () => {
-    const setInputValue = jest.fn();
+  it('does not call setInputJobValue without name', () => {
+    const setInputJobValue = jest.fn();
     const props = {
       ...defaultProps,
       name: undefined,
-      setInputValue,
+      setInputJobValue,
     };
     render(<SliderInput {...props} />);
 
     const slider = screen.getByRole('slider');
     fireEvent.change(slider, { target: { value: '2' } });
 
-    expect(setInputValue).not.toHaveBeenCalled();
+    expect(setInputJobValue).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,7 @@ function Project(props) {
   const elementId = searchParams.get('element_id');
   const setScrollPosition = useStore(state => state.setScrollPosition);
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
-  const setDefaultInputValues = useStore(state => state.setDefaultInputValues);
+  const setDefaultInputJobValues = useStore(state => state.setDefaultInputJobValues);
   const throttleRef = useRef();
   const [windowPosition, setWindowPosition] = useState('');
 
@@ -84,7 +84,7 @@ function Project(props) {
 
     // Set all input defaults in a single batch
     if (inputDefaults.length > 0) {
-      setDefaultInputValues(inputDefaults);
+      setDefaultInputJobValues(inputDefaults);
     }
 
     // Initialize dashboards in store with single batched update
