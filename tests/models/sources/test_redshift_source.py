@@ -1,5 +1,8 @@
+import sys
+import types
 import pytest
 import click
+from unittest.mock import patch, MagicMock
 from visivo.models.sources.redshift_source import RedshiftSource
 
 
@@ -198,3 +201,48 @@ def test_redshift_source_all_parameters():
     assert source.iam is False
     assert source.ssl is True
     assert source.connection_pool_size == 8
+
+
+@pytest.fixture
+def mock_redshift_connector():
+    mock_module = MagicMock()
+    mock_module.connect.return_value = MagicMock()
+    sys.modules["redshift_connector"] = mock_module
+    yield mock_module
+    del sys.modules["redshift_connector"]
+
+
+def test_get_connection_ssl_enabled_passes_ssl_params(mock_redshift_connector):
+    """Test that ssl=True passes ssl=True and sslmode='require' to connect."""
+    source = RedshiftSource(
+        name="test",
+        database="dev",
+        type="redshift",
+        host="localhost",
+        port=5439,
+        username="user",
+        password="pass",
+        ssl=True,
+    )
+    source.get_connection()
+    call_kwargs = mock_redshift_connector.connect.call_args[1]
+    assert call_kwargs["ssl"] is True
+    assert call_kwargs["sslmode"] == "require"
+
+
+def test_get_connection_ssl_disabled_passes_ssl_false(mock_redshift_connector):
+    """Test that ssl=False passes ssl=False and no sslmode to connect."""
+    source = RedshiftSource(
+        name="test",
+        database="dev",
+        type="redshift",
+        host="localhost",
+        port=5439,
+        username="user",
+        password="pass",
+        ssl=False,
+    )
+    source.get_connection()
+    call_kwargs = mock_redshift_connector.connect.call_args[1]
+    assert call_kwargs["ssl"] is False
+    assert "sslmode" not in call_kwargs

@@ -96,9 +96,10 @@ class RedshiftSource(ServerSource):
                 connection_params["region"] = self.region
 
         # Add SSL configuration
-        if self.ssl:
-            connection_params["ssl"] = True
-            connection_params["sslmode"] = "require"
+        if self.ssl is not None:
+            connection_params["ssl"] = self.ssl
+            if self.ssl:
+                connection_params["sslmode"] = "require"
 
         return redshift_connector.connect(**connection_params)
 

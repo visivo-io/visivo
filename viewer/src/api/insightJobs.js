@@ -138,27 +138,3 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
 
 // Backward compatibility alias
 export const fetchInsights = fetchInsightJobs;
-
-/**
- * Compute name hash for a given insight or model name
- * @param {string} name - Name to hash
- * @returns {Promise<string>} Name hash
- */
-export const computeNameHash = async name => {
-  const url = getUrl('server') + '/api/insight-jobs/hash';
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ name }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to compute hash: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.name_hash;
-};
