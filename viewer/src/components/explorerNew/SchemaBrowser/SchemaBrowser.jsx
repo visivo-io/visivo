@@ -81,6 +81,18 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
     [searchQuery]
   );
 
+  const getNodeError = useCallback(
+    nodeKey => {
+      const data = loadedData[nodeKey];
+      if (!data) return null;
+      if (data.status === 'connection_failed' && data.error) return data.error;
+      if (data.error && !data.databases && !data.schemas && !data.tables && !data.columns)
+        return data.error;
+      return null;
+    },
+    [loadedData]
+  );
+
   const renderColumns = useCallback(
     columns => {
       if (!columns) return null;
@@ -109,6 +121,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
         .filter(table => matchesSearch(table.name))
         .map(table => {
           const colKey = `${tablesKey}::table::${table.name}`;
+          const colError = getNodeError(colKey);
           return (
             <SchemaTreeNode
               key={colKey}
@@ -117,6 +130,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
               type="table"
               isExpanded={expandedNodes.has(colKey)}
               isLoading={loadingNodes.has(colKey)}
+              errorMessage={colError}
               onClick={() =>
                 toggleNode(colKey, () => fetchColumns(sourceName, dbName, table.name, schemaName))
               }
@@ -156,13 +170,14 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       onTableSelect,
       onCreateModel,
       renderColumns,
+      getNodeError,
     ]
   );
 
   const renderSchemas = useCallback(
     (sourceName, dbName, dbKey) => {
       const data = loadedData[dbKey];
-      if (!data) return null;
+      if (!data || data.error) return null;
 
       if (data.has_schemas === false) {
         const tablesKey = `${dbKey}::tables`;
@@ -176,6 +191,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
         .map(schema => {
           const schemaKey = `${dbKey}::schema::${schema.name}`;
           const tablesKey = `${schemaKey}::tables`;
+          const tablesError = getNodeError(tablesKey);
           return (
             <SchemaTreeNode
               key={schemaKey}
@@ -184,6 +200,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
               type="schema"
               isExpanded={expandedNodes.has(schemaKey)}
               isLoading={loadingNodes.has(schemaKey)}
+              errorMessage={tablesError}
               onClick={() => {
                 toggleNode(schemaKey);
                 if (!expandedNodes.has(schemaKey) && !loadedData[tablesKey]) {
@@ -197,7 +214,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           );
         });
     },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderTables]
+    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderTables, getNodeError]
   );
 
   const renderDatabases = useCallback(
@@ -209,6 +226,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
         .filter(db => matchesSearch(db.name))
         .map(db => {
           const dbKey = `${sourceKey}::db::${db.name}`;
+          const dbError = getNodeError(dbKey);
           return (
             <SchemaTreeNode
               key={dbKey}
@@ -217,6 +235,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
               type="database"
               isExpanded={expandedNodes.has(dbKey)}
               isLoading={loadingNodes.has(dbKey)}
+              errorMessage={dbError}
               onClick={() =>
                 toggleNode(dbKey, async () => {
                   const schemasData = await fetchSchemas(sourceName, db.name);
@@ -237,7 +256,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           );
         });
     },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderSchemas]
+    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderSchemas, getNodeError]
   );
 
   const filteredSources = useMemo(
@@ -248,6 +267,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
   const renderSources = useCallback(() => {
     return filteredSources.map(source => {
       const sourceKey = `source::${source.name}`;
+      const errorMsg = getNodeError(sourceKey);
       return (
         <SchemaTreeNode
           key={sourceKey}
@@ -257,6 +277,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           badge={source.status !== 'PUBLISHED' ? source.status : undefined}
           isExpanded={expandedNodes.has(sourceKey)}
           isLoading={loadingNodes.has(sourceKey)}
+          errorMessage={errorMsg}
           onClick={() => toggleNode(sourceKey, () => fetchDatabases(source.name))}
           level={0}
         >
@@ -264,7 +285,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
         </SchemaTreeNode>
       );
     });
-  }, [filteredSources, expandedNodes, loadingNodes, toggleNode, renderDatabases]);
+  }, [filteredSources, expandedNodes, loadingNodes, toggleNode, renderDatabases, getNodeError]);
 
   if (sourcesLoading) {
     return (

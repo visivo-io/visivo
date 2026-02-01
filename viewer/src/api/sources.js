@@ -95,36 +95,56 @@ export const testSourceConnection = async config => {
 // === Introspection functions ===
 
 export const fetchDatabases = async sourceName => {
-  const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases/`);
-  if (response.status === 200) return response.json();
-  return null;
+  try {
+    const response = await fetch(
+      `/api/project/sources/${encodeURIComponent(sourceName)}/databases/`
+    );
+    return response.json();
+  } catch (e) {
+    return { databases: [], status: 'connection_failed', error: e.message };
+  }
 };
 
 export const fetchSchemas = async (sourceName, databaseName) => {
-  const enc = encodeURIComponent;
-  const response = await fetch(
-    `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/`
-  );
-  if (response.status === 200) return response.json();
-  return null;
+  try {
+    const enc = encodeURIComponent;
+    const response = await fetch(
+      `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/`
+    );
+    if (response.ok) return response.json();
+    const errData = await response.json().catch(() => ({}));
+    return { error: errData.error || `Failed to fetch schemas (${response.status})` };
+  } catch (e) {
+    return { error: e.message };
+  }
 };
 
 export const fetchTables = async (sourceName, databaseName, schemaName = null) => {
-  const enc = encodeURIComponent;
-  const url = schemaName
-    ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/`
-    : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/`;
-  const response = await fetch(url);
-  if (response.status === 200) return response.json();
-  return null;
+  try {
+    const enc = encodeURIComponent;
+    const url = schemaName
+      ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/`
+      : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/`;
+    const response = await fetch(url);
+    if (response.ok) return response.json();
+    const errData = await response.json().catch(() => ({}));
+    return { error: errData.error || `Failed to fetch tables (${response.status})` };
+  } catch (e) {
+    return { error: e.message };
+  }
 };
 
 export const fetchColumns = async (sourceName, databaseName, tableName, schemaName = null) => {
-  const enc = encodeURIComponent;
-  const url = schemaName
-    ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/${enc(tableName)}/columns/`
-    : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/${enc(tableName)}/columns/`;
-  const response = await fetch(url);
-  if (response.status === 200) return response.json();
-  return null;
+  try {
+    const enc = encodeURIComponent;
+    const url = schemaName
+      ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/${enc(tableName)}/columns/`
+      : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/${enc(tableName)}/columns/`;
+    const response = await fetch(url);
+    if (response.ok) return response.json();
+    const errData = await response.json().catch(() => ({}));
+    return { error: errData.error || `Failed to fetch columns (${response.status})` };
+  } catch (e) {
+    return { error: e.message };
+  }
 };

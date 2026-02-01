@@ -1,5 +1,5 @@
 import React from 'react';
-import { PiCaretRight, PiCaretDown, PiSpinner } from 'react-icons/pi';
+import { PiCaretRight, PiCaretDown, PiSpinner, PiXCircle } from 'react-icons/pi';
 
 const SchemaTreeNode = ({
   icon,
@@ -14,6 +14,7 @@ const SchemaTreeNode = ({
   level = 0,
   children,
   statusIcon,
+  errorMessage,
 }) => {
   const isExpandable = type !== 'column';
 
@@ -28,6 +29,7 @@ const SchemaTreeNode = ({
         aria-selected={false}
         aria-expanded={isExpandable ? isExpanded : undefined}
         data-testid={`tree-node-${type}-${label}`}
+        title={errorMessage || undefined}
       >
         <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 mr-1">
           {isLoading ? (
@@ -35,6 +37,13 @@ const SchemaTreeNode = ({
               className="animate-spin text-secondary-400"
               size={14}
               data-testid="loading-spinner"
+            />
+          ) : errorMessage ? (
+            <PiXCircle
+              size={14}
+              className="text-highlight"
+              data-testid="error-icon"
+              title={errorMessage}
             />
           ) : isExpandable ? (
             isExpanded ? (
