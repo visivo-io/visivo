@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   ToggleButton,
@@ -46,11 +46,7 @@ export function PropertyRow({
   const isQueryMode = useMemo(() => isQueryStringValue(value), [value]);
 
   // Track explicit user toggle intent so mode persists when value is cleared
-  const [forceQueryMode, setForceQueryMode] = useState(false);
-
-  useEffect(() => {
-    setForceQueryMode(isQueryStringValue(value));
-  }, [value]);
+  const [forceQueryMode, setForceQueryMode] = useState(() => isQueryStringValue(value));
 
   // Get the static (non-query-string) schema for the field
   const staticSchema = useMemo(() => getStaticSchema(schema, defs), [schema, defs]);
