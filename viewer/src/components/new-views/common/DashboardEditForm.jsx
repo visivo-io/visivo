@@ -24,6 +24,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const charts = useStore(state => state.charts);
   const tables = useStore(state => state.tables);
   const markdowns = useStore(state => state.markdowns);
+  const inputs = useStore(state => state.inputs);
 
   const [name, setName] = useState('');
   const [rows, setRows] = useState([]);
@@ -45,8 +46,11 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     if (markdowns?.length) {
       groups.push({ label: 'Markdowns', type: 'markdown', items: markdowns.map(m => m.name) });
     }
+    if (inputs?.length) {
+      groups.push({ label: 'Inputs', type: 'input', items: inputs.map(i => i.name) });
+    }
     return groups;
-  }, [charts, tables, markdowns]);
+  }, [charts, tables, markdowns, inputs]);
 
   useEffect(() => {
     if (dashboard) {
@@ -67,6 +71,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
             table: normalizeRef(item.table),
             markdown: normalizeRef(item.markdown),
             selector: normalizeRef(item.selector),
+            input: normalizeRef(item.input),
           })),
         }))
       );
@@ -99,6 +104,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           else if (item.table) itemConfig.table = item.table;
           else if (item.markdown) itemConfig.markdown = item.markdown;
           else if (item.selector) itemConfig.selector = item.selector;
+          else if (item.input) itemConfig.input = item.input;
           else return null;
           return itemConfig;
         })
@@ -136,7 +142,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   };
 
   const addRow = () => {
-    setRows([...rows, { height: 'medium', items: [{ width: 1, chart: '', table: '', markdown: '', selector: '' }] }]);
+    setRows([...rows, { height: 'medium', items: [{ width: 1, chart: '', table: '', markdown: '', selector: '', input: '' }] }]);
   };
 
   const removeRow = index => {
@@ -153,7 +159,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     const updated = [...rows];
     updated[rowIndex] = {
       ...updated[rowIndex],
-      items: [...updated[rowIndex].items, { width: 1, chart: '', table: '', markdown: '', selector: '' }],
+      items: [...updated[rowIndex].items, { width: 1, chart: '', table: '', markdown: '', selector: '', input: '' }],
     };
     setRows(updated);
   };
@@ -181,7 +187,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
    * Get the combined "type:name" value for the current item selection
    */
   const getSelectedValue = item => {
-    for (const field of ['chart', 'table', 'markdown', 'selector']) {
+    for (const field of ['chart', 'table', 'markdown', 'selector', 'input']) {
       const val = item[field];
       if (val) {
         const objName = parseRefValue(val);
@@ -195,7 +201,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
    * Get the object type of the currently selected item (for icon display)
    */
   const getSelectedType = item => {
-    for (const field of ['chart', 'table', 'markdown', 'selector']) {
+    for (const field of ['chart', 'table', 'markdown', 'selector', 'input']) {
       if (item[field]) return field;
     }
     return null;
@@ -212,6 +218,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
       table: '',
       markdown: '',
       selector: '',
+      input: '',
     };
 
     if (combinedValue) {

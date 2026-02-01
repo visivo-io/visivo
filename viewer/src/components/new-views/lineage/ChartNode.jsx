@@ -84,6 +84,18 @@ const ChartNode = ({ data, selected }) => {
           </div>
         )}
       </div>
+
+      {/* Source handle (for outgoing connections to dashboards) */}
+      <Handle
+        type="source"
+        position="right"
+        style={{
+          background: colors.connectionHandle,
+          width: 8,
+          height: 8,
+          border: '2px solid white',
+        }}
+      />
     </div>
   );
 };

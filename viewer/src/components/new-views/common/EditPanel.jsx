@@ -18,6 +18,7 @@ import DashboardEditForm from './DashboardEditForm';
 import CsvScriptModelEditForm from './CsvScriptModelEditForm';
 import LocalMergeModelEditForm from './LocalMergeModelEditForm';
 import ProjectDefaultsEditForm from './ProjectDefaultsEditForm';
+import InputEditForm from './InputEditForm';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources, models, and semantic objects
@@ -177,6 +178,15 @@ const EditPanel = ({
         return (
           <LocalMergeModelEditForm
             model={currentObject}
+            isCreate={isCreate}
+            onClose={onClose}
+            onSave={onSave}
+          />
+        );
+      case 'input':
+        return (
+          <InputEditForm
+            input={currentObject}
             isCreate={isCreate}
             onClose={onClose}
             onSave={onSave}

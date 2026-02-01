@@ -86,6 +86,12 @@ const EditorNew = () => {
   const localMergeModelsLoading = useStore(state => state.localMergeModelsLoading);
   const localMergeModelsError = useStore(state => state.localMergeModelsError);
 
+  // Inputs
+  const inputs = useStore(state => state.inputs);
+  const fetchInputs = useStore(state => state.fetchInputs);
+  const inputsLoading = useStore(state => state.inputsLoading);
+  const inputsError = useStore(state => state.inputsError);
+
   // Defaults
   const defaults = useStore(state => state.defaults);
   const fetchDefaults = useStore(state => state.fetchDefaults);
@@ -132,8 +138,9 @@ const EditorNew = () => {
     fetchDashboards();
     fetchCsvScriptModels();
     fetchLocalMergeModels();
+    fetchInputs();
     fetchDefaults();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Compute object type counts
   const typeCounts = useMemo(() => {
@@ -150,8 +157,9 @@ const EditorNew = () => {
       dashboard: dashboards?.length || 0,
       csvScriptModel: csvScriptModels?.length || 0,
       localMergeModel: localMergeModels?.length || 0,
+      input: inputs?.length || 0,
     };
-  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, csvScriptModels, localMergeModels]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, csvScriptModels, localMergeModels, inputs]);
 
   // Filter sources by type and search query
   const filteredSources = useMemo(() => {
@@ -403,6 +411,18 @@ const EditorNew = () => {
     return filtered;
   }, [localMergeModels, selectedTypes, searchQuery]);
 
+  // Filter inputs
+  const filteredInputs = useMemo(() => {
+    if (!inputs) return [];
+    if (selectedTypes.length > 0 && !selectedTypes.includes('input')) return [];
+    let filtered = inputs;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(i => i.name.toLowerCase().includes(query));
+    }
+    return filtered;
+  }, [inputs, selectedTypes, searchQuery]);
+
   // Handle source selection
   const handleSourceSelect = useCallback(source => {
     clearEdit();
@@ -475,6 +495,12 @@ const EditorNew = () => {
     pushEdit('localMergeModel', model);
   }, [clearEdit, pushEdit]);
 
+  // Handle input selection
+  const handleInputSelect = useCallback(input => {
+    clearEdit();
+    pushEdit('input', input);
+  }, [clearEdit, pushEdit]);
+
   // Handle project settings selection
   const handleDefaultsSelect = useCallback(() => {
     clearEdit();
@@ -508,8 +534,9 @@ const EditorNew = () => {
     await fetchDashboards();
     await fetchCsvScriptModels();
     await fetchLocalMergeModels();
+    await fetchInputs();
     await fetchDefaults();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Callback for successful saves - refresh data and clear edit state
   const onSuccessfulSave = useCallback(async () => {
@@ -522,7 +549,7 @@ const EditorNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = currentEdit !== null || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading || dashboardsLoading || csvScriptModelsLoading || localMergeModelsLoading;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading || dashboardsLoading || csvScriptModelsLoading || localMergeModelsLoading || inputsLoading;
 
   // Get type colors for consistent theming
   const sourceTypeConfig = getTypeByValue('source');
@@ -545,10 +572,10 @@ const EditorNew = () => {
   const insightTypeConfig = getTypeByValue('insight');
   const InsightIcon = insightTypeConfig?.icon;
 
-  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insights?.length && !markdowns?.length && !charts?.length && !tables?.length && !dashboards?.length && !csvScriptModels?.length && !localMergeModels?.length;
-  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length && !filteredMarkdowns.length && !filteredCharts.length && !filteredTables.length && !filteredDashboards.length && !filteredCsvScriptModels.length && !filteredLocalMergeModels.length;
+  const hasNoObjects = !sources?.length && !models?.length && !dimensions?.length && !metrics?.length && !relations?.length && !insights?.length && !markdowns?.length && !charts?.length && !tables?.length && !dashboards?.length && !csvScriptModels?.length && !localMergeModels?.length && !inputs?.length;
+  const hasNoFilteredObjects = !filteredSources.length && !filteredModels.length && !filteredDimensions.length && !filteredMetrics.length && !filteredRelations.length && !filteredInsights.length && !filteredMarkdowns.length && !filteredCharts.length && !filteredTables.length && !filteredDashboards.length && !filteredCsvScriptModels.length && !filteredLocalMergeModels.length && !filteredInputs.length;
 
-  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError || dashboardsError || csvScriptModelsError || localMergeModelsError;
+  const hasError = sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError || dashboardsError || csvScriptModelsError || localMergeModelsError || inputsError;
 
   return (
     <div className="flex h-[calc(100vh-48px)]">
@@ -592,7 +619,7 @@ const EditorNew = () => {
         {/* Error state */}
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
-            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError || dashboardsError || csvScriptModelsError || localMergeModelsError}
+            Error: {sourcesError || modelsError || dimensionsError || metricsError || relationsError || insightsError || markdownsError || chartsError || tablesError || dashboardsError || csvScriptModelsError || localMergeModelsError || inputsError}
           </div>
         )}
 
@@ -734,6 +761,17 @@ const EditorNew = () => {
               onSelect={handleDashboardSelect}
               title="Dashboards"
               objectType="dashboard"
+            />
+          )}
+
+          {/* Inputs List */}
+          {filteredInputs.length > 0 && (
+            <ObjectList
+              objects={filteredInputs}
+              selectedName={currentEdit?.type === 'input' ? currentEdit.object?.name : null}
+              onSelect={handleInputSelect}
+              title="Inputs"
+              objectType="input"
             />
           )}
         </div>

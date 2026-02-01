@@ -24,6 +24,7 @@ def register_publish_views(app, flask_app, output_dir):
                 or flask_app.dashboard_manager.has_unpublished_changes()
                 or flask_app.csv_script_model_manager.has_unpublished_changes()
                 or flask_app.local_merge_model_manager.has_unpublished_changes()
+                or flask_app.input_manager.has_unpublished_changes()
                 or flask_app._cached_defaults is not None
             )
             return jsonify({"has_unpublished_changes": has_changes})
@@ -177,6 +178,17 @@ def register_publish_views(app, flask_app, output_dir):
                         "status": status.value,
                     }
                     pending.append(model_info)
+
+            # Get inputs with changes
+            for name, input_obj in flask_app.input_manager.cached_objects.items():
+                status = flask_app.input_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    input_info = {
+                        "name": name,
+                        "type": "input",
+                        "status": status.value,
+                    }
+                    pending.append(input_info)
 
             # Get defaults changes
             if flask_app._cached_defaults is not None:
@@ -391,6 +403,21 @@ def register_publish_views(app, flask_app, output_dir):
                     named_children[name] = child_info
                     published_count += 1
 
+            # Process inputs
+            for name, input_obj in flask_app.input_manager.cached_objects.items():
+                status = flask_app.input_manager.get_status(name)
+                if status and status != ObjectStatus.PUBLISHED:
+                    child_info = _build_child_info(
+                        name=name,
+                        obj=input_obj,
+                        status=status,
+                        published_obj=flask_app.input_manager.published_objects.get(name),
+                        type_key="inputs",
+                        project_file_path=flask_app.project.project_file_path,
+                    )
+                    named_children[name] = child_info
+                    published_count += 1
+
             # Process defaults
             if flask_app._cached_defaults is not None:
                 exclude_fields = {"path", "file_path"}
@@ -426,6 +453,7 @@ def register_publish_views(app, flask_app, output_dir):
             flask_app.dashboard_manager.clear_cache()
             flask_app.csv_script_model_manager.clear_cache()
             flask_app.local_merge_model_manager.clear_cache()
+            flask_app.input_manager.clear_cache()
             flask_app._cached_defaults = None
 
             # Trigger project reload via hot reload server if available

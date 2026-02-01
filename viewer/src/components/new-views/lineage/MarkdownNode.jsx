@@ -63,6 +63,18 @@ const MarkdownNode = ({ data, selected }) => {
           {name}
         </span>
       </div>
+
+      {/* Source handle (for outgoing connections to dashboards) */}
+      <Handle
+        type="source"
+        position="right"
+        style={{
+          background: '#22c55e', // green-500 for markdown connections
+          width: 8,
+          height: 8,
+          border: '2px solid white',
+        }}
+      />
     </div>
   );
 };

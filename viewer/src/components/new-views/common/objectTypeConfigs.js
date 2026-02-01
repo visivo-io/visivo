@@ -10,6 +10,7 @@ import TableChartIcon from '@mui/icons-material/TableChart';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import MergeIcon from '@mui/icons-material/Merge';
+import TuneIcon from '@mui/icons-material/Tune';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 /**
@@ -258,6 +259,24 @@ export const OBJECT_TYPES = [
       node: 'bg-fuchsia-50 border-fuchsia-200',
       nodeSelected: 'bg-fuchsia-100 border-fuchsia-400',
       connectionHandle: '#d946ef', // fuchsia-500
+    },
+  },
+  {
+    value: 'input',
+    label: 'Inputs',
+    singularLabel: 'Input',
+    icon: TuneIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-lime-100',
+      text: 'text-lime-800',
+      border: 'border-lime-200',
+      bgHover: 'hover:bg-lime-50',
+      bgSelected: 'bg-lime-100',
+      borderSelected: 'border-lime-300',
+      node: 'bg-lime-50 border-lime-200',
+      nodeSelected: 'bg-lime-100 border-lime-400',
+      connectionHandle: '#84cc16', // lime-500
     },
   },
   {

@@ -25,6 +25,7 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
   const saveDashboard = useStore(state => state.saveDashboard);
   const saveCsvScriptModel = useStore(state => state.saveCsvScriptModel);
   const saveLocalMergeModel = useStore(state => state.saveLocalMergeModel);
+  const saveInput = useStore(state => state.saveInput);
 
   // Unified save handler - handles both standalone and embedded objects
   const handleObjectSave = useCallback(async (type, name, config) => {
@@ -94,6 +95,9 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
       case 'localMergeModel':
         result = await saveLocalMergeModel(name, config);
         break;
+      case 'input':
+        result = await saveInput(name, config);
+        break;
       default:
         result = { success: false, error: `Unknown object type: ${type}` };
     }
@@ -120,6 +124,7 @@ export const useObjectSave = (currentEdit, setEditStack, onSuccessfulSave) => {
     saveDashboard,
     saveCsvScriptModel,
     saveLocalMergeModel,
+    saveInput,
   ]);
 
   return handleObjectSave;

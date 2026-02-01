@@ -97,6 +97,18 @@ const TableNode = ({ data, selected }) => {
           </div>
         )}
       </div>
+
+      {/* Source handle (for outgoing connections to dashboards) */}
+      <Handle
+        type="source"
+        position="right"
+        style={{
+          background: '#f59e0b', // amber-500 for table connections
+          width: 8,
+          height: 8,
+          border: '2px solid white',
+        }}
+      />
     </div>
   );
 };
