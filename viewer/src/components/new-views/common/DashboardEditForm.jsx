@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useStore from '../../../stores/store';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
@@ -6,6 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import { getTypeByValue } from './objectTypeConfigs';
+import { parseRefValue, formatRef } from '../../../utils/refString';
 
 const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'];
 
@@ -13,11 +16,14 @@ const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge
  * DashboardEditForm - Form for creating/editing Dashboard
  *
  * Supports nested rows with items. Each row has height and items list.
- * Each item has width and one of: chart, table, markdown, selector, input (as ref).
+ * Each item has width and a single object reference selected from available objects.
  */
 const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const deleteDashboard = useStore(state => state.deleteDashboard);
   const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const charts = useStore(state => state.charts);
+  const tables = useStore(state => state.tables);
+  const markdowns = useStore(state => state.markdowns);
 
   const [name, setName] = useState('');
   const [rows, setRows] = useState([]);
@@ -27,19 +33,40 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Build available objects list grouped by type
+  const availableObjects = useMemo(() => {
+    const groups = [];
+    if (charts?.length) {
+      groups.push({ label: 'Charts', type: 'chart', items: charts.map(c => c.name) });
+    }
+    if (tables?.length) {
+      groups.push({ label: 'Tables', type: 'table', items: tables.map(t => t.name) });
+    }
+    if (markdowns?.length) {
+      groups.push({ label: 'Markdowns', type: 'markdown', items: markdowns.map(m => m.name) });
+    }
+    return groups;
+  }, [charts, tables, markdowns]);
+
   useEffect(() => {
     if (dashboard) {
       setName(dashboard.name || '');
       setDescription(dashboard.config?.description || '');
+      // Normalize item field values: objects become ref(name), strings stay as-is
+      const normalizeRef = val => {
+        if (!val) return '';
+        if (typeof val === 'object') return val.name ? formatRef(val.name) : '';
+        return val;
+      };
       setRows(
         (dashboard.config?.rows || []).map(row => ({
           height: row.height || 'medium',
           items: (row.items || []).map(item => ({
             width: item.width || 1,
-            chart: item.chart || '',
-            table: item.table || '',
-            markdown: item.markdown || '',
-            selector: item.selector || '',
+            chart: normalizeRef(item.chart),
+            table: normalizeRef(item.table),
+            markdown: normalizeRef(item.markdown),
+            selector: normalizeRef(item.selector),
           })),
         }))
       );
@@ -140,17 +167,9 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     setRows(updated);
   };
 
-  const updateItem = (rowIndex, itemIndex, field, value) => {
+  const updateItemWidth = (rowIndex, itemIndex, width) => {
     const updated = [...rows];
-    const item = { ...updated[rowIndex].items[itemIndex] };
-    // Clear other ref fields when setting a new one
-    if (['chart', 'table', 'markdown', 'selector'].includes(field)) {
-      item.chart = '';
-      item.table = '';
-      item.markdown = '';
-      item.selector = '';
-    }
-    item[field] = value;
+    const item = { ...updated[rowIndex].items[itemIndex], width };
     updated[rowIndex] = {
       ...updated[rowIndex],
       items: updated[rowIndex].items.map((it, i) => (i === itemIndex ? item : it)),
@@ -158,16 +177,55 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     setRows(updated);
   };
 
-  const getItemRefType = item => {
-    if (item.chart) return 'chart';
-    if (item.table) return 'table';
-    if (item.markdown) return 'markdown';
-    if (item.selector) return 'selector';
-    return 'chart';
+  /**
+   * Get the combined "type:name" value for the current item selection
+   */
+  const getSelectedValue = item => {
+    for (const field of ['chart', 'table', 'markdown', 'selector']) {
+      const val = item[field];
+      if (val) {
+        const objName = parseRefValue(val);
+        return `${field}:${objName}`;
+      }
+    }
+    return '';
   };
 
-  const getItemRefValue = item => {
-    return item.chart || item.table || item.markdown || item.selector || '';
+  /**
+   * Get the object type of the currently selected item (for icon display)
+   */
+  const getSelectedType = item => {
+    for (const field of ['chart', 'table', 'markdown', 'selector']) {
+      if (item[field]) return field;
+    }
+    return null;
+  };
+
+  /**
+   * Handle object selection from the dropdown
+   */
+  const handleObjectSelect = (rowIndex, itemIndex, combinedValue) => {
+    const updated = [...rows];
+    const item = {
+      ...updated[rowIndex].items[itemIndex],
+      chart: '',
+      table: '',
+      markdown: '',
+      selector: '',
+    };
+
+    if (combinedValue) {
+      const colonIdx = combinedValue.indexOf(':');
+      const type = combinedValue.substring(0, colonIdx);
+      const objName = combinedValue.substring(colonIdx + 1);
+      item[type] = formatRef(objName);
+    }
+
+    updated[rowIndex] = {
+      ...updated[rowIndex],
+      items: updated[rowIndex].items.map((it, i) => (i === itemIndex ? item : it)),
+    };
+    setRows(updated);
   };
 
   const isValid = name.trim();
@@ -243,55 +301,63 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
 
                   {/* Items */}
                   <div className="space-y-2 pl-2 border-l-2 border-gray-300">
-                    {row.items.map((item, itemIndex) => (
-                      <div key={itemIndex} className="p-2 bg-white border border-gray-200 rounded space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Item {itemIndex + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(rowIndex, itemIndex)}
-                            className="p-0.5 text-red-400 hover:text-red-600 rounded"
-                          >
-                            <RemoveIcon style={{ fontSize: 14 }} />
-                          </button>
-                        </div>
-                        <div className="flex gap-2">
-                          <div className="flex-shrink-0">
-                            <label className="text-xs text-gray-500">Width</label>
+                    {row.items.map((item, itemIndex) => {
+                      const selectedType = getSelectedType(item);
+                      const typeConfig = selectedType ? getTypeByValue(selectedType) : null;
+                      const ItemIcon = typeConfig?.icon || DashboardIcon;
+                      const iconColor = typeConfig?.colors?.text || 'text-gray-400';
+
+                      return (
+                        <div key={itemIndex} className="p-2 bg-white border border-gray-200 rounded space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Item {itemIndex + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(rowIndex, itemIndex)}
+                              className="p-0.5 text-red-400 hover:text-red-600 rounded"
+                            >
+                              <RemoveIcon style={{ fontSize: 14 }} />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500">Width:</label>
                             <input
                               type="number"
                               min="1"
                               value={item.width}
-                              onChange={e => updateItem(rowIndex, itemIndex, 'width', e.target.value)}
+                              onChange={e => updateItemWidth(rowIndex, itemIndex, e.target.value)}
                               className="w-14 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>
-                          <div className="flex-1">
-                            <label className="text-xs text-gray-500">Type</label>
+                          <div className="relative">
                             <select
-                              value={getItemRefType(item)}
-                              onChange={e => updateItem(rowIndex, itemIndex, e.target.value, getItemRefValue(item) || 'ref()')}
-                              className="w-full text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              value={getSelectedValue(item)}
+                              onChange={e => handleObjectSelect(rowIndex, itemIndex, e.target.value)}
+                              className="block w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
                             >
-                              <option value="chart">Chart</option>
-                              <option value="table">Table</option>
-                              <option value="markdown">Markdown</option>
-                              <option value="selector">Selector</option>
+                              <option value="">Select object...</option>
+                              {availableObjects.map(group => (
+                                <optgroup key={group.type} label={group.label}>
+                                  {group.items.map(objName => (
+                                    <option key={`${group.type}:${objName}`} value={`${group.type}:${objName}`}>
+                                      {objName}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ))}
                             </select>
+                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                              <ItemIcon style={{ fontSize: 16 }} className={iconColor} />
+                            </div>
+                            <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
+                              <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <label className="text-xs text-gray-500">Reference</label>
-                          <input
-                            type="text"
-                            value={getItemRefValue(item)}
-                            onChange={e => updateItem(rowIndex, itemIndex, getItemRefType(item), e.target.value)}
-                            placeholder="ref(object-name)"
-                            className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <button
                       type="button"
                       onClick={() => addItem(rowIndex)}

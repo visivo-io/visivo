@@ -2,12 +2,8 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
-import {
-  isInsideDollarBrace,
-  formatRef,
-  formatRefExpression,
-  parseTextWithRefs,
-} from '../../../utils/contextString';
+import { isInsideDollarBrace, parseTextWithRefs } from '../../../utils/contextString';
+import { formatRef, formatRefExpression } from '../../../utils/refString';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';

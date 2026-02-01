@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import dagre from 'dagre';
 import useStore from '../../../stores/store';
+import { parseRefValue } from '../../../utils/refString';
 
 /**
  * Compute layout using dagre (left-to-right)
@@ -54,7 +55,32 @@ function getEdgeId(sourceType, sourceName, targetType, targetName) {
 }
 
 /**
- * useLineageDag - Hook for building full DAG with sources, models, dimensions, metrics, relations, and insights
+ * Extract referenced object names from a dashboard's config rows/items.
+ * Items can reference charts, tables, markdowns, selectors, or inputs via ref() strings or inline objects.
+ */
+function extractDashboardItemRefs(config) {
+  const refs = [];
+  const rows = config?.rows || [];
+  rows.forEach(row => {
+    const items = row.items || [];
+    items.forEach(item => {
+      ['chart', 'table', 'markdown', 'selector', 'input'].forEach(field => {
+        const val = item[field];
+        if (val) {
+          if (typeof val === 'string') {
+            refs.push(parseRefValue(val));
+          } else if (typeof val === 'object' && val.name) {
+            refs.push(val.name);
+          }
+        }
+      });
+    });
+  });
+  return refs;
+}
+
+/**
+ * useLineageDag - Hook for building full DAG with sources, models, dimensions, metrics, relations, insights, and dashboards
  * Uses dagre for automatic left-to-right layout
  * Uses child_item_names from backend for relationships
  */
@@ -68,6 +94,7 @@ export function useLineageDag() {
   const markdowns = useStore(state => state.markdowns);
   const charts = useStore(state => state.charts);
   const tables = useStore(state => state.tables);
+  const dashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
   const csvScriptModels = useStore(state => state.csvScriptModels);
   const localMergeModels = useStore(state => state.localMergeModels);
@@ -87,6 +114,7 @@ export function useLineageDag() {
     (markdowns || []).forEach(m => { objectTypeByName[m.name] = 'markdown'; });
     (charts || []).forEach(c => { objectTypeByName[c.name] = 'chart'; });
     (tables || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
+    (dashboards || []).forEach(d => { objectTypeByName[d.name] = 'dashboard'; });
     (csvScriptModels || []).forEach(m => { objectTypeByName[m.name] = 'csvScriptModel'; });
     (localMergeModels || []).forEach(m => { objectTypeByName[m.name] = 'localMergeModel'; });
 
@@ -294,11 +322,28 @@ export function useLineageDag() {
       });
     });
 
+    // Build dashboard nodes and edges from their items (charts, tables, markdowns, selectors)
+    (dashboards || []).forEach(dashboard => {
+      addNode(dashboard.name, 'dashboard', 'dashboardNode', {
+        status: dashboard.status,
+        dashboard: dashboard,
+      });
+
+      // Parse dashboard config to extract referenced items
+      const itemRefs = extractDashboardItemRefs(dashboard.config);
+      itemRefs.forEach(refName => {
+        const childType = objectTypeByName[refName];
+        if (childType) {
+          addEdge(refName, childType, dashboard.name, 'dashboard');
+        }
+      });
+    });
+
     // Compute layout with dagre
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, defaults, csvScriptModels, localMergeModels]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, defaults, csvScriptModels, localMergeModels]);
 
   return dag;
 }

@@ -589,13 +589,6 @@ const EditorNew = () => {
           />
         </div>
 
-        {/* Loading state */}
-        {isLoading && hasNoObjects && (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-            <span>Loading...</span>
-          </div>
-        )}
-
         {/* Error state */}
         {hasError && (
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
@@ -604,141 +597,146 @@ const EditorNew = () => {
         )}
 
         {/* Object Lists */}
-        {!isLoading && (
-          <div className="flex-1 overflow-y-auto">
-            {/* Sources List */}
-            {filteredSources.length > 0 && (
-              <ObjectList
-                objects={filteredSources}
-                selectedName={currentEdit?.type === 'source' ? currentEdit.object?.name : null}
-                onSelect={handleSourceSelect}
-                title="Sources"
-                objectType="source"
-              />
-            )}
+        <div className="flex-1 overflow-y-auto">
+          {/* Loading state */}
+          {isLoading && hasNoObjects && (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+              <span>Loading...</span>
+            </div>
+          )}
 
-            {/* Models List */}
-            {filteredModels.length > 0 && (
-              <ObjectList
-                objects={filteredModels}
-                selectedName={currentEdit?.type === 'model' ? currentEdit.object?.name : null}
-                onSelect={handleModelSelect}
-                title="Models"
-                objectType="model"
-              />
-            )}
+          {/* Sources List */}
+          {filteredSources.length > 0 && (
+            <ObjectList
+              objects={filteredSources}
+              selectedName={currentEdit?.type === 'source' ? currentEdit.object?.name : null}
+              onSelect={handleSourceSelect}
+              title="Sources"
+              objectType="source"
+            />
+          )}
 
-            {/* Dimensions List */}
-            {filteredDimensions.length > 0 && (
-              <ObjectList
-                objects={filteredDimensions}
-                selectedName={currentEdit?.type === 'dimension' ? currentEdit.object?.name : null}
-                onSelect={handleDimensionSelect}
-                title="Dimensions"
-                objectType="dimension"
-              />
-            )}
+          {/* Models List */}
+          {filteredModels.length > 0 && (
+            <ObjectList
+              objects={filteredModels}
+              selectedName={currentEdit?.type === 'model' ? currentEdit.object?.name : null}
+              onSelect={handleModelSelect}
+              title="Models"
+              objectType="model"
+            />
+          )}
 
-            {/* Metrics List */}
-            {filteredMetrics.length > 0 && (
-              <ObjectList
-                objects={filteredMetrics}
-                selectedName={currentEdit?.type === 'metric' ? currentEdit.object?.name : null}
-                onSelect={handleMetricSelect}
-                title="Metrics"
-                objectType="metric"
-              />
-            )}
+          {/* CSV Script Models List */}
+          {filteredCsvScriptModels.length > 0 && (
+            <ObjectList
+              objects={filteredCsvScriptModels}
+              selectedName={currentEdit?.type === 'csvScriptModel' ? currentEdit.object?.name : null}
+              onSelect={handleCsvScriptModelSelect}
+              title="CSV Script Models"
+              objectType="csvScriptModel"
+            />
+          )}
 
-            {/* Relations List */}
-            {filteredRelations.length > 0 && (
-              <ObjectList
-                objects={filteredRelations}
-                selectedName={currentEdit?.type === 'relation' ? currentEdit.object?.name : null}
-                onSelect={handleRelationSelect}
-                title="Relations"
-                objectType="relation"
-              />
-            )}
+          {/* Local Merge Models List */}
+          {filteredLocalMergeModels.length > 0 && (
+            <ObjectList
+              objects={filteredLocalMergeModels}
+              selectedName={currentEdit?.type === 'localMergeModel' ? currentEdit.object?.name : null}
+              onSelect={handleLocalMergeModelSelect}
+              title="Local Merge Models"
+              objectType="localMergeModel"
+            />
+          )}
 
-            {/* Insights List */}
-            {filteredInsights.length > 0 && (
-              <ObjectList
-                objects={filteredInsights}
-                selectedName={currentEdit?.type === 'insight' ? currentEdit.object?.name : null}
-                onSelect={handleInsightSelect}
-                title="Insights"
-                objectType="insight"
-              />
-            )}
+          {/* Dimensions List */}
+          {filteredDimensions.length > 0 && (
+            <ObjectList
+              objects={filteredDimensions}
+              selectedName={currentEdit?.type === 'dimension' ? currentEdit.object?.name : null}
+              onSelect={handleDimensionSelect}
+              title="Dimensions"
+              objectType="dimension"
+            />
+          )}
 
-            {/* Markdowns List */}
-            {filteredMarkdowns.length > 0 && (
-              <ObjectList
-                objects={filteredMarkdowns}
-                selectedName={currentEdit?.type === 'markdown' ? currentEdit.object?.name : null}
-                onSelect={handleMarkdownSelect}
-                title="Markdowns"
-                objectType="markdown"
-              />
-            )}
+          {/* Metrics List */}
+          {filteredMetrics.length > 0 && (
+            <ObjectList
+              objects={filteredMetrics}
+              selectedName={currentEdit?.type === 'metric' ? currentEdit.object?.name : null}
+              onSelect={handleMetricSelect}
+              title="Metrics"
+              objectType="metric"
+            />
+          )}
 
-            {/* Charts List */}
-            {filteredCharts.length > 0 && (
-              <ObjectList
-                objects={filteredCharts}
-                selectedName={currentEdit?.type === 'chart' ? currentEdit.object?.name : null}
-                onSelect={handleChartSelect}
-                title="Charts"
-                objectType="chart"
-              />
-            )}
+          {/* Relations List */}
+          {filteredRelations.length > 0 && (
+            <ObjectList
+              objects={filteredRelations}
+              selectedName={currentEdit?.type === 'relation' ? currentEdit.object?.name : null}
+              onSelect={handleRelationSelect}
+              title="Relations"
+              objectType="relation"
+            />
+          )}
 
-            {/* Tables List */}
-            {filteredTables.length > 0 && (
-              <ObjectList
-                objects={filteredTables}
-                selectedName={currentEdit?.type === 'table' ? currentEdit.object?.name : null}
-                onSelect={handleTableSelect}
-                title="Tables"
-                objectType="table"
-              />
-            )}
+          {/* Insights List */}
+          {filteredInsights.length > 0 && (
+            <ObjectList
+              objects={filteredInsights}
+              selectedName={currentEdit?.type === 'insight' ? currentEdit.object?.name : null}
+              onSelect={handleInsightSelect}
+              title="Insights"
+              objectType="insight"
+            />
+          )}
 
-            {/* Dashboards List */}
-            {filteredDashboards.length > 0 && (
-              <ObjectList
-                objects={filteredDashboards}
-                selectedName={currentEdit?.type === 'dashboard' ? currentEdit.object?.name : null}
-                onSelect={handleDashboardSelect}
-                title="Dashboards"
-                objectType="dashboard"
-              />
-            )}
+          {/* Markdowns List */}
+          {filteredMarkdowns.length > 0 && (
+            <ObjectList
+              objects={filteredMarkdowns}
+              selectedName={currentEdit?.type === 'markdown' ? currentEdit.object?.name : null}
+              onSelect={handleMarkdownSelect}
+              title="Markdowns"
+              objectType="markdown"
+            />
+          )}
 
-            {/* CSV Script Models List */}
-            {filteredCsvScriptModels.length > 0 && (
-              <ObjectList
-                objects={filteredCsvScriptModels}
-                selectedName={currentEdit?.type === 'csvScriptModel' ? currentEdit.object?.name : null}
-                onSelect={handleCsvScriptModelSelect}
-                title="CSV Script Models"
-                objectType="csvScriptModel"
-              />
-            )}
+          {/* Charts List */}
+          {filteredCharts.length > 0 && (
+            <ObjectList
+              objects={filteredCharts}
+              selectedName={currentEdit?.type === 'chart' ? currentEdit.object?.name : null}
+              onSelect={handleChartSelect}
+              title="Charts"
+              objectType="chart"
+            />
+          )}
 
-            {/* Local Merge Models List */}
-            {filteredLocalMergeModels.length > 0 && (
-              <ObjectList
-                objects={filteredLocalMergeModels}
-                selectedName={currentEdit?.type === 'localMergeModel' ? currentEdit.object?.name : null}
-                onSelect={handleLocalMergeModelSelect}
-                title="Local Merge Models"
-                objectType="localMergeModel"
-              />
-            )}
-          </div>
-        )}
+          {/* Tables List */}
+          {filteredTables.length > 0 && (
+            <ObjectList
+              objects={filteredTables}
+              selectedName={currentEdit?.type === 'table' ? currentEdit.object?.name : null}
+              onSelect={handleTableSelect}
+              title="Tables"
+              objectType="table"
+            />
+          )}
+
+          {/* Dashboards List */}
+          {filteredDashboards.length > 0 && (
+            <ObjectList
+              objects={filteredDashboards}
+              selectedName={currentEdit?.type === 'dashboard' ? currentEdit.object?.name : null}
+              onSelect={handleDashboardSelect}
+              title="Dashboards"
+              objectType="dashboard"
+            />
+          )}
+        </div>
 
         {/* Empty search/filter results */}
         {!isLoading && !hasNoObjects && hasNoFilteredObjects && (

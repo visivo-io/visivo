@@ -11,6 +11,7 @@ import { SchemaEditor } from './SchemaEditor';
 import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
+import { parseRefValue, formatRef } from '../../../utils/refString';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -103,7 +104,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
       setInsights(
         chartInsights
           .filter(i => typeof i === 'string')
-          .map(i => i.replace('ref(', '').replace(')', ''))
+          .map(i => parseRefValue(i))
       );
 
       // Layout as object
@@ -147,7 +148,7 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
     };
 
     // Combine ref insights with embedded insights (preserve embedded)
-    const refInsights = insights.map(i => `ref(${i})`);
+    const refInsights = insights.map(i => formatRef(i));
     const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
 
     if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../stores/store';
 import RefSelector from './RefSelector';
+import { parseRefValue, formatRef } from '../../../utils/refString';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -88,11 +89,10 @@ const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
         {error && <FormAlert variant="error">{error}</FormAlert>}
 
         <RefSelector
-          value={sourceName ? `ref(${sourceName})` : null}
+          value={sourceName ? formatRef(sourceName) : null}
           onChange={val => {
             if (val) {
-              const match = val.match(/^ref\((.+)\)$/);
-              setSourceName(match ? match[1] : val);
+              setSourceName(parseRefValue(val) || '');
             } else {
               setSourceName('');
             }

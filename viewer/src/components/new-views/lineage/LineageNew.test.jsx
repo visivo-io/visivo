@@ -75,6 +75,10 @@ describe('LineageNew', () => {
   const mockFetchMarkdowns = jest.fn();
   const mockFetchCharts = jest.fn();
   const mockFetchTables = jest.fn();
+  const mockFetchDashboards = jest.fn();
+  const mockFetchCsvScriptModels = jest.fn();
+  const mockFetchLocalMergeModels = jest.fn();
+  const mockFetchDefaults = jest.fn();
   const mockSaveModel = jest.fn();
 
   const defaultStoreState = {
@@ -107,6 +111,17 @@ describe('LineageNew', () => {
     tables: [],
     fetchTables: mockFetchTables,
     tablesLoading: false,
+    dashboards: [],
+    fetchDashboards: mockFetchDashboards,
+    dashboardsLoading: false,
+    csvScriptModels: [],
+    fetchCsvScriptModels: mockFetchCsvScriptModels,
+    csvScriptModelsLoading: false,
+    localMergeModels: [],
+    fetchLocalMergeModels: mockFetchLocalMergeModels,
+    localMergeModelsLoading: false,
+    defaults: null,
+    fetchDefaults: mockFetchDefaults,
   };
 
   const emptyDagData = {

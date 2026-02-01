@@ -13,11 +13,15 @@ import InsightNode from './InsightNode';
 import MarkdownNode from './MarkdownNode';
 import ChartNode from './ChartNode';
 import TableNode from './TableNode';
+import DashboardNode from './DashboardNode';
+import CsvScriptModelNode from './CsvScriptModelNode';
+import LocalMergeModelNode from './LocalMergeModelNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
+import { formatRefExpression } from '../../../utils/refString';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -63,6 +67,21 @@ const LineageNew = () => {
   const fetchTables = useStore(state => state.fetchTables);
   const tablesLoading = useStore(state => state.tablesLoading);
 
+  // Dashboards
+  const fetchDashboards = useStore(state => state.fetchDashboards);
+  const dashboardsLoading = useStore(state => state.dashboardsLoading);
+
+  // CsvScriptModels
+  const fetchCsvScriptModels = useStore(state => state.fetchCsvScriptModels);
+  const csvScriptModelsLoading = useStore(state => state.csvScriptModelsLoading);
+
+  // LocalMergeModels
+  const fetchLocalMergeModels = useStore(state => state.fetchLocalMergeModels);
+  const localMergeModelsLoading = useStore(state => state.localMergeModelsLoading);
+
+  // Defaults
+  const fetchDefaults = useStore(state => state.fetchDefaults);
+
   // Navigation stack for editing - supports drilling into embedded objects
   // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
   // applyToParent is provided by parent forms for embedded objects
@@ -105,7 +124,11 @@ const LineageNew = () => {
     fetchMarkdowns();
     fetchCharts();
     fetchTables();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
+    fetchDashboards();
+    fetchCsvScriptModels();
+    fetchLocalMergeModels();
+    fetchDefaults();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -177,7 +200,7 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -191,7 +214,7 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -204,7 +227,7 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -285,6 +308,9 @@ const LineageNew = () => {
       markdownNode: MarkdownNode,
       chartNode: ChartNode,
       tableNode: TableNode,
+      dashboardNode: DashboardNode,
+      csvScriptModelNode: CsvScriptModelNode,
+      localMergeModelNode: LocalMergeModelNode,
     }),
     []
   );
@@ -315,7 +341,7 @@ const LineageNew = () => {
           ...model.config,
           name: model.name,
           sql: model.sql || model.config?.sql,
-          source: `\${ref(${sourceName})}`,
+          source: formatRefExpression(sourceName),
         };
         await saveModel(modelName, updatedConfig);
         await fetchModels();
@@ -371,7 +397,11 @@ const LineageNew = () => {
     await fetchMarkdowns();
     await fetchCharts();
     await fetchTables();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
+    await fetchDashboards();
+    await fetchCsvScriptModels();
+    await fetchLocalMergeModels();
+    await fetchDefaults();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
 
   // Create success callback for the save handler
   const onSuccessfulSave = useCallback(async () => {
@@ -384,7 +414,7 @@ const LineageNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading || dashboardsLoading || csvScriptModelsLoading || localMergeModelsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
