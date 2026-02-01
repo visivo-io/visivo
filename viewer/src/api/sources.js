@@ -91,3 +91,40 @@ export const testSourceConnection = async config => {
     error: errorData.error || 'Connection test failed',
   };
 };
+
+// === Introspection functions ===
+
+export const fetchDatabases = async sourceName => {
+  const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases/`);
+  if (response.status === 200) return response.json();
+  return null;
+};
+
+export const fetchSchemas = async (sourceName, databaseName) => {
+  const enc = encodeURIComponent;
+  const response = await fetch(
+    `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/`
+  );
+  if (response.status === 200) return response.json();
+  return null;
+};
+
+export const fetchTables = async (sourceName, databaseName, schemaName = null) => {
+  const enc = encodeURIComponent;
+  const url = schemaName
+    ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/`
+    : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/`;
+  const response = await fetch(url);
+  if (response.status === 200) return response.json();
+  return null;
+};
+
+export const fetchColumns = async (sourceName, databaseName, tableName, schemaName = null) => {
+  const enc = encodeURIComponent;
+  const url = schemaName
+    ? `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/schemas/${enc(schemaName)}/tables/${enc(tableName)}/columns/`
+    : `/api/project/sources/${enc(sourceName)}/databases/${enc(databaseName)}/tables/${enc(tableName)}/columns/`;
+  const response = await fetch(url);
+  if (response.status === 200) return response.json();
+  return null;
+};
