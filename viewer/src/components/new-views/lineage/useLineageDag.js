@@ -13,8 +13,9 @@ function computeLayout(nodes, edges) {
 
   // Add nodes to graph
   nodes.forEach(node => {
-    // Estimate node dimensions based on type
-    const width = 180;
+    // Estimate node width from name length (~8px per char + padding for icon/status/handles)
+    const nameLen = (node.data.name || '').length;
+    const width = Math.max(180, nameLen * 8 + 80);
     const height = 50;
     graph.setNode(node.id, { width, height });
   });

@@ -57,17 +57,10 @@ export function PropertyRow({
   // Get the appropriate field component
   const FieldComponent = getFieldComponent(fieldType);
 
-  // Handle mode toggle
+  // Handle mode toggle - preserve value until user edits in new mode
   const handleModeChange = (event, newMode) => {
     if (newMode === null) return; // Don't allow deselect
-
-    if (newMode === 'query') {
-      setForceQueryMode(true);
-      if (!isQueryMode) onChange(undefined);
-    } else {
-      setForceQueryMode(false);
-      if (isQueryMode) onChange(undefined);
-    }
+    setForceQueryMode(newMode === 'query');
   };
 
   // Handle value change

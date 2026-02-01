@@ -134,7 +134,7 @@ describe('PropertyRow', () => {
     expect(queryButton).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('calls onChange with undefined when switching modes', () => {
+  it('preserves value when switching modes', () => {
     const onChange = jest.fn();
     const schema = {
       oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'string' }],
@@ -142,10 +142,10 @@ describe('PropertyRow', () => {
 
     render(<PropertyRow {...defaultProps} schema={schema} value="hello" onChange={onChange} />);
 
-    // Click query mode
+    // Click query mode - value should be preserved, not cleared
     fireEvent.click(screen.getByRole('button', { name: /query/i }));
 
-    expect(onChange).toHaveBeenCalledWith(undefined);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('renders description as helper text', () => {

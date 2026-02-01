@@ -279,7 +279,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
         />
 
         {/* Options Mode Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-gray-700">Options</label>
           <ToggleButtonGroup
             value={optionsMode}
@@ -337,7 +337,8 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
               allowedTypes={['model']}
               label=""
               rows={3}
-              helperText="Use ${ref(model_name)} to reference a model"
+              // eslint-disable-next-line no-template-curly-in-string
+              helperText={'Use ${ref(model_name)} to reference a model'}
             />
           </div>
         ) : (
