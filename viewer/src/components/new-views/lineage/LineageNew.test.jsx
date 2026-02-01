@@ -78,6 +78,7 @@ describe('LineageNew', () => {
   const mockFetchDashboards = jest.fn();
   const mockFetchCsvScriptModels = jest.fn();
   const mockFetchLocalMergeModels = jest.fn();
+  const mockFetchInputs = jest.fn();
   const mockFetchDefaults = jest.fn();
   const mockSaveModel = jest.fn();
 
@@ -120,6 +121,9 @@ describe('LineageNew', () => {
     localMergeModels: [],
     fetchLocalMergeModels: mockFetchLocalMergeModels,
     localMergeModelsLoading: false,
+    inputs: [],
+    fetchInputs: mockFetchInputs,
+    inputsLoading: false,
     defaults: null,
     fetchDefaults: mockFetchDefaults,
   };

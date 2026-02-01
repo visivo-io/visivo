@@ -25,11 +25,12 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
   const [label, setLabel] = useState('');
   const [options, setOptions] = useState([]);
   const [newOption, setNewOption] = useState('');
+  const [optionsQuery, setOptionsQuery] = useState('');
+  const [optionsMode, setOptionsMode] = useState('list'); // 'list' | 'query' | 'range'
   const [displayType, setDisplayType] = useState('dropdown');
   const [defaultValue, setDefaultValue] = useState('');
 
   // Multi-select range fields
-  const [useRange, setUseRange] = useState(false);
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
   const [rangeStep, setRangeStep] = useState('');
@@ -52,14 +53,24 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
       setLabel(config.label || '');
 
       if (config.range) {
-        setUseRange(true);
+        setOptionsMode('range');
         setRangeStart(config.range.start != null ? String(config.range.start) : '');
         setRangeEnd(config.range.end != null ? String(config.range.end) : '');
         setRangeStep(config.range.step != null ? String(config.range.step) : '');
         setOptions([]);
+        setOptionsQuery('');
+      } else if (typeof config.options === 'string') {
+        // Query string options (e.g., "?{ SELECT ... }")
+        setOptionsMode('query');
+        setOptionsQuery(config.options);
+        setOptions([]);
+        setRangeStart('');
+        setRangeEnd('');
+        setRangeStep('');
       } else {
-        setUseRange(false);
+        setOptionsMode('list');
         setOptions(Array.isArray(config.options) ? config.options : []);
+        setOptionsQuery('');
         setRangeStart('');
         setRangeEnd('');
         setRangeStep('');
@@ -86,9 +97,10 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
       setLabel('');
       setOptions([]);
       setNewOption('');
+      setOptionsQuery('');
+      setOptionsMode('list');
       setDisplayType('dropdown');
       setDefaultValue('');
-      setUseRange(false);
       setRangeStart('');
       setRangeEnd('');
       setRangeStep('');
@@ -128,15 +140,17 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
     const nameError = validateName(name);
     if (nameError) newErrors.name = nameError;
 
-    if (inputType === 'multi-select' && useRange) {
+    if (optionsMode === 'range') {
       if (!rangeStart && rangeStart !== '0') newErrors.rangeStart = 'Start is required';
       if (!rangeEnd && rangeEnd !== '0') newErrors.rangeEnd = 'End is required';
       if (!rangeStep && rangeStep !== '0') newErrors.rangeStep = 'Step is required';
+    } else if (optionsMode === 'query') {
+      if (!optionsQuery.trim()) newErrors.optionsQuery = 'Query is required';
     } else {
       if (options.length === 0) newErrors.options = 'At least one option is required';
     }
 
-    if (inputType === 'single-select' && displayType === 'toggle' && options.length !== 2) {
+    if (optionsMode === 'list' && inputType === 'single-select' && displayType === 'toggle' && options.length !== 2) {
       newErrors.options = 'Toggle display requires exactly 2 options';
     }
 
@@ -157,12 +171,14 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
 
     if (label.trim()) config.label = label.trim();
 
-    if (inputType === 'multi-select' && useRange) {
+    if (optionsMode === 'range') {
       config.range = {
         start: isNaN(Number(rangeStart)) ? rangeStart : Number(rangeStart),
         end: isNaN(Number(rangeEnd)) ? rangeEnd : Number(rangeEnd),
         step: isNaN(Number(rangeStep)) ? rangeStep : Number(rangeStep),
       };
+    } else if (optionsMode === 'query') {
+      config.options = optionsQuery.trim();
     } else {
       config.options = options;
     }
@@ -257,28 +273,35 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           placeholder="Optional display label"
         />
 
-        {/* Options or Range */}
-        {inputType === 'multi-select' && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700">Mode:</label>
+        {/* Options Mode Toggle */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-700">Options:</label>
+          <button
+            type="button"
+            onClick={() => setOptionsMode('list')}
+            className={`px-2 py-1 text-xs rounded ${optionsMode === 'list' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setOptionsMode('query')}
+            className={`px-2 py-1 text-xs rounded ${optionsMode === 'query' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            Query
+          </button>
+          {inputType === 'multi-select' && (
             <button
               type="button"
-              onClick={() => setUseRange(false)}
-              className={`px-2 py-1 text-xs rounded ${!useRange ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              Options
-            </button>
-            <button
-              type="button"
-              onClick={() => setUseRange(true)}
-              className={`px-2 py-1 text-xs rounded ${useRange ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              onClick={() => setOptionsMode('range')}
+              className={`px-2 py-1 text-xs rounded ${optionsMode === 'range' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               Range
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {useRange && inputType === 'multi-select' ? (
+        {optionsMode === 'range' ? (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Range</label>
             <div className="grid grid-cols-3 gap-2">
@@ -304,6 +327,21 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
                 error={errors.rangeStep}
               />
             </div>
+          </div>
+        ) : optionsMode === 'query' ? (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Options Query</label>
+            {errors.optionsQuery && <p className="text-xs text-red-600">{errors.optionsQuery}</p>}
+            <textarea
+              value={optionsQuery}
+              onChange={e => setOptionsQuery(e.target.value)}
+              placeholder={'?{ SELECT DISTINCT col FROM ${ref(model_name)} }'}
+              rows={3}
+              className="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <p className="text-xs text-gray-500">
+              Use <code className="bg-gray-100 px-1 rounded">{'${ref(model_name)}'}</code> to reference a model.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">

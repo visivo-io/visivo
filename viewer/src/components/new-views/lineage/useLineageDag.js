@@ -96,6 +96,7 @@ export function useLineageDag() {
   const tables = useStore(state => state.tables);
   const dashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
+  const inputs = useStore(state => state.inputs);
   const csvScriptModels = useStore(state => state.csvScriptModels);
   const localMergeModels = useStore(state => state.localMergeModels);
 
@@ -115,6 +116,7 @@ export function useLineageDag() {
     (charts || []).forEach(c => { objectTypeByName[c.name] = 'chart'; });
     (tables || []).forEach(t => { objectTypeByName[t.name] = 'table'; });
     (dashboards || []).forEach(d => { objectTypeByName[d.name] = 'dashboard'; });
+    (inputs || []).forEach(i => { objectTypeByName[i.name] = 'input'; });
     (csvScriptModels || []).forEach(m => { objectTypeByName[m.name] = 'csvScriptModel'; });
     (localMergeModels || []).forEach(m => { objectTypeByName[m.name] = 'localMergeModel'; });
 
@@ -290,6 +292,14 @@ export function useLineageDag() {
       });
     });
 
+    // Build input nodes (standalone, like markdowns - connected to dashboards via dashboard items)
+    (inputs || []).forEach(input => {
+      addNode(input.name, 'input', 'inputNode', {
+        status: input.status,
+        input: input,
+      });
+    });
+
     // Build chart nodes and edges from child items (primarily insights)
     (charts || []).forEach(chart => {
       addNode(chart.name, 'chart', 'chartNode', {
@@ -343,7 +353,7 @@ export function useLineageDag() {
     const layoutNodes = computeLayout(nodes, edges);
 
     return { nodes: layoutNodes, edges };
-  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, defaults, csvScriptModels, localMergeModels]);
+  }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, inputs, defaults, csvScriptModels, localMergeModels]);
 
   return dag;
 }

@@ -16,6 +16,7 @@ import TableNode from './TableNode';
 import DashboardNode from './DashboardNode';
 import CsvScriptModelNode from './CsvScriptModelNode';
 import LocalMergeModelNode from './LocalMergeModelNode';
+import InputNode from './InputNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
@@ -79,6 +80,10 @@ const LineageNew = () => {
   const fetchLocalMergeModels = useStore(state => state.fetchLocalMergeModels);
   const localMergeModelsLoading = useStore(state => state.localMergeModelsLoading);
 
+  // Inputs
+  const fetchInputs = useStore(state => state.fetchInputs);
+  const inputsLoading = useStore(state => state.inputsLoading);
+
   // Defaults
   const fetchDefaults = useStore(state => state.fetchDefaults);
 
@@ -127,8 +132,9 @@ const LineageNew = () => {
     fetchDashboards();
     fetchCsvScriptModels();
     fetchLocalMergeModels();
+    fetchInputs();
     fetchDefaults();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -311,6 +317,7 @@ const LineageNew = () => {
       dashboardNode: DashboardNode,
       csvScriptModelNode: CsvScriptModelNode,
       localMergeModelNode: LocalMergeModelNode,
+      inputNode: InputNode,
     }),
     []
   );
@@ -400,8 +407,9 @@ const LineageNew = () => {
     await fetchDashboards();
     await fetchCsvScriptModels();
     await fetchLocalMergeModels();
+    await fetchInputs();
     await fetchDefaults();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchDefaults]);
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Create success callback for the save handler
   const onSuccessfulSave = useCallback(async () => {
@@ -414,7 +422,7 @@ const LineageNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading || dashboardsLoading || csvScriptModelsLoading || localMergeModelsLoading;
+  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading || dashboardsLoading || csvScriptModelsLoading || localMergeModelsLoading || inputsLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
