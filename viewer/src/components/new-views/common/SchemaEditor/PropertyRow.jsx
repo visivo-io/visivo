@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   ToggleButton,
@@ -45,6 +45,13 @@ export function PropertyRow({
   // Determine if current value is a query-string
   const isQueryMode = useMemo(() => isQueryStringValue(value), [value]);
 
+  // Track explicit user toggle intent so mode persists when value is cleared
+  const [forceQueryMode, setForceQueryMode] = useState(false);
+
+  useEffect(() => {
+    setForceQueryMode(isQueryStringValue(value));
+  }, [value]);
+
   // Get the static (non-query-string) schema for the field
   const staticSchema = useMemo(() => getStaticSchema(schema, defs), [schema, defs]);
 
@@ -58,12 +65,12 @@ export function PropertyRow({
   const handleModeChange = (event, newMode) => {
     if (newMode === null) return; // Don't allow deselect
 
-    if (newMode === 'query' && !isQueryMode) {
-      // Switching to query mode - clear the static value
-      onChange(undefined);
-    } else if (newMode === 'static' && isQueryMode) {
-      // Switching to static mode - clear the query value
-      onChange(undefined);
+    if (newMode === 'query') {
+      setForceQueryMode(true);
+      if (!isQueryMode) onChange(undefined);
+    } else {
+      setForceQueryMode(false);
+      if (isQueryMode) onChange(undefined);
     }
   };
 
@@ -72,8 +79,8 @@ export function PropertyRow({
     onChange(newValue);
   };
 
-  // Current mode based on value
-  const currentMode = isQueryMode ? 'query' : 'static';
+  // Current mode based on value or explicit user toggle
+  const currentMode = (forceQueryMode || isQueryMode) ? 'query' : 'static';
 
   return (
     <Box
@@ -134,7 +141,7 @@ export function PropertyRow({
 
       {/* Field input */}
       <Box>
-        {isQueryMode || (queryStringSupported && !staticSchema) ? (
+        {currentMode === 'query' || (queryStringSupported && !staticSchema) ? (
           // Query-string mode - use RefTextArea
           <RefTextArea
             value={value || ''}

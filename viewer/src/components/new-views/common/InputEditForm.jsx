@@ -3,9 +3,14 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import { ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import TuneIcon from '@mui/icons-material/Tune';
+import CodeIcon from '@mui/icons-material/Code';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import RefTextArea from './RefTextArea';
 import { validateName } from './namedModel';
 
 const INPUT_TYPES = [
@@ -275,30 +280,25 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
 
         {/* Options Mode Toggle */}
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700">Options:</label>
-          <button
-            type="button"
-            onClick={() => setOptionsMode('list')}
-            className={`px-2 py-1 text-xs rounded ${optionsMode === 'list' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          <label className="text-sm font-medium text-gray-700">Options</label>
+          <ToggleButtonGroup
+            value={optionsMode}
+            exclusive
+            onChange={(e, newMode) => { if (newMode !== null) setOptionsMode(newMode); }}
+            size="small"
           >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setOptionsMode('query')}
-            className={`px-2 py-1 text-xs rounded ${optionsMode === 'query' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          >
-            Query
-          </button>
-          {inputType === 'multi-select' && (
-            <button
-              type="button"
-              onClick={() => setOptionsMode('range')}
-              className={`px-2 py-1 text-xs rounded ${optionsMode === 'range' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              Range
-            </button>
-          )}
+            <ToggleButton value="list" aria-label="static list">
+              <Tooltip title="Static list"><TuneIcon fontSize="small" /></Tooltip>
+            </ToggleButton>
+            <ToggleButton value="query" aria-label="query string">
+              <Tooltip title="Query expression"><CodeIcon fontSize="small" /></Tooltip>
+            </ToggleButton>
+            {inputType === 'multi-select' && (
+              <ToggleButton value="range" aria-label="range">
+                <Tooltip title="Numeric range"><SwapHorizIcon fontSize="small" /></Tooltip>
+              </ToggleButton>
+            )}
+          </ToggleButtonGroup>
         </div>
 
         {optionsMode === 'range' ? (
@@ -330,22 +330,18 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           </div>
         ) : optionsMode === 'query' ? (
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Options Query</label>
             {errors.optionsQuery && <p className="text-xs text-red-600">{errors.optionsQuery}</p>}
-            <textarea
+            <RefTextArea
               value={optionsQuery}
-              onChange={e => setOptionsQuery(e.target.value)}
-              placeholder={'?{ SELECT DISTINCT col FROM ${ref(model_name)} }'}
+              onChange={(val) => setOptionsQuery(val)}
+              allowedTypes={['model']}
+              label=""
               rows={3}
-              className="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              helperText="Use ${ref(model_name)} to reference a model"
             />
-            <p className="text-xs text-gray-500">
-              Use <code className="bg-gray-100 px-1 rounded">{'${ref(model_name)}'}</code> to reference a model.
-            </p>
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Options</label>
             {errors.options && <p className="text-xs text-red-600">{errors.options}</p>}
 
             <div className="border border-gray-300 rounded-md max-h-40 overflow-y-auto">
