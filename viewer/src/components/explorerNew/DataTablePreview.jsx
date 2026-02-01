@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDuckDB } from '../../contexts/DuckDBContext';
 import { loadParquetFromURL } from '../../duckdb/queries';
 import { alphaHash } from '../../utils/alphaHash';
 import { useTableData } from '../../hooks/useTableData';
 import DataTable from '../common/DataTable';
+import ColumnProfilePanel from './ColumnProfilePanel';
+import { profileTableLocally } from '../../duckdb/profiling';
 import useStore from '../../stores/store';
 import { PiSpinner } from 'react-icons/pi';
 
@@ -18,9 +20,13 @@ const DataTablePreview = () => {
   const [loadError, setLoadError] = useState(null);
   const [loadingParquet, setLoadingParquet] = useState(false);
 
-  const insightConfigs = useStore(s => s.insightConfigs);
-  const insightConfigsLoading = useStore(s => s.insightConfigsLoading);
-  const fetchInsightConfigs = useStore(s => s.fetchInsightConfigs);
+  const [profileColumn, setProfileColumn] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const insights = useStore(s => s.insights);
+  const insightsLoading = useStore(s => s.insightsLoading);
+  const fetchInsights = useStore(s => s.fetchInsights);
 
   const models = useStore(s => s.models);
   const modelsLoading = useStore(s => s.modelsLoading);
@@ -43,9 +49,9 @@ const DataTablePreview = () => {
   } = useTableData({ tableName });
 
   useEffect(() => {
-    fetchInsightConfigs();
+    fetchInsights();
     fetchModels();
-  }, [fetchInsightConfigs, fetchModels]);
+  }, [fetchInsights, fetchModels]);
 
   useEffect(() => {
     if (selectedName) {
@@ -62,11 +68,20 @@ const DataTablePreview = () => {
       setLoadError(null);
       setLoadingParquet(true);
       setTableName(null);
+      setProfileColumn(null);
+      setProfileData(null);
 
       try {
         const hash = alphaHash(name);
         await loadParquetFromURL(db, `/api/files/${hash}/`, hash, true);
         setTableName(hash);
+
+        // Profile data from DuckDB (non-blocking)
+        setProfileLoading(true);
+        profileTableLocally(db, hash)
+          .then(data => setProfileData(data))
+          .catch(() => {})
+          .finally(() => setProfileLoading(false));
       } catch (err) {
         setLoadError(err.message || String(err));
       } finally {
@@ -76,7 +91,23 @@ const DataTablePreview = () => {
     [db]
   );
 
-  const listsLoading = insightConfigsLoading || modelsLoading;
+  // Enrich columns with null percentage from profile data
+  const enrichedColumns = useMemo(() => {
+    if (!profileData?.columns || !columns.length) return columns;
+    const profileMap = new Map(profileData.columns.map(c => [c.name, c]));
+    return columns.map(col => {
+      const profile = profileMap.get(col.name);
+      return profile ? { ...col, nullPercentage: profile.null_percentage ?? 0 } : col;
+    });
+  }, [columns, profileData]);
+
+  // Find the profile for the selected column
+  const selectedColumnProfile = useMemo(() => {
+    if (!profileColumn || !profileData?.columns) return null;
+    return profileData.columns.find(c => c.name === profileColumn) || null;
+  }, [profileColumn, profileData]);
+
+  const listsLoading = insightsLoading || modelsLoading;
   const displayError = loadError || error;
 
   return (
@@ -96,9 +127,9 @@ const DataTablePreview = () => {
             <option value="">
               {listsLoading ? 'Loading...' : '-- Select an insight or model --'}
             </option>
-            {insightConfigs.length > 0 && (
+            {insights.length > 0 && (
               <optgroup label="Insights">
-                {insightConfigs.map(i => (
+                {insights.map(i => (
                   <option key={`insight-${i.name}`} value={i.name}>
                     {i.name}
                   </option>
@@ -116,44 +147,60 @@ const DataTablePreview = () => {
             )}
           </select>
 
-          {loadingParquet && <PiSpinner className="animate-spin text-secondary-400" size={16} />}
+          {(loadingParquet || profileLoading) && (
+            <PiSpinner className="animate-spin text-secondary-400" size={16} />
+          )}
 
-          {tableName && !isLoading && !displayError && columns.length > 0 && (
+          {tableName && !isLoading && !displayError && enrichedColumns.length > 0 && (
             <span className="text-xs text-secondary-400 ml-auto">
-              {columns.length} columns, {totalRowCount.toLocaleString()} rows
+              {enrichedColumns.length} columns, {totalRowCount.toLocaleString()} rows
             </span>
           )}
         </div>
       </div>
 
       {/* DataTable area */}
-      <div className="flex-1 min-h-0 p-4">
+      <div className="flex-1 min-h-0 flex p-4 gap-4">
         {!tableName && !loadingParquet && !displayError ? (
-          <div className="flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
+          <div className="flex-1 flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
             <span className="text-sm text-secondary-400">
               Select an insight or model to preview its data
             </span>
           </div>
         ) : displayError ? (
-          <div className="flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
+          <div className="flex-1 flex items-center justify-center h-full border border-secondary-200 rounded bg-white">
             <span className="text-sm text-highlight">{displayError}</span>
           </div>
         ) : (
-          <DataTable
-            columns={columns}
-            rows={rows}
-            totalRowCount={totalRowCount}
-            page={page}
-            pageSize={pageSize}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-            sorting={sorting}
-            onSortChange={setSorting}
-            isLoading={isLoading || loadingParquet}
-            isQuerying={isQuerying}
-            height="100%"
-          />
+          <>
+            <div className="flex-1 min-w-0">
+              <DataTable
+                columns={enrichedColumns}
+                rows={rows}
+                totalRowCount={totalRowCount}
+                page={page}
+                pageSize={pageSize}
+                pageCount={pageCount}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                sorting={sorting}
+                onSortChange={setSorting}
+                onColumnProfileRequest={colName => setProfileColumn(colName)}
+                isLoading={isLoading || loadingParquet}
+                isQuerying={isQuerying}
+                height="100%"
+              />
+            </div>
+            <ColumnProfilePanel
+              column={profileColumn}
+              profile={selectedColumnProfile}
+              db={db}
+              tableName={tableName}
+              rowCount={profileData?.row_count}
+              onClose={() => setProfileColumn(null)}
+              isOpen={!!profileColumn && !!selectedColumnProfile}
+            />
+          </>
         )}
       </div>
     </div>

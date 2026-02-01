@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Start development server**: `yarn start` (proxies to localhost:8000)
 - **Build for production**: `yarn build`
 - **Lint**: `yarn lint`
-- **Format**: `yarn format`
+- **Format**: `yarn format` — **NEVER run `yarn format` on JSX files**. Prettier reformats JSX in ways that break components. Only run format on non-JSX files (`.js`, `.json`, etc.) or skip it entirely for JSX.
 - **Always run yarn test when making JS changes to ensure that components are not breaking**
 - **File naming conventions**:
   - Avoid using `index.js` files - use descriptive names instead (e.g., `schemas.js` instead of `schemas/index.js`)
@@ -194,3 +194,23 @@ The CLI execution path is introspection-free to maintain performance:
 - always use generate_ref_field from @visivo/models/base/base_model.py to create references to other objects in pydantics models
 - NEVER EVER EVER write regex to parse SQL. Always use sqlglot to parse SQL. Never create fall back logic for sql parsing if sqlglot fails then it fails. See @claude-docs/SQLGLOT.md if you need to use sqlglot and want a cheat sheet. 
 - Don't run yarn deploy unless absolutely required or asked to. When trying to test frontend changes run `visivo serve` in an integration project and then in @viewer/ run `yarn dev` which will spin up a dev server on localhost:3000 where you can check on errors
+
+### Visual Testing with Playwright MCP
+
+To visually verify frontend changes using the Playwright MCP tool:
+
+1. **Activate the venv12 virtual environment** (editable pip install of the local visivo package):
+   ```bash
+   source venv12/bin/activate
+   ```
+2. **Start the backend server** as a background task by `cd`-ing to a test project (e.g., `test-projects/integration/`) and running:
+   ```bash
+   visivo serve
+   ```
+3. **Start the viewer dev server** in a separate background task:
+   ```bash
+   cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn start
+   ```
+4. The Flask backend on `localhost:8000` proxies to the Vite dev server at `localhost:3000`.
+5. With both background tasks running, use Playwright MCP to navigate routes at `localhost:3000`.
+6. **Python backend changes** require killing and restarting `visivo serve`. **JS changes** hot-reload automatically so `yarn start` does not need to be restarted.
