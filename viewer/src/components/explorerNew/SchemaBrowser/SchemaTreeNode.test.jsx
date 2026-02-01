@@ -113,6 +113,15 @@ describe('SchemaTreeNode', () => {
     expect(node3.style.paddingLeft).toBe('56px');
   });
 
+  test('shows error icon with tooltip when errorMessage is set', () => {
+    render(<SchemaTreeNode {...defaultProps} errorMessage="Connection refused" />);
+    const errorIcon = screen.getByTestId('error-icon');
+    expect(errorIcon).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    const row = screen.getByTestId('tree-node-source-test_source');
+    expect(row).toHaveAttribute('title', 'Connection refused');
+  });
+
   test('column type nodes do not show aria-expanded', () => {
     render(
       <SchemaTreeNode

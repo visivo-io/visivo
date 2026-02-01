@@ -13,7 +13,7 @@ import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
-import DataTablePreview from './components/explorerNew/DataTablePreview';
+import SchemaBrowser from './components/explorerNew/SchemaBrowser/SchemaBrowser';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // Set global URL config early for router loaders
@@ -83,7 +83,7 @@ const LocalRouter = createBrowserRouter(
         <Route
           id="table-new"
           path="/table-new"
-          element={<DataTablePreview />}
+          element={<SchemaBrowser />}
           handle={{
             crumb: () => <BreadcrumbLink to="/table-new">Table (New)</BreadcrumbLink>,
           }}

@@ -299,4 +299,24 @@ describe('SchemaBrowser', () => {
 
     await screen.findByText('NEW');
   });
+
+  test('shows error icon when source connection fails', async () => {
+    fetchDatabases.mockResolvedValue({
+      databases: [],
+      status: 'connection_failed',
+      error: 'Connection refused',
+    });
+
+    render(<SchemaBrowser />);
+
+    await screen.findByText('postgres_db');
+
+    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
+
+    await screen.findByTestId('error-icon');
+    expect(screen.getByTestId('tree-node-source-postgres_db')).toHaveAttribute(
+      'title',
+      'Connection refused'
+    );
+  });
 });
