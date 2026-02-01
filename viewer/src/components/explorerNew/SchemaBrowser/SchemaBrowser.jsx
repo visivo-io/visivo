@@ -81,6 +81,22 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
     [searchQuery]
   );
 
+  const hasLoadedMatch = useCallback(
+    nodeKeyPrefix => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      for (const [key, data] of Object.entries(loadedData)) {
+        if (!key.startsWith(nodeKeyPrefix)) continue;
+        if (data.databases?.some(db => db.name.toLowerCase().includes(query))) return true;
+        if (data.schemas?.some(s => s.name.toLowerCase().includes(query))) return true;
+        if (data.tables?.some(t => t.name.toLowerCase().includes(query))) return true;
+        if (data.columns?.some(c => c.name.toLowerCase().includes(query))) return true;
+      }
+      return false;
+    },
+    [searchQuery, loadedData]
+  );
+
   const getNodeError = useCallback(
     nodeKey => {
       const data = loadedData[nodeKey];
@@ -118,7 +134,10 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       if (!data || !data.tables) return null;
 
       return data.tables
-        .filter(table => matchesSearch(table.name))
+        .filter(table => {
+          const colKey = `${tablesKey}::table::${table.name}`;
+          return matchesSearch(table.name) || hasLoadedMatch(colKey);
+        })
         .map(table => {
           const colKey = `${tablesKey}::table::${table.name}`;
           const colError = getNodeError(colKey);
@@ -167,6 +186,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       loadingNodes,
       toggleNode,
       matchesSearch,
+      hasLoadedMatch,
       onTableSelect,
       onCreateModel,
       renderColumns,
@@ -187,7 +207,11 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       if (!data.schemas) return null;
 
       return data.schemas
-        .filter(schema => matchesSearch(schema.name))
+        .filter(schema => {
+          const schemaKey = `${dbKey}::schema::${schema.name}`;
+          const tablesKey = `${schemaKey}::tables`;
+          return matchesSearch(schema.name) || hasLoadedMatch(tablesKey);
+        })
         .map(schema => {
           const schemaKey = `${dbKey}::schema::${schema.name}`;
           const tablesKey = `${schemaKey}::tables`;
@@ -214,7 +238,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           );
         });
     },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderTables, getNodeError]
+    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, hasLoadedMatch, renderTables, getNodeError]
   );
 
   const renderDatabases = useCallback(
@@ -223,7 +247,10 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       if (!data || !data.databases) return null;
 
       return data.databases
-        .filter(db => matchesSearch(db.name))
+        .filter(db => {
+          const dbKey = `${sourceKey}::db::${db.name}`;
+          return matchesSearch(db.name) || hasLoadedMatch(dbKey);
+        })
         .map(db => {
           const dbKey = `${sourceKey}::db::${db.name}`;
           const dbError = getNodeError(dbKey);
@@ -256,12 +283,16 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           );
         });
     },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, renderSchemas, getNodeError]
+    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, hasLoadedMatch, renderSchemas, getNodeError]
   );
 
   const filteredSources = useMemo(
-    () => sources.filter(source => matchesSearch(source.name)),
-    [sources, matchesSearch]
+    () =>
+      sources.filter(source => {
+        const sourceKey = `source::${source.name}`;
+        return matchesSearch(source.name) || hasLoadedMatch(sourceKey);
+      }),
+    [sources, matchesSearch, hasLoadedMatch]
   );
 
   const renderSources = useCallback(() => {

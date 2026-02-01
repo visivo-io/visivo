@@ -102,6 +102,33 @@ describe('SchemaBrowser', () => {
     expect(screen.queryByText('snowflake_wh')).not.toBeInTheDocument();
   });
 
+  test('search for table name keeps parent source and database visible', async () => {
+    render(<SchemaBrowser />);
+
+    await screen.findByText('postgres_db');
+
+    // Expand source -> database -> schema -> tables
+    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
+    await screen.findByText('analytics');
+
+    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
+    await screen.findByText('public');
+
+    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
+    await screen.findByText('users');
+
+    // Search for a table name
+    const searchInput = screen.getByTestId('schema-search');
+    fireEvent.change(searchInput, { target: { value: 'users' } });
+
+    // Parent source and database should still be visible
+    expect(screen.getByText('postgres_db')).toBeInTheDocument();
+    expect(screen.getByText('analytics')).toBeInTheDocument();
+    expect(screen.getByText('users')).toBeInTheDocument();
+    // Non-matching table should be hidden
+    expect(screen.queryByText('orders')).not.toBeInTheDocument();
+  });
+
   test('clicking source expands it and calls fetchDatabases', async () => {
     render(<SchemaBrowser />);
 
