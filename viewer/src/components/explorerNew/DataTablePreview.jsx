@@ -18,9 +18,9 @@ const DataTablePreview = () => {
   const [loadError, setLoadError] = useState(null);
   const [loadingParquet, setLoadingParquet] = useState(false);
 
-  const insightConfigs = useStore(s => s.insightConfigs);
-  const insightConfigsLoading = useStore(s => s.insightConfigsLoading);
-  const fetchInsightConfigs = useStore(s => s.fetchInsightConfigs);
+  const insights = useStore(s => s.insights);
+  const insightsLoading = useStore(s => s.insightsLoading);
+  const fetchInsights = useStore(s => s.fetchInsights);
 
   const models = useStore(s => s.models);
   const modelsLoading = useStore(s => s.modelsLoading);
@@ -43,9 +43,9 @@ const DataTablePreview = () => {
   } = useTableData({ tableName });
 
   useEffect(() => {
-    fetchInsightConfigs();
+    fetchInsights();
     fetchModels();
-  }, [fetchInsightConfigs, fetchModels]);
+  }, [fetchInsights, fetchModels]);
 
   useEffect(() => {
     if (selectedName) {
@@ -76,7 +76,7 @@ const DataTablePreview = () => {
     [db]
   );
 
-  const listsLoading = insightConfigsLoading || modelsLoading;
+  const listsLoading = insightsLoading || modelsLoading;
   const displayError = loadError || error;
 
   return (
@@ -96,9 +96,9 @@ const DataTablePreview = () => {
             <option value="">
               {listsLoading ? 'Loading...' : '-- Select an insight or model --'}
             </option>
-            {insightConfigs.length > 0 && (
+            {insights.length > 0 && (
               <optgroup label="Insights">
-                {insightConfigs.map(i => (
+                {insights.map(i => (
                   <option key={`insight-${i.name}`} value={i.name}>
                     {i.name}
                   </option>
