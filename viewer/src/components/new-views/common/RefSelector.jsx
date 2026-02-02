@@ -1,65 +1,12 @@
 import React, { useMemo } from 'react';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
-
-/**
- * Extract name from a ref string: ${ref(name)} or ref(name) -> name
- * Also handles raw names (returns as-is)
- */
-const parseRefValue = value => {
-  if (!value) return null;
-  if (typeof value !== 'string') return null;
-
-  // Match ${ref(name)} pattern (context string format - preferred)
-  const contextRefMatch = value.match(/^\$\{ref\(\s*([^)]+)\s*\)\}$/);
-  if (contextRefMatch) {
-    return contextRefMatch[1].trim();
-  }
-
-  // Match ref(name) pattern (legacy format)
-  const refMatch = value.match(/^ref\(\s*([^)]+)\s*\)$/);
-  if (refMatch) {
-    return refMatch[1].trim();
-  }
-
-  // Return as-is if not a ref format (could be raw name)
-  return value;
-};
-
-/**
- * Format a name as ${ref(name)} (context string format)
- */
-const formatRefValue = name => {
-  if (!name) return null;
-  return `\${ref(${name})}`;
-};
-
-/**
- * Parse multiple ref values (for multi-select)
- * Input can be: array of refs, comma-separated string, or single ref
- */
-const parseMultiRefValue = value => {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return value.map(parseRefValue).filter(Boolean);
-  }
-  if (typeof value === 'string') {
-    // Could be comma-separated or single value
-    return value
-      .split(',')
-      .map(v => parseRefValue(v.trim()))
-      .filter(Boolean);
-  }
-  return [];
-};
-
-/**
- * Format multiple names as array of refs
- */
-const formatMultiRefValue = names => {
-  if (!names || names.length === 0) return null;
-  return names.map(formatRefValue);
-};
+import {
+  parseRefValue,
+  formatRefExpression,
+  parseMultiRefValue,
+  formatMultiRefValue,
+} from '../../../utils/refString';
 
 /**
  * Map object type to store selector and data accessor
@@ -134,7 +81,7 @@ const RefSelector = ({
     if (selected === '') {
       onChange(null);
     } else {
-      onChange(formatRefValue(selected));
+      onChange(formatRefExpression(selected));
     }
   };
 
@@ -300,6 +247,3 @@ const RefSelector = ({
 };
 
 export default RefSelector;
-
-// Export utility functions for external use
-export { parseRefValue, formatRefValue, parseMultiRefValue, formatMultiRefValue };

@@ -5,22 +5,21 @@ import { NodeHandle } from '../../styled/NodeHandle';
 import { NodeWrapper } from '../../styled/NodeWrapper';
 
 /**
- * MarkdownNode - Custom React Flow node for markdowns
- * Shows markdown name with status indicator.
- * Markdowns are leaf nodes - they have no connections.
+ * CsvScriptModelNode - Custom React Flow node for CSV script models
+ * Shows model name with status indicator.
+ * Has incoming connections from sources and outgoing to dimensions/metrics/etc.
  */
-const MarkdownNode = ({ data, selected }) => {
+const CsvScriptModelNode = ({ data, selected }) => {
   const { name, status, isEditing } = data;
   const isHighlighted = selected || isEditing;
 
-  // Get type colors and icon
-  const typeConfig = getTypeByValue('markdown');
+  const typeConfig = getTypeByValue('csvScriptModel');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
   return (
     <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
-      {/* Target handle (for potential incoming connections) */}
+      {/* Target handle (incoming from sources) */}
       <NodeHandle type="target" colors={colors} />
 
       {/* Status indicator */}
@@ -30,16 +29,14 @@ const MarkdownNode = ({ data, selected }) => {
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
       {/* Name */}
-      <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
-          {name}
-        </span>
-      </div>
+      <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
+        {name}
+      </span>
 
-      {/* Source handle (for outgoing connections to dashboards) */}
+      {/* Source handle (outgoing to dimensions/metrics/etc) */}
       <NodeHandle type="source" colors={colors} />
     </NodeWrapper>
   );
 };
 
-export default MarkdownNode;
+export default CsvScriptModelNode;

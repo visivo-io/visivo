@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle } from 'reactflow';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
 import { StatusIndicator } from '../../styled/StatusIndicator';
+import { NodeHandle } from '../../styled/NodeHandle';
+import { NodeWrapper } from '../../styled/NodeWrapper';
 import EmbeddedPill from './EmbeddedPill';
 
 /**
@@ -38,25 +39,9 @@ const ChartNode = ({ data, selected }) => {
   const hasEmbeddedObjects = embeddedInsights.length > 0;
 
   return (
-    <div
-      className={`
-        relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm cursor-pointer
-        transition-all duration-150
-        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
-      `}
-    >
+    <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
       {/* Target handle (for incoming insight connections) */}
-      <Handle
-        type="target"
-        position="left"
-        style={{
-          background: colors.connectionHandle,
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
+      <NodeHandle type="target" colors={colors} />
 
       {/* Status indicator */}
       <StatusIndicator status={status} />
@@ -84,7 +69,10 @@ const ChartNode = ({ data, selected }) => {
           </div>
         )}
       </div>
-    </div>
+
+      {/* Source handle (for outgoing connections to dashboards) */}
+      <NodeHandle type="source" colors={colors} />
+    </NodeWrapper>
   );
 };
 

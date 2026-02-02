@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle } from 'reactflow';
-import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { StatusIndicator } from '../../styled/StatusIndicator';
+import { NodeHandle } from '../../styled/NodeHandle';
+import { NodeWrapper } from '../../styled/NodeWrapper';
 
 /**
  * RelationNode - Custom React Flow node for relations
@@ -17,41 +18,12 @@ const RelationNode = ({ data, selected }) => {
   const Icon = typeConfig?.icon;
 
   return (
-    <div
-      className={`
-        relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm cursor-pointer
-        transition-all duration-150
-        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
-      `}
-    >
+    <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
       {/* Target handle (connects from models) */}
-      <Handle
-        type="target"
-        position="left"
-        style={{
-          background: '#94a3b8',
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
+      <NodeHandle type="target" colors={colors} />
 
       {/* Status indicator */}
-      {status && status !== ObjectStatus.PUBLISHED && (
-        <span
-          className={`
-            absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full z-10
-            border-2 border-white
-            ${status === ObjectStatus.NEW ? 'bg-green-500' : 'bg-amber-500'}
-          `}
-          title={
-            status === ObjectStatus.NEW
-              ? 'New - Not yet published'
-              : 'Modified - Has unpublished changes'
-          }
-        />
-      )}
+      <StatusIndicator status={status} />
 
       {/* Icon */}
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
@@ -71,17 +43,8 @@ const RelationNode = ({ data, selected }) => {
       </div>
 
       {/* Source handle (for future connections) */}
-      <Handle
-        type="source"
-        position="right"
-        style={{
-          background: '#94a3b8',
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
-    </div>
+      <NodeHandle type="source" colors={colors} />
+    </NodeWrapper>
   );
 };
 

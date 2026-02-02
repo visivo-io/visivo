@@ -7,6 +7,11 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import TableChartIcon from '@mui/icons-material/TableChart';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import MergeIcon from '@mui/icons-material/Merge';
+import TuneIcon from '@mui/icons-material/Tune';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 /**
  * Centralized object type definitions
@@ -200,6 +205,96 @@ export const OBJECT_TYPES = [
       nodeSelected: 'bg-amber-100 border-amber-400',
       // For connection handles in lineage view
       connectionHandle: '#f59e0b', // amber-500
+    },
+  },
+  {
+    value: 'dashboard',
+    label: 'Dashboards',
+    singularLabel: 'Dashboard',
+    icon: DashboardIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-slate-100',
+      text: 'text-slate-800',
+      border: 'border-slate-200',
+      bgHover: 'hover:bg-slate-50',
+      bgSelected: 'bg-slate-100',
+      borderSelected: 'border-slate-300',
+      node: 'bg-slate-50 border-slate-200',
+      nodeSelected: 'bg-slate-100 border-slate-400',
+      connectionHandle: '#64748b', // slate-500
+    },
+  },
+  {
+    value: 'csvScriptModel',
+    label: 'CSV Script Models',
+    singularLabel: 'CSV Script Model',
+    icon: TerminalIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-violet-100',
+      text: 'text-violet-800',
+      border: 'border-violet-200',
+      bgHover: 'hover:bg-violet-50',
+      bgSelected: 'bg-violet-100',
+      borderSelected: 'border-violet-300',
+      node: 'bg-violet-50 border-violet-200',
+      nodeSelected: 'bg-violet-100 border-violet-400',
+      connectionHandle: '#8b5cf6', // violet-500
+    },
+  },
+  {
+    value: 'localMergeModel',
+    label: 'Local Merge Models',
+    singularLabel: 'Local Merge Model',
+    icon: MergeIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-fuchsia-100',
+      text: 'text-fuchsia-800',
+      border: 'border-fuchsia-200',
+      bgHover: 'hover:bg-fuchsia-50',
+      bgSelected: 'bg-fuchsia-100',
+      borderSelected: 'border-fuchsia-300',
+      node: 'bg-fuchsia-50 border-fuchsia-200',
+      nodeSelected: 'bg-fuchsia-100 border-fuchsia-400',
+      connectionHandle: '#d946ef', // fuchsia-500
+    },
+  },
+  {
+    value: 'input',
+    label: 'Inputs',
+    singularLabel: 'Input',
+    icon: TuneIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-lime-100',
+      text: 'text-lime-800',
+      border: 'border-lime-200',
+      bgHover: 'hover:bg-lime-50',
+      bgSelected: 'bg-lime-100',
+      borderSelected: 'border-lime-300',
+      node: 'bg-lime-50 border-lime-200',
+      nodeSelected: 'bg-lime-100 border-lime-400',
+      connectionHandle: '#84cc16', // lime-500
+    },
+  },
+  {
+    value: 'defaults',
+    label: 'Project Settings',
+    singularLabel: 'Project Settings',
+    icon: SettingsIcon,
+    enabled: false,
+    colors: {
+      bg: 'bg-gray-100',
+      text: 'text-gray-800',
+      border: 'border-gray-200',
+      bgHover: 'hover:bg-gray-50',
+      bgSelected: 'bg-gray-100',
+      borderSelected: 'border-gray-300',
+      node: 'bg-gray-50 border-gray-200',
+      nodeSelected: 'bg-gray-100 border-gray-400',
+      connectionHandle: '#6b7280', // gray-500
     },
   },
 ];

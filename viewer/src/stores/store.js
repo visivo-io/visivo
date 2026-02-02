@@ -20,6 +20,10 @@ import createMarkdownSlice from './markdownStore';
 import createChartSlice from './chartStore';
 import createTableSlice from './tableStore';
 import createPublishSlice from './publishStore';
+import createDefaultsSlice from './defaultsStore';
+import createDashboardSlice from './dashboardStore';
+import createCsvScriptModelSlice from './csvScriptModelStore';
+import createLocalMergeModelSlice from './localMergeModelStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -44,6 +48,10 @@ const useStore = create(
     ...createChartSlice(...a),
     ...createTableSlice(...a),
     ...createPublishSlice(...a),
+    ...createDefaultsSlice(...a),
+    ...createDashboardSlice(...a),
+    ...createCsvScriptModelSlice(...a),
+    ...createLocalMergeModelSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: state => ({ scrollPositions: state.scrollPositions }),

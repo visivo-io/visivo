@@ -99,22 +99,9 @@ export const isInsideDollarBrace = (text, position) => {
   return depth > 0;
 };
 
-/**
- * Format a ref string in the canonical form (no extra whitespace)
- * Always outputs: ref(name) or ref(name).property
- */
-export const formatRef = (name, property = null) => {
-  const cleanName = name.trim();
-  return property ? `ref(${cleanName}).${property.trim()}` : `ref(${cleanName})`;
-};
-
-/**
- * Format a complete ref expression with ${} wrapper
- * Always outputs: ${ref(name)} or ${ref(name).property}
- */
-export const formatRefExpression = (name, property = null) => {
-  return `\${${formatRef(name, property)}}`;
-};
+// formatRef and formatRefExpression have moved to src/utils/refString.js
+// Re-exported here for backward compatibility with existing imports
+export { formatRef, formatRefExpression } from './refString';
 
 export class ContextString {
   constructor(value) {

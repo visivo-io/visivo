@@ -16,6 +16,9 @@ from visivo.server.managers.input_manager import InputManager
 from visivo.server.managers.markdown_manager import MarkdownManager
 from visivo.server.managers.chart_manager import ChartManager
 from visivo.server.managers.table_manager import TableManager
+from visivo.server.managers.dashboard_manager import DashboardManager
+from visivo.server.managers.csv_script_model_manager import CsvScriptModelManager
+from visivo.server.managers.local_merge_model_manager import LocalMergeModelManager
 
 
 class FlaskApp:
@@ -30,6 +33,7 @@ class FlaskApp:
 
         self._working_dir = working_dir
         self.hot_reload_server = None  # Will be set by serve_phase
+        self._cached_defaults = None
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
@@ -67,6 +71,15 @@ class FlaskApp:
         self.table_manager = TableManager()
         self.table_manager.load(dag)
 
+        self.dashboard_manager = DashboardManager()
+        self.dashboard_manager.load(dag)
+
+        self.csv_script_model_manager = CsvScriptModelManager()
+        self.csv_script_model_manager.load(dag)
+
+        self.local_merge_model_manager = LocalMergeModelManager()
+        self.local_merge_model_manager.load(dag)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -95,3 +108,6 @@ class FlaskApp:
         self.markdown_manager.load(dag)
         self.chart_manager.load(dag)
         self.table_manager.load(dag)
+        self.dashboard_manager.load(dag)
+        self.csv_script_model_manager.load(dag)
+        self.local_merge_model_manager.load(dag)

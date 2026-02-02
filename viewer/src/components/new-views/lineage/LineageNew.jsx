@@ -13,11 +13,16 @@ import InsightNode from './InsightNode';
 import MarkdownNode from './MarkdownNode';
 import ChartNode from './ChartNode';
 import TableNode from './TableNode';
+import DashboardNode from './DashboardNode';
+import CsvScriptModelNode from './CsvScriptModelNode';
+import LocalMergeModelNode from './LocalMergeModelNode';
+import InputNode from './InputNode';
 import EditPanel from '../common/EditPanel';
 import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
+import { formatRefExpression } from '../../../utils/refString';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -26,42 +31,26 @@ import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
 const LineageNew = () => {
   // Sources
   const fetchSources = useStore(state => state.fetchSources);
-  const sourcesLoading = useStore(state => state.sourcesLoading);
   const sourcesError = useStore(state => state.sourcesError);
 
   // Models
   const models = useStore(state => state.models);
   const fetchModels = useStore(state => state.fetchModels);
   const saveModel = useStore(state => state.saveModel);
-  const modelsLoading = useStore(state => state.modelsLoading);
 
-  // Dimensions
+  // Other object types
   const fetchDimensions = useStore(state => state.fetchDimensions);
-  const dimensionsLoading = useStore(state => state.dimensionsLoading);
-
-  // Metrics
   const fetchMetrics = useStore(state => state.fetchMetrics);
-  const metricsLoading = useStore(state => state.metricsLoading);
-
-  // Relations
   const fetchRelations = useStore(state => state.fetchRelations);
-  const relationsLoading = useStore(state => state.relationsLoading);
-
-  // Insights
   const fetchInsights = useStore(state => state.fetchInsights);
-  const insightsLoading = useStore(state => state.insightsLoading);
-
-  // Markdowns
   const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
-  const markdownsLoading = useStore(state => state.markdownsLoading);
-
-  // Charts
   const fetchCharts = useStore(state => state.fetchCharts);
-  const chartsLoading = useStore(state => state.chartsLoading);
-
-  // Tables
   const fetchTables = useStore(state => state.fetchTables);
-  const tablesLoading = useStore(state => state.tablesLoading);
+  const fetchDashboards = useStore(state => state.fetchDashboards);
+  const fetchCsvScriptModels = useStore(state => state.fetchCsvScriptModels);
+  const fetchLocalMergeModels = useStore(state => state.fetchLocalMergeModels);
+  const fetchInputs = useStore(state => state.fetchInputs);
+  const fetchDefaults = useStore(state => state.fetchDefaults);
 
   // Navigation stack for editing - supports drilling into embedded objects
   // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
@@ -70,6 +59,7 @@ const LineageNew = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Navigation stack helpers
   // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
@@ -94,18 +84,25 @@ const LineageNew = () => {
 
   // Note: Individual save functions are now handled by useObjectSave hook
 
-  // Fetch all object types on mount
+  // Fetch all object types on mount; mark initial load done when all complete
   useEffect(() => {
-    fetchSources();
-    fetchModels();
-    fetchDimensions();
-    fetchMetrics();
-    fetchRelations();
-    fetchInsights();
-    fetchMarkdowns();
-    fetchCharts();
-    fetchTables();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
+    Promise.all([
+      fetchSources(),
+      fetchModels(),
+      fetchDimensions(),
+      fetchMetrics(),
+      fetchRelations(),
+      fetchInsights(),
+      fetchMarkdowns(),
+      fetchCharts(),
+      fetchTables(),
+      fetchDashboards(),
+      fetchCsvScriptModels(),
+      fetchLocalMergeModels(),
+      fetchInputs(),
+      fetchDefaults(),
+    ]).then(() => setInitialLoadDone(true));
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -177,7 +174,7 @@ const LineageNew = () => {
       if (plusMatch) {
         const name = plusMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
             getAncestors(n.id).forEach(a => selected.add(a));
@@ -191,7 +188,7 @@ const LineageNew = () => {
       if (suffixMatch) {
         const name = suffixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getDescendants(n.id).forEach(d => selected.add(d));
           }
@@ -204,7 +201,7 @@ const LineageNew = () => {
       if (prefixMatch) {
         const name = prefixMatch[1];
         nodes.forEach(n => {
-          if (n.data.name === name || n.id === name || n.id === `source-${name}` || n.id === `model-${name}` || n.id === `dimension-${name}` || n.id === `metric-${name}` || n.id === `relation-${name}` || n.id === `insight-${name}` || n.id === `markdown-${name}` || n.id === `chart-${name}` || n.id === `table-${name}`) {
+          if (n.data.name === name || n.id === name || n.id.endsWith(`-${name}`)) {
             selected.add(n.id);
             getAncestors(n.id).forEach(a => selected.add(a));
           }
@@ -257,21 +254,29 @@ const LineageNew = () => {
       });
   }, [dagNodes, selectedIds, currentEdit, clearEdit, pushEdit]);
 
+  // Set of node IDs that will actually be rendered (only real nodes, no phantom IDs)
+  const visibleNodeIds = useMemo(() => {
+    const ids = new Set();
+    dagNodes.forEach(n => {
+      if (selectedIds.has(n.id)) ids.add(n.id);
+    });
+    return ids;
+  }, [dagNodes, selectedIds]);
+
   // Filter edges to only show edges between visible nodes
   const edges = useMemo(() => {
-    return dagEdges.filter(edge => selectedIds.has(edge.source) && selectedIds.has(edge.target));
-  }, [dagEdges, selectedIds]);
+    return dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  }, [dagEdges, visibleNodeIds]);
 
-  // Fit view when nodes are first loaded
+  // Fit view once when initial data load completes
   useEffect(() => {
-    if (nodes.length > 0 && reactFlowInstance.current && !hasFitView.current) {
-      // Small delay to ensure nodes are rendered
+    if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current && !hasFitView.current) {
       setTimeout(() => {
         reactFlowInstance.current.fitView({ padding: 0.2 });
         hasFitView.current = true;
       }, 100);
     }
-  }, [nodes.length]);
+  }, [initialLoadDone, nodes.length]);
 
   // Node types for React Flow
   const nodeTypes = useMemo(
@@ -285,6 +290,10 @@ const LineageNew = () => {
       markdownNode: MarkdownNode,
       chartNode: ChartNode,
       tableNode: TableNode,
+      dashboardNode: DashboardNode,
+      csvScriptModelNode: CsvScriptModelNode,
+      localMergeModelNode: LocalMergeModelNode,
+      inputNode: InputNode,
     }),
     []
   );
@@ -315,7 +324,7 @@ const LineageNew = () => {
           ...model.config,
           name: model.name,
           sql: model.sql || model.config?.sql,
-          source: `\${ref(${sourceName})}`,
+          source: formatRefExpression(sourceName),
         };
         await saveModel(modelName, updatedConfig);
         await fetchModels();
@@ -371,7 +380,12 @@ const LineageNew = () => {
     await fetchMarkdowns();
     await fetchCharts();
     await fetchTables();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables]);
+    await fetchDashboards();
+    await fetchCsvScriptModels();
+    await fetchLocalMergeModels();
+    await fetchInputs();
+    await fetchDefaults();
+  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Create success callback for the save handler
   const onSuccessfulSave = useCallback(async () => {
@@ -384,7 +398,6 @@ const LineageNew = () => {
   const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
 
   const isPanelOpen = editStack.length > 0 || isCreating;
-  const isLoading = sourcesLoading || modelsLoading || dimensionsLoading || metricsLoading || relationsLoading || insightsLoading || markdownsLoading || chartsLoading || tablesLoading;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)]">
@@ -409,7 +422,7 @@ const LineageNew = () => {
           className={`flex-1 relative ${isPanelOpen ? 'mr-96' : ''} transition-all duration-200`}
         >
           {/* Loading state */}
-          {isLoading && nodes.length === 0 && (
+          {!initialLoadDone && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
               <div className="text-gray-500">Loading...</div>
             </div>
@@ -423,7 +436,7 @@ const LineageNew = () => {
           )}
 
           {/* Empty state */}
-          {!isLoading && dagNodes.length === 0 && (
+          {initialLoadDone && dagNodes.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
               <div className="text-gray-400 text-lg mb-2">No sources or models yet</div>
               <div className="text-gray-400 text-sm">
@@ -433,7 +446,7 @@ const LineageNew = () => {
           )}
 
           {/* No matches state */}
-          {!isLoading && dagNodes.length > 0 && nodes.length === 0 && (
+          {initialLoadDone && dagNodes.length > 0 && nodes.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
               <div className="text-gray-400 text-lg mb-2">No matching objects</div>
               <div className="text-gray-400 text-sm">Try a different selector or click Clear</div>
@@ -442,8 +455,8 @@ const LineageNew = () => {
 
           {/* React Flow DAG */}
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={initialLoadDone ? nodes : []}
+            edges={initialLoadDone ? edges : []}
             nodeTypes={nodeTypes}
             onNodeClick={handleNodeClick}
             onConnect={handleConnect}
@@ -453,8 +466,6 @@ const LineageNew = () => {
             }}
             minZoom={0.1}
             maxZoom={2}
-            fitView
-            fitViewOptions={{ padding: 0.2 }}
             style={{ background: '#f8fafc' }}
             deleteKeyCode={['Backspace', 'Delete']}
           >

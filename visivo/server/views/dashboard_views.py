@@ -1,6 +1,7 @@
 import os
 
 from flask import Response, jsonify, request, send_from_directory
+from pydantic import ValidationError
 
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
@@ -67,3 +68,93 @@ def register_dashboard_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error creating thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/dashboards/", methods=["GET"])
+    def list_all_dashboards():
+        """List all dashboards (cached + published) with status."""
+        try:
+            dashboards = flask_app.dashboard_manager.get_all_dashboards_with_status()
+            return jsonify({"dashboards": dashboards})
+        except Exception as e:
+            Logger.instance().error(f"Error listing dashboards: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboards/<dashboard_name>/save/", methods=["POST"])
+    def save_dashboard_crud(dashboard_name):
+        """Save a dashboard configuration to cache (draft state)."""
+        try:
+            config = request.get_json(silent=True)
+            if not config:
+                return jsonify({"error": "Dashboard configuration is required"}), 400
+
+            config["name"] = dashboard_name
+
+            dashboard = flask_app.dashboard_manager.save_from_config(config)
+            status = flask_app.dashboard_manager.get_status(dashboard_name)
+            return (
+                jsonify(
+                    {
+                        "message": "Dashboard saved to cache",
+                        "dashboard": dashboard_name,
+                        "status": status.value if status else None,
+                    }
+                ),
+                200,
+            )
+        except ValidationError as e:
+            Logger.instance().debug(f"Dashboard validation failed: {e}")
+            first_error = e.errors()[0]
+            return (
+                jsonify(
+                    {
+                        "error": f"Invalid dashboard configuration: {first_error['loc']}: {first_error['msg']}"
+                    }
+                ),
+                400,
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error saving dashboard: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboards/<dashboard_name>/delete/", methods=["DELETE"])
+    def delete_dashboard_crud(dashboard_name):
+        """Mark a dashboard for deletion."""
+        try:
+            marked = flask_app.dashboard_manager.mark_for_deletion(dashboard_name)
+            if marked:
+                return (
+                    jsonify(
+                        {
+                            "message": f"Dashboard '{dashboard_name}' marked for deletion",
+                            "status": "deleted",
+                        }
+                    ),
+                    200,
+                )
+            else:
+                return (
+                    jsonify({"error": f"Dashboard '{dashboard_name}' not found"}),
+                    404,
+                )
+        except Exception as e:
+            Logger.instance().error(f"Error deleting dashboard: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboards/<dashboard_name>/validate/", methods=["POST"])
+    def validate_dashboard_crud(dashboard_name):
+        """Validate a dashboard configuration without saving it."""
+        try:
+            config = request.get_json(silent=True)
+            if not config:
+                return jsonify({"error": "Dashboard configuration is required"}), 400
+
+            config["name"] = dashboard_name
+
+            result = flask_app.dashboard_manager.validate_config(config)
+            if result.get("valid"):
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 400
+        except Exception as e:
+            Logger.instance().error(f"Error validating dashboard: {str(e)}")
+            return jsonify({"error": str(e)}), 500

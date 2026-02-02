@@ -5,22 +5,21 @@ import { NodeHandle } from '../../styled/NodeHandle';
 import { NodeWrapper } from '../../styled/NodeWrapper';
 
 /**
- * MarkdownNode - Custom React Flow node for markdowns
- * Shows markdown name with status indicator.
- * Markdowns are leaf nodes - they have no connections.
+ * DashboardNode - Custom React Flow node for dashboards
+ * Shows dashboard name with status indicator.
+ * Dashboards have incoming connections from charts, tables, markdowns, selectors.
  */
-const MarkdownNode = ({ data, selected }) => {
+const DashboardNode = ({ data, selected }) => {
   const { name, status, isEditing } = data;
   const isHighlighted = selected || isEditing;
 
-  // Get type colors and icon
-  const typeConfig = getTypeByValue('markdown');
+  const typeConfig = getTypeByValue('dashboard');
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
   return (
     <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
-      {/* Target handle (for potential incoming connections) */}
+      {/* Target handle (for incoming connections from charts/tables/markdowns) */}
       <NodeHandle type="target" colors={colors} />
 
       {/* Status indicator */}
@@ -30,16 +29,11 @@ const MarkdownNode = ({ data, selected }) => {
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
 
       {/* Name */}
-      <div className="flex flex-col min-w-0">
-        <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
-          {name}
-        </span>
-      </div>
-
-      {/* Source handle (for outgoing connections to dashboards) */}
-      <NodeHandle type="source" colors={colors} />
+      <span className={`text-sm font-medium truncate ${isHighlighted ? colors.text : 'text-gray-800'}`}>
+        {name}
+      </span>
     </NodeWrapper>
   );
 };
 
-export default MarkdownNode;
+export default DashboardNode;

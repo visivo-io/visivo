@@ -49,6 +49,15 @@ class TestPublishViews:
         flask_app.chart_manager.cached_objects = {}
         flask_app.table_manager.has_unpublished_changes.return_value = False
         flask_app.table_manager.cached_objects = {}
+        flask_app.dashboard_manager.has_unpublished_changes.return_value = False
+        flask_app.dashboard_manager.cached_objects = {}
+        flask_app.csv_script_model_manager.has_unpublished_changes.return_value = False
+        flask_app.csv_script_model_manager.cached_objects = {}
+        flask_app.local_merge_model_manager.has_unpublished_changes.return_value = False
+        flask_app.local_merge_model_manager.cached_objects = {}
+        flask_app.input_manager.has_unpublished_changes.return_value = False
+        flask_app.input_manager.cached_objects = {}
+        flask_app._cached_defaults = None
 
         register_publish_views(app, flask_app, "/tmp/output")
 
