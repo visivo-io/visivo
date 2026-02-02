@@ -85,45 +85,32 @@ describe('LineageNew', () => {
   const defaultStoreState = {
     sources: [],
     fetchSources: mockFetchSources,
-    sourcesLoading: false,
     sourcesError: null,
     models: [],
     fetchModels: mockFetchModels,
     saveModel: mockSaveModel,
-    modelsLoading: false,
     dimensions: [],
     fetchDimensions: mockFetchDimensions,
-    dimensionsLoading: false,
     metrics: [],
     fetchMetrics: mockFetchMetrics,
-    metricsLoading: false,
     relations: [],
     fetchRelations: mockFetchRelations,
-    relationsLoading: false,
     insights: [],
     fetchInsights: mockFetchInsights,
-    insightsLoading: false,
     markdowns: [],
     fetchMarkdowns: mockFetchMarkdowns,
-    markdownsLoading: false,
     charts: [],
     fetchCharts: mockFetchCharts,
-    chartsLoading: false,
     tables: [],
     fetchTables: mockFetchTables,
-    tablesLoading: false,
     dashboards: [],
     fetchDashboards: mockFetchDashboards,
-    dashboardsLoading: false,
     csvScriptModels: [],
     fetchCsvScriptModels: mockFetchCsvScriptModels,
-    csvScriptModelsLoading: false,
     localMergeModels: [],
     fetchLocalMergeModels: mockFetchLocalMergeModels,
-    localMergeModelsLoading: false,
     inputs: [],
     fetchInputs: mockFetchInputs,
-    inputsLoading: false,
     defaults: null,
     fetchDefaults: mockFetchDefaults,
   };
@@ -144,10 +131,10 @@ describe('LineageNew', () => {
     useLineageDag.mockReturnValue(emptyDagData);
   });
 
-  it('renders empty state when no sources or models exist', () => {
+  it('renders empty state when no sources or models exist', async () => {
     render(<LineageNew />);
 
-    expect(screen.getByText('No sources or models yet')).toBeInTheDocument();
+    expect(await screen.findByText('No sources or models yet')).toBeInTheDocument();
     expect(
       screen.getByText('Click the + button to create your first source or model')
     ).toBeInTheDocument();
@@ -163,14 +150,10 @@ describe('LineageNew', () => {
     expect(mockFetchRelations).toHaveBeenCalled();
   });
 
-  it('displays loading state', () => {
-    useStore.mockImplementation(selector => {
-      const state = { ...defaultStoreState, sourcesLoading: true };
-      return typeof selector === 'function' ? selector(state) : state;
-    });
-
+  it('displays loading state before initial load completes', () => {
     render(<LineageNew />);
 
+    // Loading shows immediately because initialLoadDone starts as false
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -185,7 +168,7 @@ describe('LineageNew', () => {
     expect(screen.getByText(/Failed to fetch sources/)).toBeInTheDocument();
   });
 
-  it('renders nodes from useLineageDag', () => {
+  it('renders nodes from useLineageDag', async () => {
     useLineageDag.mockReturnValue({
       nodes: [
         { id: 'source-db', data: { label: 'db', objectType: 'source' } },
@@ -196,12 +179,12 @@ describe('LineageNew', () => {
 
     render(<LineageNew />);
 
-    expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
+    expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
     expect(screen.getByTestId('node-model-users')).toBeInTheDocument();
     expect(screen.getByTestId('edge-edge-1')).toBeInTheDocument();
   });
 
-  it('has selector input for filtering nodes', async () => {
+  it('has selector input for filtering nodes', () => {
     useLineageDag.mockReturnValue({
       nodes: [
         { id: 'source-db', data: { label: 'db', objectType: 'source' } },
@@ -247,6 +230,9 @@ describe('LineageNew', () => {
     const user = userEvent.setup();
     render(<LineageNew />);
 
+    // Wait for initial load to complete
+    await screen.findByTestId('node-source-db');
+
     const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
 
     // Type a selector that doesn't match anything
@@ -268,8 +254,8 @@ describe('LineageNew', () => {
     const user = userEvent.setup();
     render(<LineageNew />);
 
-    // Both nodes should be visible initially
-    expect(screen.getByTestId('node-source-db')).toBeInTheDocument();
+    // Wait for initial load, then both nodes should be visible
+    expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
     expect(screen.getByTestId('node-model-users')).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
@@ -296,6 +282,9 @@ describe('LineageNew', () => {
 
     render(<LineageNew />);
 
+    // Wait for initial load
+    await screen.findByTestId('node-source-db');
+
     // Click the source node
     fireEvent.click(screen.getByTestId('node-source-db'));
 
@@ -314,6 +303,9 @@ describe('LineageNew', () => {
     });
 
     render(<LineageNew />);
+
+    // Wait for initial load
+    await screen.findByTestId('node-source-db');
 
     // Click the source node to open panel
     fireEvent.click(screen.getByTestId('node-source-db'));

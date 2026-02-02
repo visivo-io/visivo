@@ -166,11 +166,12 @@ export function useLineageDag() {
         model: model,
       });
 
-      // Create edges from model's child_item_names
       const childNames = model.child_item_names || [];
       childNames.forEach(childName => {
-        const childType = objectTypeByName[childName] || 'source';
-        addEdge(childName, childType, model.name, 'model');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, model.name, 'model');
+        }
       });
     });
 
@@ -183,8 +184,10 @@ export function useLineageDag() {
 
       const childNames = model.child_item_names || [];
       childNames.forEach(childName => {
-        const childType = objectTypeByName[childName] || 'source';
-        addEdge(childName, childType, model.name, 'csvScriptModel');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, model.name, 'csvScriptModel');
+        }
       });
     });
 
@@ -198,8 +201,10 @@ export function useLineageDag() {
 
       const childNames = model.child_item_names || [];
       childNames.forEach(childName => {
-        const childType = objectTypeByName[childName] || 'model';
-        addEdge(childName, childType, model.name, 'localMergeModel');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, model.name, 'localMergeModel');
+        }
       });
     });
 
@@ -228,10 +233,12 @@ export function useLineageDag() {
         dimension: dimension,
       });
 
-      // Create edges from dimension's child_item_names (models it belongs to)
       const childNames = dimension.child_item_names || [];
       childNames.forEach(childName => {
-        addEdge(childName, 'model', dimension.name, 'dimension');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, dimension.name, 'dimension');
+        }
       });
     });
 
@@ -243,10 +250,12 @@ export function useLineageDag() {
         metric: metric,
       });
 
-      // Create edges from metric's child_item_names (models it belongs to)
       const childNames = metric.child_item_names || [];
       childNames.forEach(childName => {
-        addEdge(childName, 'model', metric.name, 'metric');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, metric.name, 'metric');
+        }
       });
     });
 
@@ -259,10 +268,12 @@ export function useLineageDag() {
         relation: relation,
       });
 
-      // Create edges from relation's child_item_names (models it relates)
       const childNames = relation.child_item_names || [];
       childNames.forEach(childName => {
-        addEdge(childName, 'model', relation.name, 'relation');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, relation.name, 'relation');
+        }
       });
     });
 
@@ -308,12 +319,12 @@ export function useLineageDag() {
         chart: chart,
       });
 
-      // Create edges from chart's child_item_names
       const childNames = chart.child_item_names || [];
       childNames.forEach(childName => {
-        // Look up the type, default to 'insight' for charts
-        const childType = objectTypeByName[childName] || 'insight';
-        addEdge(childName, childType, chart.name, 'chart');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, chart.name, 'chart');
+        }
       });
     });
 
@@ -324,12 +335,12 @@ export function useLineageDag() {
         table: table,
       });
 
-      // Create edges from table's child_item_names
       const childNames = table.child_item_names || [];
       childNames.forEach(childName => {
-        // Look up the type, default to 'insight' for tables
-        const childType = objectTypeByName[childName] || 'insight';
-        addEdge(childName, childType, table.name, 'table');
+        const childType = objectTypeByName[childName];
+        if (childType) {
+          addEdge(childName, childType, table.name, 'table');
+        }
       });
     });
 
@@ -350,10 +361,14 @@ export function useLineageDag() {
       });
     });
 
-    // Compute layout with dagre
-    const layoutNodes = computeLayout(nodes, edges);
+    // Filter out any edges whose source or target node doesn't exist
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const validEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
 
-    return { nodes: layoutNodes, edges };
+    // Compute layout with dagre
+    const layoutNodes = computeLayout(nodes, validEdges);
+
+    return { nodes: layoutNodes, edges: validEdges };
   }, [sources, models, dimensions, metrics, relations, insights, markdowns, charts, tables, dashboards, inputs, defaults, csvScriptModels, localMergeModels]);
 
   return dag;
