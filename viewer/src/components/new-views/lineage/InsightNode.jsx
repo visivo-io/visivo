@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle } from 'reactflow';
-import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { StatusIndicator } from '../../styled/StatusIndicator';
+import { NodeHandle } from '../../styled/NodeHandle';
+import { NodeWrapper } from '../../styled/NodeWrapper';
 
 /**
  * InsightNode - Custom React Flow node for insights
@@ -18,41 +19,12 @@ const InsightNode = ({ data, selected }) => {
   const Icon = typeConfig?.icon;
 
   return (
-    <div
-      className={`
-        relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm cursor-pointer
-        transition-all duration-150
-        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
-      `}
-    >
+    <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
       {/* Target handle (for incoming model connections) */}
-      <Handle
-        type="target"
-        position="left"
-        style={{
-          background: '#ec4899', // pink-500 for insight connections
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
+      <NodeHandle type="target" colors={colors} />
 
       {/* Status indicator */}
-      {status && status !== ObjectStatus.PUBLISHED && (
-        <span
-          className={`
-            absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full z-10
-            border-2 border-white
-            ${status === ObjectStatus.NEW ? 'bg-green-500' : 'bg-amber-500'}
-          `}
-          title={
-            status === ObjectStatus.NEW
-              ? 'New - Not yet published'
-              : 'Modified - Has unpublished changes'
-          }
-        />
-      )}
+      <StatusIndicator status={status} />
 
       {/* Icon */}
       {Icon && <Icon fontSize="small" className={isHighlighted ? colors.text : 'text-gray-500'} />}
@@ -66,17 +38,8 @@ const InsightNode = ({ data, selected }) => {
       </div>
 
       {/* Source handle (for outgoing connections to charts/tables) */}
-      <Handle
-        type="source"
-        position="right"
-        style={{
-          background: '#ec4899', // pink-500 for insight connections
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
-    </div>
+      <NodeHandle type="source" colors={colors} />
+    </NodeWrapper>
   );
 };
 

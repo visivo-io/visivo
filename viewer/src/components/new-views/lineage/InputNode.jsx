@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle } from 'reactflow';
 import { StatusIndicator } from '../../styled/StatusIndicator';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { NodeHandle } from '../../styled/NodeHandle';
+import { NodeWrapper } from '../../styled/NodeWrapper';
 
 const InputNode = ({ data, selected }) => {
   const { name, status, isEditing } = data;
@@ -12,24 +13,8 @@ const InputNode = ({ data, selected }) => {
   const Icon = typeConfig?.icon;
 
   return (
-    <div
-      className={`
-        relative flex items-center gap-2 px-3 py-2
-        rounded-lg border-2 shadow-sm cursor-pointer
-        transition-all duration-150
-        ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
-      `}
-    >
-      <Handle
-        type="target"
-        position="left"
-        style={{
-          background: colors.connectionHandle,
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
+    <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
+      <NodeHandle type="target" colors={colors} />
 
       <StatusIndicator status={status} />
 
@@ -41,17 +26,8 @@ const InputNode = ({ data, selected }) => {
         </span>
       </div>
 
-      <Handle
-        type="source"
-        position="right"
-        style={{
-          background: colors.connectionHandle,
-          width: 8,
-          height: 8,
-          border: '2px solid white',
-        }}
-      />
-    </div>
+      <NodeHandle type="source" colors={colors} />
+    </NodeWrapper>
   );
 };
 
