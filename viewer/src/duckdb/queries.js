@@ -138,33 +138,51 @@ export const prepPostQuery = (insight, inputs) => {
   }
 
   try {
-    // Extract input keys and values
-    const inputKeys = Object.keys(inputs || {});
-    const inputValues = Object.values(inputs || {});
+    // Only include inputs that are actually referenced in the query.
+    // This avoids passing unreferenced inputs whose names may contain characters
+    // (like hyphens) that are invalid as JavaScript function parameter names.
+    const allKeys = Object.keys(inputs || {});
+    const referencedKeys = allKeys.filter(key => query.includes(`\${${key}`));
 
-    // Keep objects as-is for accessor syntax (${input.value}), convert primitives to strings
-    // This allows template literals like ${region.value} to work with nested objects
-    // For null values in accessor objects, keep them as null - they'll become 'undefined'
-    // in the template literal output, which we'll then replace with SQL NULL keyword
-    const processedValues = inputValues.map(value => {
+    // For referenced inputs with non-identifier characters (e.g., hyphens),
+    // create safe aliases and rewrite the query to use them.
+    let processedQuery = query;
+    const safeKeys = [];
+    const safeValues = [];
+
+    for (const key of referencedKeys) {
+      const value = inputs[key];
+      const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
+
+      if (isValidIdentifier) {
+        safeKeys.push(key);
+      } else {
+        // Replace ${key.accessor} with ${safeAlias.accessor} in the query
+        const safeAlias = '_input_' + key.replace(/[^a-zA-Z0-9_]/g, '_');
+        processedQuery = processedQuery.replaceAll(`\${${key}`, `\${${safeAlias}`);
+        safeKeys.push(safeAlias);
+      }
+
+      // Keep objects as-is for accessor syntax (${input.value}), convert primitives to strings
+      // This allows template literals like ${region.value} to work with nested objects
+      // For null values in accessor objects, keep them as null - they'll become 'undefined'
+      // in the template literal output, which we'll then replace with SQL NULL keyword
       if (value === null || value === undefined) {
-        return 'NULL';
+        safeValues.push('NULL');
+      } else if (typeof value === 'object') {
+        safeValues.push(value);
+      } else {
+        safeValues.push(String(value));
       }
-      if (typeof value === 'object') {
-        // For accessor objects, keep null values as-is (don't convert to string 'NULL')
-        // They will output 'undefined' in template literal which we replace with NULL below
-        return value;
-      }
-      return String(value);
-    });
+    }
 
     // Create a function that evaluates the query as a template literal
     // This safely injects values without regex manipulation
     // eslint-disable-next-line no-new-func
-    const templateFunc = new Function(...inputKeys, `return \`${query}\`;`);
+    const templateFunc = new Function(...safeKeys, `return \`${processedQuery}\`;`);
 
     // Execute the template function with the input values
-    let result = templateFunc(...processedValues);
+    let result = templateFunc(...safeValues);
 
     // Replace 'null' (from null accessor values in JS) with SQL NULL keyword
     // This ensures null accessors inject NULL without quotes (not the string 'NULL')
@@ -315,7 +333,9 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
       return cache.getOrFetch(file.name_hash, async () => {
         const response = await fetch(file.signed_data_file_url);
         if (!response.ok) {
-          throw new Error(`Failed to fetch parquet file: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch parquet file: ${response.status} ${response.statusText}`
+          );
         }
         const arrayBuffer = await response.arrayBuffer();
         return { file, buffer: new Uint8Array(arrayBuffer) };

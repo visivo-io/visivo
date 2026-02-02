@@ -315,6 +315,38 @@ describe('prepPostQuery - Template Literal Injection', () => {
     });
   });
 
+  describe('Hyphenated and non-identifier input names', () => {
+    it('does not break when unreferenced inputs have hyphens', () => {
+      const insight = { query: 'SELECT * FROM table' };
+      // Input exists in store but is not referenced in query
+      const inputs = { 'cuisine-select': { value: "'Italian'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe('SELECT * FROM table');
+    });
+
+    it('handles referenced inputs with hyphens via alias rewriting', () => {
+      const insight = {
+        query: 'SELECT * FROM table WHERE cuisine = ${cuisine-select.value}',
+      };
+      const inputs = { 'cuisine-select': { value: "'Italian'" } };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE cuisine = 'Italian'");
+    });
+
+    it('handles mix of hyphenated and normal input names', () => {
+      const insight = {
+        query:
+          'SELECT * FROM table WHERE cuisine = ${cuisine-select.value} AND price > ${minPrice}',
+      };
+      const inputs = {
+        'cuisine-select': { value: "'Italian'" },
+        minPrice: '50',
+      };
+      const result = prepPostQuery(insight, inputs);
+      expect(result).toBe("SELECT * FROM table WHERE cuisine = 'Italian' AND price > 50");
+    });
+  });
+
   describe('Input value formatting from backend', () => {
     it('handles date formatted as quoted string from input query', () => {
       const insight = { query: 'SELECT * FROM orders WHERE date >= ${orderDate}' };
