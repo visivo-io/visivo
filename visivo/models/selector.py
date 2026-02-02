@@ -75,7 +75,7 @@ class Selector(ParentModel, NamedModel, BaseModel):
         model = {"name": self.name, "type": self.type, "options": []}
         for option in self.options:
             if isinstance(option, str):
-                model["options"].append(option)
+                model["options"].append(f"${{{option}}}")
             elif isinstance(option, ContextString):
                 model["options"].append(option.value)
             else:

@@ -11,7 +11,7 @@ class Layout(JsonSchemaBase):
     @model_validator(mode="before")
     @classmethod
     def validate_colorway(cls, data: dict) -> dict:
-        v = data.get("colorway", "High Contrast")  # Also handle case where colorway isn't in data
+        v = data.get("colorway")
 
         if v is None:
             return data

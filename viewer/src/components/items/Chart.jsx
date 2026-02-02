@@ -122,11 +122,11 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
 
     // Handle insight-based data
     if (hasInsights && insightsData) {
-      const insightName = chart.insights[0]?.name;
+      const insightNames = chart.insights.map(i => i.name);
       const insightData = chartDataFromInsightData(insightsData, inputs);
       // Use sourceInsight for split traces (which have modified names), fall back to name for non-split
       data.push(
-        ...insightData.filter(insight => (insight.sourceInsight || insight.name) === insightName)
+        ...insightData.filter(insight => insightNames.includes(insight.sourceInsight || insight.name))
       );
     }
 
@@ -143,6 +143,13 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
   };
 
   const layout = structuredClone(chart.layout ? chart.layout : {});
+
+  if (!layout.colorway) {
+    layout.colorway = [
+      '#713B57', '#FFB400', '#003F91', '#D25946', '#1CA9C9',
+      '#999999', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B',
+    ];
+  }
 
   // For preview mode, ensure autosize is enabled
   if (hideToolbar && !layout.autosize) {

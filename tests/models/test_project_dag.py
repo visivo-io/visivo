@@ -184,7 +184,7 @@ def test_ambiguous_ref_Project_dag():
         Project(**project.model_dump())
 
     assert (
-        'The reference "ref(chart_name)" on item "item" points to multiple objects. Check for the duplicated name '
+        'The reference "${ref(chart_name)}" on item "item" points to multiple objects. Check for the duplicated name '
         in str(exc_info.value)
     )
 

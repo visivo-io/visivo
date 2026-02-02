@@ -4,9 +4,10 @@ from pydantic import ValidationError
 import pytest
 
 
-def test_chart_default_colorway():
+def test_chart_no_default_colorway():
     chart = ChartFactory(layout={"title": {"text": "Test Chart"}})
-    assert chart.layout.colorway == ColorPalette.PREDEFINED_PALETTES["High Contrast"]
+    dumped = chart.layout.model_dump(exclude_none=True)
+    assert "colorway" not in dumped
 
 
 def test_chart_predefined_colorway():

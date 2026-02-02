@@ -3,6 +3,8 @@
 import re
 from typing import TYPE_CHECKING, List, Any
 
+from pydantic import BaseModel as PydanticBaseModel
+
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
@@ -39,9 +41,7 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
         warnings = []
         bare_ref_pattern = re.compile(REF_PROPERTY_PATTERN)
 
-        # Dump entire project to dict and recursively check all string values
-        project_data = project.model_dump(exclude_none=True)
-        self._check_recursive(project_data, bare_ref_pattern, warnings, "project")
+        self._check_recursive(project, bare_ref_pattern, warnings, "project")
 
         return warnings
 
@@ -53,7 +53,13 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
         path: str,
     ) -> None:
         """Recursively check data structure for bare ref patterns."""
-        if isinstance(data, dict):
+        if isinstance(data, PydanticBaseModel):
+            for key, value in data.__dict__.items():
+                if value is None:
+                    continue
+                new_path = f"{path}.{key}"
+                self._check_recursive(value, pattern, warnings, new_path)
+        elif isinstance(data, dict):
             for key, value in data.items():
                 new_path = f"{path}.{key}"
                 self._check_recursive(value, pattern, warnings, new_path)
