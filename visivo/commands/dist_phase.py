@@ -77,6 +77,77 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
         with open(f"{dist_dir}/data/traces.json", "w") as f:
             json.dump(traces_list, f)
 
+        # Copy parquet data files used by insights and inputs
+        from visivo.constants import DEFAULT_RUN_ID
+
+        run_dir = os.path.join(output_dir, DEFAULT_RUN_ID)
+        files_src = os.path.join(run_dir, "files")
+        if os.path.isdir(files_src):
+            os.makedirs(f"{dist_dir}/data/files", exist_ok=True)
+            for parquet_file in glob(f"{files_src}/*.parquet"):
+                filename = os.path.basename(parquet_file)
+                shutil.copyfile(parquet_file, f"{dist_dir}/data/files/{filename}")
+
+        # Generate insights.json for dist mode
+        insights_src = os.path.join(run_dir, "insights")
+        insights_list = []
+        if os.path.isdir(insights_src):
+            os.makedirs(f"{dist_dir}/data/insights", exist_ok=True)
+            for insight_file in glob(f"{insights_src}/*.json"):
+                with open(insight_file, "r") as f:
+                    insight_data = json.load(f)
+
+                insight_data["id"] = insight_data["name"]
+
+                # Rewrite file URLs to dist paths
+                if "files" in insight_data:
+                    for file_ref in insight_data["files"]:
+                        if "signed_data_file_url" in file_ref:
+                            filename = os.path.basename(file_ref["signed_data_file_url"])
+                            file_ref["signed_data_file_url"] = (
+                                f"{deployment_root}/data/files/{filename}"
+                            )
+
+                # Write individual insight JSON
+                insight_hash = os.path.splitext(os.path.basename(insight_file))[0]
+                with open(f"{dist_dir}/data/insights/{insight_hash}.json", "w") as f:
+                    json.dump(insight_data, f)
+
+                insights_list.append(insight_data)
+
+        with open(f"{dist_dir}/data/insights.json", "w") as f:
+            json.dump(insights_list, f)
+
+        # Generate inputs.json for dist mode
+        inputs_src = os.path.join(run_dir, "inputs")
+        inputs_list = []
+        if os.path.isdir(inputs_src):
+            os.makedirs(f"{dist_dir}/data/inputs", exist_ok=True)
+            for input_file in glob(f"{inputs_src}/*.json"):
+                with open(input_file, "r") as f:
+                    input_data = json.load(f)
+
+                input_data["id"] = input_data["name"]
+
+                # Rewrite file URLs to dist paths
+                if "files" in input_data:
+                    for file_ref in input_data["files"]:
+                        if "signed_data_file_url" in file_ref:
+                            filename = os.path.basename(file_ref["signed_data_file_url"])
+                            file_ref["signed_data_file_url"] = (
+                                f"{deployment_root}/data/files/{filename}"
+                            )
+
+                # Write individual input JSON
+                input_hash = os.path.splitext(os.path.basename(input_file))[0]
+                with open(f"{dist_dir}/data/inputs/{input_hash}.json", "w") as f:
+                    json.dump(input_data, f)
+
+                inputs_list.append(input_data)
+
+        with open(f"{dist_dir}/data/inputs.json", "w") as f:
+            json.dump(inputs_list, f)
+
         # Generate dashboard JSON files for dist mode
         if "dashboards" in project_json:
             os.makedirs(f"{dist_dir}/data/dashboards", exist_ok=True)
