@@ -5,6 +5,7 @@ import tempfile
 from unittest.mock import Mock, patch
 from flask import Flask
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.server.views.source_schema_jobs_views import register_source_schema_jobs_views
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus, PreviewRun
 
@@ -20,8 +21,8 @@ class TestSourceSchemaJobsViews:
 
     @pytest.fixture
     def sample_schema(self, temp_output_dir):
-        """Create a sample cached schema file."""
-        schema_dir = os.path.join(temp_output_dir, "schemas", "test_source")
+        """Create a sample cached schema file in the main run_id location."""
+        schema_dir = os.path.join(temp_output_dir, DEFAULT_RUN_ID, "schemas", "test_source")
         os.makedirs(schema_dir, exist_ok=True)
 
         schema_data = {
@@ -51,6 +52,37 @@ class TestSourceSchemaJobsViews:
                 "orders": {"id": "INT", "user_id": "INT", "total": "DECIMAL"},
             },
             "metadata": {"total_tables": 2, "total_columns": 6, "databases": []},
+        }
+
+        with open(os.path.join(schema_dir, "schema.json"), "w") as f:
+            json.dump(schema_data, f)
+
+        return schema_data
+
+    @pytest.fixture
+    def sample_preview_schema(self, temp_output_dir):
+        """Create a sample cached schema file in the preview run_id location."""
+        preview_run_id = "preview-test_source"
+        schema_dir = os.path.join(temp_output_dir, preview_run_id, "schemas", "test_source")
+        os.makedirs(schema_dir, exist_ok=True)
+
+        schema_data = {
+            "source_name": "test_source",
+            "source_type": "sqlite",
+            "generated_at": "2024-01-02T00:00:00",
+            "tables": {
+                "users": {
+                    "columns": {
+                        "id": {"type": "INTEGER", "nullable": False},
+                        "name": {"type": "VARCHAR", "nullable": True},
+                    },
+                    "metadata": {},
+                },
+            },
+            "sqlglot_schema": {
+                "users": {"id": "INT", "name": "VARCHAR"},
+            },
+            "metadata": {"total_tables": 1, "total_columns": 2, "databases": []},
         }
 
         with open(os.path.join(schema_dir, "schema.json"), "w") as f:
@@ -339,3 +371,85 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
         response = client.get("/api/source-schema-jobs/test_source/status/?job_id=nonexistent")
 
         assert response.status_code == 404
+
+
+class TestSchemaFallbackBehavior(TestSourceSchemaJobsViews):
+    """Tests for run_id fallback behavior (main -> preview)."""
+
+    def test_get_schema_from_preview_when_main_missing(self, client, sample_preview_schema):
+        """Test that preview schema is returned when main is missing."""
+        response = client.get("/api/source-schema-jobs/test_source/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["source_name"] == "test_source"
+        assert data["generated_at"] == "2024-01-02T00:00:00"
+        assert data["metadata"]["total_tables"] == 1
+
+    def test_get_schema_prefers_main_over_preview(
+        self, client, sample_schema, sample_preview_schema
+    ):
+        """Test that main schema is preferred when both exist."""
+        response = client.get("/api/source-schema-jobs/test_source/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["generated_at"] == "2024-01-01T00:00:00"
+        assert data["metadata"]["total_tables"] == 2
+
+    def test_list_tables_from_preview(self, client, sample_preview_schema):
+        """Test listing tables from preview schema."""
+        response = client.get("/api/source-schema-jobs/test_source/tables/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 1
+        assert data[0]["name"] == "users"
+
+    def test_list_columns_from_preview(self, client, sample_preview_schema):
+        """Test listing columns from preview schema."""
+        response = client.get("/api/source-schema-jobs/test_source/tables/users/columns/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 2
+        column_names = [c["name"] for c in data]
+        assert "id" in column_names
+        assert "name" in column_names
+
+    def test_list_sources_with_preview_schema(self, client, app, sample_preview_schema):
+        """Test listing sources finds preview schema when main is missing."""
+        response = client.get("/api/source-schema-jobs/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 1
+        assert data[0]["has_cached_schema"] is True
+        assert data[0]["total_tables"] == 1
+        assert data[0]["total_columns"] == 2
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    def test_status_completed_with_preview_schema(
+        self, mock_run_manager_class, client, sample_preview_schema
+    ):
+        """Test status endpoint returns preview schema data when main is missing."""
+        mock_run_manager = Mock()
+        mock_run_manager_class.instance.return_value = mock_run_manager
+
+        mock_run = Mock()
+        mock_run.status = RunStatus.COMPLETED
+        mock_run.to_dict.return_value = {
+            "run_instance_id": "test-job-id",
+            "status": "completed",
+            "progress": 1.0,
+            "progress_message": "Complete",
+        }
+        mock_run_manager.get_run.return_value = mock_run
+
+        response = client.get("/api/source-schema-jobs/test_source/status/?job_id=test-job-id")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "completed"
+        assert "result" in data
+        assert data["result"]["total_tables"] == 1

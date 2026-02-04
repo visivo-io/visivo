@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 from sqlglot import exp
 from sqlglot.schema import MappingSchema
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
@@ -18,7 +19,11 @@ class SchemaAggregator:
 
     @staticmethod
     def aggregate_source_schema(
-        source_name: str, source_type: str, schema_data: Dict[str, Any], output_dir: str
+        source_name: str,
+        source_type: str,
+        schema_data: Dict[str, Any],
+        output_dir: str,
+        run_id: str = DEFAULT_RUN_ID,
     ) -> None:
         """
         Store source schema data in standard format.
@@ -28,10 +33,10 @@ class SchemaAggregator:
             source_type: Type of the source (postgresql, mysql, etc.)
             schema_data: Schema data dictionary
             output_dir: Output directory for storage
+            run_id: Run identifier for schema storage location
         """
         try:
-            # Create schema directory
-            schema_dir = f"{output_dir}/schemas/{source_name}"
+            schema_dir = f"{output_dir}/{run_id}/schemas/{source_name}"
             os.makedirs(schema_dir, exist_ok=True)
 
             # Prepare schema data for storage
@@ -170,19 +175,22 @@ class SchemaAggregator:
             return {}
 
     @staticmethod
-    def load_source_schema(source_name: str, output_dir: str) -> Optional[Dict[str, Any]]:
+    def load_source_schema(
+        source_name: str, output_dir: str, run_id: str = DEFAULT_RUN_ID
+    ) -> Optional[Dict[str, Any]]:
         """
         Load stored schema data for a source.
 
         Args:
             source_name: Name of the source
             output_dir: Output directory where schemas are stored
+            run_id: Run identifier for schema storage location
 
         Returns:
             Schema data dictionary or None if not found
         """
         try:
-            schema_file = f"{output_dir}/schemas/{source_name}/schema.json"
+            schema_file = f"{output_dir}/{run_id}/schemas/{source_name}/schema.json"
             if not os.path.exists(schema_file):
                 return None
 
@@ -227,18 +235,19 @@ class SchemaAggregator:
         return schema
 
     @staticmethod
-    def list_stored_schemas(output_dir: str) -> List[Dict[str, Any]]:
+    def list_stored_schemas(output_dir: str, run_id: str = DEFAULT_RUN_ID) -> List[Dict[str, Any]]:
         """
         List all stored schemas with basic metadata.
 
         Args:
             output_dir: Output directory where schemas are stored
+            run_id: Run identifier for schema storage location
 
         Returns:
             List of schema metadata dictionaries
         """
         schemas = []
-        schemas_dir = f"{output_dir}/schemas"
+        schemas_dir = f"{output_dir}/{run_id}/schemas"
 
         if not os.path.exists(schemas_dir):
             return schemas

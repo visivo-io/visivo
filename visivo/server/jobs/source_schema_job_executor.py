@@ -7,7 +7,7 @@ from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.jobs.run_source_schema_job import action as run_source_schema_action
 
 
-def execute_source_schema_job(job_id, source, output_dir, run_manager):
+def execute_source_schema_job(job_id, source, output_dir, run_manager, run_id=None):
     """
     Execute a schema generation job for a source in the background.
 
@@ -16,10 +16,14 @@ def execute_source_schema_job(job_id, source, output_dir, run_manager):
         source: Source object to generate schema for
         output_dir: Output directory for schema files
         run_manager: PreviewRunManager instance for status updates
+        run_id: Run identifier for schema storage location
 
     Returns:
         None (updates run status via run_manager)
     """
+    if run_id is None:
+        run_id = f"preview-{source.name}"
+
     try:
         run_manager.update_status(
             job_id,
@@ -37,11 +41,11 @@ def execute_source_schema_job(job_id, source, output_dir, run_manager):
             progress_message=f"Connecting to {source.name}",
         )
 
-        # Execute the schema generation action
         result = run_source_schema_action(
             source_to_build=source,
-            table_names=None,  # Generate schema for all tables
+            table_names=None,
             output_dir=output_dir,
+            run_id=run_id,
         )
 
         if result.success:
