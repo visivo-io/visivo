@@ -1,0 +1,231 @@
+import { getUrl, isAvailable } from '../contexts/URLContext';
+
+/**
+ * Fetch list of all sources with cached schema availability
+ * @returns {Promise<Object[]>} Array of source objects with schema metadata
+ */
+export const fetchSourceSchemaJobs = async () => {
+  if (!isAvailable('sourceSchemaJobsList')) {
+    console.warn('Source schema jobs endpoint not available in this environment');
+    return [];
+  }
+
+  const url = getUrl('sourceSchemaJobsList');
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch source schema jobs: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetch cached schema for a specific source
+ * @param {string} sourceName - Name of the source
+ * @returns {Promise<Object|null>} Schema data or null if not cached
+ */
+export const fetchSourceSchema = async sourceName => {
+  if (!isAvailable('sourceSchemaJobDetail')) {
+    console.warn('Source schema endpoint not available in this environment');
+    return null;
+  }
+
+  const url = getUrl('sourceSchemaJobDetail', { name: sourceName });
+  const response = await fetch(url);
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch source schema: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Trigger on-demand schema generation for a source
+ * @param {string} sourceName - Name of the source
+ * @returns {Promise<Object>} Object containing job_id
+ */
+export const generateSourceSchema = async sourceName => {
+  if (!isAvailable('sourceSchemaJobGenerate')) {
+    throw new Error('Schema generation not available in this environment');
+  }
+
+  const url = getUrl('sourceSchemaJobGenerate', { name: sourceName });
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to generate source schema: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetch the status of a schema generation job
+ * @param {string} sourceName - Name of the source
+ * @param {string} jobId - Job ID from generateSourceSchema
+ * @returns {Promise<Object>} Job status object
+ */
+export const fetchSchemaGenerationStatus = async (sourceName, jobId) => {
+  if (!isAvailable('sourceSchemaJobStatus')) {
+    throw new Error('Schema generation status not available in this environment');
+  }
+
+  const url =
+    getUrl('sourceSchemaJobStatus', { name: sourceName }) + `?job_id=${encodeURIComponent(jobId)}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch schema generation status: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetch or generate schema with automatic polling
+ * Returns cached schema if available, otherwise triggers generation and polls for completion
+ * @param {string} sourceName - Name of the source
+ * @param {Object} options - Options for generation
+ * @param {number} options.pollInterval - Polling interval in ms (default: 1000)
+ * @param {number} options.maxWaitTime - Maximum wait time in ms (default: 120000)
+ * @param {function} options.onProgress - Progress callback (status, progress, message)
+ * @returns {Promise<Object>} Schema data
+ */
+export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
+  const { pollInterval = 1000, maxWaitTime = 120000, onProgress } = options;
+
+  // First try to get cached schema
+  const cachedSchema = await fetchSourceSchema(sourceName);
+  if (cachedSchema) {
+    if (onProgress) {
+      onProgress('completed', 1.0, 'Using cached schema');
+    }
+    return cachedSchema;
+  }
+
+  // No cached schema, trigger generation
+  if (onProgress) {
+    onProgress('running', 0.0, 'Starting schema generation');
+  }
+
+  const { job_id: jobId } = await generateSourceSchema(sourceName);
+
+  // Poll for completion
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitTime) {
+    const status = await fetchSchemaGenerationStatus(sourceName, jobId);
+
+    if (onProgress) {
+      onProgress(status.status, status.progress || 0, status.progress_message || '');
+    }
+
+    if (status.status === 'completed') {
+      // Fetch the generated schema
+      const schema = await fetchSourceSchema(sourceName);
+      if (!schema) {
+        throw new Error('Schema generation completed but schema not found');
+      }
+      return schema;
+    }
+
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Schema generation failed');
+    }
+
+    // Wait before next poll
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+  }
+
+  throw new Error(`Schema generation timed out after ${maxWaitTime}ms`);
+};
+
+/**
+ * Fetch list of tables for a source
+ * @param {string} sourceName - Name of the source
+ * @param {string} search - Optional search string to filter tables
+ * @returns {Promise<Object[]>} Array of table objects
+ */
+export const fetchSourceTables = async (sourceName, search = '') => {
+  if (!isAvailable('sourceSchemaJobTables')) {
+    console.warn('Source schema tables endpoint not available in this environment');
+    return [];
+  }
+
+  let url = getUrl('sourceSchemaJobTables', { name: sourceName });
+  if (search) {
+    url += `?search=${encodeURIComponent(search)}`;
+  }
+
+  const response = await fetch(url);
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch source tables: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetch columns for a table in a source
+ * @param {string} sourceName - Name of the source
+ * @param {string} tableName - Name of the table
+ * @param {string} search - Optional search string to filter columns
+ * @returns {Promise<Object[]>} Array of column objects
+ */
+export const fetchTableColumns = async (sourceName, tableName, search = '') => {
+  if (!isAvailable('sourceSchemaJobColumns')) {
+    console.warn('Source schema columns endpoint not available in this environment');
+    return [];
+  }
+
+  let url = getUrl('sourceSchemaJobColumns', { name: sourceName, table: tableName });
+  if (search) {
+    url += `?search=${encodeURIComponent(search)}`;
+  }
+
+  const response = await fetch(url);
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to fetch table columns: ${response.status} ${response.statusText}. ${errorText}`
+    );
+  }
+
+  return response.json();
+};
