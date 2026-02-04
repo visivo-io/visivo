@@ -144,7 +144,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
     @app.route(
         "/api/source-schema-jobs/<source_name>/tables/<table_name>/columns/", methods=["GET"]
     )
-    def list_table_columns(source_name, table_name):
+    def list_source_schema_table_columns(source_name, table_name):
         """
         List columns for a table in a cached source schema.
 
