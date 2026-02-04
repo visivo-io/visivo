@@ -3,28 +3,7 @@ import { PiX, PiSpinner, PiChartBar, PiCopy } from 'react-icons/pi';
 import { histogramTableLocally } from '../../duckdb/profiling';
 import ProfileStats from './ProfileStats';
 import Histogram from './Histogram';
-
-const NUMERIC_TYPES = [
-  'INTEGER',
-  'BIGINT',
-  'FLOAT',
-  'DOUBLE',
-  'DECIMAL',
-  'NUMERIC',
-  'REAL',
-  'SMALLINT',
-  'TINYINT',
-  'HUGEINT',
-  'UHUGEINT',
-  'UBIGINT',
-  'UINTEGER',
-  'USMALLINT',
-  'UTINYINT',
-  'INT',
-  'INT2',
-  'INT4',
-  'INT8',
-];
+import { NUMERIC_TYPES } from '../../constants';
 
 const isNumericType = type => {
   if (!type) return false;
