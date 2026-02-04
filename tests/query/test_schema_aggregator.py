@@ -2,9 +2,12 @@
 Tests for SchemaAggregator serialization and deserialization.
 """
 
+import os
+import tempfile
 import pytest
 from sqlglot import exp
 from sqlglot.schema import MappingSchema
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.query.schema_aggregator import SchemaAggregator
 
 
@@ -173,3 +176,155 @@ class TestSchemaAggregator:
             mapping = {}
 
         assert len(mapping) == 0
+
+
+class TestSchemaAggregatorRunId:
+    """Test run_id support in SchemaAggregator."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create a temporary directory for testing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    def test_aggregate_stores_in_run_id_directory(self, temp_dir):
+        """Test that aggregate_source_schema stores in the correct run_id directory."""
+        schema_data = {
+            "tables": {"test_table": {"columns": {"id": {"type": "INT", "nullable": False}}}},
+            "sqlglot_schema": {"test_table": {"id": "INT"}},
+            "metadata": {"total_tables": 1, "total_columns": 1},
+        }
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="test_source",
+            source_type="sqlite",
+            schema_data=schema_data,
+            output_dir=temp_dir,
+            run_id="test-run-id",
+        )
+
+        expected_path = os.path.join(
+            temp_dir, "test-run-id", "schemas", "test_source", "schema.json"
+        )
+        assert os.path.exists(expected_path)
+
+    def test_aggregate_default_run_id(self, temp_dir):
+        """Test that aggregate_source_schema uses DEFAULT_RUN_ID when not specified."""
+        schema_data = {
+            "tables": {},
+            "sqlglot_schema": {},
+            "metadata": {},
+        }
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="test_source",
+            source_type="sqlite",
+            schema_data=schema_data,
+            output_dir=temp_dir,
+        )
+
+        expected_path = os.path.join(
+            temp_dir, DEFAULT_RUN_ID, "schemas", "test_source", "schema.json"
+        )
+        assert os.path.exists(expected_path)
+
+    def test_load_from_specific_run_id(self, temp_dir):
+        """Test loading schema from a specific run_id."""
+        schema_data = {
+            "tables": {"users": {"columns": {"id": {"type": "INT", "nullable": False}}}},
+            "sqlglot_schema": {"users": {"id": "INT"}},
+            "metadata": {"total_tables": 1, "total_columns": 1},
+        }
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="test_source",
+            source_type="sqlite",
+            schema_data=schema_data,
+            output_dir=temp_dir,
+            run_id="custom-run-id",
+        )
+
+        loaded = SchemaAggregator.load_source_schema(
+            "test_source", temp_dir, run_id="custom-run-id"
+        )
+        assert loaded is not None
+        assert loaded["source_name"] == "test_source"
+
+        not_found = SchemaAggregator.load_source_schema(
+            "test_source", temp_dir, run_id="other-run-id"
+        )
+        assert not_found is None
+
+    def test_list_schemas_from_specific_run_id(self, temp_dir):
+        """Test listing schemas from a specific run_id."""
+        schema_data = {
+            "tables": {},
+            "sqlglot_schema": {},
+            "metadata": {"total_tables": 0, "total_columns": 0},
+        }
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="source_a",
+            source_type="sqlite",
+            schema_data=schema_data,
+            output_dir=temp_dir,
+            run_id="run-1",
+        )
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="source_b",
+            source_type="postgresql",
+            schema_data=schema_data,
+            output_dir=temp_dir,
+            run_id="run-2",
+        )
+
+        schemas_run_1 = SchemaAggregator.list_stored_schemas(temp_dir, run_id="run-1")
+        assert len(schemas_run_1) == 1
+        assert schemas_run_1[0]["source_name"] == "source_a"
+
+        schemas_run_2 = SchemaAggregator.list_stored_schemas(temp_dir, run_id="run-2")
+        assert len(schemas_run_2) == 1
+        assert schemas_run_2[0]["source_name"] == "source_b"
+
+    def test_separate_schemas_per_run_id(self, temp_dir):
+        """Test that different run_ids have separate schema storage."""
+        main_schema = {
+            "tables": {"users": {"columns": {"id": {"type": "INT", "nullable": False}}}},
+            "sqlglot_schema": {"users": {"id": "INT"}},
+            "metadata": {"total_tables": 1, "total_columns": 1},
+        }
+        preview_schema = {
+            "tables": {
+                "users": {"columns": {"id": {"type": "INT"}, "name": {"type": "VARCHAR"}}},
+                "orders": {"columns": {"id": {"type": "INT"}}},
+            },
+            "sqlglot_schema": {"users": {"id": "INT", "name": "VARCHAR"}, "orders": {"id": "INT"}},
+            "metadata": {"total_tables": 2, "total_columns": 3},
+        }
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="test_source",
+            source_type="sqlite",
+            schema_data=main_schema,
+            output_dir=temp_dir,
+            run_id=DEFAULT_RUN_ID,
+        )
+
+        SchemaAggregator.aggregate_source_schema(
+            source_name="test_source",
+            source_type="sqlite",
+            schema_data=preview_schema,
+            output_dir=temp_dir,
+            run_id="preview-test_source",
+        )
+
+        main_loaded = SchemaAggregator.load_source_schema(
+            "test_source", temp_dir, run_id=DEFAULT_RUN_ID
+        )
+        preview_loaded = SchemaAggregator.load_source_schema(
+            "test_source", temp_dir, run_id="preview-test_source"
+        )
+
+        assert main_loaded["metadata"]["total_tables"] == 1
+        assert preview_loaded["metadata"]["total_tables"] == 2

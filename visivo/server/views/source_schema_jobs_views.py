@@ -6,10 +6,38 @@ with on-demand generation fallback.
 import threading
 from flask import jsonify, request
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
 from visivo.server.jobs.source_schema_job_executor import execute_source_schema_job
+
+
+def _load_schema_with_fallback(source_name: str, output_dir: str):
+    """
+    Load schema data, trying main run_id first, then preview.
+
+    Args:
+        source_name: Name of the source
+        output_dir: Output directory where schemas are stored
+
+    Returns:
+        Tuple of (schema_data, run_id) or (None, None) if not found
+    """
+    schema_data = SchemaAggregator.load_source_schema(
+        source_name, output_dir, run_id=DEFAULT_RUN_ID
+    )
+    if schema_data is not None:
+        return schema_data, DEFAULT_RUN_ID
+
+    preview_run_id = f"preview-{source_name}"
+    schema_data = SchemaAggregator.load_source_schema(
+        source_name, output_dir, run_id=preview_run_id
+    )
+    if schema_data is not None:
+        return schema_data, preview_run_id
+
+    return None, None
 
 
 def register_source_schema_jobs_views(app, flask_app, output_dir):
@@ -32,23 +60,30 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
         try:
             sources = []
 
-            # Get all project sources
             project_sources = flask_app.project.sources or []
 
-            # Get all cached schemas
-            cached_schemas = SchemaAggregator.list_stored_schemas(output_dir)
-            cached_schema_map = {s["source_name"]: s for s in cached_schemas}
+            main_schemas = SchemaAggregator.list_stored_schemas(output_dir, run_id=DEFAULT_RUN_ID)
+            main_schema_map = {s["source_name"]: s for s in main_schemas}
 
             for source in project_sources:
+                cached = main_schema_map.get(source.name)
+                if cached is None:
+                    preview_run_id = f"preview-{source.name}"
+                    preview_schemas = SchemaAggregator.list_stored_schemas(
+                        output_dir, run_id=preview_run_id
+                    )
+                    for s in preview_schemas:
+                        if s["source_name"] == source.name:
+                            cached = s
+                            break
+
                 source_info = {
                     "source_name": source.name,
                     "source_type": source.type,
-                    "has_cached_schema": source.name in cached_schema_map,
+                    "has_cached_schema": cached is not None,
                 }
 
-                # Add cached schema metadata if available
-                if source.name in cached_schema_map:
-                    cached = cached_schema_map[source.name]
+                if cached is not None:
                     source_info["generated_at"] = cached.get("generated_at")
                     source_info["total_tables"] = cached.get("total_tables", 0)
                     source_info["total_columns"] = cached.get("total_columns", 0)
@@ -73,7 +108,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             JSON schema data or 404 if not cached
         """
         try:
-            schema_data = SchemaAggregator.load_source_schema(source_name, output_dir)
+            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
 
             if schema_data is None:
                 Logger.instance().info(f"Schema not found for source: {source_name}")
@@ -108,7 +143,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             JSON array of table objects with metadata
         """
         try:
-            schema_data = SchemaAggregator.load_source_schema(source_name, output_dir)
+            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
 
             if schema_data is None:
                 return (
@@ -159,7 +194,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             JSON array of column objects with type and nullable info
         """
         try:
-            schema_data = SchemaAggregator.load_source_schema(source_name, output_dir)
+            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
 
             if schema_data is None:
                 return (
@@ -244,10 +279,10 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             job_id = run_manager.create_run(config, object_type="source_schema")
             Logger.instance().info(f"Created schema generation run with job_id: {job_id}")
 
-            # Execute job in background thread
+            run_id = f"preview-{source_name}"
             thread = threading.Thread(
                 target=execute_source_schema_job,
-                args=(job_id, source, output_dir, run_manager),
+                args=(job_id, source, output_dir, run_manager, run_id),
                 daemon=True,
             )
             thread.start()
@@ -285,9 +320,8 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             response = run.to_dict()
 
-            # If completed, include schema data in result
             if run.status == RunStatus.COMPLETED:
-                schema_data = SchemaAggregator.load_source_schema(source_name, output_dir)
+                schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
                 if schema_data:
                     response["result"] = {
                         "source_name": source_name,
