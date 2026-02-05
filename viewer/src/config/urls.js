@@ -49,6 +49,11 @@ const URL_PATTERNS = {
     modelSave: '/api/models/{name}/save/',
     modelValidate: '/api/models/{name}/validate/',
 
+    // Model profiling endpoints
+    modelProfile: '/api/models/{name}/profile/',
+    modelHistogram: '/api/models/{name}/histogram/{column}/',
+    modelProfileInvalidate: '/api/models/{name}/profile/invalidate/',
+
     // Dimension management endpoints
     dimensionsList: '/api/dimensions/',
     dimensionDetail: '/api/dimensions/{name}/',
@@ -169,6 +174,11 @@ const URL_PATTERNS = {
     modelDetail: null,
     modelSave: null,
     modelValidate: null,
+
+    // Model profiling endpoints (not available in dist)
+    modelProfile: null,
+    modelHistogram: null,
+    modelProfileInvalidate: null,
 
     // Dimension management endpoints (not available in dist)
     dimensionsList: null,
