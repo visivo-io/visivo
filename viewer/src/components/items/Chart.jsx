@@ -122,16 +122,49 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
 
     // Handle insight-based data
     if (hasInsights && insightsData) {
-      const insightName = chart.insights[0]?.name;
+      const insightNames = chart.insights.map(i => i.name);
       const insightData = chartDataFromInsightData(insightsData, inputs);
       // Use sourceInsight for split traces (which have modified names), fall back to name for non-split
       data.push(
-        ...insightData.filter(insight => (insight.sourceInsight || insight.name) === insightName)
+        ...insightData.filter(insight => insightNames.includes(insight.sourceInsight || insight.name))
       );
     }
 
     return data;
   }, [selectedCohortData, insightsData, chart.traces, chart.insights, hasInsights, inputs]);
+
+  const layoutRef = useMemo(() => {
+    const l = structuredClone(chart.layout ? chart.layout : {});
+
+    if (!l.colorway) {
+      l.colorway = [
+        '#713B57', '#FFB400', '#003F91', '#D25946', '#1CA9C9',
+        '#999999', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B',
+      ];
+    }
+
+    // Preserve user interactions (zoom, pan) across re-renders
+    if (!l.uirevision) {
+      l.uirevision = chart.name;
+    }
+
+    // For preview mode, ensure autosize is enabled
+    if (hideToolbar && !l.autosize) {
+      l.autosize = true;
+    }
+
+    return l;
+  }, [chart.layout, chart.name, hideToolbar]);
+
+  const plotLayout = useMemo(
+    () => ({ ...layoutRef, height, width }),
+    [layoutRef, height, width]
+  );
+
+  const plotConfig = useMemo(
+    () => ({ displayModeBar: false, responsive: true }),
+    []
+  );
 
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
@@ -141,13 +174,6 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
     setIsLoading(true);
     setSelectedCohortData(changedSelectedTracesData);
   };
-
-  const layout = structuredClone(chart.layout ? chart.layout : {});
-
-  // For preview mode, ensure autosize is enabled
-  if (hideToolbar && !layout.autosize) {
-    layout.autosize = true;
-  }
 
   return (
     <ItemContainer
@@ -194,9 +220,9 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
         data={selectedPlotData}
-        layout={{ ...layout, height, width }}
+        layout={plotLayout}
         useResizeHandler={true}
-        config={{ displayModeBar: false, responsive: true }}
+        config={plotConfig}
         style={{ width: '100%', height: '100%' }}
         onAfterPlot={() => {
           setIsLoading(false);

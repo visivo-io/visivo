@@ -122,11 +122,36 @@ class Insight(NamedModel, ParentModel):
         return children
 
     def get_all_dependent_models(self, dag):
-        """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)"""
-        from visivo.models.models.model import Model
+        """Get all dependent models (SqlModel, CsvScriptModel, LocalMergeModel, etc.)
 
-        models = all_descendants_of_type(type=Model, dag=dag, from_node=self)
-        return set(models)
+        Excludes models only reachable through Input nodes, since inputs resolve
+        their model dependencies independently (for options/defaults). The insight
+        query only needs the input's runtime value, not its source models.
+        """
+        from visivo.models.models.model import Model
+        from visivo.models.inputs.input import Input
+
+        models = set()
+        visited = set()
+        queue = list(dag.successors(self))
+
+        while queue:
+            node = queue.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+
+            if isinstance(node, Input):
+                continue
+
+            if isinstance(node, Model):
+                models.add(node)
+
+            for child in dag.successors(node):
+                if child not in visited:
+                    queue.append(child)
+
+        return models
 
     def get_dependent_source(self, dag, output_dir) -> Source:
         """Currently an insight can only reference models from the same source"""

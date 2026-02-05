@@ -21,7 +21,7 @@ def test_Selector_serialize_data():
     selector.options = [row]
     assert selector.serialize_model()["options"] == [{"name": "row name", "type": "row"}]
     selector.options = ["ref(row name)"]
-    assert selector.serialize_model()["options"] == ["ref(row name)"]
+    assert selector.serialize_model()["options"] == ["${ref(row name)}"]
 
     selector.set_parent_name("parent_name")
     assert selector.serialize_model()["parent_name"] == "parent_name"

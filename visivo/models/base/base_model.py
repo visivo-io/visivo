@@ -7,6 +7,7 @@ from pydantic import (
     ConfigDict,
     SecretStr,
 )
+from pydantic.functional_serializers import PlainSerializer
 from typing_extensions import Annotated
 from typing import Optional, Union, NewType
 import re
@@ -18,9 +19,21 @@ from visivo.query.patterns import (
     ENV_VAR_CONTEXT_PATTERN,
 )
 
+
+def _serialize_ref_to_context(value: str) -> str:
+    return f"${{{value}}}"
+
+
 RefStringType = NewType(
     "RefStringType",
-    Annotated[Annotated[str, StringConstraints(pattern=REF_PROPERTY_PATTERN)], Tag("Ref")],
+    Annotated[
+        Annotated[
+            str,
+            StringConstraints(pattern=REF_PROPERTY_PATTERN),
+            PlainSerializer(_serialize_ref_to_context),
+        ],
+        Tag("Ref"),
+    ],
 )
 
 ContextStringType = NewType(

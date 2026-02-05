@@ -159,7 +159,8 @@ def job(dag, output_dir: str, insight: Insight, run_id: str = None):
         insight: Insight object to execute
         run_id: Optional run ID for preview runs (passed to action for custom file naming)
     """
-    source = _get_source(insight, dag, output_dir)
+    run_output_dir = f"{output_dir}/{run_id}" if run_id is not None else f"{output_dir}/main"
+    source = _get_source(insight, dag, run_output_dir)
     kwargs = {
         "insight": insight,
         "dag": dag,

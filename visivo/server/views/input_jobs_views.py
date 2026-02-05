@@ -4,6 +4,7 @@ from flask import jsonify, request
 
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
+from visivo.constants import DEFAULT_RUN_ID
 
 
 def register_input_jobs_views(app, flask_app, output_dir):
@@ -14,6 +15,7 @@ def register_input_jobs_views(app, flask_app, output_dir):
 
         Query params:
             input_names: List of input names to fetch metadata for
+            run_id: Run ID to load inputs from (defaults to DEFAULT_RUN_ID)
 
         Returns:
             JSON array of input metadata objects, each with:
@@ -29,6 +31,7 @@ def register_input_jobs_views(app, flask_app, output_dir):
         try:
             input_names = request.args.getlist("input_names")
             project_id = request.args.get("project_id")
+            run_id = request.args.get("run_id", DEFAULT_RUN_ID)
 
             if not input_names:
                 return jsonify({"message": "input_names parameter is required"}), 400
@@ -39,7 +42,7 @@ def register_input_jobs_views(app, flask_app, output_dir):
             for name in input_names:
                 # Use alpha_hash to match backend name_hash() method
                 name_hash = alpha_hash(name)
-                input_file = os.path.join(output_dir, "inputs", f"{name_hash}.json")
+                input_file = os.path.join(output_dir, run_id, "inputs", f"{name_hash}.json")
 
                 if not os.path.exists(input_file):
                     Logger.instance().info(f"Input file not found: {input_file}")
@@ -68,7 +71,9 @@ def register_input_jobs_views(app, flask_app, output_dir):
                                 file_hash = os.path.splitext(filename)[
                                     0
                                 ]  # Remove .parquet extension
-                                file_ref["signed_data_file_url"] = f"/api/files/{file_hash}/"
+                                file_ref["signed_data_file_url"] = (
+                                    f"/api/files/{file_hash}/{run_id}/"
+                                )
 
                     inputs.append(input_data)
                     Logger.instance().debug(
