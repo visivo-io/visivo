@@ -98,7 +98,7 @@ class VisivoRunValidator:
 
     def validate_schemas(self) -> bool:
         """Validate schema generation results."""
-        schemas_dir = self.target_dir / "schemas"
+        schemas_dir = self.run_dir / "schemas"
 
         if not schemas_dir.exists():
             self.log_error(f"Schemas directory does not exist at {schemas_dir}")
