@@ -7,6 +7,7 @@ from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 from visivo.utils import get_utc_now
 from visivo.server.services.query_service import execute_query_on_source
+from visivo.constants import DEFAULT_RUN_ID
 
 
 def register_trace_views(app, flask_app, output_dir):
@@ -15,7 +16,7 @@ def register_trace_views(app, flask_app, output_dir):
         """API endpoint to serve trace data by hash"""
         try:
             # Find trace name by hash
-            trace_dirs = glob.glob(f"{output_dir}/traces/*/")
+            trace_dirs = glob.glob(f"{output_dir}/{DEFAULT_RUN_ID}/traces/*/")
             for trace_dir in trace_dirs:
                 trace_name = os.path.basename(os.path.normpath(trace_dir))
                 trace_name_hash = alpha_hash(trace_name)
@@ -36,7 +37,6 @@ def register_trace_views(app, flask_app, output_dir):
         try:
             # Get trace names from query parameters
             trace_names = request.args.getlist("trace_names")
-            project_id = request.args.get("project_id")
 
             # Return traces with hash-based data URLs
             traces = []
@@ -46,7 +46,7 @@ def register_trace_views(app, flask_app, output_dir):
                     {
                         "name": name,
                         "id": name,
-                        "signed_data_file_url": f"/api/traces/{name_hash}/",
+                        "signed_data_file_url": f"/api/traces/{name_hash}/{DEFAULT_RUN_ID}/",
                     }
                 )
 
