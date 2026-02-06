@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { parseRefValue } from '../../../utils/refString';
 
 /**
  * LocalMergeModelEditForm - Form for creating/editing LocalMergeModel
@@ -30,7 +31,8 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     if (model) {
       setName(model.name || '');
       setSql(model.config?.sql || '');
-      const refs = model.config?.models || [];
+      // Parse ref values to extract plain names for RefSelector
+      const refs = (model.config?.models || []).map(ref => parseRefValue(ref) || ref);
       setModelRefs(refs.length > 0 ? refs : ['']);
     } else {
       setName('');
@@ -47,7 +49,8 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     const config = {
       name: name.trim(),
       sql: sql.trim(),
-      models: modelRefs.filter(r => r.trim()),
+      // Parse ref values to ensure plain names are sent to backend
+      models: modelRefs.filter(r => r.trim()).map(r => parseRefValue(r) || r),
     };
 
     const result = await onSave('localMergeModel', config.name, config);

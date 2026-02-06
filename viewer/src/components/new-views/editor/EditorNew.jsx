@@ -709,6 +709,17 @@ const EditorNew = () => {
             />
           )}
 
+          {/* Inputs List */}
+          {filteredInputs.length > 0 && (
+            <ObjectList
+              objects={filteredInputs}
+              selectedName={currentEdit?.type === 'input' ? currentEdit.object?.name : null}
+              onSelect={handleInputSelect}
+              title="Inputs"
+              objectType="input"
+            />
+          )}
+
           {/* Insights List */}
           {filteredInsights.length > 0 && (
             <ObjectList
@@ -731,17 +742,6 @@ const EditorNew = () => {
             />
           )}
 
-          {/* Charts List */}
-          {filteredCharts.length > 0 && (
-            <ObjectList
-              objects={filteredCharts}
-              selectedName={currentEdit?.type === 'chart' ? currentEdit.object?.name : null}
-              onSelect={handleChartSelect}
-              title="Charts"
-              objectType="chart"
-            />
-          )}
-
           {/* Tables List */}
           {filteredTables.length > 0 && (
             <ObjectList
@@ -753,6 +753,17 @@ const EditorNew = () => {
             />
           )}
 
+          {/* Charts List */}
+          {filteredCharts.length > 0 && (
+            <ObjectList
+              objects={filteredCharts}
+              selectedName={currentEdit?.type === 'chart' ? currentEdit.object?.name : null}
+              onSelect={handleChartSelect}
+              title="Charts"
+              objectType="chart"
+            />
+          )}
+
           {/* Dashboards List */}
           {filteredDashboards.length > 0 && (
             <ObjectList
@@ -761,17 +772,6 @@ const EditorNew = () => {
               onSelect={handleDashboardSelect}
               title="Dashboards"
               objectType="dashboard"
-            />
-          )}
-
-          {/* Inputs List */}
-          {filteredInputs.length > 0 && (
-            <ObjectList
-              objects={filteredInputs}
-              selectedName={currentEdit?.type === 'input' ? currentEdit.object?.name : null}
-              onSelect={handleInputSelect}
-              title="Inputs"
-              objectType="input"
             />
           )}
         </div>
