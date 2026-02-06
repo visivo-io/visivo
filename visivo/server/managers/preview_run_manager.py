@@ -306,6 +306,31 @@ class PreviewRunManager:
                     f"Invalidated {len(runs_to_delete)} completed runs for insight {insight_name}"
                 )
 
+    def invalidate_completed_runs_for_source(self, source_name: str):
+        """
+        Remove any completed or failed runs for the given source name.
+        This forces a fresh schema generation when the source config changes.
+        """
+        with self._runs_lock:
+            runs_to_delete = [
+                run_id
+                for run_id, run in self._runs.items()
+                if run.object_type == "source_schema"
+                and run.config.get("source_name") == source_name
+                and run.status in (RunStatus.COMPLETED, RunStatus.FAILED)
+            ]
+
+            for run_id in runs_to_delete:
+                del self._runs[run_id]
+                Logger.instance().debug(
+                    f"Invalidated completed run {run_id} for source {source_name}"
+                )
+
+            if runs_to_delete:
+                Logger.instance().info(
+                    f"Invalidated {len(runs_to_delete)} completed runs for source {source_name}"
+                )
+
     def _cleanup_old_runs(self):
         """Remove runs older than max_run_age"""
         now = datetime.now()
