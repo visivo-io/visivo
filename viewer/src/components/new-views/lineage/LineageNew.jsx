@@ -60,6 +60,7 @@ const LineageNew = () => {
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
   // Navigation stack helpers
   // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
@@ -258,16 +259,20 @@ const LineageNew = () => {
     const filteredEdges = dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
 
     // Recompute layout with only the filtered nodes and edges
-    const layoutNodes = computeLayout(filteredNodes, filteredEdges);
+    // Pass fixedNode to keep clicked node in place
+    const layoutNodes = computeLayout(filteredNodes, filteredEdges, fixedNode);
 
     return { nodes: layoutNodes, edges: filteredEdges };
-  }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit]);
+  }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit, fixedNode]);
 
   // Fit view when initial data loads OR when selector changes (and we have nodes to show)
   useEffect(() => {
     if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current) {
       setTimeout(() => {
-        reactFlowInstance.current.fitView({ padding: 0.2 });
+        reactFlowInstance.current.fitView({
+          padding: 0.2,
+          duration: 800, // Smooth 800ms animation
+        });
       }, 100);
     }
   }, [initialLoadDone, nodes.length, selector]);
@@ -295,6 +300,11 @@ const LineageNew = () => {
   // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants)
   const handleNodeClick = useCallback((event, node) => {
     const nodeName = node.data.name;
+    // Store the node's current position so it doesn't jump during layout recomputation
+    setFixedNode({
+      id: node.id,
+      position: node.position,
+    });
     // Set selector to +name+ to show the node and all its dependencies
     setSelector(`+${nodeName}+`);
   }, []);
@@ -396,13 +406,25 @@ const LineageNew = () => {
     <div className="flex flex-col h-[calc(100vh-48px)]">
       {/* Selector input bar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
-        <Button variant="secondary" size="sm" onClick={() => setSelector('')} disabled={!selector}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setSelector('');
+            setFixedNode(null);
+          }}
+          disabled={!selector}
+        >
           Clear
         </Button>
         <input
           type="text"
           value={selector}
-          onChange={e => setSelector(e.target.value)}
+          onChange={e => {
+            setSelector(e.target.value);
+            // Clear fixed node when manually editing selector
+            if (fixedNode) setFixedNode(null);
+          }}
           placeholder="e.g., 'source_name', 'model_name', or '+name+'"
           className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         />
@@ -461,6 +483,7 @@ const LineageNew = () => {
             maxZoom={2}
             style={{ background: '#f8fafc' }}
             deleteKeyCode={['Backspace', 'Delete']}
+            defaultEdgeOptions={{ animated: true }}
           >
             <Background color="#e2e8f0" gap={16} />
             <Controls />

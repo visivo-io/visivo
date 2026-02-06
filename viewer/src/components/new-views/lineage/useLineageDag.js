@@ -6,8 +6,13 @@ import { parseRefValue } from '../../../utils/refString';
 /**
  * Compute layout using dagre (left-to-right)
  * Exported for use in LineageNew component to recompute layout after filtering
+ *
+ * @param {Array} nodes - Array of nodes to layout
+ * @param {Array} edges - Array of edges
+ * @param {Object} fixedNode - Optional { id, position } to keep a node at its current position
+ *                              The entire graph will be offset to center around this fixed node
  */
-export function computeLayout(nodes, edges) {
+export function computeLayout(nodes, edges, fixedNode = null) {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 100 });
   graph.setDefaultEdgeLabel(() => ({}));
@@ -29,14 +34,30 @@ export function computeLayout(nodes, edges) {
   // Run dagre layout
   dagre.layout(graph);
 
-  // Apply computed positions to nodes
+  // Calculate offset if we have a fixed node
+  let offsetX = 0;
+  let offsetY = 0;
+  if (fixedNode) {
+    const fixedNodeLayout = graph.node(fixedNode.id);
+    if (fixedNodeLayout) {
+      // Calculate where dagre placed the fixed node
+      const dagreX = fixedNodeLayout.x - fixedNodeLayout.width / 2;
+      const dagreY = fixedNodeLayout.y - fixedNodeLayout.height / 2;
+
+      // Calculate offset to keep fixed node at its original position
+      offsetX = fixedNode.position.x - dagreX;
+      offsetY = fixedNode.position.y - dagreY;
+    }
+  }
+
+  // Apply computed positions to nodes (with offset if needed)
   return nodes.map(node => {
     const nodeWithPosition = graph.node(node.id);
     return {
       ...node,
       position: {
-        x: nodeWithPosition.x - nodeWithPosition.width / 2,
-        y: nodeWithPosition.y - nodeWithPosition.height / 2,
+        x: nodeWithPosition.x - nodeWithPosition.width / 2 + offsetX,
+        y: nodeWithPosition.y - nodeWithPosition.height / 2 + offsetY,
       },
     };
   });
