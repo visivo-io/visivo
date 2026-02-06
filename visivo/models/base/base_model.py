@@ -24,6 +24,7 @@ def _serialize_ref_to_context(value: str) -> str:
     # If value is already a ContextString object, return its string representation directly
     # to avoid double-wrapping (ContextString already has the ${ } wrapper)
     from visivo.models.base.context_string import ContextString
+
     if isinstance(value, ContextString):
         return str(value)
 

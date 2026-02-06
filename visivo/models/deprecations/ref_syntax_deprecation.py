@@ -104,7 +104,7 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
 
         # Pattern to detect if we're inside a context string ${...}
         # This matches the opening ${ before a ref
-        context_start_pattern = r'\$\{\s*$'
+        context_start_pattern = r"\$\{\s*$"
 
         for file_path in list_all_ymls_in_dir(working_dir):
             try:
