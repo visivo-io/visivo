@@ -129,8 +129,8 @@ const URL_PATTERNS = {
     sourceSchemaJobDetail: '/api/source-schema-jobs/{name}/',
     sourceSchemaJobTables: '/api/source-schema-jobs/{name}/tables/',
     sourceSchemaJobColumns: '/api/source-schema-jobs/{name}/tables/{table}/columns/',
-    sourceSchemaJobGenerate: '/api/source-schema-jobs/{name}/generate/',
-    sourceSchemaJobStatus: '/api/source-schema-jobs/{name}/status/',
+    sourceSchemaJobCreate: '/api/source-schema-jobs/',
+    sourceSchemaJobStatus: '/api/source-schema-jobs/{jobId}/',
   },
 
   dist: {
@@ -258,7 +258,7 @@ const URL_PATTERNS = {
     sourceSchemaJobDetail: null,
     sourceSchemaJobTables: null,
     sourceSchemaJobColumns: null,
-    sourceSchemaJobGenerate: null,
+    sourceSchemaJobCreate: null,
     sourceSchemaJobStatus: null,
   },
 };
