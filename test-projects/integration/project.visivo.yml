@@ -234,10 +234,10 @@ sources:
 charts:
   - name: indicator_chart
     traces:
-      - ${ ref(Indicator Trace) }
+      - ${ref(indicator-trace)}
   - name: surface-chart
     traces:
-      - ${ ref(Surface Trace) }
+      - ${ref(surface-trace)}
     layout:
       title:
         text: Plot
@@ -380,7 +380,7 @@ charts:
         text: "Week Selector: Autocomplete Filter"
 
 dashboards:
-  - name: Insights Dashboard
+  - name: insights-dashboard
     level: 0
     tags:
       - "insights"
@@ -389,8 +389,9 @@ dashboards:
       # ===== SECTION 1: Original insights (no inputs) =====
       - height: compact
         items:
-          - markdown: |
-              ## Basic Insights (No Input Controls)
+          - markdown:
+              content: |
+                ## Basic Insights (No Input Controls)
       - height: medium
         items:
           - width: 6
@@ -408,9 +409,10 @@ dashboards:
       # Each input is directly above its related chart
       - height: compact
         items:
-          - markdown: |
-              ## Input-Controlled Charts
-              Each input controls the chart directly below it
+          - markdown:
+              content: |
+                ## Input-Controlled Charts
+                Each input controls the chart directly below it
 
       # Split Threshold -> Split Input Test Chart
       - height: compact
@@ -457,9 +459,10 @@ dashboards:
       # ===== SECTION 3: Display Type Showcase =====
       - height: compact
         items:
-          - markdown: |
-              ## Single-Select Display Types
-              Toggle, Radio, Tabs, Dropdown - each input above its chart
+          - markdown:
+              content: |
+                ## Single-Select Display Types
+                Toggle, Radio, Tabs, Dropdown - each input above its chart
 
       # Toggle -> Toggle Mode Chart
       - height: compact
@@ -478,9 +481,10 @@ dashboards:
       # Multi-select displays
       - height: compact
         items:
-          - markdown: |
-              ## Multi-Select Display Types
-              Checkboxes, Chips, Range Slider
+          - markdown:
+              content: |
+                ## Multi-Select Display Types
+                Checkboxes, Chips, Range Slider
 
       # Checkboxes & Chips
       - height: compact
@@ -499,9 +503,10 @@ dashboards:
       # ===== SECTION 4: DATE-BASED INPUTS (New Display Types) =====
       - height: compact
         items:
-          - markdown: |
-              ## Date-Based Inputs (New Display Types)
-              Autocomplete, Slider, and Date Range inputs
+          - markdown:
+              content: |
+                ## Date-Based Inputs (New Display Types)
+                Autocomplete, Slider, and Date Range inputs
 
       # Autocomplete -> Autocomplete Date Chart
       - height: compact
@@ -544,57 +549,61 @@ dashboards:
       # Additional inputs (unused showcase)
       - height: compact
         items:
-          - markdown: |
-              ## Additional Multi-Select Inputs (Showcase)
+          - markdown:
+              content: |
+                ## Additional Multi-Select Inputs (Showcase)
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
 
-  - name: Table Dashboard
+  - name: table-dashboard
     level: 1
     tags:
       - "tables"
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Text!
-            align: left
-            justify: between
+          - markdown:
+              content: |
+                # Text!
+              align: left
+              justify: between
       - height: small
         items:
           - align: left
-            markdown: |2
+            markdown:
+              content: |2
 
-              Lorem ipsum odor amet, consectetuer adipiscing elit.  
-              ```
-              Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. 
-              ```
-              > Montes semper quam litora condimentum maximus. 
-              * Sollicitudin montes rhoncus sollicitudin mus et elit. 
-              * Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. 
-              #### <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
-              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+                Lorem ipsum odor amet, consectetuer adipiscing elit.  
+                ```
+                Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. 
+                ```
+                > Montes semper quam litora condimentum maximus. 
+                * Sollicitudin montes rhoncus sollicitudin mus et elit. 
+                * Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. 
+                #### <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
+                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
       - height: medium
         items:
           - width: 1
-            markdown: |
-              ## Sub heading
-              1. Numbered
-              1. Lists are cool
+            markdown:
+              content: |
+                ## Sub heading
+                1. Numbered
+                1. Lists are cool
 
-              But we can have lots of other _content_ as well
+                But we can have lots of other _content_ as well
           - width: 3
             table:
               name: awesome-table
               column_defs:
-                - trace_name: Fibonacci Waterfall
+                - trace_name: fibonacci-waterfall
                   columns:
                     - key: "columns.x_data"
                     - key: "columns.y_data"
@@ -603,7 +612,7 @@ dashboards:
                     - key: "columns.measure"
                     - key: "props.text"
               traces:
-                - ${ ref(Fibonacci Waterfall) }
+                - ${ref(fibonacci-waterfall)}
               rows_per_page: 1000
           - width: 2
             chart: ${ ref(indicator_chart) }
@@ -625,7 +634,7 @@ dashboards:
                     vanilla_text: vanilla_text
                     markdown: markdown
 
-  - name: Simple Dashboard
+  - name: simple-dashboard
     level: 0
     tags:
       - "charts"
@@ -635,19 +644,19 @@ dashboards:
         items:
           - width: 9
             chart:
-              name: A very Fibonacci Waterfall
+              name: a-very-fibonacci-waterfall
               traces:
-                - ${ ref(Fibonacci Waterfall) }
-                - ${ ref(Example Indicator) }
+                - ${ref(fibonacci-waterfall)}
+                - ${ref(example-indicator)}
               layout:
                 title:
                   text: "AAPL P&L"
                 waterfallgroupgap: 0.1
           - width: 2
             chart:
-              name: Aggregated Fib
+              name: aggregated-fib
               traces:
-                - ${ ref(Aggregated Line) }
+                - ${ref(aggregated-line)}
               layout:
                 title:
                   text: "Aggregated Fibonacci"
@@ -661,10 +670,10 @@ dashboards:
         items:
           - width: 3
             chart:
-              name: fibonacci plane
+              name: fibonacci-plane
               traces:
-                - ${ ref(3d Line One) }
-                - ${ ref(3d Line Two) }
+                - ${ref(_3d-line-one)}
+                - ${ref(_3d-line-two)}
               layout:
                 title:
                   text: "The Greatest 3d Lines"
@@ -678,7 +687,7 @@ dashboards:
             chart:
               name: fibonacci
               traces:
-                - ${ ref(Simple Line) }
+                - ${ref(simple-line)}
               layout:
                 title:
                   text: "A great fibonacci series"
@@ -691,9 +700,9 @@ dashboards:
 
           - width: 3
             chart:
-              name: fibonacci times 2
+              name: fibonacci-times-2
               traces:
-                - name: Double Simple Line
+                - name: double-simple-line
                   #cohort_on: "?{'Fibonacci times 2'}"
                   model:
                     name: nested-and-name
@@ -709,8 +718,8 @@ dashboards:
                     - ?{x asc}
                   tests:
                     - assertions:
-                        - ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"
-                - ${ ref(Simple Line) }
+                        - ">{ ${ref(double-simple-line).props.x[2]} == 3 }"
+                - ${ref(simple-line)}
               layout:
                 title:
                   text: "A not great fibonacci series"
@@ -723,15 +732,16 @@ dashboards:
       - height: medium
         items:
           - width: 2
-            markdown: |
-              # Here is the first
-              1. Numbered 
-              1. List
+            markdown:
+              content: |
+                # Here is the first
+                1. Numbered 
+                1. List
           - width: 2
             chart:
-              name: funnel chart
+              name: funnel-chart
               traces:
-                - ${ ref(funnel trace) }
+                - ${ref(funnel-trace)}
               layout:
                 title:
                   text: "Funnel Chart"
