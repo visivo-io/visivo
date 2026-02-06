@@ -1,13 +1,11 @@
 import React, { useMemo, useCallback } from 'react';
-import { FormControl, FormHelperText, Select, MenuItem, InputLabel } from '@mui/material';
-import ChipsInput from '../../../../items/inputs/ChipsInput';
+import { FormHelperText } from '@mui/material';
 import {
   parsePatternValue,
   serializePatternValue,
   isEnumValue,
   extractPatternOptions,
 } from '../utils/patternUtils';
-import { getStaticSchema } from '../utils/schemaUtils';
 
 /**
  * Pattern-based multi-select field component
@@ -53,66 +51,45 @@ export function PatternMultiSelectField({
     if (!schema) return { patternOptions: [], enumOptions: [] };
 
     // Parse original schema (don't use getStaticSchema as it collapses oneOf)
-    const findOptions = (schemaToCheck, depth = 0) => {
-      console.log(`[findOptions depth=${depth}]`, JSON.stringify(schemaToCheck).substring(0, 200));
+    const findOptions = (schemaToCheck) => {
       const options = schemaToCheck.oneOf || schemaToCheck.anyOf;
-      if (!options) {
-        console.log(`[findOptions depth=${depth}] No oneOf/anyOf`);
-        return { patternOptions: [], enumOptions: [] };
-      }
+      if (!options) return { patternOptions: [], enumOptions: [] };
 
       let patternOptions = [];
       let enumOptions = [];
 
-      for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        console.log(`[findOptions depth=${depth} opt=${i}]`, JSON.stringify(opt).substring(0, 150));
-
+      for (const opt of options) {
         // Skip query-string refs
-        if (opt.$ref === '#/$defs/query-string') {
-          console.log(`[findOptions depth=${depth} opt=${i}] Skipping query-string`);
-          continue;
-        }
+        if (opt.$ref === '#/$defs/query-string') continue;
 
         // Check nested oneOf/anyOf
         if (opt.oneOf || opt.anyOf) {
-          console.log(`[findOptions depth=${depth} opt=${i}] Found nested oneOf/anyOf, recursing`);
-          const nested = findOptions(opt, depth + 1);
+          const nested = findOptions(opt);
           if (nested.patternOptions.length > 0) patternOptions = nested.patternOptions;
           if (nested.enumOptions.length > 0) enumOptions = nested.enumOptions;
           continue;
         }
 
         // Check for pattern option
-        if (opt.type === 'string' && opt.pattern) {
-          const regex = /^\^?\([^)]+\)\(\\\+/;
-          const matches = regex.test(opt.pattern);
-          console.log(`[findOptions depth=${depth} opt=${i}] Pattern check:`, { pattern: opt.pattern, matches });
-          if (matches) {
-            patternOptions = extractPatternOptions(opt.pattern);
-            console.log(`[findOptions depth=${depth} opt=${i}] Extracted:`, patternOptions);
-          }
+        if (opt.type === 'string' && opt.pattern && /^\^?\([^)]+\)\(\\\+/.test(opt.pattern)) {
+          patternOptions = extractPatternOptions(opt.pattern);
         }
 
         // Check for enum option
         if (opt.enum && opt.type === 'string') {
-          console.log(`[findOptions depth=${depth} opt=${i}] Found enum:`, opt.enum);
           enumOptions = opt.enum;
         }
       }
 
-      console.log(`[findOptions depth=${depth}] Returning:`, { patternOptions, enumOptions });
       return { patternOptions, enumOptions };
     };
 
     return findOptions(schema);
   }, [schema, defs]);
 
-  // Determine mode based on current value
-  const mode = useMemo(() => {
-    if (!value) return 'pattern';
-    if (isEnumValue(value, enumOptions)) return 'enum';
-    return 'pattern';
+  // Check if current value is an enum value
+  const isEnumSelected = useMemo(() => {
+    return isEnumValue(value, enumOptions);
   }, [value, enumOptions]);
 
   // Handle pattern chip selection
@@ -124,69 +101,102 @@ export function PatternMultiSelectField({
     [onChange]
   );
 
-  // Handle enum dropdown selection
-  const handleEnumChange = useCallback(
-    (event) => {
-      const newValue = event.target.value;
-      onChange(newValue === '' ? undefined : newValue);
+  // Handle enum option click (for chips rendering)
+  const handleEnumClick = useCallback(
+    (enumValue) => {
+      // If clicking the currently selected enum, deselect it
+      if (value === enumValue) {
+        onChange(undefined);
+      } else {
+        // Select the enum value (clears any pattern selections)
+        onChange(enumValue);
+      }
     },
-    [onChange]
+    [value, onChange]
   );
 
-  // Parse current value for ChipsInput
+  // Parse current value for ChipsInput (empty if enum is selected)
   const selectedPatternOptions = useMemo(() => {
-    if (mode !== 'pattern') return [];
+    if (isEnumSelected) return [];
     return parsePatternValue(value);
-  }, [value, mode]);
+  }, [value, isEnumSelected]);
 
-  const labelId = `pattern-field-${label?.replace(/\s+/g, '-')?.toLowerCase() || 'label'}`;
+  const hasSelection = selectedPatternOptions.length > 0 || isEnumSelected;
 
-  // Pattern mode: ChipsInput with Tailwind styling (no FormControl wrapper)
-  if (mode === 'pattern') {
-    console.log('[PatternMultiSelectField] Rendering pattern mode:', {
-      label,
-      patternOptions,
-      selectedPatternOptions,
-      value,
-    });
-    return (
-      <div>
-        <ChipsInput
-          label={label}
-          options={patternOptions}
-          selectedValues={selectedPatternOptions}
-          name="pattern-multiselect"
-          setInputJobValue={handlePatternChange}
-        />
-        {description && (
-          <FormHelperText sx={{ mt: 1 }}>{description}</FormHelperText>
-        )}
-      </div>
-    );
-  }
-
-  // Enum mode: Material-UI Select (needs FormControl wrapper)
   return (
-    <FormControl fullWidth size="small" disabled={disabled}>
-      <InputLabel id={labelId}>{label}</InputLabel>
-      <Select
-        labelId={labelId}
-        value={value || ''}
-        onChange={handleEnumChange}
-        label={label}
-        displayEmpty={false}
-      >
-        <MenuItem value="">
-          <em>None</em>
-        </MenuItem>
-        {enumOptions.map((opt) => (
-          <MenuItem key={opt} value={opt}>
-            {opt}
-          </MenuItem>
-        ))}
-      </Select>
-      {description && <FormHelperText>{description}</FormHelperText>}
-    </FormControl>
+    <div>
+      {label && (
+        <div className="mb-2 text-sm font-medium text-gray-700">{label}</div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {/* Pattern options (multi-select chips) */}
+        {patternOptions.map((option) => {
+          const isSelected = selectedPatternOptions.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                const newSelection = isSelected
+                  ? selectedPatternOptions.filter((opt) => opt !== option)
+                  : [...selectedPatternOptions, option];
+                handlePatternChange('pattern-multiselect', newSelection);
+              }}
+              disabled={disabled}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isSelected
+                  ? 'bg-white border-2 border-blue-500 text-blue-700'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-400'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {option}
+            </button>
+          );
+        })}
+
+        {/* Enum options (mutually exclusive chips) */}
+        {enumOptions.map((enumValue) => {
+          const isSelected = value === enumValue;
+          return (
+            <button
+              key={enumValue}
+              type="button"
+              onClick={() => handleEnumClick(enumValue)}
+              disabled={disabled}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isSelected
+                  ? 'bg-white border-2 border-orange-500 text-orange-700'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-400'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {enumValue}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selection indicator and clear button */}
+      {hasSelection && (
+        <div className="mt-2 text-xs text-gray-500">
+          {selectedPatternOptions.length > 0 && (
+            <span>{selectedPatternOptions.length} selected</span>
+          )}
+          {isEnumSelected && <span>"{value}" selected</span>}
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="ml-2 text-blue-600 hover:text-blue-800"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
+      {description && (
+        <FormHelperText sx={{ mt: 1 }}>{description}</FormHelperText>
+      )}
+    </div>
   );
 }
 
