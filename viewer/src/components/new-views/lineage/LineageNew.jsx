@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
-import { useLineageDag } from './useLineageDag';
+import { useLineageDag, computeLayout } from './useLineageDag';
 import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
@@ -80,7 +80,6 @@ const LineageNew = () => {
   const canGoBack = editStack.length > 1;
 
   const reactFlowInstance = useRef(null);
-  const hasFitView = useRef(false);
 
   // Note: Individual save functions are now handled by useObjectSave hook
 
@@ -226,9 +225,10 @@ const LineageNew = () => {
     [selector, dagNodes, dagEdges, parseSelector]
   );
 
-  // Filter and add onEdit handler + isEditing state to each node's data
-  const nodes = useMemo(() => {
-    return dagNodes
+  // Filter nodes and edges, recompute layout with only visible items, and add handlers
+  const { nodes, edges } = useMemo(() => {
+    // Filter to selected nodes first
+    const filteredNodes = dagNodes
       .filter(node => selectedIds.has(node.id))
       .map(node => {
         // Determine if this node is currently being edited (check the top of the stack)
@@ -252,31 +252,25 @@ const LineageNew = () => {
           },
         };
       });
-  }, [dagNodes, selectedIds, currentEdit, clearEdit, pushEdit]);
 
-  // Set of node IDs that will actually be rendered (only real nodes, no phantom IDs)
-  const visibleNodeIds = useMemo(() => {
-    const ids = new Set();
-    dagNodes.forEach(n => {
-      if (selectedIds.has(n.id)) ids.add(n.id);
-    });
-    return ids;
-  }, [dagNodes, selectedIds]);
+    // Filter edges to only show edges between visible nodes
+    const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredEdges = dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
 
-  // Filter edges to only show edges between visible nodes
-  const edges = useMemo(() => {
-    return dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
-  }, [dagEdges, visibleNodeIds]);
+    // Recompute layout with only the filtered nodes and edges
+    const layoutNodes = computeLayout(filteredNodes, filteredEdges);
 
-  // Fit view once when initial data load completes
+    return { nodes: layoutNodes, edges: filteredEdges };
+  }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit]);
+
+  // Fit view when initial data loads OR when selector changes (and we have nodes to show)
   useEffect(() => {
-    if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current && !hasFitView.current) {
+    if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current) {
       setTimeout(() => {
         reactFlowInstance.current.fitView({ padding: 0.2 });
-        hasFitView.current = true;
       }, 100);
     }
-  }, [initialLoadDone, nodes.length]);
+  }, [initialLoadDone, nodes.length, selector]);
 
   // Node types for React Flow
   const nodeTypes = useMemo(
@@ -298,13 +292,12 @@ const LineageNew = () => {
     []
   );
 
-  // Handle node click - open edit panel for the clicked node
+  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants)
   const handleNodeClick = useCallback((event, node) => {
-    const objectType = node.data.objectType;
-    const objectData = node.data[objectType]; // e.g., node.data.model, node.data.source, etc.
-    clearEdit();
-    pushEdit(objectType, objectData);
-  }, [clearEdit, pushEdit]);
+    const nodeName = node.data.name;
+    // Set selector to +name+ to show the node and all its dependencies
+    setSelector(`+${nodeName}+`);
+  }, []);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(

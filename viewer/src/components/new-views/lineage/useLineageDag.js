@@ -5,8 +5,9 @@ import { parseRefValue } from '../../../utils/refString';
 
 /**
  * Compute layout using dagre (left-to-right)
+ * Exported for use in LineageNew component to recompute layout after filtering
  */
-function computeLayout(nodes, edges) {
+export function computeLayout(nodes, edges) {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 100 });
   graph.setDefaultEdgeLabel(() => ({}));
@@ -166,7 +167,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -182,7 +183,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -199,7 +200,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -233,7 +234,7 @@ export function useLineageDag() {
         dimension: dimension,
       });
 
-      const childNames = dimension.child_item_names || [];
+      const childNames = [...new Set(dimension.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -250,7 +251,7 @@ export function useLineageDag() {
         metric: metric,
       });
 
-      const childNames = metric.child_item_names || [];
+      const childNames = [...new Set(metric.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -268,7 +269,7 @@ export function useLineageDag() {
         relation: relation,
       });
 
-      const childNames = relation.child_item_names || [];
+      const childNames = [...new Set(relation.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -286,7 +287,7 @@ export function useLineageDag() {
       });
 
       // Create edges from insight's child_item_names (can be models, metrics, dimensions, etc.)
-      const childNames = insight.child_item_names || [];
+      const childNames = [...new Set(insight.child_item_names || [])];
       childNames.forEach(childName => {
         // Look up the type of the child object to create the correct edge source
         const childType = objectTypeByName[childName];
@@ -319,7 +320,7 @@ export function useLineageDag() {
         chart: chart,
       });
 
-      const childNames = chart.child_item_names || [];
+      const childNames = [...new Set(chart.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -335,7 +336,7 @@ export function useLineageDag() {
         table: table,
       });
 
-      const childNames = table.child_item_names || [];
+      const childNames = [...new Set(table.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -353,7 +354,9 @@ export function useLineageDag() {
 
       // Parse dashboard config to extract referenced items
       const itemRefs = extractDashboardItemRefs(dashboard.config);
-      itemRefs.forEach(refName => {
+      // Deduplicate refs (same item may be referenced multiple times in different rows)
+      const uniqueRefs = [...new Set(itemRefs)];
+      uniqueRefs.forEach(refName => {
         const childType = objectTypeByName[refName];
         if (childType) {
           addEdge(refName, childType, dashboard.name, 'dashboard');
