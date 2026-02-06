@@ -9,20 +9,6 @@ import {
 } from '../../../utils/refString';
 
 /**
- * Map object type to store selector and data accessor
- */
-const getObjectsForType = (objectType, store) => {
-  switch (objectType) {
-    case 'source':
-      return store.sources || [];
-    case 'model':
-      return store.models || [];
-    default:
-      return [];
-  }
-};
-
-/**
  * RefSelector - Reusable dropdown for selecting object references
  *
  * Handles the ref() format automatically:
@@ -58,16 +44,44 @@ const RefSelector = ({
   const singularLabel = typeConfig?.singularLabel || objectType;
   const pluralLabel = typeConfig?.label || `${objectType}s`;
 
-  // Get objects from store
-  const objects = useStore(state => getObjectsForType(objectType, state));
+  // Get objects from store - get individual arrays and combine with useMemo to avoid infinite loops
+  const sources = useStore(state => state.sources);
+  const models = useStore(state => state.models);
+  const csvScriptModels = useStore(state => state.csvScriptModels);
+  const localMergeModels = useStore(state => state.localMergeModels);
+
+  // Combine objects based on type (memoized to prevent infinite re-renders)
+  const objects = useMemo(() => {
+    switch (objectType) {
+      case 'source':
+        return sources || [];
+      case 'model':
+        // Include all types of models
+        return [
+          ...(models || []),
+          ...(csvScriptModels || []),
+          ...(localMergeModels || []),
+        ];
+      default:
+        return [];
+    }
+  }, [objectType, sources, models, csvScriptModels, localMergeModels]);
 
   // Parse current value to get selected name(s)
   const selectedValues = useMemo(() => {
+    if (!value) return [];
+
     if (multiple) {
       return parseMultiRefValue(value);
     }
-    const parsed = parseRefValue(value);
-    return parsed ? [parsed] : [];
+
+    // Ensure value is a string and trim it
+    const stringValue = typeof value === 'string' ? value.trim() : String(value);
+    const parsed = parseRefValue(stringValue);
+
+    // Return parsed value or the original if parsing returns nothing
+    const result = parsed || stringValue;
+    return result ? [result] : [];
   }, [value, multiple]);
 
   // Default placeholder based on type and mode

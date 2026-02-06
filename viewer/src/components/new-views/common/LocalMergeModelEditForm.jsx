@@ -32,11 +32,23 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
       setName(model.name || '');
       setSql(model.config?.sql || '');
       // Parse ref values to extract plain names for RefSelector
-      const refs = (model.config?.models || []).map(ref => parseRefValue(ref) || ref);
+      const refs = (model.config?.models || [])
+        .map(ref => {
+          // Trim the ref string first to remove any whitespace
+          const trimmed = typeof ref === 'string' ? ref.trim() : ref;
+          // Then parse to extract the name
+          const parsed = parseRefValue(trimmed);
+          // Return the parsed value or the trimmed original
+          return parsed || trimmed;
+        })
+        .filter(ref => ref); // Remove any empty values
+        console.log('refs', refs);
+        console.log('config', model.config);
       setModelRefs(refs.length > 0 ? refs : ['']);
     } else {
       setName('');
       setSql('');
+        console.log('refs', "empty");
       setModelRefs(['']);
     }
   }, [model]);
@@ -46,12 +58,28 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     setError(null);
     setSaving(true);
 
+    // Parse ref values to extract plain names
+    const parsedModels = modelRefs
+      .filter(r => r && r.trim())
+      .map(r => {
+        const trimmed = r.trim();
+        const parsed = parseRefValue(trimmed);
+        console.log('Parsing model ref:', {
+          original: r,
+          trimmed,
+          parsed,
+          willSend: parsed || trimmed,
+        });
+        return parsed || trimmed;
+      });
+
     const config = {
       name: name.trim(),
       sql: sql.trim(),
-      // Parse ref values to ensure plain names are sent to backend
-      models: modelRefs.filter(r => r.trim()).map(r => parseRefValue(r) || r),
+      models: parsedModels,
     };
+
+    console.log('Submitting config to backend:', config);
 
     const result = await onSave('localMergeModel', config.name, config);
     setSaving(false);
