@@ -16,8 +16,7 @@ def register_model_query_jobs_views(app, flask_app, output_dir):
 
         POST body: {
             "source_name": "source_name",  # Required: name of source to query
-            "sql": "SELECT * FROM ...",    # Required: SQL query to execute
-            "limit": 1000                  # Optional: max rows to return (default 1000, max 10000)
+            "sql": "SELECT * FROM ..."     # Required: SQL query to execute
         }
         Returns: {"job_id": "uuid", "status": "queued"}
         """
@@ -30,7 +29,6 @@ def register_model_query_jobs_views(app, flask_app, output_dir):
 
             source_name = data.get("source_name")
             sql = data.get("sql")
-            limit = data.get("limit", 1000)
 
             if not source_name:
                 return jsonify({"error": "source_name is required"}), 400
@@ -38,16 +36,11 @@ def register_model_query_jobs_views(app, flask_app, output_dir):
             if not sql:
                 return jsonify({"error": "sql is required"}), 400
 
-            # Validate source exists before creating job
-            source = flask_app.source_manager.get(source_name)
-            if not source:
-                return jsonify({"error": f"Source '{source_name}' not found"}), 404
-
             # Create the job configuration
+            # Source validation is handled by FilteredRunner during execution
             config = {
                 "source_name": source_name,
                 "sql": sql,
-                "limit": limit,
             }
 
             # Create job via ModelQueryJobManager
@@ -87,7 +80,6 @@ def register_model_query_jobs_views(app, flask_app, output_dir):
             "columns": ["col1", "col2", ...],
             "rows": [{"col1": val1, "col2": val2}, ...],
             "row_count": 100,
-            "truncated": false,
             "execution_time_ms": 150,
             "source_name": "my_source"
         }

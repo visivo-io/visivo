@@ -4,10 +4,9 @@ import { getUrl } from '../contexts/URLContext.jsx';
  * Start a new SQL query execution job
  * @param {string} sourceName - Name of the source to query
  * @param {string} sql - SQL query to execute
- * @param {number} limit - Max rows to return (default 1000, max 10000)
  * @returns {Promise<{job_id: string, status: string}>}
  */
-export const startModelQueryJob = async (sourceName, sql, limit = 1000) => {
+export const startModelQueryJob = async (sourceName, sql) => {
   const url = getUrl('modelQueryJobs');
 
   const response = await fetch(url, {
@@ -18,7 +17,6 @@ export const startModelQueryJob = async (sourceName, sql, limit = 1000) => {
     body: JSON.stringify({
       source_name: sourceName,
       sql,
-      limit,
     }),
   });
 

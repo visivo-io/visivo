@@ -9,7 +9,7 @@ import {
  * Hook for managing model query job execution
  *
  * Handles the async workflow:
- * 1. POST source_name, sql, limit to start job -> get job_id
+ * 1. POST source_name and sql to start job -> get job_id
  * 2. Poll GET /status until completed/failed
  * 3. Result is included in completed response
  *
@@ -29,10 +29,9 @@ export const useModelQueryJob = () => {
    * Execute a SQL query against a source
    * @param {string} sourceName - Name of the source to query
    * @param {string} sql - SQL query to execute
-   * @param {number} limit - Max rows to return (default 1000)
    * @returns {Promise<string>} job_id
    */
-  const executeQuery = useCallback(async (sourceName, sql, limit = 1000) => {
+  const executeQuery = useCallback(async (sourceName, sql) => {
     try {
       setError(null);
       setStatus(null);
@@ -41,7 +40,7 @@ export const useModelQueryJob = () => {
       setResult(null);
       setJobId(null);
 
-      const response = await startModelQueryJob(sourceName, sql, limit);
+      const response = await startModelQueryJob(sourceName, sql);
 
       const newJobId = response.job_id;
       currentJobIdRef.current = newJobId;
