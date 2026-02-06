@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
 import { URLProvider } from '../../contexts/URLContext';
 import Explorer from './Explorer';
@@ -194,7 +195,7 @@ jest.mock('../../contexts/WorksheetContext', () => ({
 // Wrap component with necessary providers
 const renderWithProviders = ui => {
   return render(
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter future={futureFlags}>
       <URLProvider environment="server">
         <WorksheetProvider>{ui}</WorksheetProvider>
       </URLProvider>
