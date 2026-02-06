@@ -11,6 +11,18 @@ jest.mock('../../../stores/store');
 // Mock the useLineageDag hook
 jest.mock('./useLineageDag');
 
+// Mock the computeLayout function to avoid dagre issues in tests
+jest.mock('./useLineageDag', () => ({
+  useLineageDag: jest.fn(),
+  computeLayout: jest.fn((nodes, edges, fixedNode) => {
+    // In tests, just return nodes with dummy positions
+    return nodes.map((node, index) => ({
+      ...node,
+      position: { x: index * 200, y: 100 },
+    }));
+  }),
+}));
+
 // Mock reactflow
 jest.mock('reactflow', () => {
   const MockReactFlow = ({ nodes, edges, onNodeClick, children }) => (
@@ -285,7 +297,7 @@ describe('LineageNew', () => {
     expect(screen.queryByTestId('node-model-users')).not.toBeInTheDocument();
   });
 
-  it('opens edit panel when node is clicked', async () => {
+  it('filters to node dependencies when node is clicked', async () => {
     const mockSource = { name: 'db', type: 'sqlite' };
     const mockModel = { name: 'users', sql: 'SELECT * FROM users' };
 
@@ -305,37 +317,10 @@ describe('LineageNew', () => {
     // Click the source node
     fireEvent.click(screen.getByTestId('node-source-db'));
 
+    // Should update the selector to show dependencies
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
     await waitFor(() => {
-      expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Editing source: db')).toBeInTheDocument();
-  });
-
-  it('closes edit panel when close button is clicked', async () => {
-    const mockSource = { name: 'db', type: 'sqlite' };
-
-    useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source', source: mockSource } }],
-      edges: [],
-    });
-
-    render(<LineageNew />);
-
-    // Wait for initial load
-    await screen.findByTestId('node-source-db');
-
-    // Click the source node to open panel
-    fireEvent.click(screen.getByTestId('node-source-db'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    });
-
-    // Close the panel
-    fireEvent.click(screen.getByText('Close'));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
+      expect(input.value).toBe('+db+');
     });
   });
 
