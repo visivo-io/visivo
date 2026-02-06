@@ -168,5 +168,5 @@ class DagRunner:
                 sql_model=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
             )
         elif isinstance(item, Source):
-            return source_schema_job(source=item, output_dir=self.output_dir)
+            return source_schema_job(source=item, output_dir=self.output_dir, run_id=self.run_id)
         return None

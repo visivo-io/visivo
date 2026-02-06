@@ -1,6 +1,12 @@
 """
 Source schema jobs views - endpoints for reading cached source schemas
 with on-demand generation fallback.
+
+API Design follows the pattern from insight_views.py:
+- POST /api/source-schema-jobs/ with body {"config": {"source_name": "..."}, "run": true}
+- GET /api/source-schema-jobs/<job_id>/ for job status
+- GET /api/source-schema-jobs/ for listing sources
+- GET /api/source-schema-jobs/<source_name>/schema/ for reading cached schema
 """
 
 import threading
@@ -38,6 +44,14 @@ def _load_schema_with_fallback(source_name: str, output_dir: str):
         return schema_data, preview_run_id
 
     return None, None
+
+
+def _is_valid_job_id(job_id: str) -> bool:
+    """Check if a string looks like a job ID (UUID format) vs a source name."""
+    import re
+
+    uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    return bool(re.match(uuid_pattern, job_id, re.IGNORECASE))
 
 
 def register_source_schema_jobs_views(app, flask_app, output_dir):
@@ -96,37 +110,145 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing source schema jobs: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/source-schema-jobs/<source_name>/", methods=["GET"])
-    def get_source_schema(source_name):
+    @app.route("/api/source-schema-jobs/", methods=["POST"])
+    def run_source_schema_job():
         """
-        Get cached schema for a source.
+        Trigger on-demand schema generation for a source.
 
-        Args:
-            source_name: Name of the source
+        POST body:
+            {
+                "config": {"source_name": "..."},
+                "run": true
+            }
 
         Returns:
-            JSON schema data or 404 if not cached
+            JSON with run_instance_id for polling status (202 Accepted)
         """
         try:
-            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+            Logger.instance().info("Received POST to /api/source-schema-jobs/")
+            data = request.get_json()
+            Logger.instance().info(f"Request data parsed: {bool(data)}")
 
-            if schema_data is None:
-                Logger.instance().info(f"Schema not found for source: {source_name}")
+            if not data:
+                return jsonify({"message": "Request body is required"}), 400
+
+            if not data.get("run"):
+                return jsonify({"message": "run parameter must be true to execute"}), 400
+
+            config = data.get("config")
+            if config is None:
+                return jsonify({"message": "config field is required"}), 400
+
+            source_name = config.get("source_name")
+            if not source_name:
+                return jsonify({"message": "config.source_name is required"}), 400
+
+            Logger.instance().info(f"Processing schema generation for source: {source_name}")
+
+            source = flask_app.project.find_source(source_name)
+            if source is None:
                 return (
-                    jsonify(
-                        {
-                            "message": f"Schema not found for source '{source_name}'. "
-                            "Use POST /api/source-schema-jobs/{source_name}/generate/ to generate."
-                        }
-                    ),
+                    jsonify({"message": f"Source '{source_name}' not found in project"}),
                     404,
                 )
 
-            return jsonify(schema_data)
+            config["source_type"] = source.type
+
+            run_manager = PreviewRunManager.instance()
+            existing_run_id = run_manager.find_existing_run(config, object_type="source_schema")
+
+            if existing_run_id:
+                Logger.instance().info(
+                    f"Returning existing schema generation run {existing_run_id}"
+                )
+                return jsonify({"run_instance_id": existing_run_id}), 202
+
+            job_id = run_manager.create_run(config, object_type="source_schema")
+            Logger.instance().info(f"Created schema generation run with job_id: {job_id}")
+
+            thread = threading.Thread(
+                target=execute_source_schema_job,
+                args=(job_id, config, flask_app, output_dir, run_manager),
+                daemon=True,
+            )
+            thread.start()
+
+            Logger.instance().info(f"Started schema generation job {job_id} for {source_name}")
+            return jsonify({"run_instance_id": job_id}), 202
 
         except Exception as e:
-            Logger.instance().error(f"Error getting source schema for {source_name}: {str(e)}")
+            Logger.instance().error(f"Error creating schema generation job: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/source-schema-jobs/<identifier>/", methods=["GET"])
+    def get_source_schema_or_job_status(identifier):
+        """
+        Get cached schema for a source OR job status.
+
+        This endpoint serves dual purposes:
+        - If identifier is a UUID (job_id): returns job status
+        - If identifier is a source name: returns cached schema
+
+        Args:
+            identifier: Either a job_id (UUID) or source_name
+
+        Returns:
+            JSON schema data, job status, or 404
+        """
+        try:
+            if _is_valid_job_id(identifier):
+                return _get_job_status(identifier)
+            else:
+                return _get_source_schema(identifier)
+        except Exception as e:
+            Logger.instance().error(f"Error in get_source_schema_or_job_status: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    def _get_job_status(job_id):
+        """Get status of a schema generation job."""
+        Logger.instance().info(f"GET /api/source-schema-jobs/{job_id}/ - fetching job status")
+        run_manager = PreviewRunManager.instance()
+        run = run_manager.get_run(job_id)
+
+        if not run:
+            Logger.instance().info(f"Schema generation job {job_id} not found")
+            return jsonify({"message": f"Job {job_id} not found"}), 404
+
+        response = run.to_dict()
+
+        if run.status == RunStatus.COMPLETED:
+            config = run.config or {}
+            source_name = config.get("source_name")
+            if source_name:
+                schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+                if schema_data:
+                    response["result"] = {
+                        "source_name": source_name,
+                        "total_tables": schema_data.get("metadata", {}).get("total_tables", 0),
+                        "total_columns": schema_data.get("metadata", {}).get("total_columns", 0),
+                        "generated_at": schema_data.get("generated_at"),
+                    }
+
+        Logger.instance().info(f"Returning job status: {run.status}")
+        return jsonify(response)
+
+    def _get_source_schema(source_name):
+        """Get cached schema for a source."""
+        schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+
+        if schema_data is None:
+            Logger.instance().info(f"Schema not found for source: {source_name}")
+            return (
+                jsonify(
+                    {
+                        "message": f"Schema not found for source '{source_name}'. "
+                        "Use POST /api/source-schema-jobs/ with config.source_name to generate."
+                    }
+                ),
+                404,
+            )
+
+        return jsonify(schema_data)
 
     @app.route("/api/source-schema-jobs/<source_name>/tables/", methods=["GET"])
     def list_source_tables(source_name):
@@ -155,7 +277,6 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             tables = []
 
             for table_name, table_info in schema_data.get("tables", {}).items():
-                # Apply search filter if provided
                 if search and search not in table_name.lower():
                     continue
 
@@ -167,7 +288,6 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
                     }
                 )
 
-            # Sort tables by name
             tables.sort(key=lambda t: t["name"])
 
             return jsonify(tables)
@@ -216,7 +336,6 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             columns = []
 
             for col_name, col_info in tables[table_name].get("columns", {}).items():
-                # Apply search filter if provided
                 if search and search not in col_name.lower():
                     continue
 
@@ -228,7 +347,6 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
                     }
                 )
 
-            # Sort columns by name
             columns.sort(key=lambda c: c["name"])
 
             return jsonify(columns)
@@ -237,101 +355,4 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             Logger.instance().error(
                 f"Error listing columns for {source_name}.{table_name}: {str(e)}"
             )
-            return jsonify({"message": str(e)}), 500
-
-    @app.route("/api/source-schema-jobs/<source_name>/generate/", methods=["POST"])
-    def generate_source_schema(source_name):
-        """
-        Trigger on-demand schema generation for a source.
-
-        Args:
-            source_name: Name of the source
-
-        Returns:
-            JSON with job_id for polling status
-        """
-        try:
-            Logger.instance().info(f"Received POST to generate schema for source: {source_name}")
-
-            # Find the source in the project
-            source = flask_app.project.find_source(source_name)
-
-            if source is None:
-                return (
-                    jsonify({"message": f"Source '{source_name}' not found in project"}),
-                    404,
-                )
-
-            # Create config for deduplication
-            config = {"source_name": source_name, "source_type": source.type}
-
-            # Get or create run via PreviewRunManager
-            run_manager = PreviewRunManager.instance()
-            existing_run_id = run_manager.find_existing_run(config, object_type="source_schema")
-
-            if existing_run_id:
-                Logger.instance().info(
-                    f"Returning existing schema generation run {existing_run_id}"
-                )
-                return jsonify({"job_id": existing_run_id}), 202  # 202 Accepted
-
-            # Create new run
-            job_id = run_manager.create_run(config, object_type="source_schema")
-            Logger.instance().info(f"Created schema generation run with job_id: {job_id}")
-
-            run_id = f"preview-{source_name}"
-            thread = threading.Thread(
-                target=execute_source_schema_job,
-                args=(job_id, source, output_dir, run_manager, run_id),
-                daemon=True,
-            )
-            thread.start()
-
-            Logger.instance().info(f"Started schema generation job {job_id} for {source_name}")
-            return jsonify({"job_id": job_id}), 202  # 202 Accepted
-
-        except Exception as e:
-            Logger.instance().error(f"Error creating schema generation job: {str(e)}")
-            return jsonify({"message": str(e)}), 500
-
-    @app.route("/api/source-schema-jobs/<source_name>/status/", methods=["GET"])
-    def get_schema_generation_status(source_name):
-        """
-        Get status of a schema generation job.
-
-        Query params:
-            job_id: The job ID returned from /generate/
-
-        Returns:
-            JSON with job status, progress, and result (if completed)
-        """
-        try:
-            job_id = request.args.get("job_id")
-
-            if not job_id:
-                return jsonify({"message": "job_id parameter is required"}), 400
-
-            run_manager = PreviewRunManager.instance()
-            run = run_manager.get_run(job_id)
-
-            if not run:
-                Logger.instance().info(f"Schema generation job {job_id} not found")
-                return jsonify({"message": f"Job {job_id} not found"}), 404
-
-            response = run.to_dict()
-
-            if run.status == RunStatus.COMPLETED:
-                schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
-                if schema_data:
-                    response["result"] = {
-                        "source_name": source_name,
-                        "total_tables": schema_data.get("metadata", {}).get("total_tables", 0),
-                        "total_columns": schema_data.get("metadata", {}).get("total_columns", 0),
-                        "generated_at": schema_data.get("generated_at"),
-                    }
-
-            return jsonify(response)
-
-        except Exception as e:
-            Logger.instance().error(f"Error getting schema generation status: {str(e)}")
             return jsonify({"message": str(e)}), 500

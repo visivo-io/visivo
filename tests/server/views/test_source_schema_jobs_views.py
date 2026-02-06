@@ -257,12 +257,12 @@ class TestListTableColumns(TestSourceSchemaJobsViews):
 
 
 class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
-    """Tests for POST /api/source-schema-jobs/<name>/generate/"""
+    """Tests for POST /api/source-schema-jobs/ (RESTful API)"""
 
     @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
     @patch("visivo.server.views.source_schema_jobs_views.threading.Thread")
     def test_generate_schema_success(self, mock_thread, mock_run_manager_class, client, app):
-        """Test triggering schema generation."""
+        """Test triggering schema generation with RESTful API."""
         mock_run_manager = Mock()
         mock_run_manager_class.instance.return_value = mock_run_manager
         mock_run_manager.find_existing_run.return_value = None
@@ -271,12 +271,15 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
         mock_thread_instance = Mock()
         mock_thread.return_value = mock_thread_instance
 
-        response = client.post("/api/source-schema-jobs/test_source/generate/")
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}, "run": True},
+        )
 
         assert response.status_code == 202
         data = response.get_json()
-        assert "job_id" in data
-        assert data["job_id"] == "test-job-id"
+        assert "run_instance_id" in data
+        assert data["run_instance_id"] == "test-job-id"
         mock_thread_instance.start.assert_called_once()
 
     @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
@@ -286,25 +289,64 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
         mock_run_manager_class.instance.return_value = mock_run_manager
         mock_run_manager.find_existing_run.return_value = "existing-job-id"
 
-        response = client.post("/api/source-schema-jobs/test_source/generate/")
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}, "run": True},
+        )
 
         assert response.status_code == 202
         data = response.get_json()
-        assert data["job_id"] == "existing-job-id"
+        assert data["run_instance_id"] == "existing-job-id"
 
     def test_generate_schema_source_not_found(self, client, app):
         """Test generating schema for non-existent source."""
         app.flask_app.project.find_source.return_value = None
 
-        response = client.post("/api/source-schema-jobs/nonexistent/generate/")
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "nonexistent"}, "run": True},
+        )
 
         assert response.status_code == 404
         data = response.get_json()
         assert "nonexistent" in data["message"]
 
+    def test_generate_schema_missing_config(self, client, app):
+        """Test generating schema without config field."""
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"run": True},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "config" in data["message"]
+
+    def test_generate_schema_missing_source_name(self, client, app):
+        """Test generating schema without source_name in config."""
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {}, "run": True},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "source_name" in data["message"]
+
+    def test_generate_schema_missing_run_flag(self, client, app):
+        """Test generating schema without run flag."""
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "run" in data["message"]
+
 
 class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
-    """Tests for GET /api/source-schema-jobs/<name>/status/"""
+    """Tests for GET /api/source-schema-jobs/<job_id>/ (job status)"""
 
     @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
     def test_get_status_running(self, mock_run_manager_class, client):
@@ -314,15 +356,16 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
 
         mock_run = Mock()
         mock_run.status = RunStatus.RUNNING
+        mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "test-job-id",
+            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
             "status": "running",
             "progress": 0.5,
             "progress_message": "Connecting to source",
         }
         mock_run_manager.get_run.return_value = mock_run
 
-        response = client.get("/api/source-schema-jobs/test_source/status/?job_id=test-job-id")
+        response = client.get("/api/source-schema-jobs/12345678-1234-1234-1234-123456789abc/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -337,29 +380,22 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
 
         mock_run = Mock()
         mock_run.status = RunStatus.COMPLETED
+        mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "test-job-id",
+            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
             "status": "completed",
             "progress": 1.0,
             "progress_message": "Complete",
         }
         mock_run_manager.get_run.return_value = mock_run
 
-        response = client.get("/api/source-schema-jobs/test_source/status/?job_id=test-job-id")
+        response = client.get("/api/source-schema-jobs/12345678-1234-1234-1234-123456789abc/")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "completed"
         assert "result" in data
         assert data["result"]["total_tables"] == 2
-
-    def test_get_status_missing_job_id(self, client):
-        """Test getting status without job_id parameter."""
-        response = client.get("/api/source-schema-jobs/test_source/status/")
-
-        assert response.status_code == 400
-        data = response.get_json()
-        assert "job_id" in data["message"]
 
     @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
     def test_get_status_job_not_found(self, mock_run_manager_class, client):
@@ -368,7 +404,7 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
         mock_run_manager_class.instance.return_value = mock_run_manager
         mock_run_manager.get_run.return_value = None
 
-        response = client.get("/api/source-schema-jobs/test_source/status/?job_id=nonexistent")
+        response = client.get("/api/source-schema-jobs/12345678-1234-1234-1234-123456789abc/")
 
         assert response.status_code == 404
 
@@ -438,15 +474,16 @@ class TestSchemaFallbackBehavior(TestSourceSchemaJobsViews):
 
         mock_run = Mock()
         mock_run.status = RunStatus.COMPLETED
+        mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "test-job-id",
+            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
             "status": "completed",
             "progress": 1.0,
             "progress_message": "Complete",
         }
         mock_run_manager.get_run.return_value = mock_run
 
-        response = client.get("/api/source-schema-jobs/test_source/status/?job_id=test-job-id")
+        response = client.get("/api/source-schema-jobs/12345678-1234-1234-1234-123456789abc/")
 
         assert response.status_code == 200
         data = response.get_json()

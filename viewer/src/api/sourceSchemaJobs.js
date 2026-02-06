@@ -54,19 +54,23 @@ export const fetchSourceSchema = async sourceName => {
 /**
  * Trigger on-demand schema generation for a source
  * @param {string} sourceName - Name of the source
- * @returns {Promise<Object>} Object containing job_id
+ * @returns {Promise<Object>} Object containing run_instance_id
  */
 export const generateSourceSchema = async sourceName => {
-  if (!isAvailable('sourceSchemaJobGenerate')) {
+  if (!isAvailable('sourceSchemaJobCreate')) {
     throw new Error('Schema generation not available in this environment');
   }
 
-  const url = getUrl('sourceSchemaJobGenerate', { name: sourceName });
+  const url = getUrl('sourceSchemaJobCreate');
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      config: { source_name: sourceName },
+      run: true,
+    }),
   });
 
   if (!response.ok) {
@@ -81,17 +85,15 @@ export const generateSourceSchema = async sourceName => {
 
 /**
  * Fetch the status of a schema generation job
- * @param {string} sourceName - Name of the source
  * @param {string} jobId - Job ID from generateSourceSchema
  * @returns {Promise<Object>} Job status object
  */
-export const fetchSchemaGenerationStatus = async (sourceName, jobId) => {
+export const fetchSchemaGenerationStatus = async jobId => {
   if (!isAvailable('sourceSchemaJobStatus')) {
     throw new Error('Schema generation status not available in this environment');
   }
 
-  const url =
-    getUrl('sourceSchemaJobStatus', { name: sourceName }) + `?job_id=${encodeURIComponent(jobId)}`;
+  const url = getUrl('sourceSchemaJobStatus', { jobId });
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -131,13 +133,13 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
     onProgress('running', 0.0, 'Starting schema generation');
   }
 
-  const { job_id: jobId } = await generateSourceSchema(sourceName);
+  const { run_instance_id: jobId } = await generateSourceSchema(sourceName);
 
   // Poll for completion
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWaitTime) {
-    const status = await fetchSchemaGenerationStatus(sourceName, jobId);
+    const status = await fetchSchemaGenerationStatus(jobId);
 
     if (onProgress) {
       onProgress(status.status, status.progress || 0, status.progress_message || '');
