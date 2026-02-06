@@ -128,6 +128,10 @@ const URL_PATTERNS = {
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
     publish: '/api/publish/',
+
+    // Model query jobs endpoints
+    modelQueryJobs: '/api/model-query-jobs/',
+    modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
   },
 
   dist: {
@@ -254,6 +258,10 @@ const URL_PATTERNS = {
     publishStatus: null,
     publishPending: null,
     publish: null,
+
+    // Model query jobs endpoints (not available in dist)
+    modelQueryJobs: null,
+    modelQueryJobDetail: null,
   },
 };
 
