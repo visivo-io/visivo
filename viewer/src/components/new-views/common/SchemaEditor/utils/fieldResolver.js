@@ -14,6 +14,95 @@ const DEF_TYPE_MAP = {
 };
 
 /**
+ * Check if schema is a pattern-based multi-select
+ * Detects patterns like: ^(a|b|c)(\\+(a|b|c))*$
+ * @param {object} schema - The JSON schema
+ * @param {object} defs - The $defs object
+ * @returns {boolean} True if this is a pattern multi-select schema
+ */
+export function isPatternMultiSelect(schema, defs = {}) {
+  if (!schema) return false;
+
+  // Check if any option in oneOf/anyOf (including nested) has the pattern
+  // Note: Don't use getStaticSchema here as it collapses oneOf structures
+  const hasPatternOption = (schemaToCheck) => {
+    // Check oneOf or anyOf
+    const options = schemaToCheck.oneOf || schemaToCheck.anyOf;
+    if (!options) return false;
+
+    return options.some((opt) => {
+      // Skip query-string refs
+      if (opt.$ref === '#/$defs/query-string') return false;
+
+      // Check nested oneOf/anyOf
+      if (opt.oneOf || opt.anyOf) {
+        return hasPatternOption(opt);
+      }
+
+      // Resolve $ref if needed
+      let resolvedOpt = opt;
+      if (opt.$ref) {
+        resolvedOpt = resolveRef(opt.$ref, defs) || opt;
+      }
+
+      // Check if this option has the multi-select pattern
+      if (resolvedOpt.type === 'string' && resolvedOpt.pattern) {
+        // Pattern looks like: ^(a|b|c)(\+(a|b|c))*$
+        // Need to match: backslash, plus, so use \\\+ (3 backslashes)
+        const regex = /^\^?\([^)]+\)\(\\\+\([^)]+\)/;
+        return regex.test(resolvedOpt.pattern);
+      }
+
+      return false;
+    });
+  };
+
+  return hasPatternOption(schema);
+}
+
+/**
+ * Extract optional enum values from pattern schema
+ * @param {object} schema - The JSON schema
+ * @param {object} defs - The $defs object
+ * @returns {string[]} Array of enum values or empty array
+ */
+export function getPatternEnumValues(schema, defs = {}) {
+  if (!schema) return [];
+
+  // Search for enum option in oneOf/anyOf (including nested)
+  // Note: Don't use getStaticSchema here as it collapses oneOf structures
+  const findEnumOption = (schemaToCheck) => {
+    const options = schemaToCheck.oneOf || schemaToCheck.anyOf;
+    if (!options) return [];
+
+    for (const opt of options) {
+      // Skip query-string refs
+      if (opt.$ref === '#/$defs/query-string') continue;
+
+      // Check nested oneOf/anyOf
+      if (opt.oneOf || opt.anyOf) {
+        const nestedEnum = findEnumOption(opt);
+        if (nestedEnum.length > 0) return nestedEnum;
+      }
+
+      // Resolve $ref if needed
+      let resolvedOpt = opt;
+      if (opt.$ref) {
+        resolvedOpt = resolveRef(opt.$ref, defs) || opt;
+      }
+
+      // Check if this option has enum
+      if (resolvedOpt.enum && resolvedOpt.type === 'string') {
+        return resolvedOpt.enum;
+      }
+    }
+    return [];
+  };
+
+  return findEnumOption(schema);
+}
+
+/**
  * Resolve the field type from a JSON schema
  * @param {object} schema - The JSON schema for the property
  * @param {object} defs - The $defs object from the root schema
@@ -21,6 +110,11 @@ const DEF_TYPE_MAP = {
  */
 export function resolveFieldType(schema, defs = {}) {
   if (!schema) return 'unknown';
+
+  // Check for pattern multi-select BEFORE other checks
+  if (isPatternMultiSelect(schema, defs)) {
+    return 'patternMultiselect';
+  }
 
   // Get the static (non-query-string) schema
   const staticSchema = getStaticSchema(schema, defs);
@@ -134,6 +228,7 @@ export function getFieldComponentName(fieldType) {
     color: 'ColorField',
     colorscale: 'ColorscaleField',
     array: 'ArrayField',
+    patternMultiselect: 'PatternMultiSelectField',
     'query-string': 'QueryStringField',
     unknown: 'StringField', // Fallback to string input
   };

@@ -12,7 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { getArrayItemSchema, getDefaultValue } from '../utils/fieldResolver';
 import { resolveFieldType } from '../utils/fieldResolver';
-import { getFieldComponent } from './index';
+import { getFieldComponent } from './fields';
 
 /**
  * Array field component for list items

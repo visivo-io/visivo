@@ -5,6 +5,8 @@ import {
   getNumberConstraints,
   getArrayItemSchema,
   getDefaultValue,
+  isPatternMultiSelect,
+  getPatternEnumValues,
 } from './fieldResolver';
 
 describe('fieldResolver', () => {
@@ -166,6 +168,113 @@ describe('fieldResolver', () => {
       const result = resolveFieldType(schema, defs);
       expect(['enum', 'string']).toContain(result);
     });
+
+    it('returns patternMultiselect for scatter trace mode schema', () => {
+      // Scatter trace mode: pattern like "lines+markers+text"
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          {
+            oneOf: [
+              { type: 'string', enum: ['none'] },
+              { type: 'string', pattern: '^(lines|markers|text)(\\+(lines|markers|text))*$' },
+            ],
+          },
+        ],
+      };
+      expect(resolveFieldType(schema, defs)).toBe('patternMultiselect');
+    });
+
+    it('returns patternMultiselect for pattern-only schema', () => {
+      // Pattern without enum option
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          { type: 'string', pattern: '^(a|b|c)(\\+(a|b|c))*$' },
+        ],
+      };
+      expect(resolveFieldType(schema, defs)).toBe('patternMultiselect');
+    });
+  });
+
+  describe('isPatternMultiSelect', () => {
+    it('detects scatter trace mode pattern', () => {
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          {
+            oneOf: [
+              { type: 'string', enum: ['none'] },
+              { type: 'string', pattern: '^(lines|markers|text)(\\+(lines|markers|text))*$' },
+            ],
+          },
+        ],
+      };
+      expect(isPatternMultiSelect(schema, defs)).toBe(true);
+    });
+
+    it('detects simple pattern multiselect', () => {
+      const schema = {
+        oneOf: [
+          { type: 'string', pattern: '^(a|b)(\\+(a|b))*$' },
+        ],
+      };
+      expect(isPatternMultiSelect(schema, defs)).toBe(true);
+    });
+
+    it('returns false for enum-only schema', () => {
+      const schema = {
+        oneOf: [
+          { type: 'string', enum: ['a', 'b', 'c'] },
+        ],
+      };
+      expect(isPatternMultiSelect(schema, defs)).toBe(false);
+    });
+
+    it('returns false for simple pattern (not multi-select)', () => {
+      const schema = {
+        oneOf: [
+          { type: 'string', pattern: '^(x|y)+$' },
+        ],
+      };
+      expect(isPatternMultiSelect(schema, defs)).toBe(false);
+    });
+
+    it('returns false for schema without oneOf', () => {
+      const schema = { type: 'string' };
+      expect(isPatternMultiSelect(schema, defs)).toBe(false);
+    });
+  });
+
+  describe('getPatternEnumValues', () => {
+    it('extracts enum values from pattern schema', () => {
+      const schema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          {
+            oneOf: [
+              { type: 'string', enum: ['none', 'skip'] },
+              { type: 'string', pattern: '^(lines|markers)(\\+(lines|markers))*$' },
+            ],
+          },
+        ],
+      };
+      expect(getPatternEnumValues(schema, defs)).toEqual(['none', 'skip']);
+    });
+
+    it('returns empty array when no enum present', () => {
+      const schema = {
+        oneOf: [
+          { type: 'string', pattern: '^(a|b)(\\+(a|b))*$' },
+        ],
+      };
+      expect(getPatternEnumValues(schema, defs)).toEqual([]);
+    });
+
+    it('returns empty array for non-oneOf schema', () => {
+      const schema = { type: 'string' };
+      expect(getPatternEnumValues(schema, defs)).toEqual([]);
+    });
   });
 
   describe('getFieldComponentName', () => {
@@ -195,6 +304,10 @@ describe('fieldResolver', () => {
 
     it('maps array to ArrayField', () => {
       expect(getFieldComponentName('array')).toBe('ArrayField');
+    });
+
+    it('maps patternMultiselect to PatternMultiSelectField', () => {
+      expect(getFieldComponentName('patternMultiselect')).toBe('PatternMultiSelectField');
     });
 
     it('maps unknown to StringField fallback', () => {

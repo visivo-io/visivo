@@ -5,6 +5,6 @@
 export { SchemaEditor, SchemaEditor as default } from './SchemaEditor';
 export { PropertyRow } from './PropertyRow';
 export { PropertySearch } from './PropertySearch';
-export * from './fields';
+export * from './fields/fields';
 export * from './utils/schemaUtils';
 export * from './utils/fieldResolver';

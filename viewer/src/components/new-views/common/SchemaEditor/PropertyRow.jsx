@@ -14,7 +14,7 @@ import RefTextArea from '../RefTextArea';
 import { isQueryStringValue } from '../../../../utils/queryString';
 import { supportsQueryString, getStaticSchema } from './utils/schemaUtils';
 import { resolveFieldType } from './utils/fieldResolver';
-import { getFieldComponent } from './fields';
+import { getFieldComponent } from './fields/fields';
 
 /**
  * PropertyRow - A single property in the schema editor with optional query-string toggle
@@ -146,7 +146,7 @@ export function PropertyRow({
           <FieldComponent
             value={value}
             onChange={handleChange}
-            schema={staticSchema || schema}
+            schema={fieldType === 'patternMultiselect' ? schema : (staticSchema || schema)}
             defs={defs}
             label=""
             description={description}
