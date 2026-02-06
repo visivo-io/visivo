@@ -122,6 +122,23 @@ describe('LineageNew', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Make all fetch functions return resolved promises
+    mockFetchSources.mockResolvedValue();
+    mockFetchModels.mockResolvedValue();
+    mockFetchDimensions.mockResolvedValue();
+    mockFetchMetrics.mockResolvedValue();
+    mockFetchRelations.mockResolvedValue();
+    mockFetchInsights.mockResolvedValue();
+    mockFetchMarkdowns.mockResolvedValue();
+    mockFetchCharts.mockResolvedValue();
+    mockFetchTables.mockResolvedValue();
+    mockFetchDashboards.mockResolvedValue();
+    mockFetchCsvScriptModels.mockResolvedValue();
+    mockFetchLocalMergeModels.mockResolvedValue();
+    mockFetchInputs.mockResolvedValue();
+    mockFetchDefaults.mockResolvedValue();
+
     useStore.mockImplementation(selector => {
       if (typeof selector === 'function') {
         return selector(defaultStoreState);
@@ -171,8 +188,8 @@ describe('LineageNew', () => {
   it('renders nodes from useLineageDag', async () => {
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model' } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model' } },
       ],
       edges: [{ id: 'edge-1', source: 'source-db', target: 'model-users' }],
     });
@@ -187,8 +204,8 @@ describe('LineageNew', () => {
   it('has selector input for filtering nodes', () => {
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model' } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model' } },
       ],
       edges: [],
     });
@@ -202,7 +219,7 @@ describe('LineageNew', () => {
 
   it('clears selector when Clear button is clicked', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -223,7 +240,7 @@ describe('LineageNew', () => {
 
   it('shows no matching objects message when selector matches nothing', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -274,8 +291,8 @@ describe('LineageNew', () => {
 
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model', model: mockModel } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source', source: mockSource } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model', model: mockModel } },
       ],
       edges: [],
     });
@@ -298,7 +315,7 @@ describe('LineageNew', () => {
     const mockSource = { name: 'db', type: 'sqlite' };
 
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source', source: mockSource } }],
       edges: [],
     });
 
@@ -324,7 +341,7 @@ describe('LineageNew', () => {
 
   it('renders ReactFlow with proper structure', () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 

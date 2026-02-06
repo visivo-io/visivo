@@ -228,13 +228,18 @@ const LineageNew = () => {
 
   // Filter nodes and edges, recompute layout with only visible items, and add handlers
   const { nodes, edges } = useMemo(() => {
+    // Safety check: ensure dagNodes and dagEdges are arrays
+    if (!Array.isArray(dagNodes) || !Array.isArray(dagEdges)) {
+      return { nodes: [], edges: [] };
+    }
+
     // Filter to selected nodes first
     const filteredNodes = dagNodes
       .filter(node => selectedIds.has(node.id))
       .map(node => {
         // Determine if this node is currently being edited (check the top of the stack)
-        const objectType = node.data.objectType;
-        const nodeName = node.data.name;
+        const objectType = node.data?.objectType;
+        const nodeName = node.data?.name;
         const isEditing = currentEdit?.type === objectType && currentEdit?.object?.name === nodeName;
 
         return {
@@ -260,14 +265,20 @@ const LineageNew = () => {
 
     // Recompute layout with only the filtered nodes and edges
     // Pass fixedNode to keep clicked node in place
-    const layoutNodes = computeLayout(filteredNodes, filteredEdges, fixedNode);
+    let layoutNodes = filteredNodes;
+    try {
+      layoutNodes = computeLayout(filteredNodes, filteredEdges, fixedNode);
+    } catch (error) {
+      console.error('Error computing layout:', error);
+      // Fall back to using filteredNodes without layout if computation fails
+    }
 
-    return { nodes: layoutNodes, edges: filteredEdges };
+    return { nodes: layoutNodes || [], edges: filteredEdges || [] };
   }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit, fixedNode]);
 
   // Fit view when initial data loads OR when selector changes (and we have nodes to show)
   useEffect(() => {
-    if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current) {
+    if (initialLoadDone && nodes?.length > 0 && reactFlowInstance.current) {
       setTimeout(() => {
         reactFlowInstance.current.fitView({
           padding: 0.2,
@@ -275,7 +286,7 @@ const LineageNew = () => {
         });
       }, 100);
     }
-  }, [initialLoadDone, nodes.length, selector]);
+  }, [initialLoadDone, nodes?.length, selector]);
 
   // Node types for React Flow
   const nodeTypes = useMemo(
@@ -461,7 +472,7 @@ const LineageNew = () => {
           )}
 
           {/* No matches state */}
-          {initialLoadDone && dagNodes.length > 0 && nodes.length === 0 && (
+          {initialLoadDone && dagNodes.length > 0 && nodes?.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
               <div className="text-gray-400 text-lg mb-2">No matching objects</div>
               <div className="text-gray-400 text-sm">Try a different selector or click Clear</div>
@@ -470,8 +481,8 @@ const LineageNew = () => {
 
           {/* React Flow DAG */}
           <ReactFlow
-            nodes={initialLoadDone ? nodes : []}
-            edges={initialLoadDone ? edges : []}
+            nodes={initialLoadDone ? (nodes || []) : []}
+            edges={initialLoadDone ? (edges || []) : []}
             nodeTypes={nodeTypes}
             onNodeClick={handleNodeClick}
             onConnect={handleConnect}
