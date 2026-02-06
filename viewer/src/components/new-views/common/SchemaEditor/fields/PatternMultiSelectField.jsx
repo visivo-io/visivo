@@ -85,7 +85,7 @@ export function PatternMultiSelectField({
     };
 
     return findOptions(schema);
-  }, [schema, defs]);
+  }, [schema]);
 
   // Check if current value is an enum value
   const isEnumSelected = useMemo(() => {

@@ -229,18 +229,19 @@ class VisivoRunValidator:
             return False
 
         # Expected trace names based on traces.visivo.yml and inline traces
+        # Names are normalized: lowercase, hyphens instead of spaces, underscore prefix for names starting with digits
         expected_traces = [
-            "3d Line One",
-            "3d Line Two",
-            "Aggregated Line",
-            "Double Simple Line",
-            "Example Indicator",
-            "Fibonacci Waterfall",
-            "funnel trace",
-            "Indicator Trace",
+            "_3d-line-one",
+            "_3d-line-two",
+            "aggregated-line",
+            "double-simple-line",
+            "example-indicator",
+            "fibonacci-waterfall",
+            "funnel-trace",
+            "indicator-trace",
             "markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters",
-            "Simple Line",
-            "Surface Trace",
+            "simple-line",
+            "surface-trace",
         ]
 
         success = True
