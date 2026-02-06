@@ -490,3 +490,143 @@ class TestSchemaFallbackBehavior(TestSourceSchemaJobsViews):
         assert data["status"] == "completed"
         assert "result" in data
         assert data["result"]["total_tables"] == 1
+
+
+class TestExplicitRunIdParameter(TestSourceSchemaJobsViews):
+    """Tests for explicit run_id query parameter."""
+
+    def test_get_schema_with_explicit_main_run_id(self, client, sample_schema):
+        """Test fetching schema with explicit main run_id."""
+        response = client.get("/api/source-schema-jobs/test_source/?run_id=main")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["source_name"] == "test_source"
+        assert data["generated_at"] == "2024-01-01T00:00:00"
+        assert data["metadata"]["total_tables"] == 2
+
+    def test_get_schema_with_explicit_preview_run_id(
+        self, client, sample_schema, sample_preview_schema
+    ):
+        """Test that explicit preview run_id fetches from preview, not main."""
+        response = client.get("/api/source-schema-jobs/test_source/?run_id=preview-test_source")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["generated_at"] == "2024-01-02T00:00:00"
+        assert data["metadata"]["total_tables"] == 1
+
+    def test_get_schema_with_nonexistent_run_id(self, client, sample_schema):
+        """Test that explicit nonexistent run_id returns 404."""
+        response = client.get("/api/source-schema-jobs/test_source/?run_id=nonexistent")
+
+        assert response.status_code == 404
+
+    def test_list_tables_with_explicit_run_id(self, client, sample_schema, sample_preview_schema):
+        """Test listing tables with explicit run_id."""
+        response = client.get(
+            "/api/source-schema-jobs/test_source/tables/?run_id=preview-test_source"
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 1
+        assert data[0]["name"] == "users"
+
+    def test_list_tables_with_explicit_main_run_id(
+        self, client, sample_schema, sample_preview_schema
+    ):
+        """Test listing tables with explicit main run_id returns main data."""
+        response = client.get("/api/source-schema-jobs/test_source/tables/?run_id=main")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 2
+        table_names = [t["name"] for t in data]
+        assert "users" in table_names
+        assert "orders" in table_names
+
+    def test_list_tables_with_nonexistent_run_id(self, client, sample_schema):
+        """Test listing tables with nonexistent run_id returns 404."""
+        response = client.get("/api/source-schema-jobs/test_source/tables/?run_id=nonexistent")
+
+        assert response.status_code == 404
+
+    def test_list_columns_with_explicit_run_id(self, client, sample_schema, sample_preview_schema):
+        """Test listing columns with explicit run_id."""
+        response = client.get(
+            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=preview-test_source"
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 2
+        column_names = [c["name"] for c in data]
+        assert "id" in column_names
+        assert "name" in column_names
+        assert "email" not in column_names
+
+    def test_list_columns_with_explicit_main_run_id(
+        self, client, sample_schema, sample_preview_schema
+    ):
+        """Test listing columns with explicit main run_id returns main data."""
+        response = client.get(
+            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=main"
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data) == 3
+        column_names = [c["name"] for c in data]
+        assert "id" in column_names
+        assert "name" in column_names
+        assert "email" in column_names
+
+    def test_list_columns_with_nonexistent_run_id(self, client, sample_schema):
+        """Test listing columns with nonexistent run_id returns 404."""
+        response = client.get(
+            "/api/source-schema-jobs/test_source/tables/users/columns/?run_id=nonexistent"
+        )
+
+        assert response.status_code == 404
+
+
+class TestSourceSchemaInvalidation(TestSourceSchemaJobsViews):
+    """Tests for schema invalidation on POST."""
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    @patch("visivo.server.views.source_schema_jobs_views.threading.Thread")
+    def test_post_invalidates_completed_runs(
+        self, mock_thread, mock_run_manager_class, client, app
+    ):
+        """Test that POST invalidates completed runs for the source."""
+        mock_run_manager = Mock()
+        mock_run_manager_class.instance.return_value = mock_run_manager
+        mock_run_manager.find_existing_run.return_value = None
+        mock_run_manager.create_run.return_value = "test-job-id"
+
+        mock_thread_instance = Mock()
+        mock_thread.return_value = mock_thread_instance
+
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}, "run": True},
+        )
+
+        assert response.status_code == 202
+        mock_run_manager.invalidate_completed_runs_for_source.assert_called_once_with("test_source")
+
+    @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
+    def test_post_does_not_invalidate_when_existing_run(self, mock_run_manager_class, client, app):
+        """Test that POST does not invalidate when returning existing run."""
+        mock_run_manager = Mock()
+        mock_run_manager_class.instance.return_value = mock_run_manager
+        mock_run_manager.find_existing_run.return_value = "existing-job-id"
+
+        response = client.post(
+            "/api/source-schema-jobs/",
+            json={"config": {"source_name": "test_source"}, "run": True},
+        )
+
+        assert response.status_code == 202
+        mock_run_manager.invalidate_completed_runs_for_source.assert_not_called()

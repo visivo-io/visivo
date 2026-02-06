@@ -19,17 +19,25 @@ from visivo.server.managers.preview_run_manager import PreviewRunManager, RunSta
 from visivo.server.jobs.source_schema_job_executor import execute_source_schema_job
 
 
-def _load_schema_with_fallback(source_name: str, output_dir: str):
+def _load_schema_with_fallback(source_name: str, output_dir: str, run_id: str = None):
     """
-    Load schema data, trying main run_id first, then preview.
+    Load schema data, with optional explicit run_id or fallback behavior.
 
     Args:
         source_name: Name of the source
         output_dir: Output directory where schemas are stored
+        run_id: Optional explicit run_id. If provided, only that run_id is tried.
+                If None, tries main first, then preview.
 
     Returns:
         Tuple of (schema_data, run_id) or (None, None) if not found
     """
+    if run_id is not None:
+        schema_data = SchemaAggregator.load_source_schema(source_name, output_dir, run_id=run_id)
+        if schema_data is not None:
+            return schema_data, run_id
+        return None, None
+
     schema_data = SchemaAggregator.load_source_schema(
         source_name, output_dir, run_id=DEFAULT_RUN_ID
     )
@@ -163,6 +171,9 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
                 )
                 return jsonify({"run_instance_id": existing_run_id}), 202
 
+            Logger.instance().info(f"Invalidating any completed runs for source: {source_name}")
+            run_manager.invalidate_completed_runs_for_source(source_name)
+
             job_id = run_manager.create_run(config, object_type="source_schema")
             Logger.instance().info(f"Created schema generation run with job_id: {job_id}")
 
@@ -234,7 +245,8 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
     def _get_source_schema(source_name):
         """Get cached schema for a source."""
-        schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+        run_id_param = request.args.get("run_id")
+        schema_data, _ = _load_schema_with_fallback(source_name, output_dir, run_id=run_id_param)
 
         if schema_data is None:
             Logger.instance().info(f"Schema not found for source: {source_name}")
@@ -259,13 +271,17 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             source_name: Name of the source
 
         Query params:
+            run_id: Optional run_id to fetch schema from (defaults to fallback behavior)
             search: Optional search string to filter table names
 
         Returns:
             JSON array of table objects with metadata
         """
         try:
-            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+            run_id_param = request.args.get("run_id")
+            schema_data, _ = _load_schema_with_fallback(
+                source_name, output_dir, run_id=run_id_param
+            )
 
             if schema_data is None:
                 return (
@@ -308,13 +324,17 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             table_name: Name of the table
 
         Query params:
+            run_id: Optional run_id to fetch schema from (defaults to fallback behavior)
             search: Optional search string to filter column names
 
         Returns:
             JSON array of column objects with type and nullable info
         """
         try:
-            schema_data, _ = _load_schema_with_fallback(source_name, output_dir)
+            run_id_param = request.args.get("run_id")
+            schema_data, _ = _load_schema_with_fallback(
+                source_name, output_dir, run_id=run_id_param
+            )
 
             if schema_data is None:
                 return (
