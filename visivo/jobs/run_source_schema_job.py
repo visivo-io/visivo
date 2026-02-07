@@ -2,6 +2,7 @@
 Job for building and storing SQLGlot schemas from data sources.
 """
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.models.sources.source import Source
 from visivo.jobs.job import (
@@ -17,7 +18,10 @@ from typing import List, Optional
 
 
 def action(
-    source_to_build: Source, table_names: Optional[List[str]] = None, output_dir: str = None
+    source_to_build: Source,
+    table_names: Optional[List[str]] = None,
+    output_dir: str = None,
+    run_id: str = DEFAULT_RUN_ID,
 ):
     """
     Build schema for a source and store it using SchemaAggregator.
@@ -26,6 +30,7 @@ def action(
         source_to_build: The source to build schema for
         table_names: Optional list of table names to include
         output_dir: Directory to store schema data
+        run_id: Run identifier for schema storage location
 
     Returns:
         JobResult indicating success or failure
@@ -49,12 +54,12 @@ def action(
             )
             return JobResult(item=source_to_build, success=False, message=failure_message)
 
-        # Store schema data using SchemaAggregator
         SchemaAggregator.aggregate_source_schema(
             source_name=source_to_build.name,
             source_type=source_to_build.type,
             schema_data=schema_data,
             output_dir=output_dir,
+            run_id=run_id,
         )
 
         # Create success message with schema statistics
@@ -85,7 +90,12 @@ def action(
         return JobResult(item=source_to_build, success=False, message=failure_message)
 
 
-def job(source: Source, table_names: Optional[List[str]] = None, output_dir: str = None):
+def job(
+    source: Source,
+    table_names: Optional[List[str]] = None,
+    output_dir: str = None,
+    run_id: str = None,
+):
     """
     Create a Job instance for building source schema.
 
@@ -93,15 +103,19 @@ def job(source: Source, table_names: Optional[List[str]] = None, output_dir: str
         source: The source to build schema for
         table_names: Optional list of table names to include
         output_dir: Directory to store schema data
+        run_id: Run identifier for schema storage location
 
     Returns:
         Job instance configured for schema building
     """
-    return Job(
-        item=source,
-        source=source,
-        action=action,
-        source_to_build=source,
-        table_names=table_names,
-        output_dir=output_dir,
-    )
+    kwargs = {
+        "item": source,
+        "source": source,
+        "action": action,
+        "source_to_build": source,
+        "table_names": table_names,
+        "output_dir": output_dir,
+    }
+    if run_id is not None:
+        kwargs["run_id"] = run_id
+    return Job(**kwargs)
