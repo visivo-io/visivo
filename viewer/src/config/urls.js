@@ -293,9 +293,10 @@ class URLConfig {
    * Get URL for a specific endpoint key
    * @param {string} key - The endpoint key (e.g., 'project', 'traceData')
    * @param {object} params - Parameters to substitute in URL template (e.g., {name: 'trace1'})
+   * @param {object} queryParams - Query parameters to append (e.g., {project_id: 'abc'})
    * @returns {string} - Complete URL
    */
-  getUrl(key, params = {}) {
+  getUrl(key, params = {}, queryParams = {}) {
     const patterns = URL_PATTERNS[this.environment];
 
     if (!patterns) {
@@ -326,7 +327,21 @@ class URLConfig {
 
     // Build full URL
     const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-    return `${this.host}${this.deploymentRoot}${cleanUrl}`;
+    let fullUrl = `${this.host}${this.deploymentRoot}${cleanUrl}`;
+
+    // Append query parameters if provided
+    if (queryParams && Object.keys(queryParams).length > 0) {
+      const queryString = Object.entries(queryParams)
+        .filter(([_, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+
+      if (queryString) {
+        fullUrl += `?${queryString}`;
+      }
+    }
+
+    return fullUrl;
   }
 
   /**

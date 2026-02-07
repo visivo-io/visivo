@@ -18,7 +18,11 @@ const createChartSlice = (set, get) => ({
   fetchCharts: async () => {
     set({ chartsLoading: true, chartsError: null });
     try {
-      const data = await chartsApi.fetchAllCharts();
+      // Get project ID from store for Django/deployed mode
+      const { project } = get();
+      const projectId = project?.id;
+
+      const data = await chartsApi.fetchAllCharts(projectId);
       set({ charts: data.charts || [], chartsLoading: false });
     } catch (error) {
       set({ chartsError: error.message, chartsLoading: false });
@@ -28,7 +32,11 @@ const createChartSlice = (set, get) => ({
   // Save chart to cache
   saveChart: async (name, config) => {
     try {
-      const result = await chartsApi.saveChart(name, config);
+      // Get project ID from store for Django/deployed mode
+      const { project } = get();
+      const projectId = project?.id;
+
+      const result = await chartsApi.saveChart(name, config, projectId);
       // Refresh charts list to get updated status
       await get().fetchCharts();
       // Trigger publish status check
@@ -44,7 +52,11 @@ const createChartSlice = (set, get) => ({
   // Mark chart for deletion (will be removed from YAML on publish)
   deleteChart: async name => {
     try {
-      await chartsApi.deleteChart(name);
+      // Get project ID from store for Django/deployed mode
+      const { project } = get();
+      const projectId = project?.id;
+
+      await chartsApi.deleteChart(name, projectId);
       await get().fetchCharts();
       // Trigger publish status check
       if (get().checkPublishStatus) {

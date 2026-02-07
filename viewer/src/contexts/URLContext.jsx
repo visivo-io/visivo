@@ -24,15 +24,16 @@ export function setGlobalURLConfig(config) {
  * Get URL using global config (backwards compatible)
  * @param {string} key - Endpoint key
  * @param {object} params - URL parameters
+ * @param {object} queryParams - Query parameters to append
  * @returns {string} - Complete URL
  */
-export function getUrl(key, params = {}) {
+export function getUrl(key, params = {}, queryParams = {}) {
   if (!globalURLConfig) {
     throw new Error(
       'getUrl() called before URLConfig was initialized. Make sure URLProvider is rendered before any API calls.'
     );
   }
-  return globalURLConfig.getUrl(key, params);
+  return globalURLConfig.getUrl(key, params, queryParams);
 }
 
 /**
@@ -82,11 +83,12 @@ export function useURLConfig() {
  * Hook to get URL for a specific endpoint
  * @param {string} key - Endpoint key
  * @param {object} params - URL parameters (optional)
+ * @param {object} queryParams - Query parameters to append (optional)
  * @returns {string} - Complete URL
  */
-export function useURL(key, params = {}) {
+export function useURL(key, params = {}, queryParams = {}) {
   const urlConfig = useURLConfig();
   return useMemo(() => {
-    return urlConfig.getUrl(key, params);
-  }, [urlConfig, key, params]);
+    return urlConfig.getUrl(key, params, queryParams);
+  }, [urlConfig, key, params, queryParams]);
 }
