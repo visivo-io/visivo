@@ -142,6 +142,27 @@ const EditorNew = () => {
     fetchDefaults();
   }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
+  // Global keyboard handler for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // Don't clear if user is typing in an input/textarea (except the search input itself)
+        const target = e.target;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+        // If there's a search query active and we're not in an editable field, clear it
+        if (searchQuery && !isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          setSearchQuery('');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [searchQuery]);
+
   // Compute object type counts
   const typeCounts = useMemo(() => {
     return {

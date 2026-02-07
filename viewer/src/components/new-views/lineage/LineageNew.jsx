@@ -288,6 +288,28 @@ const LineageNew = () => {
     }
   }, [initialLoadDone, nodes?.length, selector]);
 
+  // Global keyboard handler for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // Don't clear if user is typing in an input/textarea (except the selector input itself)
+        const target = e.target;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+        // If there's a selector active and we're not in the edit panel, clear it
+        if (selector && !isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelector('');
+          setFixedNode(null);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selector]);
+
   // Node types for React Flow
   const nodeTypes = useMemo(
     () => ({
@@ -435,6 +457,15 @@ const LineageNew = () => {
             setSelector(e.target.value);
             // Clear fixed node when manually editing selector
             if (fixedNode) setFixedNode(null);
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelector('');
+              setFixedNode(null);
+              e.target.blur(); // Remove focus after clearing
+            }
           }}
           placeholder="e.g., 'source_name', 'model_name', or '+name+'"
           className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
