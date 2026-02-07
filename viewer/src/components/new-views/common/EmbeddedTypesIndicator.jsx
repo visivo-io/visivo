@@ -28,7 +28,7 @@ export const getEmbeddedTypes = (obj, objectType) => {
 
   if (objectType === 'chart' || objectType === 'table') {
     // Check for embedded insights
-    const insights = obj.config?.insights || obj.insights || [];
+    const insights = obj.config?.insights || [];
     if (insights.some(i => typeof i === 'object')) {
       types.push('insight');
     }

@@ -102,14 +102,13 @@ class NameFormatDeprecation(BaseDeprecationChecker):
 
     Valid names must:
     - Be lowercase
-    - Start with a letter or underscore
+    - Start with a letter, digit, or underscore
     - Contain only alphanumeric characters, underscores, and hyphens
 
     Examples of invalid names:
     - "My Model" (uppercase, spaces)
     - "Orders (2024)" (parentheses)
     - "user.name" (dots)
-    - "123abc" (starts with digit)
     """
 
     REMOVAL_VERSION = "2.0.0"

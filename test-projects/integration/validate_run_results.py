@@ -231,8 +231,8 @@ class VisivoRunValidator:
         # Expected trace names based on traces.visivo.yml and inline traces
         # Names are normalized: lowercase, hyphens instead of spaces, underscore prefix for names starting with digits
         expected_traces = [
-            "_3d-line-one",
-            "_3d-line-two",
+            "3d-line-one",
+            "3d-line-two",
             "aggregated-line",
             "double-simple-line",
             "example-indicator",

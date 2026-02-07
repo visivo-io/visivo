@@ -36,10 +36,11 @@ class TestIsValidName:
         assert not is_valid_name("orders(2024)")
         assert not is_valid_name("user@name")
 
-    def test_invalid_starting_with_digit(self):
-        """Test that names starting with digits fail."""
-        assert not is_valid_name("123orders")
-        assert not is_valid_name("2024_orders")
+    def test_valid_starting_with_digit(self):
+        """Test that names starting with digits are valid."""
+        assert is_valid_name("123orders")
+        assert is_valid_name("2024_orders")
+        assert is_valid_name("3d-scatter")
 
 
 class TestNormalizeName:
@@ -64,9 +65,10 @@ class TestNormalizeName:
         assert normalize_name("user@email") == "user-email"
 
     def test_digit_prefix(self):
-        """Test that names starting with digits get underscore prefix."""
-        assert normalize_name("123orders") == "_123orders"
-        assert normalize_name("2024_orders") == "_2024_orders"
+        """Test that names starting with digits remain unchanged (no underscore prefix)."""
+        assert normalize_name("123orders") == "123orders"
+        assert normalize_name("2024_orders") == "2024_orders"
+        assert normalize_name("3D Scatter") == "3d-scatter"
 
     def test_preserve_valid_characters(self):
         """Test that valid characters are preserved."""

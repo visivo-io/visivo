@@ -28,6 +28,11 @@ def _serialize_ref_to_context(value: str) -> str:
     if isinstance(value, ContextString):
         return str(value)
 
+    # If the string value already contains ${ } wrapper, return as-is
+    # This prevents double-wrapping when a string like "${ref(name)}" is passed
+    if isinstance(value, str) and value.strip().startswith("${") and value.strip().endswith("}"):
+        return value
+
     # For plain ref strings like "ref(name)", wrap with ${ }
     result = f"${{{value}}}"
     return result

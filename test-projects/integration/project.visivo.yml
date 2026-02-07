@@ -672,8 +672,8 @@ dashboards:
             chart:
               name: fibonacci-plane
               traces:
-                - ${ref(_3d-line-one)}
-                - ${ref(_3d-line-two)}
+                - ${ref(3d-line-one)}
+                - ${ref(3d-line-two)}
               layout:
                 title:
                   text: "The Greatest 3d Lines"

@@ -47,7 +47,7 @@ insights:
           width: 2.5
 
   # 3D scatter with filter interaction
-  - name: _3d-scatter-insight
+  - name: 3d-scatter-insight
     description: "3D scatter plot with calculated z-axis"
     props:
       type: scatter3d

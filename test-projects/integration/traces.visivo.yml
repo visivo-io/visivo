@@ -91,7 +91,7 @@ traces:
           - ">{ ${ref(simple-line).props.x[0]} == 5 }"
           - ">{ ${ref(simple-line).props.y[0]} == 10 }"
 
-  - name: _3d-line-one
+  - name: 3d-line-one
     model: ${ ref(test-table) }
     order_by:
       - ?{x asc}
@@ -102,10 +102,10 @@ traces:
       z: ?{ -2*(x/16)*x + x + y*(y-3)}
     tests:
       - assertions:
-          - ">{ ${ref(_3d-line-one).props.x[1]} == 2 }"
-          - ">{ ${ref(_3d-line-one).props.y[1]} == 1 }"
+          - ">{ ${ref(3d-line-one).props.x[1]} == 2 }"
+          - ">{ ${ref(3d-line-one).props.y[1]} == 1 }"
 
-  - name: _3d-line-two
+  - name: 3d-line-two
     model: ${ ref(test-table) }
     order_by:
       - ?{x asc}
