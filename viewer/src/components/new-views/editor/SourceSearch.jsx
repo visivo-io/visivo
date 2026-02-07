@@ -16,6 +16,14 @@ const SourceSearch = ({ value, onChange, placeholder = 'Search sources...' }) =>
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            onChange('');
+            e.target.blur(); // Remove focus after clearing
+          }
+        }}
         placeholder={placeholder}
         className="
           block w-full pl-10 pr-10 py-2

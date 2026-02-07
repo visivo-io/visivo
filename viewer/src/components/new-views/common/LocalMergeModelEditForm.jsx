@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { parseRefValue } from '../../../utils/refString';
 
 /**
  * LocalMergeModelEditForm - Form for creating/editing LocalMergeModel
@@ -30,7 +31,17 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     if (model) {
       setName(model.name || '');
       setSql(model.config?.sql || '');
-      const refs = model.config?.models || [];
+      // Parse ref values to extract plain names for RefSelector
+      const refs = (model.config?.models || [])
+        .map(ref => {
+          // Trim the ref string first to remove any whitespace
+          const trimmed = typeof ref === 'string' ? ref.trim() : ref;
+          // Then parse to extract the name
+          const parsed = parseRefValue(trimmed);
+          // Return the parsed value or the trimmed original
+          return parsed || trimmed;
+        })
+        .filter(ref => ref); // Remove any empty values
       setModelRefs(refs.length > 0 ? refs : ['']);
     } else {
       setName('');
@@ -44,10 +55,19 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     setError(null);
     setSaving(true);
 
+    // Parse ref values to extract plain names
+    const parsedModels = modelRefs
+      .filter(r => r && r.trim())
+      .map(r => {
+        const trimmed = r.trim();
+        const parsed = parseRefValue(trimmed);
+        return parsed || trimmed;
+      });
+
     const config = {
       name: name.trim(),
       sql: sql.trim(),
-      models: modelRefs.filter(r => r.trim()),
+      models: parsedModels,
     };
 
     const result = await onSave('localMergeModel', config.name, config);

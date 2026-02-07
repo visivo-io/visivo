@@ -24,7 +24,9 @@ import SettingsIcon from '@mui/icons-material/Settings';
  * - icon: MUI icon component
  * - colors: Tailwind color classes for consistent styling
  *
- * Add new object types here as they become available
+ * Objects are ordered by standard hierarchy and colors follow rainbow spectrum (red→violet):
+ * sources, models, csv_script_models, local_merge_models, dimensions, metrics,
+ * relations, inputs, insights, markdown, tables, charts, dashboards
  */
 export const OBJECT_TYPES = [
   {
@@ -32,66 +34,6 @@ export const OBJECT_TYPES = [
     label: 'Sources',
     singularLabel: 'Source',
     icon: StorageIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-teal-100',
-      text: 'text-teal-800',
-      border: 'border-teal-200',
-      bgHover: 'hover:bg-teal-50',
-      bgSelected: 'bg-teal-100',
-      borderSelected: 'border-teal-300',
-      // For nodes/pills
-      node: 'bg-teal-50 border-teal-200',
-      nodeSelected: 'bg-teal-100 border-teal-400',
-      // For connection handles in lineage view
-      connectionHandle: '#14b8a6', // teal-500
-    },
-  },
-  {
-    value: 'model',
-    label: 'Models',
-    singularLabel: 'Model',
-    icon: ViewInArIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-indigo-100',
-      text: 'text-indigo-800',
-      border: 'border-indigo-200',
-      bgHover: 'hover:bg-indigo-50',
-      bgSelected: 'bg-indigo-100',
-      borderSelected: 'border-indigo-300',
-      // For nodes/pills
-      node: 'bg-indigo-50 border-indigo-200',
-      nodeSelected: 'bg-indigo-100 border-indigo-400',
-      // For connection handles in lineage view
-      connectionHandle: '#6366f1', // indigo-500
-    },
-  },
-  {
-    value: 'dimension',
-    label: 'Dimensions',
-    singularLabel: 'Dimension',
-    icon: CategoryIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-purple-100',
-      text: 'text-purple-800',
-      border: 'border-purple-200',
-      bgHover: 'hover:bg-purple-50',
-      bgSelected: 'bg-purple-100',
-      borderSelected: 'border-purple-300',
-      // For nodes/pills
-      node: 'bg-purple-50 border-purple-200',
-      nodeSelected: 'bg-purple-100 border-purple-400',
-      // For connection handles in lineage view
-      connectionHandle: '#a855f7', // purple-500
-    },
-  },
-  {
-    value: 'metric',
-    label: 'Metrics',
-    singularLabel: 'Metric',
-    icon: AnalyticsIcon,
     enabled: true,
     colors: {
       bg: 'bg-orange-100',
@@ -108,90 +50,10 @@ export const OBJECT_TYPES = [
     },
   },
   {
-    value: 'relation',
-    label: 'Relations',
-    singularLabel: 'Relation',
-    icon: AccountTreeIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-cyan-100',
-      text: 'text-cyan-800',
-      border: 'border-cyan-200',
-      bgHover: 'hover:bg-cyan-50',
-      bgSelected: 'bg-cyan-100',
-      borderSelected: 'border-cyan-300',
-      // For nodes/pills
-      node: 'bg-cyan-50 border-cyan-200',
-      nodeSelected: 'bg-cyan-100 border-cyan-400',
-      // For connection handles in lineage view
-      connectionHandle: '#06b6d4', // cyan-500
-    },
-  },
-  {
-    value: 'insight',
-    label: 'Insights',
-    singularLabel: 'Insight',
-    icon: InsightsIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-pink-100',
-      text: 'text-pink-800',
-      border: 'border-pink-200',
-      bgHover: 'hover:bg-pink-50',
-      bgSelected: 'bg-pink-100',
-      borderSelected: 'border-pink-300',
-      // For nodes/pills
-      node: 'bg-pink-50 border-pink-200',
-      nodeSelected: 'bg-pink-100 border-pink-400',
-      // For connection handles in lineage view
-      connectionHandle: '#ec4899', // pink-500
-    },
-  },
-  {
-    value: 'markdown',
-    label: 'Markdowns',
-    singularLabel: 'Markdown',
-    icon: DescriptionIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-green-100',
-      text: 'text-green-800',
-      border: 'border-green-200',
-      bgHover: 'hover:bg-green-50',
-      bgSelected: 'bg-green-100',
-      borderSelected: 'border-green-300',
-      // For nodes/pills
-      node: 'bg-green-50 border-green-200',
-      nodeSelected: 'bg-green-100 border-green-400',
-      // For connection handles in lineage view
-      connectionHandle: '#22c55e', // green-500
-    },
-  },
-  {
-    value: 'chart',
-    label: 'Charts',
-    singularLabel: 'Chart',
-    icon: BarChartIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-800',
-      border: 'border-blue-200',
-      bgHover: 'hover:bg-blue-50',
-      bgSelected: 'bg-blue-100',
-      borderSelected: 'border-blue-300',
-      // For nodes/pills
-      node: 'bg-blue-50 border-blue-200',
-      nodeSelected: 'bg-blue-100 border-blue-400',
-      // For connection handles in lineage view
-      connectionHandle: '#3b82f6', // blue-500
-    },
-  },
-  {
-    value: 'table',
-    label: 'Tables',
-    singularLabel: 'Table',
-    icon: TableChartIcon,
+    value: 'model',
+    label: 'Models',
+    singularLabel: 'Model',
+    icon: ViewInArIcon,
     enabled: true,
     colors: {
       bg: 'bg-amber-100',
@@ -208,64 +70,10 @@ export const OBJECT_TYPES = [
     },
   },
   {
-    value: 'dashboard',
-    label: 'Dashboards',
-    singularLabel: 'Dashboard',
-    icon: DashboardIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-slate-100',
-      text: 'text-slate-800',
-      border: 'border-slate-200',
-      bgHover: 'hover:bg-slate-50',
-      bgSelected: 'bg-slate-100',
-      borderSelected: 'border-slate-300',
-      node: 'bg-slate-50 border-slate-200',
-      nodeSelected: 'bg-slate-100 border-slate-400',
-      connectionHandle: '#64748b', // slate-500
-    },
-  },
-  {
     value: 'csvScriptModel',
     label: 'CSV Script Models',
     singularLabel: 'CSV Script Model',
     icon: TerminalIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-violet-100',
-      text: 'text-violet-800',
-      border: 'border-violet-200',
-      bgHover: 'hover:bg-violet-50',
-      bgSelected: 'bg-violet-100',
-      borderSelected: 'border-violet-300',
-      node: 'bg-violet-50 border-violet-200',
-      nodeSelected: 'bg-violet-100 border-violet-400',
-      connectionHandle: '#8b5cf6', // violet-500
-    },
-  },
-  {
-    value: 'localMergeModel',
-    label: 'Local Merge Models',
-    singularLabel: 'Local Merge Model',
-    icon: MergeIcon,
-    enabled: true,
-    colors: {
-      bg: 'bg-fuchsia-100',
-      text: 'text-fuchsia-800',
-      border: 'border-fuchsia-200',
-      bgHover: 'hover:bg-fuchsia-50',
-      bgSelected: 'bg-fuchsia-100',
-      borderSelected: 'border-fuchsia-300',
-      node: 'bg-fuchsia-50 border-fuchsia-200',
-      nodeSelected: 'bg-fuchsia-100 border-fuchsia-400',
-      connectionHandle: '#d946ef', // fuchsia-500
-    },
-  },
-  {
-    value: 'input',
-    label: 'Inputs',
-    singularLabel: 'Input',
-    icon: TuneIcon,
     enabled: true,
     colors: {
       bg: 'bg-lime-100',
@@ -277,6 +85,200 @@ export const OBJECT_TYPES = [
       node: 'bg-lime-50 border-lime-200',
       nodeSelected: 'bg-lime-100 border-lime-400',
       connectionHandle: '#84cc16', // lime-500
+    },
+  },
+  {
+    value: 'localMergeModel',
+    label: 'Local Merge Models',
+    singularLabel: 'Local Merge Model',
+    icon: MergeIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-green-100',
+      text: 'text-green-800',
+      border: 'border-green-200',
+      bgHover: 'hover:bg-green-50',
+      bgSelected: 'bg-green-100',
+      borderSelected: 'border-green-300',
+      node: 'bg-green-50 border-green-200',
+      nodeSelected: 'bg-green-100 border-green-400',
+      connectionHandle: '#22c55e', // green-500
+    },
+  },
+  {
+    value: 'dimension',
+    label: 'Dimensions',
+    singularLabel: 'Dimension',
+    icon: CategoryIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-teal-100',
+      text: 'text-teal-800',
+      border: 'border-teal-200',
+      bgHover: 'hover:bg-teal-50',
+      bgSelected: 'bg-teal-100',
+      borderSelected: 'border-teal-300',
+      // For nodes/pills
+      node: 'bg-teal-50 border-teal-200',
+      nodeSelected: 'bg-teal-100 border-teal-400',
+      // For connection handles in lineage view
+      connectionHandle: '#14b8a6', // teal-500
+    },
+  },
+  {
+    value: 'metric',
+    label: 'Metrics',
+    singularLabel: 'Metric',
+    icon: AnalyticsIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-cyan-100',
+      text: 'text-cyan-800',
+      border: 'border-cyan-200',
+      bgHover: 'hover:bg-cyan-50',
+      bgSelected: 'bg-cyan-100',
+      borderSelected: 'border-cyan-300',
+      // For nodes/pills
+      node: 'bg-cyan-50 border-cyan-200',
+      nodeSelected: 'bg-cyan-100 border-cyan-400',
+      // For connection handles in lineage view
+      connectionHandle: '#06b6d4', // cyan-500
+    },
+  },
+  {
+    value: 'relation',
+    label: 'Relations',
+    singularLabel: 'Relation',
+    icon: AccountTreeIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-blue-100',
+      text: 'text-blue-800',
+      border: 'border-blue-200',
+      bgHover: 'hover:bg-blue-50',
+      bgSelected: 'bg-blue-100',
+      borderSelected: 'border-blue-300',
+      // For nodes/pills
+      node: 'bg-blue-50 border-blue-200',
+      nodeSelected: 'bg-blue-100 border-blue-400',
+      // For connection handles in lineage view
+      connectionHandle: '#3b82f6', // blue-500
+    },
+  },
+  {
+    value: 'input',
+    label: 'Inputs',
+    singularLabel: 'Input',
+    icon: TuneIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-indigo-100',
+      text: 'text-indigo-800',
+      border: 'border-indigo-200',
+      bgHover: 'hover:bg-indigo-50',
+      bgSelected: 'bg-indigo-100',
+      borderSelected: 'border-indigo-300',
+      node: 'bg-indigo-50 border-indigo-200',
+      nodeSelected: 'bg-indigo-100 border-indigo-400',
+      connectionHandle: '#6366f1', // indigo-500
+    },
+  },
+  {
+    value: 'insight',
+    label: 'Insights',
+    singularLabel: 'Insight',
+    icon: InsightsIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-purple-100',
+      text: 'text-purple-800',
+      border: 'border-purple-200',
+      bgHover: 'hover:bg-purple-50',
+      bgSelected: 'bg-purple-100',
+      borderSelected: 'border-purple-300',
+      // For nodes/pills
+      node: 'bg-purple-50 border-purple-200',
+      nodeSelected: 'bg-purple-100 border-purple-400',
+      // For connection handles in lineage view
+      connectionHandle: '#a855f7', // purple-500
+    },
+  },
+  {
+    value: 'markdown',
+    label: 'Markdowns',
+    singularLabel: 'Markdown',
+    icon: DescriptionIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-violet-100',
+      text: 'text-violet-800',
+      border: 'border-violet-200',
+      bgHover: 'hover:bg-violet-50',
+      bgSelected: 'bg-violet-100',
+      borderSelected: 'border-violet-300',
+      // For nodes/pills
+      node: 'bg-violet-50 border-violet-200',
+      nodeSelected: 'bg-violet-100 border-violet-400',
+      // For connection handles in lineage view
+      connectionHandle: '#8b5cf6', // violet-500
+    },
+  },
+  {
+    value: 'table',
+    label: 'Tables',
+    singularLabel: 'Table',
+    icon: TableChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-fuchsia-100',
+      text: 'text-fuchsia-800',
+      border: 'border-fuchsia-200',
+      bgHover: 'hover:bg-fuchsia-50',
+      bgSelected: 'bg-fuchsia-100',
+      borderSelected: 'border-fuchsia-300',
+      // For nodes/pills
+      node: 'bg-fuchsia-50 border-fuchsia-200',
+      nodeSelected: 'bg-fuchsia-100 border-fuchsia-400',
+      // For connection handles in lineage view
+      connectionHandle: '#d946ef', // fuchsia-500
+    },
+  },
+  {
+    value: 'chart',
+    label: 'Charts',
+    singularLabel: 'Chart',
+    icon: BarChartIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-pink-100',
+      text: 'text-pink-800',
+      border: 'border-pink-200',
+      bgHover: 'hover:bg-pink-50',
+      bgSelected: 'bg-pink-100',
+      borderSelected: 'border-pink-300',
+      // For nodes/pills
+      node: 'bg-pink-50 border-pink-200',
+      nodeSelected: 'bg-pink-100 border-pink-400',
+      // For connection handles in lineage view
+      connectionHandle: '#ec4899', // pink-500
+    },
+  },
+  {
+    value: 'dashboard',
+    label: 'Dashboards',
+    singularLabel: 'Dashboard',
+    icon: DashboardIcon,
+    enabled: true,
+    colors: {
+      bg: 'bg-rose-100',
+      text: 'text-rose-800',
+      border: 'border-rose-200',
+      bgHover: 'hover:bg-rose-50',
+      bgSelected: 'bg-rose-100',
+      borderSelected: 'border-rose-300',
+      node: 'bg-rose-50 border-rose-200',
+      nodeSelected: 'bg-rose-100 border-rose-400',
+      connectionHandle: '#f43f5e', // rose-500
     },
   },
   {

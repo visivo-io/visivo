@@ -21,7 +21,21 @@ from visivo.query.patterns import (
 
 
 def _serialize_ref_to_context(value: str) -> str:
-    return f"${{{value}}}"
+    # If value is already a ContextString object, return its string representation directly
+    # to avoid double-wrapping (ContextString already has the ${ } wrapper)
+    from visivo.models.base.context_string import ContextString
+
+    if isinstance(value, ContextString):
+        return str(value)
+
+    # If the string value already contains ${ } wrapper, return as-is
+    # This prevents double-wrapping when a string like "${ref(name)}" is passed
+    if isinstance(value, str) and value.strip().startswith("${") and value.strip().endswith("}"):
+        return value
+
+    # For plain ref strings like "ref(name)", wrap with ${ }
+    result = f"${{{value}}}"
+    return result
 
 
 RefStringType = NewType(

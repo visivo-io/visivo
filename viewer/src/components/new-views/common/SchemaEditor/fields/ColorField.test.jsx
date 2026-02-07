@@ -143,8 +143,15 @@ describe('ColorField', () => {
   it('does not open picker when disabled', () => {
     render(<ColorField {...defaultProps} disabled={true} />);
 
+    const picker = screen.getByTestId('color-picker');
+    const initialValue = picker.value;
+
+    // Click the swatch - should not trigger the picker
     fireEvent.click(screen.getByTestId('color-swatch'));
 
-    expect(screen.queryByTestId('color-picker')).not.toBeInTheDocument();
+    // The picker value should not have changed (it wasn't activated)
+    expect(picker.value).toBe(initialValue);
+    // The picker should have pointerEvents: none
+    expect(picker).toHaveStyle({ pointerEvents: 'none' });
   });
 });

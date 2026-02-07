@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { TextField, InputAdornment, Box, Popover } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { TextField, InputAdornment, Box } from '@mui/material';
 
 /**
  * Color field component with color picker
@@ -12,8 +12,8 @@ import { TextField, InputAdornment, Box, Popover } from '@mui/material';
  * @param {boolean} props.disabled - Whether the field is disabled
  */
 export function ColorField({ value, onChange, schema, label, description, disabled = false }) {
-  const [anchorEl, setAnchorEl] = useState(null);
   const [inputValue, setInputValue] = useState(value || '');
+  const colorInputRef = useRef(null);
 
   // Sync input value when external value changes
   useEffect(() => {
@@ -45,23 +45,17 @@ export function ColorField({ value, onChange, schema, label, description, disabl
     }
   };
 
-  const handleSwatchClick = event => {
-    if (!disabled) {
-      setAnchorEl(event.currentTarget);
+  const handleSwatchClick = () => {
+    if (!disabled && colorInputRef.current) {
+      colorInputRef.current.click();
     }
   };
-
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
 
   // Display color (use black as fallback for preview)
   const displayColor = isValidColor(inputValue) ? inputValue : value || '#000000';
 
   return (
-    <>
+    <div style={{ position: 'relative' }}>
       <TextField
         fullWidth
         size="small"
@@ -93,26 +87,24 @@ export function ColorField({ value, onChange, schema, label, description, disabl
           ),
         }}
       />
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handlePopoverClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
+      {/* Hidden color input that opens the native color picker */}
+      <input
+        ref={colorInputRef}
+        type="color"
+        value={displayColor}
+        onChange={handleColorPickerChange}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: 'none',
         }}
-      >
-        <Box sx={{ p: 1 }}>
-          <input
-            type="color"
-            value={displayColor}
-            onChange={handleColorPickerChange}
-            style={{ width: 200, height: 150, border: 'none', cursor: 'pointer' }}
-            data-testid="color-picker"
-          />
-        </Box>
-      </Popover>
-    </>
+        data-testid="color-picker"
+      />
+    </div>
   );
 }
 

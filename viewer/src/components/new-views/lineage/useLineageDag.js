@@ -5,8 +5,14 @@ import { parseRefValue } from '../../../utils/refString';
 
 /**
  * Compute layout using dagre (left-to-right)
+ * Exported for use in LineageNew component to recompute layout after filtering
+ *
+ * @param {Array} nodes - Array of nodes to layout
+ * @param {Array} edges - Array of edges
+ * @param {Object} fixedNode - Optional { id, position } to keep a node at its current position
+ *                              The entire graph will be offset to center around this fixed node
  */
-function computeLayout(nodes, edges) {
+export function computeLayout(nodes, edges, fixedNode = null) {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 100 });
   graph.setDefaultEdgeLabel(() => ({}));
@@ -28,14 +34,30 @@ function computeLayout(nodes, edges) {
   // Run dagre layout
   dagre.layout(graph);
 
-  // Apply computed positions to nodes
+  // Calculate offset if we have a fixed node
+  let offsetX = 0;
+  let offsetY = 0;
+  if (fixedNode) {
+    const fixedNodeLayout = graph.node(fixedNode.id);
+    if (fixedNodeLayout) {
+      // Calculate where dagre placed the fixed node
+      const dagreX = fixedNodeLayout.x - fixedNodeLayout.width / 2;
+      const dagreY = fixedNodeLayout.y - fixedNodeLayout.height / 2;
+
+      // Calculate offset to keep fixed node at its original position
+      offsetX = fixedNode.position.x - dagreX;
+      offsetY = fixedNode.position.y - dagreY;
+    }
+  }
+
+  // Apply computed positions to nodes (with offset if needed)
   return nodes.map(node => {
     const nodeWithPosition = graph.node(node.id);
     return {
       ...node,
       position: {
-        x: nodeWithPosition.x - nodeWithPosition.width / 2,
-        y: nodeWithPosition.y - nodeWithPosition.height / 2,
+        x: nodeWithPosition.x - nodeWithPosition.width / 2 + offsetX,
+        y: nodeWithPosition.y - nodeWithPosition.height / 2 + offsetY,
       },
     };
   });
@@ -166,7 +188,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -182,7 +204,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -199,7 +221,7 @@ export function useLineageDag() {
         model: model,
       });
 
-      const childNames = model.child_item_names || [];
+      const childNames = [...new Set(model.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -233,7 +255,7 @@ export function useLineageDag() {
         dimension: dimension,
       });
 
-      const childNames = dimension.child_item_names || [];
+      const childNames = [...new Set(dimension.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -250,7 +272,7 @@ export function useLineageDag() {
         metric: metric,
       });
 
-      const childNames = metric.child_item_names || [];
+      const childNames = [...new Set(metric.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -268,7 +290,7 @@ export function useLineageDag() {
         relation: relation,
       });
 
-      const childNames = relation.child_item_names || [];
+      const childNames = [...new Set(relation.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -286,7 +308,7 @@ export function useLineageDag() {
       });
 
       // Create edges from insight's child_item_names (can be models, metrics, dimensions, etc.)
-      const childNames = insight.child_item_names || [];
+      const childNames = [...new Set(insight.child_item_names || [])];
       childNames.forEach(childName => {
         // Look up the type of the child object to create the correct edge source
         const childType = objectTypeByName[childName];
@@ -319,7 +341,7 @@ export function useLineageDag() {
         chart: chart,
       });
 
-      const childNames = chart.child_item_names || [];
+      const childNames = [...new Set(chart.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -335,7 +357,7 @@ export function useLineageDag() {
         table: table,
       });
 
-      const childNames = table.child_item_names || [];
+      const childNames = [...new Set(table.child_item_names || [])];
       childNames.forEach(childName => {
         const childType = objectTypeByName[childName];
         if (childType) {
@@ -353,7 +375,9 @@ export function useLineageDag() {
 
       // Parse dashboard config to extract referenced items
       const itemRefs = extractDashboardItemRefs(dashboard.config);
-      itemRefs.forEach(refName => {
+      // Deduplicate refs (same item may be referenced multiple times in different rows)
+      const uniqueRefs = [...new Set(itemRefs)];
+      uniqueRefs.forEach(refName => {
         const childType = objectTypeByName[refName];
         if (childType) {
           addEdge(refName, childType, dashboard.name, 'dashboard');
