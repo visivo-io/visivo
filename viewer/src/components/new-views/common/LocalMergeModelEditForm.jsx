@@ -42,13 +42,10 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
           return parsed || trimmed;
         })
         .filter(ref => ref); // Remove any empty values
-        console.log('refs', refs);
-        console.log('config', model.config);
       setModelRefs(refs.length > 0 ? refs : ['']);
     } else {
       setName('');
       setSql('');
-        console.log('refs', "empty");
       setModelRefs(['']);
     }
   }, [model]);
@@ -64,12 +61,6 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
       .map(r => {
         const trimmed = r.trim();
         const parsed = parseRefValue(trimmed);
-        console.log('Parsing model ref:', {
-          original: r,
-          trimmed,
-          parsed,
-          willSend: parsed || trimmed,
-        });
         return parsed || trimmed;
       });
 
@@ -78,8 +69,6 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
       sql: sql.trim(),
       models: parsedModels,
     };
-
-    console.log('Submitting config to backend:', config);
 
     const result = await onSave('localMergeModel', config.name, config);
     setSaving(false);

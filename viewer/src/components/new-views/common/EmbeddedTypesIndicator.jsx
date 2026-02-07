@@ -10,7 +10,7 @@ export const getEmbeddedTypes = (obj, objectType) => {
 
   if (objectType === 'model') {
     // Check for embedded source
-    const source = obj.config?.source || obj.source;
+    const source = obj.config?.source;
     if (source && typeof source === 'object') {
       types.push('source');
     }
