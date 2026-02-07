@@ -1200,7 +1200,8 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "z"
   ],
   "additionalProperties": false
 }

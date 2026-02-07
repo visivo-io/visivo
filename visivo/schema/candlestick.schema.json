@@ -1377,7 +1377,12 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x",
+    "open",
+    "high",
+    "low",
+    "close"
   ],
   "additionalProperties": false
 }

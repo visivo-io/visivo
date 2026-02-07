@@ -2280,7 +2280,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "locations",
+    "z"
   ],
   "additionalProperties": false
 }
