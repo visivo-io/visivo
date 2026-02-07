@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 import DataTablePreview from './DataTablePreview';
 
 // Mock DuckDB context
@@ -118,7 +119,7 @@ jest.mock('@tanstack/react-virtual', () => ({
 
 const renderComponent = () =>
   render(
-    <MemoryRouter>
+    <MemoryRouter future={futureFlags}>
       <DataTablePreview />
     </MemoryRouter>
   );

@@ -92,11 +92,11 @@ describe('objectTypeConfigs', () => {
     it('should return colors with connectionHandle for valid types', () => {
       const sourceColors = getTypeColors('source');
       expect(sourceColors).toHaveProperty('connectionHandle');
-      expect(sourceColors.connectionHandle).toBe('#14b8a6');
+      expect(sourceColors.connectionHandle).toBe('#f97316'); // orange-500
 
       const chartColors = getTypeColors('chart');
       expect(chartColors).toHaveProperty('connectionHandle');
-      expect(chartColors.connectionHandle).toBe('#3b82f6');
+      expect(chartColors.connectionHandle).toBe('#ec4899'); // pink-500
     });
 
     it('should return DEFAULT_COLORS with connectionHandle for invalid types', () => {

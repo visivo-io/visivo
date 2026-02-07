@@ -11,6 +11,18 @@ jest.mock('../../../stores/store');
 // Mock the useLineageDag hook
 jest.mock('./useLineageDag');
 
+// Mock the computeLayout function to avoid dagre issues in tests
+jest.mock('./useLineageDag', () => ({
+  useLineageDag: jest.fn(),
+  computeLayout: jest.fn((nodes, edges, fixedNode) => {
+    // In tests, just return nodes with dummy positions
+    return nodes.map((node, index) => ({
+      ...node,
+      position: { x: index * 200, y: 100 },
+    }));
+  }),
+}));
+
 // Mock reactflow
 jest.mock('reactflow', () => {
   const MockReactFlow = ({ nodes, edges, onNodeClick, children }) => (
@@ -122,6 +134,23 @@ describe('LineageNew', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Make all fetch functions return resolved promises
+    mockFetchSources.mockResolvedValue();
+    mockFetchModels.mockResolvedValue();
+    mockFetchDimensions.mockResolvedValue();
+    mockFetchMetrics.mockResolvedValue();
+    mockFetchRelations.mockResolvedValue();
+    mockFetchInsights.mockResolvedValue();
+    mockFetchMarkdowns.mockResolvedValue();
+    mockFetchCharts.mockResolvedValue();
+    mockFetchTables.mockResolvedValue();
+    mockFetchDashboards.mockResolvedValue();
+    mockFetchCsvScriptModels.mockResolvedValue();
+    mockFetchLocalMergeModels.mockResolvedValue();
+    mockFetchInputs.mockResolvedValue();
+    mockFetchDefaults.mockResolvedValue();
+
     useStore.mockImplementation(selector => {
       if (typeof selector === 'function') {
         return selector(defaultStoreState);
@@ -140,24 +169,33 @@ describe('LineageNew', () => {
     ).toBeInTheDocument();
   });
 
-  it('fetches all object types on mount', () => {
+  it('fetches all object types on mount', async () => {
     render(<LineageNew />);
 
-    expect(mockFetchSources).toHaveBeenCalled();
+    // Wait for initial load to complete to avoid act warnings
+    await waitFor(() => {
+      expect(mockFetchSources).toHaveBeenCalled();
+    });
+
     expect(mockFetchModels).toHaveBeenCalled();
     expect(mockFetchDimensions).toHaveBeenCalled();
     expect(mockFetchMetrics).toHaveBeenCalled();
     expect(mockFetchRelations).toHaveBeenCalled();
   });
 
-  it('displays loading state before initial load completes', () => {
+  it('displays loading state before initial load completes', async () => {
     render(<LineageNew />);
 
     // Loading shows immediately because initialLoadDone starts as false
     expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    // Wait for load to complete to avoid act warnings
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
   });
 
-  it('displays error state when sources fail to load', () => {
+  it('displays error state when sources fail to load', async () => {
     useStore.mockImplementation(selector => {
       const state = { ...defaultStoreState, sourcesError: 'Failed to fetch sources' };
       return typeof selector === 'function' ? selector(state) : state;
@@ -166,13 +204,18 @@ describe('LineageNew', () => {
     render(<LineageNew />);
 
     expect(screen.getByText(/Failed to fetch sources/)).toBeInTheDocument();
+
+    // Wait for any async updates to complete to avoid act warnings
+    await waitFor(() => {
+      expect(mockFetchSources).toHaveBeenCalled();
+    });
   });
 
   it('renders nodes from useLineageDag', async () => {
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model' } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model' } },
       ],
       edges: [{ id: 'edge-1', source: 'source-db', target: 'model-users' }],
     });
@@ -184,11 +227,11 @@ describe('LineageNew', () => {
     expect(screen.getByTestId('edge-edge-1')).toBeInTheDocument();
   });
 
-  it('has selector input for filtering nodes', () => {
+  it('has selector input for filtering nodes', async () => {
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source' } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model' } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model' } },
       ],
       edges: [],
     });
@@ -198,11 +241,16 @@ describe('LineageNew', () => {
     const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
     expect(input).toBeInTheDocument();
     expect(input.value).toBe('');
+
+    // Wait for async updates to complete
+    await waitFor(() => {
+      expect(mockFetchSources).toHaveBeenCalled();
+    });
   });
 
   it('clears selector when Clear button is clicked', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -223,7 +271,7 @@ describe('LineageNew', () => {
 
   it('shows no matching objects message when selector matches nothing', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -268,14 +316,14 @@ describe('LineageNew', () => {
     expect(screen.queryByTestId('node-model-users')).not.toBeInTheDocument();
   });
 
-  it('opens edit panel when node is clicked', async () => {
+  it('filters to node dependencies when node is clicked', async () => {
     const mockSource = { name: 'db', type: 'sqlite' };
     const mockModel = { name: 'users', sql: 'SELECT * FROM users' };
 
     useLineageDag.mockReturnValue({
       nodes: [
-        { id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } },
-        { id: 'model-users', data: { label: 'users', objectType: 'model', model: mockModel } },
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source', source: mockSource } },
+        { id: 'model-users', data: { label: 'users', name: 'users', objectType: 'model', model: mockModel } },
       ],
       edges: [],
     });
@@ -288,43 +336,16 @@ describe('LineageNew', () => {
     // Click the source node
     fireEvent.click(screen.getByTestId('node-source-db'));
 
+    // Should update the selector to show dependencies
+    const input = screen.getByPlaceholderText("e.g., 'source_name', 'model_name', or '+name+'");
     await waitFor(() => {
-      expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Editing source: db')).toBeInTheDocument();
-  });
-
-  it('closes edit panel when close button is clicked', async () => {
-    const mockSource = { name: 'db', type: 'sqlite' };
-
-    useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source', source: mockSource } }],
-      edges: [],
-    });
-
-    render(<LineageNew />);
-
-    // Wait for initial load
-    await screen.findByTestId('node-source-db');
-
-    // Click the source node to open panel
-    fireEvent.click(screen.getByTestId('node-source-db'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    });
-
-    // Close the panel
-    fireEvent.click(screen.getByText('Close'));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
+      expect(input.value).toBe('+db+');
     });
   });
 
-  it('renders ReactFlow with proper structure', () => {
+  it('renders ReactFlow with proper structure', async () => {
     useLineageDag.mockReturnValue({
-      nodes: [{ id: 'source-db', data: { label: 'db', objectType: 'source' } }],
+      nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
       edges: [],
     });
 
@@ -334,5 +355,10 @@ describe('LineageNew', () => {
     expect(screen.getByTestId('background')).toBeInTheDocument();
     expect(screen.getByTestId('controls')).toBeInTheDocument();
     expect(screen.getByTestId('minimap')).toBeInTheDocument();
+
+    // Wait for async updates to complete to avoid act warnings
+    await waitFor(() => {
+      expect(mockFetchSources).toHaveBeenCalled();
+    });
   });
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
+import { futureFlags } from '../router-config';
 import { WorksheetProvider, useWorksheets } from './WorksheetContext';
 import { URLProvider } from '../contexts/URLContext';
 import * as worksheetApi from '../api/worksheet';
@@ -90,7 +91,7 @@ const TestComponent = () => {
 // Wrap component with necessary providers
 const renderWithProviders = ui => {
   return render(
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter future={futureFlags}>
       <URLProvider environment="server">
         <WorksheetProvider>{ui}</WorksheetProvider>
       </URLProvider>

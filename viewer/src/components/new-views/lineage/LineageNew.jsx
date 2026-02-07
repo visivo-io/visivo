@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
-import { useLineageDag } from './useLineageDag';
+import { useLineageDag, computeLayout } from './useLineageDag';
 import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
@@ -60,6 +60,7 @@ const LineageNew = () => {
   const [createObjectType, setCreateObjectType] = useState('source');
   const [selector, setSelector] = useState('');
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
   // Navigation stack helpers
   // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
@@ -80,7 +81,6 @@ const LineageNew = () => {
   const canGoBack = editStack.length > 1;
 
   const reactFlowInstance = useRef(null);
-  const hasFitView = useRef(false);
 
   // Note: Individual save functions are now handled by useObjectSave hook
 
@@ -226,14 +226,20 @@ const LineageNew = () => {
     [selector, dagNodes, dagEdges, parseSelector]
   );
 
-  // Filter and add onEdit handler + isEditing state to each node's data
-  const nodes = useMemo(() => {
-    return dagNodes
+  // Filter nodes and edges, recompute layout with only visible items, and add handlers
+  const { nodes, edges } = useMemo(() => {
+    // Safety check: ensure dagNodes and dagEdges are arrays
+    if (!Array.isArray(dagNodes) || !Array.isArray(dagEdges)) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Filter to selected nodes first
+    const filteredNodes = dagNodes
       .filter(node => selectedIds.has(node.id))
       .map(node => {
         // Determine if this node is currently being edited (check the top of the stack)
-        const objectType = node.data.objectType;
-        const nodeName = node.data.name;
+        const objectType = node.data?.objectType;
+        const nodeName = node.data?.name;
         const isEditing = currentEdit?.type === objectType && currentEdit?.object?.name === nodeName;
 
         return {
@@ -252,31 +258,57 @@ const LineageNew = () => {
           },
         };
       });
-  }, [dagNodes, selectedIds, currentEdit, clearEdit, pushEdit]);
 
-  // Set of node IDs that will actually be rendered (only real nodes, no phantom IDs)
-  const visibleNodeIds = useMemo(() => {
-    const ids = new Set();
-    dagNodes.forEach(n => {
-      if (selectedIds.has(n.id)) ids.add(n.id);
-    });
-    return ids;
-  }, [dagNodes, selectedIds]);
+    // Filter edges to only show edges between visible nodes
+    const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredEdges = dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
 
-  // Filter edges to only show edges between visible nodes
-  const edges = useMemo(() => {
-    return dagEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
-  }, [dagEdges, visibleNodeIds]);
+    // Recompute layout with only the filtered nodes and edges
+    // Pass fixedNode to keep clicked node in place
+    let layoutNodes = filteredNodes;
+    try {
+      layoutNodes = computeLayout(filteredNodes, filteredEdges, fixedNode);
+    } catch (error) {
+      console.error('Error computing layout:', error);
+      // Fall back to using filteredNodes without layout if computation fails
+    }
 
-  // Fit view once when initial data load completes
+    return { nodes: layoutNodes || [], edges: filteredEdges || [] };
+  }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit, fixedNode]);
+
+  // Fit view when initial data loads OR when selector changes (and we have nodes to show)
   useEffect(() => {
-    if (initialLoadDone && nodes.length > 0 && reactFlowInstance.current && !hasFitView.current) {
+    if (initialLoadDone && nodes?.length > 0 && reactFlowInstance.current) {
       setTimeout(() => {
-        reactFlowInstance.current.fitView({ padding: 0.2 });
-        hasFitView.current = true;
+        reactFlowInstance.current.fitView({
+          padding: 0.2,
+          duration: 800, // Smooth 800ms animation
+        });
       }, 100);
     }
-  }, [initialLoadDone, nodes.length]);
+  }, [initialLoadDone, nodes?.length, selector]);
+
+  // Global keyboard handler for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // Don't clear if user is typing in an input/textarea (except the selector input itself)
+        const target = e.target;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+        // If there's a selector active and we're not in the edit panel, clear it
+        if (selector && !isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelector('');
+          setFixedNode(null);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selector]);
 
   // Node types for React Flow
   const nodeTypes = useMemo(
@@ -298,13 +330,17 @@ const LineageNew = () => {
     []
   );
 
-  // Handle node click - open edit panel for the clicked node
+  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants)
   const handleNodeClick = useCallback((event, node) => {
-    const objectType = node.data.objectType;
-    const objectData = node.data[objectType]; // e.g., node.data.model, node.data.source, etc.
-    clearEdit();
-    pushEdit(objectType, objectData);
-  }, [clearEdit, pushEdit]);
+    const nodeName = node.data.name;
+    // Store the node's current position so it doesn't jump during layout recomputation
+    setFixedNode({
+      id: node.id,
+      position: node.position,
+    });
+    // Set selector to +name+ to show the node and all its dependencies
+    setSelector(`+${nodeName}+`);
+  }, []);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
@@ -403,13 +439,34 @@ const LineageNew = () => {
     <div className="flex flex-col h-[calc(100vh-48px)]">
       {/* Selector input bar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
-        <Button variant="secondary" size="sm" onClick={() => setSelector('')} disabled={!selector}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setSelector('');
+            setFixedNode(null);
+          }}
+          disabled={!selector}
+        >
           Clear
         </Button>
         <input
           type="text"
           value={selector}
-          onChange={e => setSelector(e.target.value)}
+          onChange={e => {
+            setSelector(e.target.value);
+            // Clear fixed node when manually editing selector
+            if (fixedNode) setFixedNode(null);
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelector('');
+              setFixedNode(null);
+              e.target.blur(); // Remove focus after clearing
+            }
+          }}
           placeholder="e.g., 'source_name', 'model_name', or '+name+'"
           className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         />
@@ -446,7 +503,7 @@ const LineageNew = () => {
           )}
 
           {/* No matches state */}
-          {initialLoadDone && dagNodes.length > 0 && nodes.length === 0 && (
+          {initialLoadDone && dagNodes.length > 0 && nodes?.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
               <div className="text-gray-400 text-lg mb-2">No matching objects</div>
               <div className="text-gray-400 text-sm">Try a different selector or click Clear</div>
@@ -455,8 +512,8 @@ const LineageNew = () => {
 
           {/* React Flow DAG */}
           <ReactFlow
-            nodes={initialLoadDone ? nodes : []}
-            edges={initialLoadDone ? edges : []}
+            nodes={initialLoadDone ? (nodes || []) : []}
+            edges={initialLoadDone ? (edges || []) : []}
             nodeTypes={nodeTypes}
             onNodeClick={handleNodeClick}
             onConnect={handleConnect}
@@ -468,6 +525,7 @@ const LineageNew = () => {
             maxZoom={2}
             style={{ background: '#f8fafc' }}
             deleteKeyCode={['Backspace', 'Delete']}
+            defaultEdgeOptions={{ animated: true }}
           >
             <Background color="#e2e8f0" gap={16} />
             <Controls />

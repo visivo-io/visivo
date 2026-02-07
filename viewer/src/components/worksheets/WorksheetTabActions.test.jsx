@@ -5,6 +5,7 @@ import WorksheetTabActions from './WorksheetTabActions';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
 import { URLProvider } from '../../contexts/URLContext';
 import { BrowserRouter } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 import * as worksheetApi from '../../api/worksheet';
 
 // Mock API calls
@@ -12,7 +13,7 @@ jest.mock('../../api/worksheet');
 
 // Test wrapper component
 const TestWrapper = ({ children }) => (
-  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+  <BrowserRouter future={futureFlags}>
     <URLProvider environment="server">
       <WorksheetProvider>{children}</WorksheetProvider>
     </URLProvider>

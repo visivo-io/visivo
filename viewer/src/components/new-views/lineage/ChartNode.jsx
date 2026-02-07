@@ -1,5 +1,6 @@
 import React from 'react';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { getEmbeddedTypes, EmbeddedTypesIndicator } from '../common/EmbeddedTypesIndicator';
 import { StatusIndicator } from '../../styled/StatusIndicator';
 import { NodeHandle } from '../../styled/NodeHandle';
 import { NodeWrapper } from '../../styled/NodeWrapper';
@@ -38,6 +39,9 @@ const ChartNode = ({ data, selected }) => {
   const embeddedInsights = insights.filter(isEmbeddedObject);
   const hasEmbeddedObjects = embeddedInsights.length > 0;
 
+  // Get embedded types for small icon indicators (use full chart object)
+  const embeddedTypes = getEmbeddedTypes(chart || data, 'chart');
+
   return (
     <NodeWrapper isHighlighted={isHighlighted} colors={colors}>
       {/* Target handle (for incoming insight connections) */}
@@ -69,6 +73,9 @@ const ChartNode = ({ data, selected }) => {
           </div>
         )}
       </div>
+
+      {/* Embedded types indicator */}
+      <EmbeddedTypesIndicator types={embeddedTypes} />
 
       {/* Source handle (for outgoing connections to dashboards) */}
       <NodeHandle type="source" colors={colors} />

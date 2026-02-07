@@ -22,8 +22,8 @@ NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
 
 # Compiled pattern for checking if a name is valid
 # Valid names: lowercase, alphanumeric, underscore, and hyphen only
-# Must start with letter or underscore
-VALID_NAME_PATTERN = re.compile(r"^[a-z_][a-z0-9_-]*$")
+# Can start with letter, underscore, or digit
+VALID_NAME_PATTERN = re.compile(r"^[a-z0-9_][a-z0-9_-]*$")
 
 
 def is_valid_name(name: str) -> bool:
@@ -32,7 +32,7 @@ def is_valid_name(name: str) -> bool:
 
     Valid names must:
     - Be lowercase
-    - Start with a letter or underscore
+    - Start with a letter, digit, or underscore
     - Contain only alphanumeric characters, underscores, and hyphens
 
     Args:
@@ -54,7 +54,6 @@ def normalize_name(name: str) -> str:
     - Replace any character that isn't alphanumeric, underscore, or hyphen with hyphen
     - Collapse multiple consecutive hyphens into one
     - Strip leading and trailing hyphens
-    - If starts with a digit, prefix with underscore
 
     Args:
         name: The name to normalize
@@ -71,6 +70,8 @@ def normalize_name(name: str) -> str:
         "orders-2024"
         >>> normalize_name("user.name")
         "user-name"
+        >>> normalize_name("3D Scatter")
+        "3d-scatter"
     """
     # Insert underscore before uppercase letters (for camelCase/PascalCase)
     result = re.sub(r"([a-z])([A-Z])", r"\1_\2", name)
@@ -86,10 +87,6 @@ def normalize_name(name: str) -> str:
 
     # Strip leading and trailing hyphens
     result = result.strip("-")
-
-    # If starts with digit, prefix with underscore
-    if result and result[0].isdigit():
-        result = "_" + result
 
     return result
 

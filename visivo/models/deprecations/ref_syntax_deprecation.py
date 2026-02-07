@@ -8,8 +8,10 @@ from pydantic import BaseModel as PydanticBaseModel
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
+    MigrationAction,
 )
-from visivo.query.patterns import REF_PROPERTY_PATTERN
+from visivo.query.patterns import REF_PROPERTY_PATTERN, REF_FUNCTION_PATTERN
+from visivo.utils import list_all_ymls_in_dir
 
 if TYPE_CHECKING:
     from visivo.models.project import Project
@@ -83,3 +85,62 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
             removal_version=self.REMOVAL_VERSION,
             location=location or "",
         )
+
+    def can_migrate(self) -> bool:
+        """This checker supports automatic migration."""
+        return True
+
+    def get_migrations_from_files(self, working_dir: str) -> List[MigrationAction]:
+        """
+        Scan YAML files for bare ref(name) patterns and return migrations.
+
+        Finds ref(...) patterns that are NOT inside ${...} context strings
+        and wraps them with ${ }.
+        """
+        migrations = []
+
+        # Pattern to find ref(...) - using REF_FUNCTION_PATTERN without anchors
+        ref_pattern = re.compile(REF_FUNCTION_PATTERN)
+
+        # Pattern to detect if we're inside a context string ${...}
+        # This matches the opening ${ before a ref
+        context_start_pattern = r"\$\{\s*$"
+
+        for file_path in list_all_ymls_in_dir(working_dir):
+            try:
+                with open(file_path, "r") as f:
+                    content = f.read()
+
+                # Find all ref(...) matches
+                for match in ref_pattern.finditer(content):
+                    ref_text = match.group(0)
+                    start_pos = match.start()
+
+                    # Check if this ref is already inside a context string
+                    # Look at the text immediately before the match (up to 20 chars back)
+                    prefix_start = max(0, start_pos - 20)
+                    prefix = content[prefix_start:start_pos]
+
+                    # If the prefix ends with "${" (with optional whitespace), skip this ref
+                    # as it's already in a context string
+                    if re.search(context_start_pattern, prefix):
+                        continue
+
+                    # This is a bare ref that needs migration
+                    old_text = ref_text
+                    new_text = f"${{{ref_text}}}"
+
+                    migrations.append(
+                        MigrationAction(
+                            file_path=str(file_path),
+                            old_text=old_text,
+                            new_text=new_text,
+                            description="bare ref to context string",
+                        )
+                    )
+
+            except Exception:
+                # Skip files that can't be read
+                continue
+
+        return migrations
