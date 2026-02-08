@@ -7,16 +7,32 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
+import useStore from '../../stores/store';
+
+/**
+ * Resolve a chart reference to its full config.
+ * Handles both string references (chart names) and legacy embedded objects.
+ */
+const resolveChart = (chartRef, getChartByName) => {
+  if (!chartRef) return null;
+  // If it's a string, look up from store
+  if (typeof chartRef === 'string') {
+    const chart = getChartByName(chartRef);
+    return chart?.config || null;
+  }
+  // Legacy: If it's already an object, use it directly
+  return chartRef;
+};
 
 /**
  * Collect all insight names from visible rows for centralized prefetching.
  * This enables a single useInsightsData call instead of N calls from individual Charts/Tables.
  */
-const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
+const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartByName) => {
   const insightNames = new Set();
   for (const rowIndex of visibleRowIndices) {
     const row = rows[rowIndex];
@@ -24,7 +40,9 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
     for (const item of row.items) {
       // Only collect from items that will be rendered
       if (shouldShowItem && !shouldShowItem(item)) continue;
-      item.chart?.insights?.forEach(i => insightNames.add(i.name));
+      // Resolve chart reference if needed
+      const chart = resolveChart(item.chart, getChartByName);
+      chart?.insights?.forEach(i => insightNames.add(i.name));
       item.table?.insights?.forEach(i => insightNames.add(i.name));
     }
   }
@@ -53,6 +71,15 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+
+  // Chart store access
+  const fetchCharts = useStore(state => state.fetchCharts);
+  const getChartByName = useStore(state => state.getChartByName);
+
+  // Fetch charts on mount
+  useEffect(() => {
+    fetchCharts();
+  }, [fetchCharts]);
 
   // Viewport-based loading: Track which rows are visible
   const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
@@ -150,8 +177,8 @@ const Dashboard = ({ project, dashboardName }) => {
   // Centralized insight prefetching: Collect all insight names from visible rows
   // and load them in a single batch. Charts/Tables read from Zustand store.
   const visibleInsightNames = useMemo(
-    () => collectInsightNames(dashboard.rows, [...visibleRows], shouldShowItem),
-    [dashboard.rows, visibleRows, shouldShowItem]
+    () => collectInsightNames(dashboard.rows, [...visibleRows], shouldShowItem, getChartByName),
+    [dashboard.rows, visibleRows, shouldShowItem, getChartByName]
   );
 
   // Single combined fetch for all visible insights (stores results in Zustand)
@@ -235,9 +262,20 @@ const Dashboard = ({ project, dashboardName }) => {
         ></Selector>
       );
     } else if (item.chart) {
+      const chart = resolveChart(item.chart, getChartByName);
+      if (!chart) {
+        return (
+          <div
+            key={`dashboardRow${rowIndex}Item${itemIndex}`}
+            className="flex items-center justify-center h-full text-gray-500 text-sm"
+          >
+            Chart not found: {typeof item.chart === 'string' ? item.chart : 'unknown'}
+          </div>
+        );
+      }
       return (
         <Chart
-          chart={item.chart}
+          chart={chart}
           project={project}
           height={getHeight(row.height) - 8}
           width={getWidth(items, item)}
