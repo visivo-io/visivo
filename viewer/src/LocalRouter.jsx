@@ -13,6 +13,7 @@ import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
+import ProjectNew from './components/new-views/project/ProjectNew';
 import DataTablePreview from './components/explorerNew/DataTablePreview';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
@@ -78,6 +79,18 @@ const LocalRouter = createBrowserRouter(
           element={<EditorNew />}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor-new">Editor (New)</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="project-new"
+          path="/project-new/:dashboardName"
+          element={<ProjectNew />}
+          handle={{
+            crumb: match => (
+              <BreadcrumbLink to={`/project-new/${match.params.dashboardName}`}>
+                {match.params.dashboardName} (New)
+              </BreadcrumbLink>
+            ),
           }}
         />
         <Route

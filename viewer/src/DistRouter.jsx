@@ -3,6 +3,7 @@ import { Route, createBrowserRouter, createRoutesFromElements } from 'react-rout
 import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
 import ProjectContainer from './components/project/ProjectContainer';
+import ProjectNew from './components/new-views/project/ProjectNew';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
@@ -57,6 +58,18 @@ const DistRouter = createBrowserRouter(
           }}
         />
       </Route>
+      <Route
+        id="project-new"
+        path="project-new/:dashboardName"
+        element={<ProjectNew />}
+        handle={{
+          crumb: match => (
+            <BreadcrumbLink to={`/project-new/${match.params.dashboardName}`}>
+              {match.params.dashboardName} (New)
+            </BreadcrumbLink>
+          ),
+        }}
+      />
     </Route>
   ),
   {
