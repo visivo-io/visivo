@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import ProjectNew from './ProjectNew';
+import { BrowserRouter } from 'react-router-dom';
+import DashboardNew from './DashboardNew';
 import useStore from '../../../stores/store';
 
 // Mock the stores
@@ -10,7 +10,6 @@ jest.mock('../../../stores/store');
 // Mock react-router-dom hooks
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: () => ({ dashboardName: 'test-dashboard' }),
   useSearchParams: () => [new URLSearchParams(), jest.fn()],
 }));
 
@@ -60,8 +59,9 @@ jest.mock('../../items/Input', () => ({
   default: ({ input }) => <div data-testid="input">{input.name || 'Input'}</div>,
 }));
 
-describe('ProjectNew', () => {
+describe('DashboardNew', () => {
   const mockProject = { id: 'project-1', name: 'Test Project' };
+  const dashboardName = 'test-dashboard';
 
   const mockDashboard = {
     name: 'test-dashboard',
@@ -123,9 +123,7 @@ describe('ProjectNew', () => {
 
     render(
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectNew />} />
-        </Routes>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
 
@@ -152,9 +150,7 @@ describe('ProjectNew', () => {
 
     render(
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectNew />} />
-        </Routes>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
 
@@ -164,9 +160,7 @@ describe('ProjectNew', () => {
   it('renders chart when found in store', () => {
     render(
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectNew />} />
-        </Routes>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
 
@@ -193,9 +187,7 @@ describe('ProjectNew', () => {
 
     render(
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectNew />} />
-        </Routes>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
 
@@ -228,9 +220,7 @@ describe('ProjectNew', () => {
 
     render(
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProjectNew />} />
-        </Routes>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
 

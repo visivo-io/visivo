@@ -1,6 +1,23 @@
-# ProjectNew Component
+# ProjectNew & DashboardNew Components
 
 A new project view that pulls data from individual stores instead of `project_json`, enabling draft/published workflows.
+
+## Architecture
+
+The new project view follows a two-component pattern (like the original):
+
+### ProjectNew (Container Component)
+- Fetches dashboards from the dashboard store
+- Gets project from the store
+- Transforms dashboards for navigation
+- Passes data to DashboardNew
+- Similar role to `ProjectContainer`
+
+### DashboardNew (Presentation Component)
+- Receives `project`, `dashboardName`, and `dashboards` as props
+- Fetches charts, tables, markdowns, inputs from their stores
+- Renders dashboard layout with items resolved from stores
+- Similar role to `Dashboard` but uses stores instead of `project_json`
 
 ## Features
 

@@ -13,7 +13,7 @@ import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
-import ProjectNew from './components/new-views/project/ProjectNew';
+import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
 import DataTablePreview from './components/explorerNew/DataTablePreview';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 

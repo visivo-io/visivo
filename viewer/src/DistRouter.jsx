@@ -3,7 +3,7 @@ import { Route, createBrowserRouter, createRoutesFromElements } from 'react-rout
 import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
 import ProjectContainer from './components/project/ProjectContainer';
-import ProjectNew from './components/new-views/project/ProjectNew';
+import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
