@@ -26,6 +26,7 @@ class ModelQueryJob:
 
     def __init__(self, job_id: str, config: Dict[str, Any]):
         self.job_id = job_id
+        self.run_id: Optional[str] = None
         self.config = config
         self.config_hash = self._compute_config_hash(config)
         self.status = RunStatus.QUEUED
@@ -47,6 +48,7 @@ class ModelQueryJob:
         """Serialize job to dictionary"""
         data = {
             "job_id": self.job_id,
+            "run_id": self.run_id,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
@@ -190,6 +192,19 @@ class ModelQueryJobManager:
                 job.completed_at = datetime.now()
 
         Logger.instance().debug(f"Job {job_id} result set and marked as completed")
+
+    def set_run_id(self, job_id: str, run_id: str) -> None:
+        """
+        Set the run_id for a job (semantic identifier for FilteredRunner).
+
+        Args:
+            job_id: Job identifier
+            run_id: Semantic run ID (e.g., "query-temp_query_abc123")
+        """
+        with self._jobs_lock:
+            job = self._jobs.get(job_id)
+            if job:
+                job.run_id = run_id
 
     def cancel_job(self, job_id: str):
         """

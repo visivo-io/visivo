@@ -290,3 +290,58 @@ class TestModelQueryJobsViews:
             job = job_manager.get_job(job_id)
             assert job.config["source_name"] == "my_source"
             assert job.config["sql"] == "SELECT 1"
+
+    def test_run_id_in_response(self, client, app):
+        """Test that run_id is included in job status response after execution."""
+        output_dir = app.output_dir
+
+        def mock_runner_run(self):
+            job_id = self.run_id.replace("query-temp_query_", "")
+            model_name = f"temp_query_{job_id}"
+            model_hash = alpha_hash(model_name)
+
+            parquet_dir = os.path.join(self.output_dir, self.run_id, "files")
+            os.makedirs(parquet_dir, exist_ok=True)
+            parquet_path = os.path.join(parquet_dir, f"{model_hash}.parquet")
+
+            df = pl.DataFrame({"id": [1]})
+            df.write_parquet(parquet_path)
+
+        with patch("visivo.server.jobs.model_query_job_executor.FilteredRunner") as MockRunner:
+            MockRunner.side_effect = lambda **kwargs: type(
+                "MockRunner",
+                (),
+                {
+                    "run": lambda self: mock_runner_run(
+                        type(
+                            "obj",
+                            (),
+                            {"output_dir": kwargs["output_dir"], "run_id": kwargs["run_id"]},
+                        )()
+                    ),
+                    "output_dir": kwargs["output_dir"],
+                    "run_id": kwargs["run_id"],
+                },
+            )()
+
+            start_response = client.post(
+                "/api/model-query-jobs/",
+                json={"source_name": "test_source", "sql": "SELECT 1"},
+                content_type="application/json",
+            )
+            assert start_response.status_code == 202
+            job_id = start_response.get_json()["job_id"]
+
+            max_attempts = 50
+            for _ in range(max_attempts):
+                status_response = client.get(f"/api/model-query-jobs/{job_id}/")
+                data = status_response.get_json()
+                if data["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.1)
+
+            assert data["status"] == "completed"
+            assert "run_id" in data
+            assert data["run_id"] is not None
+            assert data["run_id"].startswith("query-temp_query_")
+            assert job_id[:8] in data["run_id"]

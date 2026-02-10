@@ -72,6 +72,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
         )
 
         run_id = f"query-{temp_model_name}"
+        job_manager.set_run_id(job_id, run_id)
 
         job_manager.update_status(
             job_id,
