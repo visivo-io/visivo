@@ -337,3 +337,18 @@ class Project(NamedModel, ParentModel):
                     if name:
                         names.append(name)
                 Project.traverse_names(names, child_item)
+
+    def find_source(self, source_name: str):
+        """
+        Find a source by name.
+
+        Args:
+            source_name: The name of the source to find
+
+        Returns:
+            The source object if found, None otherwise
+        """
+        for source in self.sources or []:
+            if hasattr(source, "name") and source.name == source_name:
+                return source
+        return None
