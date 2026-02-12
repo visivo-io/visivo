@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  PiDatabase,
-  PiFolder,
   PiTable,
   PiColumns,
   PiHardDrives,
   PiSpinner,
   PiMagnifyingGlass,
+  PiArrowClockwise,
 } from 'react-icons/pi';
 import SchemaTreeNode from './SchemaTreeNode';
 import {
-  fetchAllSources,
-  fetchDatabases,
-  fetchSchemas,
-  fetchTables,
-  fetchColumns,
-} from '../../../api/sources';
+  fetchSourceSchemaJobs,
+  fetchSourceTables,
+  fetchTableColumns,
+  generateSourceSchema,
+  fetchSchemaGenerationStatus,
+} from '../../../api/sourceSchemaJobs';
 
 const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
   const [sources, setSources] = useState([]);
@@ -24,13 +23,15 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
   const [loadedData, setLoadedData] = useState({});
   const [loadingNodes, setLoadingNodes] = useState(new Set());
   const [sourcesLoading, setSourcesLoading] = useState(true);
+  const [generatingSchemas, setGeneratingSchemas] = useState(new Map());
+  const [schemaErrors, setSchemaErrors] = useState(new Map());
 
   useEffect(() => {
     const loadSources = async () => {
       setSourcesLoading(true);
       try {
-        const data = await fetchAllSources();
-        setSources(data.sources || []);
+        const data = await fetchSourceSchemaJobs();
+        setSources(data || []);
       } catch (err) {
         console.error('Failed to load sources:', err);
       } finally {
@@ -38,6 +39,76 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       }
     };
     loadSources();
+  }, []);
+
+  const handleGenerateSchema = useCallback(async (sourceName, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    setGeneratingSchemas(prev => new Map(prev).set(sourceName, { status: 'starting' }));
+    setSchemaErrors(prev => {
+      const next = new Map(prev);
+      next.delete(sourceName);
+      return next;
+    });
+
+    try {
+      const { run_instance_id: jobId } = await generateSourceSchema(sourceName);
+
+      const pollForCompletion = async () => {
+        const maxWaitTime = 120000;
+        const pollInterval = 2000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitTime) {
+          const status = await fetchSchemaGenerationStatus(jobId);
+
+          setGeneratingSchemas(prev =>
+            new Map(prev).set(sourceName, {
+              status: status.status,
+              progress: status.progress || 0,
+              message: status.progress_message || '',
+            })
+          );
+
+          if (status.status === 'completed') {
+            setGeneratingSchemas(prev => {
+              const next = new Map(prev);
+              next.delete(sourceName);
+              return next;
+            });
+
+            const updatedSources = await fetchSourceSchemaJobs();
+            setSources(updatedSources || []);
+
+            const sourceKey = `source::${sourceName}`;
+            const tables = await fetchSourceTables(sourceName);
+            setLoadedData(prev => ({ ...prev, [sourceKey]: tables }));
+            setExpandedNodes(prev => new Set(prev).add(sourceKey));
+            return;
+          }
+
+          if (status.status === 'failed') {
+            throw new Error(status.error || 'Schema generation failed');
+          }
+
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
+        }
+
+        throw new Error('Schema generation timed out');
+      };
+
+      await pollForCompletion();
+    } catch (error) {
+      setGeneratingSchemas(prev => {
+        const next = new Map(prev);
+        next.delete(sourceName);
+        return next;
+      });
+      setSchemaErrors(prev => new Map(prev).set(sourceName, error.message));
+      console.error(`Failed to generate schema for ${sourceName}:`, error);
+    }
   }, []);
 
   const toggleNode = useCallback(
@@ -61,6 +132,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
           setLoadedData(prev => ({ ...prev, [nodeKey]: data }));
         } catch (error) {
           console.error(`Error loading ${nodeKey}:`, error);
+          setLoadedData(prev => ({ ...prev, [nodeKey]: { error: error.message } }));
         } finally {
           setLoadingNodes(prev => {
             const next = new Set(prev);
@@ -87,10 +159,9 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       const query = searchQuery.toLowerCase();
       for (const [key, data] of Object.entries(loadedData)) {
         if (!key.startsWith(nodeKeyPrefix)) continue;
-        if (data.databases?.some(db => db.name.toLowerCase().includes(query))) return true;
-        if (data.schemas?.some(s => s.name.toLowerCase().includes(query))) return true;
-        if (data.tables?.some(t => t.name.toLowerCase().includes(query))) return true;
-        if (data.columns?.some(c => c.name.toLowerCase().includes(query))) return true;
+        if (Array.isArray(data)) {
+          if (data.some(item => item.name?.toLowerCase().includes(query))) return true;
+        }
       }
       return false;
     },
@@ -101,27 +172,25 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
     nodeKey => {
       const data = loadedData[nodeKey];
       if (!data) return null;
-      if (data.status === 'connection_failed' && data.error) return data.error;
-      if (data.error && !data.databases && !data.schemas && !data.tables && !data.columns)
-        return data.error;
+      if (data.error) return data.error;
       return null;
     },
     [loadedData]
   );
 
   const renderColumns = useCallback(
-    columns => {
-      if (!columns) return null;
+    (columns, tableName) => {
+      if (!columns || !Array.isArray(columns)) return null;
       return columns
         .filter(col => matchesSearch(col.name))
         .map(col => (
           <SchemaTreeNode
-            key={`col-${col.name}`}
+            key={`col-${tableName}-${col.name}`}
             icon={<PiColumns size={14} />}
             label={col.name}
             type="column"
             badge={col.type}
-            level={5}
+            level={2}
           />
         ));
     },
@@ -129,17 +198,19 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
   );
 
   const renderTables = useCallback(
-    (sourceName, dbName, schemaName, tablesKey, tableLevel) => {
-      const data = loadedData[tablesKey];
-      if (!data || !data.tables) return null;
+    (sourceName, sourceKey) => {
+      const data = loadedData[sourceKey];
+      if (!data || data.error) return null;
 
-      return data.tables
+      const tables = Array.isArray(data) ? data : [];
+
+      return tables
         .filter(table => {
-          const colKey = `${tablesKey}::table::${table.name}`;
+          const colKey = `${sourceKey}::table::${table.name}`;
           return matchesSearch(table.name) || hasLoadedMatch(colKey);
         })
         .map(table => {
-          const colKey = `${tablesKey}::table::${table.name}`;
+          const colKey = `${sourceKey}::table::${table.name}`;
           const colError = getNodeError(colKey);
           return (
             <SchemaTreeNode
@@ -150,14 +221,10 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
               isExpanded={expandedNodes.has(colKey)}
               isLoading={loadingNodes.has(colKey)}
               errorMessage={colError}
-              onClick={() =>
-                toggleNode(colKey, () => fetchColumns(sourceName, dbName, table.name, schemaName))
-              }
+              onClick={() => toggleNode(colKey, () => fetchTableColumns(sourceName, table.name))}
               onDoubleClick={() =>
                 onTableSelect?.({
                   sourceName,
-                  database: dbName,
-                  schema: schemaName,
                   table: table.name,
                 })
               }
@@ -167,15 +234,13 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
                   onClick: () =>
                     onCreateModel?.({
                       sourceName,
-                      database: dbName,
-                      schema: schemaName,
                       table: table.name,
                     }),
                 },
               ]}
-              level={tableLevel}
+              level={1}
             >
-              {renderColumns(loadedData[colKey]?.columns)}
+              {renderColumns(loadedData[colKey], table.name)}
             </SchemaTreeNode>
           );
         });
@@ -194,129 +259,84 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
     ]
   );
 
-  const renderSchemas = useCallback(
-    (sourceName, dbName, dbKey) => {
-      const data = loadedData[dbKey];
-      if (!data || data.error) return null;
-
-      if (data.has_schemas === false) {
-        const tablesKey = `${dbKey}::tables`;
-        return renderTables(sourceName, dbName, null, tablesKey, 3);
-      }
-
-      if (!data.schemas) return null;
-
-      return data.schemas
-        .filter(schema => {
-          const schemaKey = `${dbKey}::schema::${schema.name}`;
-          const tablesKey = `${schemaKey}::tables`;
-          return matchesSearch(schema.name) || hasLoadedMatch(tablesKey);
-        })
-        .map(schema => {
-          const schemaKey = `${dbKey}::schema::${schema.name}`;
-          const tablesKey = `${schemaKey}::tables`;
-          const tablesError = getNodeError(tablesKey);
-          return (
-            <SchemaTreeNode
-              key={schemaKey}
-              icon={<PiFolder size={14} />}
-              label={schema.name}
-              type="schema"
-              isExpanded={expandedNodes.has(schemaKey)}
-              isLoading={loadingNodes.has(schemaKey)}
-              errorMessage={tablesError}
-              onClick={() => {
-                toggleNode(schemaKey);
-                if (!expandedNodes.has(schemaKey) && !loadedData[tablesKey]) {
-                  toggleNode(tablesKey, () => fetchTables(sourceName, dbName, schema.name));
-                }
-              }}
-              level={3}
-            >
-              {renderTables(sourceName, dbName, schema.name, tablesKey, 4)}
-            </SchemaTreeNode>
-          );
-        });
-    },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, hasLoadedMatch, renderTables, getNodeError]
-  );
-
-  const renderDatabases = useCallback(
-    (sourceName, sourceKey) => {
-      const data = loadedData[sourceKey];
-      if (!data || !data.databases) return null;
-
-      return data.databases
-        .filter(db => {
-          const dbKey = `${sourceKey}::db::${db.name}`;
-          return matchesSearch(db.name) || hasLoadedMatch(dbKey);
-        })
-        .map(db => {
-          const dbKey = `${sourceKey}::db::${db.name}`;
-          const dbError = getNodeError(dbKey);
-          return (
-            <SchemaTreeNode
-              key={dbKey}
-              icon={<PiDatabase size={14} />}
-              label={db.name}
-              type="database"
-              isExpanded={expandedNodes.has(dbKey)}
-              isLoading={loadingNodes.has(dbKey)}
-              errorMessage={dbError}
-              onClick={() =>
-                toggleNode(dbKey, async () => {
-                  const schemasData = await fetchSchemas(sourceName, db.name);
-                  if (schemasData && schemasData.has_schemas === false) {
-                    const tablesKey = `${dbKey}::tables`;
-                    const tablesData = await fetchTables(sourceName, db.name, null);
-                    if (tablesData) {
-                      setLoadedData(prev => ({ ...prev, [tablesKey]: tablesData }));
-                    }
-                  }
-                  return schemasData;
-                })
-              }
-              level={2}
-            >
-              {renderSchemas(sourceName, db.name, dbKey)}
-            </SchemaTreeNode>
-          );
-        });
-    },
-    [loadedData, expandedNodes, loadingNodes, toggleNode, matchesSearch, hasLoadedMatch, renderSchemas, getNodeError]
-  );
-
   const filteredSources = useMemo(
     () =>
       sources.filter(source => {
-        const sourceKey = `source::${source.name}`;
-        return matchesSearch(source.name) || hasLoadedMatch(sourceKey);
+        const sourceKey = `source::${source.source_name}`;
+        return matchesSearch(source.source_name) || hasLoadedMatch(sourceKey);
       }),
     [sources, matchesSearch, hasLoadedMatch]
   );
 
   const renderSources = useCallback(() => {
     return filteredSources.map(source => {
-      const sourceKey = `source::${source.name}`;
-      const errorMsg = getNodeError(sourceKey);
+      const sourceKey = `source::${source.source_name}`;
+      const errorMsg = getNodeError(sourceKey) || schemaErrors.get(source.source_name);
+      const generationStatus = generatingSchemas.get(source.source_name);
+      const isGenerating = !!generationStatus;
+      const hasCachedSchema = source.has_cached_schema;
+
+      const getBadge = () => {
+        if (isGenerating) {
+          return generationStatus.message || 'Generating...';
+        }
+        if (source.total_tables !== undefined && source.total_tables !== null) {
+          return `${source.total_tables} tables`;
+        }
+        return null;
+      };
+
+      const getActions = () => {
+        if (hasCachedSchema && !isGenerating) {
+          return [
+            {
+              label: 'Refresh Schema',
+              icon: <PiArrowClockwise size={12} />,
+              onClick: e => handleGenerateSchema(source.source_name, e),
+            },
+          ];
+        }
+        return [];
+      };
+
       return (
         <SchemaTreeNode
           key={sourceKey}
           icon={<PiHardDrives size={14} />}
-          label={source.name}
+          label={source.source_name}
           type="source"
-          badge={source.status !== 'PUBLISHED' ? source.status : undefined}
+          badge={getBadge()}
           isExpanded={expandedNodes.has(sourceKey)}
-          isLoading={loadingNodes.has(sourceKey)}
+          isLoading={loadingNodes.has(sourceKey) || isGenerating}
           errorMessage={errorMsg}
-          onClick={() => toggleNode(sourceKey, () => fetchDatabases(source.name))}
+          onClick={() => {
+            if (isGenerating) {
+              return;
+            }
+            if (!hasCachedSchema) {
+              handleGenerateSchema(source.source_name);
+              return;
+            }
+            toggleNode(sourceKey, () => fetchSourceTables(source.source_name));
+          }}
+          actions={getActions()}
           level={0}
         >
-          {renderDatabases(source.name, sourceKey)}
+          {renderTables(source.source_name, sourceKey)}
         </SchemaTreeNode>
       );
     });
-  }, [filteredSources, expandedNodes, loadingNodes, toggleNode, renderDatabases, getNodeError]);
+  }, [
+    filteredSources,
+    expandedNodes,
+    loadingNodes,
+    toggleNode,
+    renderTables,
+    getNodeError,
+    generatingSchemas,
+    schemaErrors,
+    handleGenerateSchema,
+  ]);
 
   if (sourcesLoading) {
     return (

@@ -1,71 +1,63 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SchemaBrowser from './SchemaBrowser';
 import {
-  fetchAllSources,
-  fetchDatabases,
-  fetchSchemas,
-  fetchTables,
-  fetchColumns,
-} from '../../../api/sources';
+  fetchSourceSchemaJobs,
+  fetchSourceTables,
+  fetchTableColumns,
+  generateSourceSchema,
+  fetchSchemaGenerationStatus,
+} from '../../../api/sourceSchemaJobs';
 
-jest.mock('../../../api/sources');
+jest.mock('../../../api/sourceSchemaJobs');
 
 describe('SchemaBrowser', () => {
-  const mockSources = {
-    sources: [
-      { name: 'postgres_db', status: 'PUBLISHED', config: {} },
-      { name: 'snowflake_wh', status: 'NEW', config: {} },
-    ],
-  };
+  const mockSources = [
+    {
+      source_name: 'postgres_db',
+      source_type: 'postgresql',
+      has_cached_schema: true,
+      total_tables: 5,
+    },
+    {
+      source_name: 'snowflake_wh',
+      source_type: 'snowflake',
+      has_cached_schema: false,
+      total_tables: null,
+    },
+  ];
 
-  const mockDatabases = {
-    databases: [{ name: 'analytics' }],
-    status: 'connected',
-  };
+  const mockTables = [
+    { name: 'users', column_count: 8, metadata: {} },
+    { name: 'orders', column_count: 5, metadata: {} },
+  ];
 
-  const mockSchemasWithSchemas = {
-    schemas: [{ name: 'public' }, { name: 'staging' }],
-    has_schemas: true,
-  };
-
-  const mockSchemasNoSchemas = {
-    schemas: [],
-    has_schemas: false,
-  };
-
-  const mockTables = {
-    tables: [{ name: 'users' }, { name: 'orders' }],
-  };
-
-  const mockColumns = {
-    columns: [
-      { name: 'id', type: 'INTEGER' },
-      { name: 'email', type: 'VARCHAR' },
-    ],
-  };
+  const mockColumns = [
+    { name: 'id', type: 'INTEGER', nullable: false },
+    { name: 'email', type: 'VARCHAR', nullable: true },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchAllSources.mockResolvedValue(mockSources);
-    fetchDatabases.mockResolvedValue(mockDatabases);
-    fetchSchemas.mockResolvedValue(mockSchemasWithSchemas);
-    fetchTables.mockResolvedValue(mockTables);
-    fetchColumns.mockResolvedValue(mockColumns);
+    fetchSourceSchemaJobs.mockResolvedValue(mockSources);
+    fetchSourceTables.mockResolvedValue(mockTables);
+    fetchTableColumns.mockResolvedValue(mockColumns);
+    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-123' });
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1.0 });
   });
 
-  test('calls fetchAllSources on mount and renders source list', async () => {
+  test('calls fetchSourceSchemaJobs on mount and renders source list', async () => {
     render(<SchemaBrowser />);
 
-    expect(fetchAllSources).toHaveBeenCalledTimes(1);
+    expect(fetchSourceSchemaJobs).toHaveBeenCalledTimes(1);
     await screen.findByText('postgres_db');
     expect(screen.getByText('snowflake_wh')).toBeInTheDocument();
   });
 
   test('shows loading state while sources are being fetched', async () => {
     let resolvePromise;
-    fetchAllSources.mockReturnValue(
+    fetchSourceSchemaJobs.mockReturnValue(
       new Promise(resolve => {
         resolvePromise = resolve;
       })
@@ -83,7 +75,7 @@ describe('SchemaBrowser', () => {
   });
 
   test('shows "No sources configured" when sources array is empty', async () => {
-    fetchAllSources.mockResolvedValue({ sources: [] });
+    fetchSourceSchemaJobs.mockResolvedValue([]);
 
     render(<SchemaBrowser />);
 
@@ -102,90 +94,48 @@ describe('SchemaBrowser', () => {
     expect(screen.queryByText('snowflake_wh')).not.toBeInTheDocument();
   });
 
-  test('search for table name keeps parent source and database visible', async () => {
+  test('search for table name keeps parent source visible', async () => {
     render(<SchemaBrowser />);
 
     await screen.findByText('postgres_db');
 
-    // Expand source -> database -> schema -> tables
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
     await screen.findByText('users');
 
-    // Search for a table name
     const searchInput = screen.getByTestId('schema-search');
     fireEvent.change(searchInput, { target: { value: 'users' } });
 
-    // Parent source and database should still be visible
     expect(screen.getByText('postgres_db')).toBeInTheDocument();
-    expect(screen.getByText('analytics')).toBeInTheDocument();
     expect(screen.getByText('users')).toBeInTheDocument();
-    // Non-matching table should be hidden
     expect(screen.queryByText('orders')).not.toBeInTheDocument();
   });
 
-  test('clicking source expands it and calls fetchDatabases', async () => {
+  test('clicking source with cached schema expands it and calls fetchSourceTables', async () => {
     render(<SchemaBrowser />);
 
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
 
-    expect(fetchDatabases).toHaveBeenCalledWith('postgres_db');
-
-    await screen.findByText('analytics');
-  });
-
-  test('expanding database calls fetchSchemas', async () => {
-    render(<SchemaBrowser />);
-
-    await screen.findByText('postgres_db');
-
-    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-
-    expect(fetchSchemas).toHaveBeenCalledWith('postgres_db', 'analytics');
-  });
-
-  test('schema-less databases (has_schemas=false) show tables directly', async () => {
-    fetchSchemas.mockResolvedValue(mockSchemasNoSchemas);
-
-    render(<SchemaBrowser />);
-
-    await screen.findByText('postgres_db');
-
-    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
+    expect(fetchSourceTables).toHaveBeenCalledWith('postgres_db');
 
     await screen.findByText('users');
     expect(screen.getByText('orders')).toBeInTheDocument();
-    expect(fetchTables).toHaveBeenCalledWith('postgres_db', 'analytics', null);
   });
 
-  test('expanding schema calls fetchTables', async () => {
+  test('clicking source without cached schema triggers generation instead of fetching tables directly', async () => {
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'running', progress: 0.5 });
+
     render(<SchemaBrowser />);
 
-    await screen.findByText('postgres_db');
+    await screen.findByText('snowflake_wh');
 
-    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
+    fireEvent.click(screen.getByTestId('tree-node-source-snowflake_wh'));
 
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
-
-    await screen.findByText('users');
-    expect(fetchTables).toHaveBeenCalledWith('postgres_db', 'analytics', 'public');
+    await waitFor(() => {
+      expect(generateSourceSchema).toHaveBeenCalledWith('snowflake_wh');
+    });
+    expect(fetchSourceTables).not.toHaveBeenCalled();
   });
 
   test('table nodes show "Create Model" action button', async () => {
@@ -196,12 +146,6 @@ describe('SchemaBrowser', () => {
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
     await screen.findByText('users');
 
     const createModelButtons = screen.getAllByTestId('action-Create Model');
@@ -210,8 +154,6 @@ describe('SchemaBrowser', () => {
     fireEvent.click(createModelButtons[0]);
     expect(onCreateModel).toHaveBeenCalledWith({
       sourceName: 'postgres_db',
-      database: 'analytics',
-      schema: 'public',
       table: 'users',
     });
   });
@@ -224,40 +166,26 @@ describe('SchemaBrowser', () => {
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
     await screen.findByText('users');
 
     fireEvent.doubleClick(screen.getByTestId('tree-node-table-users'));
     expect(onTableSelect).toHaveBeenCalledWith({
       sourceName: 'postgres_db',
-      database: 'analytics',
-      schema: 'public',
       table: 'users',
     });
   });
 
-  test('expanding table calls fetchColumns', async () => {
+  test('expanding table calls fetchTableColumns', async () => {
     render(<SchemaBrowser />);
 
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
     await screen.findByText('users');
 
     fireEvent.click(screen.getByTestId('tree-node-table-users'));
 
-    expect(fetchColumns).toHaveBeenCalledWith('postgres_db', 'analytics', 'users', 'public');
+    expect(fetchTableColumns).toHaveBeenCalledWith('postgres_db', 'users');
   });
 
   test('columns display name and type badge', async () => {
@@ -266,12 +194,6 @@ describe('SchemaBrowser', () => {
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-
-    fireEvent.click(screen.getByTestId('tree-node-database-analytics'));
-    await screen.findByText('public');
-
-    fireEvent.click(screen.getByTestId('tree-node-schema-public'));
     await screen.findByText('users');
 
     fireEvent.click(screen.getByTestId('tree-node-table-users'));
@@ -283,10 +205,10 @@ describe('SchemaBrowser', () => {
   });
 
   test('loading states show spinner on the loading node', async () => {
-    let resolveDatabases;
-    fetchDatabases.mockReturnValue(
+    let resolveTables;
+    fetchSourceTables.mockReturnValue(
       new Promise(resolve => {
-        resolveDatabases = resolve;
+        resolveTables = resolve;
       })
     );
 
@@ -299,7 +221,7 @@ describe('SchemaBrowser', () => {
     await screen.findByTestId('loading-spinner');
 
     await act(async () => {
-      resolveDatabases(mockDatabases);
+      resolveTables(mockTables);
     });
   });
 
@@ -309,41 +231,96 @@ describe('SchemaBrowser', () => {
     await screen.findByText('postgres_db');
 
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('analytics');
-    expect(fetchDatabases).toHaveBeenCalledTimes(1);
+    await screen.findByText('users');
+    expect(fetchSourceTables).toHaveBeenCalledTimes(1);
 
-    // Collapse
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
 
-    // Expand again - should NOT re-fetch
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
 
-    expect(fetchDatabases).toHaveBeenCalledTimes(1);
+    expect(fetchSourceTables).toHaveBeenCalledTimes(1);
   });
 
-  test('displays NEW status badge on non-published sources', async () => {
+  test('displays table count badge on sources with cached schema', async () => {
     render(<SchemaBrowser />);
 
-    await screen.findByText('NEW');
+    await screen.findByText('5 tables');
   });
 
-  test('shows error icon when source connection fails', async () => {
-    fetchDatabases.mockResolvedValue({
-      databases: [],
-      status: 'connection_failed',
-      error: 'Connection refused',
-    });
-
+  test('shows Refresh Schema action for sources with cached schema', async () => {
     render(<SchemaBrowser />);
 
     await screen.findByText('postgres_db');
 
-    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
+    const refreshButtons = screen.getAllByTestId('action-Refresh Schema');
+    expect(refreshButtons.length).toBeGreaterThan(0);
+  });
 
-    await screen.findByTestId('error-icon');
-    expect(screen.getByTestId('tree-node-source-postgres_db')).toHaveAttribute(
-      'title',
-      'Connection refused'
+  test('clicking source without cached schema triggers schema generation', async () => {
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1.0 });
+
+    render(<SchemaBrowser />);
+
+    await screen.findByText('snowflake_wh');
+
+    fireEvent.click(screen.getByTestId('tree-node-source-snowflake_wh'));
+
+    await waitFor(() => {
+      expect(generateSourceSchema).toHaveBeenCalledWith('snowflake_wh');
+    });
+  });
+
+  test('shows generating status while schema is being generated', async () => {
+    let resolveStatus;
+    fetchSchemaGenerationStatus.mockReturnValue(
+      new Promise(resolve => {
+        resolveStatus = resolve;
+      })
     );
+
+    render(<SchemaBrowser />);
+
+    await screen.findByText('snowflake_wh');
+
+    fireEvent.click(screen.getByTestId('tree-node-source-snowflake_wh'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Generating...')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      resolveStatus({ status: 'completed', progress: 1.0 });
+    });
+  });
+
+  test('shows error when schema generation fails', async () => {
+    generateSourceSchema.mockRejectedValue(new Error('Connection failed'));
+
+    render(<SchemaBrowser />);
+
+    await screen.findByText('snowflake_wh');
+
+    fireEvent.click(screen.getByTestId('tree-node-source-snowflake_wh'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error-icon')).toBeInTheDocument();
+    });
+  });
+
+  test('expands source and shows tables after schema generation completes', async () => {
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1.0 });
+
+    render(<SchemaBrowser />);
+
+    await screen.findByText('snowflake_wh');
+
+    fireEvent.click(screen.getByTestId('tree-node-source-snowflake_wh'));
+
+    await waitFor(() => {
+      expect(fetchSourceTables).toHaveBeenCalledWith('snowflake_wh');
+    });
+
+    await screen.findByText('users');
+    expect(screen.getByText('orders')).toBeInTheDocument();
   });
 });
