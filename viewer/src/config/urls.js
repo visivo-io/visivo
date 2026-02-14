@@ -129,6 +129,14 @@ const URL_PATTERNS = {
     publishPending: '/api/publish/pending/',
     publish: '/api/publish/',
 
+    // Source schema jobs endpoints
+    sourceSchemaJobsList: '/api/source-schema-jobs/',
+    sourceSchemaJobDetail: '/api/source-schema-jobs/{name}/',
+    sourceSchemaJobTables: '/api/source-schema-jobs/{name}/tables/',
+    sourceSchemaJobColumns: '/api/source-schema-jobs/{name}/tables/{table}/columns/',
+    sourceSchemaJobCreate: '/api/source-schema-jobs/',
+    sourceSchemaJobStatus: '/api/source-schema-jobs/{jobId}/',
+
     // Model query jobs endpoints
     modelQueryJobs: '/api/model-query-jobs/',
     modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
@@ -258,6 +266,14 @@ const URL_PATTERNS = {
     publishStatus: null,
     publishPending: null,
     publish: null,
+
+    // Source schema jobs endpoints (not available in dist)
+    sourceSchemaJobsList: null,
+    sourceSchemaJobDetail: null,
+    sourceSchemaJobTables: null,
+    sourceSchemaJobColumns: null,
+    sourceSchemaJobCreate: null,
+    sourceSchemaJobStatus: null,
 
     // Model query jobs endpoints (not available in dist)
     modelQueryJobs: null,
