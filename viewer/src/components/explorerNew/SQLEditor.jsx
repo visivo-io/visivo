@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { PiPlay, PiStop, PiX, PiKeyboard } from 'react-icons/pi';
 import { useModelQueryJob } from '../../hooks/useModelQueryJob';
 import { useSourceSchema } from '../../hooks/useSourceSchema';
 import { createSQLCompletionProvider, disposeCompletionProvider } from '../../utils/sqlAutocomplete';
 import { inferColumnTypes } from '../../utils/inferColumnTypes';
+import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import DataTable from '../common/DataTable';
+import ColumnProfilePanel from './ColumnProfilePanel';
 
 const SQLEditor = ({
   initialValue = '',
@@ -25,6 +27,9 @@ const SQLEditor = ({
   // Results pagination state
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
+
+  // Column profile state
+  const [profileColumn, setProfileColumn] = useState(null);
 
   // Query execution hook
   const { result, error, isRunning, progress, progressMessage, executeQuery, cancel } =
@@ -147,7 +152,10 @@ const SQLEditor = ({
   }, [tables, tableColumns]);
 
   // Transform result for DataTable
-  const dataTableColumns = result ? inferColumnTypes(result.columns || [], result.rows || []) : [];
+  const dataTableColumns = useMemo(
+    () => (result ? inferColumnTypes(result.columns || [], result.rows || []) : []),
+    [result]
+  );
   const tableRows = result?.rows || [];
   const totalRowCount = result?.row_count || tableRows.length;
   const pageCount = Math.ceil(tableRows.length / resultsPageSize);
@@ -157,6 +165,19 @@ const SQLEditor = ({
     resultsPage * resultsPageSize,
     (resultsPage + 1) * resultsPageSize
   );
+
+  // Compute profile for the selected column from result data
+  const selectedColumnProfile = useMemo(() => {
+    if (!profileColumn || !result?.rows?.length) return null;
+    const colDef = dataTableColumns.find(c => c.name === profileColumn);
+    if (!colDef) return null;
+    return computeColumnProfile(profileColumn, colDef, result.rows);
+  }, [profileColumn, result, dataTableColumns]);
+
+  // Reset profile column when results change
+  useEffect(() => {
+    setProfileColumn(null);
+  }, [result]);
 
   return (
     <div className="flex flex-col border border-secondary-200 rounded-lg overflow-hidden bg-white">
@@ -282,18 +303,28 @@ const SQLEditor = ({
               <span className="text-xs text-secondary-400">{result.execution_time_ms}ms</span>
             )}
           </div>
-          <div className="flex-1 overflow-hidden">
-            <DataTable
-              columns={dataTableColumns}
-              rows={paginatedRows}
-              totalRowCount={totalRowCount}
-              page={resultsPage}
-              pageSize={resultsPageSize}
-              pageCount={pageCount}
-              onPageChange={setResultsPage}
-              onPageSizeChange={setResultsPageSize}
-              isLoading={false}
-              height="100%"
+          <div className="flex-1 overflow-hidden flex">
+            <div className="flex-1 min-w-0">
+              <DataTable
+                columns={dataTableColumns}
+                rows={paginatedRows}
+                totalRowCount={totalRowCount}
+                page={resultsPage}
+                pageSize={resultsPageSize}
+                pageCount={pageCount}
+                onPageChange={setResultsPage}
+                onPageSizeChange={setResultsPageSize}
+                onColumnProfileRequest={colName => setProfileColumn(colName)}
+                isLoading={false}
+                height="100%"
+              />
+            </div>
+            <ColumnProfilePanel
+              column={profileColumn}
+              profile={selectedColumnProfile}
+              rowCount={totalRowCount}
+              onClose={() => setProfileColumn(null)}
+              isOpen={!!profileColumn && !!selectedColumnProfile}
             />
           </div>
         </div>

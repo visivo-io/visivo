@@ -1,44 +1,28 @@
-"""Model query job execution logic for SQL queries against sources using FilteredRunner."""
+"""Model query job execution logic using the model data job infrastructure."""
 
-import os
-import time
-from copy import deepcopy
-
-import polars as pl
-
-from visivo.models.models.sql_model import SqlModel
-from visivo.jobs.filtered_runner import FilteredRunner
+from visivo.jobs.run_model_data_job import execute_and_get_result
 from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.logger.logger import Logger
 
 
-def read_parquet_to_result(parquet_path: str, source_name: str, execution_time_ms: int) -> dict:
-    """Read parquet file and convert to API result format."""
-    if not os.path.exists(parquet_path):
-        raise FileNotFoundError(f"Query result not found at {parquet_path}")
-
-    df = pl.read_parquet(parquet_path)
-    rows = df.to_dicts()
-
-    return {
-        "columns": df.columns,
-        "rows": rows,
-        "row_count": len(rows),
-        "execution_time_ms": execution_time_ms,
-        "source_name": source_name,
-    }
+def find_source_by_name(project, source_name: str):
+    """Find a source by name in the project."""
+    if not project.sources:
+        return None
+    for source in project.sources:
+        if hasattr(source, "name") and source.name == source_name:
+            return source
+    return None
 
 
 def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
     """
-    Execute a model query job using FilteredRunner (like insight previews).
+    Execute a model query job using the unified model data job infrastructure.
 
     Flow:
-    1. Create temporary SqlModel from {source_name, sql}
-    2. Add to a deepcopy of the project
-    3. Run FilteredRunner with dag_filter targeting the temp model
-    4. Read output parquet file
-    5. Convert to result format {columns, rows, row_count, ...}
+    1. Find the source by name in the project
+    2. Execute the SQL query using execute_and_get_result from run_model_data_job
+    3. Return results in API format {columns, rows, row_count, ...}
 
     Args:
         job_id: Unique job identifier
@@ -46,7 +30,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
             - source_name: Name of the source to query
             - sql: SQL query to execute
         flask_app: Flask application instance with project
-        output_dir: Output directory for files
+        output_dir: Output directory for files (unused but kept for API compatibility)
         job_manager: ModelQueryJobManager instance
 
     Returns:
@@ -57,59 +41,41 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
             job_id,
             RunStatus.RUNNING,
             progress=0.1,
-            progress_message="Creating temporary model",
+            progress_message="Preparing query",
         )
 
         source_name = config.get("source_name")
         sql = config.get("sql")
 
-        # Create temporary SqlModel
-        temp_model_name = f"temp_query_{job_id[:8]}"
-        temp_model = SqlModel(
-            name=temp_model_name,
-            sql=sql,
-            source=f"ref({source_name})" if source_name else None,
-        )
-
-        run_id = f"query-{temp_model_name}"
-        job_manager.set_run_id(job_id, run_id)
+        if not source_name:
+            raise ValueError("source_name is required")
+        if not sql:
+            raise ValueError("sql is required")
 
         job_manager.update_status(
             job_id,
             RunStatus.RUNNING,
             progress=0.2,
-            progress_message="Preparing execution",
+            progress_message="Finding source",
         )
 
-        # Create modified project with temp model
-        preview_project = deepcopy(flask_app.project)
-        if preview_project.models is None:
-            preview_project.models = []
-        preview_project.models.append(temp_model)
+        source = find_source_by_name(flask_app.project, source_name)
+        if not source:
+            raise ValueError(f"Source '{source_name}' not found in project")
 
         job_manager.update_status(
             job_id,
             RunStatus.RUNNING,
-            progress=0.5,
+            progress=0.3,
             progress_message="Executing query",
         )
 
         Logger.instance().info(f"Executing model query job {job_id} on source {source_name}")
 
-        # Execute via FilteredRunner
-        start_time = time.time()
-        runner = FilteredRunner(
-            project=preview_project,
-            output_dir=output_dir,
-            threads=1,
-            soft_failure=True,
-            dag_filter=f"+{temp_model_name}+",
-            server_url="",
-            working_dir=preview_project.path or "",
-            run_id=run_id,
+        result = execute_and_get_result(
+            source=source,
+            sql=sql,
         )
-        runner.run()
-        execution_time_ms = int((time.time() - start_time) * 1000)
 
         job_manager.update_status(
             job_id,
@@ -118,11 +84,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
             progress_message="Processing results",
         )
 
-        # Read output parquet file
-        model_hash = temp_model.name_hash()
-        parquet_path = f"{output_dir}/{run_id}/files/{model_hash}.parquet"
-
-        result = read_parquet_to_result(parquet_path, source_name, execution_time_ms)
+        result["source_name"] = source_name
 
         job_manager.set_result(job_id, result)
         job_manager.update_status(
@@ -133,13 +95,13 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
         )
 
         Logger.instance().info(
-            f"Model query job {job_id} completed: {result['row_count']} rows in {execution_time_ms}ms"
+            f"Model query job {job_id} completed: {result['row_count']} rows in {result['execution_time_ms']}ms"
         )
 
-    except FileNotFoundError as e:
-        error_msg = f"Query execution failed: {str(e)}"
+    except ValueError as e:
+        error_msg = str(e)
         job_manager.update_status(
-            job_id, RunStatus.FAILED, error=error_msg, progress_message="Execution failed"
+            job_id, RunStatus.FAILED, error=error_msg, progress_message="Validation failed"
         )
         Logger.instance().error(f"Model query job {job_id} failed: {error_msg}")
     except Exception as e:
