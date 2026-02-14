@@ -30,9 +30,7 @@ class TestModelQueryJobsViews:
         """Create a mock source that returns test data."""
         source = Mock()
         source.name = "test_source"
-        source.read_sql = Mock(
-            return_value=[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
-        )
+        source.read_sql = Mock(return_value=[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}])
         return source
 
     @pytest.fixture
