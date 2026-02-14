@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerNewPage from './ExplorerNewPage';
 import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
@@ -98,8 +98,8 @@ describe('ExplorerNewPage', () => {
     expect(selector).toHaveValue('postgres_db');
 
     // Check sources are in the selector options
-    const options = selector.querySelectorAll('option');
-    const optionValues = Array.from(options).map(opt => opt.value);
+    const options = within(selector).getAllByRole('option');
+    const optionValues = options.map(opt => opt.value);
     expect(optionValues).toContain('postgres_db');
     expect(optionValues).toContain('snowflake_wh');
   });
