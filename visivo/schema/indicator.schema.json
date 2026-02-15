@@ -1826,7 +1826,8 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "value"
   ],
   "additionalProperties": false
 }

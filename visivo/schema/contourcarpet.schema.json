@@ -2010,7 +2010,10 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "a",
+    "b",
+    "z"
   ],
   "additionalProperties": false
 }

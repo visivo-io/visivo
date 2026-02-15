@@ -2785,7 +2785,9 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "lon",
+    "lat"
   ],
   "additionalProperties": false
 }
