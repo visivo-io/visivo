@@ -13,11 +13,14 @@ const createDashboardSlice = (set, get) => ({
 
   // Fetch all dashboards from API
   fetchDashboards: async () => {
+    console.log('dashboardStore: fetching dashboards...');
     set({ dashboardsLoading: true, dashboardsError: null });
     try {
       const data = await dashboardsApi.fetchAllDashboards();
+      console.log('dashboardStore: received data', data);
       set({ dashboards: data.dashboards || [], dashboardsLoading: false });
     } catch (error) {
+      console.error('dashboardStore: fetch error', error);
       set({ dashboardsError: error.message, dashboardsLoading: false });
     }
   },

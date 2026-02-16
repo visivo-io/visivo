@@ -330,17 +330,24 @@ const LineageNew = () => {
     []
   );
 
-  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants)
+  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants) AND open edit panel
   const handleNodeClick = useCallback((event, node) => {
     const nodeName = node.data.name;
+    const objectType = node.data.objectType;
+
     // Store the node's current position so it doesn't jump during layout recomputation
     setFixedNode({
       id: node.id,
       position: node.position,
     });
+
     // Set selector to +name+ to show the node and all its dependencies
     setSelector(`+${nodeName}+`);
-  }, []);
+
+    // Open edit panel for this node
+    clearEdit();
+    pushEdit(objectType, node.data);
+  }, [clearEdit, pushEdit]);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(

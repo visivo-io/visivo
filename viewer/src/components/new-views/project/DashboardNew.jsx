@@ -9,18 +9,39 @@ import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { useVisibleRows } from '../../../hooks/useVisibleRows';
+import { parseRefValue } from '../../../utils/refString';
 
 /**
  * Resolve an item reference (chart, table, markdown, input) from the store.
- * Handles both string references (names) and legacy embedded objects.
+ * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
+ * Transforms insight/input string references to object format expected by components.
  */
 const resolveItem = (itemRef, getItemByName) => {
   if (!itemRef) return null;
-  // If it's a string, look up from store
+
+  // If it's a string, parse the ref and look up from store
   if (typeof itemRef === 'string') {
-    const item = getItemByName(itemRef);
-    return item?.config || null;
+    const name = parseRefValue(itemRef);
+    const item = getItemByName(name);
+    const config = item?.config || null;
+
+    if (!config) return null;
+
+    // Transform insights array from string references to objects with name property
+    // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
+    if (config.insights && Array.isArray(config.insights)) {
+      config.insights = config.insights.map(insight => {
+        if (typeof insight === 'string') {
+          const insightName = parseRefValue(insight);
+          return { name: insightName };
+        }
+        return insight; // Already an object
+      });
+    }
+
+    return config;
   }
+
   // Legacy: If it's already an object, use it directly
   return itemRef;
 };
@@ -38,11 +59,19 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartBy
 
       // Resolve chart and collect its insights
       const chart = resolveItem(item.chart, getChartByName);
-      chart?.insights?.forEach(i => insightNames.add(i.name));
+      chart?.insights?.forEach(i => {
+        // Parse insight reference - could be ${ref(name)}, ref(name), or plain name
+        const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
+        if (insightName) insightNames.add(insightName);
+      });
 
       // Resolve table and collect its insights
       const table = resolveItem(item.table, getTableByName);
-      table?.insights?.forEach(i => insightNames.add(i.name));
+      table?.insights?.forEach(i => {
+        // Parse insight reference - could be ${ref(name)}, ref(name), or plain name
+        const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
+        if (insightName) insightNames.add(insightName);
+      });
     }
   }
   return [...insightNames];
@@ -58,10 +87,14 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
     if (!row) continue;
     for (const item of row.items) {
       if (shouldShowItem && !shouldShowItem(item)) continue;
-      // Input can be a string name or object with name
-      const inputName = typeof item.input === 'string' ? item.input : item.input?.name;
-      if (inputName) {
-        inputNames.add(inputName);
+      // Input can be a string reference or object with name
+      if (item.input) {
+        const inputName = typeof item.input === 'string'
+          ? parseRefValue(item.input)
+          : item.input?.name;
+        if (inputName) {
+          inputNames.add(inputName);
+        }
       }
     }
   }
@@ -75,9 +108,8 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
 const DashboardNew = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
 
-  // Dashboard store
+  // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
-  const fetchDashboards = useStore(state => state.fetchDashboards);
 
   // Chart store
   const fetchCharts = useStore(state => state.fetchCharts);
@@ -108,18 +140,21 @@ const DashboardNew = ({ project, dashboardName }) => {
   const widthBreakpoint = 1024;
   const isColumn = width < widthBreakpoint;
 
-  // Fetch all data on mount
+  // Fetch item data on mount (dashboards fetched by ProjectNew container)
   useEffect(() => {
-    fetchDashboards();
     fetchCharts();
     fetchTables();
     fetchMarkdowns();
     fetchInputs();
-  }, [fetchDashboards, fetchCharts, fetchTables, fetchMarkdowns, fetchInputs]);
+  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs]);
 
-  // Find the current dashboard
+  // Find the current dashboard and extract its config
   const dashboard = useMemo(() => {
-    return dashboards?.find(d => d.name === dashboardName);
+    const dashboardData = dashboards?.find(d => d.name === dashboardName);
+    if (!dashboardData) return null;
+
+    // Dashboard data from API has rows in config field
+    return dashboardData.config || dashboardData;
   }, [dashboards, dashboardName]);
 
   // Height calculation helpers
@@ -144,25 +179,32 @@ const DashboardNew = ({ project, dashboardName }) => {
   // Item visibility logic (no selector support needed)
   const shouldShowItem = useCallback(() => true, []);
 
-  // Centralized input prefetching
+  // Centralized input prefetching - fetch for ALL rows (optimize later)
   const visibleInputNames = useMemo(() => {
     if (!dashboard?.rows) return [];
-    return collectInputNames(dashboard.rows, [...visibleRows], shouldShowItem);
-  }, [dashboard?.rows, visibleRows, shouldShowItem]);
+    const allRowIndices = dashboard.rows.map((_, idx) => idx);
+    return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
+    // Only depend on dashboard data, not visibility
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboard?.rows]);
 
   useInputsData(project?.id, visibleInputNames);
 
-  // Centralized insight prefetching
+  // Centralized insight prefetching - fetch for ALL rows (optimize later)
   const visibleInsightNames = useMemo(() => {
     if (!dashboard?.rows) return [];
+    // Collect from all rows, not just visible ones
+    const allRowIndices = dashboard.rows.map((_, idx) => idx);
     return collectInsightNames(
       dashboard.rows,
-      [...visibleRows],
+      allRowIndices,
       shouldShowItem,
       getChartByName,
       getTableByName
     );
-  }, [dashboard?.rows, visibleRows, shouldShowItem, getChartByName, getTableByName]);
+    // Only depend on dashboard data, not visibility
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboard?.rows]);
 
   useInsightsData(project?.id, visibleInsightNames);
 

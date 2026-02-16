@@ -83,12 +83,12 @@ const LocalRouter = createBrowserRouter(
         />
         <Route
           id="project-new"
-          path="/project-new/:dashboardName"
+          path="/project-new/:dashboardName?"
           element={<ProjectNew />}
           handle={{
             crumb: match => (
-              <BreadcrumbLink to={`/project-new/${match.params.dashboardName}`}>
-                {match.params.dashboardName} (New)
+              <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
+                {match.params.dashboardName ? `${match.params.dashboardName} (New)` : 'Project (New)'}
               </BreadcrumbLink>
             ),
           }}

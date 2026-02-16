@@ -1,4 +1,4 @@
-export const NodeWrapper = ({ isHighlighted, colors, children }) => (
+export const NodeWrapper = ({ isHighlighted, colors, children, onClick, style, ...props }) => (
   <div
     className={`
       relative flex items-center gap-2 px-3 py-2
@@ -6,6 +6,9 @@ export const NodeWrapper = ({ isHighlighted, colors, children }) => (
       transition-all duration-150
       ${isHighlighted ? `${colors.bg} ${colors.borderSelected} shadow-md` : `bg-white ${colors.border} hover:${colors.bg}`}
     `}
+    onClick={onClick}
+    style={style}
+    {...props}
   >
     {children}
   </div>

@@ -194,8 +194,7 @@ describe('DashboardNew', () => {
     expect(screen.getByText(/Chart not found/)).toBeInTheDocument();
   });
 
-  it('fetches all data on mount', () => {
-    const fetchDashboards = jest.fn();
+  it('fetches item data on mount', () => {
     const fetchCharts = jest.fn();
     const fetchTables = jest.fn();
     const fetchMarkdowns = jest.fn();
@@ -205,7 +204,6 @@ describe('DashboardNew', () => {
       const state = {
         project: mockProject,
         dashboards: [mockDashboard],
-        fetchDashboards,
         fetchCharts,
         fetchTables,
         fetchMarkdowns,
@@ -224,7 +222,6 @@ describe('DashboardNew', () => {
       </BrowserRouter>
     );
 
-    expect(fetchDashboards).toHaveBeenCalled();
     expect(fetchCharts).toHaveBeenCalled();
     expect(fetchTables).toHaveBeenCalled();
     expect(fetchMarkdowns).toHaveBeenCalled();
