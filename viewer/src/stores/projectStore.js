@@ -10,6 +10,7 @@ const createProjectSlice = (set, get) => ({
   filteredDashboards: [],
   dashboardsByLevel: [],
   availableTags: [],
+  cachedProjectDefaults: null,
 
   // Current dashboard selection
   currentDashboardName: null,
@@ -55,7 +56,7 @@ const createProjectSlice = (set, get) => ({
 
   // Internal filtering logic
   filterDashboards: () => {
-    const { allDashboards, searchTerm, selectedTags, project } = get();
+    const { allDashboards, searchTerm, selectedTags, cachedProjectDefaults } = get();
 
     if (!allDashboards.length) {
       set({ filteredDashboards: [], dashboardsByLevel: [] });
@@ -76,8 +77,7 @@ const createProjectSlice = (set, get) => ({
       return matchesSearch && matchesTags;
     });
 
-    // Organize by levels
-    const byLevel = organizeDashboardsByLevel(filtered, project?.project_json?.defaults);
+    const byLevel = organizeDashboardsByLevel(filtered, cachedProjectDefaults);
 
     set({
       filteredDashboards: filtered,
@@ -155,6 +155,7 @@ const createProjectSlice = (set, get) => ({
       filteredDashboards: filtered,
       dashboardsByLevel: byLevel,
       currentDashboardName: dashboardName,
+      cachedProjectDefaults: projectDefaults,
     });
 
     // Reset scroll position when dashboard changes

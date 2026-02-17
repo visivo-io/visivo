@@ -39,11 +39,11 @@ function ProjectNew() {
     }
     return dashboards.map(dashboard => ({
       name: dashboard.name,
-      description: dashboard.config?.description || dashboard.description,
-      tags: dashboard.config?.tags || dashboard.tags || [],
-      level: dashboard.config?.level || dashboard.level,
-      type: dashboard.config?.type || dashboard.type,
-      href: dashboard.config?.href || dashboard.href || null,
+      description: dashboard.config.description,
+      tags: dashboard.config.tags ?? [],
+      level: dashboard.config.level,
+      type: dashboard.config.type,
+      href: dashboard.config.href ?? null,
       path: '',
     }));
   }, [dashboards]);
