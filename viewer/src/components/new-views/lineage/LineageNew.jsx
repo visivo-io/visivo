@@ -345,8 +345,12 @@ const LineageNew = () => {
     setSelector(`+${nodeName}+`);
 
     // Open edit panel for this node
+    // Edit forms expect the store object (with .config, .name, etc.), which is nested in node.data
+    // csvScriptModel and localMergeModel both store their object under the 'model' key
+    const storeObjectKey = (objectType === 'csvScriptModel' || objectType === 'localMergeModel') ? 'model' : objectType;
+    const storeObject = node.data[storeObjectKey] ?? node.data;
     clearEdit();
-    pushEdit(objectType, node.data);
+    pushEdit(objectType, storeObject);
   }, [clearEdit, pushEdit]);
 
   // Handle new edge connection (drag from source to model)
