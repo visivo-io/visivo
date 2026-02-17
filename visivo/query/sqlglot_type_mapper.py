@@ -13,12 +13,16 @@ class SqlglotTypeMapper:
     """Maps database-specific types to SQLGlot DataTypes."""
 
     @staticmethod
-    def sqlalchemy_to_sqlglot_type(sa_type: sa_types.TypeEngine) -> exp.DataType:
+    def sqlalchemy_to_sqlglot_type(
+        sa_type: sa_types.TypeEngine, dialect: str = None
+    ) -> exp.DataType:
         """
         Convert SQLAlchemy type to SQLGlot DataType.
 
         Args:
             sa_type: SQLAlchemy TypeEngine instance
+            dialect: Optional SQLGlot dialect name for proper type resolution
+                    (e.g., "snowflake" to parse TIMESTAMP_TZ correctly)
 
         Returns:
             SQLGlot DataType expression
@@ -81,19 +85,21 @@ class SqlglotTypeMapper:
 
             # Fallback: try to parse the string representation
             else:
-                return SqlglotTypeMapper._parse_type_string(type_name)
+                return SqlglotTypeMapper._parse_type_string(type_name, dialect=dialect)
 
         except Exception as e:
             Logger.instance().debug(f"Error mapping SQLAlchemy type {sa_type}: {e}")
             return exp.DataType.build("VARCHAR")  # Safe fallback
 
     @staticmethod
-    def _parse_type_string(type_str: str) -> exp.DataType:
+    def _parse_type_string(type_str: str, dialect: str = None) -> exp.DataType:
         """
         Parse a type string into SQLGlot DataType.
 
         Args:
             type_str: String representation of the type
+            dialect: Optional SQLGlot dialect name for proper type resolution
+                    (e.g., "snowflake" to parse TIMESTAMP_TZ correctly)
 
         Returns:
             SQLGlot DataType expression
@@ -104,40 +110,40 @@ class SqlglotTypeMapper:
 
             # Handle common type patterns
             if type_str.startswith("VARCHAR"):
-                return exp.DataType.build(type_str)
+                return exp.DataType.build(type_str, dialect=dialect)
             elif type_str.startswith("CHAR"):
-                return exp.DataType.build(type_str)
+                return exp.DataType.build(type_str, dialect=dialect)
             elif type_str in ["TEXT", "LONGTEXT", "MEDIUMTEXT"]:
-                return exp.DataType.build("TEXT")
+                return exp.DataType.build("TEXT", dialect=dialect)
             elif type_str in ["INT", "INTEGER"]:
-                return exp.DataType.build("INT")
+                return exp.DataType.build("INT", dialect=dialect)
             elif type_str in ["BIGINT", "LONG"]:
-                return exp.DataType.build("BIGINT")
+                return exp.DataType.build("BIGINT", dialect=dialect)
             elif type_str in ["SMALLINT", "SHORT"]:
-                return exp.DataType.build("SMALLINT")
+                return exp.DataType.build("SMALLINT", dialect=dialect)
             elif type_str in ["TINYINT"]:
-                return exp.DataType.build("TINYINT")
+                return exp.DataType.build("TINYINT", dialect=dialect)
             elif type_str in ["FLOAT", "REAL"]:
-                return exp.DataType.build("FLOAT")
+                return exp.DataType.build("FLOAT", dialect=dialect)
             elif type_str in ["DOUBLE", "DOUBLE PRECISION"]:
-                return exp.DataType.build("DOUBLE")
+                return exp.DataType.build("DOUBLE", dialect=dialect)
             elif type_str.startswith("DECIMAL") or type_str.startswith("NUMERIC"):
-                return exp.DataType.build(type_str)
+                return exp.DataType.build(type_str, dialect=dialect)
             elif type_str in ["BOOLEAN", "BOOL"]:
-                return exp.DataType.build("BOOLEAN")
+                return exp.DataType.build("BOOLEAN", dialect=dialect)
             elif type_str in ["DATE"]:
-                return exp.DataType.build("DATE")
+                return exp.DataType.build("DATE", dialect=dialect)
             elif type_str in ["TIMESTAMP", "DATETIME"]:
-                return exp.DataType.build("TIMESTAMP")
+                return exp.DataType.build("TIMESTAMP", dialect=dialect)
             elif type_str in ["TIME"]:
-                return exp.DataType.build("TIME")
+                return exp.DataType.build("TIME", dialect=dialect)
             elif type_str in ["JSON", "JSONB"]:
-                return exp.DataType.build("JSON")
+                return exp.DataType.build("JSON", dialect=dialect)
             elif type_str in ["BLOB", "BINARY", "VARBINARY"]:
-                return exp.DataType.build("BLOB")
+                return exp.DataType.build("BLOB", dialect=dialect)
             else:
-                # Try to parse directly with SQLGlot
-                return exp.DataType.build(type_str)
+                # Try to parse directly with SQLGlot using dialect
+                return exp.DataType.build(type_str, dialect=dialect)
 
         except Exception as e:
             Logger.instance().debug(f"Error parsing type string {type_str}: {e}")
@@ -263,18 +269,20 @@ class SqlglotTypeMapper:
         }
 
     @staticmethod
-    def deserialize_datatype(data: Dict[str, Any]) -> exp.DataType:
+    def deserialize_datatype(data: Dict[str, Any], dialect: str = None) -> exp.DataType:
         """
         Deserialize SQLGlot DataType from JSON format.
 
         Args:
             data: Dictionary representation
+            dialect: Optional SQLGlot dialect name for proper type resolution
+                    (e.g., "snowflake" to parse TIMESTAMP_TZ correctly)
 
         Returns:
             SQLGlot DataType expression
         """
         try:
-            return exp.DataType.build(data["sql"])
+            return exp.DataType.build(data["sql"], dialect=dialect)
         except Exception as e:
             Logger.instance().debug(f"Error deserializing datatype {data}: {e}")
             return exp.DataType.build("VARCHAR")

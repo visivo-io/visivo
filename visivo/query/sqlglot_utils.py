@@ -7,9 +7,11 @@ from sqlglot import exp, parse_one
 from sqlglot.schema import MappingSchema
 from sqlglot.dialects import Dialects
 from sqlglot.optimizer import optimize
+from sqlglot.errors import OptimizeError
 from typing import List, Set, Optional, Tuple, Dict
 from visivo.models.base.named_model import alpha_hash
 from sqlglot.optimizer import qualify
+from visivo.logger.logger import Logger
 
 
 from visivo.models.base.context_string import ContextString
@@ -383,7 +385,12 @@ def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) ->
     expr = qualify.qualify(expr, qualify_columns=True, schema=schema)
 
     # 3. Optimize which annotates types using the schema including stars
-    expr = optimize(expr, schema=schema)
+    # Wrap in try/except to handle incomplete schemas gracefully
+    try:
+        expr = optimize(expr, schema=schema)
+    except OptimizeError as e:
+        Logger.instance().debug(f"Optimization failed for SQL, skipping type annotation: {e}")
+        # Continue without optimization - types will be None
 
     # 4. Get output columns and types from the select list
     column_schema = {}

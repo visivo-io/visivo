@@ -222,7 +222,9 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     col_name = col_info["column_name"]
 
                     # Convert Snowflake type string to SQLGlot DataType
-                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(col_info["data_type"])
+                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(
+                        col_info["data_type"], dialect="snowflake"
+                    )
 
                     table_info["columns"][col_name] = {
                         "type": col_info["data_type"],

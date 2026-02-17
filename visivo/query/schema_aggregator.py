@@ -212,7 +212,17 @@ class SchemaAggregator:
         Returns:
             SQLGlot MappingSchema instance
         """
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
         schema = MappingSchema()
+
+        # Get dialect from stored schema data for proper type parsing
+        # e.g., TIMESTAMP_TZ is only valid when parsed with snowflake dialect
+        source_type = schema_data.get("source_type", "")
+        try:
+            dialect = get_sqlglot_dialect(source_type) if source_type else None
+        except NotImplementedError:
+            dialect = None
 
         try:
             # Get the sqlglot_schema - it's already {table: {col: type_str}}
@@ -222,8 +232,15 @@ class SchemaAggregator:
                 column_types = {}
 
                 for col_name, col_type_str in columns.items():
-                    # Parse the type string to DataType
-                    column_types[col_name] = exp.DataType.build(col_type_str)
+                    try:
+                        # Parse the type string to DataType using dialect for proper resolution
+                        column_types[col_name] = exp.DataType.build(col_type_str, dialect=dialect)
+                    except Exception as e:
+                        Logger.instance().debug(
+                            f"Error parsing type '{col_type_str}' for column '{col_name}', "
+                            f"using VARCHAR: {e}"
+                        )
+                        column_types[col_name] = exp.DataType.build("VARCHAR")
 
                 # Add table to schema
                 if column_types:
