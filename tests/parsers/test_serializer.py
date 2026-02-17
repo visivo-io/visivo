@@ -203,6 +203,9 @@ def test_create_flattened_project():
     dashboard.rows[0].items[0].chart = chart
     project.dashboards.append(dashboard)
 
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
+
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
 
@@ -244,6 +247,9 @@ def test_create_flattened_project_with_default_source():
                         if trace.model:
                             trace.model.source = source
 
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
+
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
 
@@ -262,6 +268,9 @@ def test_create_flattened_project_maintains_references():
     dashboard = DashboardFactory(name="ref_dashboard")
     dashboard.rows[0].items[0].chart = chart
     project.dashboards = [dashboard]
+
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
 
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()

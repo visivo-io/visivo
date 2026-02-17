@@ -62,6 +62,7 @@ def run_phase(
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
             no_deprecation_warnings=no_deprecation_warnings,
+            project=project,
         )
 
     if not dag_filter or dag_filter == "":

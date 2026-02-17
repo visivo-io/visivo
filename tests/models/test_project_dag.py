@@ -75,6 +75,8 @@ def test_context_model_Project_dag():
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
     trace.model = ContextString("${ project.models[0] }")
 
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -89,6 +91,8 @@ def test_context_source_Project_dag():
     model = project.dashboards[0].rows[0].items[0].chart.traces[0].model
     model.source = ContextString("${ project.sources[0] }")
 
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -103,6 +107,8 @@ def test_ref_selector_Project_dag_has_one_selector():
     item.chart.traces[0].name = "trace 2"
     project.dashboards[0].rows[0].items = [item]
 
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -125,6 +131,8 @@ def test_ref_selector_item_Project_dag():
     project.tables[0].selector = "ref(selector)"
     selector = SelectorFactory()
     project.selectors = [selector]
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -143,6 +151,8 @@ def test_ref_selector_row_item_Project_dag():
     selector = SelectorFactory(name="row selector", options=["ref(row)"])
     project = ProjectFactory(selectors=[selector])
     project.dashboards[0].rows = [row]
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -155,6 +165,8 @@ def test_context_selector_row_item_Project_dag():
     selector = SelectorFactory(name="row selector", options=["${ref(row)}"])
     project = ProjectFactory(selectors=[selector])
     project.dashboards[0].rows = [row]
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
@@ -166,6 +178,8 @@ def test_context_selector_row_item_Project_dag():
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
     project.dashboards[0].rows[0].items[0].name = "item"
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
 
     with pytest.raises(ValueError) as exc_info:
         # It is an incomplete reference from the level of dashboards.
@@ -194,6 +208,8 @@ def test_sub_dag_including_dashboard_name_Project_dag():
     dashboard = project.dashboards[0]
     additional_dashboard = DashboardFactory(name="Other Dashboard", rows=[])
     project.dashboards.append(additional_dashboard)
+    # Invalidate cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
 
     included_nodes = project.nodes_including_named_node_in_graph(name=dashboard.name)
 

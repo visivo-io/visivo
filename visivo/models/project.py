@@ -40,6 +40,8 @@ class Project(NamedModel, ParentModel):
 
     # Private attributes for schema extraction caching (don't store extractor object to avoid pickle errors)
     _extracted_schemas: Optional[Dict[str, Dict[str, Dict[str, str]]]] = PrivateAttr(default=None)
+    # Private attribute for DAG caching to avoid rebuilding the DAG multiple times
+    _cached_dag: Optional[Any] = PrivateAttr(default=None)
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
@@ -96,6 +98,30 @@ class Project(NamedModel, ParentModel):
                 children.extend(model.dimensions)
 
         return children
+
+    def dag(self, node_permit_list=None):
+        """
+        Build and cache the project DAG.
+
+        The DAG is cached on the project instance to avoid expensive rebuilds.
+        Call invalidate_dag_cache() if the project structure changes.
+        """
+        # Only use cache if no node_permit_list is specified (full DAG)
+        if node_permit_list is None and self._cached_dag is not None:
+            return self._cached_dag
+
+        # Build the DAG using parent class method
+        dag = super().dag(node_permit_list=node_permit_list)
+
+        # Cache only the full DAG (no permit list)
+        if node_permit_list is None:
+            self._cached_dag = dag
+
+        return dag
+
+    def invalidate_dag_cache(self):
+        """Invalidate the cached DAG so it will be rebuilt on next access."""
+        self._cached_dag = None
 
     def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
         """Get all extracted schemas.

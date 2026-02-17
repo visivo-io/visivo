@@ -4,7 +4,7 @@ compile_import_start = time()
 from visivo.logger.logger import Logger
 
 Logger.instance().debug("Compiling project...")
-import json
+import orjson
 
 from visivo.parsers.serializer import Serializer
 from visivo.commands.parse_project_phase import parse_project_phase
@@ -31,13 +31,20 @@ def compile_phase(
     dbt_profile: str = None,
     dbt_target: str = None,
     no_deprecation_warnings: bool = False,
+    project=None,
 ):
-    # Track parse project
+    # Track parse project - skip if project already provided
     parse_start = time()
-    Logger.instance().debug("    Running parse project phase...")
-    project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
-    parse_duration = round(time() - parse_start, 2)
-    Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
+    if project is None:
+        Logger.instance().debug("    Running parse project phase...")
+        project = parse_project_phase(
+            working_dir, output_dir, default_source, dbt_profile, dbt_target
+        )
+        parse_duration = round(time() - parse_start, 2)
+        Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
+    else:
+        Logger.instance().debug("    Using provided project, skipping parse phase...")
+        parse_duration = 0.0
 
     # Run deprecation checks (non-blocking)
     if not no_deprecation_warnings:
@@ -54,23 +61,27 @@ def compile_phase(
     artifacts_start = time()
     Logger.instance().debug("    Writing artifacts...")
 
-    # Write the original project.json
-    with open(f"{output_dir}/project.json", "w") as fp:
-        serializer = Serializer(project=project)
-        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
+    # Use single Serializer instance for both operations
+    serializer = Serializer(project=project)
 
-    # Write the flattened explorer.json for the QueryExplorer
-    with open(f"{output_dir}/explorer.json", "w") as fp:
-        serializer = Serializer(project=project)
-        explorer_data = serializer.create_flattened_project()
-        json.dump(explorer_data, fp)
+    # Serialize project data using optimized method (avoids deep copy)
+    project_data = serializer.dereference_to_dict()
+    explorer_data = serializer.create_flattened_project()
+
+    # Write all files using orjson (faster than stdlib json)
+    with open(f"{output_dir}/project.json", "wb") as fp:
+        fp.write(orjson.dumps(project_data))
+
+    with open(f"{output_dir}/explorer.json", "wb") as fp:
+        fp.write(orjson.dumps(explorer_data))
+
+    with open(f"{output_dir}/error.json", "wb") as fp:
+        fp.write(orjson.dumps({}))
+
     artifacts_duration = round(time() - artifacts_start, 2)
     Logger.instance().debug(f"Project artifacts written in {artifacts_duration}s")
 
     total_duration = round(time() - parse_start, 2)
-
-    with open(f"{output_dir}/error.json", "w") as error_file:
-        error_file.write(json.dumps({}))
 
     Logger.instance().success(
         f"Compile completed in {total_duration}s "
