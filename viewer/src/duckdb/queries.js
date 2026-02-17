@@ -386,11 +386,17 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
         } catch {
           // Ignore cleanup errors
         }
-        failed.push({
-          nameHash: file.name_hash,
-          url: file.signed_data_file_url,
-          error: err.message || String(err),
-        });
+        // If the table was already created by a concurrent load, treat as success
+        if (err.message?.includes('already exists')) {
+          cache.markLoaded(file.name_hash, file.signed_data_file_url);
+          loaded.push(file.name_hash);
+        } else {
+          failed.push({
+            nameHash: file.name_hash,
+            url: file.signed_data_file_url,
+            error: err.message || String(err),
+          });
+        }
       }
     }
   }

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useCallback } from 'react';
 import useDimensions from 'react-cool-dimensions';
 import useStore from '../../../stores/store';
 import Chart from '../../items/Chart';
@@ -106,8 +105,6 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * Shows draft versions of objects merged with published versions
  */
 const DashboardNew = ({ projectId, dashboardName }) => {
-  const [searchParams] = useSearchParams();
-
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -202,6 +199,9 @@ const DashboardNew = ({ projectId, dashboardName }) => {
       getChartByName,
       getTableByName
     );
+  // charts/tables are included so this re-runs when store data loads;
+  // getChartByName/getTableByName use get() internally and have stable references
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
 
   useInsightsData(projectId, visibleInsightNames);

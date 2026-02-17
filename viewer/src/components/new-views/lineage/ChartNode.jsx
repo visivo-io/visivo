@@ -23,7 +23,7 @@ const isEmbeddedObject = (value) => {
  * Supports nested embedded objects (traces, insights).
  */
 const ChartNode = ({ data, selected }) => {
-  const { name, status, isEditing, chart, onEdit } = data;
+  const { name, status, isEditing, chart } = data;
   const isHighlighted = selected || isEditing;
 
   // Get type colors and icon
