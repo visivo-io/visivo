@@ -119,7 +119,7 @@ function ProjectNew() {
   // Render specific dashboard
   return (
     <DashboardNew
-      project={project}
+      projectId={project.id}
       dashboardName={dashboardName}
     />
   );

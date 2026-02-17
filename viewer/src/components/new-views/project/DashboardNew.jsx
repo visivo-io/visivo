@@ -105,7 +105,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ project, dashboardName }) => {
+const DashboardNew = ({ projectId, dashboardName }) => {
   const [searchParams] = useSearchParams();
 
   // Dashboard store (fetched by ProjectNew container)
@@ -113,10 +113,12 @@ const DashboardNew = ({ project, dashboardName }) => {
 
   // Chart store
   const fetchCharts = useStore(state => state.fetchCharts);
+  const charts = useStore(state => state.charts);
   const getChartByName = useStore(state => state.getChartByName);
 
   // Table store
   const fetchTables = useStore(state => state.fetchTables);
+  const tables = useStore(state => state.tables);
   const getTableByName = useStore(state => state.getTableByName);
 
   // Markdown store
@@ -184,11 +186,9 @@ const DashboardNew = ({ project, dashboardName }) => {
     if (!dashboard?.rows) return [];
     const allRowIndices = dashboard.rows.map((_, idx) => idx);
     return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
-    // Only depend on dashboard data, not visibility
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.rows]);
+  }, [dashboard?.rows, shouldShowItem]);
 
-  useInputsData(project?.id, visibleInputNames);
+  useInputsData(projectId, visibleInputNames);
 
   // Centralized insight prefetching - fetch for ALL rows (optimize later)
   const visibleInsightNames = useMemo(() => {
@@ -202,11 +202,9 @@ const DashboardNew = ({ project, dashboardName }) => {
       getChartByName,
       getTableByName
     );
-    // Only depend on dashboard data, not visibility
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.rows]);
+  }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
 
-  useInsightsData(project?.id, visibleInsightNames);
+  useInsightsData(projectId, visibleInsightNames);
 
   // Render a dashboard item
   const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items) => {
@@ -225,7 +223,7 @@ const DashboardNew = ({ project, dashboardName }) => {
         <Input
           key={key}
           input={input}
-          project={project}
+          projectId={projectId}
           itemWidth={item.width}
         />
       );
@@ -244,7 +242,7 @@ const DashboardNew = ({ project, dashboardName }) => {
         <Chart
           key={key}
           chart={chart}
-          project={project}
+          projectId={projectId}
           height={getHeight(row.height) - 8}
           width={getWidth(items, item)}
           itemWidth={item.width}
@@ -266,7 +264,7 @@ const DashboardNew = ({ project, dashboardName }) => {
         <Table
           key={key}
           table={table}
-          project={project}
+          projectId={projectId}
           itemWidth={item.width}
           width={getWidth(items, item)}
           height={getHeight(row.height)}
