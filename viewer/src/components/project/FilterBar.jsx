@@ -32,7 +32,7 @@ function FilterBar() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Filter by tags</label>
               <div className="flex flex-wrap gap-1.5">
-                {availableTags.map(tag => (
+                {[...availableTags].sort().map(tag => (
                   <Badge
                     key={tag}
                     color={selectedTags.includes(tag) ? 'purple' : 'gray'}
