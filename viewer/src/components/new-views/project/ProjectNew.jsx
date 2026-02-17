@@ -22,6 +22,11 @@ function ProjectNew() {
   const dashboardsLoading = useStore(state => state.dashboardsLoading);
   const fetchDashboards = useStore(state => state.fetchDashboards);
 
+  // Filtering state from store
+  const filteredDashboards = useStore(state => state.filteredDashboards);
+  const dashboardsByLevel = useStore(state => state.dashboardsByLevel);
+  const initializeDashboardView = useStore(state => state.initializeDashboardView);
+
   // Fetch dashboards on mount
   useEffect(() => {
     fetchDashboards();
@@ -43,18 +48,16 @@ function ProjectNew() {
     }));
   }, [dashboards]);
 
-  // Organize dashboards by level for rendering
-  const dashboardsByLevel = useMemo(() => {
-    const grouped = {};
-    dashboardsList.forEach(dashboard => {
-      const level = dashboard.level ?? 'unassigned';
-      if (!grouped[level]) {
-        grouped[level] = [];
-      }
-      grouped[level].push(dashboard);
-    });
-    return grouped;
-  }, [dashboardsList]);
+  // Initialize dashboard filtering system when dashboards load
+  useEffect(() => {
+    if (dashboardsList.length > 0) {
+      initializeDashboardView(
+        dashboardsList,
+        dashboardName,
+        project?.project_json?.defaults
+      );
+    }
+  }, [dashboardsList, dashboardName, project?.project_json?.defaults, initializeDashboardView]);
 
   // Loading state
   if (dashboardsLoading) {
@@ -84,6 +87,8 @@ function ProjectNew() {
     return (
       <Container className="min-h-screen">
         <div className="max-w-[2000px] w-full mx-auto pt-1 px-4 sm:px-6 h-full">
+          <FilterBar />
+
           <div className="flex-1 w-full">
             {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
               <DashboardSection
@@ -96,12 +101,12 @@ function ProjectNew() {
               />
             ))}
 
-            {dashboardsList.length === 0 && (
+            {filteredDashboards.length === 0 && (
               <div className="w-full text-center py-8 bg-white rounded-lg shadow-2xs border border-gray-200">
                 <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No dashboards found</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  No dashboards available in this project.
+                  No dashboards match your search criteria.
                 </p>
               </div>
             )}

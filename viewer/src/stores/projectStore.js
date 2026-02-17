@@ -112,7 +112,6 @@ const createProjectSlice = (set, get) => ({
   initializeDashboardView: (dashboards, dashboardName, projectDefaults) => {
     if (!dashboards || !dashboards.length) {
       set({
-        dashboards: [],
         availableTags: [],
         filteredDashboards: [],
         dashboardsByLevel: [],
@@ -148,9 +147,8 @@ const createProjectSlice = (set, get) => ({
     // Organize by levels
     const byLevel = organizeDashboardsByLevel(filtered, projectDefaults);
 
-    // Single batched update
+    // Single batched update (don't update dashboards as they're managed by dashboardStore)
     set({
-      dashboards,
       availableTags: Array.from(tagSet),
       filteredDashboards: filtered,
       dashboardsByLevel: byLevel,
