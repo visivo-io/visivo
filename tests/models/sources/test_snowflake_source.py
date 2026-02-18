@@ -40,10 +40,20 @@ def test_SnowflakeSource_key_authentication_no_passphrase():
 
 
 class TestSnowflakeSourceGetSchema:
-    """Tests for the optimized get_schema() method using INFORMATION_SCHEMA."""
+    """Tests for the optimized get_schema() method using INFORMATION_SCHEMA.
+
+    Note: The get_schema method now queries ALL schemas in the database and returns
+    a nested structure: {schema: {table: {col: type}}}. Tables are stored with
+    qualified names like "SCHEMA.TABLE" in the tables dict.
+    """
 
     def create_mock_connection(self, columns_rows):
-        """Create a mock connection that returns specified data."""
+        """Create a mock connection that returns specified data.
+
+        columns_rows format (multi-schema):
+            (TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT,
+             NUMERIC_PRECISION, NUMERIC_SCALE, CHARACTER_MAXIMUM_LENGTH)
+        """
         mock_conn = MagicMock()
         mock_context = MagicMock()
         mock_context.__enter__ = MagicMock(return_value=mock_conn)
@@ -59,21 +69,21 @@ class TestSnowflakeSourceGetSchema:
         return mock_context
 
     def test_get_schema_returns_correct_structure(self):
-        """Test that get_schema returns the expected structure."""
+        """Test that get_schema returns the expected structure with multi-schema support."""
         source = SnowflakeSource(
             name="test_snowflake", database="TEST_DB", db_schema="TEST_SCHEMA", type="snowflake"
         )
 
-        # Mock data for columns query (single query now gets everything)
-        # Format: TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT,
+        # Mock data for columns query - now includes TABLE_SCHEMA as first column
+        # Format: TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT,
         #         NUMERIC_PRECISION, NUMERIC_SCALE, CHARACTER_MAXIMUM_LENGTH
         columns_rows = [
-            ("USERS", "ID", "NUMBER", "NO", None, 38, 0, None),
-            ("USERS", "NAME", "VARCHAR", "YES", None, None, None, 100),
-            ("USERS", "EMAIL", "VARCHAR", "YES", None, None, None, 255),
-            ("ORDERS", "ORDER_ID", "NUMBER", "NO", None, 38, 0, None),
-            ("ORDERS", "USER_ID", "NUMBER", "YES", None, 38, 0, None),
-            ("ORDERS", "AMOUNT", "NUMBER", "YES", None, 10, 2, None),
+            ("TEST_SCHEMA", "USERS", "ID", "NUMBER", "NO", None, 38, 0, None),
+            ("TEST_SCHEMA", "USERS", "NAME", "VARCHAR", "YES", None, None, None, 100),
+            ("TEST_SCHEMA", "USERS", "EMAIL", "VARCHAR", "YES", None, None, None, 255),
+            ("TEST_SCHEMA", "ORDERS", "ORDER_ID", "NUMBER", "NO", None, 38, 0, None),
+            ("TEST_SCHEMA", "ORDERS", "USER_ID", "NUMBER", "YES", None, 38, 0, None),
+            ("TEST_SCHEMA", "ORDERS", "AMOUNT", "NUMBER", "YES", None, 10, 2, None),
         ]
 
         mock_conn = self.create_mock_connection(columns_rows)
@@ -92,20 +102,21 @@ class TestSnowflakeSourceGetSchema:
         assert metadata["source_type"] == "snowflake"
         assert metadata["source_dialect"] == "snowflake"
         assert metadata["database"] == "TEST_DB"
-        assert metadata["schema"] == "TEST_SCHEMA"
+        assert metadata["default_schema"] == "TEST_SCHEMA"
         assert metadata["total_tables"] == 2
         assert metadata["total_columns"] == 6
 
-        # Verify tables
+        # Verify tables - now use qualified names (SCHEMA.TABLE)
         tables = schema["tables"]
-        assert "USERS" in tables
-        assert "ORDERS" in tables
+        assert "TEST_SCHEMA.USERS" in tables
+        assert "TEST_SCHEMA.ORDERS" in tables
 
         # Verify USERS table columns
-        users_table = tables["USERS"]
+        users_table = tables["TEST_SCHEMA.USERS"]
         assert "columns" in users_table
         assert "metadata" in users_table
         assert users_table["metadata"]["table_name"] == "USERS"
+        assert users_table["metadata"]["schema"] == "TEST_SCHEMA"
         assert users_table["metadata"]["column_count"] == 3
 
         users_columns = users_table["columns"]
@@ -125,7 +136,7 @@ class TestSnowflakeSourceGetSchema:
         assert name_col["nullable"] is True
 
         # Verify ORDERS table
-        orders_table = tables["ORDERS"]
+        orders_table = tables["TEST_SCHEMA.ORDERS"]
         assert orders_table["metadata"]["column_count"] == 3
 
         amount_col = orders_table["columns"]["AMOUNT"]
@@ -134,10 +145,6 @@ class TestSnowflakeSourceGetSchema:
         # Verify SQLGlot schema
         sqlglot_schema = schema["sqlglot_schema"]
         assert isinstance(sqlglot_schema, MappingSchema)
-        # SQLGlot normalizes table names to lowercase
-        mapping_keys = list(sqlglot_schema.mapping.keys())
-        assert "users" in mapping_keys or "USERS" in mapping_keys
-        assert "orders" in mapping_keys or "ORDERS" in mapping_keys
 
     def test_get_schema_with_table_filter(self):
         """Test that get_schema correctly filters to specified tables."""
@@ -147,9 +154,9 @@ class TestSnowflakeSourceGetSchema:
 
         # Mock data - includes all tables, but we'll filter to USERS only
         columns_rows = [
-            ("USERS", "ID", "NUMBER", "NO", None, 38, 0, None),
-            ("USERS", "NAME", "VARCHAR", "YES", None, None, None, 100),
-            ("ORDERS", "ORDER_ID", "NUMBER", "NO", None, 38, 0, None),
+            ("TEST_SCHEMA", "USERS", "ID", "NUMBER", "NO", None, 38, 0, None),
+            ("TEST_SCHEMA", "USERS", "NAME", "VARCHAR", "YES", None, None, None, 100),
+            ("TEST_SCHEMA", "ORDERS", "ORDER_ID", "NUMBER", "NO", None, 38, 0, None),
         ]
 
         mock_conn = self.create_mock_connection(columns_rows)
@@ -158,8 +165,8 @@ class TestSnowflakeSourceGetSchema:
             schema = source.get_schema(table_names=["USERS"])
 
         # Verify only USERS is included (ORDERS filtered out)
-        assert "USERS" in schema["tables"]
-        assert "ORDERS" not in schema["tables"]
+        assert "TEST_SCHEMA.USERS" in schema["tables"]
+        assert "TEST_SCHEMA.ORDERS" not in schema["tables"]
         assert schema["metadata"]["total_tables"] == 1
         assert schema["metadata"]["total_columns"] == 2
 
@@ -191,24 +198,23 @@ class TestSnowflakeSourceGetSchema:
         ):
             schema = source.get_schema()
 
-        # When connection fails in _get_available_tables_for_schema, it returns empty list
-        # and the main method returns early with empty schema (not an error state)
+        # When connection fails, it returns empty schema (not an error state)
         assert schema["tables"] == {}
         assert schema["metadata"]["total_tables"] == 0
         assert schema["metadata"]["total_columns"] == 0
 
     def test_get_schema_default_schema_public(self):
-        """Test that get_schema uses PUBLIC as default schema when db_schema is not set."""
+        """Test that get_schema uses PUBLIC as default_schema when db_schema is not set."""
         source = SnowflakeSource(name="test_snowflake", database="TEST_DB", type="snowflake")
 
-        columns_rows = [("TEST_TABLE", "COL1", "VARCHAR", "YES", None, None, None, 50)]
+        columns_rows = [("PUBLIC", "TEST_TABLE", "COL1", "VARCHAR", "YES", None, None, None, 50)]
 
         mock_conn = self.create_mock_connection(columns_rows)
 
         with patch.object(SnowflakeSource, "get_connection", return_value=mock_conn):
             schema = source.get_schema()
 
-        assert schema["metadata"]["schema"] == "PUBLIC"
+        assert schema["metadata"]["default_schema"] == "PUBLIC"
 
     def test_get_schema_type_mapping(self):
         """Test that various Snowflake data types are correctly mapped."""
@@ -218,14 +224,24 @@ class TestSnowflakeSourceGetSchema:
 
         # Test various Snowflake data types
         columns_rows = [
-            ("TYPE_TEST", "INT_COL", "NUMBER", "YES", None, 38, 0, None),
-            ("TYPE_TEST", "DECIMAL_COL", "NUMBER", "YES", None, 10, 2, None),
-            ("TYPE_TEST", "VARCHAR_COL", "VARCHAR", "YES", None, None, None, 255),
-            ("TYPE_TEST", "TEXT_COL", "TEXT", "YES", None, None, None, None),
-            ("TYPE_TEST", "BOOLEAN_COL", "BOOLEAN", "YES", None, None, None, None),
-            ("TYPE_TEST", "DATE_COL", "DATE", "YES", None, None, None, None),
-            ("TYPE_TEST", "TIMESTAMP_COL", "TIMESTAMP_NTZ", "YES", None, None, None, None),
-            ("TYPE_TEST", "FLOAT_COL", "FLOAT", "YES", None, None, None, None),
+            ("TEST_SCHEMA", "TYPE_TEST", "INT_COL", "NUMBER", "YES", None, 38, 0, None),
+            ("TEST_SCHEMA", "TYPE_TEST", "DECIMAL_COL", "NUMBER", "YES", None, 10, 2, None),
+            ("TEST_SCHEMA", "TYPE_TEST", "VARCHAR_COL", "VARCHAR", "YES", None, None, None, 255),
+            ("TEST_SCHEMA", "TYPE_TEST", "TEXT_COL", "TEXT", "YES", None, None, None, None),
+            ("TEST_SCHEMA", "TYPE_TEST", "BOOLEAN_COL", "BOOLEAN", "YES", None, None, None, None),
+            ("TEST_SCHEMA", "TYPE_TEST", "DATE_COL", "DATE", "YES", None, None, None, None),
+            (
+                "TEST_SCHEMA",
+                "TYPE_TEST",
+                "TIMESTAMP_COL",
+                "TIMESTAMP_NTZ",
+                "YES",
+                None,
+                None,
+                None,
+                None,
+            ),
+            ("TEST_SCHEMA", "TYPE_TEST", "FLOAT_COL", "FLOAT", "YES", None, None, None, None),
         ]
 
         mock_conn = self.create_mock_connection(columns_rows)
@@ -233,7 +249,7 @@ class TestSnowflakeSourceGetSchema:
         with patch.object(SnowflakeSource, "get_connection", return_value=mock_conn):
             schema = source.get_schema()
 
-        columns = schema["tables"]["TYPE_TEST"]["columns"]
+        columns = schema["tables"]["TEST_SCHEMA.TYPE_TEST"]["columns"]
 
         # Verify types are correctly constructed
         assert columns["INT_COL"]["type"] == "NUMBER(38)"
@@ -249,3 +265,30 @@ class TestSnowflakeSourceGetSchema:
         for col_name, col_info in columns.items():
             assert "sqlglot_datatype" in col_info
             assert isinstance(col_info["sqlglot_datatype"], exp.DataType)
+
+    def test_get_schema_multi_schema(self):
+        """Test that get_schema correctly handles tables from multiple schemas."""
+        source = SnowflakeSource(
+            name="test_snowflake", database="TEST_DB", db_schema="EDW", type="snowflake"
+        )
+
+        # Mock data with tables from multiple schemas
+        columns_rows = [
+            ("EDW", "FACT_ORDER", "COL1", "NUMBER", "NO", None, 38, 0, None),
+            ("EDW", "DIM_USER", "USER_ID", "NUMBER", "NO", None, 38, 0, None),
+            ("REPORTING", "GOALS", "GOAL_COL", "NUMBER", "YES", None, 10, 2, None),
+        ]
+
+        mock_conn = self.create_mock_connection(columns_rows)
+
+        with patch.object(SnowflakeSource, "get_connection", return_value=mock_conn):
+            schema = source.get_schema()
+
+        # Verify tables from both schemas are included
+        assert "EDW.FACT_ORDER" in schema["tables"]
+        assert "EDW.DIM_USER" in schema["tables"]
+        assert "REPORTING.GOALS" in schema["tables"]
+
+        # Verify metadata
+        assert schema["metadata"]["default_schema"] == "EDW"
+        assert schema["metadata"]["total_tables"] == 3
