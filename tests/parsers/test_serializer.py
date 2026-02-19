@@ -1,5 +1,6 @@
 from visivo.models.chart import Chart
 from visivo.models.selector import Selector
+from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.parsers.serializer import Serializer
@@ -10,6 +11,7 @@ from tests.factories.model_factories import (
     ProjectFactory,
     RowFactory,
     SelectorFactory,
+    SourceFactory,
     TraceFactory,
     ChartFactory,
     SqlModelFactory,
@@ -284,3 +286,56 @@ def test_create_flattened_project_maintains_references():
     trace_data = next(t for t in flattened["traces"] if t["name"] == "ref_trace")
     # Verify it references the correct model
     assert any(m["name"] == "ref_model" for m in flattened["models"])
+
+
+def test_dereference_to_dict_with_default_source():
+    """Regression: dereference_to_dict must inline source even when model.source is None (DefaultSource)."""
+    project = ProjectFactory()
+    project.defaults = DefaultsFactory(source_name="source")
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.source = None
+    project.invalidate_dag_cache()
+
+    serializer = Serializer(project=project)
+    result = serializer.dereference_to_dict()
+
+    dashboard = result["dashboards"][0]
+    trace_dict = dashboard["rows"][0]["items"][0]["chart"]["traces"][0]
+    model_dict = trace_dict["model"]
+    assert "source" in model_dict, "source must be inlined even when model.source is None"
+    assert model_dict["source"]["name"] == "source"
+
+
+def test_dereference_to_dict_with_explicit_source():
+    """dereference_to_dict inlines an explicitly set source correctly."""
+    project = ProjectFactory()
+    project.invalidate_dag_cache()
+
+    serializer = Serializer(project=project)
+    result = serializer.dereference_to_dict()
+
+    dashboard = result["dashboards"][0]
+    trace_dict = dashboard["rows"][0]["items"][0]["chart"]["traces"][0]
+    model_dict = trace_dict["model"]
+    assert "source" in model_dict
+    assert model_dict["source"]["name"] == "source"
+
+
+def test_dereference_to_dict_matches_dereference():
+    """Both serialization paths must produce structurally equivalent output."""
+    project = ProjectFactory()
+    project.defaults = DefaultsFactory(source_name="source")
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.source = None
+    project.invalidate_dag_cache()
+
+    serializer = Serializer(project=project)
+    dict_result = serializer.dereference_to_dict()
+    deref_project = serializer.dereference()
+
+    dict_dashboard = dict_result["dashboards"][0]
+    deref_dashboard = deref_project.dashboards[0]
+
+    dict_trace = dict_dashboard["rows"][0]["items"][0]["chart"]["traces"][0]
+    deref_trace = deref_dashboard.rows[0].items[0].chart.traces[0]
+
+    assert dict_trace["model"]["source"]["name"] == deref_trace.model.source.name
+    assert dict_trace["name"] == deref_trace.name

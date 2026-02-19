@@ -4,7 +4,7 @@ compile_import_start = time()
 from visivo.logger.logger import Logger
 
 Logger.instance().debug("Compiling project...")
-import orjson
+import json
 
 from visivo.parsers.serializer import Serializer
 from visivo.commands.parse_project_phase import parse_project_phase
@@ -64,19 +64,15 @@ def compile_phase(
     # Use single Serializer instance for both operations
     serializer = Serializer(project=project)
 
-    # Serialize project data using optimized method (avoids deep copy)
-    project_data = serializer.dereference_to_dict()
+    with open(f"{output_dir}/project.json", "w") as fp:
+        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
+
     explorer_data = serializer.create_flattened_project()
+    with open(f"{output_dir}/explorer.json", "w") as fp:
+        json.dump(explorer_data, fp)
 
-    # Write all files using orjson (faster than stdlib json)
-    with open(f"{output_dir}/project.json", "wb") as fp:
-        fp.write(orjson.dumps(project_data))
-
-    with open(f"{output_dir}/explorer.json", "wb") as fp:
-        fp.write(orjson.dumps(explorer_data))
-
-    with open(f"{output_dir}/error.json", "wb") as fp:
-        fp.write(orjson.dumps({}))
+    with open(f"{output_dir}/error.json", "w") as fp:
+        fp.write(json.dumps({}))
 
     artifacts_duration = round(time() - artifacts_start, 2)
     Logger.instance().debug(f"Project artifacts written in {artifacts_duration}s")

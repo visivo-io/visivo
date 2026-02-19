@@ -238,7 +238,7 @@ class Serializer:
             model_dict = model.model_dump(exclude_none=True, mode="json")
 
             # Inline source if present
-            if hasattr(model, "source") and model.source:
+            if hasattr(model, "source"):
                 sources = all_descendants_of_type(type=Source, dag=dag, from_node=model)
                 if sources:
                     model_dict["source"] = sources[0].model_dump(exclude_none=True, mode="json")
