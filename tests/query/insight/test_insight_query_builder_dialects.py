@@ -184,66 +184,53 @@ class TestClickHouseIdentifierQuoting:
 class TestIdentifierConsistency:
     """Tests to ensure identifier consistency across query components.
 
-    These tests verify that CTE aliases, FROM clauses, and column references
-    all use consistent casing for each dialect.
+    CTE aliases and FROM/JOIN table references use normalize_identifier_for_dialect
+    (dialect-aware casing). Column aliases from FieldResolver always use raw lowercase
+    hashes with quoting, since quoted identifiers preserve case in all databases and
+    this ensures consistency across parquet columns, DuckDB WASM results, and props_mapping.
     """
 
-    def test_snowflake_all_uppercase(self):
-        """Test that all Snowflake identifiers are consistently uppercase."""
+    def test_snowflake_table_refs_uppercase(self):
+        """Test that Snowflake table/CTE identifiers are uppercase."""
         model_hash = "mwzyeppkbehppwkakfujyloyjgsha"
-        column_alias = "mhkxejuqfzwbqgm"
 
-        # Both should be uppercase for Snowflake
         cte_identifier = normalize_identifier_for_dialect(model_hash, "snowflake")
-        column_identifier = normalize_identifier_for_dialect(column_alias, "snowflake")
-
         assert cte_identifier.this == model_hash.upper()
-        assert column_identifier.this == column_alias.upper()
-
-        # And both should generate uppercase quoted SQL
         assert cte_identifier.sql(dialect="snowflake") == f'"{model_hash.upper()}"'
-        assert column_identifier.sql(dialect="snowflake") == f'"{column_alias.upper()}"'
 
-    def test_postgres_all_lowercase(self):
-        """Test that all PostgreSQL identifiers are consistently lowercase."""
+    def test_snowflake_column_aliases_stay_lowercase(self):
+        """Test that column aliases are always lowercase (raw hash), even for Snowflake.
+
+        Aliases are always quoted, so the database preserves the exact case.
+        Using raw lowercase hashes ensures consistency with parquet column names
+        and DuckDB WASM results.
+        """
+        column_alias = "mhkxejuqfzwbqgm"
+
+        # Column aliases use exp.Identifier directly, not normalize_identifier_for_dialect
+        alias_identifier = exp.Identifier(this=column_alias, quoted=True)
+        assert alias_identifier.this == column_alias  # lowercase preserved
+        assert alias_identifier.sql(dialect="snowflake") == f'"{column_alias}"'
+
+    def test_postgres_table_refs_lowercase(self):
+        """Test that PostgreSQL table/CTE identifiers are lowercase."""
         model_hash = "MWZYEPPKBEHPPWKAKFUJYLOYJGSHA"
-        column_alias = "MHKXEJUQFZWBQGM"
 
-        # Both should be lowercase for PostgreSQL
         cte_identifier = normalize_identifier_for_dialect(model_hash, "postgresql")
-        column_identifier = normalize_identifier_for_dialect(column_alias, "postgresql")
-
         assert cte_identifier.this == model_hash.lower()
-        assert column_identifier.this == column_alias.lower()
 
-    def test_mysql_case_preserved(self):
-        """Test that all MySQL identifiers preserve case consistently."""
+    def test_mysql_table_refs_preserved(self):
+        """Test that MySQL table/CTE identifiers preserve case with backticks."""
         model_hash = "mwzyeppkbehppwkakfujyloyjgsha"
-        column_alias = "mhkxejuqfzwbqgm"
 
-        # Both should preserve case for MySQL
         cte_identifier = normalize_identifier_for_dialect(model_hash, "mysql")
-        column_identifier = normalize_identifier_for_dialect(column_alias, "mysql")
-
         assert cte_identifier.this == model_hash
-        assert column_identifier.this == column_alias
-
-        # And both should use backticks
         assert cte_identifier.sql(dialect="mysql") == f"`{model_hash}`"
-        assert column_identifier.sql(dialect="mysql") == f"`{column_alias}`"
 
-    def test_clickhouse_case_preserved(self):
-        """Test that all ClickHouse identifiers preserve case consistently."""
+    def test_clickhouse_table_refs_preserved(self):
+        """Test that ClickHouse table/CTE identifiers preserve case with double quotes."""
         model_hash = "mwzyeppkbehppwkakfujyloyjgsha"
-        column_alias = "mhkxejuqfzwbqgm"
 
-        # Both should preserve case for ClickHouse
         cte_identifier = normalize_identifier_for_dialect(model_hash, "clickhouse")
-        column_identifier = normalize_identifier_for_dialect(column_alias, "clickhouse")
-
         assert cte_identifier.this == model_hash
-        assert column_identifier.this == column_alias
-
-        # And both should use double quotes
         assert cte_identifier.sql(dialect="clickhouse") == f'"{model_hash}"'
-        assert column_identifier.sql(dialect="clickhouse") == f'"{column_alias}"'
