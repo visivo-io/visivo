@@ -7,7 +7,7 @@ includes:
   - path: visivo-io/example-include.git@main
 
 defaults:
-  source_name: remote-bigquery
+  source_name: local-duckdb
   alert_name: slack
 
 inputs:
