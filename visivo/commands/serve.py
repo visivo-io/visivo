@@ -67,12 +67,14 @@ def serve(
     if new:
         skip_compile = True
         project = Project(
-            name="Quickstart Visivo", sources=[], models=[], traces=[], charts=[], dashboards=[]
+            name="Quickstart Visivo",
+            sources=[],
+            models=[],
+            traces=[],
+            charts=[],
+            dashboards=[],
+            defaults=Defaults(source_name=source) if source else None,
         )
-
-        project.defaults = project.defaults or Defaults()
-        if source:
-            project.defaults.source_name = source
 
         final_project_dir = pd or project_dir or os.path.abspath(".")
         if os.path.exists(final_project_dir) and final_project_dir != os.getcwd():

@@ -25,7 +25,7 @@ def test_compile_csv_script_model():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_source="source",
+        default_source=None,
         working_dir=working_dir,
         output_dir=output_dir,
     )
@@ -71,7 +71,7 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_source="source",
+        default_source=None,
         working_dir=working_dir,
         output_dir=output_dir,
     )
