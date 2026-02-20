@@ -130,3 +130,51 @@ def test_Core_Parser_success():
     project = core_parser.parse()
 
     assert project.name == "Project Name"
+
+
+def test_Core_Parser_default_source_overrides_yaml_defaults():
+    tmp = temp_yml_file(
+        {
+            "name": "project",
+            "sources": [
+                {"name": "local-duckdb", "database": "local.db", "type": "sqlite"},
+                {"name": "remote-snowflake", "database": "remote.db", "type": "sqlite"},
+            ],
+            "defaults": {"source_name": "local-duckdb"},
+        },
+        name=PROJECT_FILE_NAME,
+    )
+    core_parser = CoreParser(project_file=tmp, files=[tmp], default_source="remote-snowflake")
+    project = core_parser.parse()
+    assert project.defaults.source_name == "remote-snowflake"
+
+
+def test_Core_Parser_default_source_works_without_defaults_section():
+    tmp = temp_yml_file(
+        {
+            "name": "project",
+            "sources": [
+                {"name": "remote-snowflake", "database": "remote.db", "type": "sqlite"},
+            ],
+        },
+        name=PROJECT_FILE_NAME,
+    )
+    core_parser = CoreParser(project_file=tmp, files=[tmp], default_source="remote-snowflake")
+    project = core_parser.parse()
+    assert project.defaults.source_name == "remote-snowflake"
+
+
+def test_Core_Parser_omitting_default_source_preserves_yaml_defaults():
+    tmp = temp_yml_file(
+        {
+            "name": "project",
+            "sources": [
+                {"name": "local-duckdb", "database": "local.db", "type": "sqlite"},
+            ],
+            "defaults": {"source_name": "local-duckdb"},
+        },
+        name=PROJECT_FILE_NAME,
+    )
+    core_parser = CoreParser(project_file=tmp, files=[tmp])
+    project = core_parser.parse()
+    assert project.defaults.source_name == "local-duckdb"

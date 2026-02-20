@@ -7,5 +7,5 @@ from visivo.parsers.core_parser import CoreParser
 # parser = ParserFactory(project_file=project_file, files=files).build()
 # project = parser.build()
 class ParserFactory:
-    def build(self, project_file, files):
-        return CoreParser(project_file=project_file, files=files)
+    def build(self, project_file, files, default_source=None):
+        return CoreParser(project_file=project_file, files=files, default_source=default_source)

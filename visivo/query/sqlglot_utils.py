@@ -6,11 +6,13 @@ import sqlglot
 from sqlglot import exp, parse_one
 from sqlglot.schema import MappingSchema
 from sqlglot.dialects import Dialects
-from sqlglot.optimizer import optimize
+from sqlglot.optimizer.annotate_types import annotate_types
+from sqlglot.errors import OptimizeError
 from typing import List, Set, Optional, Tuple, Dict
 from visivo.models.base.named_model import alpha_hash
 from sqlglot.optimizer import qualify
-
+from visivo.logger.logger import Logger
+import click
 
 from visivo.models.base.context_string import ContextString
 
@@ -364,28 +366,89 @@ def identify_column_references(
     return qualified_sql
 
 
-def schema_from_sql(sqlglot_dialect: str, sql: str, schema: dict, model_hash) -> dict:
+def schema_from_sql(
+    sqlglot_dialect: str,
+    sql: str,
+    schema: dict,
+    model_hash: str,
+    default_schema: str = None,
+) -> dict:
     """
     Uses input schema plus sql to produce the new schema expected from the query.
-    >>> Given:
-        sql = "select a + 1 as a1, cast(upper(b) as int) as b1, upper(b) as b11, * from t"
-        schema = MappingSchema( schema={"t": {"a": "INT", "b": "TEXT"}})
-        model_hash = "model"
-    >>> Expect:
-            {'model': {'a1': 'INT', 'b1': 'INT', 'b11': 'VARCHAR', 'a': 'INT', 'b': 'TEXT'}}
 
+    Args:
+        sqlglot_dialect: SQLGlot dialect name (e.g., "snowflake", "postgres")
+        sql: SQL query to analyze
+        schema: Schema dict - can be flat {table: {col: type}} or
+                nested {schema: {table: {col: type}}}
+        model_hash: Hash to use as key in returned schema
+        default_schema: Default schema for unqualified table references.
+                       Used as the `db` parameter in SQLGlot's qualify().
+
+    Returns:
+        Dict mapping model_hash to column schema: {model_hash: {col: type}}
+
+    Example:
+        >>> sql = "select a + 1 as a1, cast(upper(b) as int) as b1, upper(b) as b11, * from t"
+        >>> schema = {"t": {"a": "INT", "b": "TEXT"}}
+        >>> schema_from_sql("snowflake", sql, schema, "model")
+        {'model': {'a1': 'INT', 'b1': 'INT', 'b11': 'VARCHAR', 'a': 'INT', 'b': 'TEXT'}}
+
+    Multi-schema example:
+        >>> sql = "SELECT col1, goal_col FROM fact_order JOIN REPORTING.goals ON 1=1"
+        >>> schema = {
+        ...     "EDW": {"fact_order": {"col1": exp.DataType.build("INT")}},
+        ...     "REPORTING": {"goals": {"goal_col": exp.DataType.build("DECIMAL")}},
+        ... }
+        >>> schema_from_sql("snowflake", sql, schema, "model", default_schema="EDW")
+        {'model': {'col1': 'INT', 'goal_col': 'DECIMAL'}}
     """
     # 1. Parse
     expr = sqlglot.parse_one(sql, read=sqlglot_dialect)
 
-    # 2. Qualify with schema so column refs resolve
-    schema = MappingSchema(schema=schema)
-    expr = qualify.qualify(expr, qualify_columns=True, schema=schema)
+    # 2. Strip SQL comments before qualify() to avoid column resolution failures
+    # SQLGlot preserves comments in _comments metadata on AST nodes. When qualify()
+    # looks up columns, it uses string representations that include comments, causing
+    # lookups like '"col" /* comment */' to fail against schema entries like '"col"'.
+    # Solution: regenerate SQL without comments and re-parse for a clean AST.
+    sql_without_comments = expr.sql(dialect=sqlglot_dialect, comments=False)
+    expr = sqlglot.parse_one(sql_without_comments, read=sqlglot_dialect)
 
-    # 3. Optimize which annotates types using the schema including stars
-    expr = optimize(expr, schema=schema)
+    # 3. Qualify with schema so column refs resolve
+    # Pass db parameter for default schema context (used for unqualified table references)
+    mapping_schema = MappingSchema(schema=schema)
+    try:
+        expr = qualify.qualify(
+            expr,
+            qualify_columns=True,
+            schema=mapping_schema,
+            db=default_schema,
+        )
+    except OptimizeError as e:
+        # Provide actionable error message with available schemas
+        available_schemas = []
+        if isinstance(schema, dict):
+            for key, value in schema.items():
+                if isinstance(value, dict):
+                    first_val = next(iter(value.values()), None) if value else None
+                    if isinstance(first_val, dict):
+                        # Nested structure - key is a schema name
+                        available_schemas.append(key)
+        raise click.ClickException(
+            f"Schema validation failed: {e}\n"
+            f"Available schemas: {', '.join(available_schemas) if available_schemas else 'None'}\n"
+            f"Default schema: {default_schema}\n"
+            f"Hint: Ensure all referenced tables exist in the source database."
+        )
 
-    # 4. Get output columns and types from the select list
+    # 4. Annotate types using the schema (skip full optimization - only need type inference)
+    try:
+        expr = annotate_types(expr, schema=mapping_schema)
+    except OptimizeError as e:
+        Logger.instance().debug(f"Type annotation failed for SQL, skipping: {e}")
+        # Continue without annotation - types will be None
+
+    # 5. Get output columns and types from the select list
     column_schema = {}
     select = expr.find(exp.Select)
     for proj in select.expressions:

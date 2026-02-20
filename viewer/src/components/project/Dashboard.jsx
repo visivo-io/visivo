@@ -140,7 +140,7 @@ const Dashboard = ({ project, dashboardName }) => {
   // Centralized input prefetching: Collect all input names from visible rows
   // and load them in a single batch BEFORE insights (so inputs are ready for insight queries).
   const visibleInputNames = useMemo(
-    () => collectInputNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    () => collectInputNames(dashboard.rows || [], [...visibleRows], shouldShowItem),
     [dashboard.rows, visibleRows, shouldShowItem]
   );
 
@@ -150,7 +150,7 @@ const Dashboard = ({ project, dashboardName }) => {
   // Centralized insight prefetching: Collect all insight names from visible rows
   // and load them in a single batch. Charts/Tables read from Zustand store.
   const visibleInsightNames = useMemo(
-    () => collectInsightNames(dashboard.rows, [...visibleRows], shouldShowItem),
+    () => collectInsightNames(dashboard.rows || [], [...visibleRows], shouldShowItem),
     [dashboard.rows, visibleRows, shouldShowItem]
   );
 
@@ -273,7 +273,7 @@ const Dashboard = ({ project, dashboardName }) => {
       data-testid={`dashboard_${dashboardName}`}
       className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
     >
-      {dashboard.rows.map(renderRow)}
+      {(dashboard.rows || []).map(renderRow)}
     </div>
   );
 };
