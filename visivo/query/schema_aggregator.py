@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 from sqlglot import exp
 from sqlglot.schema import MappingSchema
 
+from visivo.constants import DEFAULT_RUN_ID
 from visivo.logger.logger import Logger
 from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 
@@ -18,7 +19,11 @@ class SchemaAggregator:
 
     @staticmethod
     def aggregate_source_schema(
-        source_name: str, source_type: str, schema_data: Dict[str, Any], output_dir: str
+        source_name: str,
+        source_type: str,
+        schema_data: Dict[str, Any],
+        output_dir: str,
+        run_id: str = DEFAULT_RUN_ID,
     ) -> None:
         """
         Store source schema data in standard format.
@@ -28,10 +33,10 @@ class SchemaAggregator:
             source_type: Type of the source (postgresql, mysql, etc.)
             schema_data: Schema data dictionary
             output_dir: Output directory for storage
+            run_id: Run identifier for schema storage location
         """
         try:
-            # Create schema directory
-            schema_dir = f"{output_dir}/schemas/{source_name}"
+            schema_dir = f"{output_dir}/{run_id}/schemas/{source_name}"
             os.makedirs(schema_dir, exist_ok=True)
 
             # Prepare schema data for storage
@@ -129,14 +134,18 @@ class SchemaAggregator:
     @staticmethod
     def _serialize_mapping_schema(mapping_schema: MappingSchema) -> Dict[str, Any]:
         """
-        Serialize SQLGlot MappingSchema to simple dict format.
+        Serialize SQLGlot MappingSchema to nested dict format.
+
+        Handles both flat and nested MappingSchema structures:
+        - Flat: {"table_name": {"col1": DataType, ...}}
+        - Nested: {"schema_name": {"table_name": {"col1": DataType, ...}}}
 
         Args:
             mapping_schema: SQLGlot MappingSchema instance
 
         Returns:
-            Dict mapping table names to column dicts with type strings
-            Format: {"table_name": {"col1": "INT", "col2": "VARCHAR"}}
+            Nested dict: {schema: {table: {col: type_string}}}
+            or flat dict: {table: {col: type_string}} for backwards compatibility
         """
         try:
             serialized = {}
@@ -147,21 +156,39 @@ class SchemaAggregator:
             elif hasattr(mapping_schema, "mapping"):
                 mapping = mapping_schema.mapping
             else:
-                # Try to iterate through the schema
                 mapping = {}
-                # MappingSchema might be iterable or have other access methods
                 Logger.instance().debug("Unable to access MappingSchema internal mapping")
 
-            for table_key, columns in mapping.items():
-                table_name = str(table_key)
-                serialized[table_name] = {}
+            for key, value in mapping.items():
+                key_str = str(key)
 
-                for col_name, col_type in columns.items():
-                    # Store just the SQL string representation
-                    if isinstance(col_type, exp.DataType):
-                        serialized[table_name][col_name] = col_type.sql()
+                # Check if value is a nested dict (schema -> tables) or flat (columns)
+                if isinstance(value, dict):
+                    first_val = next(iter(value.values()), None) if value else None
+
+                    if isinstance(first_val, dict):
+                        # Nested structure: {schema: {table: {col: type}}}
+                        # value is {table_name: {col_name: DataType}}
+                        serialized[key_str] = {}
+                        for table_name, columns in value.items():
+                            table_str = str(table_name)
+                            serialized[key_str][table_str] = {}
+                            for col_name, col_type in columns.items():
+                                if isinstance(col_type, exp.DataType):
+                                    serialized[key_str][table_str][col_name] = col_type.sql()
+                                else:
+                                    serialized[key_str][table_str][col_name] = str(col_type)
+                    elif isinstance(first_val, exp.DataType) or first_val is None:
+                        # Flat structure: {table: {col: type}} - columns directly
+                        serialized[key_str] = {}
+                        for col_name, col_type in value.items():
+                            if isinstance(col_type, exp.DataType):
+                                serialized[key_str][col_name] = col_type.sql()
+                            else:
+                                serialized[key_str][col_name] = str(col_type)
                     else:
-                        serialized[table_name][col_name] = str(col_type)
+                        # Unknown structure, try to serialize as string
+                        serialized[key_str] = {str(k): str(v) for k, v in value.items()}
 
             return serialized
 
@@ -170,19 +197,22 @@ class SchemaAggregator:
             return {}
 
     @staticmethod
-    def load_source_schema(source_name: str, output_dir: str) -> Optional[Dict[str, Any]]:
+    def load_source_schema(
+        source_name: str, output_dir: str, run_id: str = DEFAULT_RUN_ID
+    ) -> Optional[Dict[str, Any]]:
         """
         Load stored schema data for a source.
 
         Args:
             source_name: Name of the source
             output_dir: Output directory where schemas are stored
+            run_id: Run identifier for schema storage location
 
         Returns:
             Schema data dictionary or None if not found
         """
         try:
-            schema_file = f"{output_dir}/schemas/{source_name}/schema.json"
+            schema_file = f"{output_dir}/{run_id}/schemas/{source_name}/schema.json"
             if not os.path.exists(schema_file):
                 return None
 
@@ -198,28 +228,81 @@ class SchemaAggregator:
         """
         Build SQLGlot MappingSchema from stored schema data.
 
+        Handles both flat and nested schema structures:
+        - Flat: {"table": {"col": "TYPE"}}
+        - Nested: {"schema": {"table": {"col": "TYPE"}}}
+
         Args:
             schema_data: Stored schema data with "sqlglot_schema" key
 
         Returns:
-            SQLGlot MappingSchema instance
+            SQLGlot MappingSchema instance with proper nesting
         """
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
         schema = MappingSchema()
 
+        # Get dialect from stored schema data for proper type parsing
+        # e.g., TIMESTAMP_TZ is only valid when parsed with snowflake dialect
+        source_type = schema_data.get("source_type", "")
         try:
-            # Get the sqlglot_schema - it's already {table: {col: type_str}}
+            dialect = get_sqlglot_dialect(source_type) if source_type else None
+        except NotImplementedError:
+            dialect = None
+
+        try:
             sqlglot_schema_data = schema_data.get("sqlglot_schema", {})
 
-            for table_name, columns in sqlglot_schema_data.items():
-                column_types = {}
+            for key, value in sqlglot_schema_data.items():
+                if not isinstance(value, dict):
+                    continue
 
-                for col_name, col_type_str in columns.items():
-                    # Parse the type string to DataType
-                    column_types[col_name] = exp.DataType.build(col_type_str)
+                # Determine if this is nested (schema -> tables) or flat (table -> columns)
+                first_val = next(iter(value.values()), None) if value else None
 
-                # Add table to schema
-                if column_types:
-                    schema.add_table(table_name, column_types)
+                if isinstance(first_val, dict):
+                    # Nested structure: {schema: {table: {col: type}}}
+                    schema_name = key
+                    tables = value
+                    for table_name, columns in tables.items():
+                        if not isinstance(columns, dict):
+                            continue
+                        column_types = {}
+                        for col_name, col_type_str in columns.items():
+                            try:
+                                column_types[col_name] = exp.DataType.build(
+                                    col_type_str, dialect=dialect
+                                )
+                            except Exception as e:
+                                Logger.instance().debug(
+                                    f"Error parsing type '{col_type_str}' for column "
+                                    f"'{col_name}', using VARCHAR: {e}"
+                                )
+                                column_types[col_name] = exp.DataType.build("VARCHAR")
+
+                        # Add table with qualified name to create nested structure
+                        if column_types:
+                            qualified_name = f"{schema_name}.{table_name}"
+                            schema.add_table(qualified_name, column_types)
+                else:
+                    # Flat structure: {table: {col: type}} - first_val is a type string
+                    table_name = key
+                    columns = value
+                    column_types = {}
+                    for col_name, col_type_str in columns.items():
+                        try:
+                            column_types[col_name] = exp.DataType.build(
+                                col_type_str, dialect=dialect
+                            )
+                        except Exception as e:
+                            Logger.instance().debug(
+                                f"Error parsing type '{col_type_str}' for column "
+                                f"'{col_name}', using VARCHAR: {e}"
+                            )
+                            column_types[col_name] = exp.DataType.build("VARCHAR")
+
+                    if column_types:
+                        schema.add_table(table_name, column_types)
 
         except Exception as e:
             Logger.instance().error(f"Error building MappingSchema from stored data: {e}")
@@ -227,18 +310,19 @@ class SchemaAggregator:
         return schema
 
     @staticmethod
-    def list_stored_schemas(output_dir: str) -> List[Dict[str, Any]]:
+    def list_stored_schemas(output_dir: str, run_id: str = DEFAULT_RUN_ID) -> List[Dict[str, Any]]:
         """
         List all stored schemas with basic metadata.
 
         Args:
             output_dir: Output directory where schemas are stored
+            run_id: Run identifier for schema storage location
 
         Returns:
             List of schema metadata dictionaries
         """
         schemas = []
-        schemas_dir = f"{output_dir}/schemas"
+        schemas_dir = f"{output_dir}/{run_id}/schemas"
 
         if not os.path.exists(schemas_dir):
             return schemas

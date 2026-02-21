@@ -9,9 +9,10 @@ from visivo.models.project import Project
 
 
 class CoreParser:
-    def __init__(self, project_file: Path, files: List[Path]):
+    def __init__(self, project_file: Path, files: List[Path], default_source: str = None):
         self.files = files
         self.project_file = project_file
+        self.default_source = default_source
         setup_yaml_ordered_dict()
 
     def parse(self) -> Project:
@@ -26,6 +27,10 @@ class CoreParser:
     def __build_project(self):
         data = self.__merged_project_data()
         data["project_file_path"] = str(self.project_file)
+        if self.default_source:
+            if "defaults" not in data or data["defaults"] is None:
+                data["defaults"] = {}
+            data["defaults"]["source_name"] = self.default_source
         try:
             project = Project(**data)
         except ValidationError as validation_error:

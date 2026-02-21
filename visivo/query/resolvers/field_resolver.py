@@ -311,7 +311,7 @@ class FieldResolver:
         # Fallback: resolve normally (may lose modifiers if SQLGlot fails)
         return self.resolve(expression, alias=False)
 
-    def resolve(self, expression: str, alias=True) -> str:
+    def resolve(self, expression: str, alias=True, return_hash=False) -> str:
         """
         Recurse through ${ref(model).field} and ${ref(global-field)} statements within a metric replacing
         them with their expressions until we are left with only sql statements.
@@ -440,15 +440,18 @@ class FieldResolver:
         # The naive .split(" AS ")[0] approach incorrectly truncates expressions containing " AS "
         resolved_strip_alias = self._strip_trailing_alias(resolved_sql)
         if alias:
-            # Use dialect-aware identifier normalization for proper case handling
-            # Snowflake: uppercase (matches unquoted storage)
-            # PostgreSQL: lowercase (matches unquoted storage)
-            # Others: preserve case
+            # Always use raw lowercase hash as alias with quoting.
+            # Quoted identifiers preserve case in all databases, so the lowercase
+            # hash from alpha_hash() is stored exactly as-is. This ensures consistent
+            # aliases across parquet columns, DuckDB WASM results, and props_mapping.
+            alias_identifier = exp.Identifier(this=hashed_alias, quoted=True)
             sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
-            alias_identifier = normalize_identifier_for_dialect(
-                hashed_alias, self.native_dialect, quoted=True
-            )
             alias_sql = alias_identifier.sql(dialect=sqlglot_dialect)
-            return f"{resolved_strip_alias} AS {alias_sql}"
+            result = f"{resolved_strip_alias} AS {alias_sql}"
+            if return_hash:
+                return result, hashed_alias
+            return result
         else:
+            if return_hash:
+                return resolved_strip_alias, hashed_alias
             return resolved_strip_alias

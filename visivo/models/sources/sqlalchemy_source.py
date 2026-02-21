@@ -418,7 +418,9 @@ class SqlalchemySource(Source, ABC):
                 col_type = col_info["type"]
 
                 # Convert SQLAlchemy type to SQLGlot DataType
-                sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(col_type)
+                sqlglot_datatype = SqlglotTypeMapper.sqlalchemy_to_sqlglot_type(
+                    col_type, dialect=self.get_dialect()
+                )
 
                 table_schema["columns"][col_name] = {
                     "type": str(col_type),

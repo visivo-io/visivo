@@ -25,6 +25,7 @@ from visivo.jobs.run_source_schema_job import job as source_schema_job
 from visivo.jobs.run_sql_model_job import job as sql_model_job
 from visivo.jobs.run_input_job import job as input_job
 from visivo.jobs.job_tracker import JobTracker
+from visivo.query.source_schema_cache import SourceSchemaCache
 from threading import Lock
 
 warnings.filterwarnings("ignore")
@@ -55,6 +56,8 @@ class DagRunner:
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
+        # Schema cache for SQL model jobs - builds DataTypes once per source
+        self.schema_cache = SourceSchemaCache()
 
     def run(self):
         complete = False
@@ -165,8 +168,12 @@ class DagRunner:
             )
         elif isinstance(item, SqlModel):
             return sql_model_job(
-                sql_model=item, output_dir=self.output_dir, dag=self.project_dag, run_id=self.run_id
+                sql_model=item,
+                output_dir=self.output_dir,
+                dag=self.project_dag,
+                run_id=self.run_id,
+                schema_cache=self.schema_cache,
             )
         elif isinstance(item, Source):
-            return source_schema_job(source=item, output_dir=self.output_dir)
+            return source_schema_job(source=item, output_dir=self.output_dir, run_id=self.run_id)
         return None

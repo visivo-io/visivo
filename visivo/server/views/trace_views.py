@@ -46,7 +46,7 @@ def register_trace_views(app, flask_app, output_dir):
                     {
                         "name": name,
                         "id": name,
-                        "signed_data_file_url": f"/api/traces/{name_hash}/{DEFAULT_RUN_ID}/",
+                        "signed_data_file_url": f"/api/traces/{name_hash}/",
                     }
                 )
 

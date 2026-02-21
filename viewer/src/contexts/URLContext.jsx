@@ -36,6 +36,18 @@ export function getUrl(key, params = {}) {
 }
 
 /**
+ * Check if a URL endpoint is available in the current configuration
+ * @param {string} key - Endpoint key
+ * @returns {boolean} - True if the endpoint is available
+ */
+export function isAvailable(key) {
+  if (!globalURLConfig) {
+    return false;
+  }
+  return globalURLConfig.isAvailable(key);
+}
+
+/**
  * Provider component for URL configuration
  * @param {object} props
  * @param {URLConfig} props.urlConfig - URLConfig instance to use (optional)

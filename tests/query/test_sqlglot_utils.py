@@ -477,6 +477,66 @@ class TestFindNonAggregatedExpressionsDialects:
         assert any("`status`" in expr_sql for expr_sql in result)
 
 
+class TestSchemaFromSqlMultiSchema:
+    """Tests for schema_from_sql with multi-schema (nested) schema structures."""
+
+    def test_schema_from_sql_with_nested_schema(self):
+        """Test schema resolution with nested schema structure."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        schema = {
+            "EDW": {"fact_order": {"col1": exp.DataType.build("INT")}},
+            "REPORTING": {"goals": {"goal_col": exp.DataType.build("DECIMAL")}},
+        }
+        sql = "SELECT col1 FROM fact_order"
+        result = schema_from_sql("snowflake", sql, schema, "test", default_schema="EDW")
+        assert "test" in result
+        assert "col1" in result["test"]
+
+    def test_schema_from_sql_with_qualified_table(self):
+        """Test schema resolution when table is explicitly qualified."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        schema = {
+            "EDW": {"fact_order": {"col1": exp.DataType.build("INT")}},
+            "REPORTING": {"goals": {"goal_col": exp.DataType.build("DECIMAL")}},
+        }
+        sql = "SELECT goal_col FROM REPORTING.goals"
+        result = schema_from_sql("snowflake", sql, schema, "test", default_schema="EDW")
+        assert "test" in result
+        assert "goal_col" in result["test"]
+
+    def test_schema_from_sql_with_flat_schema_backwards_compatible(self):
+        """Test that flat schema still works (backwards compatibility)."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        schema = {
+            "fact_order": {"col1": exp.DataType.build("INT")},
+            "goals": {"goal_col": exp.DataType.build("DECIMAL")},
+        }
+        sql = "SELECT col1 FROM fact_order"
+        result = schema_from_sql("snowflake", sql, schema, "test")
+        assert "test" in result
+        assert "col1" in result["test"]
+
+    def test_schema_from_sql_default_schema_none(self):
+        """Test that default_schema=None still works for flat schemas."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        schema = {
+            "users": {"id": exp.DataType.build("INT"), "name": exp.DataType.build("VARCHAR")},
+        }
+        sql = "SELECT id, name FROM users"
+        result = schema_from_sql("duckdb", sql, schema, "test_model", default_schema=None)
+        assert "test_model" in result
+        assert "id" in result["test_model"]
+        assert "name" in result["test_model"]
+
+
 class TestHasWindowFunction:
     """Tests for the has_window_function function."""
 
@@ -506,6 +566,130 @@ class TestHasWindowFunction:
         """Test simple column is not window function."""
         expr = parse_expression("column_name", dialect="duckdb")
         assert has_window_function(expr) is False
+
+
+class TestSchemaFromSqlWithComments:
+    """Tests for schema_from_sql handling of SQL comments.
+
+    SQL comments in column references can cause qualify() to fail
+    because the string representation includes the comment text.
+    For example: '"col" /* comment */' won't match schema entry '"col"'.
+    """
+
+    def test_column_with_inline_comment_resolves(self):
+        """Columns with /* comments */ should resolve correctly."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = 'SELECT col AS "result" /* comment */ FROM t'
+        schema = {"t": {"col": exp.DataType.build("INT")}}
+        result = schema_from_sql("duckdb", sql, schema, "model")
+        assert "model" in result
+        assert "result" in result["model"]
+
+    def test_column_alias_with_trailing_comment(self):
+        """Column aliases followed by comments should resolve."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = 'SELECT a AS "col1" /* First column */, b FROM t'
+        schema = {"t": {"a": exp.DataType.build("INT"), "b": exp.DataType.build("VARCHAR")}}
+        result = schema_from_sql("snowflake", sql, schema, "model")
+        assert "model" in result
+        assert "col1" in result["model"]
+        assert "b" in result["model"]
+
+    def test_multiline_comment_in_select(self):
+        """Multiline comments should not break column resolution."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = """
+        SELECT
+            /* This is a multiline
+               comment explaining the column */
+            amount,
+            date_col
+        FROM orders
+        """
+        schema = {
+            "orders": {
+                "amount": exp.DataType.build("DECIMAL"),
+                "date_col": exp.DataType.build("DATE"),
+            }
+        }
+        result = schema_from_sql("duckdb", sql, schema, "model")
+        assert "model" in result
+        assert "amount" in result["model"]
+        assert "date_col" in result["model"]
+
+    def test_double_dash_comment_in_select(self):
+        """Double-dash comments should not break column resolution."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = """
+        SELECT
+            amount, -- this is the order amount
+            quantity -- number of items
+        FROM orders
+        """
+        schema = {
+            "orders": {
+                "amount": exp.DataType.build("DECIMAL"),
+                "quantity": exp.DataType.build("INT"),
+            }
+        }
+        result = schema_from_sql("duckdb", sql, schema, "model")
+        assert "model" in result
+        assert "amount" in result["model"]
+        assert "quantity" in result["model"]
+
+    def test_comment_after_quoted_identifier(self):
+        """Comments after quoted identifiers should not break resolution."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = 'SELECT "escalation_in_next_1d" /* Escalation predictions */ FROM predictions'
+        schema = {
+            "predictions": {
+                "escalation_in_next_1d": exp.DataType.build("BOOLEAN"),
+            }
+        }
+        result = schema_from_sql("duckdb", sql, schema, "model")
+        assert "model" in result
+        assert "escalation_in_next_1d" in result["model"]
+
+    def test_complex_query_with_multiple_comments(self):
+        """Complex query with multiple comments in various places."""
+        from sqlglot import exp
+        from visivo.query.sqlglot_utils import schema_from_sql
+
+        sql = """
+        SELECT
+            /* Selecting user data */
+            u.id,           -- user identifier
+            u.name,         /* user name */
+            o.total AS order_total  -- aggregated total
+        FROM users u  /* main user table */
+        JOIN orders o /* order details */
+            ON u.id = o.user_id
+        """
+        schema = {
+            "users": {
+                "id": exp.DataType.build("INT"),
+                "name": exp.DataType.build("VARCHAR"),
+            },
+            "orders": {
+                "user_id": exp.DataType.build("INT"),
+                "total": exp.DataType.build("DECIMAL"),
+            },
+        }
+        result = schema_from_sql("duckdb", sql, schema, "model")
+        assert "model" in result
+        assert "id" in result["model"]
+        assert "name" in result["model"]
+        assert "order_total" in result["model"]
 
 
 class TestNormalizeIdentifierForDialect:

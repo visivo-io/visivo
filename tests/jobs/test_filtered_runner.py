@@ -112,6 +112,9 @@ def test_runner_dag_filter():
     additional_dashboard.rows[0].items[0].chart.traces[0].model.source = source
     project.dashboards.append(additional_dashboard)
 
+    # Invalidate the cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
+
     create_file_database(url=source.url(), output_dir=output_dir)
 
     port = get_test_port()
