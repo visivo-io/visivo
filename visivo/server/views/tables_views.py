@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_tables_crud_views(app, flask_app, output_dir):
+def register_tables_views(app, flask_app, output_dir):
     """Register table CRUD API endpoints."""
 
     @app.route("/api/tables/", methods=["GET"])
@@ -17,7 +17,7 @@ def register_tables_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tables/<table_name>/", methods=["GET"])
-    def get_table_crud(table_name):
+    def get_table(table_name):
         """Get table configuration with status information."""
         try:
             result = flask_app.table_manager.get_table_with_status(table_name)
@@ -29,7 +29,7 @@ def register_tables_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tables/<table_name>/save/", methods=["POST"])
-    def save_table_crud(table_name):
+    def save_table(table_name):
         """Save a table configuration to cache (draft state)."""
         try:
             table_config = request.get_json(silent=True)
@@ -67,7 +67,7 @@ def register_tables_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tables/<table_name>/", methods=["DELETE"])
-    def delete_table_crud(table_name):
+    def delete_table(table_name):
         """Mark a table for deletion (will be removed from YAML on publish)."""
         try:
             marked = flask_app.table_manager.mark_for_deletion(table_name)
@@ -88,7 +88,7 @@ def register_tables_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tables/<table_name>/validate/", methods=["POST"])
-    def validate_table_crud(table_name):
+    def validate_table(table_name):
         """Validate a table configuration without saving it."""
         try:
             table_config = request.get_json(silent=True)

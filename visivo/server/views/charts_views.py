@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_charts_crud_views(app, flask_app, output_dir):
+def register_charts_views(app, flask_app, output_dir):
     """Register chart CRUD API endpoints."""
 
     @app.route("/api/charts/", methods=["GET"])
@@ -17,7 +17,7 @@ def register_charts_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/charts/<chart_name>/", methods=["GET"])
-    def get_chart_crud(chart_name):
+    def get_chart(chart_name):
         """Get chart configuration with status information."""
         try:
             result = flask_app.chart_manager.get_chart_with_status(chart_name)
@@ -29,7 +29,7 @@ def register_charts_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/charts/<chart_name>/save/", methods=["POST"])
-    def save_chart_crud(chart_name):
+    def save_chart(chart_name):
         """Save a chart configuration to cache (draft state)."""
         try:
             chart_config = request.get_json(silent=True)
@@ -67,7 +67,7 @@ def register_charts_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/charts/<chart_name>/", methods=["DELETE"])
-    def delete_chart_crud(chart_name):
+    def delete_chart(chart_name):
         """Mark a chart for deletion (will be removed from YAML on publish)."""
         try:
             marked = flask_app.chart_manager.mark_for_deletion(chart_name)
@@ -88,7 +88,7 @@ def register_charts_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/charts/<chart_name>/validate/", methods=["POST"])
-    def validate_chart_crud(chart_name):
+    def validate_chart(chart_name):
         """Validate a chart configuration without saving it."""
         try:
             chart_config = request.get_json(silent=True)

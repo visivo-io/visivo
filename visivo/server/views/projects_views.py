@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_projects_crud_views(app, flask_app, output_dir):
+def register_projects_views(app, flask_app, output_dir):
     """Register project CRUD API endpoints (new pattern)."""
 
     @app.route("/api/projects/", methods=["GET"])
@@ -21,7 +21,7 @@ def register_projects_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/projects/<project_name>/", methods=["GET"])
-    def get_project_crud(project_name):
+    def get_project(project_name):
         """
         Get project with status information.
         Locally, project_name should match the current project.
@@ -38,7 +38,7 @@ def register_projects_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/projects/<project_name>/save/", methods=["POST"])
-    def save_project_crud(project_name):
+    def save_project(project_name):
         """
         Save project configuration (defaults) to cache.
         This sets the status to NEW or MODIFIED.
@@ -82,7 +82,7 @@ def register_projects_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/projects/<project_name>/", methods=["DELETE"])
-    def delete_project_crud(project_name):
+    def delete_project(project_name):
         """
         Mark project for deletion (clears cached defaults, reverts to published).
         """
@@ -109,7 +109,7 @@ def register_projects_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/projects/<project_name>/validate/", methods=["POST"])
-    def validate_project_crud(project_name):
+    def validate_project(project_name):
         """
         Validate project configuration without saving.
         """
