@@ -19,6 +19,7 @@ from visivo.server.managers.table_manager import TableManager
 from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.csv_script_model_manager import CsvScriptModelManager
 from visivo.server.managers.local_merge_model_manager import LocalMergeModelManager
+from visivo.server.managers.project_manager import ProjectManager
 
 
 class FlaskApp:
@@ -80,6 +81,9 @@ class FlaskApp:
         self.local_merge_model_manager = LocalMergeModelManager()
         self.local_merge_model_manager.load(dag)
 
+        # Initialize project manager (doesn't use DAG, just stores project and cache dir)
+        self.project_manager = ProjectManager(project, output_dir)
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
@@ -111,3 +115,5 @@ class FlaskApp:
         self.dashboard_manager.load(dag)
         self.csv_script_model_manager.load(dag)
         self.local_merge_model_manager.load(dag)
+        # Project manager doesn't use load(), it gets the new project directly
+        self.project_manager.project = value

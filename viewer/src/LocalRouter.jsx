@@ -69,6 +69,7 @@ const LocalRouter = createBrowserRouter(
           id="lineage-new"
           path="/lineage-new"
           element={<LineageNew />}
+          loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/lineage-new">Lineage (New)</BreadcrumbLink>,
           }}
@@ -77,6 +78,7 @@ const LocalRouter = createBrowserRouter(
           id="editor-new"
           path="/editor-new"
           element={<EditorNew />}
+          loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor-new">Editor (New)</BreadcrumbLink>,
           }}
@@ -85,6 +87,7 @@ const LocalRouter = createBrowserRouter(
           id="project-new"
           path="/project-new/:dashboardName?"
           element={<ProjectNew />}
+          loader={loadProject}
           handle={{
             crumb: match => (
               <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>

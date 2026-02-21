@@ -19,6 +19,7 @@ from visivo.server.views.metric_views import register_metric_views
 from visivo.server.views.model_views import register_model_views
 from visivo.server.views.profiling_views import register_profiling_views
 from visivo.server.views.project_views import register_project_views
+from visivo.server.views.projects_crud_views import register_projects_crud_views
 from visivo.server.views.publish_views import register_publish_views
 from visivo.server.views.relation_views import register_relation_views
 from visivo.server.views.sources_views import register_source_views
@@ -30,6 +31,7 @@ def register_views(app, flask_app, output_dir):
     register_data_views(app, flask_app, output_dir)
     register_file_views(app, output_dir)
     register_project_views(app, flask_app, output_dir)
+    register_projects_crud_views(app, flask_app, output_dir)  # New CRUD endpoints
     register_worksheet_views(app, flask_app, output_dir)
     register_editor_views(app, flask_app, output_dir)
     register_dashboard_views(app, flask_app, output_dir)

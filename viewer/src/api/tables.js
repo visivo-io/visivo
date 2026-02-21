@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all tables with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllTables = async () => {
-  const response = await fetch(getUrl('tablesList'));
+export const fetchAllTables = async (projectId = null) => {
+  let url = getUrl('tablesList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

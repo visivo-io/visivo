@@ -15,7 +15,8 @@ const createDashboardSlice = (set, get) => ({
   fetchDashboards: async () => {
     set({ dashboardsLoading: true, dashboardsError: null });
     try {
-      const data = await dashboardsApi.fetchAllDashboards();
+      const projectId = get().project?.id;
+      const data = await dashboardsApi.fetchAllDashboards(projectId);
       set({ dashboards: data.dashboards || [], dashboardsLoading: false });
     } catch (error) {
       console.error('dashboardStore: fetch error', error);

@@ -15,7 +15,8 @@ const createLocalMergeModelSlice = (set, get) => ({
   fetchLocalMergeModels: async () => {
     set({ localMergeModelsLoading: true, localMergeModelsError: null });
     try {
-      const data = await localMergeModelsApi.fetchAllLocalMergeModels();
+      const projectId = get().project?.id;
+      const data = await localMergeModelsApi.fetchAllLocalMergeModels(projectId);
       set({ localMergeModels: data.local_merge_models || [], localMergeModelsLoading: false });
     } catch (error) {
       set({ localMergeModelsError: error.message, localMergeModelsLoading: false });

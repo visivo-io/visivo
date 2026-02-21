@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all LocalMergeModels with their status
  */
-export const fetchAllLocalMergeModels = async () => {
-  const response = await fetch(getUrl('localMergeModelsList'));
+export const fetchAllLocalMergeModels = async (projectId = null) => {
+  let url = getUrl('localMergeModelsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

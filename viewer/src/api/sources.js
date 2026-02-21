@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all sources with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllSources = async () => {
-  const response = await fetch(getUrl('sourcesList'));
+export const fetchAllSources = async (projectId = null) => {
+  let url = getUrl('sourcesList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

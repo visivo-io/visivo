@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch the current project defaults
  */
-export const fetchDefaults = async () => {
-  const response = await fetch(getUrl('defaultsGet'));
+export const fetchDefaults = async (projectId = null) => {
+  let url = getUrl('defaultsGet');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

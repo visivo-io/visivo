@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all dashboards with their status
  */
-export const fetchAllDashboards = async () => {
-  const response = await fetch(getUrl('dashboardsList'));
+export const fetchAllDashboards = async (projectId = null) => {
+  let url = getUrl('dashboardsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }
