@@ -52,11 +52,19 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Memoize insight names to prevent array recreation on every render
-  const insightNames = useMemo(() => {
-    if (!table.insights?.length) return [];
-    return table.insights.map(insight => insight.name);
-  }, [table.insights]);
+  // Memoize insight name (supports both singular 'insight' and deprecated plural 'insights')
+  const insightName = useMemo(() => {
+    // New singular field takes precedence
+    if (table.insight?.name) return table.insight.name;
+
+    // Backward compat: deprecated plural (use first)
+    if (table.insights && table.insights.length > 0) {
+      console.warn(`Table '${table.name}' uses deprecated 'insights' field. Use 'insight' instead.`);
+      return table.insights[0].name;
+    }
+
+    return null;
+  }, [table.insight, table.insights, table.name]);
 
   // Memoize trace names to prevent array recreation
   const traceNames = useMemo(() => {
@@ -67,18 +75,14 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Viewport-based loading: Only fetch data when shouldLoad is true
   const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
-  const isInsightTable = table.insights?.length > 0;
+  const isInsightTable = !!insightName;
 
-  // Read insights data from store (Dashboard prefetches all visible insights)
+  // Read insight data from store (Dashboard prefetches all visible insights)
   // Uses useShallow for shallow equality comparison to avoid infinite re-renders
-  const insightsData = useStore(
+  const insightData = useStore(
     useShallow(state => {
-      if (!insightNames.length) return null;
-      const data = {};
-      for (const name of insightNames) {
-        if (state.insightJobs[name]) data[name] = state.insightJobs[name];
-      }
-      return Object.keys(data).length > 0 ? data : null;
+      if (!insightName) return null;
+      return state.insightJobs[insightName] || null;
     })
   );
 
@@ -136,36 +140,51 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     }
   }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
+  // Helper: Format column header from key name
+  const formatColumnHeader = key => {
+    // Remove hash suffixes (e.g., "revenue_hash_abc123" → "revenue")
+    const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
+
+    // Convert snake_case to Title Case
+    return cleanKey
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  };
+
   useEffect(() => {
-    if (isInsightTable && insightsData) {
-      const insightName = table.insights[0]?.name;
-      const insightObj = insightsData?.[insightName];
-      const insightColObj =
-        table.column_defs.filter(column => column.insight_name === insightName)[0]?.columns ?? [];
+    if (!isInsightTable || !insightData) return;
 
-      if (insightObj?.insight && insightColObj) {
-        const insightColumns = insightColObj.map((col, idx) => ({
-          id: col.id ?? `col_${idx}`,
-          header: col.header,
-          accessorKey: col.key.replace(/^columns\./, '').replace(/^props\./, ''),
-          enableGrouping: false,
-          markdown: col.markdown,
-        }));
-
-        setColumns(insightColumns);
-
-        setTableData(
-          insightObj.insight.map((row, idx) => {
-            const transformedRow = {};
-            Object.entries(row).forEach(([key, value]) => {
-              transformedRow[key.replace(/\./g, '___')] = value;
-            });
-            return { id: idx, ...transformedRow };
-          })
-        );
-      }
+    const data = insightData?.data || insightData?.insight;
+    if (!data || data.length === 0) {
+      setColumns([]);
+      setTableData([]);
+      return;
     }
-  }, [isInsightTable, insightsData, table.insights, table.column_defs]);
+
+    const firstRow = data[0];
+
+    // Auto-generate columns from query result keys
+    const autoColumns = Object.keys(firstRow).map(key => ({
+      id: key,
+      header: formatColumnHeader(key),
+      accessorKey: key.replace(/\./g, '___'), // Replace dots for safe access
+      enableGrouping: false,
+      markdown: false,
+    }));
+
+    setColumns(autoColumns);
+
+    // Transform data (replace dots in keys)
+    const transformedData = data.map((row, idx) => {
+      const transformedRow = { id: idx };
+      Object.entries(row).forEach(([key, value]) => {
+        transformedRow[key.replace(/\./g, '___')] = value;
+      });
+      return transformedRow;
+    });
+
+    setTableData(transformedData);
+  }, [isInsightTable, insightData]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -245,7 +264,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isInsightTable && !insightsData) {
+  if (isInsightTable && !insightData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
