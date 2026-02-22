@@ -10,18 +10,19 @@ from visivo.server.views.file_views import register_file_views
 from visivo.server.views.input_jobs_views import register_input_jobs_views
 from visivo.server.views.inputs_views import register_inputs_views
 from visivo.server.views.local_merge_model_views import register_local_merge_model_views
-from visivo.server.views.insight_views import register_insight_views
-from visivo.server.views.insights_crud_views import register_insights_crud_views
-from visivo.server.views.markdowns_crud_views import register_markdowns_crud_views
-from visivo.server.views.charts_crud_views import register_charts_crud_views
-from visivo.server.views.tables_crud_views import register_tables_crud_views
-from visivo.server.views.metric_views import register_metric_views
-from visivo.server.views.model_views import register_model_views
+from visivo.server.views.insight_jobs_views import register_insight_jobs_views
+from visivo.server.views.insights_views import register_insights_views
+from visivo.server.views.markdowns_views import register_markdowns_views
+from visivo.server.views.charts_views import register_charts_views
+from visivo.server.views.tables_views import register_tables_views
+from visivo.server.views.metrics_views import register_metrics_views
+from visivo.server.views.models_views import register_models_views
 from visivo.server.views.model_query_jobs_views import register_model_query_jobs_views
 from visivo.server.views.profiling_views import register_profiling_views
 from visivo.server.views.project_views import register_project_views
+from visivo.server.views.projects_views import register_projects_views
 from visivo.server.views.publish_views import register_publish_views
-from visivo.server.views.relation_views import register_relation_views
+from visivo.server.views.relations_views import register_relations_views
 from visivo.server.views.sources_views import register_source_views
 from visivo.server.views.source_schema_jobs_views import register_source_schema_jobs_views
 from visivo.server.views.trace_views import register_trace_views
@@ -32,23 +33,24 @@ def register_views(app, flask_app, output_dir):
     register_data_views(app, flask_app, output_dir)
     register_file_views(app, output_dir)
     register_project_views(app, flask_app, output_dir)
+    register_projects_views(app, flask_app, output_dir)
     register_worksheet_views(app, flask_app, output_dir)
     register_editor_views(app, flask_app, output_dir)
     register_dashboard_views(app, flask_app, output_dir)
     register_trace_views(app, flask_app, output_dir)
-    register_insight_views(app, flask_app, output_dir)
-    register_insights_crud_views(app, flask_app, output_dir)
+    register_insight_jobs_views(app, flask_app, output_dir)
+    register_insights_views(app, flask_app, output_dir)
     register_inputs_views(app, flask_app, output_dir)
-    register_markdowns_crud_views(app, flask_app, output_dir)
-    register_charts_crud_views(app, flask_app, output_dir)
-    register_tables_crud_views(app, flask_app, output_dir)
+    register_markdowns_views(app, flask_app, output_dir)
+    register_charts_views(app, flask_app, output_dir)
+    register_tables_views(app, flask_app, output_dir)
     register_input_jobs_views(app, flask_app, output_dir)
     register_source_views(app, flask_app, output_dir)
-    register_model_views(app, flask_app, output_dir)
+    register_models_views(app, flask_app, output_dir)
     register_model_query_jobs_views(app, flask_app, output_dir)
     register_dimension_views(app, flask_app, output_dir)
-    register_metric_views(app, flask_app, output_dir)
-    register_relation_views(app, flask_app, output_dir)
+    register_metrics_views(app, flask_app, output_dir)
+    register_relations_views(app, flask_app, output_dir)
     register_profiling_views(app, flask_app, output_dir)
     register_publish_views(app, flask_app, output_dir)
     register_defaults_views(app, flask_app, output_dir)

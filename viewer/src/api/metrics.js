@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all metrics with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllMetrics = async () => {
-  const response = await fetch(getUrl('metricsList'));
+export const fetchAllMetrics = async (projectId = null) => {
+  let url = getUrl('metricsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

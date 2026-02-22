@@ -27,7 +27,7 @@ export const MULTI_SELECT = 'multi-select';
  * This component reads the current value from the store and passes it to the display component.
  * Display components only call setInputJobValue when the user actively selects a new option.
  */
-const Input = ({ input, itemWidth, project }) => {
+const Input = ({ input, itemWidth, projectId }) => {
   const setInputJobValue = useStore(state => state.setInputJobValue);
   // Performance optimization: Only subscribe to THIS input's value, not all inputs
   // This prevents re-rendering when other inputs change
@@ -36,7 +36,7 @@ const Input = ({ input, itemWidth, project }) => {
   );
 
   // Get options from store (pre-loaded by Dashboard via useInputsData)
-  const options = useInputOptions(input, project?.id);
+  const options = useInputOptions(input, projectId);
 
   // Determine input type and multi-select status
   const inputType = input?.type;

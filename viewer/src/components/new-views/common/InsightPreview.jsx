@@ -74,17 +74,6 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
     };
   }, [previewInsightKey, layoutValues]);
 
-  const project = useMemo(
-    () => ({
-      id: projectId,
-      project_json: {
-        name: 'Preview Project',
-        dashboards: [],
-      },
-    }),
-    [projectId]
-  );
-
   const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);
 
   useInputsData(projectId, inputNamesToLoad);
@@ -145,7 +134,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
           data-testid="input-controls-section"
         >
           {inputs.map(input => (
-            <Input key={input.name} input={input} project={project} itemWidth={1} />
+            <Input key={input.name} input={input} projectId={projectId} itemWidth={1} />
           ))}
         </div>
       )}
@@ -154,7 +143,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
         <div className="w-full h-full relative" style={{ minWidth: 0 }}>
           <Chart
             chart={chart}
-            project={project}
+            projectId={projectId}
             itemWidth={1}
             height={400}
             width={undefined}

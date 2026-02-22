@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_insights_crud_views(app, flask_app, output_dir):
+def register_insights_views(app, flask_app, output_dir):
     """Register insight CRUD API endpoints."""
 
     @app.route("/api/insights/", methods=["GET"])
@@ -17,7 +17,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insights/<insight_name>/", methods=["GET"])
-    def get_insight_crud(insight_name):
+    def get_insight(insight_name):
         """Get insight configuration with status information."""
         try:
             result = flask_app.insight_manager.get_insight_with_status(insight_name)
@@ -29,7 +29,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insights/<insight_name>/save/", methods=["POST"])
-    def save_insight_crud(insight_name):
+    def save_insight(insight_name):
         """Save an insight configuration to cache (draft state)."""
         try:
             insight_config = request.get_json(silent=True)
@@ -67,7 +67,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insights/<insight_name>/", methods=["DELETE"])
-    def delete_insight_crud(insight_name):
+    def delete_insight(insight_name):
         """Mark an insight for deletion (will be removed from YAML on publish)."""
         try:
             marked = flask_app.insight_manager.mark_for_deletion(insight_name)
@@ -88,7 +88,7 @@ def register_insights_crud_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insights/<insight_name>/validate/", methods=["POST"])
-    def validate_insight_crud(insight_name):
+    def validate_insight(insight_name):
         """Validate an insight configuration without saving it."""
         try:
             insight_config = request.get_json(silent=True)

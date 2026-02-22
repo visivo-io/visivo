@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_relation_views(app, flask_app, output_dir):
+def register_relations_views(app, flask_app, output_dir):
     """Register relation-related API endpoints."""
 
     @app.route("/api/relations/", methods=["GET"])

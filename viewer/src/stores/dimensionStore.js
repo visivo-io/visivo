@@ -18,7 +18,8 @@ const createDimensionSlice = (set, get) => ({
   fetchDimensions: async () => {
     set({ dimensionsLoading: true, dimensionsError: null });
     try {
-      const data = await dimensionsApi.fetchAllDimensions();
+      const projectId = get().project?.id;
+      const data = await dimensionsApi.fetchAllDimensions(projectId);
       set({ dimensions: data.dimensions || [], dimensionsLoading: false });
     } catch (error) {
       set({ dimensionsError: error.message, dimensionsLoading: false });

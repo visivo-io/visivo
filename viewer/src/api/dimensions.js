@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all dimensions with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllDimensions = async () => {
-  const response = await fetch(getUrl('dimensionsList'));
+export const fetchAllDimensions = async (projectId = null) => {
+  let url = getUrl('dimensionsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

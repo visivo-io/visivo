@@ -13,6 +13,7 @@ import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
+import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
 import SchemaBrowser from './components/explorerNew/SchemaBrowser/SchemaBrowser';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
@@ -68,6 +69,7 @@ const LocalRouter = createBrowserRouter(
           id="lineage-new"
           path="/lineage-new"
           element={<LineageNew />}
+          loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/lineage-new">Lineage (New)</BreadcrumbLink>,
           }}
@@ -76,8 +78,22 @@ const LocalRouter = createBrowserRouter(
           id="editor-new"
           path="/editor-new"
           element={<EditorNew />}
+          loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor-new">Editor (New)</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="project-new"
+          path="/project-new/:dashboardName?"
+          element={<ProjectNew />}
+          loader={loadProject}
+          handle={{
+            crumb: match => (
+              <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
+                {match.params.dashboardName ? `${match.params.dashboardName} (New)` : 'Project (New)'}
+              </BreadcrumbLink>
+            ),
           }}
         />
         <Route

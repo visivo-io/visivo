@@ -330,17 +330,28 @@ const LineageNew = () => {
     []
   );
 
-  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants)
+  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants) AND open edit panel
   const handleNodeClick = useCallback((event, node) => {
     const nodeName = node.data.name;
+    const objectType = node.data.objectType;
+
     // Store the node's current position so it doesn't jump during layout recomputation
     setFixedNode({
       id: node.id,
       position: node.position,
     });
+
     // Set selector to +name+ to show the node and all its dependencies
     setSelector(`+${nodeName}+`);
-  }, []);
+
+    // Open edit panel for this node
+    // Edit forms expect the store object (with .config, .name, etc.), which is nested in node.data
+    // csvScriptModel and localMergeModel both store their object under the 'model' key
+    const storeObjectKey = (objectType === 'csvScriptModel' || objectType === 'localMergeModel') ? 'model' : objectType;
+    const storeObject = node.data[storeObjectKey] ?? node.data;
+    clearEdit();
+    pushEdit(objectType, storeObject);
+  }, [clearEdit, pushEdit]);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(

@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all charts with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllCharts = async () => {
-  const response = await fetch(getUrl('chartsList'));
+export const fetchAllCharts = async (projectId = null) => {
+  let url = getUrl('chartsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

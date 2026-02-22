@@ -18,7 +18,8 @@ const createMarkdownSlice = (set, get) => ({
   fetchMarkdowns: async () => {
     set({ markdownsLoading: true, markdownsError: null });
     try {
-      const data = await markdownsApi.fetchAllMarkdowns();
+      const projectId = get().project?.id;
+      const data = await markdownsApi.fetchAllMarkdowns(projectId);
       set({ markdowns: data.markdowns || [], markdownsLoading: false });
     } catch (error) {
       set({ markdownsError: error.message, markdownsLoading: false });

@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import re
-from flask import jsonify, send_file, send_from_directory
+from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
 
 
@@ -35,9 +35,12 @@ def register_data_views(app, flask_app, output_dir):
 
     @app.route("/api/project/")
     def projects_api():
+        project_data = json.loads(flask_app._project_json)
         return {
             "id": "id",
-            "project_json": json.loads(flask_app._project_json),
+            "name": flask_app._project.name,
+            "project_json": project_data,
+            "config": project_data.get("defaults", {}),
             "created_at": datetime.datetime.now().isoformat(),
         }
 

@@ -124,6 +124,12 @@ const URL_PATTERNS = {
     defaultsGet: '/api/defaults/',
     defaultsSave: '/api/defaults/save/',
 
+    // Project management endpoints (new CRUD pattern)
+    projectsList: '/api/projects/',
+    projectDetail: '/api/projects/{name}/',
+    projectSave: '/api/projects/{name}/save/',
+    projectValidate: '/api/projects/{name}/validate/',
+
     // Publish management endpoints
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',

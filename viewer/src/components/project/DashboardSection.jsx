@@ -73,9 +73,7 @@ function DashboardSection({ title, dashboards, hasLevels, projectDefaults, proje
           isCollapsed ? 'hidden' : ''
         }`}
       >
-        <div
-          className={`col-span-full w-full flex flex-wrap gap-3 ${levelIndex === 'unassigned' ? 'justify-start' : 'justify-center'}`}
-        >
+        <div className="col-span-full w-full flex flex-wrap gap-3 justify-center">
           {sortedDashboards.map(dashboard => (
             <div
               key={dashboard.name}

@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_metric_views(app, flask_app, output_dir):
+def register_metrics_views(app, flask_app, output_dir):
     """Register metric-related API endpoints."""
 
     @app.route("/api/metrics/", methods=["GET"])

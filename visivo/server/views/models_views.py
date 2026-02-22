@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from visivo.logger.logger import Logger
 
 
-def register_model_views(app, flask_app, output_dir):
+def register_models_views(app, flask_app, output_dir):
     """Register model-related API endpoints."""
 
     @app.route("/api/models/", methods=["GET"])

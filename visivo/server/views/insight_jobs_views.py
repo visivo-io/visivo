@@ -10,7 +10,7 @@ from visivo.server.jobs.preview_job_executor import execute_insight_preview_job
 from visivo.constants import DEFAULT_RUN_ID
 
 
-def register_insight_views(app, flask_app, output_dir):
+def register_insight_jobs_views(app, flask_app, output_dir):
 
     @app.route("/api/insight-jobs/", methods=["GET"])
     def get_insights_api():

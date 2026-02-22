@@ -15,7 +15,8 @@ const createCsvScriptModelSlice = (set, get) => ({
   fetchCsvScriptModels: async () => {
     set({ csvScriptModelsLoading: true, csvScriptModelsError: null });
     try {
-      const data = await csvScriptModelsApi.fetchAllCsvScriptModels();
+      const projectId = get().project?.id;
+      const data = await csvScriptModelsApi.fetchAllCsvScriptModels(projectId);
       set({ csvScriptModels: data.csv_script_models || [], csvScriptModelsLoading: false });
     } catch (error) {
       set({ csvScriptModelsError: error.message, csvScriptModelsLoading: false });
