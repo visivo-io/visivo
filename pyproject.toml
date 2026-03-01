@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "1.0.78"
+version = "1.0.79"
 description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
@@ -9,7 +9,7 @@ packages = [{include = "visivo"}]
 
 [project]
 name = "visivo"
-version = "1.0.78"
+version = "1.0.79"
 description = "Visivo CLI for BI and visualizations as code"
 authors = [
     {name = "Visivo People"}
@@ -63,6 +63,7 @@ pyarrow = ">=20.0.0"
 posthog = "^6.1.0"
 redshift-connector = "^2.1.8"
 clickhouse-sqlalchemy = ">=0.3.0"
+orjson = ">=3.10.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=25.1.0"

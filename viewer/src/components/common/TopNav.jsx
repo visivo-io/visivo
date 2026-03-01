@@ -19,6 +19,12 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Detect if viewing from localhost:3000 to route to new pages
+  const isLocalDev = window.location.hostname === 'localhost' && window.location.port === '3000';
+  const lineageRoute = isLocalDev ? '/lineage-new' : '/lineage';
+  const editorRoute = isLocalDev ? '/editor-new' : '/editor';
+  const projectRoute = isLocalDev ? '/project-new' : '/project';
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#191D33] border-b border-gray-700">
       <div className="flex justify-between items-center h-12 px-4">
@@ -27,27 +33,27 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
             <img src={logo} alt="V" className="h-7" />
           </Link>
           <TumblerNavItem
-            icon={PiTreeStructure}
-            label="Lineage"
-            to="/lineage"
-            tooltip="Visualize your project's dag to understand dependencies"
-          />
-          <TumblerNavItem
             icon={PiMagnifyingGlass}
             label="Explorer"
             to="/explorer"
             tooltip="Drill into your data with sql to create new models or explore existing ones"
           />
           <TumblerNavItem
+            icon={PiTreeStructure}
+            label="Lineage"
+            to={lineageRoute}
+            tooltip="Visualize your project's dag to understand dependencies"
+          />
+          <TumblerNavItem
             icon={PiPencil}
             label="Editor"
-            to="/editor"
+            to={editorRoute}
             tooltip="Edit project objects and create new charts, traces, and more"
           />
           <TumblerNavItem
             icon={HiTemplate}
             label="Project"
-            to="/project"
+            to={projectRoute}
             tooltip="View your project as it will look deployed"
           />
         </div>

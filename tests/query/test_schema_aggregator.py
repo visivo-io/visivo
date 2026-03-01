@@ -178,6 +178,139 @@ class TestSchemaAggregator:
         assert len(mapping) == 0
 
 
+class TestSchemaAggregatorNestedSchema:
+    """Test nested schema structure support (multi-schema databases like Snowflake)."""
+
+    def test_serialize_nested_mapping_schema(self):
+        """Test serialization of nested MappingSchema with qualified table names."""
+        schema = MappingSchema()
+        # Add tables with qualified names - this creates nested structure
+        schema.add_table(
+            "EDW.fact_order",
+            {"col1": exp.DataType.build("INT"), "col2": exp.DataType.build("TEXT")},
+        )
+        schema.add_table(
+            "REPORTING.goals",
+            {"goal_col": exp.DataType.build("DECIMAL"), "target": exp.DataType.build("INT")},
+        )
+
+        serialized = SchemaAggregator._serialize_mapping_schema(schema)
+
+        # Should be nested: {schema: {table: {col: type}}}
+        assert "EDW" in serialized or "edw" in serialized
+        assert "REPORTING" in serialized or "reporting" in serialized
+
+    def test_deserialize_nested_schema_structure(self):
+        """Test deserialization of nested schema structure."""
+        stored_schema = {
+            "source_name": "snowflake_source",
+            "source_type": "snowflake",
+            "sqlglot_schema": {
+                "EDW": {
+                    "fact_order": {"col1": "INT", "col2": "TEXT"},
+                    "dim_user": {"user_id": "INT", "name": "VARCHAR"},
+                },
+                "REPORTING": {"goals": {"goal_col": "DECIMAL", "target": "INT"}},
+            },
+            "metadata": {"default_schema": "EDW"},
+        }
+
+        mapping_schema = SchemaAggregator.build_mapping_schema_from_stored(stored_schema)
+
+        # Access internal mapping
+        if hasattr(mapping_schema, "_mapping"):
+            mapping = mapping_schema._mapping
+        elif hasattr(mapping_schema, "mapping"):
+            mapping = mapping_schema.mapping
+        else:
+            pytest.fail("MappingSchema has no accessible mapping attribute")
+
+        # Verify nested structure was created
+        # Should have schema-level keys
+        assert len(mapping) > 0
+
+    def test_round_trip_nested_schema(self):
+        """Test that nested schema survives serialize -> deserialize -> serialize."""
+        original_schema = MappingSchema()
+        original_schema.add_table("EDW.fact_order", {"col1": exp.DataType.build("INT")})
+        original_schema.add_table("REPORTING.goals", {"goal_col": exp.DataType.build("VARCHAR")})
+
+        # Serialize
+        serialized = SchemaAggregator._serialize_mapping_schema(original_schema)
+
+        # Create stored format with nested structure
+        stored_schema = {"sqlglot_schema": serialized, "source_type": "snowflake"}
+
+        # Deserialize
+        reconstructed_schema = SchemaAggregator.build_mapping_schema_from_stored(stored_schema)
+
+        # Serialize again
+        reserialized = SchemaAggregator._serialize_mapping_schema(reconstructed_schema)
+
+        # Should have same structure (keys and column names)
+        assert set(serialized.keys()) == set(reserialized.keys())
+        for schema_name in serialized:
+            assert set(serialized[schema_name].keys()) == set(reserialized[schema_name].keys())
+            for table_name in serialized[schema_name]:
+                assert set(serialized[schema_name][table_name].keys()) == set(
+                    reserialized[schema_name][table_name].keys()
+                )
+
+    def test_deserialize_flat_schema_backwards_compatible(self):
+        """Test that flat schema format still works for backwards compatibility."""
+        stored_schema = {
+            "source_name": "duckdb_source",
+            "source_type": "duckdb",
+            "sqlglot_schema": {
+                "users": {"id": "INT", "name": "VARCHAR"},
+                "orders": {"order_id": "INT", "user_id": "INT"},
+            },
+        }
+
+        mapping_schema = SchemaAggregator.build_mapping_schema_from_stored(stored_schema)
+
+        # Access internal mapping
+        if hasattr(mapping_schema, "_mapping"):
+            mapping = mapping_schema._mapping
+        elif hasattr(mapping_schema, "mapping"):
+            mapping = mapping_schema.mapping
+        else:
+            pytest.fail("MappingSchema has no accessible mapping attribute")
+
+        # Should have table-level keys
+        assert len(mapping) > 0
+
+    def test_nested_schema_with_metadata(self):
+        """Test that nested schema properly stores and retrieves metadata."""
+        schema_data = {
+            "tables": {
+                "EDW.fact_order": {
+                    "columns": {"col1": {"type": "INT", "nullable": False}},
+                    "metadata": {"schema": "EDW", "table_name": "fact_order"},
+                }
+            },
+            "sqlglot_schema": {"EDW": {"fact_order": {"col1": "INT"}}},
+            "metadata": {
+                "source_type": "snowflake",
+                "default_schema": "EDW",
+                "total_tables": 1,
+                "total_columns": 1,
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            SchemaAggregator.aggregate_source_schema(
+                source_name="test_source",
+                source_type="snowflake",
+                schema_data=schema_data,
+                output_dir=tmpdir,
+            )
+
+            loaded = SchemaAggregator.load_source_schema("test_source", tmpdir)
+            assert loaded is not None
+            assert loaded["metadata"]["default_schema"] == "EDW"
+
+
 class TestSchemaAggregatorRunId:
     """Test run_id support in SchemaAggregator."""
 

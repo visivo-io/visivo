@@ -167,22 +167,25 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         """
         Build SQLGlot schema for Snowflake source using INFORMATION_SCHEMA.
 
-        This method uses a single query to INFORMATION_SCHEMA.COLUMNS to get all
-        table and column information at once, which is significantly faster than
-        the default SQLAlchemy Inspector approach that makes individual queries per table.
+        This method queries ALL schemas in the database to build a nested schema structure
+        that supports multi-schema SQL queries (e.g., SELECT * FROM EDW.table JOIN REPORTING.goals).
+
+        The schema structure is nested: {schema_name: {table_name: {col_name: type}}}
+        This allows SQLGlot to resolve both qualified (SCHEMA.TABLE) and unqualified table references.
 
         Args:
             table_names: Optional list of table names to include. If None, includes all tables.
+                        Can be unqualified ("table") or qualified ("schema.table").
 
         Returns:
             Dictionary containing:
-            - tables: Dict mapping table names to column info
-            - sqlglot_schema: SQLGlot MappingSchema for query optimization
-            - metadata: Additional metadata about the schema
+            - tables: Dict mapping qualified table names (schema.table) to column info
+            - sqlglot_schema: SQLGlot MappingSchema with nested schema structure
+            - metadata: Additional metadata including default_schema for unqualified references
         """
         try:
-            # Get the schema name to query
-            schema_name = getattr(self, "db_schema", None) or "PUBLIC"
+            # Get the default schema (used for unqualified table references)
+            default_schema = getattr(self, "db_schema", None) or "PUBLIC"
 
             # Initialize result structure
             result = {
@@ -192,52 +195,60 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     "source_type": self.type,
                     "source_dialect": "snowflake",
                     "database": self.database,
-                    "schema": schema_name,
+                    "default_schema": default_schema,
                     "total_tables": 0,
                     "total_columns": 0,
                 },
             }
 
-            # Get all columns (and implicitly all tables) in a single query
-            all_columns = self._extract_all_columns_from_information_schema(
-                schema_name, table_names
-            )
+            # Get all columns from ALL schemas in the database
+            all_columns = self._extract_all_columns_from_information_schema(table_names)
 
             if not all_columns:
                 return result
 
-            # Build schema for each table
-            for table_name, table_columns in all_columns.items():
-                table_info = {
-                    "columns": {},
-                    "metadata": {
-                        "table_name": table_name,
-                        "schema": schema_name,
-                        "column_count": len(table_columns),
-                    },
-                }
+            # Build schema for each table, organized by schema
+            # all_columns format: {schema_name: {table_name: [col_info, ...]}}
+            for schema_name, tables in all_columns.items():
+                for table_name, table_columns in tables.items():
+                    qualified_name = f"{schema_name}.{table_name}"
 
-                columns_dict = {}
-                for col_info in table_columns:
-                    col_name = col_info["column_name"]
-
-                    # Convert Snowflake type string to SQLGlot DataType
-                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(col_info["data_type"])
-
-                    table_info["columns"][col_name] = {
-                        "type": col_info["data_type"],
-                        "nullable": col_info["is_nullable"],
-                        "default": col_info["column_default"],
-                        "sqlglot_datatype": sqlglot_datatype,
-                        "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
+                    table_info = {
+                        "columns": {},
+                        "metadata": {
+                            "table_name": table_name,
+                            "schema": schema_name,
+                            "column_count": len(table_columns),
+                        },
                     }
-                    columns_dict[col_name] = sqlglot_datatype
 
-                result["tables"][table_name] = table_info
+                    columns_dict = {}
+                    for col_info in table_columns:
+                        col_name = col_info["column_name"]
 
-                # Add to SQLGlot schema
-                if columns_dict:
-                    result["sqlglot_schema"].add_table(table_name, columns_dict)
+                        # Convert Snowflake type string to SQLGlot DataType
+                        sqlglot_datatype = SqlglotTypeMapper._parse_type_string(
+                            col_info["data_type"], dialect="snowflake"
+                        )
+
+                        table_info["columns"][col_name] = {
+                            "type": col_info["data_type"],
+                            "nullable": col_info["is_nullable"],
+                            "default": col_info["column_default"],
+                            "sqlglot_datatype": sqlglot_datatype,
+                            "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(
+                                sqlglot_datatype
+                            ),
+                        }
+                        columns_dict[col_name] = sqlglot_datatype
+
+                    # Store with qualified name for metadata tracking
+                    result["tables"][qualified_name] = table_info
+
+                    # Add to SQLGlot schema with qualified name
+                    # This creates nested structure: {schema: {table: {col: type}}}
+                    if columns_dict:
+                        result["sqlglot_schema"].add_table(qualified_name, columns_dict)
 
             # Update metadata
             result["metadata"]["total_tables"] = len(result["tables"])
@@ -247,7 +258,7 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
 
             Logger.instance().debug(
                 f"Built schema for Snowflake source '{self.name}' with "
-                f"{result['metadata']['total_tables']} tables"
+                f"{result['metadata']['total_tables']} tables across multiple schemas"
             )
 
             return result
@@ -261,29 +272,31 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
             }
 
     def _extract_all_columns_from_information_schema(
-        self, schema_name: str, table_names: List[str] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, table_names: List[str] = None
+    ) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
         """
-        Extract schema information for all tables in a single query.
+        Extract schema information for ALL schemas in the database.
 
-        This gets all table and column info from INFORMATION_SCHEMA.COLUMNS,
-        which is much more efficient than querying each table individually.
+        This queries INFORMATION_SCHEMA.COLUMNS without filtering by schema,
+        returning all tables from all schemas. This enables SQL queries that
+        reference tables from multiple schemas (e.g., EDW.fact_order JOIN REPORTING.goals).
 
         Args:
-            schema_name: The schema to query
-            table_names: Optional list of table names to filter to
+            table_names: Optional list of table names to filter to.
+                        Can be unqualified ("table") or qualified ("schema.table").
 
         Returns:
-            Dictionary mapping table names to lists of column info dicts.
+            Nested dict: {schema_name: {table_name: [column_info, ...]}}
         """
         try:
             with self.get_connection() as connection:
                 from sqlalchemy import text
 
-                # Single query to get all columns - table names come from the results
+                # Query ALL schemas (exclude INFORMATION_SCHEMA system schema)
                 query = text(
                     """
                     SELECT
+                        TABLE_SCHEMA,
                         TABLE_NAME,
                         COLUMN_NAME,
                         DATA_TYPE,
@@ -293,32 +306,51 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                         NUMERIC_SCALE,
                         CHARACTER_MAXIMUM_LENGTH
                     FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_SCHEMA = :schema_name
-                    ORDER BY TABLE_NAME, ORDINAL_POSITION
+                    WHERE TABLE_SCHEMA NOT IN ('INFORMATION_SCHEMA')
+                    ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
                     """
                 )
 
-                rows = connection.execute(query, {"schema_name": schema_name}).fetchall()
+                rows = connection.execute(query).fetchall()
 
-                # Group columns by table name
-                columns_by_table: Dict[str, List[Dict[str, Any]]] = {}
-                table_names_set = set(table_names) if table_names else None
+                # Build set of table names to filter (if provided)
+                # Support both unqualified ("table") and qualified ("schema.table") names
+                table_names_unqualified = set()
+                table_names_qualified = set()
+                if table_names:
+                    for name in table_names:
+                        if "." in name:
+                            # Qualified name like "schema.table"
+                            table_names_qualified.add(name.upper())
+                        else:
+                            # Unqualified name
+                            table_names_unqualified.add(name.upper())
+
+                # Group columns by schema -> table -> columns
+                result: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
                 for row in rows:
-                    table_name = row[0]
+                    schema_name = row[0]
+                    table_name = row[1]
+                    qualified_name = f"{schema_name}.{table_name}"
 
-                    # Skip tables not in our filter list (if filtering)
-                    if table_names_set and table_name not in table_names_set:
-                        continue
+                    # Apply table name filter if provided
+                    if table_names:
+                        if qualified_name.upper() not in table_names_qualified:
+                            if table_name.upper() not in table_names_unqualified:
+                                continue
 
-                    if table_name not in columns_by_table:
-                        columns_by_table[table_name] = []
+                    # Initialize nested structure
+                    if schema_name not in result:
+                        result[schema_name] = {}
+                    if table_name not in result[schema_name]:
+                        result[schema_name][table_name] = []
 
                     # Build type string with precision/scale/length if available
-                    data_type = row[2]
-                    numeric_precision = row[5]
-                    numeric_scale = row[6]
-                    char_max_length = row[7]
+                    data_type = row[3]
+                    numeric_precision = row[6]
+                    numeric_scale = row[7]
+                    char_max_length = row[8]
 
                     # Construct full type string
                     if numeric_precision is not None and numeric_scale is not None:
@@ -329,16 +361,16 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     elif char_max_length is not None:
                         data_type = f"{data_type}({char_max_length})"
 
-                    columns_by_table[table_name].append(
+                    result[schema_name][table_name].append(
                         {
-                            "column_name": row[1],
+                            "column_name": row[2],
                             "data_type": data_type,
-                            "is_nullable": row[3] == "YES",
-                            "column_default": row[4],
+                            "is_nullable": row[4] == "YES",
+                            "column_default": row[5],
                         }
                     )
 
-                return columns_by_table
+                return result
 
         except Exception as e:
             Logger.instance().debug(

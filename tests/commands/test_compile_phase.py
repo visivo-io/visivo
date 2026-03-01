@@ -25,7 +25,7 @@ def test_compile_csv_script_model():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_source="source",
+        default_source=None,
         working_dir=working_dir,
         output_dir=output_dir,
     )
@@ -56,6 +56,9 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
 
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = outer_merge_model
 
+    # Invalidate the cached DAG since we modified the project after construction
+    project.invalidate_dag_cache()
+
     # Get the DAG first to ensure it's properly initialized
     dag = project.dag()
 
@@ -68,7 +71,7 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_source="source",
+        default_source=None,
         working_dir=working_dir,
         output_dir=output_dir,
     )

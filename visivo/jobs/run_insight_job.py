@@ -51,7 +51,7 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
                     query=insight_query_info.post_query,
                     dag=dag,
                     output_dir=run_output_dir,
-                    dialect=source.get_sqlglot_dialect(),  # Use source dialect for validation
+                    dialect="duckdb",  # Dynamic post_query always runs in DuckDB WASM
                 )
             except Exception as e:
                 raise ValueError(

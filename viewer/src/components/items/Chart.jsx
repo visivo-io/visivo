@@ -16,7 +16,7 @@ import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
-const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shouldLoad = true, hideToolbar = false }, ref) => {
+const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
@@ -62,7 +62,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width, shou
   const traceNames = chart.traces.map(trace => trace.name);
   const hasTraces = traceNames.length > 0;
   // Viewport-based loading: Only fetch data when shouldLoad is true
-  const tracesData = useTracesData(project.id, shouldLoad ? traceNames : []);
+  const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
   const hasInsights = chart.insights && chart.insights.length > 0;
 

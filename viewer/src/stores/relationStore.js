@@ -18,7 +18,8 @@ const createRelationSlice = (set, get) => ({
   fetchRelations: async () => {
     set({ relationsLoading: true, relationsError: null });
     try {
-      const data = await relationsApi.fetchAllRelations();
+      const projectId = get().project?.id;
+      const data = await relationsApi.fetchAllRelations(projectId);
       set({ relations: data.relations || [], relationsLoading: false });
     } catch (error) {
       set({ relationsError: error.message, relationsLoading: false });

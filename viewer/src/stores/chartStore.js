@@ -18,7 +18,8 @@ const createChartSlice = (set, get) => ({
   fetchCharts: async () => {
     set({ chartsLoading: true, chartsError: null });
     try {
-      const data = await chartsApi.fetchAllCharts();
+      const projectId = get().project?.id;
+      const data = await chartsApi.fetchAllCharts(projectId);
       set({ charts: data.charts || [], chartsLoading: false });
     } catch (error) {
       set({ chartsError: error.message, chartsLoading: false });

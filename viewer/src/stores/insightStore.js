@@ -18,7 +18,8 @@ const createInsightSlice = (set, get) => ({
   fetchInsights: async () => {
     set({ insightsLoading: true, insightsError: null });
     try {
-      const data = await insightsApi.fetchAllInsights();
+      const projectId = get().project?.id;
+      const data = await insightsApi.fetchAllInsights(projectId);
       set({ insights: data.insights || [], insightsLoading: false });
     } catch (error) {
       set({ insightsError: error.message, insightsLoading: false });

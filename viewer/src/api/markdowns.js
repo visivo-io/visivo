@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all markdowns with their status (NEW, MODIFIED, PUBLISHED)
  */
-export const fetchAllMarkdowns = async () => {
-  const response = await fetch(getUrl('markdownsList'));
+export const fetchAllMarkdowns = async (projectId = null) => {
+  let url = getUrl('markdownsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

@@ -269,9 +269,10 @@ class InsightQueryBuilder:
         source = insight.get_dependent_source(dag, output_dir)
         self.default_schema = source.db_schema
         self.default_database = source.database
-        self.native_dialect = source.get_sqlglot_dialect()
+        self.source_dialect = source.get_sqlglot_dialect()
+        self.native_dialect = "duckdb" if self.is_dynamic else self.source_dialect
         field_resolver = FieldResolver(
-            dag=dag, output_dir=output_dir, native_dialect=source.get_sqlglot_dialect()
+            dag=dag, output_dir=output_dir, native_dialect=self.native_dialect
         )
         self.field_resolver = field_resolver
         # Pass relevant_models to RelationGraph to scope relation resolution
@@ -313,17 +314,7 @@ class InsightQueryBuilder:
     def props_mapping(self):
         if not self.is_resolved:
             raise Exception("Need to resolve before accessing props_mapping")
-        props_statements = [
-            (key, statement) for key, statement in self.resolved_query_statements if "props." in key
-        ]
-        props_map = {}
-        for key, statement in props_statements:
-            # Extract alias after " AS " and strip surrounding quotes
-            alias = statement.split(" AS ")[1]
-            # Remove surrounding quotes (both single and double)
-            alias = alias.strip("'\"")
-            props_map[key] = alias
-        return props_map
+        return {key: self.alias_hashes[key] for key in self.alias_hashes if "props." in key}
 
     @property
     def split_key(self):
@@ -333,13 +324,7 @@ class InsightQueryBuilder:
         """
         if not self.is_resolved:
             raise Exception("Need to resolve before accessing split_key")
-        for key, statement in self.resolved_query_statements:
-            if key == "split":
-                # Extract alias after " AS " and strip surrounding quotes
-                alias = statement.split(" AS ")[1]
-                alias = alias.strip("'\"")
-                return alias
-        return None
+        return self.alias_hashes.get("split")
 
     @property
     def static_props(self):
@@ -397,16 +382,19 @@ class InsightQueryBuilder:
             return f'SELECT * FROM "{self.insight_hash}"'
 
     def resolve(self):
-        """Sets the resolved_query_statements"""
+        """Sets the resolved_query_statements and alias_hashes"""
         resolved_query_statements = []
+        self.alias_hashes = {}
         for key, statement in self.unresolved_query_statements:
             if key == "sort":
-                # Sort expressions need special handling to preserve ASC/DESC modifiers
                 resolved_statement = self.field_resolver.resolve_sort(expression=statement)
             elif key == "filter":
                 resolved_statement = self.field_resolver.resolve(expression=statement, alias=False)
             else:
-                resolved_statement = self.field_resolver.resolve(expression=statement)
+                resolved_statement, alias_hash = self.field_resolver.resolve(
+                    expression=statement, return_hash=True
+                )
+                self.alias_hashes[key] = alias_hash
             resolved_query_statements.append((key, resolved_statement))
         self.resolved_query_statements = resolved_query_statements
         self.is_resolved = True

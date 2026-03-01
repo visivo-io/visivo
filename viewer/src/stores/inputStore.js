@@ -18,7 +18,8 @@ const createInputSlice = (set, get) => ({
   fetchInputs: async () => {
     set({ inputsLoading: true, inputsError: null });
     try {
-      const data = await inputsApi.fetchAllInputs();
+      const projectId = get().project?.id;
+      const data = await inputsApi.fetchAllInputs(projectId);
       set({ inputs: data.inputs || [], inputsLoading: false });
     } catch (error) {
       set({ inputsError: error.message, inputsLoading: false });

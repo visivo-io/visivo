@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock, MagicMock
 from flask import Flask
 
-from visivo.server.views.model_views import register_model_views
+from visivo.server.views.models_views import register_models_views
 from visivo.server.managers.object_manager import ObjectStatus
 
 
@@ -19,7 +19,7 @@ class TestModelViews:
         flask_app = Mock()
         flask_app.model_manager = Mock()
 
-        register_model_views(app, flask_app, "/tmp/output")
+        register_models_views(app, flask_app, "/tmp/output")
 
         # Store flask_app on the app for access in tests
         app.flask_app = flask_app

@@ -18,7 +18,8 @@ const createMetricSlice = (set, get) => ({
   fetchMetrics: async () => {
     set({ metricsLoading: true, metricsError: null });
     try {
-      const data = await metricsApi.fetchAllMetrics();
+      const projectId = get().project?.id;
+      const data = await metricsApi.fetchAllMetrics(projectId);
       set({ metrics: data.metrics || [], metricsLoading: false });
     } catch (error) {
       set({ metricsError: error.message, metricsLoading: false });

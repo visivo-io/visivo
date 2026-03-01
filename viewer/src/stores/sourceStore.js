@@ -27,7 +27,8 @@ const createSourceSlice = (set, get) => ({
   fetchSources: async () => {
     set({ sourcesLoading: true, sourcesError: null });
     try {
-      const data = await sourcesApi.fetchAllSources();
+      const projectId = get().project?.id;
+      const data = await sourcesApi.fetchAllSources(projectId);
       set({ sources: data.sources || [], sourcesLoading: false });
     } catch (error) {
       set({ sourcesError: error.message, sourcesLoading: false });

@@ -15,6 +15,13 @@ from visivo.version import VISIVO_VERSION
 class Serializer:
     def __init__(self, project: Project):
         self.project = project
+        self._dag = None
+
+    def _get_dag(self):
+        """Get cached DAG."""
+        if self._dag is None:
+            self._dag = self.project.dag()
+        return self._dag
 
     def create_flattened_project(self) -> dict:
         """
@@ -73,9 +80,185 @@ class Serializer:
 
         return flattened
 
+    def dereference_to_dict(self) -> dict:
+        """
+        Creates a dereferenced version of the project as a dict without deep copying.
+        This is more efficient than dereference() + model_dump_json() for large projects.
+        """
+        project = self.project
+        dag = self._get_dag()
+
+        # Build dashboards with dereferenced items
+        dashboards = []
+        for dashboard in project.dashboards:
+            dashboard_dict = dashboard.model_dump(exclude_none=True, mode="json")
+            # Process rows and items to inline refs
+            for row_dict in dashboard_dict.get("rows", []):
+                for item_dict in row_dict.get("items", []):
+                    self._dereference_item_dict(item_dict, dashboard, dag)
+            dashboards.append(dashboard_dict)
+
+        # Build the output dict with empty top-level collections
+        return {
+            "name": project.name,
+            "cli_version": VISIVO_VERSION,
+            "dashboards": dashboards,
+            "charts": [],
+            "traces": [],
+            "insights": [],
+            "tables": [],
+            "models": [],
+            "sources": [],
+            "selectors": [],
+            "inputs": [],
+        }
+
+    def _dereference_item_dict(self, item_dict, dashboard, dag):
+        """Recursively dereference an item dict by finding the actual item and inlining refs."""
+        # Find the actual item object from the dashboard
+        item_name = item_dict.get("name")
+        if not item_name:
+            return
+
+        # Find the item in the dashboard
+        actual_item = None
+        for row in dashboard.rows:
+            for item in row.items:
+                if item.name == item_name:
+                    actual_item = item
+                    break
+            if actual_item:
+                break
+
+        if not actual_item:
+            return
+
+        # Handle chart
+        if actual_item.chart or (isinstance(item_dict.get("chart"), str)):
+            chart = all_descendants_of_type(type=Chart, dag=dag, from_node=actual_item)
+            if chart:
+                chart = chart[0]
+                chart_dict = chart.model_dump(exclude_none=True, mode="json")
+
+                # Inline traces
+                traces = all_descendants_of_type(type=Trace, dag=dag, from_node=chart, depth=1)
+                chart_dict["traces"] = [self._dereference_trace_dict(t, dag) for t in traces]
+
+                # Inline insights
+                insights = all_descendants_of_type(type=Insight, dag=dag, from_node=chart, depth=1)
+                chart_dict["insights"] = [
+                    i.model_dump(exclude_none=True, mode="json") for i in insights
+                ]
+
+                # Inline selector
+                if chart.selector:
+                    selectors = all_descendants_of_type(
+                        type=Selector, dag=dag, from_node=chart, depth=1
+                    )
+                    if selectors:
+                        selector = selectors[0]
+                        selector_dict = selector.model_dump(exclude_none=True, mode="json")
+                        options = all_descendants_of_type(
+                            type=Trace, dag=dag, from_node=selector, depth=1
+                        )
+                        selector_dict["options"] = [
+                            self._dereference_trace_dict(t, dag) for t in options
+                        ]
+                        chart_dict["selector"] = selector_dict
+
+                item_dict["chart"] = chart_dict
+
+        # Handle table
+        if actual_item.table or (isinstance(item_dict.get("table"), str)):
+            table = all_descendants_of_type(type=Table, dag=dag, from_node=actual_item)
+            if table:
+                table = table[0]
+                table_dict = table.model_dump(exclude_none=True, mode="json")
+
+                # Inline traces
+                traces = all_descendants_of_type(type=Trace, dag=dag, from_node=table, depth=1)
+                table_dict["traces"] = [self._dereference_trace_dict(t, dag) for t in traces]
+
+                # Inline insights
+                insights = all_descendants_of_type(type=Insight, dag=dag, from_node=table, depth=1)
+                table_dict["insights"] = [
+                    i.model_dump(exclude_none=True, mode="json") for i in insights
+                ]
+
+                # Inline selector
+                if table.selector:
+                    selectors = all_descendants_of_type(
+                        type=Selector, dag=dag, from_node=table, depth=1
+                    )
+                    if selectors:
+                        selector = selectors[0]
+                        selector_dict = selector.model_dump(exclude_none=True, mode="json")
+                        options = all_descendants_of_type(
+                            type=Trace, dag=dag, from_node=selector, depth=1
+                        )
+                        selector_dict["options"] = [
+                            self._dereference_trace_dict(t, dag) for t in options
+                        ]
+                        table_dict["selector"] = selector_dict
+
+                item_dict["table"] = table_dict
+
+        # Handle item-level selector
+        if actual_item.selector or (isinstance(item_dict.get("selector"), str)):
+            selectors = all_descendants_of_type(
+                type=Selector, dag=dag, from_node=actual_item, depth=1
+            )
+            if selectors:
+                selector = selectors[0]
+                selector_dict = selector.model_dump(exclude_none=True, mode="json")
+                options = [
+                    opt
+                    for opt in all_descendants(dag=dag, from_node=selector, depth=1)
+                    if not isinstance(opt, Selector)
+                ]
+                selector_dict["options"] = [
+                    opt.model_dump(exclude_none=True, mode="json") for opt in options
+                ]
+                item_dict["selector"] = selector_dict
+
+        # Handle input
+        if actual_item.input or (isinstance(item_dict.get("input"), str)):
+            inputs = all_descendants_of_type(type=Input, dag=dag, from_node=actual_item, depth=1)
+            if inputs:
+                item_dict["input"] = inputs[0].model_dump(exclude_none=True, mode="json")
+
+    def _dereference_trace_dict(self, trace, dag) -> dict:
+        """Create a dereferenced trace dict with model and source inlined."""
+        trace_dict = trace.model_dump(exclude_none=True, mode="json")
+
+        # Inline model
+        models = all_descendants_of_type(type=Model, dag=dag, from_node=trace)
+        if models:
+            model = models[0]
+            model_dict = model.model_dump(exclude_none=True, mode="json")
+
+            # Inline source if present
+            if hasattr(model, "source"):
+                sources = all_descendants_of_type(type=Source, dag=dag, from_node=model)
+                if sources:
+                    model_dict["source"] = sources[0].model_dump(exclude_none=True, mode="json")
+
+            # Inline nested models if present
+            if hasattr(model, "models") and model.models:
+                nested_models = all_descendants_of_type(type=Model, dag=dag, from_node=model)
+                model_dict["models"] = [
+                    m.model_dump(exclude_none=True, mode="json") for m in nested_models
+                ]
+
+            trace_dict["model"] = model_dict
+
+        return trace_dict
+
     def dereference(self) -> Project:
         project = self.project.model_copy(deep=True)
         project.cli_version = VISIVO_VERSION
+        # Invalidate DAG cache since the deep copy created new object instances
+        project.invalidate_dag_cache()
         dag = project.dag()
 
         for dashboard in project.dashboards:

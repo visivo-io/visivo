@@ -65,7 +65,9 @@ function Project(props) {
     const inputDefaults = [];
     if (props.project?.project_json?.dashboards) {
       props.project.project_json.dashboards.forEach(dashboard => {
+        if (!dashboard.rows) return;
         dashboard.rows.forEach(row => {
+          if (!row.items) return;
           row.items.forEach(item => {
             if (item?.input) {
               const input = item.input;

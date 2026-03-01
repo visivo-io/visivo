@@ -18,7 +18,8 @@ const createTableSlice = (set, get) => ({
   fetchTables: async () => {
     set({ tablesLoading: true, tablesError: null });
     try {
-      const data = await tablesApi.fetchAllTables();
+      const projectId = get().project?.id;
+      const data = await tablesApi.fetchAllTables(projectId);
       set({ tables: data.tables || [], tablesLoading: false });
     } catch (error) {
       set({ tablesError: error.message, tablesLoading: false });

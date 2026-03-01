@@ -18,7 +18,8 @@ const createModelSlice = (set, get) => ({
   fetchModels: async () => {
     set({ modelsLoading: true, modelsError: null });
     try {
-      const data = await modelsApi.fetchAllModels();
+      const projectId = get().project?.id;
+      const data = await modelsApi.fetchAllModels(projectId);
       set({ models: data.models || [], modelsLoading: false });
     } catch (error) {
       set({ modelsError: error.message, modelsLoading: false });

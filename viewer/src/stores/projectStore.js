@@ -5,11 +5,12 @@ const createProjectSlice = (set, get) => ({
   searchTerm: '',
   selectedTags: [],
 
-  // Dashboard organization
-  dashboards: [],
+  // Dashboard organization (allDashboards is the transformed list from ProjectNew)
+  allDashboards: [],
   filteredDashboards: [],
   dashboardsByLevel: [],
   availableTags: [],
+  cachedProjectDefaults: null,
 
   // Current dashboard selection
   currentDashboardName: null,
@@ -40,7 +41,7 @@ const createProjectSlice = (set, get) => ({
 
     // Single batched update for dashboards and tags
     set({
-      dashboards,
+      allDashboards: dashboards,
       availableTags: Array.from(tagSet),
     });
   },
@@ -55,14 +56,14 @@ const createProjectSlice = (set, get) => ({
 
   // Internal filtering logic
   filterDashboards: () => {
-    const { dashboards, searchTerm, selectedTags, project } = get();
+    const { allDashboards, searchTerm, selectedTags, cachedProjectDefaults } = get();
 
-    if (!dashboards.length) {
+    if (!allDashboards.length) {
       set({ filteredDashboards: [], dashboardsByLevel: [] });
       return;
     }
 
-    const filtered = dashboards.filter(dashboard => {
+    const filtered = allDashboards.filter(dashboard => {
       const matchesSearch =
         dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dashboard.description &&
@@ -76,8 +77,7 @@ const createProjectSlice = (set, get) => ({
       return matchesSearch && matchesTags;
     });
 
-    // Organize by levels
-    const byLevel = organizeDashboardsByLevel(filtered, project?.project_json?.defaults);
+    const byLevel = organizeDashboardsByLevel(filtered, cachedProjectDefaults);
 
     set({
       filteredDashboards: filtered,
@@ -86,14 +86,14 @@ const createProjectSlice = (set, get) => ({
   },
 
   updateAvailableTags: () => {
-    const { dashboards } = get();
-    if (!dashboards.length) {
+    const { allDashboards } = get();
+    if (!allDashboards.length) {
       set({ availableTags: [] });
       return;
     }
 
     const tagSet = new Set();
-    dashboards.forEach(dashboard => {
+    allDashboards.forEach(dashboard => {
       if (dashboard.tags) {
         dashboard.tags.forEach(tag => tagSet.add(tag));
       }
@@ -112,7 +112,7 @@ const createProjectSlice = (set, get) => ({
   initializeDashboardView: (dashboards, dashboardName, projectDefaults) => {
     if (!dashboards || !dashboards.length) {
       set({
-        dashboards: [],
+        allDashboards: [],
         availableTags: [],
         filteredDashboards: [],
         dashboardsByLevel: [],
@@ -148,13 +148,14 @@ const createProjectSlice = (set, get) => ({
     // Organize by levels
     const byLevel = organizeDashboardsByLevel(filtered, projectDefaults);
 
-    // Single batched update
+    // Single batched update (allDashboards is separate from dashboardStore.dashboards)
     set({
-      dashboards,
+      allDashboards: dashboards,
       availableTags: Array.from(tagSet),
       filteredDashboards: filtered,
       dashboardsByLevel: byLevel,
       currentDashboardName: dashboardName,
+      cachedProjectDefaults: projectDefaults,
     });
 
     // Reset scroll position when dashboard changes

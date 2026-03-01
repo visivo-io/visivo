@@ -3,8 +3,10 @@ import { getUrl } from '../contexts/URLContext';
 /**
  * Fetch all CsvScriptModels with their status
  */
-export const fetchAllCsvScriptModels = async () => {
-  const response = await fetch(getUrl('csvScriptModelsList'));
+export const fetchAllCsvScriptModels = async (projectId = null) => {
+  let url = getUrl('csvScriptModelsList');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await fetch(url);
   if (response.status === 200) {
     return await response.json();
   }

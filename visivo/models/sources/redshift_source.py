@@ -380,7 +380,9 @@ class RedshiftSource(ServerSource):
                     is_nullable = col_info[2] == "YES"  # is_nullable
 
                     # Convert Redshift type string to SQLGlot DataType
-                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(col_type_str)
+                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(
+                        col_type_str, dialect="redshift"
+                    )
 
                     table_schema["columns"][col_name] = {
                         "type": col_type_str,

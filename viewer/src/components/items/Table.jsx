@@ -47,7 +47,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
-const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) => {
+const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -65,7 +65,7 @@ const Table = ({ table, project, itemWidth, height, width, shouldLoad = true }) 
   }, [table.traces, isDirectQueryResult]);
 
   // Viewport-based loading: Only fetch data when shouldLoad is true
-  const tracesData = useTracesData(project.id, shouldLoad ? traceNames : []);
+  const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
   const isInsightTable = table.insights?.length > 0;
 

@@ -15,7 +15,8 @@ const createDefaultsSlice = (set, get) => ({
   fetchDefaults: async () => {
     set({ defaultsLoading: true, defaultsError: null });
     try {
-      const data = await defaultsApi.fetchDefaults();
+      const projectId = get().project?.id;
+      const data = await defaultsApi.fetchDefaults(projectId);
       set({ defaults: data, defaultsLoading: false });
     } catch (error) {
       set({ defaultsError: error.message, defaultsLoading: false });

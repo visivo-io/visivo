@@ -29,6 +29,7 @@ def parse_project_phase(
             # inputs=[],
             charts=[],
             dashboards=[],
+            defaults=Defaults(source_name=default_source) if default_source else None,
         )
     else:
         # Run and Track dbt phase
@@ -39,7 +40,11 @@ def parse_project_phase(
         if os.environ.get("STACKTRACE"):
             Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
-        parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
+        parser = ParserFactory().build(
+            project_file=discover.project_file,
+            files=discover.files,
+            default_source=default_source,
+        )
         try:
             project = parser.parse()
         except yaml.YAMLError as e:
@@ -51,8 +56,6 @@ def parse_project_phase(
 
     if not project.defaults:
         project.defaults = Defaults()
-    if default_source:
-        project.defaults.source_name = default_source
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     # Ensure dashboard directory exists

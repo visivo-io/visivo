@@ -2,8 +2,9 @@ import { throwError } from '../api/utils';
 import { fetchProject } from '../api/project';
 import useStore from '../stores/store';
 
-export const loadProject = async () => {
-  const project = await fetchProject();
+export const loadProject = async ({ request } = {}) => {
+  const projectId = request ? new URL(request.url).searchParams.get('project_id') : null;
+  const project = await fetchProject(projectId);
   if (project) {
     useStore.setState({ project });
     return project;
