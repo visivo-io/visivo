@@ -6,11 +6,13 @@ from visivo.logger.logger import Logger
 
 
 def find_source_by_name(project, source_name: str):
-    """Find a source by name in the project."""
-    if not project.sources:
-        return None
-    for source in project.sources:
-        if hasattr(source, "name") and source.name == source_name:
+    """Find a source by name in the project.
+
+    Project.sources always contains resolved source objects (not refs),
+    so a simple name match is sufficient.
+    """
+    for source in project.sources or []:
+        if source.name == source_name:
             return source
     return None
 
@@ -30,7 +32,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
             - source_name: Name of the source to query
             - sql: SQL query to execute
         flask_app: Flask application instance with project
-        output_dir: Output directory for files (unused but kept for API compatibility)
+        output_dir: Output directory for files
         job_manager: ModelQueryJobManager instance
 
     Returns:

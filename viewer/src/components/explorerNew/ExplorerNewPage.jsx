@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PiCaretDown, PiSpinner } from 'react-icons/pi';
 import SchemaBrowser from './SchemaBrowser/SchemaBrowser';
 import SQLEditor from './SQLEditor';
-import ColumnProfilePanel from './ColumnProfilePanel';
 import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
 
 const ExplorerNewPage = () => {
@@ -11,13 +10,6 @@ const ExplorerNewPage = () => {
   const [sourcesLoading, setSourcesLoading] = useState(true);
   const [sql, setSql] = useState('');
 
-  // Column profile panel state
-  const [profileColumn, setProfileColumn] = useState(null);
-  const [profileData, setProfileData] = useState(null);
-  const [profileDb, setProfileDb] = useState(null);
-  const [profileTableName, setProfileTableName] = useState(null);
-  const [profileRowCount, setProfileRowCount] = useState(null);
-
   // Load sources on mount
   useEffect(() => {
     const loadSources = async () => {
@@ -25,7 +17,6 @@ const ExplorerNewPage = () => {
       try {
         const data = await fetchSourceSchemaJobs();
         setSources(data || []);
-        // Auto-select first source if available
         if (data && data.length > 0) {
           setSelectedSource(data[0].source_name);
         }
@@ -38,51 +29,27 @@ const ExplorerNewPage = () => {
     loadSources();
   }, []);
 
-  // Handle source selection change
   const handleSourceChange = useCallback(e => {
     setSelectedSource(e.target.value || null);
   }, []);
 
-  // Handle table selection from SchemaBrowser (double-click)
   const handleTableSelect = useCallback(({ sourceName, table }) => {
-    // Insert table reference into SQL editor
     const tableRef = `SELECT * FROM ${table}`;
     setSql(prevSql => {
-      // If editor is empty, set the full select statement
       if (!prevSql.trim()) {
         return tableRef;
       }
-      // Otherwise append to current position or end
       return prevSql + '\n' + tableRef;
     });
 
-    // Also update selected source to match the table's source
     if (sourceName) {
       setSelectedSource(sourceName);
     }
   }, []);
 
-  // Handle create model action from SchemaBrowser
-  const handleCreateModel = useCallback(({ sourceName, table }) => {
-    // For now, just log - future implementation could navigate to model creator
-    console.log('Create model requested for:', sourceName, table);
-  }, []);
-
-  // Handle SQL changes
   const handleSqlSave = useCallback(value => {
     setSql(value);
   }, []);
-
-  // Handle column profile close
-  const handleCloseProfile = useCallback(() => {
-    setProfileColumn(null);
-    setProfileData(null);
-    setProfileDb(null);
-    setProfileTableName(null);
-    setProfileRowCount(null);
-  }, []);
-
-  const isProfileOpen = !!profileColumn && !!profileData;
 
   return (
     <div className="flex flex-col h-full bg-secondary-50" data-testid="explorer-new-page">
@@ -128,7 +95,7 @@ const ExplorerNewPage = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Schema Browser */}
         <div className="w-64 flex-shrink-0 border-r border-secondary-200 bg-white overflow-hidden">
-          <SchemaBrowser onTableSelect={handleTableSelect} onCreateModel={handleCreateModel} />
+          <SchemaBrowser onTableSelect={handleTableSelect} />
         </div>
 
         {/* Center: SQL Editor */}
@@ -141,17 +108,6 @@ const ExplorerNewPage = () => {
             resultsHeight="calc(100% - 300px)"
           />
         </div>
-
-        {/* Right: Column Profile Panel (conditional) */}
-        <ColumnProfilePanel
-          column={profileColumn}
-          profile={profileData}
-          db={profileDb}
-          tableName={profileTableName}
-          rowCount={profileRowCount}
-          isOpen={isProfileOpen}
-          onClose={handleCloseProfile}
-        />
       </div>
     </div>
   );

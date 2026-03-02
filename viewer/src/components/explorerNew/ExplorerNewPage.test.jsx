@@ -7,7 +7,7 @@ import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
 jest.mock('../../api/sourceSchemaJobs');
 
 jest.mock('./SchemaBrowser/SchemaBrowser', () => {
-  return function MockSchemaBrowser({ onTableSelect, onCreateModel }) {
+  return function MockSchemaBrowser({ onTableSelect }) {
     return (
       <div data-testid="schema-browser">
         <button
@@ -15,12 +15,6 @@ jest.mock('./SchemaBrowser/SchemaBrowser', () => {
           onClick={() => onTableSelect?.({ sourceName: 'snowflake_wh', table: 'users' })}
         >
           Select Table
-        </button>
-        <button
-          data-testid="create-model-btn"
-          onClick={() => onCreateModel?.({ sourceName: 'snowflake_wh', table: 'users' })}
-        >
-          Create Model
         </button>
       </div>
     );
@@ -38,20 +32,6 @@ jest.mock('./SQLEditor', () => {
           value={initialValue}
           onChange={e => onSave?.(e.target.value)}
         />
-      </div>
-    );
-  };
-});
-
-jest.mock('./ColumnProfilePanel', () => {
-  return function MockColumnProfilePanel({ column, isOpen, onClose }) {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="column-profile-panel">
-        <span data-testid="profile-column">{column}</span>
-        <button data-testid="close-profile" onClick={onClose}>
-          Close
-        </button>
       </div>
     );
   };
@@ -97,7 +77,6 @@ describe('ExplorerNewPage', () => {
     const selector = screen.getByTestId('source-selector');
     expect(selector).toHaveValue('postgres_db');
 
-    // Check sources are in the selector options
     const options = within(selector).getAllByRole('option');
     const optionValues = options.map(opt => opt.value);
     expect(optionValues).toContain('postgres_db');
@@ -157,18 +136,14 @@ describe('ExplorerNewPage', () => {
 
     await screen.findByTestId('source-selector');
 
-    // Initially SQL is empty
     expect(screen.getByTestId('editor-value')).toHaveTextContent('');
 
-    // Click table select button in mocked SchemaBrowser
     fireEvent.click(screen.getByTestId('table-select-btn'));
 
-    // SQL should now contain the SELECT statement
     await waitFor(() => {
       expect(screen.getByTestId('editor-value')).toHaveTextContent('SELECT * FROM users');
     });
 
-    // Source should be updated to match the table's source (snowflake_wh)
     expect(screen.getByTestId('source-selector')).toHaveValue('snowflake_wh');
   });
 

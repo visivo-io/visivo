@@ -20,6 +20,9 @@ const SQLEditor = ({
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const completionProviderRef = useRef(null);
+  const handleRunRef = useRef(null);
+  const handleCancelRef = useRef(null);
+  const isRunningRef = useRef(false);
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
@@ -80,6 +83,11 @@ const SQLEditor = ({
     cancel();
   }, [cancel]);
 
+  // Keep refs in sync for keyboard shortcuts (avoids stale closures in addCommand)
+  handleRunRef.current = handleRun;
+  handleCancelRef.current = handleCancel;
+  isRunningRef.current = isRunning;
+
   // Handle error dismiss
   const handleDismissError = useCallback(() => {
     setShowError(false);
@@ -111,25 +119,23 @@ const SQLEditor = ({
         );
       }
 
-      // Keyboard shortcuts
-      // Cmd/Ctrl+Enter: Execute query
+      // Keyboard shortcuts use refs to avoid stale closures since
+      // addCommand callbacks are registered once at mount time
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-        if (!isRunning) {
-          handleRun();
+        if (!isRunningRef.current) {
+          handleRunRef.current();
         }
       });
 
-      // Escape: Cancel query
       editor.addCommand(monaco.KeyCode.Escape, () => {
-        if (isRunning) {
-          handleCancel();
+        if (isRunningRef.current) {
+          handleCancelRef.current();
         }
       });
 
-      // Focus the editor
       editor.focus();
     },
-    [tables, tableColumns, isRunning, handleRun, handleCancel]
+    [tables, tableColumns]
   );
 
   // Update completion provider when schema changes
