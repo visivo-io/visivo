@@ -555,6 +555,28 @@ dashboards:
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
 
+      # ===== SECTION 5: TABLE WITH INSIGHT (NEW API) =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Table with Insight (New Singular API)
+                Table using new `insight` field with auto-generated columns
+                **Change "Min X Value" above to filter the table data**
+
+      - height: compact
+        items:
+          - width: 4
+            input: ${ref(min_x_value)}
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: filter-input-test-table
+              insight: ${ref(filter-nonaggregate-input-test-insight)}
+              rows_per_page: 25
+
   - name: table-dashboard
     level: 1
     tags:

@@ -122,13 +122,9 @@ class Table(SelectorModel, NamedModel, ParentModel):
     @model_validator(mode="after")
     def validate_has_data_source(self):
         """Ensure table has a data source (unless it's legacy with only column_defs)."""
-        # Allow legacy tables with only column_defs or empty lists (backward compat)
-        # These were used in old test projects
-        has_data_source = (
-            self.insight
-            or (self.insights and len(self.insights) > 0)
-            or (self.traces and len(self.traces) > 0)
-        )
+        # Note: plural 'insights' is auto-converted to singular 'insight' by handle_deprecated_fields validator
+        # Allow legacy tables with only column_defs or selector (backward compat)
+        has_data_source = self.insight or (self.traces and len(self.traces) > 0)
         has_legacy_config = self.column_defs is not None or self.selector is not None
 
         if not has_data_source and not has_legacy_config:
@@ -175,12 +171,9 @@ class Table(SelectorModel, NamedModel, ParentModel):
         """Return child items for DAG construction."""
         items = []
 
-        # New singular insight takes precedence
+        # Use singular insight (auto-converted from plural by validator)
         if self.insight:
             items.append(self.insight)
-        # Backward compat for deprecated plural insights
-        elif self.insights:
-            items.extend(self.insights)
 
         # Backward compat for deprecated traces
         if self.traces:
