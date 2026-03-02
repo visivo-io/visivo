@@ -4,10 +4,11 @@ import {
   PiColumns,
   PiHardDrives,
   PiSpinner,
-  PiMagnifyingGlass,
   PiArrowClockwise,
 } from 'react-icons/pi';
 import SchemaTreeNode from './SchemaTreeNode';
+import SourceSearch from '../../new-views/editor/SourceSearch';
+import { getTypeColors } from '../../new-views/common/objectTypeConfigs';
 import {
   fetchSourceSchemaJobs,
   fetchSourceTables,
@@ -16,7 +17,9 @@ import {
   fetchSchemaGenerationStatus,
 } from '../../../api/sourceSchemaJobs';
 
-const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
+const sourceColors = getTypeColors('source');
+
+const SchemaBrowser = ({ onTableSelect }) => {
   const [sources, setSources] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState(new Set());
@@ -228,16 +231,6 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
                   table: table.name,
                 })
               }
-              actions={[
-                {
-                  label: 'Create Model',
-                  onClick: () =>
-                    onCreateModel?.({
-                      sourceName,
-                      table: table.name,
-                    }),
-                },
-              ]}
               level={1}
             >
               {renderColumns(loadedData[colKey], table.name)}
@@ -253,7 +246,6 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       matchesSearch,
       hasLoadedMatch,
       onTableSelect,
-      onCreateModel,
       renderColumns,
       getNodeError,
     ]
@@ -302,7 +294,7 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
       return (
         <SchemaTreeNode
           key={sourceKey}
-          icon={<PiHardDrives size={14} />}
+          icon={<PiHardDrives size={14} className="text-orange-500" />}
           label={source.source_name}
           type="source"
           badge={getBadge()}
@@ -341,42 +333,40 @@ const SchemaBrowser = ({ onTableSelect, onCreateModel }) => {
   if (sourcesLoading) {
     return (
       <div className="flex items-center justify-center p-4" data-testid="sources-loading">
-        <PiSpinner className="animate-spin text-secondary-400 mr-2" size={16} />
-        <span className="text-sm text-secondary-400">Loading sources...</span>
+        <PiSpinner className="animate-spin text-gray-400 mr-2" size={16} />
+        <span className="text-sm text-gray-400">Loading sources...</span>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full" data-testid="schema-browser">
-      <div className="flex-shrink-0 px-3 py-2 border-b border-secondary-200">
-        <div className="relative">
-          <PiMagnifyingGlass
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-secondary-400"
-            size={14}
-          />
-          <input
-            type="text"
-            placeholder="Search loaded tables and columns..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full text-sm pl-7 pr-2 py-1.5 border border-secondary-200 rounded focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all bg-white"
-            data-testid="schema-search"
-          />
-        </div>
+      <div className="flex-shrink-0 p-3 border-b border-gray-200">
+        <SourceSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search tables and columns..."
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto py-1" role="tree" data-testid="schema-tree">
+      <div className="flex-1 overflow-y-auto" role="tree" data-testid="schema-tree">
         {sources.length === 0 ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-secondary-400">No sources configured</span>
+            <span className="text-sm text-gray-400">No sources configured</span>
           </div>
         ) : filteredSources.length === 0 ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-secondary-400">No matches found</span>
+            <span className="text-sm text-gray-400">No matches found</span>
           </div>
         ) : (
-          renderSources()
+          <>
+            <div
+              className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide border-b ${sourceColors.bg} ${sourceColors.text} ${sourceColors.border}`}
+            >
+              Sources ({filteredSources.length})
+            </div>
+            {renderSources()}
+          </>
         )}
       </div>
     </div>

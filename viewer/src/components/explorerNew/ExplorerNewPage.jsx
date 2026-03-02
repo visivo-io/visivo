@@ -52,27 +52,27 @@ const ExplorerNewPage = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-secondary-50" data-testid="explorer-new-page">
+    <div className="flex flex-col h-full bg-gray-50" data-testid="explorer-new-page">
       {/* Source selector header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-secondary-200 bg-white">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-3">
-          <label htmlFor="source-selector" className="text-sm font-medium text-secondary-700">
+          <label htmlFor="source-selector" className="text-sm font-medium text-gray-700">
             Source:
           </label>
           {sourcesLoading ? (
-            <div className="flex items-center gap-2 text-secondary-400">
+            <div className="flex items-center gap-2 text-gray-400">
               <PiSpinner className="animate-spin" size={16} />
               <span className="text-sm">Loading sources...</span>
             </div>
           ) : sources.length === 0 ? (
-            <span className="text-sm text-secondary-500">No sources configured</span>
+            <span className="text-sm text-gray-500">No sources configured</span>
           ) : (
             <div className="relative">
               <select
                 id="source-selector"
                 value={selectedSource || ''}
                 onChange={handleSourceChange}
-                className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-secondary-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all cursor-pointer"
+                className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all cursor-pointer"
                 data-testid="source-selector"
               >
                 <option value="">Select a source</option>
@@ -83,7 +83,7 @@ const ExplorerNewPage = () => {
                 ))}
               </select>
               <PiCaretDown
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
                 size={14}
               />
             </div>
@@ -94,7 +94,7 @@ const ExplorerNewPage = () => {
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Schema Browser */}
-        <div className="w-64 flex-shrink-0 border-r border-secondary-200 bg-white overflow-hidden">
+        <div className="w-80 flex-shrink-0 border-r border-gray-200 bg-white overflow-hidden">
           <SchemaBrowser onTableSelect={handleTableSelect} />
         </div>
 
