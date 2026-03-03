@@ -16,6 +16,8 @@ const SQLEditor = ({
   readOnly = false,
   height = '300px',
   resultsHeight = '400px',
+  hideResults = false,
+  onQueryComplete,
 }) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -47,6 +49,19 @@ const SQLEditor = ({
       setResultsPage(0);
     }
   }, [result]);
+
+  // Notify parent when query completes
+  useEffect(() => {
+    if (onQueryComplete && result) {
+      onQueryComplete({ result, error: null });
+    }
+  }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (onQueryComplete && error) {
+      onQueryComplete({ result: null, error });
+    }
+  }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update SQL when initialValue changes
   useEffect(() => {
@@ -186,7 +201,7 @@ const SQLEditor = ({
   }, [result]);
 
   return (
-    <div className="flex flex-col border border-secondary-200 rounded-lg overflow-hidden bg-white">
+    <div className="flex flex-col h-full border border-secondary-200 rounded-lg overflow-hidden bg-white">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-secondary-100 bg-secondary-50">
         <div className="flex items-center gap-3">
@@ -276,7 +291,7 @@ const SQLEditor = ({
       </div>
 
       {/* Error display */}
-      {error && showError && (
+      {!hideResults && error && showError && (
         <div className="flex items-start justify-between px-4 py-3 bg-highlight-100 border-t border-highlight-200">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium text-highlight-700">Error</span>
@@ -296,7 +311,7 @@ const SQLEditor = ({
       )}
 
       {/* Results */}
-      {result && !error && (
+      {!hideResults && result && !error && (
         <div className="flex flex-col border-t border-secondary-200" style={{ height: resultsHeight }}>
           <div className="flex items-center gap-3 px-3 py-2 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
             <span className="text-xs text-secondary-600">
