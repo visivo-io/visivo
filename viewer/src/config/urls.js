@@ -146,6 +146,10 @@ const URL_PATTERNS = {
     // Model query jobs endpoints
     modelQueryJobs: '/api/model-query-jobs/',
     modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
+
+    // Exploration persistence endpoints
+    explorationsList: '/api/explorations/',
+    explorationDetail: '/api/explorations/{id}/',
   },
 
   dist: {
@@ -284,6 +288,10 @@ const URL_PATTERNS = {
     // Model query jobs endpoints (not available in dist)
     modelQueryJobs: null,
     modelQueryJobDetail: null,
+
+    // Exploration persistence endpoints (not available in dist)
+    explorationsList: null,
+    explorationDetail: null,
   },
 };
 

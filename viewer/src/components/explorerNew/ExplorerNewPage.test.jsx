@@ -1,168 +1,82 @@
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerNewPage from './ExplorerNewPage';
-import { fetchSourceSchemaJobs } from '../../api/sourceSchemaJobs';
+import useStore from '../../stores/store';
 
-jest.mock('../../api/sourceSchemaJobs');
-
-jest.mock('./SchemaBrowser/SchemaBrowser', () => {
-  return function MockSchemaBrowser({ onTableSelect }) {
-    return (
-      <div data-testid="schema-browser">
-        <button
-          data-testid="table-select-btn"
-          onClick={() => onTableSelect?.({ sourceName: 'snowflake_wh', table: 'users' })}
-        >
-          Select Table
-        </button>
-      </div>
-    );
+jest.mock('./LeftPanel', () => {
+  return function MockLeftPanel() {
+    return <div data-testid="left-panel">LeftPanel</div>;
   };
 });
 
-jest.mock('./SQLEditor', () => {
-  return function MockSQLEditor({ sourceName, initialValue, onSave }) {
-    return (
-      <div data-testid="sql-editor">
-        <span data-testid="editor-source">{sourceName || 'no-source'}</span>
-        <span data-testid="editor-value">{initialValue}</span>
-        <input
-          data-testid="editor-input"
-          value={initialValue}
-          onChange={e => onSave?.(e.target.value)}
-        />
-      </div>
-    );
+jest.mock('./CenterPanel', () => {
+  return function MockCenterPanel() {
+    return <div data-testid="center-panel">CenterPanel</div>;
   };
 });
+
+jest.mock('./InsightEditorPanel', () => {
+  return function MockInsightEditorPanel() {
+    return <div data-testid="insight-editor-panel">InsightEditorPanel</div>;
+  };
+});
+
+jest.mock('./ExplorationTabBar', () => {
+  return function MockExplorationTabBar() {
+    return <div data-testid="exploration-tab-bar">ExplorationTabBar</div>;
+  };
+});
+
+jest.mock('../explorer/VerticalDivider', () => {
+  return function MockVerticalDivider({ handleMouseDown }) {
+    return <div data-testid="vertical-divider" onMouseDown={handleMouseDown}>VD</div>;
+  };
+});
+
+jest.mock('../../hooks/usePanelResize', () => ({
+  usePanelResize: () => ({
+    ratio: 0.18,
+    isResizing: false,
+    handleMouseDown: jest.fn(),
+  }),
+}));
 
 describe('ExplorerNewPage', () => {
-  const mockSources = [
-    {
-      source_name: 'postgres_db',
-      source_type: 'postgresql',
-      has_cached_schema: true,
-      total_tables: 5,
-    },
-    {
-      source_name: 'snowflake_wh',
-      source_type: 'snowflake',
-      has_cached_schema: false,
-      total_tables: null,
-    },
-  ];
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    fetchSourceSchemaJobs.mockResolvedValue(mockSources);
-  });
-
-  test('renders the explorer page with all components', async () => {
-    render(<ExplorerNewPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('explorer-new-page')).toBeInTheDocument();
+    useStore.setState({
+      explorerLeftNavCollapsed: false,
+      explorerEditStack: [],
     });
-
-    expect(screen.getByTestId('schema-browser')).toBeInTheDocument();
-    expect(screen.getByTestId('sql-editor')).toBeInTheDocument();
   });
 
-  test('loads and displays sources in the selector', async () => {
+  it('renders LeftPanel, CenterPanel, and InsightEditorPanel', () => {
     render(<ExplorerNewPage />);
 
-    await screen.findByTestId('source-selector');
-
-    const selector = screen.getByTestId('source-selector');
-    expect(selector).toHaveValue('postgres_db');
-
-    const options = within(selector).getAllByRole('option');
-    const optionValues = options.map(opt => opt.value);
-    expect(optionValues).toContain('postgres_db');
-    expect(optionValues).toContain('snowflake_wh');
+    expect(screen.getByTestId('explorer-new-page')).toBeInTheDocument();
+    expect(screen.getByTestId('left-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('center-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
   });
 
-  test('shows loading state while sources are being fetched', async () => {
-    let resolvePromise;
-    fetchSourceSchemaJobs.mockReturnValue(
-      new Promise(resolve => {
-        resolvePromise = resolve;
-      })
-    );
-
+  it('always renders InsightEditorPanel (no conditional)', () => {
     render(<ExplorerNewPage />);
-
-    expect(screen.getByText('Loading sources...')).toBeInTheDocument();
-
-    await act(async () => {
-      resolvePromise(mockSources);
-    });
-
-    expect(screen.queryByText('Loading sources...')).not.toBeInTheDocument();
+    expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
   });
 
-  test('shows "No sources configured" when sources array is empty', async () => {
-    fetchSourceSchemaJobs.mockResolvedValue([]);
-
+  it('renders ExplorationTabBar', () => {
     render(<ExplorerNewPage />);
-
-    await screen.findByText('No sources configured');
+    expect(screen.getByTestId('exploration-tab-bar')).toBeInTheDocument();
   });
 
-  test('auto-selects first source on load', async () => {
+  it('renders VerticalDivider when left nav is expanded', () => {
     render(<ExplorerNewPage />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('source-selector')).toHaveValue('postgres_db');
-    });
-
-    expect(screen.getByTestId('editor-source')).toHaveTextContent('postgres_db');
+    expect(screen.getByTestId('vertical-divider')).toBeInTheDocument();
   });
 
-  test('changing source updates the SQL editor source', async () => {
+  it('hides VerticalDivider when left nav is collapsed', () => {
+    useStore.setState({ explorerLeftNavCollapsed: true });
     render(<ExplorerNewPage />);
-
-    await screen.findByTestId('source-selector');
-
-    const selector = screen.getByTestId('source-selector');
-    fireEvent.change(selector, { target: { value: 'snowflake_wh' } });
-
-    expect(screen.getByTestId('editor-source')).toHaveTextContent('snowflake_wh');
-  });
-
-  test('selecting table from SchemaBrowser inserts SQL and updates source', async () => {
-    render(<ExplorerNewPage />);
-
-    await screen.findByTestId('source-selector');
-
-    expect(screen.getByTestId('editor-value')).toHaveTextContent('');
-
-    fireEvent.click(screen.getByTestId('table-select-btn'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('editor-value')).toHaveTextContent('SELECT * FROM users');
-    });
-
-    expect(screen.getByTestId('source-selector')).toHaveValue('snowflake_wh');
-  });
-
-  test('selecting "Select a source" option clears the selection', async () => {
-    render(<ExplorerNewPage />);
-
-    await screen.findByTestId('source-selector');
-
-    const selector = screen.getByTestId('source-selector');
-    fireEvent.change(selector, { target: { value: '' } });
-
-    expect(screen.getByTestId('editor-source')).toHaveTextContent('no-source');
-  });
-
-  test('source selector has proper label for accessibility', async () => {
-    render(<ExplorerNewPage />);
-
-    await screen.findByTestId('source-selector');
-
-    expect(screen.getByLabelText('Source:')).toBeInTheDocument();
+    expect(screen.queryByTestId('vertical-divider')).not.toBeInTheDocument();
   });
 });
