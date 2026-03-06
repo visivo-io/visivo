@@ -10,10 +10,8 @@ import {
   PiCaretDown,
   PiCaretRight,
   PiDatabase,
-  PiPencilSimple,
   PiMagnifyingGlass,
   PiX,
-  PiPlus,
 } from 'react-icons/pi';
 import SchemaTreeNode from './SchemaBrowser/SchemaTreeNode';
 import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
@@ -57,8 +55,8 @@ const LeftPanel = () => {
   const modelsLoading = useStore((s) => s.modelsLoading);
   const fetchModelsAction = useStore((s) => s.fetchModels);
   const handleModelUse = useStore((s) => s.handleExplorerModelUse);
-  const handleModelEdit = useStore((s) => s.handleExplorerModelEdit);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
+  const setExplorerSources = useStore((s) => s.setExplorerSources);
 
   // Metrics & Dimensions
   const dimensions = useStore((s) => s.dimensions || []);
@@ -67,7 +65,6 @@ const LeftPanel = () => {
   const metrics = useStore((s) => s.metrics || []);
   const metricsLoading = useStore((s) => s.metricsLoading);
   const fetchMetricsAction = useStore((s) => s.fetchMetrics);
-  const handleSemanticSelect = useStore((s) => s.handleExplorerSemanticSelect);
 
   // Local state
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,6 +89,7 @@ const LeftPanel = () => {
       try {
         const data = await fetchSourceSchemaJobs();
         setSources(data || []);
+        setExplorerSources(data || []);
         if (data?.length > 0 && !sourceName) {
           setSourceName(data[0].source_name);
         }
@@ -276,15 +274,23 @@ const LeftPanel = () => {
     [models, matchesSearch, searchQuery]
   );
 
-  const filteredMetrics = useMemo(
-    () => metrics.filter((m) => matchesSearch(m.name)),
-    [metrics, matchesSearch]
-  );
+  const filteredMetrics = useMemo(() => {
+    if (!activeModelName) return [];
+    return metrics.filter((m) => {
+      const rawModel = m.parentModel || m.config?.model;
+      const modelName = rawModel ? stripRef(rawModel) : null;
+      return modelName === activeModelName && matchesSearch(m.name);
+    });
+  }, [metrics, activeModelName, matchesSearch]);
 
-  const filteredDimensions = useMemo(
-    () => dimensions.filter((d) => matchesSearch(d.name)),
-    [dimensions, matchesSearch]
-  );
+  const filteredDimensions = useMemo(() => {
+    if (!activeModelName) return [];
+    return dimensions.filter((d) => {
+      const rawModel = d.parentModel || d.config?.model;
+      const modelName = rawModel ? stripRef(rawModel) : null;
+      return modelName === activeModelName && matchesSearch(d.name);
+    });
+  }, [dimensions, activeModelName, matchesSearch]);
 
   // Counts for type badges
   const typeCounts = useMemo(
@@ -479,7 +485,7 @@ const LeftPanel = () => {
             type="button"
             className="flex-1 flex items-center gap-2 text-left min-w-0"
             onClick={() => handleModelUse(model)}
-            title={`Load SQL from "${model.name}" (ad-hoc copy)`}
+            title={`Load SQL from "${model.name}"`}
             data-testid={`model-use-${model.name}`}
           >
             {model.status && STATUS_DOT_CLASSES[model.status] && (
@@ -501,19 +507,6 @@ const LeftPanel = () => {
               )}
             </div>
           </button>
-
-          <button
-            type="button"
-            className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-secondary-200 transition-all"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleModelEdit(model);
-            }}
-            title={`Edit model "${model.name}"`}
-            data-testid={`model-edit-${model.name}`}
-          >
-            <PiPencilSimple size={14} className="text-secondary-500" />
-          </button>
         </div>
       );
     });
@@ -524,64 +517,38 @@ const LeftPanel = () => {
   const DimensionIcon = getTypeIcon('dimension');
   const metColors = getTypeColors('metric');
   const dimColors = getTypeColors('dimension');
-  const modelColors = getTypeColors('model');
 
   const renderSemanticItems = (items, type) => {
     const Icon = type === 'metric' ? MetricIcon : DimensionIcon;
     const colors = type === 'metric' ? metColors : dimColors;
     const testPrefix = type === 'metric' ? 'met' : 'dim';
 
-    // Group by parent model
-    const groups = {};
-    items.forEach((item) => {
-      const rawModel = item.parentModel || item.config?.model;
-      const modelName = rawModel ? stripRef(rawModel) : '_global';
-      if (!groups[modelName]) groups[modelName] = [];
-      groups[modelName].push(item);
-    });
-
-    const ModelIcon = getTypeIcon('model');
-
-    return Object.entries(groups)
-      .sort(([a], [b]) => (a === '_global' ? 1 : b === '_global' ? -1 : a.localeCompare(b)))
-      .map(([modelName, groupItems]) => (
-        <div key={modelName}>
-          {modelName !== '_global' && (
-            <div className="flex items-center gap-1.5 px-3 py-1 text-xs text-secondary-500">
-              <ModelIcon style={{ fontSize: 12 }} className={modelColors.text} />
-              <span className="truncate">{modelName}</span>
-            </div>
-          )}
-          {groupItems.map((item) => (
-            <button
-              key={`${testPrefix}-${item.name}`}
-              type="button"
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${colors.bgHover} transition-colors group`}
-              style={{ paddingLeft: modelName !== '_global' ? 28 : 12 }}
-              onClick={() => handleSemanticSelect(type, item)}
-              data-testid={`semantic-${testPrefix}-${item.name}`}
-            >
-              <Icon style={{ fontSize: 14 }} className={`${colors.text} flex-shrink-0`} />
-              <span className="text-xs text-secondary-700 truncate flex-1">{item.name}</span>
-              {type === 'metric' && item.config?.aggregation && (
-                <span className={`text-xs ${colors.text}`}>{item.config.aggregation}</span>
-              )}
-              {item.status && item.status !== 'published' && (
-                <span
-                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                    item.status === 'new' ? 'bg-green-500' : 'bg-amber-500'
-                  }`}
-                  data-testid={`status-${item.status}`}
-                />
-              )}
-              <PiPlus
-                size={12}
-                className="text-secondary-300 opacity-0 group-hover:opacity-100 transition-opacity"
-              />
-            </button>
-          ))}
-        </div>
-      ));
+    return items.map((item) => (
+      <div
+        key={`${testPrefix}-${item.name}`}
+        className={`flex items-center gap-2 px-3 py-1.5 ${colors.bgHover} border-l-2 border-transparent`}
+        data-testid={`semantic-${testPrefix}-${item.name}`}
+      >
+        <Icon style={{ fontSize: 14 }} className={`${colors.text} flex-shrink-0`} />
+        <span className="text-xs text-secondary-700 truncate flex-1">{item.name}</span>
+        {type === 'metric' && item.config?.aggregation && (
+          <span className={`text-xs ${colors.text}`}>{item.config.aggregation}</span>
+        )}
+        {item.config?.expression && (
+          <span className="text-xs text-secondary-400 truncate max-w-[100px]" title={item.config.expression}>
+            {item.config.expression}
+          </span>
+        )}
+        {item.status && item.status !== 'published' && (
+          <span
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+              item.status === 'new' ? 'bg-green-500' : 'bg-amber-500'
+            }`}
+            data-testid={`status-${item.status}`}
+          />
+        )}
+      </div>
+    ));
   };
 
   // ─── Loading state ─────────────────────────────────────
@@ -632,7 +599,7 @@ const LeftPanel = () => {
       className="flex-shrink-0 border-r border-secondary-200 bg-white flex flex-col h-full overflow-hidden"
       data-testid="left-panel"
     >
-      {/* Header with collapse + source selector */}
+      {/* Header with collapse toggle */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-secondary-200 flex-shrink-0">
         <button
           type="button"
@@ -643,32 +610,7 @@ const LeftPanel = () => {
         >
           <PiSidebarSimple size={16} />
         </button>
-        {sourcesLoading ? (
-          <div className="flex items-center gap-1 text-secondary-400 text-xs">
-            <PiSpinner className="animate-spin" size={12} />
-            Loading...
-          </div>
-        ) : (
-          <div className="relative flex-1 min-w-0">
-            <select
-              value={sourceName || ''}
-              onChange={(e) => setSourceName(e.target.value || null)}
-              className="w-full appearance-none pl-2 pr-6 py-1 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-              data-testid="source-selector"
-            >
-              <option value="">Select a source</option>
-              {sources.map((s) => (
-                <option key={s.source_name} value={s.source_name}>
-                  {s.source_name}
-                </option>
-              ))}
-            </select>
-            <PiCaretDown
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
-              size={12}
-            />
-          </div>
-        )}
+        <span className="text-xs font-medium text-secondary-600">Explorer</span>
       </div>
 
       {/* Search */}

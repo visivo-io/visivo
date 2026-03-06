@@ -147,6 +147,9 @@ const URL_PATTERNS = {
     modelQueryJobs: '/api/model-query-jobs/',
     modelQueryJobDetail: '/api/model-query-jobs/{jobId}/',
 
+    // Expression translation endpoint
+    expressionsTranslate: '/api/expressions/translate/',
+
     // Exploration persistence endpoints
     explorationsList: '/api/explorations/',
     explorationDetail: '/api/explorations/{id}/',

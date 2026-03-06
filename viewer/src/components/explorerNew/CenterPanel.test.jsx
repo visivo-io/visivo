@@ -89,6 +89,19 @@ jest.mock('../../hooks/usePanelResize', () => ({
   }),
 }));
 
+// Mock useExplorerDuckDB
+jest.mock('../../hooks/useExplorerDuckDB', () => ({
+  __esModule: true,
+  default: () => {},
+}));
+
+// Mock AddComputedColumnPopover
+jest.mock('./AddComputedColumnPopover', () => {
+  return function MockAddComputedColumnPopover() {
+    return <button data-testid="add-computed-column-btn">+</button>;
+  };
+});
+
 // Mock utilities
 jest.mock('../../utils/inferColumnTypes', () => ({
   inferColumnTypes: (columns, rows) =>
@@ -122,6 +135,7 @@ describe('CenterPanel', () => {
   beforeEach(() => {
     useStore.setState({
       explorerSourceName: 'test_source',
+      explorerSources: [{ source_name: 'test_source', source_type: 'postgresql' }],
       explorerSql: 'SELECT 1',
       explorerQueryResult: null,
       explorerQueryError: null,
@@ -134,6 +148,10 @@ describe('CenterPanel', () => {
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
       explorerChartLayout: {},
       explorerCenterMode: 'split',
+      explorerComputedColumns: [],
+      explorerEnrichedResult: null,
+      explorerDuckDBLoading: false,
+      explorerDuckDBError: null,
     });
   });
 
@@ -258,59 +276,30 @@ describe('CenterPanel', () => {
   });
 
   describe('Model Context Banner', () => {
-    it('shows banner when model is loaded in "use" mode', () => {
+    it('shows banner when model is active', () => {
       useStore.setState({
         explorerActiveModelName: 'my_model',
-        explorerModelEditMode: 'use',
       });
 
       render(<CenterPanel />);
 
-      expect(screen.getByTestId('model-use-banner')).toBeInTheDocument();
-    });
-
-    it('does not show banner when model is in "edit" mode', () => {
-      useStore.setState({
-        explorerActiveModelName: 'my_model',
-        explorerModelEditMode: 'edit',
-      });
-
-      render(<CenterPanel />);
-
-      expect(screen.queryByTestId('model-use-banner')).not.toBeInTheDocument();
+      expect(screen.getByTestId('model-context-banner')).toBeInTheDocument();
     });
 
     it('does not show banner when no model is active', () => {
       render(<CenterPanel />);
 
-      expect(screen.queryByTestId('model-use-banner')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('model-context-banner')).not.toBeInTheDocument();
     });
 
     it('banner shows model name', () => {
       useStore.setState({
         explorerActiveModelName: 'my_model',
-        explorerModelEditMode: 'use',
       });
 
       render(<CenterPanel />);
 
-      expect(screen.getByTestId('model-use-banner')).toHaveTextContent('my_model');
-    });
-
-    it('banner Edit button calls handleExplorerModelEdit', () => {
-      const mockModel = { name: 'my_model', config: { sql: 'SELECT 1' } };
-      useStore.setState({
-        explorerActiveModelName: 'my_model',
-        explorerModelEditMode: 'use',
-        models: [mockModel],
-      });
-
-      render(<CenterPanel />);
-
-      fireEvent.click(screen.getByTestId('banner-edit-button'));
-
-      const state = useStore.getState();
-      expect(state.explorerModelEditMode).toBe('edit');
+      expect(screen.getByTestId('model-context-banner')).toHaveTextContent('my_model');
     });
   });
 

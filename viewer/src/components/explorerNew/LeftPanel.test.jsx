@@ -88,6 +88,7 @@ describe('LeftPanel', () => {
     useStore.setState({
       explorerLeftNavCollapsed: false,
       explorerSourceName: null,
+      explorerSources: [],
       explorerSql: '',
       explorerIsEditorCollapsed: false,
       explorerActiveModelName: null,
@@ -109,21 +110,21 @@ describe('LeftPanel', () => {
     render(<LeftPanel />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-selector')).toBeInTheDocument();
+      expect(screen.getByTestId('section-sources')).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('left-panel-search')).toBeInTheDocument();
     expect(screen.getByTestId('type-filter')).toBeInTheDocument();
   });
 
-  it('loads sources on mount and auto-selects first', async () => {
+  it('loads sources on mount and populates store', async () => {
     render(<LeftPanel />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('source-selector')).toHaveValue('postgres_db');
+      expect(screen.getByTestId('section-sources')).toBeInTheDocument();
     });
 
-    expect(useStore.getState().explorerSourceName).toBe('postgres_db');
+    expect(useStore.getState().explorerSources.length).toBe(2);
   });
 
   it('fetches models, metrics, and dimensions on mount', async () => {
@@ -173,7 +174,9 @@ describe('LeftPanel', () => {
     expect(screen.getByText('order_model')).toBeInTheDocument();
   });
 
-  it('renders metrics section', async () => {
+  it('renders metrics section when active model matches', async () => {
+    useStore.setState({ explorerActiveModelName: 'orders_model' });
+
     render(<LeftPanel />);
 
     await waitFor(() => {
@@ -183,7 +186,9 @@ describe('LeftPanel', () => {
     expect(screen.getByText('total_revenue')).toBeInTheDocument();
   });
 
-  it('renders dimensions section', async () => {
+  it('renders dimensions section when active model matches', async () => {
+    useStore.setState({ explorerActiveModelName: 'users_model' });
+
     render(<LeftPanel />);
 
     await waitFor(() => {
@@ -191,6 +196,17 @@ describe('LeftPanel', () => {
     });
 
     expect(screen.getByText('user_region')).toBeInTheDocument();
+  });
+
+  it('hides metrics/dimensions when no active model', async () => {
+    render(<LeftPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('section-sources')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('section-metrics')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('section-dimensions')).not.toBeInTheDocument();
   });
 
   it('clicking source expands tree and loads tables', async () => {
@@ -222,21 +238,9 @@ describe('LeftPanel', () => {
     expect(state.explorerActiveModelName).toBe('user_model');
   });
 
-  it('clicking model edit button calls handleExplorerModelEdit', async () => {
-    render(<LeftPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('model-edit-user_model')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('model-edit-user_model'));
-
-    const state = useStore.getState();
-    expect(state.explorerEditStack).toHaveLength(1);
-    expect(state.explorerEditStack[0].type).toBe('model');
-  });
-
   it('search filters all sections', async () => {
+    useStore.setState({ explorerActiveModelName: 'users_model' });
+
     render(<LeftPanel />);
 
     await waitFor(() => {
@@ -288,7 +292,6 @@ describe('LeftPanel', () => {
     render(<LeftPanel />);
 
     expect(screen.getByTestId('expand-sidebar')).toBeInTheDocument();
-    expect(screen.queryByTestId('source-selector')).not.toBeInTheDocument();
     expect(screen.queryByTestId('left-panel-search')).not.toBeInTheDocument();
   });
 
@@ -349,18 +352,6 @@ describe('LeftPanel', () => {
     fireEvent.change(screen.getByTestId('left-panel-search'), { target: { value: 'nonexistent' } });
 
     expect(screen.getByText('No results for "nonexistent"')).toBeInTheDocument();
-  });
-
-  it('source selector changes source in store', async () => {
-    render(<LeftPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('source-selector')).toHaveValue('postgres_db');
-    });
-
-    fireEvent.change(screen.getByTestId('source-selector'), { target: { value: 'snowflake_wh' } });
-
-    expect(useStore.getState().explorerSourceName).toBe('snowflake_wh');
   });
 
   it('highlights active model', async () => {

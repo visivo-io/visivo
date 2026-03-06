@@ -33,6 +33,16 @@ const createExplorerNewSlice = (set, get) => ({
   explorerModelName: '',
   explorerChartName: '',
 
+  // --- DuckDB WASM & Computed Columns ---
+  explorerComputedColumns: [], // [{name, expression, type: 'metric'|'dimension', sourceDialect}]
+  explorerEnrichedResult: null, // query result + computed columns from DuckDB
+  explorerDuckDBTableName: null, // table name in DuckDB WASM
+  explorerDuckDBLoading: false,
+  explorerDuckDBError: null,
+
+  // --- Sources (shared between LeftPanel and CenterPanel) ---
+  explorerSources: [],
+
   // --- UI State ---
   explorerIsEditorCollapsed: false,
   explorerProfileColumn: null,
@@ -43,6 +53,10 @@ const createExplorerNewSlice = (set, get) => ({
   explorerTopBottomSplit: 0.5,
 
   // --- Actions: Source & Query ---
+  setExplorerSources: (sources) => {
+    set({ explorerSources: sources });
+  },
+
   setExplorerSourceName: (sourceName) => {
     set({ explorerSourceName: sourceName });
   },
@@ -56,6 +70,9 @@ const createExplorerNewSlice = (set, get) => ({
       explorerQueryResult: result,
       explorerQueryError: null,
       explorerProfileColumn: null,
+      explorerEnrichedResult: null,
+      explorerDuckDBTableName: null,
+      explorerDuckDBError: null,
     });
     get().autoPopulateInsight();
   },
@@ -77,7 +94,7 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
-  // --- Actions: Model "Use" (Load SQL as Ad-Hoc Copy) ---
+  // --- Actions: Model "Use" (Load SQL + Auto-Add Metrics/Dimensions) ---
   handleExplorerModelUse: (model) => {
     if (!model?.config) return;
 
@@ -90,23 +107,50 @@ const createExplorerNewSlice = (set, get) => ({
       sourceName = refMatch ? refMatch[1] : rawSource;
     }
 
+    // Find metrics/dimensions belonging to this model
+    const allMetrics = get().metrics || [];
+    const allDimensions = get().dimensions || [];
+
+    const stripRef = (value) => {
+      if (typeof value !== 'string') return value;
+      const match = value.match(/^ref\((.+)\)$/);
+      return match ? match[1] : value;
+    };
+
+    const belongsToModel = (item) => {
+      const rawModel = item.parentModel || item.config?.model;
+      return rawModel && stripRef(rawModel) === model.name;
+    };
+
+    const computedCols = [];
+    allMetrics.filter(belongsToModel).forEach((m) => {
+      if (m.config?.expression) {
+        computedCols.push({
+          name: m.name,
+          expression: m.config.expression,
+          type: 'metric',
+        });
+      }
+    });
+    allDimensions.filter(belongsToModel).forEach((d) => {
+      if (d.config?.expression) {
+        computedCols.push({
+          name: d.name,
+          expression: d.config.expression,
+          type: 'dimension',
+        });
+      }
+    });
+
     set({
       explorerSql: sql,
       explorerSourceName: sourceName || get().explorerSourceName,
       explorerIsEditorCollapsed: false,
       explorerActiveModelName: model.name,
       explorerModelEditMode: 'use',
-    });
-  },
-
-  // --- Actions: Model "Edit" (Open in EditPanel for Project-Level Editing) ---
-  handleExplorerModelEdit: (model) => {
-    if (!model) return;
-
-    set({
-      explorerActiveModelName: model.name,
-      explorerModelEditMode: 'edit',
-      explorerEditStack: [{ type: 'model', object: model, isCreate: false }],
+      explorerComputedColumns: computedCols,
+      explorerEnrichedResult: null,
+      explorerEditStack: [],
     });
   },
 
@@ -202,9 +246,62 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
-  // --- Actions: Semantic Layer ---
-  handleExplorerSemanticSelect: (itemType, item) => {
-    // No-op for now; insight is always visible in the right panel
+  // --- Actions: DuckDB & Computed Columns ---
+  setExplorerDuckDBTableName: (name) => {
+    set({ explorerDuckDBTableName: name });
+  },
+
+  setExplorerDuckDBLoading: (loading) => {
+    set({ explorerDuckDBLoading: loading });
+  },
+
+  setExplorerDuckDBError: (error) => {
+    set({ explorerDuckDBError: error });
+  },
+
+  setExplorerEnrichedResult: (result) => {
+    set({ explorerEnrichedResult: result });
+  },
+
+  addExplorerComputedColumn: (col) => {
+    set((state) => {
+      const exists = state.explorerComputedColumns.some((c) => c.name === col.name);
+      if (exists) return state;
+      return { explorerComputedColumns: [...state.explorerComputedColumns, col] };
+    });
+  },
+
+  removeExplorerComputedColumn: (name) => {
+    set((state) => ({
+      explorerComputedColumns: state.explorerComputedColumns.filter((c) => c.name !== name),
+      explorerEnrichedResult: null,
+    }));
+  },
+
+  clearExplorerComputedColumns: () => {
+    set({ explorerComputedColumns: [], explorerEnrichedResult: null });
+  },
+
+  // --- Actions: Validate Expressions ---
+  validateExplorerExpression: async (expression, sourceDialect) => {
+    try {
+      const { translateExpressions } = await import('../api/expressions');
+      const result = await translateExpressions(
+        [{ name: '__validate__', expression, type: 'dimension' }],
+        sourceDialect
+      );
+      const errors = (result.errors || []).filter((e) => e.name === '__validate__');
+      if (errors.length > 0) {
+        return { valid: false, error: errors[0].error };
+      }
+      const translation = (result.translations || []).find((t) => t.name === '__validate__');
+      return {
+        valid: true,
+        duckdbExpression: translation?.duckdb_expression || expression,
+      };
+    } catch (err) {
+      return { valid: false, error: err.message || 'Validation failed' };
+    }
   },
 
   // Edit stack management
@@ -274,6 +371,9 @@ const createExplorerNewSlice = (set, get) => ({
           topBottomSplit: 0.5,
           modelName: e.model_name || '',
           chartName: e.chart_name || '',
+          computedColumns: [],
+          enrichedResult: null,
+          duckDBTableName: null,
         }));
 
         const activeApi = explorations.find(e => e.is_active);
@@ -312,6 +412,9 @@ const createExplorerNewSlice = (set, get) => ({
           topBottomSplit: 0.5,
           modelName: '',
           chartName: '',
+          computedColumns: [],
+          enrichedResult: null,
+          duckDBTableName: null,
         };
         set({
           explorerExplorations: [state],
@@ -379,6 +482,9 @@ const createExplorerNewSlice = (set, get) => ({
       topBottomSplit: get().explorerTopBottomSplit,
       modelName: get().explorerModelName,
       chartName: get().explorerChartName,
+      computedColumns: get().explorerComputedColumns,
+      enrichedResult: get().explorerEnrichedResult,
+      duckDBTableName: get().explorerDuckDBTableName,
     };
 
     set((state) => ({
@@ -414,6 +520,9 @@ const createExplorerNewSlice = (set, get) => ({
       topBottomSplit: 0.5,
       modelName: '',
       chartName: '',
+      computedColumns: [],
+      enrichedResult: null,
+      duckDBTableName: null,
     };
 
     get().snapshotCurrentExploration();
@@ -438,6 +547,10 @@ const createExplorerNewSlice = (set, get) => ({
       explorerCenterMode: 'split',
       explorerModelName: '',
       explorerChartName: '',
+      explorerComputedColumns: [],
+      explorerEnrichedResult: null,
+      explorerDuckDBTableName: null,
+      explorerDuckDBError: null,
     }));
   },
 
@@ -469,6 +582,9 @@ const createExplorerNewSlice = (set, get) => ({
       explorerCenterMode: target.centerMode || 'split',
       explorerModelName: target.modelName || '',
       explorerChartName: target.chartName || '',
+      explorerComputedColumns: target.computedColumns || [],
+      explorerEnrichedResult: target.enrichedResult || null,
+      explorerDuckDBTableName: target.duckDBTableName || null,
     });
   },
 

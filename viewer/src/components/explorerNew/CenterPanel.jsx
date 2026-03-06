@@ -1,20 +1,24 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
-import { PiCaretUp, PiCaretDown, PiCube, PiCode, PiChartBar } from 'react-icons/pi';
+import { PiCaretUp, PiCaretDown, PiCube, PiCode, PiChartBar, PiX } from 'react-icons/pi';
 import SQLEditor from './SQLEditor';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
+import AddComputedColumnPopover from './AddComputedColumnPopover';
 import VerticalDivider from '../explorer/VerticalDivider';
 import Divider from '../explorer/Divider';
 import useStore from '../../stores/store';
 import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import { usePanelResize } from '../../hooks/usePanelResize';
+import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 
 const NARROW_THRESHOLD = 600;
 
 const CenterPanel = () => {
   const sourceName = useStore((s) => s.explorerSourceName);
+  const setSourceName = useStore((s) => s.setExplorerSourceName);
+  const explorerSources = useStore((s) => s.explorerSources);
   const sql = useStore((s) => s.explorerSql);
   const setSql = useStore((s) => s.setExplorerSql);
   const queryResult = useStore((s) => s.explorerQueryResult);
@@ -26,11 +30,18 @@ const CenterPanel = () => {
   const profileColumn = useStore((s) => s.explorerProfileColumn);
   const setProfileColumn = useStore((s) => s.setExplorerProfileColumn);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
-  const modelEditMode = useStore((s) => s.explorerModelEditMode);
-  const handleModelEdit = useStore((s) => s.handleExplorerModelEdit);
-  const models = useStore((s) => s.models);
   const centerMode = useStore((s) => s.explorerCenterMode);
   const setCenterMode = useStore((s) => s.setExplorerCenterMode);
+  const enrichedResult = useStore((s) => s.explorerEnrichedResult);
+  const computedColumns = useStore((s) => s.explorerComputedColumns);
+  const duckDBLoading = useStore((s) => s.explorerDuckDBLoading);
+  const duckDBError = useStore((s) => s.explorerDuckDBError);
+  const removeComputedColumn = useStore((s) => s.removeExplorerComputedColumn);
+  const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
+  const validateExpression = useStore((s) => s.validateExplorerExpression);
+
+  // Initialize DuckDB integration for computed columns
+  useExplorerDuckDB();
 
   const containerRef = useRef(null);
   const topRowRef = useRef(null);
@@ -79,6 +90,21 @@ const CenterPanel = () => {
     minRatio: 0.25,
   });
 
+  // Fix Plotly resize when divider ratios change
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editorChartRatio]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [topBottomRatio]);
+
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
 
@@ -105,12 +131,31 @@ const CenterPanel = () => {
     [setSql]
   );
 
-  const dataTableColumns = useMemo(
-    () => (queryResult ? inferColumnTypes(queryResult.columns || [], queryResult.rows || []) : []),
-    [queryResult]
+  // Use enriched result (with computed columns) when available, otherwise base result
+  const displayResult = enrichedResult || queryResult;
+  const computedColumnNames = useMemo(
+    () => new Set(enrichedResult?.computedColumnNames || []),
+    [enrichedResult]
   );
-  const tableRows = queryResult?.rows || [];
-  const totalRowCount = queryResult?.row_count || tableRows.length;
+
+  // All column names (base + computed) for duplicate checking
+  const allColumnNames = useMemo(() => {
+    const names = new Set(displayResult?.columns || []);
+    computedColumns.forEach((c) => names.add(c.name));
+    return names;
+  }, [displayResult, computedColumns]);
+
+  const dataTableColumns = useMemo(() => {
+    if (!displayResult) return [];
+    const cols = inferColumnTypes(displayResult.columns || [], displayResult.rows || []);
+    return cols.map((col) => ({
+      ...col,
+      isComputed: computedColumnNames.has(col.name),
+    }));
+  }, [displayResult, computedColumnNames]);
+
+  const tableRows = displayResult?.rows || [];
+  const totalRowCount = displayResult?.row_count || tableRows.length;
   const pageCount = Math.ceil(tableRows.length / resultsPageSize);
   const paginatedRows = tableRows.slice(
     resultsPage * resultsPageSize,
@@ -118,29 +163,55 @@ const CenterPanel = () => {
   );
 
   const selectedColumnProfile = useMemo(() => {
-    if (!profileColumn || !queryResult?.rows?.length) return null;
+    if (!profileColumn || !displayResult?.rows?.length) return null;
     const colDef = dataTableColumns.find((c) => c.name === profileColumn);
     if (!colDef) return null;
-    return computeColumnProfile(profileColumn, colDef, queryResult.rows);
-  }, [profileColumn, queryResult, dataTableColumns]);
+    return computeColumnProfile(profileColumn, colDef, displayResult.rows);
+  }, [profileColumn, displayResult, dataTableColumns]);
+
+  const handleValidateExpression = useCallback(
+    (expression) => validateExpression(expression, sourceName),
+    [validateExpression, sourceName]
+  );
 
   const topFlex = topBottomRatio;
   const bottomFlex = 1 - topBottomRatio;
 
   const renderEditorSection = () => (
     <div className="flex flex-col h-full overflow-hidden" data-testid="editor-section">
-      {/* SQL Editor header (collapsible) */}
+      {/* SQL Editor header with source selector */}
       <div className="flex items-center justify-between px-3 py-1 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
         <span className="text-xs font-medium text-secondary-600">SQL Editor</span>
-        <button
-          type="button"
-          onClick={toggleEditorCollapsed}
-          className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors"
-          title={isEditorCollapsed ? 'Expand editor' : 'Collapse editor'}
-          data-testid="toggle-editor"
-        >
-          {isEditorCollapsed ? <PiCaretDown size={14} /> : <PiCaretUp size={14} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              value={sourceName || ''}
+              onChange={(e) => setSourceName(e.target.value || null)}
+              className="appearance-none pl-2 pr-5 py-0.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+              data-testid="source-selector"
+            >
+              <option value="">Select source</option>
+              {explorerSources.map((s) => (
+                <option key={s.source_name} value={s.source_name}>
+                  {s.source_name}
+                </option>
+              ))}
+            </select>
+            <PiCaretDown
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
+              size={10}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={toggleEditorCollapsed}
+            className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors"
+            title={isEditorCollapsed ? 'Expand editor' : 'Collapse editor'}
+            data-testid="toggle-editor"
+          >
+            {isEditorCollapsed ? <PiCaretDown size={14} /> : <PiCaretUp size={14} />}
+          </button>
+        </div>
       </div>
       {!isEditorCollapsed && (
         <div className="flex-1 min-h-0">
@@ -169,28 +240,19 @@ const CenterPanel = () => {
       data-testid="center-panel"
       ref={containerRef}
     >
-      {/* Model context banner for "use" mode */}
-      {activeModelName && modelEditMode === 'use' && (
+      {/* Model context banner */}
+      {activeModelName && (
         <div
-          className="flex items-center gap-2 px-3 py-2 bg-primary-50 border-b border-primary-100 text-xs flex-shrink-0"
-          data-testid="model-use-banner"
+          className="flex items-center gap-2 px-3 py-2.5 bg-primary-100 border-b-2 border-primary text-sm flex-shrink-0"
+          data-testid="model-context-banner"
         >
-          <PiCube size={14} className="text-primary flex-shrink-0" />
-          <span className="text-secondary-700">
-            Using SQL from model <strong>&quot;{activeModelName}&quot;</strong> (ad-hoc copy).
-            Changes here won&apos;t affect the saved model.
+          <PiCube size={16} className="text-primary flex-shrink-0" />
+          <span className="text-secondary-800 font-medium">
+            Model: <strong>{activeModelName}</strong>
           </span>
-          <button
-            type="button"
-            className="ml-auto text-primary hover:text-primary-700 font-medium"
-            onClick={() => {
-              const model = models.find((m) => m.name === activeModelName);
-              if (model) handleModelEdit(model);
-            }}
-            data-testid="banner-edit-button"
-          >
-            Edit Model
-          </button>
+          <span className="text-secondary-500 text-xs">
+            (ad-hoc copy &mdash; changes won&apos;t affect saved model)
+          </span>
         </div>
       )}
 
@@ -266,6 +328,44 @@ const CenterPanel = () => {
                       {queryResult.execution_time_ms}ms
                     </span>
                   )}
+                  {duckDBLoading && (
+                    <span className="text-xs text-primary-500" data-testid="duckdb-loading">
+                      Computing...
+                    </span>
+                  )}
+                  {duckDBError && (
+                    <span className="text-xs text-highlight" data-testid="duckdb-error" title={duckDBError}>
+                      Compute error
+                    </span>
+                  )}
+                  <div className="flex items-center gap-1 ml-auto" data-testid="computed-columns-area">
+                    {computedColumns.map((col) => (
+                      <span
+                        key={col.name}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                          col.type === 'metric'
+                            ? 'bg-cyan-100 text-cyan-800'
+                            : 'bg-teal-100 text-teal-800'
+                        }`}
+                      >
+                        {col.name}
+                        <button
+                          type="button"
+                          onClick={() => removeComputedColumn(col.name)}
+                          className="hover:opacity-70"
+                          title={`Remove ${col.name}`}
+                          data-testid={`remove-computed-${col.name}`}
+                        >
+                          <PiX size={10} />
+                        </button>
+                      </span>
+                    ))}
+                    <AddComputedColumnPopover
+                      onAdd={addComputedColumn}
+                      onValidate={handleValidateExpression}
+                      existingNames={allColumnNames}
+                    />
+                  </div>
                 </div>
                 <div className="flex-1 min-h-0">
                   <DataTable

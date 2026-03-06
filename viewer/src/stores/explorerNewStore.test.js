@@ -202,35 +202,67 @@ describe('explorerNewStore', () => {
     });
   });
 
-  describe('handleExplorerModelEdit', () => {
-    it('sets explorerActiveModelName to model name', () => {
-      useStore.getState().handleExplorerModelEdit({ name: 'my_model' });
+  describe('handleExplorerModelUse auto-adds computed columns', () => {
+    it('auto-adds metrics belonging to the model as computed columns', () => {
+      useStore.setState({
+        metrics: [
+          { name: 'revenue', parentModel: 'orders', config: { expression: 'SUM(amount)', model: 'ref(orders)' } },
+          { name: 'other_metric', parentModel: 'users', config: { expression: 'COUNT(*)', model: 'ref(users)' } },
+        ],
+        dimensions: [],
+      });
 
-      expect(useStore.getState().explorerActiveModelName).toBe('my_model');
+      useStore.getState().handleExplorerModelUse({
+        name: 'orders',
+        config: { sql: 'SELECT * FROM orders', source: 'ref(my_source)' },
+      });
+
+      const computed = useStore.getState().explorerComputedColumns;
+      expect(computed).toHaveLength(1);
+      expect(computed[0].name).toBe('revenue');
+      expect(computed[0].type).toBe('metric');
     });
 
-    it('sets explorerModelEditMode to "edit"', () => {
-      useStore.getState().handleExplorerModelEdit({ name: 'my_model' });
+    it('auto-adds dimensions belonging to the model as computed columns', () => {
+      useStore.setState({
+        metrics: [],
+        dimensions: [
+          { name: 'order_month', config: { expression: "DATE_TRUNC('month', date)", model: 'ref(orders)' } },
+        ],
+      });
 
-      expect(useStore.getState().explorerModelEditMode).toBe('edit');
+      useStore.getState().handleExplorerModelUse({
+        name: 'orders',
+        config: { sql: 'SELECT 1', source: 'ref(src)' },
+      });
+
+      const computed = useStore.getState().explorerComputedColumns;
+      expect(computed).toHaveLength(1);
+      expect(computed[0].name).toBe('order_month');
+      expect(computed[0].type).toBe('dimension');
     });
 
-    it('pushes model to editStack with isCreate: false', () => {
-      const model = { name: 'my_model', config: { sql: 'SELECT 1' } };
-      useStore.getState().handleExplorerModelEdit(model);
+    it('clears editStack when model is used', () => {
+      useStore.setState({
+        explorerEditStack: [{ type: 'model', object: {} }],
+        metrics: [],
+        dimensions: [],
+      });
 
-      const stack = useStore.getState().explorerEditStack;
-      expect(stack).toHaveLength(1);
-      expect(stack[0].type).toBe('model');
-      expect(stack[0].object).toBe(model);
-      expect(stack[0].isCreate).toBe(false);
+      useStore.getState().handleExplorerModelUse({
+        name: 'test',
+        config: { sql: 'SELECT 1' },
+      });
+
+      expect(useStore.getState().explorerEditStack).toEqual([]);
     });
+  });
 
-    it('handles null model gracefully', () => {
-      const before = useStore.getState().explorerEditStack.length;
-      useStore.getState().handleExplorerModelEdit(null);
-
-      expect(useStore.getState().explorerEditStack.length).toBe(before);
+  describe('explorerSources', () => {
+    it('sets explorer sources', () => {
+      const sources = [{ source_name: 'pg' }, { source_name: 'mysql' }];
+      useStore.getState().setExplorerSources(sources);
+      expect(useStore.getState().explorerSources).toEqual(sources);
     });
   });
 
@@ -758,6 +790,122 @@ describe('explorerNewStore', () => {
 
       await useStore.getState().updateExplorerInsight('updated_insight');
       expect(useStore.getState().explorerSavedInsightName).toBe('updated_insight');
+    });
+  });
+
+  describe('computed columns', () => {
+    it('adds a computed column', () => {
+      useStore.getState().addExplorerComputedColumn({
+        name: 'total_revenue',
+        expression: 'SUM(amount)',
+        type: 'metric',
+      });
+
+      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
+      expect(useStore.getState().explorerComputedColumns[0].name).toBe('total_revenue');
+    });
+
+    it('prevents duplicate computed columns', () => {
+      useStore.getState().addExplorerComputedColumn({
+        name: 'total_revenue',
+        expression: 'SUM(amount)',
+        type: 'metric',
+      });
+      useStore.getState().addExplorerComputedColumn({
+        name: 'total_revenue',
+        expression: 'SUM(amount)',
+        type: 'metric',
+      });
+
+      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
+    });
+
+    it('removes a computed column', () => {
+      useStore.getState().addExplorerComputedColumn({
+        name: 'total_revenue',
+        expression: 'SUM(amount)',
+        type: 'metric',
+      });
+      useStore.getState().addExplorerComputedColumn({
+        name: 'order_month',
+        expression: "DATE_TRUNC('month', order_date)",
+        type: 'dimension',
+      });
+
+      useStore.getState().removeExplorerComputedColumn('total_revenue');
+
+      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
+      expect(useStore.getState().explorerComputedColumns[0].name).toBe('order_month');
+    });
+
+    it('removing a computed column clears enriched result', () => {
+      useStore.setState({
+        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
+        explorerEnrichedResult: { columns: ['x', 'col'], rows: [{ x: 1, col: 10 }] },
+      });
+
+      useStore.getState().removeExplorerComputedColumn('col');
+
+      expect(useStore.getState().explorerEnrichedResult).toBeNull();
+    });
+
+    it('clears all computed columns', () => {
+      useStore.setState({
+        explorerComputedColumns: [
+          { name: 'a', expression: 'SUM(x)', type: 'metric' },
+          { name: 'b', expression: 'y', type: 'dimension' },
+        ],
+        explorerEnrichedResult: { columns: ['x'], rows: [] },
+      });
+
+      useStore.getState().clearExplorerComputedColumns();
+
+      expect(useStore.getState().explorerComputedColumns).toHaveLength(0);
+      expect(useStore.getState().explorerEnrichedResult).toBeNull();
+    });
+
+    it('sets enriched result', () => {
+      const enriched = { columns: ['x', 'sum_x'], rows: [{ x: 1, sum_x: 10 }] };
+      useStore.getState().setExplorerEnrichedResult(enriched);
+
+      expect(useStore.getState().explorerEnrichedResult).toEqual(enriched);
+    });
+
+    it('setExplorerQueryResult clears DuckDB state', () => {
+      useStore.setState({
+        explorerEnrichedResult: { columns: ['x'], rows: [] },
+        explorerDuckDBTableName: 'explorer_1',
+        explorerDuckDBError: 'old error',
+      });
+
+      useStore.getState().setExplorerQueryResult({
+        columns: ['id'],
+        rows: [{ id: 1 }],
+        row_count: 1,
+      });
+
+      const state = useStore.getState();
+      expect(state.explorerEnrichedResult).toBeNull();
+      expect(state.explorerDuckDBTableName).toBeNull();
+      expect(state.explorerDuckDBError).toBeNull();
+    });
+
+    it('sets DuckDB loading state', () => {
+      useStore.getState().setExplorerDuckDBLoading(true);
+      expect(useStore.getState().explorerDuckDBLoading).toBe(true);
+
+      useStore.getState().setExplorerDuckDBLoading(false);
+      expect(useStore.getState().explorerDuckDBLoading).toBe(false);
+    });
+
+    it('sets DuckDB error state', () => {
+      useStore.getState().setExplorerDuckDBError('DuckDB error');
+      expect(useStore.getState().explorerDuckDBError).toBe('DuckDB error');
+    });
+
+    it('sets DuckDB table name', () => {
+      useStore.getState().setExplorerDuckDBTableName('explorer_5');
+      expect(useStore.getState().explorerDuckDBTableName).toBe('explorer_5');
     });
   });
 
