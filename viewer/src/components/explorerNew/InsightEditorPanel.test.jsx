@@ -4,20 +4,6 @@ import '@testing-library/jest-dom';
 import InsightEditorPanel from './InsightEditorPanel';
 import useStore from '../../stores/store';
 
-jest.mock('../new-views/common/EditPanel', () => {
-  return function MockEditPanel({ editItem, isCreate, onClose, onSave }) {
-    return (
-      <div data-testid="edit-panel">
-        <span data-testid="edit-type">{editItem?.type}</span>
-        <span data-testid="edit-is-create">{String(isCreate)}</span>
-        <button data-testid="edit-close" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    );
-  };
-});
-
 jest.mock('../new-views/common/InsightEditForm', () => {
   return function MockInsightEditForm({ insight, isCreate, onSave }) {
     return (
@@ -181,7 +167,7 @@ describe('InsightEditorPanel', () => {
     expect(screen.getByText('orders_model')).toBeInTheDocument();
   });
 
-  it('renders EditPanel when edit stack has items', () => {
+  it('always renders insight editor even when edit stack has items', () => {
     useStore.setState({
       explorerEditStack: [
         { type: 'model', object: { name: 'test', config: {} }, isCreate: false },
@@ -190,22 +176,9 @@ describe('InsightEditorPanel', () => {
 
     render(<InsightEditorPanel />);
 
-    expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('edit-type')).toHaveTextContent('model');
-    expect(screen.queryByTestId('object-naming-header')).not.toBeInTheDocument();
-  });
-
-  it('close on EditPanel clears edit stack', () => {
-    useStore.setState({
-      explorerEditStack: [
-        { type: 'model', object: { name: 'test', config: {} }, isCreate: false },
-      ],
-    });
-
-    render(<InsightEditorPanel />);
-
-    fireEvent.click(screen.getByTestId('edit-close'));
-
-    expect(useStore.getState().explorerEditStack).toEqual([]);
+    // Should always show insight editor, never EditPanel
+    expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('object-naming-header')).toBeInTheDocument();
+    expect(screen.getByTestId('insight-edit-form')).toBeInTheDocument();
   });
 });

@@ -1,15 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { PiCaretDown, PiCaretRight } from 'react-icons/pi';
-import EditPanel from '../new-views/common/EditPanel';
 import InsightEditForm from '../new-views/common/InsightEditForm';
 import { getTypeByValue } from '../new-views/common/objectTypeConfigs';
 import useStore from '../../stores/store';
 
 const InsightEditorPanel = () => {
-  const editStack = useStore((s) => s.explorerEditStack);
   const insightConfig = useStore((s) => s.explorerInsightConfig);
-  const pushEdit = useStore((s) => s.pushExplorerEdit);
-  const popEdit = useStore((s) => s.popExplorerEdit);
   const setInsightConfig = useStore((s) => s.setExplorerInsightConfig);
   const modelName = useStore((s) => s.explorerModelName);
   const chartName = useStore((s) => s.explorerChartName);
@@ -27,40 +23,7 @@ const InsightEditorPanel = () => {
 
   const [isNamingExpanded, setIsNamingExpanded] = useState(true);
 
-  const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
-  const canGoBack = editStack.length > 1;
-
   const canSave = !!(modelName && insightConfig?.name && chartName && sql && sourceName);
-
-  const handleNavigateTo = useCallback(
-    (type, object) => {
-      pushEdit(type, object);
-    },
-    [pushEdit]
-  );
-
-  const handleEditPanelSave = useCallback(
-    async (type, name, config) => {
-      if (type === 'insight') {
-        setInsightConfig({ name, ...config });
-      }
-      const store = useStore.getState();
-      const saveActions = {
-        model: store.saveModel,
-        insight: store.saveInsight,
-        source: store.saveSource,
-        dimension: store.saveDimension,
-        metric: store.saveMetric,
-        relation: store.saveRelation,
-      };
-      const saveFn = saveActions[type];
-      if (saveFn) {
-        return await saveFn(name, config);
-      }
-      return { success: false, error: 'Unknown type' };
-    },
-    [setInsightConfig]
-  );
 
   const handleInsightSave = useCallback(
     async (type, name, config) => {
@@ -76,27 +39,6 @@ const InsightEditorPanel = () => {
     await store.saveExplorerChart(chartName);
   }, [modelName, chartName, insightConfig?.name]);
 
-  // If editStack has items, render EditPanel for the stacked edit (e.g., model edit)
-  if (currentEdit) {
-    return (
-      <div
-        className="w-96 flex-shrink-0 border-l border-secondary-200 bg-white overflow-hidden flex flex-col"
-        data-testid="insight-editor-panel"
-      >
-        <EditPanel
-          editItem={currentEdit}
-          isCreate={currentEdit.isCreate}
-          canGoBack={canGoBack}
-          onGoBack={popEdit}
-          onNavigateTo={handleNavigateTo}
-          onClose={() => useStore.getState().clearExplorerEditStack()}
-          onSave={handleEditPanelSave}
-        />
-      </div>
-    );
-  }
-
-  // Default: always-on insight editor with object naming
   return (
     <div
       className="w-96 flex-shrink-0 border-l border-secondary-200 bg-white overflow-y-auto flex flex-col"
