@@ -159,6 +159,30 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerInsightConfig: config });
   },
 
+  setExplorerInsightProp: (fieldName, value) => {
+    set((state) => ({
+      explorerInsightConfig: {
+        ...state.explorerInsightConfig,
+        props: {
+          ...state.explorerInsightConfig?.props,
+          [fieldName]: value,
+        },
+      },
+    }));
+  },
+
+  removeExplorerInsightProp: (fieldName) => {
+    set((state) => {
+      const { [fieldName]: _, ...restProps } = state.explorerInsightConfig?.props || {};
+      return {
+        explorerInsightConfig: {
+          ...state.explorerInsightConfig,
+          props: restProps,
+        },
+      };
+    });
+  },
+
   // --- Actions: Chart Layout ---
   syncPlotlyEditsToChartLayout: (layoutUpdates) => {
     set((state) => ({
@@ -215,26 +239,26 @@ const createExplorerNewSlice = (set, get) => ({
       newProps = {
         type: 'scatter',
         mode: 'lines+markers',
-        x: `\${${datetimeCols[0].name}}`,
-        y: `\${${numericCols[0].name}}`,
+        x: datetimeCols[0].name,
+        y: numericCols[0].name,
       };
     } else if (categoricalCols.length > 0 && numericCols.length > 0) {
       newProps = {
         type: 'bar',
-        x: `\${${categoricalCols[0].name}}`,
-        y: `\${${numericCols[0].name}}`,
+        x: categoricalCols[0].name,
+        y: numericCols[0].name,
       };
     } else if (numericCols.length >= 2) {
       newProps = {
         type: 'scatter',
-        x: `\${${numericCols[0].name}}`,
-        y: `\${${numericCols[1].name}}`,
+        x: numericCols[0].name,
+        y: numericCols[1].name,
       };
     } else if (columns.length >= 2) {
       newProps = {
         type: 'scatter',
-        x: `\${${columns[0]}}`,
-        y: `\${${columns[1]}}`,
+        x: columns[0],
+        y: columns[1],
       };
     }
 

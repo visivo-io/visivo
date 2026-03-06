@@ -29,6 +29,8 @@ const DataTable = ({
   isQuerying = false,
   // Layout
   height = '100%',
+  // Custom header component (for drag-and-drop)
+  headerComponent,
 }) => {
   const parentRef = useRef(null);
 
@@ -38,6 +40,7 @@ const DataTable = ({
     sorting,
     onSortChange,
     onColumnProfileRequest,
+    HeaderComponent: headerComponent,
   });
 
   // Column visibility state

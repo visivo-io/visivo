@@ -12,7 +12,9 @@ import {
   PiDatabase,
   PiMagnifyingGlass,
   PiX,
+  PiDotsSixVertical,
 } from 'react-icons/pi';
+import { useDraggable } from '@dnd-kit/core';
 import SchemaTreeNode from './SchemaBrowser/SchemaTreeNode';
 import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
 import {
@@ -42,6 +44,43 @@ const SECTION_DEFS = [
   { id: 'metric', label: 'Metrics', iconColor: null },
   { id: 'dimension', label: 'Dimensions', iconColor: null },
 ];
+
+const DraggableSemanticItem = ({ item, type, Icon, colors, testPrefix }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `${type}-${item.name}`,
+    data: { name: item.name, type, expression: item.config?.expression },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`flex items-center gap-2 px-3 py-1.5 ${colors.bgHover} border-l-2 border-transparent cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''}`}
+      data-testid={`semantic-${testPrefix}-${item.name}`}
+    >
+      <PiDotsSixVertical size={10} className="text-secondary-300 flex-shrink-0" />
+      <Icon style={{ fontSize: 14 }} className={`${colors.text} flex-shrink-0`} />
+      <span className="text-xs text-secondary-700 truncate flex-1">{item.name}</span>
+      {type === 'metric' && item.config?.aggregation && (
+        <span className={`text-xs ${colors.text}`}>{item.config.aggregation}</span>
+      )}
+      {item.config?.expression && (
+        <span className="text-xs text-secondary-400 truncate max-w-[100px]" title={item.config.expression}>
+          {item.config.expression}
+        </span>
+      )}
+      {item.status && item.status !== 'published' && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+            item.status === 'new' ? 'bg-green-500' : 'bg-amber-500'
+          }`}
+          data-testid={`status-${item.status}`}
+        />
+      )}
+    </div>
+  );
+};
 
 const LeftPanel = () => {
   const isCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
@@ -524,30 +563,14 @@ const LeftPanel = () => {
     const testPrefix = type === 'metric' ? 'met' : 'dim';
 
     return items.map((item) => (
-      <div
+      <DraggableSemanticItem
         key={`${testPrefix}-${item.name}`}
-        className={`flex items-center gap-2 px-3 py-1.5 ${colors.bgHover} border-l-2 border-transparent`}
-        data-testid={`semantic-${testPrefix}-${item.name}`}
-      >
-        <Icon style={{ fontSize: 14 }} className={`${colors.text} flex-shrink-0`} />
-        <span className="text-xs text-secondary-700 truncate flex-1">{item.name}</span>
-        {type === 'metric' && item.config?.aggregation && (
-          <span className={`text-xs ${colors.text}`}>{item.config.aggregation}</span>
-        )}
-        {item.config?.expression && (
-          <span className="text-xs text-secondary-400 truncate max-w-[100px]" title={item.config.expression}>
-            {item.config.expression}
-          </span>
-        )}
-        {item.status && item.status !== 'published' && (
-          <span
-            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              item.status === 'new' ? 'bg-green-500' : 'bg-amber-500'
-            }`}
-            data-testid={`status-${item.status}`}
-          />
-        )}
-      </div>
+        item={item}
+        type={type}
+        Icon={Icon}
+        colors={colors}
+        testPrefix={testPrefix}
+      />
     ));
   };
 

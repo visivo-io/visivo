@@ -3,6 +3,7 @@ import LeftPanel from './LeftPanel';
 import CenterPanel from './CenterPanel';
 import InsightEditorPanel from './InsightEditorPanel';
 import ExplorationTabBar from './ExplorationTabBar';
+import ExplorerDndContext from './ExplorerDndContext';
 import VerticalDivider from '../explorer/VerticalDivider';
 import useStore from '../../stores/store';
 import { usePanelResize } from '../../hooks/usePanelResize';
@@ -27,22 +28,24 @@ const ExplorerNewPage = () => {
   const leftWidth = leftNavCollapsed ? 48 : Math.round(leftRatio * 100);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3rem)] bg-gray-50 overflow-hidden" data-testid="explorer-new-page">
-      <ExplorationTabBar />
-      <div className="flex flex-1 overflow-hidden" ref={containerRef}>
-        <div
-          style={{ width: leftNavCollapsed ? '48px' : `${leftWidth}%` }}
-          className="flex-shrink-0 overflow-hidden"
-        >
-          <LeftPanel />
+    <ExplorerDndContext>
+      <div className="flex flex-col h-[calc(100vh-3rem)] bg-gray-50 overflow-hidden" data-testid="explorer-new-page">
+        <ExplorationTabBar />
+        <div className="flex flex-1 overflow-hidden" ref={containerRef}>
+          <div
+            style={{ width: leftNavCollapsed ? '48px' : `${leftWidth}%` }}
+            className="flex-shrink-0 overflow-hidden"
+          >
+            <LeftPanel />
+          </div>
+          {!leftNavCollapsed && (
+            <VerticalDivider isDragging={isLeftResizing} handleMouseDown={handleLeftMouseDown} />
+          )}
+          <CenterPanel />
+          <InsightEditorPanel />
         </div>
-        {!leftNavCollapsed && (
-          <VerticalDivider isDragging={isLeftResizing} handleMouseDown={handleLeftMouseDown} />
-        )}
-        <CenterPanel />
-        <InsightEditorPanel />
       </div>
-    </div>
+    </ExplorerDndContext>
   );
 };
 
