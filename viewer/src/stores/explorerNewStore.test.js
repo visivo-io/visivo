@@ -383,8 +383,8 @@ describe('explorerNewStore', () => {
       const props = useStore.getState().explorerInsightConfig.props;
       expect(props.type).toBe('scatter');
       expect(props.mode).toBe('lines+markers');
-      expect(props.x).toBe('${created_at}');
-      expect(props.y).toBe('${amount}');
+      expect(props.x).toBe('created_at');
+      expect(props.y).toBe('amount');
     });
 
     it('auto-populates categorical + numeric as bar chart', () => {
@@ -399,8 +399,8 @@ describe('explorerNewStore', () => {
 
       const props = useStore.getState().explorerInsightConfig.props;
       expect(props.type).toBe('bar');
-      expect(props.x).toBe('${region}');
-      expect(props.y).toBe('${sales}');
+      expect(props.x).toBe('region');
+      expect(props.y).toBe('sales');
     });
 
     it('auto-populates two numeric columns as scatter', () => {
@@ -415,8 +415,8 @@ describe('explorerNewStore', () => {
 
       const props = useStore.getState().explorerInsightConfig.props;
       expect(props.type).toBe('scatter');
-      expect(props.x).toBe('${x_val}');
-      expect(props.y).toBe('${y_val}');
+      expect(props.x).toBe('x_val');
+      expect(props.y).toBe('y_val');
     });
 
     it('falls back to first two columns as scatter', () => {
@@ -431,8 +431,8 @@ describe('explorerNewStore', () => {
 
       const props = useStore.getState().explorerInsightConfig.props;
       expect(props.type).toBe('scatter');
-      expect(props.x).toBe('${a}');
-      expect(props.y).toBe('${b}');
+      expect(props.x).toBe('a');
+      expect(props.y).toBe('b');
     });
 
     it('is called by setExplorerQueryResult', () => {
@@ -442,8 +442,48 @@ describe('explorerNewStore', () => {
       });
 
       const props = useStore.getState().explorerInsightConfig.props;
-      expect(props.x).toBe('${price}');
-      expect(props.y).toBe('${quantity}');
+      expect(props.x).toBe('price');
+      expect(props.y).toBe('quantity');
+    });
+  });
+
+  describe('setExplorerInsightProp', () => {
+    it('sets a single prop without affecting others', () => {
+      useStore.setState({
+        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'col_a' } },
+      });
+
+      useStore.getState().setExplorerInsightProp('y', 'col_b');
+
+      const props = useStore.getState().explorerInsightConfig.props;
+      expect(props.x).toBe('col_a');
+      expect(props.y).toBe('col_b');
+      expect(props.type).toBe('scatter');
+    });
+
+    it('overwrites an existing prop value', () => {
+      useStore.setState({
+        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'old_col' } },
+      });
+
+      useStore.getState().setExplorerInsightProp('x', 'new_col');
+
+      expect(useStore.getState().explorerInsightConfig.props.x).toBe('new_col');
+    });
+  });
+
+  describe('removeExplorerInsightProp', () => {
+    it('removes a prop while keeping others', () => {
+      useStore.setState({
+        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'col_a', y: 'col_b' } },
+      });
+
+      useStore.getState().removeExplorerInsightProp('y');
+
+      const props = useStore.getState().explorerInsightConfig.props;
+      expect(props.x).toBe('col_a');
+      expect(props.y).toBeUndefined();
+      expect(props.type).toBe('scatter');
     });
   });
 

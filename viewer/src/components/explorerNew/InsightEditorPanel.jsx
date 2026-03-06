@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { PiCaretDown, PiCaretRight } from 'react-icons/pi';
 import InsightEditForm from '../new-views/common/InsightEditForm';
+import AxisDropZones from './AxisDropZones';
 import { getTypeByValue } from '../new-views/common/objectTypeConfigs';
 import useStore from '../../stores/store';
 
@@ -139,6 +140,9 @@ const InsightEditorPanel = () => {
           </div>
         )}
       </div>
+
+      {/* Axis Drop Zones (drag columns here) */}
+      <AxisDropZones />
 
       {/* Insight Edit Form */}
       <div className="flex-1 flex flex-col min-h-0">

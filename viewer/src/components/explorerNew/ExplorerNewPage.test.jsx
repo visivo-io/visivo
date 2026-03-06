@@ -4,6 +4,12 @@ import '@testing-library/jest-dom';
 import ExplorerNewPage from './ExplorerNewPage';
 import useStore from '../../stores/store';
 
+jest.mock('./ExplorerDndContext', () => {
+  return function MockExplorerDndContext({ children }) {
+    return <div data-testid="dnd-context">{children}</div>;
+  };
+});
+
 jest.mock('./LeftPanel', () => {
   return function MockLeftPanel() {
     return <div data-testid="left-panel">LeftPanel</div>;

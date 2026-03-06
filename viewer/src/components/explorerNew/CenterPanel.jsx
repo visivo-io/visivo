@@ -5,6 +5,7 @@ import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
+import DraggableColumnHeader from './DraggableColumnHeader';
 import VerticalDivider from '../explorer/VerticalDivider';
 import Divider from '../explorer/Divider';
 import useStore from '../../stores/store';
@@ -380,6 +381,7 @@ const CenterPanel = () => {
                     onColumnProfileRequest={(colName) => setProfileColumn(colName)}
                     isLoading={false}
                     height="100%"
+                    headerComponent={DraggableColumnHeader}
                   />
                 </div>
               </div>

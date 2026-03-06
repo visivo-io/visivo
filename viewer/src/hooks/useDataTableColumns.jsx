@@ -5,14 +5,15 @@ import { calculateColumnWidth } from '../duckdb/schemaUtils';
 
 const MIN_RESIZE_WIDTH = 60;
 
-export const useDataTableColumns = ({ columns, sorting, onSortChange, onColumnProfileRequest }) => {
+export const useDataTableColumns = ({ columns, sorting, onSortChange, onColumnProfileRequest, HeaderComponent }) => {
+  const Header = HeaderComponent || DataTableHeader;
   return useMemo(
     () =>
       columns.map(col => ({
         id: col.name,
         accessorKey: col.name,
         header: () => (
-          <DataTableHeader
+          <Header
             column={col}
             sorting={sorting}
             onSortChange={onSortChange}
@@ -25,6 +26,6 @@ export const useDataTableColumns = ({ columns, sorting, onSortChange, onColumnPr
         size: calculateColumnWidth(col.name, col.normalizedType),
         minSize: MIN_RESIZE_WIDTH,
       })),
-    [columns, sorting, onSortChange, onColumnProfileRequest]
+    [columns, sorting, onSortChange, onColumnProfileRequest, Header]
   );
 };
