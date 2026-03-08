@@ -62,7 +62,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const insightNames = useMemo(() => {
     if (!table.insights?.length) return [];
     return table.insights.map(insight => insight.name);
-  }, [table.insights, table.name]);
+  }, [table.insights]);
 
   // Memoize trace names to prevent array recreation
   const traceNames = useMemo(() => {
@@ -173,9 +173,23 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
     const firstRow = data[0];
 
+    // Build reverse mapping from hashed column name → display name using props_mapping
+    // props_mapping is like {"props.x": "hashed_col", "props.y": "other_hash"}
+    const reverseMapping = {};
+    if (insightData.props_mapping) {
+      for (const [propPath, columnKey] of Object.entries(insightData.props_mapping)) {
+        // Extract display name from prop path: "props.x" → "X", "props.marker.size" → "Marker Size"
+        const displayName = propPath
+          .replace(/^props\./, '')
+          .replace(/\./g, ' ')
+          .replace(/\b\w/g, char => char.toUpperCase());
+        reverseMapping[columnKey] = displayName;
+      }
+    }
+
     const autoColumns = Object.keys(firstRow).map(key => ({
       id: key,
-      header: formatColumnHeader(key),
+      header: reverseMapping[key] || formatColumnHeader(key),
       accessorKey: key.replace(/\./g, '___'),
       enableGrouping: false,
       markdown: false,
