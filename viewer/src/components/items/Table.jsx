@@ -61,7 +61,6 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Support deprecated plural 'insights' field
   const insightNames = useMemo(() => {
     if (!table.insights?.length) return [];
-    console.warn(`Table '${table.name}' uses deprecated 'insights' field. Use 'insight' instead.`);
     return table.insights.map(insight => insight.name);
   }, [table.insights, table.name]);
 
@@ -203,7 +202,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     const firstInsightName = table.insights[0]?.name;
     const insightObj = insightsData?.[firstInsightName];
     const insightColObj =
-      table.column_defs.filter(column => column.insight_name === firstInsightName)[0]?.columns ?? [];
+      (table.column_defs || []).filter(column => column.insight_name === firstInsightName)[0]?.columns ?? [];
 
     if (insightObj?.insight && insightColObj) {
       const insightColumns = insightColObj.map((col, idx) => ({
@@ -302,7 +301,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!shouldLoad || (!isDirectQueryResult && !tracesData)) {
+  if (!shouldLoad || (!isDirectQueryResult && !isInsightTable && !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 

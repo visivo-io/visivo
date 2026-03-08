@@ -74,7 +74,7 @@ const _insertJSON = async (db, file, tableName) => {
 
   const conn = await getConnection(db);
   await conn.query(`
-    CREATE TABLE "${tableName}" AS
+    CREATE OR REPLACE TABLE "${tableName}" AS
     SELECT * FROM read_json_auto('${tempFile}')
   `);
 
@@ -90,7 +90,7 @@ const _insertParquet = async (db, file, tableName) => {
 
   const conn = await getConnection(db);
   await conn.query(`
-    CREATE TABLE "${tableName}" AS
+    CREATE OR REPLACE TABLE "${tableName}" AS
     SELECT * FROM read_parquet('${tempFile}')
   `);
 
@@ -242,7 +242,7 @@ export const loadParquetFromURL = async (db, url, nameHash, force = false) => {
     }
 
     await conn.query(`
-      CREATE TABLE "${nameHash}" AS
+      CREATE OR REPLACE TABLE "${nameHash}" AS
       SELECT * FROM read_parquet('${tempFile}')
     `);
 
@@ -372,7 +372,7 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
         }
 
         await conn.query(`
-          CREATE TABLE "${file.name_hash}" AS
+          CREATE OR REPLACE TABLE "${file.name_hash}" AS
           SELECT * FROM read_parquet('${tempFile}')
         `);
 
