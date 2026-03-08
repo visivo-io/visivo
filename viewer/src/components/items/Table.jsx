@@ -52,19 +52,18 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Memoize insight name (supports both singular 'insight' and deprecated plural 'insights')
+  // Support new singular 'insight' field
   const insightName = useMemo(() => {
-    // New singular field takes precedence
     if (table.insight?.name) return table.insight.name;
-
-    // Backward compat: deprecated plural (use first)
-    if (table.insights && table.insights.length > 0) {
-      console.warn(`Table '${table.name}' uses deprecated 'insights' field. Use 'insight' instead.`);
-      return table.insights[0].name;
-    }
-
     return null;
-  }, [table.insight, table.insights, table.name]);
+  }, [table.insight]);
+
+  // Support deprecated plural 'insights' field
+  const insightNames = useMemo(() => {
+    if (!table.insights?.length) return [];
+    console.warn(`Table '${table.name}' uses deprecated 'insights' field. Use 'insight' instead.`);
+    return table.insights.map(insight => insight.name);
+  }, [table.insights, table.name]);
 
   // Memoize trace names to prevent array recreation
   const traceNames = useMemo(() => {
@@ -75,14 +74,25 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Viewport-based loading: Only fetch data when shouldLoad is true
   const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
-  const isInsightTable = !!insightName;
+  const isInsightTable = !!insightName || insightNames.length > 0;
 
-  // Read insight data from store (Dashboard prefetches all visible insights)
-  // Uses useShallow for shallow equality comparison to avoid infinite re-renders
+  // Read singular insight data from store
   const insightData = useStore(
     useShallow(state => {
       if (!insightName) return null;
       return state.insightJobs[insightName] || null;
+    })
+  );
+
+  // Read plural insights data from store (deprecated)
+  const insightsData = useStore(
+    useShallow(state => {
+      if (!insightNames.length) return null;
+      const data = {};
+      for (const name of insightNames) {
+        if (state.insightJobs[name]) data[name] = state.insightJobs[name];
+      }
+      return Object.keys(data).length > 0 ? data : null;
     })
   );
 
@@ -151,8 +161,9 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
       .replace(/\b\w/g, char => char.toUpperCase());
   };
 
+  // Handle new singular 'insight' field (auto-generate columns from data)
   useEffect(() => {
-    if (!isInsightTable || !insightData) return;
+    if (!insightName || !insightData) return;
 
     const data = insightData?.data || insightData?.insight;
     if (!data || data.length === 0) {
@@ -163,18 +174,16 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
     const firstRow = data[0];
 
-    // Auto-generate columns from query result keys
     const autoColumns = Object.keys(firstRow).map(key => ({
       id: key,
       header: formatColumnHeader(key),
-      accessorKey: key.replace(/\./g, '___'), // Replace dots for safe access
+      accessorKey: key.replace(/\./g, '___'),
       enableGrouping: false,
       markdown: false,
     }));
 
     setColumns(autoColumns);
 
-    // Transform data (replace dots in keys)
     const transformedData = data.map((row, idx) => {
       const transformedRow = { id: idx };
       Object.entries(row).forEach(([key, value]) => {
@@ -184,7 +193,40 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     });
 
     setTableData(transformedData);
-  }, [isInsightTable, insightData]);
+  }, [insightName, insightData]);
+
+  // Handle deprecated plural 'insights' field (uses column_defs)
+  useEffect(() => {
+    if (insightName) return; // singular takes precedence
+    if (!insightNames.length || !insightsData) return;
+
+    const firstInsightName = table.insights[0]?.name;
+    const insightObj = insightsData?.[firstInsightName];
+    const insightColObj =
+      table.column_defs.filter(column => column.insight_name === firstInsightName)[0]?.columns ?? [];
+
+    if (insightObj?.insight && insightColObj) {
+      const insightColumns = insightColObj.map((col, idx) => ({
+        id: col.id ?? `col_${idx}`,
+        header: col.header,
+        accessorKey: col.key.replace(/^columns\./, '').replace(/^props\./, ''),
+        enableGrouping: false,
+        markdown: col.markdown,
+      }));
+
+      setColumns(insightColumns);
+
+      setTableData(
+        insightObj.insight.map((row, idx) => {
+          const transformedRow = {};
+          Object.entries(row).forEach(([key, value]) => {
+            transformedRow[key.replace(/\./g, '___')] = value;
+          });
+          return { id: idx, ...transformedRow };
+        })
+      );
+    }
+  }, [insightName, insightNames, insightsData, table.insights, table.column_defs]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -264,7 +306,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isInsightTable && !insightData) {
+  if (isInsightTable && !insightData && !insightsData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 

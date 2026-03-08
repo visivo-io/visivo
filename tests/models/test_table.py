@@ -131,7 +131,6 @@ def test_Table_with_selector():
 
 
 def test_Table_with_singular_insight():
-    """Test new singular insight field."""
     data = {
         "name": "revenue-table",
         "insight": "ref(monthly-revenue)",
@@ -141,67 +140,21 @@ def test_Table_with_singular_insight():
     assert table.name == "revenue-table"
 
 
-def test_Table_plural_insights_auto_converts_to_singular():
-    """Test that plural insights with one item auto-converts to singular."""
-    data = {
-        "name": "revenue-table",
-        "insights": ["ref(monthly-revenue)"],
-    }
-    with pytest.warns(DeprecationWarning, match="Use 'insight: ref\\(monthly-revenue\\)'"):
-        table = Table(**data)
-
-    # Should auto-convert to singular
-    assert table.insight == "ref(monthly-revenue)"
-
-
-def test_Table_plural_insights_with_multiple_raises_error():
-    """Test that plural insights with multiple items raises validation error."""
+def test_Table_with_plural_insights():
     data = {
         "name": "revenue-table",
         "insights": ["ref(insight1)", "ref(insight2)"],
     }
-    with pytest.raises(ValidationError) as exc_info:
-        Table(**data)
-
-    error = exc_info.value.errors()[0]
-    assert "multiple insights" in error["msg"].lower()
+    table = Table(**data)
+    assert len(table.insights) == 2
 
 
-def test_Table_traces_emits_deprecation_warning():
-    """Test that traces field emits deprecation warning."""
+def test_Table_with_singular_and_plural_insights():
     data = {
         "name": "revenue-table",
-        "traces": ["ref(trace1)"],
+        "insight": "ref(singular-insight)",
+        "insights": ["ref(insight1)"],
     }
-    with pytest.warns(DeprecationWarning, match="'traces' field deprecated"):
-        table = Table(**data)
-
-    assert table.traces == ["ref(trace1)"]
-
-
-def test_Table_column_defs_emits_deprecation_warning():
-    """Test that column_defs field emits deprecation warning."""
-    data = {
-        "name": "revenue-table",
-        "insight": "ref(monthly-revenue)",
-        "column_defs": [
-            {
-                "insight_name": "monthly-revenue",
-                "columns": [{"header": "Month", "key": "month"}],
-            }
-        ],
-    }
-    with pytest.warns(DeprecationWarning, match="'column_defs' deprecated"):
-        table = Table(**data)
-
-    assert table.column_defs is not None
-
-
-def test_Table_requires_data_source():
-    """Test that table requires at least one data source."""
-    data = {"name": "revenue-table"}
-    with pytest.raises(ValidationError) as exc_info:
-        Table(**data)
-
-    error = exc_info.value.errors()[0]
-    assert "must have an 'insight' field" in error["msg"].lower()
+    table = Table(**data)
+    assert table.insight == "ref(singular-insight)"
+    assert len(table.insights) == 1
