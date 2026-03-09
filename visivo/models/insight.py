@@ -103,9 +103,8 @@ class Insight(NamedModel, ParentModel):
             props_str = str(self.props.model_dump())
             model_names = extract_ref_names(props_str)
 
-            # Convert model names to ref() format for DAG
             for model_name in model_names:
-                children.append(model_name)
+                children.append(f"${{{model_name}}}")
 
         # Extract all ${ref(model_name).field} references from interactions
         if self.interactions:
@@ -115,8 +114,9 @@ class Insight(NamedModel, ParentModel):
                     model_names = extract_ref_names(field_str)
                     # TODO: I think this will skip model scoped children and needs refactored
                     for model_name in model_names:
-                        if model_name not in children:
-                            children.append(model_name)
+                        ref = f"${{{model_name}}}"
+                        if ref not in children:
+                            children.append(ref)
 
         return children
 

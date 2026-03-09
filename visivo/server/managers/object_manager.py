@@ -5,7 +5,8 @@ from threading import Lock
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from visivo.models.base.context_string import ContextString
-from visivo.query.patterns import REF_FUNCTION_PATTERN, extract_ref_names
+from visivo.models.base.named_model import NamedModel
+from visivo.query.patterns import extract_ref_names
 
 T = TypeVar("T")
 
@@ -284,22 +285,10 @@ class ObjectManager(ABC, Generic[T]):
                     if ref_name:
                         child_names.append(ref_name)
                 elif isinstance(child, str):
-                    # Child could be a ref string in multiple formats:
-                    # 1. ${ref(source_name)} or ${source_name} - context string format
-                    # 2. ref(source_name) - simple ref format
-                    # 3. source_name - bare name format (new dot syntax)
-                    ref_names = extract_ref_names(child)
-                    if ref_names:
-                        child_names.extend(ref_names)
-                    else:
-                        # Try simple ref() format: ref(name)
-                        match = re.match(REF_FUNCTION_PATTERN, child)
-                        if match:
-                            model_name = match.group("model_name").strip("'\"")
-                            child_names.append(model_name)
-                        else:
-                            # Bare name string
-                            child_names.append(child)
+                    # Extract the name from any ref format: ref(name), ${name}, ${ref(name)}
+                    name_val = NamedModel.get_name(child)
+                    if name_val:
+                        child_names.append(name_val)
 
         return {
             "name": name,

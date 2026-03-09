@@ -42,8 +42,12 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert input_obj.name in children, f"Expected {input_obj.name} in children, got: {children}"
-        assert model.name in children, f"Expected {model.name} in children, got: {children}"
+        assert (
+            f"${{{input_obj.name}}}" in children
+        ), f"Expected ${{{input_obj.name}}} in children, got: {children}"
+        assert (
+            f"${{{model.name}}}" in children
+        ), f"Expected ${{{model.name}}} in children, got: {children}"
 
     def test_child_items_includes_model_references(self):
         """Verify model refs from props still work."""
@@ -64,7 +68,9 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert model.name in children, f"Expected {model.name} in children, got: {children}"
+        assert (
+            f"${{{model.name}}}" in children
+        ), f"Expected ${{{model.name}}} in children, got: {children}"
 
     def test_child_items_handles_multiple_inputs(self):
         """Verify multiple input refs all detected."""
@@ -94,9 +100,15 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert input1.name in children, f"Expected {input1.name} in children, got: {children}"
-        assert input2.name in children, f"Expected {input2.name} in children, got: {children}"
-        assert model.name in children, f"Expected {model.name} in children, got: {children}"
+        assert (
+            f"${{{input1.name}}}" in children
+        ), f"Expected ${{{input1.name}}} in children, got: {children}"
+        assert (
+            f"${{{input2.name}}}" in children
+        ), f"Expected ${{{input2.name}}} in children, got: {children}"
+        assert (
+            f"${{{model.name}}}" in children
+        ), f"Expected ${{{model.name}}} in children, got: {children}"
 
     def test_child_items_mixed_inputs_and_models(self):
         """Verify mixed refs (inputs + models)."""
@@ -126,9 +138,9 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert model1.name in children
-        assert model2.name in children
-        assert input_obj.name in children
+        assert f"${{{model1.name}}}" in children
+        assert f"${{{model2.name}}}" in children
+        assert f"${{{input_obj.name}}}" in children
 
     def test_child_items_no_inputs_unchanged(self):
         """Verify behavior without inputs unchanged."""
@@ -149,7 +161,7 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert model.name in children
+        assert f"${{{model.name}}}" in children
         # Should only have the model ref
         assert len(children) == 1
 
@@ -184,10 +196,10 @@ class TestInsightChildItems:
         children = insight.child_items()
 
         # ASSERT
-        assert input_filter.name in children
-        assert input_split.name in children
-        assert input_sort.name in children
-        assert model.name in children
+        assert f"${{{input_filter.name}}}" in children
+        assert f"${{{input_split.name}}}" in children
+        assert f"${{{input_sort.name}}}" in children
+        assert f"${{{model.name}}}" in children
 
 
 class TestInsightPropsInputRefs:

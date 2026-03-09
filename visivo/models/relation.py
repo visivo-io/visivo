@@ -98,9 +98,8 @@ class Relation(NamedModel, ParentModel):
         if self.condition:
             model_names = extract_ref_names(self.condition)
 
-            # Convert to ref() format for DAG
             for model_name in model_names:
-                children.append(model_name)
+                children.append(f"${{{model_name}}}")
 
         return children
 

@@ -94,7 +94,7 @@ class Dimension(NamedModel, ParentModel):
         # Check if this is a nested dimension (has a parent_name set)
         if hasattr(self, "_parent_name") and self._parent_name:
             # Nested dimension - reference the parent model only
-            children.append(self._parent_name)
+            children.append(f"${{{self._parent_name}}}")
         else:
             # Standalone dimension - extract references from expression
             from visivo.query.patterns import extract_ref_components
@@ -102,8 +102,7 @@ class Dimension(NamedModel, ParentModel):
             if self.expression:
                 ref_components = extract_ref_components(self.expression)
 
-                # Convert to ref() format for DAG
                 for model_or_dim_name, field_name in ref_components:
-                    children.append(model_or_dim_name)
+                    children.append(f"${{{model_or_dim_name}}}")
 
         return children

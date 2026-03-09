@@ -76,7 +76,7 @@ class TestSingleSelectInput:
         children = input_obj.child_items()
 
         assert len(children) == 1
-        assert "products" in children
+        assert "${products}" in children
 
     def test_child_items_empty_for_static_options(self):
         data = {
@@ -188,8 +188,8 @@ class TestMultiSelectInput:
         children = input_obj.child_items()
 
         assert len(children) == 2
-        assert "products" in children
-        assert "orders" in children
+        assert "${products}" in children
+        assert "${orders}" in children
 
     def test_child_items_empty_for_static_range(self):
         data = {

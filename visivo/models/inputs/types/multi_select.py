@@ -249,7 +249,7 @@ class MultiSelectInput(Input):
             query_str = str(self.options)
             ref_names = extract_ref_names(query_str)
             for ref_name in ref_names:
-                children.append(ref_name)
+                children.append(f"${{{ref_name}}}")
         elif ContextString.is_context_string(self.options):
             children.append(self.options)
 
@@ -264,8 +264,9 @@ class MultiSelectInput(Input):
                     query_str = str(field_value)
                     ref_names = extract_ref_names(query_str)
                     for ref_name in ref_names:
-                        if ref_name not in children:
-                            children.append(ref_name)
+                        ref = f"${{{ref_name}}}"
+                        if ref not in children:
+                            children.append(ref)
 
         # Check for query-based defaults
         if self.display and self.display.default:
@@ -276,8 +277,9 @@ class MultiSelectInput(Input):
                 query_str = str(default.values)
                 ref_names = extract_ref_names(query_str)
                 for ref_name in ref_names:
-                    if ref_name not in children:
-                        children.append(ref_name)
+                    ref = f"${{{ref_name}}}"
+                    if ref not in children:
+                        children.append(ref)
 
             # Range-based default start/end
             for field_name in ["start", "end"]:
@@ -286,8 +288,9 @@ class MultiSelectInput(Input):
                     query_str = str(field_value)
                     ref_names = extract_ref_names(query_str)
                     for ref_name in ref_names:
-                        if ref_name not in children:
-                            children.append(ref_name)
+                        ref = f"${{{ref_name}}}"
+                        if ref not in children:
+                            children.append(ref)
 
         return children
 

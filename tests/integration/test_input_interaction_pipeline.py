@@ -102,8 +102,8 @@ class TestInputInteractionPipeline:
         insight_children = insight.child_items()
 
         # ASSERT - Insight depends on input (accessor syntax still creates ref dependency)
-        assert "ref(filter_value)" in insight_children, "Insight doesn't depend on input"
-        assert "ref(data)" in insight_children, "Insight doesn't depend on model"
+        assert "${filter_value}" in insight_children, "Insight doesn't depend on input"
+        assert "${data}" in insight_children, "Insight doesn't depend on model"
 
         # Verify input job function exists
         from visivo.jobs.dag_runner import input_job
