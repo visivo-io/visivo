@@ -24,6 +24,7 @@ def test_EvalString_get_references():
     eval_string = EvalString(">{ ${ref(Name1)} == ${ref(Name1)} }")
     assert eval_string.get_references() == ["Name1", "Name1"]
 
+    # ${project.name} is an inline path, not a named ref
     eval_string = EvalString(">{ ${ref(Name)} == ${project.name} }")
     assert eval_string.get_references() == ["Name"]
 

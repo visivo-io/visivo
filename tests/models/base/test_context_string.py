@@ -14,6 +14,14 @@ def test_ContextString_is_context_string():
     assert not ContextString.is_context_string("{ ref(Name) }")
 
 
+def test_ContextString_is_context_string_dot_syntax():
+    """Test that new dot syntax is recognized as context string."""
+    assert ContextString.is_context_string("${orders}")
+    assert ContextString.is_context_string("${my-model}")
+    assert ContextString.is_context_string("${orders.id}")
+    assert ContextString.is_context_string(ContextString("${orders}"))
+
+
 def test_ContextString_ref_name():
     context_string = ContextString("")
     assert context_string.get_reference() == None
@@ -32,6 +40,18 @@ def test_ContextString_ref_name():
 
     context_string = ContextString("${ref(Name)}.property[1]")
     assert context_string.get_reference() == "Name"
+
+
+def test_ContextString_ref_name_dot_syntax():
+    """Test getting reference from new dot syntax."""
+    context_string = ContextString("${orders}")
+    assert context_string.get_reference() == "orders"
+
+    context_string = ContextString("${my-model}")
+    assert context_string.get_reference() == "my-model"
+
+    context_string = ContextString("${orders.id}")
+    assert context_string.get_reference() == "orders"
 
 
 def test_ContextString_get_path():
@@ -73,8 +93,21 @@ def test_ContextString_get_ref_props_path():
     context_string = ContextString("Regular string without ref")
     assert context_string.get_ref_props_path() == None
 
+    # ${project.name} is an inline path, not a dot-syntax ref
     context_string = ContextString("${ project.name }")
     assert context_string.get_ref_props_path() == None
+
+
+def test_ContextString_get_ref_props_path_dot_syntax():
+    """Test getting props path from new dot syntax."""
+    context_string = ContextString("${orders}")
+    assert context_string.get_ref_props_path() == ""
+
+    context_string = ContextString("${orders.id}")
+    assert context_string.get_ref_props_path() == ".id"
+
+    context_string = ContextString("${orders.nested.field}")
+    assert context_string.get_ref_props_path() == ".nested.field"
 
 
 def test_ContextString_as_field():
@@ -83,6 +116,12 @@ def test_ContextString_as_field():
 
     with pytest.raises(ValueError):
         MockStringModel(**{"ref": "{ ref(Name) }"})
+
+
+def test_ContextString_as_field_dot_syntax():
+    """Test using new dot syntax in a Pydantic field."""
+    test_string_model = MockStringModel(**{"ref": "${orders}"})
+    assert test_string_model.ref.get_reference() == "orders"
 
 
 def test_ContextString_hash():

@@ -185,8 +185,8 @@ class TestReplaceInputPlaceholdersForParsing:
         assert "/* __VISIVO_INPUT:color.value__ */" in result_sql
         assert replacements == {"threshold.value": "100", "color.value": "'red'"}
 
-    def test_raises_error_for_undefined_input(self):
-        """Test that ValueError is raised for undefined input placeholder."""
+    def test_skips_undefined_input_refs(self):
+        """Test that undefined input placeholders are silently skipped (could be model refs)."""
         source = SourceFactory()
         orders_model = SqlModel(
             name="orders",
@@ -211,10 +211,12 @@ class TestReplaceInputPlaceholdersForParsing:
         dag = project.dag()
 
         sql = "amount > ${ref(undefined_input).value}"
-        with pytest.raises(ValueError) as exc_info:
-            replace_input_placeholders_for_parsing(sql, dag=dag, insight=insight)
-        assert "undefined_input" in str(exc_info.value)
-        assert "undefined input" in str(exc_info.value)
+        result_sql, replacements = replace_input_placeholders_for_parsing(
+            sql, dag=dag, insight=insight
+        )
+        # Undefined input refs are left unchanged (might be model refs with dot syntax)
+        assert "${ref(undefined_input).value}" in result_sql
+        assert len(replacements) == 0
 
 
 class TestRestoreInputPlaceholders:

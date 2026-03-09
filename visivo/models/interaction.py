@@ -5,7 +5,7 @@ from re import Match
 from visivo.models.base.query_string import QueryString
 from visivo.models.inputs import Input
 from visivo.models.base.project_dag import ProjectDag
-from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED
+from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED, get_model_name_from_match
 
 
 # TODO: This should really be a discriminated single selection between a filter, split and sort class rather than this composite object
@@ -59,7 +59,7 @@ class InsightInteraction(BaseModel):
 
         def replace_input_refs(text: str) -> str:
             def repl(m: Match) -> str:
-                name = m.group("model_name").strip()
+                name = get_model_name_from_match(m)
                 # Get property_path (accessor like .value, .min, .max, etc.)
                 property_path = m.group("property_path") or ""
 

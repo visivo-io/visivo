@@ -173,10 +173,7 @@ def replace_input_placeholders_for_parsing(
     accessor_refs = extract_input_accessors(sql)
     for input_name, accessor in accessor_refs:
         if input_name not in input_map:
-            raise ValueError(
-                f"Input placeholder '${{ref({input_name}).{accessor}}}' references undefined input. "
-                f"Make sure input '{input_name}' is defined in your project."
-            )
+            continue
 
         sample_value = get_sample_value_for_input(
             input_map[input_name], output_dir, accessor=accessor

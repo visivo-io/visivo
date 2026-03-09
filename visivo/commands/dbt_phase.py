@@ -87,14 +87,14 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
                 model = {
                     "name": f"{dbt_prefix}{name}",
                     "sql": "select * from " + ".".join(names),
-                    "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
+                    "source": f"${{{dbt_prefix}{dbt_profile}_{dbt_target}}}",
                 }
                 if version and version == latest_version:
                     models.append(
                         {
                             "name": f"{dbt_prefix}{node['name']}",
                             "sql": "select * from " + ".".join(names),
-                            "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
+                            "source": f"${{{dbt_prefix}{dbt_profile}_{dbt_target}}}",
                         }
                     )
 

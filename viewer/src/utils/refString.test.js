@@ -19,7 +19,13 @@ describe('parseRefValue', () => {
     expect(parseRefValue({ name: 'foo' })).toBeNull();
   });
 
-  it('parses bare ref(name)', () => {
+  it('parses new dot syntax ${name}', () => {
+    expect(parseRefValue('${my_source}')).toBe('my_source');
+    expect(parseRefValue('${orders}')).toBe('orders');
+    expect(parseRefValue('${my-model}')).toBe('my-model');
+  });
+
+  it('parses legacy bare ref(name)', () => {
     expect(parseRefValue('ref(mySource)')).toBe('mySource');
   });
 
@@ -27,11 +33,11 @@ describe('parseRefValue', () => {
     expect(parseRefValue('ref( mySource )')).toBe('mySource');
   });
 
-  it('parses context string ${ref(name)}', () => {
+  it('parses legacy context string ${ref(name)}', () => {
     expect(parseRefValue('${ref(mySource)}')).toBe('mySource');
   });
 
-  it('parses context string with spaces ${ ref( name ) }', () => {
+  it('parses legacy context string with spaces ${ ref( name ) }', () => {
     expect(parseRefValue('${ ref( mySource ) }')).toBe('mySource');
   });
 
@@ -50,31 +56,31 @@ describe('parseRefValue', () => {
 });
 
 describe('formatRef', () => {
-  it('formats bare ref', () => {
-    expect(formatRef('myModel')).toBe('ref(myModel)');
+  it('formats bare name (new dot syntax)', () => {
+    expect(formatRef('myModel')).toBe('myModel');
   });
 
-  it('formats bare ref with property', () => {
-    expect(formatRef('myModel', 'field')).toBe('ref(myModel).field');
+  it('formats name with property (new dot syntax)', () => {
+    expect(formatRef('myModel', 'field')).toBe('myModel.field');
   });
 
   it('trims whitespace', () => {
-    expect(formatRef('  myModel  ')).toBe('ref(myModel)');
-    expect(formatRef('myModel', '  field  ')).toBe('ref(myModel).field');
+    expect(formatRef('  myModel  ')).toBe('myModel');
+    expect(formatRef('myModel', '  field  ')).toBe('myModel.field');
   });
 });
 
 describe('formatRefExpression', () => {
-  it('formats context string ref', () => {
-    expect(formatRefExpression('myModel')).toBe('${ref(myModel)}');
+  it('formats context string ref (new dot syntax)', () => {
+    expect(formatRefExpression('myModel')).toBe('${myModel}');
   });
 
-  it('formats context string ref with property', () => {
-    expect(formatRefExpression('myModel', 'field')).toBe('${ref(myModel).field}');
+  it('formats context string ref with property (new dot syntax)', () => {
+    expect(formatRefExpression('myModel', 'field')).toBe('${myModel.field}');
   });
 
   it('trims whitespace', () => {
-    expect(formatRefExpression('  myModel  ', '  field  ')).toBe('${ref(myModel).field}');
+    expect(formatRefExpression('  myModel  ', '  field  ')).toBe('${myModel.field}');
   });
 });
 
@@ -85,11 +91,11 @@ describe('parseMultiRefValue', () => {
     expect(parseMultiRefValue('')).toEqual([]);
   });
 
-  it('parses array of ref strings', () => {
+  it('parses array of legacy ref strings', () => {
     expect(parseMultiRefValue(['ref(a)', 'ref(b)'])).toEqual(['a', 'b']);
   });
 
-  it('parses array of context string refs', () => {
+  it('parses array of legacy context string refs', () => {
     expect(parseMultiRefValue(['${ref(a)}', '${ ref(b) }'])).toEqual(['a', 'b']);
   });
 
@@ -112,24 +118,29 @@ describe('formatMultiRefValue', () => {
     expect(formatMultiRefValue([])).toBeNull();
   });
 
-  it('formats array of names as context string refs', () => {
-    expect(formatMultiRefValue(['a', 'b'])).toEqual(['${ref(a)}', '${ref(b)}']);
+  it('formats array of names as dot syntax refs', () => {
+    expect(formatMultiRefValue(['a', 'b'])).toEqual(['${a}', '${b}']);
   });
 });
 
 describe('roundtrip: parse then format', () => {
   it('roundtrips bare ref format', () => {
     const name = parseRefValue('ref(mySource)');
-    expect(formatRef(name)).toBe('ref(mySource)');
+    expect(formatRef(name)).toBe('mySource');
   });
 
-  it('roundtrips context string format', () => {
+  it('roundtrips legacy context string format', () => {
     const name = parseRefValue('${ref(mySource)}');
-    expect(formatRefExpression(name)).toBe('${ref(mySource)}');
+    expect(formatRefExpression(name)).toBe('${mySource}');
+  });
+
+  it('roundtrips new dot syntax format', () => {
+    const name = parseRefValue('${my_source}');
+    expect(formatRefExpression(name)).toBe('${my_source}');
   });
 
   it('roundtrips context string with spaces', () => {
     const name = parseRefValue('${ ref( mySource ) }');
-    expect(formatRefExpression(name)).toBe('${ref(mySource)}');
+    expect(formatRefExpression(name)).toBe('${mySource}');
   });
 });

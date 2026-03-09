@@ -10,7 +10,11 @@ from visivo.models.deprecations.base_deprecation import (
     DeprecationWarning,
     MigrationAction,
 )
-from visivo.query.patterns import REF_PROPERTY_PATTERN, REF_FUNCTION_PATTERN
+from visivo.query.patterns import (
+    REF_PROPERTY_PATTERN,
+    REF_FUNCTION_PATTERN,
+    get_model_name_from_match,
+)
 from visivo.utils import list_all_ymls_in_dir
 
 if TYPE_CHECKING:
@@ -28,11 +32,13 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
 
     REMOVAL_VERSION = "2.0.0"
     FEATURE_NAME = "Raw ref() syntax"
-    MIGRATION_GUIDE = "Replace ref(name) with ${ref(name)} format."
+    MIGRATION_GUIDE = "Replace ref(name) with ${name} format."
 
     def check(self, project: "Project") -> List[DeprecationWarning]:
         """
         Check for deprecated raw ref(name) syntax usage.
+
+        Only checks for bare ref(name) patterns, not the new bare name format.
 
         Args:
             project: The project to check
@@ -41,7 +47,8 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
             List of deprecation warnings found
         """
         warnings = []
-        bare_ref_pattern = re.compile(REF_PROPERTY_PATTERN)
+        # Only match bare ref(name) patterns, not bare names
+        bare_ref_pattern = re.compile(rf"^{REF_FUNCTION_PATTERN}$")
 
         self._check_recursive(project, bare_ref_pattern, warnings, "project")
 
@@ -74,14 +81,13 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
 
     def _create_warning(self, ref_value: str, location: str = None) -> DeprecationWarning:
         """Create a deprecation warning for a bare ref."""
-        # Extract the model name from ref(model_name)
-        match = re.match(REF_PROPERTY_PATTERN, ref_value)
-        model_name = match.group("model_name").strip() if match else ref_value
+        match = re.match(rf"^{REF_FUNCTION_PATTERN}$", ref_value)
+        model_name = get_model_name_from_match(match) if match else ref_value
 
         return DeprecationWarning(
             feature=self.FEATURE_NAME,
             message=f"'{ref_value}' uses deprecated syntax.",
-            migration=f"Replace with '${{ref({model_name})}}' format.",
+            migration=f"Replace with '${{{model_name}}}' format.",
             removal_version=self.REMOVAL_VERSION,
             location=location or "",
         )
@@ -127,17 +133,21 @@ class RefSyntaxDeprecation(BaseDeprecationChecker):
                         continue
 
                     # This is a bare ref that needs migration
-                    old_text = ref_text
-                    new_text = f"${{{ref_text}}}"
+                    # Extract the name from ref(name) and go directly to ${name}
+                    inner_match = re.match(REF_FUNCTION_PATTERN, ref_text)
+                    if inner_match:
+                        name = inner_match.group("model_name").strip().strip("'\"")
+                        old_text = ref_text
+                        new_text = f"${{{name}}}"
 
-                    migrations.append(
-                        MigrationAction(
-                            file_path=str(file_path),
-                            old_text=old_text,
-                            new_text=new_text,
-                            description="bare ref to context string",
+                        migrations.append(
+                            MigrationAction(
+                                file_path=str(file_path),
+                                old_text=old_text,
+                                new_text=new_text,
+                                description="bare ref to dot syntax",
+                            )
                         )
-                    )
 
             except Exception:
                 # Skip files that can't be read

@@ -61,7 +61,7 @@ class TestRefSyntaxDeprecation:
         assert "ref(source)" in warnings[0].message
         assert warnings[0].feature == "Raw ref() syntax"
         assert warnings[0].removal_version == "2.0.0"
-        assert "${ref(source)}" in warnings[0].migration
+        assert "${source}" in warnings[0].migration
 
     def test_warns_on_multiple_bare_refs(self):
         """Test that multiple bare refs each trigger a warning."""

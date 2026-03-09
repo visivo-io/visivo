@@ -9,6 +9,7 @@ from visivo.models.dimension import Dimension
 from visivo.query.patterns import (
     CONTEXT_STRING_REF_PATTERN_COMPILED,
     has_CONTEXT_STRING_REF_PATTERN,
+    get_model_name_from_match,
 )
 from visivo.query.resolvers.error_messages import format_column_not_found_error
 from visivo.query.sqlglot_utils import (
@@ -425,7 +426,16 @@ class FieldResolver:
                 )
 
         def repl_fn(match):
-            model_name = match.group("model_name").strip()
+            from visivo.models.inputs.input import Input
+
+            model_name = get_model_name_from_match(match)
+            # Skip input refs — they are JS template literals for client-side interpolation
+            try:
+                node = self.dag.get_descendant_by_name(model_name)
+                if isinstance(node, Input):
+                    return match.group(0)
+            except (ValueError, AttributeError):
+                pass
             field_name = match.group("property_path") or ""
             inner = resolve_ref(model_name, field_name)
             # recurse into any refs produced by the replacement

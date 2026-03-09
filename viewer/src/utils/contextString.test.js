@@ -30,9 +30,14 @@ describe('ContextString', () => {
   });
 
   describe('getReference', () => {
-    it('extracts the reference inside ref()', () => {
+    it('extracts the reference inside ref() (legacy)', () => {
       const ctx = new ContextString('${ref(myMetric)}');
       expect(ctx.getReference()).toBe('myMetric');
+    });
+
+    it('extracts the reference from dot syntax (new)', () => {
+      const ctx = new ContextString('${my_metric}');
+      expect(ctx.getReference()).toBe('my_metric');
     });
 
     it('returns null if no ref is found', () => {
@@ -42,12 +47,17 @@ describe('ContextString', () => {
   });
 
   describe('getRefPropsPath', () => {
-    it('extracts the props path after ref()', () => {
+    it('extracts the props path after ref() (legacy)', () => {
       const ctx = new ContextString('${ref(myMetric).value}');
       expect(ctx.getRefPropsPath()).toBe('.value');
     });
 
-    it('returns null if no props path exists', () => {
+    it('extracts the props path from dot syntax (new)', () => {
+      const ctx = new ContextString('${my_metric.value}');
+      expect(ctx.getRefPropsPath()).toBe('.value');
+    });
+
+    it('returns empty string if no props path exists', () => {
       const ctx = new ContextString('${ref(myMetric)}');
       expect(ctx.getRefPropsPath()).toBe('');
     });
@@ -61,21 +71,31 @@ describe('ContextString', () => {
   });
 
   describe('getRefAttr', () => {
-    it('returns the whole matched ref string', () => {
+    it('returns the whole matched ref string (legacy)', () => {
       const ctx = new ContextString('${ref(myMetric).value}');
       expect(ctx.getRefAttr()).toBe('${ref(myMetric).value}');
     });
 
+    it('returns the whole matched ref string (dot syntax)', () => {
+      const ctx = new ContextString('${my_metric.value}');
+      expect(ctx.getRefAttr()).toBe('${my_metric.value}');
+    });
+
     it('returns null when no ref attr exists', () => {
-      const ctx = new ContextString('${foo.bar}');
+      const ctx = new ContextString('plain text');
       expect(ctx.getRefAttr()).toBeNull();
     });
   });
 
   describe('getAllRefs', () => {
-    it('returns all refs in the string', () => {
+    it('returns all refs in the string (legacy)', () => {
       const ctx = new ContextString('${ref(foo)} and ${ref(bar).baz}');
       expect(ctx.getAllRefs()).toEqual(['${ref(foo)}', '${ref(bar).baz}']);
+    });
+
+    it('returns all refs in the string (dot syntax)', () => {
+      const ctx = new ContextString('${foo} and ${bar.baz}');
+      expect(ctx.getAllRefs()).toEqual(['${foo}', '${bar.baz}']);
     });
 
     it('returns empty array if no refs found', () => {
@@ -90,8 +110,12 @@ describe('ContextString', () => {
       expect(ContextString.isContextString(ctx)).toBe(true);
     });
 
-    it('returns true for valid context string', () => {
+    it('returns true for valid legacy context string', () => {
       expect(ContextString.isContextString('${ref(bar)}')).toBe(true);
+    });
+
+    it('returns true for valid dot syntax context string', () => {
+      expect(ContextString.isContextString('${bar}')).toBe(true);
     });
 
     it('returns false for plain string', () => {
@@ -105,19 +129,34 @@ describe('ContextString', () => {
 });
 
 describe('REF_PATTERN', () => {
-  it('matches standard refs', () => {
+  it('matches standard legacy refs', () => {
     const text = '${ref(myModel)}';
     const matches = [...text.matchAll(REF_PATTERN)];
     expect(matches).toHaveLength(1);
     expect(matches[0][1]).toBe('myModel');
   });
 
-  it('matches refs with property', () => {
+  it('matches dot syntax refs', () => {
+    const text = '${my_model}';
+    const matches = [...text.matchAll(REF_PATTERN)];
+    expect(matches).toHaveLength(1);
+    expect(matches[0][2]).toBe('my_model');
+  });
+
+  it('matches legacy refs with property', () => {
     const text = '${ref(myModel).field}';
     const matches = [...text.matchAll(REF_PATTERN)];
     expect(matches).toHaveLength(1);
     expect(matches[0][1]).toBe('myModel');
-    expect(matches[0][2]).toBe('field');
+    expect(matches[0][3]).toBe('field');
+  });
+
+  it('matches dot syntax refs with property', () => {
+    const text = '${my_model.field}';
+    const matches = [...text.matchAll(REF_PATTERN)];
+    expect(matches).toHaveLength(1);
+    expect(matches[0][2]).toBe('my_model');
+    expect(matches[0][3]).toBe('field');
   });
 
   it('matches refs with whitespace inside ${}', () => {
@@ -146,17 +185,23 @@ describe('REF_PATTERN', () => {
     const matches = [...text.matchAll(REF_PATTERN)];
     expect(matches).toHaveLength(1);
     expect(matches[0][1]).toBe('myModel');
-    expect(matches[0][2]).toBe('field');
+    expect(matches[0][3]).toBe('field');
   });
 
-  it('matches multiple refs with varying whitespace', () => {
-    const text = '${ref(a)} and ${ ref( b ) } and ${ref(c).prop}';
+  it('matches multiple refs with varying formats', () => {
+    const text = '${ref(a)} and ${b} and ${ref(c).prop}';
     const matches = [...text.matchAll(REF_PATTERN)];
     expect(matches).toHaveLength(3);
     expect(matches[0][1]).toBe('a');
-    expect(matches[1][1]).toBe('b');
+    expect(matches[1][2]).toBe('b');
     expect(matches[2][1]).toBe('c');
-    expect(matches[2][2]).toBe('prop');
+    expect(matches[2][3]).toBe('prop');
+  });
+
+  it('does not match ${env.VAR}', () => {
+    const text = '${env.DB_HOST}';
+    const matches = [...text.matchAll(REF_PATTERN)];
+    expect(matches).toHaveLength(0);
   });
 });
 
@@ -173,11 +218,18 @@ describe('parseTextWithRefs', () => {
     expect(segments[0].content).toBe('plain text');
   });
 
-  it('parses single ref', () => {
+  it('parses single legacy ref', () => {
     const segments = parseTextWithRefs('${ref(myModel)}');
     expect(segments).toHaveLength(1);
     expect(segments[0].type).toBe('ref');
     expect(segments[0].name).toBe('myModel');
+  });
+
+  it('parses single dot syntax ref', () => {
+    const segments = parseTextWithRefs('${my_model}');
+    expect(segments).toHaveLength(1);
+    expect(segments[0].type).toBe('ref');
+    expect(segments[0].name).toBe('my_model');
   });
 
   it('parses ref with whitespace variations', () => {
@@ -218,6 +270,13 @@ describe('parseTextWithRefs', () => {
     expect(segments[4].type).toBe('text');
     expect(segments[4].content).toBe(' suffix');
   });
+
+  it('parses mixed legacy and dot syntax refs', () => {
+    const segments = parseTextWithRefs('${ref(a)} and ${b}');
+    expect(segments).toHaveLength(3);
+    expect(segments[0].name).toBe('a');
+    expect(segments[2].name).toBe('b');
+  });
 });
 
 describe('isInsideDollarBrace', () => {
@@ -252,33 +311,33 @@ describe('isInsideDollarBrace', () => {
 });
 
 describe('formatRef', () => {
-  it('formats ref without property', () => {
-    expect(formatRef('myModel')).toBe('ref(myModel)');
+  it('formats ref without property (dot syntax)', () => {
+    expect(formatRef('myModel')).toBe('myModel');
   });
 
-  it('formats ref with property', () => {
-    expect(formatRef('myModel', 'field')).toBe('ref(myModel).field');
+  it('formats ref with property (dot syntax)', () => {
+    expect(formatRef('myModel', 'field')).toBe('myModel.field');
   });
 
   it('trims whitespace from name', () => {
-    expect(formatRef('  myModel  ')).toBe('ref(myModel)');
+    expect(formatRef('  myModel  ')).toBe('myModel');
   });
 
   it('trims whitespace from property', () => {
-    expect(formatRef('myModel', '  field  ')).toBe('ref(myModel).field');
+    expect(formatRef('myModel', '  field  ')).toBe('myModel.field');
   });
 });
 
 describe('formatRefExpression', () => {
-  it('formats ref expression without property', () => {
-    expect(formatRefExpression('myModel')).toBe('${ref(myModel)}');
+  it('formats ref expression without property (dot syntax)', () => {
+    expect(formatRefExpression('myModel')).toBe('${myModel}');
   });
 
-  it('formats ref expression with property', () => {
-    expect(formatRefExpression('myModel', 'field')).toBe('${ref(myModel).field}');
+  it('formats ref expression with property (dot syntax)', () => {
+    expect(formatRefExpression('myModel', 'field')).toBe('${myModel.field}');
   });
 
   it('trims whitespace', () => {
-    expect(formatRefExpression('  myModel  ', '  field  ')).toBe('${ref(myModel).field}');
+    expect(formatRefExpression('  myModel  ', '  field  ')).toBe('${myModel.field}');
   });
 });

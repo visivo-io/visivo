@@ -68,7 +68,7 @@ def execute_model_query_job(job_id, config, flask_app, output_dir, job_manager):
         temp_model = SqlModel(
             name=temp_model_name,
             sql=sql,
-            source=f"ref({source_name})" if source_name else None,
+            source=source_name if source_name else None,
         )
 
         run_id = f"query-{temp_model_name}"

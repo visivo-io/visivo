@@ -70,7 +70,9 @@ class NamedModel(BaseModel):
                 return ContextString(obj).get_reference()
         else:
             match = re.match(REF_PROPERTY_PATTERN, obj)
-            return get_model_name_from_match(match)
+            if match:
+                return get_model_name_from_match(match)
+            return obj
 
     def __str__(self):
         if self.id() is None:
