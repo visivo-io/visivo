@@ -69,6 +69,8 @@ class TraceDeprecation(BaseDeprecationChecker):
         file_data: Dict[str, Any] = {}
         converted_trace_names: Set[str] = set()
 
+        sql_model_names: Set[str] = set()
+
         for file_path in list_all_ymls_in_dir(working_dir):
             try:
                 with open(file_path) as f:
@@ -77,9 +79,16 @@ class TraceDeprecation(BaseDeprecationChecker):
                 file_contents[str(file_path)] = content
                 file_data[str(file_path)] = data
 
+                if data and isinstance(data.get("models"), list):
+                    for model in data["models"]:
+                        if isinstance(model, dict) and self._is_sql_model(model):
+                            sql_model_names.add(model["name"])
+
                 if data and isinstance(data.get("traces"), list):
                     for trace in data["traces"]:
-                        if isinstance(trace, dict) and self._can_convert_trace(trace):
+                        if isinstance(trace, dict) and self._can_convert_trace(
+                            trace, sql_model_names
+                        ):
                             converted_trace_names.add(trace["name"])
             except Exception:
                 continue
@@ -108,7 +117,16 @@ class TraceDeprecation(BaseDeprecationChecker):
 
         return migrations
 
-    def _can_convert_trace(self, trace: dict) -> bool:
+    def _is_sql_model(self, model: dict) -> bool:
+        if not isinstance(model, dict):
+            return False
+        if "args" in model:
+            return False
+        if "models" in model:
+            return False
+        return True
+
+    def _can_convert_trace(self, trace: dict, sql_model_names: Set[str] = None) -> bool:
         model = trace.get("model")
         if model is None or isinstance(model, dict):
             return False
@@ -118,6 +136,9 @@ class TraceDeprecation(BaseDeprecationChecker):
             return False
 
         if trace.get("columns"):
+            return False
+
+        if sql_model_names is not None and model_name not in sql_model_names:
             return False
 
         return True

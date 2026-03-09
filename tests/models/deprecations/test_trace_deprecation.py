@@ -14,6 +14,12 @@ from tests.factories.model_factories import (
     SqlModelFactory,
 )
 
+MODEL_YAML = """\
+    models:
+      - name: my-model
+        sql: "SELECT * FROM t"
+"""
+
 
 class TestTraceDeprecation:
     """Tests for deprecated Trace model detection."""
@@ -136,6 +142,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: my-trace
@@ -166,6 +173,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: my-trace
@@ -195,6 +203,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: my-trace
@@ -225,6 +234,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: my-trace
@@ -255,6 +265,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: column-trace
@@ -300,6 +311,50 @@ class TestTraceDeprecationMigration:
 
             assert len(migrations) == 0
 
+    def test_skips_traces_referencing_non_sql_models(self):
+        """Traces referencing LocalMergeModel or CsvScriptModel should be skipped."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._write_yaml_files(
+                tmpdir,
+                {
+                    "project.visivo.yml": """\
+                        name: test
+                    """,
+                    "models.visivo.yml": """\
+                        models:
+                          - name: merge-model
+                            sql: "SELECT * FROM a.model JOIN b.model ON a.x = b.x"
+                            models:
+                              - ${ref(model-a)}
+                              - ${ref(model-b)}
+                          - name: csv-model
+                            args:
+                              - echo
+                              - "x,y"
+                    """,
+                    "traces.visivo.yml": """\
+                        traces:
+                          - name: merge-trace
+                            model: ${ref(merge-model)}
+                            props:
+                              type: scatter
+                              x: "?{x}"
+                              y: "?{y}"
+                          - name: csv-trace
+                            model: ${ref(csv-model)}
+                            props:
+                              type: scatter
+                              x: "?{x}"
+                              y: "?{y}"
+                    """,
+                },
+            )
+
+            checker = TraceDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) == 0
+
     def test_converts_only_eligible_traces(self):
         """Traces with columns are kept, simple traces are converted."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -309,6 +364,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: simple-trace
@@ -350,6 +406,7 @@ class TestTraceDeprecationMigration:
                             traces:
                               - ${ref(my-trace)}
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: my-trace
@@ -405,6 +462,7 @@ class TestTraceDeprecationMigration:
                     "project.visivo.yml": """\
                         name: test
                     """,
+                    "models.visivo.yml": MODEL_YAML,
                     "traces.visivo.yml": """\
                         traces:
                           - name: complex-trace
@@ -503,3 +561,25 @@ class TestExtractModelName:
 
     def test_no_ref(self):
         assert self.checker._extract_model_name("just a string") is None
+
+
+class TestIsSqlModel:
+    """Unit tests for SQL model detection."""
+
+    def setup_method(self):
+        self.checker = TraceDeprecation()
+
+    def test_sql_model(self):
+        assert self.checker._is_sql_model({"name": "m", "sql": "SELECT 1"}) is True
+
+    def test_local_merge_model(self):
+        assert (
+            self.checker._is_sql_model({"name": "m", "sql": "SELECT 1", "models": ["ref(a)"]})
+            is False
+        )
+
+    def test_csv_script_model(self):
+        assert self.checker._is_sql_model({"name": "m", "args": ["echo", "x,y"]}) is False
+
+    def test_not_a_dict(self):
+        assert self.checker._is_sql_model("ref(m)") is False
