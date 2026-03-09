@@ -13,9 +13,11 @@ from visivo.query.patterns import (
 class ContextString:
     """
     Represents a string that contains a reference to named object in the project model.
-    Currently you can reference another object by using the ref() function.  Example:
+    You can reference another object using either syntax:
 
-    ${ ref(Name) }
+    ${ ref(Name) }      (legacy, deprecated)
+    ${ name }           (new dot syntax)
+    ${ name.property }  (new dot syntax with property)
     """
 
     def __init__(self, value: str):
@@ -47,8 +49,6 @@ class ContextString:
             return None
         else:
             property_path = match.group("property_path")
-            # property_path now captures the full property path including dots and brackets
-            # Return empty string if no property_path, otherwise return as-is
             return property_path if property_path else ""
 
     def get_path(self) -> str:
@@ -67,9 +67,10 @@ class ContextString:
 
     def get_ref_attr(self) -> str:
         """
-        Returns the full '${ref(...)}' attribute if present in the string.
+        Returns the full '${ref(...)}' or '${name...}' attribute if present in the string.
         Example:
             'year = ${ref(Selected Year)}' -> '${ref(Selected Year)}'
+            'year = ${selected-year}' -> '${selected-year}'
         """
         match = re.search(FIELD_REF_PATTERN, self.value)
         if not match:

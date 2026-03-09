@@ -86,7 +86,7 @@ class Metric(NamedModel, ParentModel):
         # Check if this is a nested metric (has a parent_name set)
         if hasattr(self, "_parent_name") and self._parent_name:
             # Nested metric - reference the parent model only
-            children.append(f"ref({self._parent_name})")
+            children.append(self._parent_name)
         else:
             # Standalone metric - extract references from expression
             from visivo.query.patterns import extract_ref_components
@@ -96,6 +96,6 @@ class Metric(NamedModel, ParentModel):
 
                 # Convert to ref() format for DAG
                 for model_or_metric_name, field_name in ref_components:
-                    children.append(f"ref({model_or_metric_name})")
+                    children.append(model_or_metric_name)
 
         return children

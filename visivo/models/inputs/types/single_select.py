@@ -154,7 +154,7 @@ class SingleSelectInput(Input):
             query_str = str(self.options)
             ref_names = extract_ref_names(query_str)
             for ref_name in ref_names:
-                children.append(f"ref({ref_name})")
+                children.append(ref_name)
         # Handle legacy ContextString references
         elif ContextString.is_context_string(self.options):
             children.append(self.options)
@@ -168,9 +168,8 @@ class SingleSelectInput(Input):
             query_str = str(self.display.default.value)
             ref_names = extract_ref_names(query_str)
             for ref_name in ref_names:
-                ref_str = f"ref({ref_name})"
-                if ref_str not in children:
-                    children.append(ref_str)
+                if ref_name not in children:
+                    children.append(ref_name)
 
         return children
 

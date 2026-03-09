@@ -1,35 +1,38 @@
 // Regex patterns
 const NAME_REGEX = `[a-zA-Z0-9\\s'"\\-_]`;
+const DOT_SYNTAX_NAME = `[a-z0-9_][a-z0-9_-]*`;
+
+// Combined pattern: matches ${ref(name)...} OR ${name...} (excluding env.)
 const INLINE_REF_REGEX = new RegExp(
-  `\\$\\{\\s*ref\\((${NAME_REGEX}+?)\\)[\\.\\d\\w\\[\\]]*\\s*\\}`
+  `\\$\\{\\s*(?:ref\\((${NAME_REGEX}+?)\\)|(?!env\\.)(${DOT_SYNTAX_NAME}))[\\.\\d\\w\\[\\]]*\\s*\\}`
 );
 const INLINE_REF_PROPS_PATH_REGEX = new RegExp(
-  `\\$\\{\\s*ref\\(${NAME_REGEX}+?\\)([\\.\\d\\w\\[\\]]*)\\s*\\}`
+  `\\$\\{\\s*(?:ref\\(${NAME_REGEX}+?\\)|(?!env\\.)${DOT_SYNTAX_NAME})([\\.\\d\\w\\[\\]]*)\\s*\\}`
 );
 const INLINE_PATH_REGEX = new RegExp(`\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]]+?)\\s*\\}`);
 const CONTEXT_STRING_VALUE_REGEX = new RegExp(
   `\\$\\{\\s*(${NAME_REGEX}[\\.\\[\\]\\)\\(]+?)\\s*\\}`
 );
 
-const METRIC_REF_PATTERN = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?/;
+// Combined metric ref pattern: matches ${ref(name).prop} OR ${name.prop}
+const METRIC_REF_PATTERN =
+  /['"]?\$\{\s*(?:ref\(([^)]+)\)|(?!env\.)([a-z0-9_][a-z0-9_-]*))(?:\.([^}\s]+))?\s*\}['"]?/;
 
-const METRIC_REF_PATTERN_GLOBAL = /['"]?\$\{\s*ref\(([^)]+)\)(?:\.([^}\s]+))?\s*\}['"]?/g;
+const METRIC_REF_PATTERN_GLOBAL =
+  /['"]?\$\{\s*(?:ref\(([^)]+)\)|(?!env\.)([a-z0-9_][a-z0-9_-]*))(?:\.([^}\s]+))?\s*\}['"]?/g;
 
 /**
- * Pattern to match ${ref(name)} or ${ref(name).property} with flexible whitespace
- * Captures: [0] = full match, [1] = name (may have whitespace), [2] = property (optional)
- * Handles variations like:
- *   ${ref(name)}
- *   ${ ref(name) }
- *   ${ref( name )}
- *   ${ ref( name ).property }
+ * Pattern to match ${ref(name)} or ${ref(name).property} or ${name} or ${name.property}
+ * with flexible whitespace.
+ * Captures: [0] = full match, [1] = ref() name (legacy), [2] = dot name (new), [3] = property (optional)
  */
-export const REF_PATTERN = /\$\{\s*ref\(\s*([^)]+?)\s*\)(?:\s*\.\s*([^}\s]+))?\s*\}/g;
+export const REF_PATTERN =
+  /\$\{\s*(?:ref\(\s*([^)]+?)\s*\)|(?!env\.)([a-z0-9_][a-z0-9_-]*))(?:\s*\.\s*([^}\s]+))?\s*\}/g;
 
 /**
  * Parse text into segments of plain text and refs
  * Returns array of { type: 'text'|'ref', content, name?, property?, start, end }
- * Handles whitespace variations in refs and normalizes the captured name
+ * Handles both ${ref(name)} and ${name} formats
  */
 export const parseTextWithRefs = text => {
   if (!text) return [];
@@ -50,9 +53,10 @@ export const parseTextWithRefs = text => {
       });
     }
 
-    // Add the ref - normalize name by trimming whitespace and quotes
-    const name = match[1].trim().replace(/^['"]|['"]$/g, '');
-    const property = match[2]?.trim() || null;
+    // Add the ref - get name from whichever group matched
+    const rawName = match[1] || match[2];
+    const name = rawName.trim().replace(/^['"]|['"]$/g, '');
+    const property = match[3]?.trim() || null;
     segments.push({
       type: 'ref',
       content: match[0],
@@ -128,7 +132,9 @@ export class ContextString {
 
   getReference() {
     const matches = this.value.match(INLINE_REF_REGEX);
-    return matches ? matches[1] : null;
+    if (!matches) return null;
+    // Group 1 is ref() name, group 2 is dot syntax name
+    return (matches[1] || matches[2]) ?? null;
   }
 
   getRefPropsPath() {

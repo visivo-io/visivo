@@ -40,7 +40,7 @@ def test_nested_metric_references_parent_model():
 
     # Verify child_items returns ref to parent
     children = nested_metric.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["orders"]
 
     # Verify edge exists from metric to model in DAG (nested metric depends on parent model)
     assert dag.has_edge(nested_metric, model)
@@ -76,7 +76,7 @@ def test_nested_dimension_references_parent_model():
 
     # Verify child_items returns ref to parent
     children = nested_dimension.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["orders"]
 
     # Verify edge exists from dimension to model in DAG (nested dimension depends on parent model)
     assert dag.has_edge(nested_dimension, model)
@@ -115,7 +115,7 @@ def test_standalone_metric_extracts_model_references():
 
     # Verify child_items extracts model reference
     children = standalone_metric.child_items()
-    assert set(children) == {"ref(orders)"}
+    assert set(children) == {"orders"}
 
     # Verify edge exists from metric to model (metric depends on model)
     assert dag.has_edge(standalone_metric, orders_model)
@@ -157,7 +157,7 @@ def test_standalone_dimension_extracts_model_references():
 
     # Verify child_items extracts model reference
     children = standalone_dimension.child_items()
-    assert children == ["ref(orders)"]
+    assert children == ["orders"]
 
     # Verify edge exists from dimension to model (dimension depends on model)
     assert dag.has_edge(standalone_dimension, orders_model)
@@ -198,7 +198,7 @@ def test_relation_extracts_model_references():
 
     # Verify child_items extracts both model references
     children = relation.child_items()
-    assert set(children) == {"ref(orders)", "ref(users)"}
+    assert set(children) == {"orders", "users"}
 
     # Verify edges exist from relation to both models (relation depends on both models)
     assert dag.has_edge(relation, orders_model)
@@ -295,7 +295,7 @@ def test_mixed_nested_and_standalone_metrics():
 
     # Verify standalone metric references the model
     standalone_children = standalone_metric.child_items()
-    assert set(standalone_children) == {"ref(orders)"}
+    assert set(standalone_children) == {"orders"}
 
     # Verify edges (nested metrics depend on their parent model)
     assert dag.has_edge(orders_model.metrics[0], orders_model)

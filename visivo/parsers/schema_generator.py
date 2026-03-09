@@ -15,6 +15,8 @@ def generate_project_schema():
     schema_string = schema_string.replace("?P<query_string>", "")
     schema_string = schema_string.replace("?P<model_name>", "")
     schema_string = schema_string.replace("?P<property_path>", "")
+    schema_string = schema_string.replace("?P<bare_name>", "")
+    schema_string = schema_string.replace("?P<dot_model_name>", "")
 
     return schema_string
 

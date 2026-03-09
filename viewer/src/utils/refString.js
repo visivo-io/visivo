@@ -1,31 +1,38 @@
 /**
  * Centralized utilities for ref string parsing and formatting.
  *
- * Ref strings come in two formats:
- *   - Bare:    ref(name)          or  ref(name).property
- *   - Context: ${ref(name)}       or  ${ref(name).property}
- *              ${ ref( name ) }   (with flexible whitespace)
+ * Ref strings come in multiple formats:
+ *   - New dot syntax: ${name}           or  ${name.property}
+ *   - Legacy context: ${ref(name)}      or  ${ref(name).property}
+ *   - Legacy bare:    ref(name)         or  ref(name).property
  *
+ * Output always uses the new dot syntax format.
  * Use `formatRef` for bare format, `formatRefExpression` for context string format.
  * Use `parseRefValue` to extract the name from any format.
  */
 
 /**
  * Extract name from a ref string.
- * Handles: ${ref(name)}, ${ ref( name ) }, ref(name), or raw name (returned as-is).
+ * Handles: ${name}, ${ref(name)}, ${ ref( name ) }, ref(name), or raw name (returned as-is).
  * Returns null for falsy or non-string input.
  */
 export const parseRefValue = value => {
   if (!value) return null;
   if (typeof value !== 'string') return null;
 
-  // Match ${ ref(name) } pattern (context string format)
+  // Match ${name} pattern (new dot syntax, exclude env. prefix)
+  const dotSyntaxMatch = value.match(/^\$\{\s*(?!env\.)([a-z0-9_][a-z0-9_-]*)\s*\}$/);
+  if (dotSyntaxMatch) {
+    return dotSyntaxMatch[1].trim();
+  }
+
+  // Match ${ ref(name) } pattern (legacy context string format)
   const contextRefMatch = value.match(/^\$\{\s*ref\(\s*([^)]+)\s*\)\s*\}$/);
   if (contextRefMatch) {
     return contextRefMatch[1].trim();
   }
 
-  // Match ref(name) pattern (bare format)
+  // Match ref(name) pattern (legacy bare format)
   const refMatch = value.match(/^ref\(\s*([^)]+)\s*\)$/);
   if (refMatch) {
     return refMatch[1].trim();
@@ -37,16 +44,16 @@ export const parseRefValue = value => {
 
 /**
  * Format a ref string in bare form (no ${} wrapper).
- * Returns: ref(name) or ref(name).property
+ * Returns: name or name.property (new dot syntax)
  */
 export const formatRef = (name, property = null) => {
   const cleanName = name.trim();
-  return property ? `ref(${cleanName}).${property.trim()}` : `ref(${cleanName})`;
+  return property ? `${cleanName}.${property.trim()}` : cleanName;
 };
 
 /**
  * Format a complete ref expression with ${} wrapper.
- * Returns: ${ref(name)} or ${ref(name).property}
+ * Returns: ${name} or ${name.property} (new dot syntax)
  */
 export const formatRefExpression = (name, property = null) => {
   return `\${${formatRef(name, property)}}`;
@@ -72,7 +79,7 @@ export const parseMultiRefValue = value => {
 };
 
 /**
- * Format multiple names as array of ref expressions (${ref(name)} format).
+ * Format multiple names as array of ref expressions (${name} format).
  * Returns null if empty.
  */
 export const formatMultiRefValue = names => {

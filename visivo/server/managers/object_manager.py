@@ -284,9 +284,10 @@ class ObjectManager(ABC, Generic[T]):
                     if ref_name:
                         child_names.append(ref_name)
                 elif isinstance(child, str):
-                    # Child could be a ref string in two formats:
-                    # 1. ${ref(source_name)} - context string format
+                    # Child could be a ref string in multiple formats:
+                    # 1. ${ref(source_name)} or ${source_name} - context string format
                     # 2. ref(source_name) - simple ref format
+                    # 3. source_name - bare name format (new dot syntax)
                     ref_names = extract_ref_names(child)
                     if ref_names:
                         child_names.extend(ref_names)
@@ -296,6 +297,9 @@ class ObjectManager(ABC, Generic[T]):
                         if match:
                             model_name = match.group("model_name").strip("'\"")
                             child_names.append(model_name)
+                        else:
+                            # Bare name string
+                            child_names.append(child)
 
         return {
             "name": name,

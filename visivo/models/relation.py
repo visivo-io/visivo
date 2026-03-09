@@ -100,7 +100,7 @@ class Relation(NamedModel, ParentModel):
 
             # Convert to ref() format for DAG
             for model_name in model_names:
-                children.append(f"ref({model_name})")
+                children.append(model_name)
 
         return children
 

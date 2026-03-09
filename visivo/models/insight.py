@@ -105,7 +105,7 @@ class Insight(NamedModel, ParentModel):
 
             # Convert model names to ref() format for DAG
             for model_name in model_names:
-                children.append(f"ref({model_name})")
+                children.append(model_name)
 
         # Extract all ${ref(model_name).field} references from interactions
         if self.interactions:
@@ -115,9 +115,8 @@ class Insight(NamedModel, ParentModel):
                     model_names = extract_ref_names(field_str)
                     # TODO: I think this will skip model scoped children and needs refactored
                     for model_name in model_names:
-                        ref_str = f"ref({model_name})"
-                        if ref_str not in children:
-                            children.append(ref_str)
+                        if model_name not in children:
+                            children.append(model_name)
 
         return children
 
@@ -210,18 +209,14 @@ class Insight(NamedModel, ParentModel):
 
         def repl(m: Match) -> str:
             name = get_model_name_from_match(m)
-            # Get property_path (accessor like .value, .min, .max, etc.)
             property_path = m.group("property_path") or ""
             try:
                 node = dag.get_descendant_by_name(name)
                 if isinstance(node, Input):
-                    # Convert input ref to JS template literal syntax with accessor
-                    # ${ref(threshold).value} → ${threshold.value}
                     return f"${{{name}{property_path}}}"
             except (ValueError, AttributeError):
-                # Node not found or error - leave the ref as-is for FieldResolver
                 pass
-            return m.group(0)  # Keep non-input refs unchanged
+            return m.group(0)
 
         return CONTEXT_STRING_REF_PATTERN_COMPILED.sub(repl, text)
 

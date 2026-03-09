@@ -21,19 +21,28 @@ from visivo.query.patterns import (
 
 
 def _serialize_ref_to_context(value: str) -> str:
-    # If value is already a ContextString object, return its string representation directly
-    # to avoid double-wrapping (ContextString already has the ${ } wrapper)
     from visivo.models.base.context_string import ContextString
 
     if isinstance(value, ContextString):
         return str(value)
 
-    # If the string value already contains ${ } wrapper, return as-is
-    # This prevents double-wrapping when a string like "${ref(name)}" is passed
+    # If already wrapped in ${ }, return as-is
     if isinstance(value, str) and value.strip().startswith("${") and value.strip().endswith("}"):
         return value
 
-    # For plain ref strings like "ref(name)", wrap with ${ }
+    # For legacy "ref(name)" strings, extract the name and output ${name}
+    if isinstance(value, str) and value.startswith("ref(") and value.endswith(")"):
+        import re
+        from visivo.query.patterns import REF_FUNCTION_PATTERN
+
+        match = re.match(rf"^{REF_FUNCTION_PATTERN}$", value)
+        if match:
+            from visivo.query.patterns import get_model_name_from_match
+
+            name = get_model_name_from_match(match)
+            return f"${{{name}}}"
+
+    # For bare name strings, wrap with ${ }
     result = f"${{{value}}}"
     return result
 
@@ -185,7 +194,7 @@ class BaseModel(PydanticBaseModel):
     @classmethod
     def is_ref(cls, obj) -> bool:
         return (
-            isinstance(obj, str) and re.search(REF_PROPERTY_PATTERN, obj)
+            isinstance(obj, str) and re.match(REF_PROPERTY_PATTERN, obj)
         ) or ContextString.is_context_string(obj)
 
     def __hash__(self):

@@ -92,7 +92,7 @@ def normalize_name(name: str) -> str:
 
 
 # ============================================================================
-# Reference Patterns - ${ref(...)} syntax variations
+# Reference Patterns - ${ref(...)} and ${name} syntax variations
 # ============================================================================
 
 # Ref function pattern: ref(model) or ref('model') or ref("model")
@@ -101,25 +101,38 @@ def normalize_name(name: str) -> str:
 # This pattern is used both standalone and as part of CONTEXT_STRING_REF_PATTERN
 REF_FUNCTION_PATTERN = rf"ref\(\s*(?P<model_name>[{NAME_REGEX}]+)\s*\)"
 
-# Simple ref pattern: ref(name) without ${ }
-# Used for validation in Pydantic models - just an alias to REF_FUNCTION_PATTERN with anchors
-# Example: ref(orders)
-REF_PROPERTY_PATTERN = rf"^{REF_FUNCTION_PATTERN}$"
+# Dot syntax name pattern: lowercase alphanumeric with underscores and hyphens, no dots
+DOT_SYNTAX_NAME_PATTERN = r"[a-z0-9_][a-z0-9_-]*"
+
+# Simple ref pattern: ref(name) OR bare name (new dot syntax)
+# Used for validation in Pydantic models
+# Matches: ref(orders) OR orders OR my-model
+REF_PROPERTY_PATTERN = rf"^(?:{REF_FUNCTION_PATTERN}|(?P<bare_name>{DOT_SYNTAX_NAME_PATTERN}))$"
 
 # Property path pattern: optional dots, brackets, digits, word chars
 # Captures: property_path (the property path after ref())
 # Examples: .id, [0], .list[0].property, or empty string
 PROPERTY_PATH_PATTERN = r"(?P<property_path>[\.\d\w\[\]]*?)"
 
-# Core pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
-# Composed of: ${ + REF_FUNCTION + PROPERTY_PATH + }
-# Captures: model_name (with quotes stripped), property_path (optional, without leading dot/bracket)
-# This is the most flexible pattern used in query resolution
-# The model_name capture handles both quoted 'model' and unquoted model
-# property_path captures property paths like "nested.property" or "[0]" or "list[0].property"
-# property_path is optional - will be None if not present
-CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
-FIELD_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+# Legacy pattern for ${ref(model).field} or ${ref('model').field} or ${ref('model')[0]}
+LEGACY_CONTEXT_STRING_REF_PATTERN = rf"\${{\s*{REF_FUNCTION_PATTERN}{PROPERTY_PATH_PATTERN}\s*}}"
+
+# New dot syntax pattern for ${name} or ${name.property}
+# Excludes env. prefix (reserved for environment variables)
+DOT_SYNTAX_REF_PATTERN = (
+    rf"\${{\s*(?!env\.)(?P<dot_model_name>{DOT_SYNTAX_NAME_PATTERN}){PROPERTY_PATH_PATTERN}\s*}}"
+)
+
+# Combined pattern: matches EITHER ${ref(name).prop} (legacy) OR ${name.prop} (new dot syntax)
+# Uses named groups: model_name (from ref() syntax) or dot_model_name (from dot syntax)
+# property_path is shared between both
+# Excludes env. and project prefixes (reserved for environment variables and inline path access)
+CONTEXT_STRING_REF_PATTERN = rf"\${{\s*(?:ref\(\s*(?P<model_name>[{NAME_REGEX}]+)\s*\)|(?!env[\.\s}}])(?!project[\.\[\s}}])(?P<dot_model_name>{DOT_SYNTAX_NAME_PATTERN}))(?P<property_path>[\.\d\w\[\]]*?)\s*}}"
+
+# Legacy field ref pattern (still matches old syntax)
+FIELD_REF_PATTERN = (
+    r"\$\{\s*(?:ref\(([^)]+)\)|(?!env\.)([a-z0-9_][a-z0-9_-]*))(?:\.([^}\s]+))?\s*\}"
+)
 
 
 # ============================================================================
@@ -175,28 +188,46 @@ def get_model_name_from_match(match: re.Match) -> str:
     """
     Extract model_name from a match object, stripping quotes if present.
 
+    Handles both legacy ref() syntax (model_name group) and new dot syntax (dot_model_name group).
+
     Args:
         match: A regex match object from CONTEXT_STRING_REF_PATTERN or REF_FUNCTION_PATTERN
 
     Returns:
         The model name with surrounding quotes stripped
-
-    Examples:
-        >>> # For match of ref('my-model')
-        >>> get_model_name_from_match(match)
-        'my-model'
-
-        >>> # For match of ref(orders)
-        >>> get_model_name_from_match(match)
-        'orders'
     """
-    model_name = match.group("model_name").strip()
-    # Strip surrounding quotes (both single and double)
-    if (model_name.startswith("'") and model_name.endswith("'")) or (
-        model_name.startswith('"') and model_name.endswith('"')
-    ):
-        model_name = model_name[1:-1]
-    return model_name
+    # Try legacy ref() group first
+    model_name = None
+    try:
+        model_name = match.group("model_name")
+    except IndexError:
+        pass
+
+    if model_name:
+        model_name = model_name.strip()
+        if (model_name.startswith("'") and model_name.endswith("'")) or (
+            model_name.startswith('"') and model_name.endswith('"')
+        ):
+            model_name = model_name[1:-1]
+        return model_name
+
+    # Try new dot syntax group
+    try:
+        dot_name = match.group("dot_model_name")
+        if dot_name:
+            return dot_name.strip()
+    except IndexError:
+        pass
+
+    # Try bare_name group (from REF_PROPERTY_PATTERN)
+    try:
+        bare_name = match.group("bare_name")
+        if bare_name:
+            return bare_name.strip()
+    except IndexError:
+        pass
+
+    raise ValueError(f"Could not extract model name from match: {match.group(0)}")
 
 
 def extract_ref_components(text: str) -> List[Tuple[str, Optional[str]]]:
@@ -297,7 +328,12 @@ def has_CONTEXT_STRING_REF_PATTERN(text: str) -> bool:
 
 def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
     """
-    Validate that all ${ } patterns in text contain valid ref() or env. calls.
+    Validate that all ${ } patterns in text contain valid ref(), env., or dot syntax references.
+
+    Accepts:
+        - ${ref(name)} or ${ref(name).prop} (legacy)
+        - ${env.VAR_NAME} (environment variables)
+        - ${name} or ${name.prop} (new dot syntax, where name matches DOT_SYNTAX_NAME_PATTERN)
 
     Args:
         text: Text to validate
@@ -306,13 +342,19 @@ def validate_ref_syntax(text: str) -> Tuple[bool, Optional[str]]:
         Tuple of (is_valid, error_message)
     """
     # Find all ${ } patterns
-    dollar_pattern = r"\$\{[^}]*\}"
+    dollar_pattern = r"\$\{([^}]*)\}"
+    dot_syntax_compiled = re.compile(rf"^\s*{DOT_SYNTAX_NAME_PATTERN}[\.\d\w\[\]]*\s*$")
 
     for match in re.finditer(dollar_pattern, text):
         content = match.group(0)
+        inner = match.group(1)
         # Check if it contains ref() or env.
-        if "ref(" not in content and "env." not in content:
-            return False, f"Invalid context string: {content} - missing ref() or env. syntax"
+        if "ref(" in content or "env." in content:
+            continue
+        # Check if it matches new dot syntax (e.g., ${orders} or ${orders.id})
+        if dot_syntax_compiled.match(inner):
+            continue
+        return False, f"Invalid context string: {content} - missing ref() or env. syntax"
 
     return True, None
 
@@ -334,15 +376,14 @@ def count_model_references(text: str) -> int:
 # Input Accessor Patterns - ${ref(input_name).accessor} syntax
 # ============================================================================
 
-# Input accessor pattern: ${ref(input_name).accessor}
+# Input accessor pattern: ${ref(input_name).accessor} OR ${input_name.accessor}
 # Used for referencing input values in insight filters
 # Captures: (1) input_name, (2) accessor
 # Examples:
-#   ${ref(region).value} - single-select value
-#   ${ref(categories).values} - multi-select values array
-#   ${ref(price_range).min} - minimum of selected values
-#   ${ref(price_range).max} - maximum of selected values
-INPUT_ACCESSOR_PATTERN = r"\$\{ref\((\w+)\)\.(\w+)\}"
+#   ${ref(region).value} or ${region.value} - single-select value
+#   ${ref(categories).values} or ${categories.values} - multi-select values array
+#   ${ref(price_range).min} or ${price_range.min} - minimum of selected values
+INPUT_ACCESSOR_PATTERN = r"\$\{(?:ref\((\w+)\)|(?!env\.)(\w+))\.(\w+)\}"
 INPUT_ACCESSOR_PATTERN_COMPILED = re.compile(INPUT_ACCESSOR_PATTERN)
 
 # Pattern for frontend/post_query format (simplified, without ref() wrapper):
@@ -365,10 +406,12 @@ ALL_INPUT_ACCESSORS = SINGLE_SELECT_ACCESSORS | MULTI_SELECT_ACCESSORS
 
 def extract_input_accessors(text: str) -> List[Tuple[str, str]]:
     """
-    Extract all input accessor references from a text string (YAML/ref format).
+    Extract all input accessor references from a text string.
+
+    Supports both ${ref(input_name).accessor} and ${input_name.accessor} syntax.
 
     Args:
-        text: Text containing ${ref(input_name).accessor} patterns
+        text: Text containing input accessor patterns
 
     Returns:
         List of tuples (input_name, accessor)
@@ -376,10 +419,16 @@ def extract_input_accessors(text: str) -> List[Tuple[str, str]]:
     Examples:
         >>> extract_input_accessors("region = ${ref(region).value}")
         [('region', 'value')]
-        >>> extract_input_accessors("price BETWEEN ${ref(price_range).min} AND ${ref(price_range).max}")
-        [('price_range', 'min'), ('price_range', 'max')]
+        >>> extract_input_accessors("region = ${region.value}")
+        [('region', 'value')]
     """
-    return INPUT_ACCESSOR_PATTERN_COMPILED.findall(text)
+    results = []
+    for match in INPUT_ACCESSOR_PATTERN_COMPILED.finditer(text):
+        # Group 1 is ref() name, group 2 is dot syntax name, group 3 is accessor
+        input_name = match.group(1) or match.group(2)
+        accessor = match.group(3)
+        results.append((input_name, accessor))
+    return results
 
 
 def extract_frontend_input_accessors(text: str) -> List[Tuple[str, str]]:
@@ -435,24 +484,19 @@ def replace_input_accessors(text: str, replacer_func) -> str:
     """
     Replace input accessor patterns in text using a custom replacer function.
 
+    Supports both ${ref(input_name).accessor} and ${input_name.accessor} syntax.
+
     Args:
-        text: Text containing ${ref(input_name).accessor} patterns
+        text: Text containing input accessor patterns
         replacer_func: Function that takes (input_name, accessor) and returns replacement string
 
     Returns:
         Text with all input accessor patterns replaced
-
-    Example:
-        >>> replace_input_accessors(
-        ...     "${ref(region).value}",
-        ...     lambda name, acc: f"inputs.{name}.{acc}"
-        ... )
-        "inputs.region.value"
     """
 
     def replace_match(match):
-        input_name = match.group(1)
-        accessor = match.group(2)
+        input_name = match.group(1) or match.group(2)
+        accessor = match.group(3)
         return replacer_func(input_name, accessor)
 
     return INPUT_ACCESSOR_PATTERN_COMPILED.sub(replace_match, text)
