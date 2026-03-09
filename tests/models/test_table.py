@@ -128,3 +128,33 @@ def test_Table_with_selector():
     data = {"name": "development", "traces": [], "selector": {"name": "Selector"}}
     table = Table(**data)
     assert table.selector.name == "Selector"
+
+
+def test_Table_with_singular_insight():
+    data = {
+        "name": "revenue-table",
+        "insight": "ref(monthly-revenue)",
+    }
+    table = Table(**data)
+    assert table.insight == "ref(monthly-revenue)"
+    assert table.name == "revenue-table"
+
+
+def test_Table_with_plural_insights():
+    data = {
+        "name": "revenue-table",
+        "insights": ["ref(insight1)", "ref(insight2)"],
+    }
+    table = Table(**data)
+    assert len(table.insights) == 2
+
+
+def test_Table_with_singular_and_plural_insights():
+    data = {
+        "name": "revenue-table",
+        "insight": "ref(singular-insight)",
+        "insights": ["ref(insight1)"],
+    }
+    table = Table(**data)
+    assert table.insight == "ref(singular-insight)"
+    assert len(table.insights) == 1

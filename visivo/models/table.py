@@ -29,74 +29,41 @@ class RowsPerPageEnum(IntEnum):
 
 class Table(SelectorModel, NamedModel, ParentModel):
     """
-    Tables enable you to quickly represent trace data in a tabular format.
+    Tables enable you to quickly represent insight data in a tabular format.
 
-    Since tables sit on top of trace data, the steps to create a table from scratch are as follows:
-
-    1. Create a model.
-    1. Create a trace with columns or props that references your model.
-    1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
+    Tables auto-generate columns from insight query results. To customize column headers,
+    use SQL aliases in your insight query (e.g., `SELECT revenue AS "Total Revenue"`).
 
     ### Example
     ``` yaml
-    models:
-      - name: table-model
-        sql: |
-            select
-                project_name,
-                project_created_at,
-                cli_version,
-                stage_name,
-                account_name,
-                stage_archived
-            FROM visivo_project
-    traces:
-      - name: pre-table-trace
-        model: ref(table-model)
-        columns:
-            project_name: project_name
-            project_created_at: project_created_at::varchar
-            cli_version: cli_version
-            stage_name: stage_name
-            account_name: account_name
-            stage_archived: stage_archived::varchar
+    insights:
+      - name: monthly-revenue
         props:
-            type: scatter
-            x: column(project_created_at)
-            y: column(project_name)
+          x: ?{ month AS "Month" }
+          y: ?{ sum(revenue) AS "Total Revenue" }
+        model: ${ref(revenue-model)}
+
     tables:
-      - name: latest-projects-table
-        traces:
-          - ref(pre-table-trace)
-        column_defs:
-          - trace_name: pre-table-trace
-            columns:
-            - header: "Project Name"
-              key: columns.project_name
-            - header: "Project Created At"
-              key: columns.project_created_at
-            - header: "Project Json"
-              key: columns.project_json
-            - header: "CLI Version"
-              key: columns.cli_version
-            - header: "Stage Name"
-              key: columns.stage_name
-              aggregation: uniqueCount
-            - header: "Account Name"
-              key: columns.account_name
-            - header: "Account Name"
-              key: columns.stage_archived
+      - name: revenue-table
+        insight: ${ref(monthly-revenue)}
+        rows_per_page: 100
     ```
+
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
+    insight: Optional[InsightRef] = Field(
+        None,
+        description="A ${ref()} to an insight. Data and columns auto-generated from insight query results.",
+    )
+
     traces: List[TraceRef] = Field(
         [],
-        description="A ref() to a trace or trace defined in line. Data for the table will come from the trace.",
+        description="A ${ref()} to a trace or trace defined in line. Data for the table will come from the trace.",
     )
     insights: List[InsightRef] = Field(
         [],
-        description="A ref() to a insight or insight defined in line. Data for the table will come from the insight.",
+        description="A ${ref()} to an insight or insight defined in line. Data for the table will come from the insight.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
@@ -109,12 +76,16 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        """Return child items for DAG construction"""
-        return self.traces + self.insights + [self.selector]
+        items = list(self.traces) + list(self.insights)
+        if self.insight:
+            items.append(self.insight)
+        if self.selector:
+            items.append(self.selector)
+        return items
 
     @model_validator(mode="before")
     @classmethod
-    def validate_column_defs(cls, data: any):
+    def validate_column_defs(cls, data: Any):
         traces, insights, column_defs = (
             data.get("traces"),
             data.get("insights"),

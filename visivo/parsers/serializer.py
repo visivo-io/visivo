@@ -275,9 +275,12 @@ class Serializer:
                     component.traces = all_descendants_of_type(
                         type=Trace, dag=dag, from_node=component, depth=1
                     )
-                    component.insights = all_descendants_of_type(
+                    resolved_insights = all_descendants_of_type(
                         type=Insight, dag=dag, from_node=component, depth=1
                     )
+                    component.insights = resolved_insights
+                    if hasattr(component, "insight") and component.insight and resolved_insights:
+                        component.insight = resolved_insights[0]
                     if component.selector:
                         component.selector = all_descendants_of_type(
                             type=Selector, dag=dag, from_node=component, depth=1

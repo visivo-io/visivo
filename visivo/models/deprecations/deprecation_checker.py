@@ -12,6 +12,7 @@ from visivo.models.deprecations.env_var_syntax_deprecation import EnvVarSyntaxDe
 from visivo.models.deprecations.markdown_deprecation import MarkdownDeprecation
 from visivo.models.deprecations.name_format_deprecation import NameFormatDeprecation
 from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
+from visivo.models.deprecations.table_deprecation import TableDeprecation
 from visivo.models.deprecations.trace_deprecation import TraceDeprecation
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ class DeprecationChecker:
             MarkdownDeprecation(),
             NameFormatDeprecation(),
             RefSyntaxDeprecation(),
+            TableDeprecation(),
             TraceDeprecation(),
         ]
 
