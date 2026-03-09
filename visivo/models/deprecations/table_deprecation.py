@@ -186,12 +186,12 @@ class TableDeprecation(BaseDeprecationChecker):
         """Create migration to convert insights (plural) to insight (singular)."""
         # Pattern to match:
         #   insights:
-        #     - ref(...)
+        #     - ${ref(...)}
         # Or:
-        #   insights: [ref(...)]
+        #   insights: [${ref(...)}]
         #
         # We want to convert to:
-        #   insight: ref(...)
+        #   insight: ${ref(...)}
 
         # Try multi-line format first
         pattern_multiline = re.compile(
