@@ -39,3 +39,5 @@ htmlcov/
 .visivo_cache
 mk_docs.log
 visivo.spec
+
+.claude/worktrees/
