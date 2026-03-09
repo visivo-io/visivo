@@ -41,11 +41,11 @@ class Table(SelectorModel, NamedModel, ParentModel):
         props:
           x: ?{ month AS "Month" }
           y: ?{ sum(revenue) AS "Total Revenue" }
-        model: ref(revenue-model)
+        model: ${ref(revenue-model)}
 
     tables:
       - name: revenue-table
-        insight: ref(monthly-revenue)
+        insight: ${ref(monthly-revenue)}
         rows_per_page: 100
     ```
 
@@ -54,16 +54,16 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     insight: Optional[InsightRef] = Field(
         None,
-        description="A ref() to an insight. Data and columns auto-generated from insight query results.",
+        description="A ${ref()} to an insight. Data and columns auto-generated from insight query results.",
     )
 
     traces: List[TraceRef] = Field(
         [],
-        description="A ref() to a trace or trace defined in line. Data for the table will come from the trace.",
+        description="A ${ref()} to a trace or trace defined in line. Data for the table will come from the trace.",
     )
     insights: List[InsightRef] = Field(
         [],
-        description="A ref() to a insight or insight defined in line. Data for the table will come from the insight.",
+        description="A ${ref()} to an insight or insight defined in line. Data for the table will come from the insight.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(

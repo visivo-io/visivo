@@ -54,7 +54,7 @@ tables:
                     """
 tables:
   - name: revenue-table
-    insight: ref(monthly-revenue)
+    insight: ${ref(monthly-revenue)}
     column_defs:
       - insight_name: monthly-revenue
         columns:

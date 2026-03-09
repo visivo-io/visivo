@@ -31,7 +31,7 @@ class TableDeprecation(BaseDeprecationChecker):
     tables:
       - name: revenue-table
         insights:
-          - ref(monthly-revenue)
+          - ${ref(monthly-revenue)}
         column_defs:
           - insight_name: monthly-revenue
             columns:
@@ -43,7 +43,7 @@ class TableDeprecation(BaseDeprecationChecker):
     ```yaml
     tables:
       - name: revenue-table
-        insight: ref(monthly-revenue)
+        insight: ${ref(monthly-revenue)}
     ```
     """
 
@@ -61,7 +61,7 @@ class TableDeprecation(BaseDeprecationChecker):
                     DeprecationWarning(
                         feature="Table.insights (plural with multiple items)",
                         message=f"Table '{table.name}' has multiple insights.",
-                        migration="Use single 'insight: ref(name)' field.",
+                        migration="Use single 'insight: ${ref(name)}' field.",
                         removal_version=self.REMOVAL_VERSION,
                         location=table.path,
                     )
@@ -71,7 +71,7 @@ class TableDeprecation(BaseDeprecationChecker):
                     DeprecationWarning(
                         feature="Table.insights (plural)",
                         message=f"Table '{table.name}' uses plural 'insights'.",
-                        migration="Use 'insight: ref(name)' instead.",
+                        migration="Use 'insight: ${ref(name)}' instead.",
                         removal_version=self.REMOVAL_VERSION,
                         location=table.path,
                     )
