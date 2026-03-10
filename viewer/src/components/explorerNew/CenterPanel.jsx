@@ -146,14 +146,21 @@ const CenterPanel = () => {
     return names;
   }, [displayResult, computedColumns]);
 
+  const computedColumnMap = useMemo(() => {
+    const map = {};
+    (computedColumns || []).forEach((c) => { map[c.name] = c.type; });
+    return map;
+  }, [computedColumns]);
+
   const dataTableColumns = useMemo(() => {
     if (!displayResult) return [];
     const cols = inferColumnTypes(displayResult.columns || [], displayResult.rows || []);
     return cols.map((col) => ({
       ...col,
       isComputed: computedColumnNames.has(col.name),
+      computedType: computedColumnMap[col.name] || null,
     }));
-  }, [displayResult, computedColumnNames]);
+  }, [displayResult, computedColumnNames, computedColumnMap]);
 
   const tableRows = displayResult?.rows || [];
   const totalRowCount = displayResult?.row_count || tableRows.length;

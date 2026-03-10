@@ -11,6 +11,57 @@ from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.models.base.named_model import alpha_hash
 
 
+MANAGER_TO_PROJECT_FIELD = [
+    ("model_manager", "models"),
+    ("source_manager", "sources"),
+    ("dimension_manager", "dimensions"),
+    ("metric_manager", "metrics"),
+    ("insight_manager", "insights"),
+    ("chart_manager", "charts"),
+    ("relation_manager", "relations"),
+    ("table_manager", "tables"),
+    ("dashboard_manager", "dashboards"),
+    ("input_manager", "inputs"),
+    ("markdown_manager", "markdowns"),
+]
+
+
+def _inject_cached_objects(flask_app, preview_project):
+    """Inject cached objects from all managers into the preview project.
+
+    This ensures preview can resolve refs to objects that exist only in
+    the cached tier (created/modified via the editor or explorer) and
+    not yet published to YAML.
+    """
+    from copy import deepcopy as _deepcopy
+
+    for manager_attr, project_field in MANAGER_TO_PROJECT_FIELD:
+        manager = getattr(flask_app, manager_attr, None)
+        if not manager:
+            continue
+
+        cached = manager.cached_objects
+        if not cached:
+            continue
+
+        obj_list = list(getattr(preview_project, project_field, None) or [])
+        existing_names = {o.name for o in obj_list if hasattr(o, "name")}
+
+        for name, obj in cached.items():
+            if obj is None:
+                continue
+            obj_copy = _deepcopy(obj)
+            if name in existing_names:
+                obj_list = [
+                    obj_copy if hasattr(o, "name") and o.name == name else o for o in obj_list
+                ]
+            else:
+                obj_list.append(obj_copy)
+                existing_names.add(name)
+
+        setattr(preview_project, project_field, obj_list)
+
+
 def clean_config_strings(obj):
     """Recursively clean newlines from string values in config."""
     if isinstance(obj, dict):
@@ -68,6 +119,10 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
 
         preview_project = deepcopy(flask_app.project)
 
+        # Inject cached objects from all managers so preview can resolve refs
+        # to unpublished/modified objects (e.g. models created in the editor)
+        _inject_cached_objects(flask_app, preview_project)
+
         # Remove existing insight with same name if it exists
         preview_project.insights = [
             i for i in (preview_project.insights or []) if i.name != insight.name
@@ -78,6 +133,9 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
             preview_project.insights = []
         preview_project.insights.append(insight)
 
+        # Invalidate the cached DAG so it rebuilds with injected/new objects
+        preview_project.invalidate_dag_cache()
+
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
@@ -86,7 +144,7 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
         )
 
         runner = FilteredRunner(
-            project=preview_project,  # Use modified project with preview insight
+            project=preview_project,
             output_dir=output_dir,
             threads=1,
             soft_failure=True,

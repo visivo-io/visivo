@@ -1,35 +1,55 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import useStore from '../../stores/store';
 
-// Override the global react-plotly.js mock to capture props
-let lastPlotProps = null;
-jest.mock('react-plotly.js', () => {
-  return function MockPlot(props) {
-    lastPlotProps = props;
-    return <div data-testid="plotly-chart">Mock Plot</div>;
+jest.mock('../new-views/common/ChartPreview', () => {
+  return function MockChartPreview({ chartConfig, insightConfig, projectId, onLayoutChange, editableLayout }) {
+    return (
+      <div data-testid="chart-preview-component">
+        <span data-testid="cp-chart-name">{chartConfig?.name}</span>
+        <span data-testid="cp-insight-name">{insightConfig?.name}</span>
+        <span data-testid="cp-insight-type">{insightConfig?.props?.type}</span>
+        <span data-testid="cp-insight-props">{JSON.stringify(insightConfig?.props)}</span>
+        <span data-testid="cp-project-id">{projectId}</span>
+        <span data-testid="cp-editable">{String(editableLayout)}</span>
+        <span data-testid="cp-layout">{JSON.stringify(chartConfig?.layout)}</span>
+        {onLayoutChange && (
+          <button
+            data-testid="cp-trigger-layout"
+            onClick={() => onLayoutChange({ title: { text: 'Edited' } })}
+          />
+        )}
+      </div>
+    );
   };
 });
 
+jest.mock('../../hooks/useDebounce', () => ({
+  useDebounce: (value) => value,
+}));
+
 const mockQueryResult = {
-  columns: ['date', 'amount', 'category'],
-  rows: [
-    { date: '2024-01', amount: 100, category: 'A' },
-    { date: '2024-02', amount: 200, category: 'B' },
-    { date: '2024-03', amount: 150, category: 'A' },
-  ],
+  columns: ['date', 'amount'],
+  rows: [{ date: '2024-01', amount: 100 }],
+  row_count: 1,
 };
 
 describe('ExplorerChartPreview', () => {
   beforeEach(() => {
-    lastPlotProps = null;
+    jest.clearAllMocks();
     useStore.setState({
       explorerQueryResult: null,
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
       explorerChartLayout: {},
+      explorerActiveModelName: null,
       syncPlotlyEditsToChartLayout: jest.fn(),
+      saveModelToCache: jest.fn().mockResolvedValue(undefined),
+      saveInsightToCache: jest.fn().mockResolvedValue(undefined),
+      explorerSql: 'SELECT * FROM users',
+      explorerSourceName: 'pg',
+      project: { id: 'proj-1' },
     });
   });
 
@@ -40,262 +60,175 @@ describe('ExplorerChartPreview', () => {
     expect(screen.getByText('Run a query to see chart preview')).toBeInTheDocument();
   });
 
-  it('shows empty state when results exist but no axis mapping', () => {
+  it('auto-generates preview_model when no active model set', () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
+      explorerActiveModelName: null,
+    });
+
+    render(<ExplorerChartPreview />);
+
+    // Should auto-set explorerActiveModelName to 'preview_model'
+    expect(useStore.getState().explorerActiveModelName).toBe('preview_model');
+    // But with only {type: 'scatter'} and no data props, shows empty config state
+    expect(screen.getByTestId('chart-empty-no-config')).toBeInTheDocument();
+  });
+
+  it('shows empty config state when insight has no data props beyond type', () => {
+    useStore.setState({
+      explorerQueryResult: mockQueryResult,
+      explorerActiveModelName: 'sales_model',
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
     });
 
     render(<ExplorerChartPreview />);
 
-    expect(screen.getByTestId('chart-empty-no-axes')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-no-config')).toBeInTheDocument();
+    expect(screen.getByText('Drag columns to axis fields to see chart preview')).toBeInTheDocument();
   });
 
-  it('renders Plotly chart when results and axes are configured', () => {
+  it('renders ChartPreview when results, active model, data props, and model saved', async () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
+      explorerActiveModelName: 'sales_model',
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+    });
+
+    await act(async () => {
+      render(<ExplorerChartPreview />);
+    });
+
+    expect(screen.getByTestId('chart-preview-component')).toBeInTheDocument();
+  });
+
+  it('constructs backend insight config with actual model name', async () => {
+    useStore.setState({
+      explorerQueryResult: mockQueryResult,
+      explorerActiveModelName: 'sales_model',
       explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
+        name: '',
+        props: {
+          type: 'scatter',
+          x: '?{${ref(sales_model).date}}',
+          y: '?{${ref(sales_model).amount}}',
+        },
       },
     });
 
-    render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('chart-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('plotly-chart')).toBeInTheDocument();
-  });
-
-  it('maps query result columns to Plotly trace data', () => {
-    useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount', mode: 'lines+markers' },
-      },
+    await act(async () => {
+      render(<ExplorerChartPreview />);
     });
 
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.data).toHaveLength(1);
-    expect(lastPlotProps.data[0]).toEqual(
-      expect.objectContaining({
-        type: 'scatter',
-        x: ['2024-01', '2024-02', '2024-03'],
-        y: [100, 200, 150],
-        mode: 'lines+markers',
-      })
-    );
+    expect(screen.getByTestId('cp-insight-name')).toHaveTextContent('sales_model_preview_insight');
+    expect(screen.getByTestId('cp-insight-type')).toHaveTextContent('scatter');
   });
 
-  it('creates bar chart traces correctly', () => {
+  it('passes chart layout from store', async () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'bar', x: 'category', y: 'amount' },
-      },
+      explorerActiveModelName: 'sales_model',
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      explorerChartLayout: { title: { text: 'My Chart' } },
     });
 
-    render(<ExplorerChartPreview />);
+    await act(async () => {
+      render(<ExplorerChartPreview />);
+    });
 
-    expect(lastPlotProps.data[0].type).toBe('bar');
-    expect(lastPlotProps.data[0].x).toEqual(['A', 'B', 'A']);
+    const layout = JSON.parse(screen.getByTestId('cp-layout').textContent);
+    expect(layout.title.text).toBe('My Chart');
   });
 
-  it('splits traces by color column', () => {
+  it('passes projectId from store', async () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount', color: 'category' },
-      },
+      explorerActiveModelName: 'sales_model',
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      project: { id: 'my-project-123' },
     });
 
-    render(<ExplorerChartPreview />);
+    await act(async () => {
+      render(<ExplorerChartPreview />);
+    });
 
-    expect(lastPlotProps.data).toHaveLength(2);
-    expect(lastPlotProps.data[0].name).toBe('A');
-    expect(lastPlotProps.data[0].x).toEqual(['2024-01', '2024-03']);
-    expect(lastPlotProps.data[0].y).toEqual([100, 150]);
-    expect(lastPlotProps.data[1].name).toBe('B');
-    expect(lastPlotProps.data[1].x).toEqual(['2024-02']);
-    expect(lastPlotProps.data[1].y).toEqual([200]);
+    expect(screen.getByTestId('cp-project-id')).toHaveTextContent('my-project-123');
   });
 
-  it('maps size column to marker.size', () => {
+  it('enables editable layout', async () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount', size: 'amount' },
-      },
+      explorerActiveModelName: 'sales_model',
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
     });
 
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.data[0].marker.size).toEqual([100, 200, 150]);
-  });
-
-  it('applies default layout with colorway', () => {
-    useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
+    await act(async () => {
+      render(<ExplorerChartPreview />);
     });
 
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.layout.colorway).toEqual(
-      expect.arrayContaining(['#713B57', '#FFB400'])
-    );
-    expect(lastPlotProps.layout.autosize).toBe(true);
+    expect(screen.getByTestId('cp-editable')).toHaveTextContent('true');
   });
 
-  it('merges explorerChartLayout into Plotly layout', () => {
-    useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-      explorerChartLayout: {
-        title: { text: 'My Chart' },
-        xaxis: { title: { text: 'Date' } },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.layout.title).toEqual({ text: 'My Chart' });
-    expect(lastPlotProps.layout.xaxis).toEqual({ title: { text: 'Date' } });
-  });
-
-  it('enables editable mode in Plotly config', () => {
-    useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.config.editable).toBe(true);
-    expect(lastPlotProps.config.edits).toEqual(
-      expect.objectContaining({ titleText: true, axisTitleText: true })
-    );
-    expect(lastPlotProps.config.responsive).toBe(true);
-  });
-
-  it('syncs Plotly title edits to store via onRelayout', () => {
+  it('passes syncPlotlyEdits as onLayoutChange', async () => {
     const mockSync = jest.fn();
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
+      explorerActiveModelName: 'sales_model',
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
       syncPlotlyEditsToChartLayout: mockSync,
     });
 
-    render(<ExplorerChartPreview />);
+    await act(async () => {
+      render(<ExplorerChartPreview />);
+    });
 
-    // Simulate Plotly relayout event for title edit
-    lastPlotProps.onRelayout({ 'title.text': 'New Title' });
-
-    expect(mockSync).toHaveBeenCalledWith({ title: { text: 'New Title' } });
+    screen.getByTestId('cp-trigger-layout').click();
+    expect(mockSync).toHaveBeenCalledWith({ title: { text: 'Edited' } });
   });
 
-  it('syncs axis title edits to store', () => {
-    const mockSync = jest.fn();
+  it('saves model to cache when query result arrives', async () => {
+    const mockSaveModel = jest.fn().mockResolvedValue(undefined);
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-      syncPlotlyEditsToChartLayout: mockSync,
+      explorerActiveModelName: null,
+      saveModelToCache: mockSaveModel,
     });
 
-    render(<ExplorerChartPreview />);
-
-    lastPlotProps.onRelayout({
-      'xaxis.title.text': 'Date Column',
-      'yaxis.title.text': 'Amount',
+    await act(async () => {
+      render(<ExplorerChartPreview />);
     });
 
-    expect(mockSync).toHaveBeenCalledWith({
-      xaxis: { title: { text: 'Date Column' } },
-      yaxis: { title: { text: 'Amount' } },
-    });
+    expect(mockSaveModel).toHaveBeenCalledWith('preview_model', expect.objectContaining({
+      name: 'preview_model',
+      sql: 'SELECT * FROM users',
+      source: 'ref(pg)',
+    }));
   });
 
-  it('does not sync non-edit relayout events (e.g., zoom)', () => {
-    const mockSync = jest.fn();
+  it('uses chart name from active model name', async () => {
     useStore.setState({
       explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-      syncPlotlyEditsToChartLayout: mockSync,
+      explorerActiveModelName: 'my_model',
+      explorerInsightConfig: { name: '', props: { type: 'bar', x: 'date', y: 'amount' } },
     });
 
-    render(<ExplorerChartPreview />);
+    await act(async () => {
+      render(<ExplorerChartPreview />);
+    });
 
-    // Simulate zoom event (not a title edit)
-    lastPlotProps.onRelayout({ 'xaxis.range[0]': 0, 'xaxis.range[1]': 10 });
-
-    expect(mockSync).not.toHaveBeenCalled();
+    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('my_model_chart');
   });
 
-  it('renders with only y axis configured', () => {
+  it('does not save insight without query results', () => {
+    const mockSaveInsight = jest.fn().mockResolvedValue(undefined);
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'bar', y: 'amount' },
-      },
+      explorerQueryResult: null,
+      explorerActiveModelName: null,
+      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      saveInsightToCache: mockSaveInsight,
     });
 
     render(<ExplorerChartPreview />);
 
-    expect(screen.getByTestId('chart-preview')).toBeInTheDocument();
-    expect(lastPlotProps.data[0].y).toEqual([100, 200, 150]);
-    expect(lastPlotProps.data[0].x).toBeUndefined();
-  });
-
-  it('handles empty rows gracefully', () => {
-    useStore.setState({
-      explorerQueryResult: { columns: ['date', 'amount'], rows: [] },
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('chart-preview')).toBeInTheDocument();
-    expect(lastPlotProps.data).toEqual([]);
-  });
-
-  it('uses useResizeHandler for responsive sizing', () => {
-    useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerInsightConfig: {
-        name: 'test',
-        props: { type: 'scatter', x: 'date', y: 'amount' },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(lastPlotProps.useResizeHandler).toBe(true);
-    expect(lastPlotProps.style).toEqual({ width: '100%', height: '100%' });
+    expect(mockSaveInsight).not.toHaveBeenCalled();
   });
 });

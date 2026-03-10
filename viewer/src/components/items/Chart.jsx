@@ -16,7 +16,7 @@ import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
-const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false }, ref) => {
+const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
@@ -162,8 +162,8 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
   );
 
   const plotConfig = useMemo(
-    () => ({ displayModeBar: false, responsive: true }),
-    []
+    () => plotlyConfig || { displayModeBar: false, responsive: true },
+    [plotlyConfig]
   );
 
   if (isDataLoading) {
@@ -227,6 +227,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
         onAfterPlot={() => {
           setIsLoading(false);
         }}
+        onRelayout={onRelayout}
       />
     </ItemContainer>
   );

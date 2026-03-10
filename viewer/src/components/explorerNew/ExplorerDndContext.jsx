@@ -34,6 +34,7 @@ const DragOverlayContent = ({ data }) => {
 const ExplorerDndContext = ({ children }) => {
   const setInsightProp = useStore((s) => s.setExplorerInsightProp);
   const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
+  const activeModelName = useStore((s) => s.explorerActiveModelName);
   const [activeData, setActiveData] = useState(null);
 
   const sensors = useSensors(
@@ -56,11 +57,18 @@ const ExplorerDndContext = ({ children }) => {
       const dragData = active.data.current;
       const dropData = over.data.current;
 
-      if (dropData?.type === 'axis-zone') {
-        // Dropped on an axis mapping zone
-        setInsightProp(dropData.fieldName, dragData.name);
+      if (dropData?.type === 'axis-zone' || dropData?.type === 'property-zone') {
+        const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
+        let value;
+        if (dragData.type === 'column') {
+          value = activeModelName
+            ? '?{${ref(' + activeModelName + ').' + dragData.name + '}}'
+            : '?{' + dragData.name + '}';
+        } else {
+          value = '?{${ref(' + dragData.name + ')}}';
+        }
+        setInsightProp(fieldName, value);
       } else if (dropData?.type === 'data-table-drop') {
-        // Dropped on data table (add as computed column)
         if (dragData.type === 'metric' || dragData.type === 'dimension') {
           addComputedColumn({
             name: dragData.name,
@@ -70,7 +78,7 @@ const ExplorerDndContext = ({ children }) => {
         }
       }
     },
-    [setInsightProp, addComputedColumn]
+    [setInsightProp, addComputedColumn, activeModelName]
   );
 
   const handleDragCancel = useCallback(() => {
