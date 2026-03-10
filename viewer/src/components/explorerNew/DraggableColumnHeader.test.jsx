@@ -36,4 +36,30 @@ describe('DraggableColumnHeader', () => {
     const wrapper = screen.getByTestId('draggable-col-order_id');
     expect(wrapper.dataset.draggableId).toBe('column-order_id');
   });
+
+  it('applies metric styling for metric computed columns', () => {
+    const metricColumn = { name: 'total_revenue', normalizedType: 'number', computedType: 'metric' };
+    render(<DraggableColumnHeader column={metricColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-total_revenue');
+    expect(wrapper.className).toContain('border-t-cyan-500');
+    expect(wrapper.className).toContain('bg-cyan-50/50');
+  });
+
+  it('applies dimension styling for dimension computed columns', () => {
+    const dimColumn = { name: 'order_month', normalizedType: 'string', computedType: 'dimension' };
+    render(<DraggableColumnHeader column={dimColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-order_month');
+    expect(wrapper.className).toContain('border-t-teal-500');
+    expect(wrapper.className).toContain('bg-teal-50/50');
+  });
+
+  it('does not apply computed styling for regular columns', () => {
+    render(<DraggableColumnHeader column={mockColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-order_id');
+    expect(wrapper.className).not.toContain('border-t-cyan');
+    expect(wrapper.className).not.toContain('border-t-teal');
+  });
 });

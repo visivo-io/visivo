@@ -4,6 +4,62 @@ import {
   updateExploration as apiUpdateExploration,
   deleteExploration as apiDeleteExploration,
 } from '../api/explorations';
+import { saveModel as apiSaveModel, deleteModel as apiDeleteModel } from '../api/models';
+import { saveInsight as apiSaveInsight, deleteInsight as apiDeleteInsight } from '../api/insights';
+import { saveChart as apiSaveChart, deleteChart as apiDeleteChart } from '../api/charts';
+
+/**
+ * Expand dot-notation keys in insight props to nested objects.
+ *
+ * Explorer stores flat keys with dots (e.g., 'marker.color') for convenience.
+ * Backend expects nested objects (e.g., { marker: { color: ... } }).
+ * All values are passed through unchanged — they should already be
+ * in ?{...} query-string format.
+ */
+export const expandDotNotationProps = (props) => {
+  const result = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      let current = result;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+          current[parts[i]] = {};
+        }
+        current = current[parts[i]];
+      }
+      current[parts[parts.length - 1]] = value;
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
+/**
+ * Replace model references in all string values of insight props.
+ * Used at save time when the user chooses a different model name
+ * than the active model name used during exploration.
+ */
+export const replaceModelRefInProps = (props, oldName, newName) => {
+  const result = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (typeof value === 'string') {
+      result[key] = value.replaceAll('ref(' + oldName + ')', 'ref(' + newName + ')');
+    } else if (Array.isArray(value)) {
+      result[key] = value.map((v) =>
+        typeof v === 'string'
+          ? v.replaceAll('ref(' + oldName + ')', 'ref(' + newName + ')')
+          : v
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      result[key] = replaceModelRefInProps(value, oldName, newName);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+};
 
 /**
  * ExplorerNew Store Slice
@@ -40,6 +96,9 @@ const createExplorerNewSlice = (set, get) => ({
   explorerDuckDBLoading: false,
   explorerDuckDBError: null,
 
+  // --- Save Modal ---
+  explorerSaveModalOpen: false,
+
   // --- Sources (shared between LeftPanel and CenterPanel) ---
   explorerSources: [],
 
@@ -74,7 +133,6 @@ const createExplorerNewSlice = (set, get) => ({
       explorerDuckDBTableName: null,
       explorerDuckDBError: null,
     });
-    get().autoPopulateInsight();
   },
 
   setExplorerQueryError: (error) => {
@@ -209,67 +267,6 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerCenterMode: mode });
   },
 
-  // --- Actions: Auto-populate insight from query results ---
-  autoPopulateInsight: () => {
-    const result = get().explorerQueryResult;
-    const currentConfig = get().explorerInsightConfig;
-    if (!result?.columns?.length) return;
-    if (currentConfig?.props?.x || currentConfig?.props?.y) return;
-
-    const columns = result.columns;
-    const rows = result.rows || [];
-    const sampleRow = rows[0] || {};
-
-    const inferType = (col) => {
-      const val = sampleRow[col];
-      if (val == null) return 'unknown';
-      if (typeof val === 'number') return 'numeric';
-      if (!isNaN(Date.parse(val)) && typeof val === 'string' && val.length >= 8) return 'datetime';
-      return 'categorical';
-    };
-
-    const colTypes = columns.map((col) => ({ name: col, type: inferType(col) }));
-    const datetimeCols = colTypes.filter((c) => c.type === 'datetime');
-    const numericCols = colTypes.filter((c) => c.type === 'numeric');
-    const categoricalCols = colTypes.filter((c) => c.type === 'categorical');
-
-    let newProps = { type: 'scatter' };
-
-    if (datetimeCols.length > 0 && numericCols.length > 0) {
-      newProps = {
-        type: 'scatter',
-        mode: 'lines+markers',
-        x: datetimeCols[0].name,
-        y: numericCols[0].name,
-      };
-    } else if (categoricalCols.length > 0 && numericCols.length > 0) {
-      newProps = {
-        type: 'bar',
-        x: categoricalCols[0].name,
-        y: numericCols[0].name,
-      };
-    } else if (numericCols.length >= 2) {
-      newProps = {
-        type: 'scatter',
-        x: numericCols[0].name,
-        y: numericCols[1].name,
-      };
-    } else if (columns.length >= 2) {
-      newProps = {
-        type: 'scatter',
-        x: columns[0],
-        y: columns[1],
-      };
-    }
-
-    set({
-      explorerInsightConfig: {
-        ...currentConfig,
-        props: { ...currentConfig.props, ...newProps },
-      },
-    });
-  },
-
   // --- Actions: DuckDB & Computed Columns ---
   setExplorerDuckDBTableName: (name) => {
     set({ explorerDuckDBTableName: name });
@@ -325,6 +322,198 @@ const createExplorerNewSlice = (set, get) => ({
       };
     } catch (err) {
       return { valid: false, error: err.message || 'Validation failed' };
+    }
+  },
+
+  // --- Actions: Cache Management ---
+  saveModelToCache: async (name, config) => {
+    try {
+      await apiSaveModel(name, config);
+    } catch (err) {
+      console.error('Failed to save model to cache:', err);
+    }
+  },
+
+  saveInsightToCache: async (name, config) => {
+    try {
+      await apiSaveInsight(name, config);
+    } catch (err) {
+      console.error('Failed to save insight to cache:', err);
+    }
+  },
+
+  saveChartToCache: async (name, config) => {
+    try {
+      await apiSaveChart(name, config);
+    } catch (err) {
+      console.error('Failed to save chart to cache:', err);
+    }
+  },
+
+  // --- Rollback Tracking ---
+  explorerOriginalSnapshots: {},
+  explorerCreatedObjects: [],
+
+  snapshotForRollback: (type, name, originalConfig) => {
+    set((state) => ({
+      explorerOriginalSnapshots: {
+        ...state.explorerOriginalSnapshots,
+        [`${type}:${name}`]: originalConfig,
+      },
+    }));
+  },
+
+  trackCreatedObject: (type, name) => {
+    set((state) => ({
+      explorerCreatedObjects: [...state.explorerCreatedObjects, `${type}:${name}`],
+    }));
+  },
+
+  reapplyExplorerChanges: async () => {
+    const {
+      explorerActiveModelName,
+      explorerSql,
+      explorerSourceName,
+      explorerInsightConfig,
+    } = get();
+
+    if (!explorerActiveModelName || !explorerSql || !explorerSourceName) return;
+
+    await get().saveModelToCache(explorerActiveModelName, {
+      name: explorerActiveModelName,
+      sql: explorerSql,
+      source: `ref(${explorerSourceName})`,
+    });
+
+    if (explorerInsightConfig?.props?.type) {
+      const insightName = `${explorerActiveModelName}_preview_insight`;
+      await get().saveInsightToCache(insightName, {
+        name: insightName,
+        props: expandDotNotationProps(explorerInsightConfig.props),
+      });
+    }
+  },
+
+  rollbackExplorerChanges: async () => {
+    const { explorerOriginalSnapshots, explorerCreatedObjects } = get();
+
+    const restores = [];
+    for (const [key, originalConfig] of Object.entries(explorerOriginalSnapshots)) {
+      const [type, name] = key.split(':');
+      const saveApi = type === 'model' ? apiSaveModel : type === 'insight' ? apiSaveInsight : apiSaveChart;
+      restores.push(saveApi(name, originalConfig).catch(() => {}));
+    }
+
+    const deletes = [];
+    for (const key of explorerCreatedObjects) {
+      const [type, name] = key.split(':');
+      const deleteApi = type === 'model' ? apiDeleteModel : type === 'insight' ? apiDeleteInsight : apiDeleteChart;
+      deletes.push(deleteApi(name).catch(() => {}));
+    }
+
+    await Promise.all([...restores, ...deletes]);
+
+    set({ explorerOriginalSnapshots: {}, explorerCreatedObjects: [] });
+  },
+
+  setExplorerSaveModalOpen: (open) => {
+    set({ explorerSaveModalOpen: open });
+  },
+
+  saveExplorerToProject: async ({ modelName, insightName, chartName, filePath }) => {
+    const {
+      explorerSql,
+      explorerSourceName,
+      explorerInsightConfig,
+      explorerChartLayout,
+    } = get();
+
+    if (!explorerSql || !explorerSourceName) {
+      return { success: false, error: 'SQL and source are required' };
+    }
+
+    const projectFilePath = get().projectFilePath;
+    const targetPath = filePath || projectFilePath;
+
+    try {
+      // Save model to server cache with user-chosen name
+      const modelConfig = {
+        name: modelName,
+        sql: explorerSql,
+        source: `ref(${explorerSourceName})`,
+      };
+      await apiSaveModel(modelName, modelConfig);
+
+      // Save insight to server cache with user-chosen name
+      const activeModelName = get().explorerActiveModelName;
+      let insightProps = expandDotNotationProps(explorerInsightConfig.props);
+      if (activeModelName && modelName !== activeModelName) {
+        insightProps = replaceModelRefInProps(insightProps, activeModelName, modelName);
+      }
+      const insightConfig = {
+        name: insightName,
+        props: insightProps,
+      };
+      await apiSaveInsight(insightName, insightConfig);
+
+      // Save chart to server cache with user-chosen name
+      const chartConfig = {
+        name: chartName,
+        insights: [`ref(${insightName})`],
+      };
+      if (explorerChartLayout && Object.keys(explorerChartLayout).length > 0) {
+        chartConfig.layout = explorerChartLayout;
+      }
+      await apiSaveChart(chartName, chartConfig);
+
+      // Push to editorStore.namedChildren
+      const namedChildren = get().namedChildren || {};
+      const updatedNamedChildren = { ...namedChildren };
+
+      updatedNamedChildren[modelName] = {
+        type: 'model',
+        type_key: 'models',
+        config: modelConfig,
+        status: 'New',
+        file_path: targetPath,
+        new_file_path: targetPath,
+        path: null,
+      };
+
+      updatedNamedChildren[insightName] = {
+        type: 'insight',
+        type_key: 'insights',
+        config: insightConfig,
+        status: 'New',
+        file_path: targetPath,
+        new_file_path: targetPath,
+        path: null,
+      };
+
+      updatedNamedChildren[chartName] = {
+        type: 'chart',
+        type_key: 'charts',
+        config: chartConfig,
+        status: 'New',
+        file_path: targetPath,
+        new_file_path: targetPath,
+        path: null,
+      };
+
+      set({ namedChildren: updatedNamedChildren });
+
+      // Clear rollback tracking since we've saved
+      set({ explorerOriginalSnapshots: {}, explorerCreatedObjects: [] });
+
+      set({
+        explorerSaveModalOpen: false,
+        explorerSavedModelName: modelName,
+        explorerSavedInsightName: insightName,
+      });
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || 'Failed to save to project' };
     }
   },
 
@@ -398,6 +587,7 @@ const createExplorerNewSlice = (set, get) => ({
           computedColumns: [],
           enrichedResult: null,
           duckDBTableName: null,
+          activeModelName: null,
         }));
 
         const activeApi = explorations.find(e => e.is_active);
@@ -439,6 +629,7 @@ const createExplorerNewSlice = (set, get) => ({
           computedColumns: [],
           enrichedResult: null,
           duckDBTableName: null,
+          activeModelName: null,
         };
         set({
           explorerExplorations: [state],
@@ -509,6 +700,7 @@ const createExplorerNewSlice = (set, get) => ({
       computedColumns: get().explorerComputedColumns,
       enrichedResult: get().explorerEnrichedResult,
       duckDBTableName: get().explorerDuckDBTableName,
+      activeModelName: get().explorerActiveModelName,
     };
 
     set((state) => ({
@@ -547,6 +739,7 @@ const createExplorerNewSlice = (set, get) => ({
       computedColumns: [],
       enrichedResult: null,
       duckDBTableName: null,
+      activeModelName: null,
     };
 
     get().snapshotCurrentExploration();
@@ -575,6 +768,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerEnrichedResult: null,
       explorerDuckDBTableName: null,
       explorerDuckDBError: null,
+      explorerActiveModelName: null,
     }));
   },
 
@@ -609,6 +803,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerComputedColumns: target.computedColumns || [],
       explorerEnrichedResult: target.enrichedResult || null,
       explorerDuckDBTableName: target.duckDBTableName || null,
+      explorerActiveModelName: target.activeModelName || null,
     });
   },
 
@@ -682,7 +877,15 @@ const createExplorerNewSlice = (set, get) => ({
     const insightConfig = get().explorerInsightConfig;
     if (!insightConfig) return { success: false, error: 'No chart configuration' };
 
-    const config = { name, model: `ref(${modelName})`, ...insightConfig.props };
+    const activeModel = get().explorerActiveModelName;
+    let finalProps = expandDotNotationProps(insightConfig.props);
+    if (activeModel && modelName !== activeModel) {
+      finalProps = replaceModelRefInProps(finalProps, activeModel, modelName);
+    }
+    const config = {
+      name,
+      props: finalProps,
+    };
     const result = await get().saveInsight(name, config);
     if (result.success) {
       set({ explorerSavedInsightName: name });
@@ -725,7 +928,15 @@ const createExplorerNewSlice = (set, get) => ({
     const insightConfig = get().explorerInsightConfig;
     if (!insightConfig) return { success: false, error: 'No chart configuration' };
 
-    const config = { name, model: `ref(${modelName})`, ...insightConfig.props };
+    const activeModel = get().explorerActiveModelName;
+    let finalProps = expandDotNotationProps(insightConfig.props);
+    if (activeModel && modelName !== activeModel) {
+      finalProps = replaceModelRefInProps(finalProps, activeModel, modelName);
+    }
+    const config = {
+      name,
+      props: finalProps,
+    };
     const result = await get().saveInsight(name, config);
     if (result.success) {
       set({ explorerSavedInsightName: name });

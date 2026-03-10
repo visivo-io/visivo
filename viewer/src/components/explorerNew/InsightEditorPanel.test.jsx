@@ -1,113 +1,236 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightEditorPanel from './InsightEditorPanel';
 import useStore from '../../stores/store';
 
-jest.mock('../new-views/common/InsightEditForm', () => {
-  return function MockInsightEditForm({ insight, isCreate, onSave }) {
-    return (
-      <div data-testid="insight-edit-form">
-        <span data-testid="form-type">{insight?.props?.type}</span>
-        <span data-testid="form-is-create">{String(isCreate)}</span>
-      </div>
-    );
+jest.mock('./SaveToProjectModal', () => {
+  return function MockSaveToProjectModal() {
+    return null;
   };
 });
 
-jest.mock('../new-views/common/objectTypeConfigs', () => ({
-  getTypeByValue: (val) => ({
-    icon: (props) => <svg data-testid={`${val}-icon`} {...props} />,
-    colors: { text: `text-${val}` },
-    singularLabel: val.charAt(0).toUpperCase() + val.slice(1),
+jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => ({
+  SchemaEditor: function MockSchemaEditor({ schema, value, onChange, excludeProperties, initiallyExpanded, droppable }) {
+    const id = excludeProperties?.length > 0 ? 'props' : 'layout';
+    return (
+      <div data-testid={`schema-editor-${id}`}>
+        <span data-testid={`se-exclude-${id}`}>{JSON.stringify(excludeProperties)}</span>
+        <span data-testid={`se-value-${id}`}>{JSON.stringify(value)}</span>
+        <span data-testid={`se-initially-expanded-${id}`}>{JSON.stringify(initiallyExpanded)}</span>
+        <span data-testid={`se-droppable-${id}`}>{String(!!droppable)}</span>
+        {onChange && (
+          <button
+            data-testid={`se-trigger-change-${id}`}
+            onClick={() => onChange({ marker: { color: 'red' } })}
+          />
+        )}
+      </div>
+    );
+  },
+}));
+
+jest.mock('../../schemas/schemas', () => ({
+  CHART_TYPES: [
+    { value: 'scatter', label: 'Scatter' },
+    { value: 'bar', label: 'Bar' },
+    { value: 'pie', label: 'Pie' },
+  ],
+  getSchema: jest.fn((type) =>
+    Promise.resolve({ type: 'object', properties: { [`${type}_prop`]: { type: 'string' } } })
+  ),
+}));
+
+jest.mock('../new-views/common/insightRequiredFields', () => ({
+  getRequiredFields: jest.fn((type) => {
+    if (type === 'scatter') return [{ name: 'x', type: 'dataArray' }, { name: 'y', type: 'dataArray' }];
+    if (type === 'bar') return [{ name: 'x', type: 'dataArray' }, { name: 'y', type: 'dataArray' }];
+    if (type === 'pie') return [{ name: 'labels', type: 'dataArray' }, { name: 'values', type: 'dataArray' }];
+    return [];
   }),
 }));
 
 describe('InsightEditorPanel', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     useStore.setState({
-      explorerEditStack: [],
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
-      explorerModelName: '',
-      explorerChartName: '',
-      explorerSql: '',
-      explorerSourceName: null,
-      explorerSavedModelName: null,
-      explorerSavedInsightName: null,
-      explorerIsSaving: false,
-      saveModel: jest.fn().mockResolvedValue({ success: true }),
-      saveInsight: jest.fn().mockResolvedValue({ success: true }),
-      saveChart: jest.fn().mockResolvedValue({ success: true }),
+      explorerChartLayout: {},
+      explorerQueryResult: null,
+      explorerSaveModalOpen: false,
+      setExplorerInsightConfig: jest.fn((config) => {
+        useStore.setState({ explorerInsightConfig: config });
+      }),
+      syncPlotlyEditsToChartLayout: jest.fn(),
+      setExplorerSaveModalOpen: jest.fn(),
     });
   });
 
-  it('renders always-on insight editor when edit stack is empty', () => {
+  it('renders the panel with insight type selector', async () => {
     render(<InsightEditorPanel />);
 
     expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('object-naming-header')).toBeInTheDocument();
-    expect(screen.getByTestId('insight-edit-form')).toBeInTheDocument();
+    expect(screen.getByTestId('insight-type-section')).toBeInTheDocument();
+    expect(screen.getByTestId('insight-type-select')).toBeInTheDocument();
   });
 
-  it('renders object naming inputs', () => {
+  it('shows correct default insight type', () => {
     render(<InsightEditorPanel />);
 
-    expect(screen.getByTestId('model-name-input')).toBeInTheDocument();
-    expect(screen.getByTestId('insight-name-input')).toBeInTheDocument();
-    expect(screen.getByTestId('chart-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId('insight-type-select')).toHaveValue('scatter');
   });
 
-  it('renders type icons for model, insight, chart', () => {
+  it('renders all chart type options', () => {
     render(<InsightEditorPanel />);
 
-    expect(screen.getByTestId('model-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('insight-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('chart-icon')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Scatter' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Bar' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Pie' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(3);
   });
 
-  it('updates model name in store', () => {
+  it('changes insight type and updates store', () => {
+    const mockSetConfig = jest.fn();
+    useStore.setState({ setExplorerInsightConfig: mockSetConfig });
+
     render(<InsightEditorPanel />);
 
-    fireEvent.change(screen.getByTestId('model-name-input'), {
-      target: { value: 'orders_model' },
+    fireEvent.change(screen.getByTestId('insight-type-select'), {
+      target: { value: 'bar' },
     });
 
-    expect(useStore.getState().explorerModelName).toBe('orders_model');
+    expect(mockSetConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        props: expect.objectContaining({ type: 'bar' }),
+      })
+    );
   });
 
-  it('updates insight name in store', () => {
-    render(<InsightEditorPanel />);
-
-    fireEvent.change(screen.getByTestId('insight-name-input'), {
-      target: { value: 'orders_insight' },
+  it('preserves compatible field values when changing type', () => {
+    const mockSetConfig = jest.fn();
+    useStore.setState({
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'col_a', y: 'col_b', marker: { size: 5 } } },
+      setExplorerInsightConfig: mockSetConfig,
     });
 
-    expect(useStore.getState().explorerInsightConfig.name).toBe('orders_insight');
-  });
-
-  it('updates chart name in store', () => {
     render(<InsightEditorPanel />);
 
-    fireEvent.change(screen.getByTestId('chart-name-input'), {
-      target: { value: 'orders_chart' },
+    // scatter→bar: both have x,y required fields, so x and y should be preserved
+    fireEvent.change(screen.getByTestId('insight-type-select'), {
+      target: { value: 'bar' },
     });
 
-    expect(useStore.getState().explorerChartName).toBe('orders_chart');
+    expect(mockSetConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        props: { type: 'bar', x: 'col_a', y: 'col_b' },
+      })
+    );
   });
 
-  it('disables save button when names are empty', () => {
+  it('drops incompatible fields when changing to a type with different required fields', () => {
+    const mockSetConfig = jest.fn();
+    useStore.setState({
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'col_a', y: 'col_b' } },
+      setExplorerInsightConfig: mockSetConfig,
+    });
+
+    render(<InsightEditorPanel />);
+
+    // scatter→pie: pie requires labels/values, not x/y
+    fireEvent.change(screen.getByTestId('insight-type-select'), {
+      target: { value: 'pie' },
+    });
+
+    expect(mockSetConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        props: { type: 'pie' },
+      })
+    );
+  });
+
+  it('insight properties section starts expanded', () => {
+    render(<InsightEditorPanel />);
+
+    expect(screen.getByTestId('insight-props-section')).toBeInTheDocument();
+  });
+
+  it('collapses insight properties on click', async () => {
+    render(<InsightEditorPanel />);
+
+    // Starts expanded, wait for schema to load
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('toggle-insight-props'));
+
+    expect(screen.queryByTestId('insight-props-editor')).not.toBeInTheDocument();
+  });
+
+  it('shows configured props count badge', () => {
+    useStore.setState({
+      explorerInsightConfig: {
+        name: '',
+        props: { type: 'scatter', x: 'col_a', y: 'col_b', marker: { size: 5 }, mode: 'lines' },
+      },
+    });
+
+    render(<InsightEditorPanel />);
+
+    // All non-type props count: x, y, marker, mode = 4
+    const propsSection = screen.getByTestId('insight-props-section');
+    expect(propsSection).toHaveTextContent('4');
+  });
+
+  it('does not show props count badge when only type is set', () => {
+    useStore.setState({
+      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+    });
+
+    render(<InsightEditorPanel />);
+
+    const button = screen.getByTestId('toggle-insight-props');
+    expect(button).toHaveTextContent('Insight Properties');
+    expect(button.textContent).not.toMatch(/\d/);
+  });
+
+  it('chart layout section starts collapsed', () => {
+    render(<InsightEditorPanel />);
+
+    expect(screen.getByTestId('chart-layout-section')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-layout-editor')).not.toBeInTheDocument();
+  });
+
+  it('expands chart layout on click', async () => {
+    render(<InsightEditorPanel />);
+
+    fireEvent.click(screen.getByTestId('toggle-chart-layout'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chart-layout-editor')).toBeInTheDocument();
+    });
+  });
+
+  it('shows layout props count badge when layout has properties', () => {
+    useStore.setState({
+      explorerChartLayout: { title: { text: 'My Chart' }, xaxis: { title: { text: 'X' } } },
+    });
+
+    render(<InsightEditorPanel />);
+
+    const layoutSection = screen.getByTestId('chart-layout-section');
+    expect(layoutSection).toHaveTextContent('2');
+  });
+
+  it('save button is disabled without query results', () => {
     render(<InsightEditorPanel />);
 
     expect(screen.getByTestId('save-to-project-button')).toBeDisabled();
   });
 
-  it('enables save button when all names and SQL/source are set', () => {
+  it('save button is enabled with query results', () => {
     useStore.setState({
-      explorerModelName: 'model',
-      explorerInsightConfig: { name: 'insight', props: { type: 'scatter' } },
-      explorerChartName: 'chart',
-      explorerSql: 'SELECT 1',
-      explorerSourceName: 'pg',
+      explorerQueryResult: { columns: ['a', 'b'], rows: [{ a: 1, b: 2 }], row_count: 1 },
     });
 
     render(<InsightEditorPanel />);
@@ -115,70 +238,181 @@ describe('InsightEditorPanel', () => {
     expect(screen.getByTestId('save-to-project-button')).not.toBeDisabled();
   });
 
-  it('shows saving state', () => {
-    useStore.setState({ explorerIsSaving: true });
-
-    render(<InsightEditorPanel />);
-
-    expect(screen.getByTestId('save-to-project-button')).toHaveTextContent('Saving...');
-  });
-
-  it('shows save status when model has been saved', () => {
-    useStore.setState({ explorerSavedModelName: 'my_model' });
-
-    render(<InsightEditorPanel />);
-
-    expect(screen.getByTestId('save-status')).toHaveTextContent('Saved: my_model');
-  });
-
-  it('shows save status with insight name', () => {
+  it('save button opens save modal', () => {
+    const mockSetModalOpen = jest.fn();
     useStore.setState({
-      explorerSavedModelName: 'my_model',
-      explorerSavedInsightName: 'my_insight',
+      explorerQueryResult: { columns: ['a'], rows: [{ a: 1 }], row_count: 1 },
+      setExplorerSaveModalOpen: mockSetModalOpen,
     });
 
     render(<InsightEditorPanel />);
 
-    expect(screen.getByTestId('save-status')).toHaveTextContent('my_model → my_insight');
+    fireEvent.click(screen.getByTestId('save-to-project-button'));
+
+    expect(mockSetModalOpen).toHaveBeenCalledWith(true);
   });
 
-  it('collapses and expands the naming section', () => {
+  it('save button shows correct text', () => {
     render(<InsightEditorPanel />);
 
-    // Initially expanded
-    expect(screen.getByTestId('model-name-input')).toBeInTheDocument();
-
-    // Collapse
-    fireEvent.click(screen.getByTestId('toggle-naming'));
-    expect(screen.queryByTestId('model-name-input')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('save-to-project-button')).not.toBeInTheDocument();
-
-    // Re-expand
-    fireEvent.click(screen.getByTestId('toggle-naming'));
-    expect(screen.getByTestId('model-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId('save-to-project-button')).toHaveTextContent('Save to Project');
   });
 
-  it('shows summary text when naming is collapsed and names are set', () => {
-    useStore.setState({ explorerModelName: 'orders_model' });
-
+  it('only excludes type from schema editor', async () => {
     render(<InsightEditorPanel />);
 
-    fireEvent.click(screen.getByTestId('toggle-naming'));
-    expect(screen.getByText('orders_model')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    const excluded = JSON.parse(screen.getByTestId('se-exclude-props').textContent);
+    expect(excluded).toEqual(['type']);
   });
 
-  it('always renders insight editor even when edit stack has items', () => {
+  it('auto-expands required fields in schema editor', async () => {
+    render(<InsightEditorPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    const expanded = JSON.parse(screen.getByTestId('se-initially-expanded-props').textContent);
+    expect(expanded).toContain('x');
+    expect(expanded).toContain('y');
+  });
+
+  it('passes droppable=true to insight props schema editor', async () => {
+    render(<InsightEditorPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('se-droppable-props')).toHaveTextContent('true');
+  });
+
+  it('layout schema editor is not droppable', async () => {
+    render(<InsightEditorPanel />);
+
+    fireEvent.click(screen.getByTestId('toggle-chart-layout'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chart-layout-editor')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('se-droppable-layout')).toHaveTextContent('false');
+  });
+
+  it('passes insight props value to schema editor', async () => {
     useStore.setState({
-      explorerEditStack: [
-        { type: 'model', object: { name: 'test', config: {} }, isCreate: false },
-      ],
+      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'a', marker: { size: 5 } } },
     });
 
     render(<InsightEditorPanel />);
 
-    // Should always show insight editor, never EditPanel
-    expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('object-naming-header')).toBeInTheDocument();
-    expect(screen.getByTestId('insight-edit-form')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    const value = JSON.parse(screen.getByTestId('se-value-props').textContent);
+    expect(value.type).toBe('scatter');
+    expect(value.marker).toEqual({ size: 5 });
+  });
+
+  it('updates insight config when schema editor changes props', async () => {
+    const mockSetConfig = jest.fn();
+    useStore.setState({ setExplorerInsightConfig: mockSetConfig });
+
+    render(<InsightEditorPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('se-trigger-change-props'));
+
+    expect(mockSetConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        props: expect.objectContaining({ marker: { color: 'red' } }),
+      })
+    );
+  });
+
+  it('uses chart layout from store for layout schema editor', async () => {
+    useStore.setState({
+      explorerChartLayout: { title: { text: 'Test' } },
+    });
+
+    render(<InsightEditorPanel />);
+
+    fireEvent.click(screen.getByTestId('toggle-chart-layout'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chart-layout-editor')).toBeInTheDocument();
+    });
+
+    const value = JSON.parse(screen.getByTestId('se-value-layout').textContent);
+    expect(value.title.text).toBe('Test');
+  });
+
+  it('calls syncPlotlyEdits when layout schema editor changes', async () => {
+    const mockSync = jest.fn();
+    useStore.setState({ syncPlotlyEditsToChartLayout: mockSync });
+
+    render(<InsightEditorPanel />);
+
+    fireEvent.click(screen.getByTestId('toggle-chart-layout'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chart-layout-editor')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('se-trigger-change-layout'));
+
+    expect(mockSync).toHaveBeenCalledWith({ marker: { color: 'red' } });
+  });
+
+  it('reads insight type from store config', () => {
+    useStore.setState({
+      explorerInsightConfig: { name: '', props: { type: 'bar' } },
+    });
+
+    render(<InsightEditorPanel />);
+
+    expect(screen.getByTestId('insight-type-select')).toHaveValue('bar');
+  });
+
+  it('defaults to scatter when no type in config', () => {
+    useStore.setState({
+      explorerInsightConfig: { name: '', props: {} },
+    });
+
+    render(<InsightEditorPanel />);
+
+    expect(screen.getByTestId('insight-type-select')).toHaveValue('scatter');
+  });
+
+  it('updates required field auto-expansion when type changes', async () => {
+    render(<InsightEditorPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('insight-props-editor')).toBeInTheDocument();
+    });
+
+    // Initially scatter: x, y
+    let expanded = JSON.parse(screen.getByTestId('se-initially-expanded-props').textContent);
+    expect(expanded).toContain('x');
+    expect(expanded).toContain('y');
+
+    // Change to pie
+    fireEvent.change(screen.getByTestId('insight-type-select'), {
+      target: { value: 'pie' },
+    });
+
+    await waitFor(() => {
+      expanded = JSON.parse(screen.getByTestId('se-initially-expanded-props').textContent);
+      expect(expanded).toContain('labels');
+    });
+    expect(expanded).toContain('values');
   });
 });

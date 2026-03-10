@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerNewPage from './ExplorerNewPage';
 import useStore from '../../stores/store';
@@ -53,6 +53,15 @@ describe('ExplorerNewPage', () => {
     useStore.setState({
       explorerLeftNavCollapsed: false,
       explorerEditStack: [],
+      explorerActiveModelName: null,
+      explorerSql: '',
+      explorerSourceName: null,
+      explorerSavedModelName: null,
+      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      explorerOriginalSnapshots: {},
+      explorerCreatedObjects: [],
+      reapplyExplorerChanges: jest.fn().mockResolvedValue(undefined),
+      rollbackExplorerChanges: jest.fn().mockResolvedValue(undefined),
     });
   });
 
@@ -84,5 +93,40 @@ describe('ExplorerNewPage', () => {
     useStore.setState({ explorerLeftNavCollapsed: true });
     render(<ExplorerNewPage />);
     expect(screen.queryByTestId('vertical-divider')).not.toBeInTheDocument();
+  });
+
+  it('calls reapplyExplorerChanges on mount', () => {
+    const mockReapply = jest.fn().mockResolvedValue(undefined);
+    useStore.setState({ reapplyExplorerChanges: mockReapply });
+
+    render(<ExplorerNewPage />);
+
+    expect(mockReapply).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls rollbackExplorerChanges on unmount when not saved', () => {
+    const mockRollback = jest.fn().mockResolvedValue(undefined);
+    useStore.setState({
+      rollbackExplorerChanges: mockRollback,
+      explorerSavedModelName: null,
+    });
+
+    const { unmount } = render(<ExplorerNewPage />);
+    unmount();
+
+    expect(mockRollback).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call rollbackExplorerChanges on unmount when saved', () => {
+    const mockRollback = jest.fn().mockResolvedValue(undefined);
+    useStore.setState({
+      rollbackExplorerChanges: mockRollback,
+      explorerSavedModelName: 'my_saved_model',
+    });
+
+    const { unmount } = render(<ExplorerNewPage />);
+    unmount();
+
+    expect(mockRollback).not.toHaveBeenCalled();
   });
 });
