@@ -3,6 +3,7 @@ import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import { queryPropsHaveChanged, hashQueryProps, extractNonQueryProps } from '../utils/queryPropertyDetection';
 import useStore from '../stores/store';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Generic hook for managing preview data with smart diff detection.
@@ -141,17 +142,28 @@ export const usePreviewData = (type, config, options = {}) => {
 const PREVIEW_STORE_PREFIX = '__preview__';
 
 export const useInsightPreviewData = (insightConfig, options = {}) => {
-  const storeInsightData = useStore(state => state.insightJobs);
-
   const previewInsightKey = insightConfig?.name
     ? PREVIEW_STORE_PREFIX + insightConfig.name
     : null;
 
-  // Check if insight exists in the store (loaded from main run)
-  const insightNotInMain = useMemo(() => {
-    if (!insightConfig?.name) return false;
-    return !storeInsightData?.[insightConfig.name];
-  }, [insightConfig, storeInsightData]);
+  // Targeted selectors: only re-render when the specific insight entries change,
+  // not when ANY insight job in the store changes
+  const mainInsightName = insightConfig?.name || null;
+  const insightNotInMain = useStore(
+    useCallback(state => {
+      if (!mainInsightName) return false;
+      return !state.insightJobs?.[mainInsightName];
+    }, [mainInsightName])
+  );
+
+  const previewInsightEntry = useStore(
+    useShallow(
+      useCallback(state => {
+        if (!previewInsightKey) return null;
+        return state.insightJobs?.[previewInsightKey] || null;
+      }, [previewInsightKey])
+    )
+  );
 
   // Run preview logic - will trigger initial preview if needsInitialPreview is true
   const previewState = usePreviewData('insights', insightConfig, {
@@ -196,8 +208,10 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
   return {
     ...previewState,
     ...insightsDataState,
+    isLoading: previewState.isLoading || insightsDataState.isInsightsLoading,
+    error: previewState.error || insightsDataState.error,
     previewInsightKey,
-    data: storeInsightData?.[previewInsightKey]?.data || null,
-    insight: storeInsightData?.[previewInsightKey] || null,
+    data: previewInsightEntry?.data || null,
+    insight: previewInsightEntry || null,
   };
 };

@@ -34,16 +34,23 @@ const ChartPreview = ({
   const { isLoading, error, progress, progressMessage, previewInsightKey } =
     useInsightPreviewData(insightConfig, { projectId });
 
+  const chartInsights = useMemo(
+    () => (previewInsightKey ? [{ name: previewInsightKey }] : []),
+    [previewInsightKey]
+  );
+
+  const chartLayout = useMemo(() => ({
+    autosize: true,
+    margin: { l: 40, r: 10, t: 40, b: 30 },
+    ...chartConfig?.layout,
+  }), [chartConfig?.layout]);
+
   const chart = useMemo(() => ({
     name: chartConfig?.name || 'Preview Chart',
-    insights: previewInsightKey ? [{ name: previewInsightKey }] : [],
+    insights: chartInsights,
     traces: [],
-    layout: {
-      autosize: true,
-      margin: { l: 40, r: 10, t: 40, b: 30 },
-      ...chartConfig?.layout,
-    },
-  }), [previewInsightKey, chartConfig]);
+    layout: chartLayout,
+  }), [chartConfig?.name, chartInsights, chartLayout]);
 
   const plotlyConfig = useMemo(
     () => (editableLayout ? EDITABLE_PLOTLY_CONFIG : READONLY_PLOTLY_CONFIG),
@@ -116,7 +123,7 @@ const ChartPreview = ({
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-hidden" data-testid="chart-preview">
+    <div className="h-full overflow-hidden" data-testid="chart-preview">
       <div className="w-full h-full relative" style={{ minWidth: 0 }}>
         <Chart
           chart={chart}

@@ -27,7 +27,8 @@ const ExplorerChartPreview = () => {
       useStore.setState({ explorerActiveModelName: modelName });
     }
 
-    if (lastSavedModelRef.current === modelName) return;
+    const configKey = `${modelName}::${explorerSql}::${explorerSourceName}`;
+    if (lastSavedModelRef.current === configKey) return;
 
     setModelSaved(false);
     useStore.getState().saveModelToCache(modelName, {
@@ -35,7 +36,7 @@ const ExplorerChartPreview = () => {
       sql: explorerSql,
       source: `ref(${explorerSourceName})`,
     }).then(() => {
-      lastSavedModelRef.current = modelName;
+      lastSavedModelRef.current = configKey;
       setModelSaved(true);
     });
   }, [queryResult]);
