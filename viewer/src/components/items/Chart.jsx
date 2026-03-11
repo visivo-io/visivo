@@ -156,10 +156,12 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     return l;
   }, [chart.layout, chart.name, hideToolbar]);
 
-  const plotLayout = useMemo(
-    () => ({ ...layoutRef, height, width }),
-    [layoutRef, height, width]
-  );
+  const plotLayout = useMemo(() => {
+    const layout = { ...layoutRef };
+    if (height !== undefined) layout.height = height;
+    if (width !== undefined) layout.width = width;
+    return layout;
+  }, [layoutRef, height, width]);
 
   const plotConfig = useMemo(
     () => plotlyConfig || { displayModeBar: false, responsive: true },
@@ -177,6 +179,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
   return (
     <ItemContainer
+      className={hideToolbar ? 'h-full' : ''}
       onMouseOver={() => setHovering(true)}
       onMouseOut={() => setHovering(false)}
       id={itemNameToSlug(chart.name)}
