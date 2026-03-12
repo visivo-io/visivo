@@ -289,3 +289,12 @@ insights:
     interactions:
       - filter: ?{${ref(daily_metrics).formatted_date} >= '${ref(week_selector).value}'}
       - sort: ?{${ref(daily_metrics).day_num} ASC}
+
+  # Pivot table insight - provides category, day_num, and value for pivoting
+  - name: pivot-source-insight
+    description: "Source data for pivot table: category x day_num with value"
+    props:
+      type: scatter
+      x: ?{${ref(daily_metrics).category}}
+      y: ?{${ref(daily_metrics).value}}
+      text: ?{${ref(daily_metrics).day_num}}

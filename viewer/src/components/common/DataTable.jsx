@@ -29,6 +29,8 @@ const DataTable = ({
   isQuerying = false,
   // Layout
   height = '100%',
+  // Optional cell styling callback: (rowIndex, columnId) => style object or undefined
+  getCellStyle,
 }) => {
   const parentRef = useRef(null);
 
@@ -172,15 +174,23 @@ const DataTable = ({
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  {row.getVisibleCells().map(cell => (
-                    <div
-                      key={cell.id}
-                      className="border-r border-secondary-100 last:border-r-0 overflow-hidden"
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  ))}
+                  {row.getVisibleCells().map(cell => {
+                    const cellStyle = getCellStyle
+                      ? {
+                          width: cell.column.getSize(),
+                          ...getCellStyle(virtualRow.index, cell.column.id),
+                        }
+                      : { width: cell.column.getSize() };
+                    return (
+                      <div
+                        key={cell.id}
+                        className="border-r border-secondary-100 last:border-r-0 overflow-hidden"
+                        style={cellStyle}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

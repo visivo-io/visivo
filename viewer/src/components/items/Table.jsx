@@ -47,6 +47,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { parseRefValue } from '../../utils/refString';
 
 const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
@@ -54,8 +55,11 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Support new singular 'insight' field
+  // Handle both resolved object { name: "..." } and raw ref string "${ref(...)}"
   const insightName = useMemo(() => {
-    if (table.insight?.name) return table.insight.name;
+    if (!table.insight) return null;
+    if (typeof table.insight === 'object' && table.insight.name) return table.insight.name;
+    if (typeof table.insight === 'string') return parseRefValue(table.insight);
     return null;
   }, [table.insight]);
 

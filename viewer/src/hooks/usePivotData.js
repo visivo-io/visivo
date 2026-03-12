@@ -36,17 +36,37 @@ export const usePivotData = (pivotConfig, insightData) => {
         const tableName = insightData.files[0].name_hash;
         const propsMapping = insightData.props_mapping || {};
 
+        // Build reverse mapping: hashed column name -> display name
+        const reverseMapping = {};
+        for (const [propPath, hashedName] of Object.entries(propsMapping)) {
+          const displayName = propPath
+            .replace(/^props\./, '')
+            .replace(/\./g, ' ')
+            .replace(/\b\w/g, char => char.toUpperCase());
+          reverseMapping[hashedName] = displayName;
+        }
+
         const sql = buildPivotQuery(pivotConfig, propsMapping, tableName);
+        console.log('[usePivotData] SQL:', sql);
         const result = await runDuckDBQuery(db, sql, 3, 1000);
 
         if (cancelled) return;
 
-        const resultRows = result.toArray().map(row => {
+        const rawRows = result.toArray();
+        if (rawRows.length > 0) {
+          const firstRaw = rawRows[0].toJSON();
+          console.log('[usePivotData] raw first row:', firstRaw);
+          console.log('[usePivotData] raw first row types:', Object.fromEntries(
+            Object.entries(firstRaw).map(([k, v]) => [k, `${typeof v}: ${String(v)}`])
+          ));
+        }
+
+        const resultRows = rawRows.map(row => {
           const rowData = row.toJSON();
           return Object.fromEntries(
             Object.entries(rowData).map(([key, value]) => [
               key,
-              typeof value === 'bigint' ? value.toString() : value,
+              cleanPivotValue(value),
             ])
           );
         });
@@ -55,7 +75,7 @@ export const usePivotData = (pivotConfig, insightData) => {
           resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
                 id: key,
-                header: formatPivotHeader(key),
+                header: reverseMapping[key] || formatPivotHeader(key),
                 accessorKey: key.replace(/\./g, '___'),
               }))
             : [];
@@ -82,6 +102,16 @@ export const usePivotData = (pivotConfig, insightData) => {
 
   return { rows, columns, isLoading, error };
 };
+
+function cleanPivotValue(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'bigint') return Number(value);
+  // DuckDB WASM PIVOT returns aggregated values as typed arrays (e.g. Uint32Array)
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    return value.length > 0 ? Number(value[0]) : null;
+  }
+  return value;
+}
 
 function formatPivotHeader(key) {
   const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');

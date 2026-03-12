@@ -22,7 +22,7 @@ export const useDataTableColumns = ({ columns, sorting, onSortChange, onColumnPr
         cell: ({ getValue }) => (
           <DataTableCell value={getValue()} columnType={col.normalizedType} />
         ),
-        size: calculateColumnWidth(col.name, col.normalizedType),
+        size: calculateColumnWidth(col.displayName || col.name, col.normalizedType),
         minSize: MIN_RESIZE_WIDTH,
       })),
     [columns, sorting, onSortChange, onColumnProfileRequest]

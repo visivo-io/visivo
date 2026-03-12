@@ -577,6 +577,49 @@ dashboards:
               insight: ${ref(filter-nonaggregate-input-test-insight)}
               rows_per_page: 25
 
+      # ===== SECTION 6: PIVOT TABLE & CELL FORMATTING =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Pivot Table with Cell Formatting
+                Pivots category across columns, groups by day_num, sums value.
+                Gradient heatmap highlights high/low values per column.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: category-pivot-table
+              insight: ${ref(pivot-source-insight)}
+              columns:
+                - ${ref(pivot-source-insight).x}
+              rows:
+                - ${ref(pivot-source-insight).text}
+              value: sum(${ref(pivot-source-insight).y})
+              format_cells:
+                scope: columns
+                min_color: "#fee0d2"
+                max_color: "#de2d26"
+
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Flat Insight Table with Row Gradient
+                Same data without pivot, gradient applied per row.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: flat-gradient-table
+              insight: ${ref(pivot-source-insight)}
+              format_cells:
+                scope: row
+                min_color: "#deebf7"
+                max_color: "#3182bd"
+
   - name: table-dashboard
     level: 1
     tags:

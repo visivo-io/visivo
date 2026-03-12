@@ -56,7 +56,7 @@ const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
       <div className="flex items-center gap-1.5 min-w-0">
         <TypeIcon className="text-secondary-400 flex-shrink-0" size={14} />
         <span className="text-sm font-medium text-secondary-700 truncate flex-1">
-          {column.name}
+          {column.displayName || column.name}
         </span>
         {isSorted && (
           <span className="text-primary-500 flex-shrink-0">

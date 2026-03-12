@@ -71,6 +71,11 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartBy
         const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
         if (insightName) insightNames.add(insightName);
       });
+      // Also collect singular insight from table (handles both object and string ref)
+      if (table?.insight) {
+        const name = typeof table.insight === 'string' ? parseRefValue(table.insight) : table.insight?.name;
+        if (name) insightNames.add(name);
+      }
     }
   }
   return [...insightNames];
