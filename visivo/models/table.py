@@ -4,6 +4,7 @@ from visivo.models.base.selector_model import SelectorModel
 from visivo.models.insight import Insight
 from visivo.models.table_column_definition import TableColumnDefinition
 from visivo.models.trace import Trace
+from visivo.models.format_cells import FormatCells
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -49,6 +50,22 @@ class Table(SelectorModel, NamedModel, ParentModel):
         rows_per_page: 100
     ```
 
+    ### Pivot Table Example
+    ``` yaml
+    tables:
+      - name: revenue-pivot
+        insight: ${ref(sales-insight)}
+        columns:
+          - ${ref(sales-insight).region}
+        rows:
+          - ${ref(sales-insight).product}
+        value: sum(${ref(sales-insight).revenue})
+        format_cells:
+          scope: columns
+          min_color: "#ff0000"
+          max_color: "#00ff00"
+    ```
+
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
@@ -75,6 +92,23 @@ class Table(SelectorModel, NamedModel, ParentModel):
         RowsPerPageEnum.fifty, description="The number of rows to show per page. Default is 50 rows"
     )
 
+    columns: Optional[List[str]] = Field(
+        None,
+        description="Pivot column fields using ${ref(insight).field} syntax.",
+    )
+    rows: Optional[List[str]] = Field(
+        None,
+        description="Pivot row fields using ${ref(insight).field} syntax.",
+    )
+    value: Optional[str] = Field(
+        None,
+        description="Pivot value with inline aggregation, e.g. sum(${ref(insight).revenue}).",
+    )
+    format_cells: Optional[FormatCells] = Field(
+        None,
+        description="Gradient/heatmap cell formatting configuration.",
+    )
+
     def child_items(self):
         items = list(self.traces) + list(self.insights)
         if self.insight:
@@ -85,27 +119,40 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_column_defs(cls, data: Any):
+    def validate_table_config(cls, data: Any):
         traces, insights, column_defs = (
             data.get("traces"),
             data.get("insights"),
             data.get("column_defs"),
         )
 
-        if not column_defs:
-            return data
+        if column_defs:
+            trace_names = list(map(lambda t: NamedModel.get_name(t), traces or []))
+            insight_names = list(map(lambda i: NamedModel.get_name(i), insights or []))
 
-        trace_names = list(map(lambda t: NamedModel.get_name(t), traces or []))
-        insight_names = list(map(lambda i: NamedModel.get_name(i), insights or []))
+            for cd in column_defs:
+                if "trace_name" in cd and cd["trace_name"] not in trace_names:
+                    raise ValueError(
+                        f"Column def trace name '{cd['trace_name']}' is not present in trace list on table."
+                    )
+                if "insight_name" in cd and cd["insight_name"] not in insight_names:
+                    raise ValueError(
+                        f"Column def insight name '{cd['insight_name']}' is not present in insight list on table."
+                    )
 
-        for cd in column_defs:
-            if "trace_name" in cd and cd["trace_name"] not in trace_names:
-                raise ValueError(
-                    f"Column def trace name '{cd['trace_name']}' is not present in trace list on table."
-                )
-            if "insight_name" in cd and cd["insight_name"] not in insight_names:
-                raise ValueError(
-                    f"Column def insight name '{cd['insight_name']}' is not present in insight list on table."
-                )
+        pivot_columns = data.get("columns")
+        pivot_rows = data.get("rows")
+        pivot_value = data.get("value")
+        pivot_fields = [pivot_columns, pivot_rows, pivot_value]
+        pivot_set_count = sum(1 for f in pivot_fields if f is not None)
+
+        if pivot_set_count > 0 and pivot_set_count < 3:
+            raise ValueError(
+                "Pivot configuration requires all three fields: 'columns', 'rows', and 'value'. "
+                "Either set all three or none."
+            )
+
+        if pivot_set_count == 3 and not data.get("insight"):
+            raise ValueError("Pivot configuration requires the 'insight' field to be set.")
 
         return data

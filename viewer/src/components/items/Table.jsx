@@ -2,6 +2,7 @@ import Loading from '../common/Loading';
 import React, { useEffect, useState, useMemo } from 'react';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
+import InsightTable from './InsightTable';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -321,6 +322,19 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   if (isInsightTable && !insightData && !insightsData) {
     return <Loading text={table.name} width={itemWidth} />;
+  }
+
+  // Route to new InsightTable component for singular insight
+  if (insightName && insightData) {
+    return (
+      <InsightTable
+        table={table}
+        insightData={insightData}
+        itemWidth={itemWidth}
+        height={height}
+        width={width}
+      />
+    );
   }
 
   const tableTheme = createTheme({
