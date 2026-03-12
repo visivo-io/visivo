@@ -15,24 +15,20 @@ const READONLY_PLOTLY_CONFIG = {
   displayModeBar: false,
 };
 
-/**
- * ChartPreview - Renders a chart from backend preview data with optional editable Plotly layout.
- *
- * Similar to InsightPreview but:
- * - Takes a chart config (layout, name) separate from insight config
- * - Supports editable Plotly layout (title, axis labels, legend)
- * - Syncs Plotly inline edits back via onLayoutChange callback
- * - Reusable by explorer and EditorNew
- */
 const ChartPreview = ({
   chartConfig,
   insightConfig,
   projectId,
   onLayoutChange,
   editableLayout = true,
+  contextObjects,
 }) => {
+  const extraPreviewBody = useMemo(
+    () => (contextObjects ? { context_objects: contextObjects } : undefined),
+    [contextObjects]
+  );
   const { isLoading, error, progress, progressMessage, previewInsightKey } =
-    useInsightPreviewData(insightConfig, { projectId });
+    useInsightPreviewData(insightConfig, { projectId, extraPreviewBody });
 
   const chartInsights = useMemo(
     () => (previewInsightKey ? [{ name: previewInsightKey }] : []),

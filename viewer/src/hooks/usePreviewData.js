@@ -24,7 +24,7 @@ import { useShallow } from 'zustand/react/shallow';
  * @returns {Object} Preview data state
  */
 export const usePreviewData = (type, config, options = {}) => {
-  const { savedConfig, needsInitialPreview = false } = options;
+  const { savedConfig, needsInitialPreview = false, extraPreviewBody } = options;
 
   const [lastPreviewConfig, setLastPreviewConfig] = useState(null);
   const [lastPreviewHash, setLastPreviewHash] = useState(null);
@@ -73,7 +73,7 @@ export const usePreviewData = (type, config, options = {}) => {
       setError(null);
 
       previewJob
-        .startRun(config)
+        .startRun(config, extraPreviewBody)
         .then(() => {
           setLastPreviewConfig(config);
           setLastPreviewHash(currentHash);
@@ -87,7 +87,7 @@ export const usePreviewData = (type, config, options = {}) => {
           previewJobInitializedRef.current = false;
         });
     }
-  }, [config, needsPreviewRun, previewJob, currentHash]);
+  }, [config, needsPreviewRun, previewJob, currentHash, extraPreviewBody]);
 
   useEffect(() => {
     if (previewJob.status === 'completed') {
@@ -165,7 +165,6 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     )
   );
 
-  // Run preview logic - will trigger initial preview if needsInitialPreview is true
   const previewState = usePreviewData('insights', insightConfig, {
     ...options,
     needsInitialPreview: insightNotInMain,

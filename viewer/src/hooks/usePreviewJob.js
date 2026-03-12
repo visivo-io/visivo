@@ -25,7 +25,7 @@ export const usePreviewJob = () => {
    * @param {Object} config - Insight configuration to preview
    * @returns {Promise<string>} run_instance_id
    */
-  const startRun = useCallback(async config => {
+  const startRun = useCallback(async (config, extraBody = {}) => {
     try {
       setError(null);
       setStatus(null);
@@ -42,6 +42,7 @@ export const usePreviewJob = () => {
         body: JSON.stringify({
           config,
           run: true,
+          ...extraBody,
         }),
       });
 

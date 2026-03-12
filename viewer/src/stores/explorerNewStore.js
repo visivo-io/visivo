@@ -4,9 +4,9 @@ import {
   updateExploration as apiUpdateExploration,
   deleteExploration as apiDeleteExploration,
 } from '../api/explorations';
-import { saveModel as apiSaveModel, deleteModel as apiDeleteModel } from '../api/models';
-import { saveInsight as apiSaveInsight, deleteInsight as apiDeleteInsight } from '../api/insights';
-import { saveChart as apiSaveChart, deleteChart as apiDeleteChart } from '../api/charts';
+import { saveModel as apiSaveModel } from '../api/models';
+import { saveInsight as apiSaveInsight } from '../api/insights';
+import { saveChart as apiSaveChart } from '../api/charts';
 
 /**
  * Expand dot-notation keys in insight props to nested objects.
@@ -325,97 +325,6 @@ const createExplorerNewSlice = (set, get) => ({
     }
   },
 
-  // --- Actions: Cache Management ---
-  saveModelToCache: async (name, config) => {
-    try {
-      await apiSaveModel(name, config);
-    } catch (err) {
-      console.error('Failed to save model to cache:', err);
-    }
-  },
-
-  saveInsightToCache: async (name, config) => {
-    try {
-      await apiSaveInsight(name, config);
-    } catch (err) {
-      console.error('Failed to save insight to cache:', err);
-    }
-  },
-
-  saveChartToCache: async (name, config) => {
-    try {
-      await apiSaveChart(name, config);
-    } catch (err) {
-      console.error('Failed to save chart to cache:', err);
-    }
-  },
-
-  // --- Rollback Tracking ---
-  explorerOriginalSnapshots: {},
-  explorerCreatedObjects: [],
-
-  snapshotForRollback: (type, name, originalConfig) => {
-    set((state) => ({
-      explorerOriginalSnapshots: {
-        ...state.explorerOriginalSnapshots,
-        [`${type}:${name}`]: originalConfig,
-      },
-    }));
-  },
-
-  trackCreatedObject: (type, name) => {
-    set((state) => ({
-      explorerCreatedObjects: [...state.explorerCreatedObjects, `${type}:${name}`],
-    }));
-  },
-
-  reapplyExplorerChanges: async () => {
-    const {
-      explorerActiveModelName,
-      explorerSql,
-      explorerSourceName,
-      explorerInsightConfig,
-    } = get();
-
-    if (!explorerActiveModelName || !explorerSql || !explorerSourceName) return;
-
-    await get().saveModelToCache(explorerActiveModelName, {
-      name: explorerActiveModelName,
-      sql: explorerSql,
-      source: `ref(${explorerSourceName})`,
-    });
-
-    if (explorerInsightConfig?.props?.type) {
-      const insightName = `${explorerActiveModelName}_preview_insight`;
-      await get().saveInsightToCache(insightName, {
-        name: insightName,
-        props: expandDotNotationProps(explorerInsightConfig.props),
-      });
-    }
-  },
-
-  rollbackExplorerChanges: async () => {
-    const { explorerOriginalSnapshots, explorerCreatedObjects } = get();
-
-    const restores = [];
-    for (const [key, originalConfig] of Object.entries(explorerOriginalSnapshots)) {
-      const [type, name] = key.split(':');
-      const saveApi = type === 'model' ? apiSaveModel : type === 'insight' ? apiSaveInsight : apiSaveChart;
-      restores.push(saveApi(name, originalConfig).catch(() => {}));
-    }
-
-    const deletes = [];
-    for (const key of explorerCreatedObjects) {
-      const [type, name] = key.split(':');
-      const deleteApi = type === 'model' ? apiDeleteModel : type === 'insight' ? apiDeleteInsight : apiDeleteChart;
-      deletes.push(deleteApi(name).catch(() => {}));
-    }
-
-    await Promise.all([...restores, ...deletes]);
-
-    set({ explorerOriginalSnapshots: {}, explorerCreatedObjects: [] });
-  },
-
   setExplorerSaveModalOpen: (open) => {
     set({ explorerSaveModalOpen: open });
   },
@@ -440,7 +349,7 @@ const createExplorerNewSlice = (set, get) => ({
       const modelConfig = {
         name: modelName,
         sql: explorerSql,
-        source: `ref(${explorerSourceName})`,
+        source: `\${ref(${explorerSourceName})}`,
       };
       await apiSaveModel(modelName, modelConfig);
 
@@ -459,7 +368,7 @@ const createExplorerNewSlice = (set, get) => ({
       // Save chart to server cache with user-chosen name
       const chartConfig = {
         name: chartName,
-        insights: [`ref(${insightName})`],
+        insights: [`\${ref(${insightName})}`],
       };
       if (explorerChartLayout && Object.keys(explorerChartLayout).length > 0) {
         chartConfig.layout = explorerChartLayout;
@@ -501,9 +410,6 @@ const createExplorerNewSlice = (set, get) => ({
       };
 
       set({ namedChildren: updatedNamedChildren });
-
-      // Clear rollback tracking since we've saved
-      set({ explorerOriginalSnapshots: {}, explorerCreatedObjects: [] });
 
       set({
         explorerSaveModalOpen: false,
@@ -862,7 +768,7 @@ const createExplorerNewSlice = (set, get) => ({
     const sourceName = get().explorerSourceName;
     if (!sql || !sourceName) return { success: false, error: 'SQL and source required' };
 
-    const config = { sql, source: `ref(${sourceName})` };
+    const config = { sql, source: `\${ref(${sourceName})}` };
     const result = await get().saveModel(name, config);
     if (result.success) {
       set({ explorerSavedModelName: name });
@@ -898,7 +804,7 @@ const createExplorerNewSlice = (set, get) => ({
     if (!insightName) return { success: false, error: 'Save insight first' };
 
     const layout = get().explorerChartLayout;
-    const config = { name, insights: [`ref(${insightName})`] };
+    const config = { name, insights: [`\${ref(${insightName})}`] };
     if (layout && Object.keys(layout).length > 0) {
       config.layout = layout;
     }
@@ -912,7 +818,7 @@ const createExplorerNewSlice = (set, get) => ({
     if (!sql || !sourceName) return { success: false, error: 'SQL and source required' };
     if (!name) return { success: false, error: 'Model name required for update' };
 
-    const config = { sql, source: `ref(${sourceName})` };
+    const config = { sql, source: `\${ref(${sourceName})}` };
     const result = await get().saveModel(name, config);
     if (result.success) {
       set({ explorerSavedModelName: name });

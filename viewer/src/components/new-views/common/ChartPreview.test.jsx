@@ -281,6 +281,27 @@ describe('ChartPreview', () => {
 
     expect(useInsightPreviewData).toHaveBeenCalledWith(defaultInsightConfig, {
       projectId: 'proj-1',
+      extraPreviewBody: undefined,
+    });
+  });
+
+  it('passes contextObjects as extraPreviewBody to useInsightPreviewData', () => {
+    const contextObjects = {
+      models: [{ name: 'm1', sql: 'SELECT 1', source: 'ref(src)' }],
+    };
+
+    render(
+      <ChartPreview
+        chartConfig={defaultChartConfig}
+        insightConfig={defaultInsightConfig}
+        projectId="proj-1"
+        contextObjects={contextObjects}
+      />
+    );
+
+    expect(useInsightPreviewData).toHaveBeenCalledWith(defaultInsightConfig, {
+      projectId: 'proj-1',
+      extraPreviewBody: { context_objects: contextObjects },
     });
   });
 });

@@ -2,12 +2,18 @@ import pytest
 from unittest.mock import MagicMock
 from copy import deepcopy
 
-from visivo.server.jobs.preview_job_executor import _inject_cached_objects, MANAGER_TO_PROJECT_FIELD
+from visivo.server.jobs.preview_job_executor import (
+    _inject_cached_objects,
+    _inject_context_objects,
+    MANAGER_TO_PROJECT_FIELD,
+)
 from tests.factories.model_factories import (
     ProjectFactory,
     SqlModelFactory,
     SourceFactory,
     InsightFactory,
+    MetricFactory,
+    DimensionFactory,
 )
 
 
@@ -172,3 +178,128 @@ class TestInjectCachedObjects:
         model_names = [m.name for m in preview_project.models]
         assert "pub_model" in model_names
         assert "cached_model" in model_names
+
+
+class TestInjectContextObjects:
+    def test_none_context_objects_is_noop(self):
+        source = SourceFactory(name="src")
+        model = SqlModelFactory(name="my_model", source="ref(src)")
+        project = _make_project(sources=[source], models=[model])
+        preview_project = deepcopy(project)
+
+        _inject_context_objects(None, preview_project)
+
+        assert len(preview_project.models) == 1
+        assert preview_project.models[0].name == "my_model"
+
+    def test_empty_context_objects_is_noop(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[])
+        preview_project = deepcopy(project)
+
+        _inject_context_objects({}, preview_project)
+
+        assert len(preview_project.models) == 0
+
+    def test_context_model_added_to_project(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "models": [{"name": "ctx_model", "sql": "SELECT 1", "source": "${ref(src)}"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.models) == 1
+        assert preview_project.models[0].name == "ctx_model"
+        assert preview_project.models[0].sql == "SELECT 1"
+
+    def test_context_model_overrides_existing(self):
+        source = SourceFactory(name="src")
+        existing_model = SqlModelFactory(name="my_model", sql="SELECT old", source="ref(src)")
+        project = _make_project(sources=[source], models=[existing_model])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "models": [{"name": "my_model", "sql": "SELECT new", "source": "${ref(src)}"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.models) == 1
+        assert preview_project.models[0].sql == "SELECT new"
+
+    def test_context_dimensions_added(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[], dimensions=[])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "dimensions": [{"name": "order_month", "expression": "DATE_TRUNC('month', date)"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.dimensions) == 1
+        assert preview_project.dimensions[0].name == "order_month"
+
+    def test_context_metrics_added(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[], metrics=[])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "metrics": [{"name": "total_rev", "expression": "SUM(amount)"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.metrics) == 1
+        assert preview_project.metrics[0].name == "total_rev"
+
+    def test_context_overrides_cached_objects(self):
+        source = SourceFactory(name="src")
+        cached_model = SqlModelFactory(name="my_model", sql="SELECT cached", source="ref(src)")
+        project = _make_project(sources=[source], models=[])
+        preview_project = deepcopy(project)
+
+        flask_app = _make_flask_app_mock(
+            project, cached_overrides={"model_manager": {"my_model": cached_model}}
+        )
+        _inject_cached_objects(flask_app, preview_project)
+
+        assert preview_project.models[0].sql == "SELECT cached"
+
+        context_objects = {
+            "models": [{"name": "my_model", "sql": "SELECT context", "source": "${ref(src)}"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.models) == 1
+        assert preview_project.models[0].sql == "SELECT context"
+
+    def test_unknown_type_is_ignored(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "unknown_type": [{"name": "foo"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.models) == 0
+
+    def test_multiple_types_injected(self):
+        source = SourceFactory(name="src")
+        project = _make_project(sources=[source], models=[], dimensions=[], metrics=[])
+        preview_project = deepcopy(project)
+
+        context_objects = {
+            "models": [{"name": "m1", "sql": "SELECT 1", "source": "${ref(src)}"}],
+            "dimensions": [{"name": "d1", "expression": "col_a"}],
+            "metrics": [{"name": "met1", "expression": "SUM(col_b)"}],
+        }
+        _inject_context_objects(context_objects, preview_project)
+
+        assert len(preview_project.models) == 1
+        assert len(preview_project.dimensions) == 1
+        assert len(preview_project.metrics) == 1
