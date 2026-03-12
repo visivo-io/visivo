@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import LeftPanel from './LeftPanel';
 import CenterPanel from './CenterPanel';
 import InsightEditorPanel from './InsightEditorPanel';
@@ -11,15 +11,6 @@ import { usePanelResize } from '../../hooks/usePanelResize';
 const ExplorerNewPage = () => {
   const leftNavCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    useStore.getState().reapplyExplorerChanges();
-    return () => {
-      if (!useStore.getState().explorerSavedModelName) {
-        useStore.getState().rollbackExplorerChanges();
-      }
-    };
-  }, []);
 
   const {
     ratio: leftRatio,

@@ -62,6 +62,64 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, obj_list)
 
 
+CONTEXT_OBJECT_TYPES = {
+    "models": "models",
+    "dimensions": "dimensions",
+    "metrics": "metrics",
+}
+
+
+def _get_type_adapter(field_name):
+    """Get the TypeAdapter for a context object field, matching the project field type."""
+    from pydantic import TypeAdapter
+
+    if field_name == "models":
+        from visivo.models.models.fields import ModelField
+
+        return TypeAdapter(ModelField)
+    elif field_name == "dimensions":
+        from visivo.models.dimension import Dimension
+
+        return TypeAdapter(Dimension)
+    elif field_name == "metrics":
+        from visivo.models.metric import Metric
+
+        return TypeAdapter(Metric)
+    return None
+
+
+def _inject_context_objects(context_objects, preview_project):
+    """Inject context object configs (from explorer) into preview project.
+
+    Highest priority: overrides both published and cached objects.
+    """
+    if not context_objects:
+        return
+
+    for field_name, configs in context_objects.items():
+        if field_name not in CONTEXT_OBJECT_TYPES or not configs:
+            continue
+
+        adapter = _get_type_adapter(field_name)
+        if not adapter:
+            continue
+
+        obj_list = list(getattr(preview_project, field_name, None) or [])
+        existing_names = {o.name for o in obj_list if hasattr(o, "name")}
+
+        for obj_config in configs:
+            obj = adapter.validate_python(obj_config)
+            if obj.name in existing_names:
+                obj_list = [
+                    obj if hasattr(o, "name") and o.name == obj.name else o for o in obj_list
+                ]
+            else:
+                obj_list.append(obj)
+                existing_names.add(obj.name)
+
+        setattr(preview_project, field_name, obj_list)
+
+
 def clean_config_strings(obj):
     """Recursively clean newlines from string values in config."""
     if isinstance(obj, dict):
@@ -74,7 +132,9 @@ def clean_config_strings(obj):
     return obj
 
 
-def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manager):
+def execute_insight_preview_job(
+    job_id, config, flask_app, output_dir, run_manager, context_objects=None
+):
     """
     Execute a preview run for an insight configuration.
 
@@ -119,9 +179,8 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
 
         preview_project = deepcopy(flask_app.project)
 
-        # Inject cached objects from all managers so preview can resolve refs
-        # to unpublished/modified objects (e.g. models created in the editor)
         _inject_cached_objects(flask_app, preview_project)
+        _inject_context_objects(context_objects, preview_project)
 
         # Remove existing insight with same name if it exists
         preview_project.insights = [

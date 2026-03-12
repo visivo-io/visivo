@@ -127,6 +127,8 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             if not config:
                 return jsonify({"message": "config field is required"}), 400
 
+            context_objects = data.get("context_objects")
+
             # Create run via PreviewRunManager (or get existing run if already running)
             Logger.instance().info("Getting PreviewRunManager instance")
             run_manager = PreviewRunManager.instance()
@@ -155,6 +157,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             thread = threading.Thread(
                 target=execute_insight_preview_job,
                 args=(job_id, config, flask_app, output_dir, run_manager),
+                kwargs={"context_objects": context_objects},
                 daemon=True,
             )
             thread.start()

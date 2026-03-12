@@ -134,7 +134,15 @@ const useExplorerDuckDB = () => {
 
         const sql = `SELECT *, ${computedSelectParts.join(', ')} FROM "${duckDBTableName}"`;
         const result = await runDuckDBQuery(db, sql);
-        const rows = result.toArray().map((row) => row.toJSON());
+        const rows = result.toArray().map((row) => {
+          const rowData = row.toJSON();
+          return Object.fromEntries(
+            Object.entries(rowData).map(([key, value]) => [
+              key,
+              typeof value === 'bigint' ? Number(value) : value,
+            ])
+          );
+        });
 
         // Get column names from the result
         const columns = [];

@@ -93,7 +93,7 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config);
+    expect(mockStartRun).toHaveBeenCalledWith(config, undefined);
   });
 
   test('triggers preview when needsInitialPreview is true and no prior preview', () => {
@@ -104,7 +104,7 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config);
+    expect(mockStartRun).toHaveBeenCalledWith(config, undefined);
   });
 
   test('does not trigger preview when needsInitialPreview is false and no savedConfig', () => {

@@ -10,17 +10,14 @@ jest.mock('../api/explorations', () => ({
 
 jest.mock('../api/models', () => ({
   saveModel: jest.fn(),
-  deleteModel: jest.fn(),
 }));
 
 jest.mock('../api/insights', () => ({
   saveInsight: jest.fn(),
-  deleteInsight: jest.fn(),
 }));
 
 jest.mock('../api/charts', () => ({
   saveChart: jest.fn(),
-  deleteChart: jest.fn(),
 }));
 
 const {
@@ -30,9 +27,9 @@ const {
   deleteExploration,
 } = require('../api/explorations');
 
-const { saveModel: apiSaveModel, deleteModel: apiDeleteModel } = require('../api/models');
-const { saveInsight: apiSaveInsight, deleteInsight: apiDeleteInsight } = require('../api/insights');
-const { saveChart: apiSaveChart, deleteChart: apiDeleteChart } = require('../api/charts');
+const { saveModel: apiSaveModel } = require('../api/models');
+const { saveInsight: apiSaveInsight } = require('../api/insights');
+const { saveChart: apiSaveChart } = require('../api/charts');
 
 describe('explorerNewStore', () => {
   beforeEach(() => {
@@ -65,8 +62,6 @@ describe('explorerNewStore', () => {
       explorerSavedInsightName: null,
       explorerExplorations: [],
       explorerActiveExplorationId: null,
-      explorerOriginalSnapshots: {},
-      explorerCreatedObjects: [],
       explorerSaveModalOpen: false,
       saveModel: jest.fn().mockResolvedValue({ success: true }),
       saveInsight: jest.fn().mockResolvedValue({ success: true }),
@@ -618,7 +613,7 @@ describe('explorerNewStore', () => {
       expect(result.success).toBe(true);
       expect(mockSaveModel).toHaveBeenCalledWith('my_model', {
         sql: 'SELECT * FROM users',
-        source: 'ref(pg)',
+        source: '${ref(pg)}',
       });
     });
 
@@ -707,7 +702,7 @@ describe('explorerNewStore', () => {
       expect(result.success).toBe(true);
       expect(mockSaveChart).toHaveBeenCalledWith('my_chart', {
         name: 'my_chart',
-        insights: ['ref(my_insight)'],
+        insights: ['${ref(my_insight)}'],
       });
     });
 
@@ -723,7 +718,7 @@ describe('explorerNewStore', () => {
 
       expect(mockSaveChart).toHaveBeenCalledWith('my_chart', {
         name: 'my_chart',
-        insights: ['ref(my_insight)'],
+        insights: ['${ref(my_insight)}'],
         layout: { 'title.text': 'My Chart' },
       });
     });
@@ -743,7 +738,7 @@ describe('explorerNewStore', () => {
       expect(result.success).toBe(true);
       expect(mockSaveModel).toHaveBeenCalledWith('existing_model', {
         sql: 'SELECT * FROM orders',
-        source: 'ref(pg)',
+        source: '${ref(pg)}',
       });
     });
 
@@ -938,226 +933,6 @@ describe('explorerNewStore', () => {
     });
   });
 
-  describe('cache management', () => {
-    it('saveModelToCache calls apiSaveModel', async () => {
-      apiSaveModel.mockResolvedValue({ success: true });
-
-      await useStore.getState().saveModelToCache('my_model', { sql: 'SELECT 1' });
-
-      expect(apiSaveModel).toHaveBeenCalledWith('my_model', { sql: 'SELECT 1' });
-    });
-
-    it('saveModelToCache handles errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      apiSaveModel.mockRejectedValue(new Error('fail'));
-
-      await useStore.getState().saveModelToCache('m', {});
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
-
-    it('saveInsightToCache calls apiSaveInsight', async () => {
-      apiSaveInsight.mockResolvedValue({ success: true });
-
-      await useStore.getState().saveInsightToCache('my_insight', { props: { type: 'bar' } });
-
-      expect(apiSaveInsight).toHaveBeenCalledWith('my_insight', { props: { type: 'bar' } });
-    });
-
-    it('saveInsightToCache handles errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      apiSaveInsight.mockRejectedValue(new Error('fail'));
-
-      await useStore.getState().saveInsightToCache('i', {});
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
-
-    it('saveChartToCache calls apiSaveChart', async () => {
-      apiSaveChart.mockResolvedValue({ success: true });
-
-      await useStore.getState().saveChartToCache('my_chart', { insights: ['ref(i)'] });
-
-      expect(apiSaveChart).toHaveBeenCalledWith('my_chart', { insights: ['ref(i)'] });
-    });
-
-    it('saveChartToCache handles errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      apiSaveChart.mockRejectedValue(new Error('fail'));
-
-      await useStore.getState().saveChartToCache('c', {});
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('rollback tracking', () => {
-    it('snapshotForRollback stores original config by type:name key', () => {
-      useStore.getState().snapshotForRollback('model', 'my_model', { sql: 'SELECT 1' });
-
-      expect(useStore.getState().explorerOriginalSnapshots).toEqual({
-        'model:my_model': { sql: 'SELECT 1' },
-      });
-    });
-
-    it('snapshotForRollback accumulates multiple snapshots', () => {
-      useStore.getState().snapshotForRollback('model', 'm1', { sql: 'SELECT 1' });
-      useStore.getState().snapshotForRollback('insight', 'i1', { props: {} });
-
-      const snapshots = useStore.getState().explorerOriginalSnapshots;
-      expect(Object.keys(snapshots)).toHaveLength(2);
-      expect(snapshots['model:m1']).toEqual({ sql: 'SELECT 1' });
-      expect(snapshots['insight:i1']).toEqual({ props: {} });
-    });
-
-    it('trackCreatedObject adds type:name to created objects list', () => {
-      useStore.getState().trackCreatedObject('model', 'new_model');
-
-      expect(useStore.getState().explorerCreatedObjects).toEqual(['model:new_model']);
-    });
-
-    it('trackCreatedObject accumulates multiple entries', () => {
-      useStore.getState().trackCreatedObject('model', 'm1');
-      useStore.getState().trackCreatedObject('insight', 'i1');
-      useStore.getState().trackCreatedObject('chart', 'c1');
-
-      expect(useStore.getState().explorerCreatedObjects).toEqual([
-        'model:m1',
-        'insight:i1',
-        'chart:c1',
-      ]);
-    });
-
-    it('rollbackExplorerChanges restores snapshots and deletes created objects', async () => {
-      apiSaveModel.mockResolvedValue({});
-      apiDeleteInsight.mockResolvedValue({});
-
-      useStore.setState({
-        explorerOriginalSnapshots: {
-          'model:existing_model': { sql: 'original SQL' },
-        },
-        explorerCreatedObjects: ['insight:new_insight'],
-      });
-
-      await useStore.getState().rollbackExplorerChanges();
-
-      expect(apiSaveModel).toHaveBeenCalledWith('existing_model', { sql: 'original SQL' });
-      expect(apiDeleteInsight).toHaveBeenCalledWith('new_insight');
-
-      expect(useStore.getState().explorerOriginalSnapshots).toEqual({});
-      expect(useStore.getState().explorerCreatedObjects).toEqual([]);
-    });
-
-    it('rollbackExplorerChanges handles mixed types correctly', async () => {
-      apiSaveModel.mockResolvedValue({});
-      apiSaveInsight.mockResolvedValue({});
-      apiSaveChart.mockResolvedValue({});
-      apiDeleteModel.mockResolvedValue({});
-      apiDeleteChart.mockResolvedValue({});
-
-      useStore.setState({
-        explorerOriginalSnapshots: {
-          'model:m1': { sql: 'old' },
-          'insight:i1': { props: { type: 'bar' } },
-          'chart:c1': { insights: ['ref(i1)'] },
-        },
-        explorerCreatedObjects: ['model:m2', 'chart:c2'],
-      });
-
-      await useStore.getState().rollbackExplorerChanges();
-
-      expect(apiSaveModel).toHaveBeenCalledWith('m1', { sql: 'old' });
-      expect(apiSaveInsight).toHaveBeenCalledWith('i1', { props: { type: 'bar' } });
-      expect(apiSaveChart).toHaveBeenCalledWith('c1', { insights: ['ref(i1)'] });
-      expect(apiDeleteModel).toHaveBeenCalledWith('m2');
-      expect(apiDeleteChart).toHaveBeenCalledWith('c2');
-
-      expect(useStore.getState().explorerOriginalSnapshots).toEqual({});
-      expect(useStore.getState().explorerCreatedObjects).toEqual([]);
-    });
-
-    it('rollbackExplorerChanges handles API errors gracefully', async () => {
-      apiSaveModel.mockRejectedValue(new Error('fail'));
-      apiDeleteInsight.mockRejectedValue(new Error('fail'));
-
-      useStore.setState({
-        explorerOriginalSnapshots: { 'model:m1': { sql: 'old' } },
-        explorerCreatedObjects: ['insight:i1'],
-      });
-
-      await useStore.getState().rollbackExplorerChanges();
-
-      expect(useStore.getState().explorerOriginalSnapshots).toEqual({});
-      expect(useStore.getState().explorerCreatedObjects).toEqual([]);
-    });
-
-    it('rollbackExplorerChanges does nothing with empty state', async () => {
-      useStore.setState({
-        explorerOriginalSnapshots: {},
-        explorerCreatedObjects: [],
-      });
-
-      await useStore.getState().rollbackExplorerChanges();
-
-      expect(apiSaveModel).not.toHaveBeenCalled();
-      expect(apiDeleteModel).not.toHaveBeenCalled();
-    });
-
-    it('reapplyExplorerChanges re-saves model and insight to cache', async () => {
-      apiSaveModel.mockResolvedValue({ success: true });
-      apiSaveInsight.mockResolvedValue({ success: true });
-
-      useStore.setState({
-        explorerActiveModelName: 'sales_model',
-        explorerSql: 'SELECT * FROM sales',
-        explorerSourceName: 'pg',
-        explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      });
-
-      await useStore.getState().reapplyExplorerChanges();
-
-      expect(apiSaveModel).toHaveBeenCalledWith('sales_model', {
-        name: 'sales_model',
-        sql: 'SELECT * FROM sales',
-        source: 'ref(pg)',
-      });
-      expect(apiSaveInsight).toHaveBeenCalledWith('sales_model_preview_insight', expect.objectContaining({
-        name: 'sales_model_preview_insight',
-      }));
-    });
-
-    it('reapplyExplorerChanges skips when no active model', async () => {
-      useStore.setState({
-        explorerActiveModelName: null,
-        explorerSql: 'SELECT 1',
-        explorerSourceName: 'pg',
-      });
-
-      await useStore.getState().reapplyExplorerChanges();
-
-      expect(apiSaveModel).not.toHaveBeenCalled();
-      expect(apiSaveInsight).not.toHaveBeenCalled();
-    });
-
-    it('reapplyExplorerChanges skips insight when no type set', async () => {
-      apiSaveModel.mockResolvedValue({ success: true });
-
-      useStore.setState({
-        explorerActiveModelName: 'my_model',
-        explorerSql: 'SELECT 1',
-        explorerSourceName: 'pg',
-        explorerInsightConfig: { name: '', props: {} },
-      });
-
-      await useStore.getState().reapplyExplorerChanges();
-
-      expect(apiSaveModel).toHaveBeenCalled();
-      expect(apiSaveInsight).not.toHaveBeenCalled();
-    });
-  });
 
   describe('save modal', () => {
     it('setExplorerSaveModalOpen toggles modal state', () => {
@@ -1188,8 +963,6 @@ describe('explorerNewStore', () => {
         },
         explorerChartLayout: { title: { text: 'My Chart' } },
         explorerActiveModelName: 'active_model',
-        explorerOriginalSnapshots: { 'model:old': { sql: 'old' } },
-        explorerCreatedObjects: ['insight:tmp'],
         projectFilePath: '/project/visivo.yml',
       });
 
@@ -1205,7 +978,7 @@ describe('explorerNewStore', () => {
       expect(apiSaveModel).toHaveBeenCalledWith('users_model', expect.objectContaining({
         name: 'users_model',
         sql: 'SELECT * FROM users',
-        source: 'ref(pg)',
+        source: '${ref(pg)}',
       }));
       expect(apiSaveInsight).toHaveBeenCalledWith('users_scatter', expect.objectContaining({
         name: 'users_scatter',
@@ -1217,7 +990,7 @@ describe('explorerNewStore', () => {
       }));
       expect(apiSaveChart).toHaveBeenCalledWith('users_chart', expect.objectContaining({
         name: 'users_chart',
-        insights: ['ref(users_scatter)'],
+        insights: ['${ref(users_scatter)}'],
         layout: { title: { text: 'My Chart' } },
       }));
 
@@ -1233,9 +1006,6 @@ describe('explorerNewStore', () => {
       expect(nc['users_chart'].status).toBe('New');
       expect(nc['users_chart'].type).toBe('chart');
 
-      // Verify rollback tracking cleared
-      expect(useStore.getState().explorerOriginalSnapshots).toEqual({});
-      expect(useStore.getState().explorerCreatedObjects).toEqual([]);
       expect(useStore.getState().explorerSaveModalOpen).toBe(false);
     });
 
