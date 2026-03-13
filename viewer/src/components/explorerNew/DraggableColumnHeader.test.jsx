@@ -62,4 +62,51 @@ describe('DraggableColumnHeader', () => {
     expect(wrapper.className).not.toContain('border-t-cyan');
     expect(wrapper.className).not.toContain('border-t-teal');
   });
+
+  it('applies error styling for failed computed columns', () => {
+    const failedColumn = {
+      name: 'formatted_date',
+      normalizedType: 'string',
+      computedType: 'dimension',
+      computedError: 'Type mismatch error',
+    };
+    render(<DraggableColumnHeader column={failedColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-formatted_date');
+    expect(wrapper.className).toContain('border-t-red-500');
+    expect(wrapper.className).toContain('bg-red-50/50');
+  });
+
+  it('error styling takes precedence over computed type styling', () => {
+    const errorMetric = {
+      name: 'bad_metric',
+      normalizedType: 'number',
+      computedType: 'metric',
+      computedError: 'Computation failed',
+    };
+    render(<DraggableColumnHeader column={errorMetric} />);
+
+    const wrapper = screen.getByTestId('draggable-col-bad_metric');
+    expect(wrapper.className).toContain('border-t-red-500');
+    expect(wrapper.className).not.toContain('border-t-cyan-500');
+  });
+
+  it('shows error tooltip via title attribute', () => {
+    const failedColumn = {
+      name: 'broken_col',
+      normalizedType: 'number',
+      computedError: 'Cannot cast VARCHAR to INTEGER',
+    };
+    render(<DraggableColumnHeader column={failedColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-broken_col');
+    expect(wrapper).toHaveAttribute('title', 'Cannot cast VARCHAR to INTEGER');
+  });
+
+  it('does not set title when no error', () => {
+    render(<DraggableColumnHeader column={mockColumn} />);
+
+    const wrapper = screen.getByTestId('draggable-col-order_id');
+    expect(wrapper).not.toHaveAttribute('title');
+  });
 });

@@ -25,6 +25,7 @@ const useExplorerDuckDB = () => {
   const setDuckDBLoading = useStore((s) => s.setExplorerDuckDBLoading);
   const setDuckDBError = useStore((s) => s.setExplorerDuckDBError);
   const setEnrichedResult = useStore((s) => s.setExplorerEnrichedResult);
+  const setFailedComputedColumns = useStore((s) => s.setExplorerFailedComputedColumns);
 
   const loadingRef = useRef(false);
   const tableCounterRef = useRef(0);
@@ -93,6 +94,7 @@ const useExplorerDuckDB = () => {
     const computeEnriched = async () => {
       setDuckDBLoading(true);
       setDuckDBError(null);
+      setFailedComputedColumns({});
 
       try {
         // Translate expressions to DuckDB dialect
@@ -135,7 +137,7 @@ const useExplorerDuckDB = () => {
         let computedSelectParts = translatedColumns.map(buildSelectPart);
         let sql = `SELECT *, ${computedSelectParts.join(', ')} FROM "${duckDBTableName}"`;
         let result;
-        const failedColumns = [];
+        const failedColumnsMap = {};
 
         try {
           result = await runDuckDBQuery(db, sql);
@@ -147,8 +149,8 @@ const useExplorerDuckDB = () => {
             try {
               await runDuckDBQuery(db, testSql);
               workingParts.push(buildSelectPart(col));
-            } catch {
-              failedColumns.push(col.name);
+            } catch (colErr) {
+              failedColumnsMap[col.name] = colErr.message || String(colErr);
               workingParts.push(`NULL AS "${col.name}"`);
             }
           }
@@ -156,8 +158,9 @@ const useExplorerDuckDB = () => {
           result = await runDuckDBQuery(db, sql);
         }
 
-        if (failedColumns.length > 0) {
-          setDuckDBError(`Could not compute: ${failedColumns.join(', ')}`);
+        const failedNames = Object.keys(failedColumnsMap);
+        if (failedNames.length > 0) {
+          setFailedComputedColumns(failedColumnsMap);
         }
         // Extract rows via column vectors — avoids toJSON() which
         // corrupts HUGEINT/Decimal values with extra JSON quoting
@@ -187,6 +190,7 @@ const useExplorerDuckDB = () => {
           rows,
           row_count: rows.length,
           computedColumnNames: translatedColumns.map((c) => c.name),
+          failedColumns: Object.keys(failedColumnsMap),
         });
       } catch (err) {
         setDuckDBError(err.message || String(err));
@@ -197,7 +201,7 @@ const useExplorerDuckDB = () => {
     };
 
     computeEnriched();
-  }, [db, duckDBTableName, computedColumns, setEnrichedResult, setDuckDBLoading, setDuckDBError]);
+  }, [db, duckDBTableName, computedColumns, setEnrichedResult, setDuckDBLoading, setDuckDBError, setFailedComputedColumns]);
 
   // Helper: add a computed column from a metric/dimension definition
   const addComputedFromDefinition = useCallback(

@@ -38,7 +38,9 @@ const CenterPanel = () => {
   const duckDBError = useStore((s) => s.explorerDuckDBError);
   const removeComputedColumn = useStore((s) => s.removeExplorerComputedColumn);
   const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
+  const updateComputedColumn = useStore((s) => s.updateExplorerComputedColumn);
   const validateExpression = useStore((s) => s.validateExplorerExpression);
+  const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
 
   // Initialize DuckDB integration for computed columns
   useExplorerDuckDB();
@@ -100,6 +102,8 @@ const CenterPanel = () => {
 
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
+  const [editingColumn, setEditingColumn] = useState(null);
+  const [editAnchorEl, setEditAnchorEl] = useState(null);
 
   useEffect(() => {
     setResultsPage(0);
@@ -151,8 +155,9 @@ const CenterPanel = () => {
       ...col,
       isComputed: computedColumnNames.has(col.name),
       computedType: computedColumnMap[col.name] || null,
+      computedError: failedComputedColumns?.[col.name] || null,
     }));
-  }, [displayResult, computedColumnNames, computedColumnMap]);
+  }, [displayResult, computedColumnNames, computedColumnMap, failedComputedColumns]);
 
   const tableRows = displayResult?.rows || [];
   const totalRowCount = displayResult?.row_count || tableRows.length;
@@ -324,29 +329,41 @@ const CenterPanel = () => {
                       Computing...
                     </span>
                   )}
-                  {duckDBError && (
+                  {duckDBError && !Object.keys(failedComputedColumns || {}).length && (
                     <span className="text-xs text-highlight" data-testid="duckdb-error" title={duckDBError}>
-                      Compute error
+                      DuckDB error
                     </span>
                   )}
                   <div className="flex items-center gap-1 ml-auto" data-testid="computed-columns-area">
                     {computedColumns.map((col) => {
                       const isMetric = col.type === 'metric';
                       const Icon = isMetric ? PiChartBar : PiFunction;
+                      const isFailed = !!failedComputedColumns?.[col.name];
                       return (
                         <span
                           key={col.name}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${
-                            isMetric
-                              ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
-                              : 'bg-teal-50 text-teal-800 border-teal-200'
+                          data-testid={`computed-pill-${col.name}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border cursor-pointer ${
+                            isFailed
+                              ? 'bg-red-50 text-red-800 border-red-200'
+                              : isMetric
+                                ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                                : 'bg-teal-50 text-teal-800 border-teal-200'
                           }`}
+                          title={isFailed ? failedComputedColumns[col.name] : `Click to edit ${col.name}`}
+                          onClick={(e) => {
+                            setEditingColumn(col);
+                            setEditAnchorEl(e.currentTarget);
+                          }}
                         >
                           <Icon size={12} className="flex-shrink-0" />
                           {col.name}
                           <button
                             type="button"
-                            onClick={() => removeComputedColumn(col.name)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeComputedColumn(col.name);
+                            }}
                             className="hover:opacity-70 ml-0.5"
                             title={`Remove ${col.name}`}
                             data-testid={`remove-computed-${col.name}`}
@@ -358,8 +375,20 @@ const CenterPanel = () => {
                     })}
                     <AddComputedColumnPopover
                       onAdd={addComputedColumn}
+                      onUpdate={(updated) => {
+                        updateComputedColumn(updated.name, {
+                          expression: updated.expression,
+                          type: updated.type,
+                        });
+                      }}
                       onValidate={handleValidateExpression}
                       existingNames={allColumnNames}
+                      editColumn={editingColumn}
+                      onEditClose={() => {
+                        setEditingColumn(null);
+                        setEditAnchorEl(null);
+                      }}
+                      anchorElement={editAnchorEl}
                     />
                   </div>
                 </div>

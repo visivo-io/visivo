@@ -7,13 +7,19 @@ const COMPUTED_STYLES = {
   dimension: 'border-t-2 border-t-teal-500 bg-teal-50/50',
 };
 
+const ERROR_STYLE = 'border-t-2 border-t-red-500 bg-red-50/50';
+
 const DraggableColumnHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `column-${column.name}`,
     data: { name: column.name, type: 'column', sourceType: 'data-table' },
   });
 
-  const computedStyle = column.computedType ? COMPUTED_STYLES[column.computedType] || '' : '';
+  const computedStyle = column.computedError
+    ? ERROR_STYLE
+    : column.computedType
+      ? COMPUTED_STYLES[column.computedType] || ''
+      : '';
 
   return (
     <div
@@ -22,6 +28,7 @@ const DraggableColumnHeader = ({ column, sorting, onSortChange, onInfoClick }) =
       {...attributes}
       className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''} ${computedStyle}`}
       data-testid={`draggable-col-${column.name}`}
+      title={column.computedError || undefined}
     >
       <DataTableHeader
         column={column}

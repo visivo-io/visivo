@@ -99,8 +99,27 @@ jest.mock('../../hooks/useExplorerDuckDB', () => ({
 
 // Mock AddComputedColumnPopover
 jest.mock('./AddComputedColumnPopover', () => {
-  return function MockAddComputedColumnPopover() {
-    return <button data-testid="add-computed-column-btn">+</button>;
+  return function MockAddComputedColumnPopover({ editColumn, onUpdate, onEditClose }) {
+    return (
+      <div data-testid="add-computed-column-btn">
+        +
+        {editColumn && (
+          <div data-testid="edit-popover">
+            <span data-testid="edit-column-name">{editColumn.name}</span>
+            <span data-testid="edit-column-expression">{editColumn.expression}</span>
+            <button
+              data-testid="save-edit-btn"
+              onClick={() => onUpdate?.({ name: editColumn.name, expression: 'NEW_EXPR', type: editColumn.type })}
+            >
+              Save
+            </button>
+            <button data-testid="close-edit-btn" onClick={onEditClose}>
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 });
 
@@ -154,6 +173,7 @@ describe('CenterPanel', () => {
       explorerEnrichedResult: null,
       explorerDuckDBLoading: false,
       explorerDuckDBError: null,
+      explorerFailedComputedColumns: {},
     });
   });
 
@@ -324,6 +344,95 @@ describe('CenterPanel', () => {
       fireEvent.click(screen.getByTestId('toggle-chart'));
 
       expect(screen.getByTestId('chart-section')).toBeInTheDocument();
+    });
+  });
+
+  describe('computed column errors and editing', () => {
+    beforeEach(() => {
+      useStore.setState({
+        explorerQueryResult: {
+          columns: ['id', 'value'],
+          rows: [{ id: 1, value: 10 }],
+          row_count: 1,
+        },
+        explorerComputedColumns: [
+          { name: 'total', expression: 'SUM(value)', type: 'metric' },
+          { name: 'bad_col', expression: 'INVALID()', type: 'dimension' },
+        ],
+        explorerFailedComputedColumns: {
+          bad_col: 'Function INVALID does not exist',
+        },
+      });
+    });
+
+    it('shows error styling on failed computed column pill', () => {
+      render(<CenterPanel />);
+
+      const failedPill = screen.getByTestId('computed-pill-bad_col');
+      expect(failedPill).toBeInTheDocument();
+      expect(failedPill.className).toContain('bg-red-50');
+      expect(failedPill.className).toContain('border-red-200');
+    });
+
+    it('shows normal styling on successful computed column pill', () => {
+      render(<CenterPanel />);
+
+      const goodPill = screen.getByTestId('computed-pill-total');
+      expect(goodPill).toBeInTheDocument();
+      expect(goodPill.className).toContain('bg-cyan-50');
+    });
+
+    it('clicking a computed column pill opens edit popover', () => {
+      render(<CenterPanel />);
+
+      const pill = screen.getByTestId('computed-pill-total');
+      fireEvent.click(pill);
+
+      expect(screen.getByTestId('edit-popover')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-column-name')).toHaveTextContent('total');
+      expect(screen.getByTestId('edit-column-expression')).toHaveTextContent('SUM(value)');
+    });
+
+    it('closing edit popover clears editing state', () => {
+      render(<CenterPanel />);
+
+      const pill = screen.getByTestId('computed-pill-total');
+      fireEvent.click(pill);
+
+      expect(screen.getByTestId('edit-popover')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('close-edit-btn'));
+
+      expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
+    });
+
+    it('does not show global DuckDB error when per-column errors exist', () => {
+      useStore.setState({ explorerDuckDBError: 'Could not compute: bad_col' });
+
+      render(<CenterPanel />);
+
+      expect(screen.queryByTestId('duckdb-error')).not.toBeInTheDocument();
+    });
+
+    it('shows global DuckDB error when no per-column errors', () => {
+      useStore.setState({
+        explorerDuckDBError: 'Table load failed',
+        explorerFailedComputedColumns: {},
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.getByTestId('duckdb-error')).toBeInTheDocument();
+    });
+
+    it('remove button stops propagation and does not open edit', () => {
+      render(<CenterPanel />);
+
+      fireEvent.click(screen.getByTestId('remove-computed-total'));
+
+      expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
+      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
+      expect(useStore.getState().explorerComputedColumns[0].name).toBe('bad_col');
     });
   });
 });
