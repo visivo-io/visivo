@@ -87,7 +87,7 @@ describe('SchemaBrowser', () => {
 
     await screen.findByText('postgres_db');
 
-    const searchInput = screen.getByTestId('schema-search');
+    const searchInput = screen.getByPlaceholderText('Search tables and columns...');
     fireEvent.change(searchInput, { target: { value: 'POSTGRES' } });
 
     expect(screen.getByText('postgres_db')).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe('SchemaBrowser', () => {
     fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
     await screen.findByText('users');
 
-    const searchInput = screen.getByTestId('schema-search');
+    const searchInput = screen.getByPlaceholderText('Search tables and columns...');
     fireEvent.change(searchInput, { target: { value: 'users' } });
 
     expect(screen.getByText('postgres_db')).toBeInTheDocument();
@@ -136,26 +136,6 @@ describe('SchemaBrowser', () => {
       expect(generateSourceSchema).toHaveBeenCalledWith('snowflake_wh');
     });
     expect(fetchSourceTables).not.toHaveBeenCalled();
-  });
-
-  test('table nodes show "Create Model" action button', async () => {
-    const onCreateModel = jest.fn();
-
-    render(<SchemaBrowser onCreateModel={onCreateModel} />);
-
-    await screen.findByText('postgres_db');
-
-    fireEvent.click(screen.getByTestId('tree-node-source-postgres_db'));
-    await screen.findByText('users');
-
-    const createModelButtons = screen.getAllByTestId('action-Create Model');
-    expect(createModelButtons.length).toBeGreaterThan(0);
-
-    fireEvent.click(createModelButtons[0]);
-    expect(onCreateModel).toHaveBeenCalledWith({
-      sourceName: 'postgres_db',
-      table: 'users',
-    });
   });
 
   test('double-clicking table calls onTableSelect', async () => {

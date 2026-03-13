@@ -3,7 +3,6 @@ import json
 from time import time
 from typing import Optional
 from sqlglot import exp
-import polars as pl
 
 from visivo.jobs.job import (
     Job,
@@ -11,6 +10,7 @@ from visivo.jobs.job import (
     format_message_failure,
     format_message_success,
 )
+from visivo.jobs.run_model_data_job import write_query_to_parquet
 from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
@@ -201,22 +201,19 @@ def model_query_and_schema_action(
         JobResult indicating success or failure
     """
     source = get_source_for_model(sql_model, dag, output_dir)
-
-    # Organize files by run_id
-    run_output_dir = f"{output_dir}/{run_id}"
-    files_directory = f"{run_output_dir}/files"
     start_time = time()
 
     try:
         # Build and write schema
         _build_and_write_schema(sql_model, source, output_dir, run_id, schema_cache)
 
-        # Execute query and write parquet
-        data = source.read_sql(sql_model.sql)
-        df = pl.DataFrame(data)
-        os.makedirs(files_directory, exist_ok=True)
-        parquet_path = f"{files_directory}/{sql_model.name_hash()}.parquet"
-        df.write_parquet(parquet_path)
+        parquet_path = write_query_to_parquet(
+            source=source,
+            sql=sql_model.sql,
+            output_dir=output_dir,
+            name_hash=sql_model.name_hash(),
+            run_id=run_id,
+        )
 
         success_message = format_message_success(
             details=f"Updated data & wrote schema for model \033[4m{sql_model.name}\033[0m",

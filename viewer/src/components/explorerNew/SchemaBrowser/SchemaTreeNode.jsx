@@ -21,8 +21,8 @@ const SchemaTreeNode = ({
   return (
     <div>
       <div
-        className="group flex items-center cursor-pointer hover:bg-secondary-50 transition-colors duration-150"
-        style={{ paddingLeft: level * 16 + 8 }}
+        className="group flex items-center cursor-pointer py-2 hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
+        style={{ paddingLeft: level * 16 + 8, paddingRight: 8 }}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
         role="treeitem"
@@ -34,7 +34,7 @@ const SchemaTreeNode = ({
         <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 mr-1">
           {isLoading ? (
             <PiSpinner
-              className="animate-spin text-secondary-400"
+              className="animate-spin text-gray-400"
               size={14}
               data-testid="loading-spinner"
             />
@@ -47,21 +47,21 @@ const SchemaTreeNode = ({
             />
           ) : isExpandable ? (
             isExpanded ? (
-              <PiCaretDown size={14} className="text-secondary-400" />
+              <PiCaretDown size={14} className="text-gray-400" />
             ) : (
-              <PiCaretRight size={14} className="text-secondary-400" />
+              <PiCaretRight size={14} className="text-gray-400" />
             )
           ) : null}
         </span>
 
-        {icon && <span className="flex-shrink-0 mr-1.5 text-secondary-500">{icon}</span>}
+        {icon && <span className="flex-shrink-0 mr-1.5 text-gray-500">{icon}</span>}
 
         {statusIcon && <span className="flex-shrink-0 mr-1.5">{statusIcon}</span>}
 
-        <span className="text-sm text-secondary-700 truncate py-1">{label}</span>
+        <span className="text-sm text-gray-700 truncate">{label}</span>
 
         {badge && (
-          <span className="text-xs bg-secondary-100 text-secondary-600 rounded px-1 ml-2 flex-shrink-0">
+          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 ml-2 flex-shrink-0">
             {badge}
           </span>
         )}
@@ -84,6 +84,16 @@ const SchemaTreeNode = ({
           </span>
         )}
       </div>
+
+      {errorMessage && (
+        <div
+          className="text-xs text-highlight-600 px-2 py-1.5 bg-highlight-50 border-b border-highlight-100"
+          style={{ paddingLeft: level * 16 + 28 }}
+          data-testid="error-message"
+        >
+          {errorMessage}
+        </div>
+      )}
 
       {isExpanded && children}
     </div>

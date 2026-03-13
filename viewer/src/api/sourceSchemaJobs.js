@@ -1,6 +1,36 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
 
 /**
+ * Wrapper around fetch that provides meaningful error messages for network failures.
+ * When fetch() itself throws (e.g. server crashed, connection refused), the browser
+ * gives a generic "Failed to fetch" TypeError. This wraps it with context.
+ */
+const fetchWithContext = async (url, options, context) => {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    throw new Error(`${context}: server unreachable at ${url} (${err.message})`);
+  }
+};
+
+/**
+ * Parse error response body, handling both JSON {"message": "..."} and plain text.
+ */
+const parseErrorResponse = async response => {
+  try {
+    const text = await response.text();
+    try {
+      const json = JSON.parse(text);
+      return json.message || text;
+    } catch {
+      return text;
+    }
+  } catch {
+    return response.statusText;
+  }
+};
+
+/**
  * Fetch list of all sources with cached schema availability
  * @returns {Promise<Object[]>} Array of source objects with schema metadata
  */
@@ -11,13 +41,11 @@ export const fetchSourceSchemaJobs = async () => {
   }
 
   const url = getUrl('sourceSchemaJobsList');
-  const response = await fetch(url);
+  const response = await fetchWithContext(url, undefined, 'Loading sources');
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to fetch source schema jobs: ${response.status} ${response.statusText}. ${errorText}`
-    );
+    const errorDetail = await parseErrorResponse(response);
+    throw new Error(`Loading sources failed (${response.status}): ${errorDetail}`);
   }
 
   return response.json();
@@ -39,16 +67,16 @@ export const fetchSourceSchema = async (sourceName, runId = null) => {
   if (runId) {
     url += `?run_id=${encodeURIComponent(runId)}`;
   }
-  const response = await fetch(url);
+  const response = await fetchWithContext(url, undefined, `Loading schema for '${sourceName}'`);
 
   if (response.status === 404) {
     return null;
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorDetail = await parseErrorResponse(response);
     throw new Error(
-      `Failed to fetch source schema: ${response.status} ${response.statusText}. ${errorText}`
+      `Loading schema for '${sourceName}' failed (${response.status}): ${errorDetail}`
     );
   }
 
@@ -66,21 +94,25 @@ export const generateSourceSchema = async sourceName => {
   }
 
   const url = getUrl('sourceSchemaJobCreate');
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await fetchWithContext(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        config: { source_name: sourceName },
+        run: true,
+      }),
     },
-    body: JSON.stringify({
-      config: { source_name: sourceName },
-      run: true,
-    }),
-  });
+    `Generating schema for '${sourceName}'`
+  );
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorDetail = await parseErrorResponse(response);
     throw new Error(
-      `Failed to generate source schema: ${response.status} ${response.statusText}. ${errorText}`
+      `Generating schema for '${sourceName}' failed (${response.status}): ${errorDetail}`
     );
   }
 
@@ -98,13 +130,11 @@ export const fetchSchemaGenerationStatus = async jobId => {
   }
 
   const url = getUrl('sourceSchemaJobStatus', { jobId });
-  const response = await fetch(url);
+  const response = await fetchWithContext(url, undefined, 'Checking schema generation status');
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Failed to fetch schema generation status: ${response.status} ${response.statusText}. ${errorText}`
-    );
+    const errorDetail = await parseErrorResponse(response);
+    throw new Error(`Schema generation status check failed (${response.status}): ${errorDetail}`);
   }
 
   return response.json();
@@ -197,16 +227,20 @@ export const fetchSourceTables = async (sourceName, { search = '', runId = null 
     url += `?${params.toString()}`;
   }
 
-  const response = await fetch(url);
+  const response = await fetchWithContext(
+    url,
+    undefined,
+    `Loading tables for '${sourceName}'`
+  );
 
   if (response.status === 404) {
     return [];
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorDetail = await parseErrorResponse(response);
     throw new Error(
-      `Failed to fetch source tables: ${response.status} ${response.statusText}. ${errorText}`
+      `Loading tables for '${sourceName}' failed (${response.status}): ${errorDetail}`
     );
   }
 
@@ -240,16 +274,20 @@ export const fetchTableColumns = async (sourceName, tableName, { search = '', ru
     url += `?${params.toString()}`;
   }
 
-  const response = await fetch(url);
+  const response = await fetchWithContext(
+    url,
+    undefined,
+    `Loading columns for '${sourceName}.${tableName}'`
+  );
 
   if (response.status === 404) {
     return [];
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorDetail = await parseErrorResponse(response);
     throw new Error(
-      `Failed to fetch table columns: ${response.status} ${response.statusText}. ${errorText}`
+      `Loading columns for '${sourceName}.${tableName}' failed (${response.status}): ${errorDetail}`
     );
   }
 

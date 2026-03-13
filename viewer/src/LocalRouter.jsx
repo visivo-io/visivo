@@ -14,7 +14,7 @@ import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
 import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
-import SchemaBrowser from './components/explorerNew/SchemaBrowser/SchemaBrowser';
+import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // Set global URL config early for router loaders
@@ -97,11 +97,11 @@ const LocalRouter = createBrowserRouter(
           }}
         />
         <Route
-          id="table-new"
-          path="/table-new"
-          element={<SchemaBrowser />}
+          id="explorer-new"
+          path="/explorer-new"
+          element={<ExplorerNewPage />}
           handle={{
-            crumb: () => <BreadcrumbLink to="/table-new">Table (New)</BreadcrumbLink>,
+            crumb: () => <BreadcrumbLink to="/explorer-new">Explorer (New)</BreadcrumbLink>,
           }}
         />
         <Route
