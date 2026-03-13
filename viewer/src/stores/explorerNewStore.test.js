@@ -168,6 +168,54 @@ describe('explorerNewStore', () => {
       expect(useStore.getState().explorerSourceName).toBe('postgres_db');
     });
 
+    it('matches source name via suffix when exact match fails', () => {
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'local-sqlite' },
+          { source_name: 'local-duckdb' },
+        ],
+      });
+
+      useStore.getState().handleExplorerModelUse({
+        name: 'test',
+        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
+      });
+
+      expect(useStore.getState().explorerSourceName).toBe('local-duckdb');
+    });
+
+    it('matches source name via contains when suffix match fails', () => {
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'my-pg-prod' },
+          { source_name: 'staging-duckdb-v2' },
+        ],
+      });
+
+      useStore.getState().handleExplorerModelUse({
+        name: 'test',
+        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
+      });
+
+      expect(useStore.getState().explorerSourceName).toBe('staging-duckdb-v2');
+    });
+
+    it('prefers exact match over suffix match', () => {
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'duckdb' },
+          { source_name: 'local-duckdb' },
+        ],
+      });
+
+      useStore.getState().handleExplorerModelUse({
+        name: 'test',
+        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
+      });
+
+      expect(useStore.getState().explorerSourceName).toBe('duckdb');
+    });
+
     it('keeps existing source if model has no source', () => {
       useStore.setState({ explorerSourceName: 'existing_source' });
       useStore
@@ -1034,7 +1082,7 @@ describe('explorerNewStore', () => {
       expect(result.success).toBe(false);
     });
 
-    it('uses provided filePath', async () => {
+    it('saves computed columns as model metrics and dimensions', async () => {
       apiSaveModel.mockResolvedValue({ success: true });
       apiSaveInsight.mockResolvedValue({ success: true });
       apiSaveChart.mockResolvedValue({ success: true });
@@ -1045,19 +1093,26 @@ describe('explorerNewStore', () => {
         explorerInsightConfig: { name: '', props: { type: 'scatter' } },
         explorerChartLayout: {},
         projectFilePath: '/project/visivo.yml',
+        explorerComputedColumns: [
+          { name: 'sum_value', expression: 'SUM(value)', type: 'metric' },
+          { name: 'month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
+        ],
       });
 
       await useStore.getState().saveExplorerToProject({
         modelName: 'model',
         insightName: 'insight',
         chartName: 'chart',
-        filePath: '/project/custom.yml',
+        computedNames: { sum_value: 'total_value', month: 'month' },
       });
 
-      const nc = useStore.getState().namedChildren;
-      expect(nc['model'].file_path).toBe('/project/custom.yml');
-      expect(nc['insight'].file_path).toBe('/project/custom.yml');
-      expect(nc['chart'].file_path).toBe('/project/custom.yml');
+      const modelCall = apiSaveModel.mock.calls[0];
+      expect(modelCall[1].metrics).toEqual([
+        { name: 'total_value', expression: 'SUM(value)' },
+      ]);
+      expect(modelCall[1].dimensions).toEqual([
+        { name: 'month', expression: "DATE_TRUNC('month', date)" },
+      ]);
     });
 
     it('handles API failure gracefully', async () => {

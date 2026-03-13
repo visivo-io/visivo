@@ -179,22 +179,12 @@ describe('SQLEditor', () => {
     expect(mockCancel).toHaveBeenCalled();
   });
 
-  it('shows progress message when running', () => {
+  it('shows elapsed timer when running', () => {
     mockQueryJobState.isRunning = true;
-    mockQueryJobState.progressMessage = 'Executing query...';
 
     render(<SQLEditor sourceName="test_source" />);
 
-    expect(screen.getByText('Executing query...')).toBeInTheDocument();
-  });
-
-  it('shows progress percentage when available', () => {
-    mockQueryJobState.isRunning = true;
-    mockQueryJobState.progress = 0.5;
-
-    render(<SQLEditor sourceName="test_source" />);
-
-    expect(screen.getByText(/50%/)).toBeInTheDocument();
+    expect(screen.getByText(/Running\.\.\. 0\.0s/)).toBeInTheDocument();
   });
 
   it('displays error with dismiss button', () => {

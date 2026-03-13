@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
-import { PiCaretUp, PiCaretDown, PiCube, PiCode, PiChartBar, PiX } from 'react-icons/pi';
+import { PiCaretUp, PiCaretDown, PiCode, PiChartBar, PiX, PiFunction } from 'react-icons/pi';
 import SQLEditor from './SQLEditor';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
@@ -185,43 +185,43 @@ const CenterPanel = () => {
   const topFlex = topBottomRatio;
   const bottomFlex = 1 - topBottomRatio;
 
+  const sourceSelector = (
+    <div className="relative" data-testid="source-selector-wrapper">
+      <select
+        value={sourceName || ''}
+        onChange={(e) => setSourceName(e.target.value || null)}
+        className="appearance-none pl-2 pr-5 py-0.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+        data-testid="source-selector"
+      >
+        <option value="">Select source</option>
+        {explorerSources.map((s) => (
+          <option key={s.source_name} value={s.source_name}>
+            {s.source_name}
+          </option>
+        ))}
+      </select>
+      <PiCaretDown
+        className="absolute right-1 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
+        size={10}
+      />
+    </div>
+  );
+
+  const editorToggleButton = (
+    <button
+      type="button"
+      onClick={toggleEditorCollapsed}
+      className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors"
+      title={isEditorCollapsed ? 'Expand editor' : 'Collapse editor'}
+      data-testid="toggle-editor"
+    >
+      {isEditorCollapsed ? <PiCaretDown size={14} /> : <PiCaretUp size={14} />}
+    </button>
+  );
+
   const renderEditorSection = () => (
     <div className="flex flex-col h-full overflow-hidden" data-testid="editor-section">
-      {/* SQL Editor header with source selector */}
-      <div className="flex items-center justify-between px-3 py-1 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
-        <span className="text-xs font-medium text-secondary-600">SQL Editor</span>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={sourceName || ''}
-              onChange={(e) => setSourceName(e.target.value || null)}
-              className="appearance-none pl-2 pr-5 py-0.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-              data-testid="source-selector"
-            >
-              <option value="">Select source</option>
-              {explorerSources.map((s) => (
-                <option key={s.source_name} value={s.source_name}>
-                  {s.source_name}
-                </option>
-              ))}
-            </select>
-            <PiCaretDown
-              className="absolute right-1 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
-              size={10}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={toggleEditorCollapsed}
-            className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors"
-            title={isEditorCollapsed ? 'Expand editor' : 'Collapse editor'}
-            data-testid="toggle-editor"
-          >
-            {isEditorCollapsed ? <PiCaretDown size={14} /> : <PiCaretUp size={14} />}
-          </button>
-        </div>
-      </div>
-      {!isEditorCollapsed && (
+      {!isEditorCollapsed ? (
         <div className="flex-1 min-h-0">
           <SQLEditor
             sourceName={sourceName}
@@ -230,7 +230,14 @@ const CenterPanel = () => {
             height="100%"
             hideResults
             onQueryComplete={handleQueryComplete}
+            toolbarExtra={sourceSelector}
+            toolbarRight={editorToggleButton}
           />
+        </div>
+      ) : (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
+          {sourceSelector}
+          {editorToggleButton}
         </div>
       )}
     </div>
@@ -248,22 +255,6 @@ const CenterPanel = () => {
       data-testid="center-panel"
       ref={containerRef}
     >
-      {/* Model context banner */}
-      {activeModelName && (
-        <div
-          className="flex items-center gap-2 px-3 py-2.5 bg-primary-100 border-b-2 border-primary text-sm flex-shrink-0"
-          data-testid="model-context-banner"
-        >
-          <PiCube size={16} className="text-primary flex-shrink-0" />
-          <span className="text-secondary-800 font-medium">
-            Model: <strong>{activeModelName}</strong>
-          </span>
-          <span className="text-secondary-500 text-xs">
-            (ad-hoc copy &mdash; changes won&apos;t affect saved model)
-          </span>
-        </div>
-      )}
-
       {/* Top row: Editor + Chart */}
       <div style={{ flex: topFlex }} className="overflow-hidden min-h-0" ref={topRowRef}>
         {isWide ? (
@@ -347,27 +338,32 @@ const CenterPanel = () => {
                     </span>
                   )}
                   <div className="flex items-center gap-1 ml-auto" data-testid="computed-columns-area">
-                    {computedColumns.map((col) => (
-                      <span
-                        key={col.name}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          col.type === 'metric'
-                            ? 'bg-cyan-100 text-cyan-800'
-                            : 'bg-teal-100 text-teal-800'
-                        }`}
-                      >
-                        {col.name}
-                        <button
-                          type="button"
-                          onClick={() => removeComputedColumn(col.name)}
-                          className="hover:opacity-70"
-                          title={`Remove ${col.name}`}
-                          data-testid={`remove-computed-${col.name}`}
+                    {computedColumns.map((col) => {
+                      const isMetric = col.type === 'metric';
+                      const Icon = isMetric ? PiChartBar : PiFunction;
+                      return (
+                        <span
+                          key={col.name}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${
+                            isMetric
+                              ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                              : 'bg-teal-50 text-teal-800 border-teal-200'
+                          }`}
                         >
-                          <PiX size={10} />
-                        </button>
-                      </span>
-                    ))}
+                          <Icon size={12} className="flex-shrink-0" />
+                          {col.name}
+                          <button
+                            type="button"
+                            onClick={() => removeComputedColumn(col.name)}
+                            className="hover:opacity-70 ml-0.5"
+                            title={`Remove ${col.name}`}
+                            data-testid={`remove-computed-${col.name}`}
+                          >
+                            <PiX size={10} />
+                          </button>
+                        </span>
+                      );
+                    })}
                     <AddComputedColumnPopover
                       onAdd={addComputedColumn}
                       onValidate={handleValidateExpression}

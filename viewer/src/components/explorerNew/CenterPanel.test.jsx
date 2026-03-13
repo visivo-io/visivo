@@ -6,12 +6,14 @@ import useStore from '../../stores/store';
 
 // Mock SQLEditor
 jest.mock('./SQLEditor', () => {
-  return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults }) {
+  return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults, toolbarExtra, toolbarRight }) {
     return (
       <div data-testid="sql-editor">
         <span data-testid="editor-source">{sourceName || 'no-source'}</span>
         <span data-testid="editor-value">{initialValue}</span>
         <span data-testid="editor-hide-results">{String(hideResults)}</span>
+        {toolbarExtra}
+        {toolbarRight}
         <button
           data-testid="trigger-query-complete"
           onClick={() =>
@@ -275,31 +277,15 @@ describe('CenterPanel', () => {
     expect(screen.getByText('(truncated)')).toBeInTheDocument();
   });
 
-  describe('Model Context Banner', () => {
-    it('shows banner when model is active', () => {
+  describe('Model Context Banner (removed)', () => {
+    it('does not show banner even when model is active', () => {
       useStore.setState({
         explorerActiveModelName: 'my_model',
       });
 
-      render(<CenterPanel />);
-
-      expect(screen.getByTestId('model-context-banner')).toBeInTheDocument();
-    });
-
-    it('does not show banner when no model is active', () => {
       render(<CenterPanel />);
 
       expect(screen.queryByTestId('model-context-banner')).not.toBeInTheDocument();
-    });
-
-    it('banner shows model name', () => {
-      useStore.setState({
-        explorerActiveModelName: 'my_model',
-      });
-
-      render(<CenterPanel />);
-
-      expect(screen.getByTestId('model-context-banner')).toHaveTextContent('my_model');
     });
   });
 

@@ -14,10 +14,10 @@ describe('SaveToProjectModal', () => {
       explorerSaveModalOpen: false,
       setExplorerSaveModalOpen: mockSetOpen,
       saveExplorerToProject: mockSaveToProject,
-      projectFileObjects: [],
-      projectFilePath: '/project/visivo.yml',
       explorerSql: 'SELECT * FROM orders',
+      explorerSourceName: 'local-duckdb',
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      explorerComputedColumns: [],
     });
   });
 
@@ -90,7 +90,7 @@ describe('SaveToProjectModal', () => {
         modelName: 'my_model',
         insightName: 'my_insight',
         chartName: 'my_chart',
-        filePath: '/project/visivo.yml',
+        computedNames: {},
       });
     });
   });
@@ -103,7 +103,6 @@ describe('SaveToProjectModal', () => {
 
     render(<SaveToProjectModal />);
 
-    // Clear auto-suggested names
     fireEvent.change(screen.getByTestId('save-modal-model-name'), { target: { value: '' } });
     fireEvent.change(screen.getByTestId('save-modal-insight-name'), { target: { value: '' } });
     fireEvent.change(screen.getByTestId('save-modal-chart-name'), { target: { value: '' } });
@@ -124,56 +123,6 @@ describe('SaveToProjectModal', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('save-modal-error')).toHaveTextContent('Model name already exists');
-    });
-  });
-
-  it('shows file path selector when projectFileObjects exist', () => {
-    useStore.setState({
-      explorerSaveModalOpen: true,
-      projectFileObjects: [
-        { full_path: '/project/visivo.yml', relative_path: 'visivo.yml' },
-        { full_path: '/project/models.yml', relative_path: 'models.yml' },
-      ],
-    });
-
-    render(<SaveToProjectModal />);
-
-    expect(screen.getByTestId('save-modal-file-path')).toBeInTheDocument();
-  });
-
-  it('does not show file path selector when no projectFileObjects', () => {
-    useStore.setState({
-      explorerSaveModalOpen: true,
-      projectFileObjects: [],
-    });
-
-    render(<SaveToProjectModal />);
-
-    expect(screen.queryByTestId('save-modal-file-path')).not.toBeInTheDocument();
-  });
-
-  it('passes selected file path to save function', async () => {
-    useStore.setState({
-      explorerSaveModalOpen: true,
-      projectFileObjects: [
-        { full_path: '/project/models.yml', relative_path: 'models.yml' },
-      ],
-    });
-
-    render(<SaveToProjectModal />);
-
-    fireEvent.change(screen.getByTestId('save-modal-file-path'), {
-      target: { value: '/project/models.yml' },
-    });
-
-    fireEvent.click(screen.getByTestId('save-modal-confirm'));
-
-    await waitFor(() => {
-      expect(mockSaveToProject).toHaveBeenCalledWith(
-        expect.objectContaining({
-          filePath: '/project/models.yml',
-        })
-      );
     });
   });
 
@@ -206,5 +155,84 @@ describe('SaveToProjectModal', () => {
     render(<SaveToProjectModal />);
 
     expect(screen.getByTestId('save-modal-insight-name')).toHaveValue('orders_bar');
+  });
+
+  it('shows type-colored sections for model, insight, chart', () => {
+    useStore.setState({ explorerSaveModalOpen: true });
+
+    render(<SaveToProjectModal />);
+
+    expect(screen.getByTestId('save-section-model')).toBeInTheDocument();
+    expect(screen.getByTestId('save-section-insight')).toBeInTheDocument();
+    expect(screen.getByTestId('save-section-chart')).toBeInTheDocument();
+  });
+
+  it('shows computed metrics with editable names', () => {
+    useStore.setState({
+      explorerSaveModalOpen: true,
+      explorerComputedColumns: [
+        { name: 'sum_value', expression: 'SUM(value)', type: 'metric' },
+      ],
+    });
+
+    render(<SaveToProjectModal />);
+
+    expect(screen.getByTestId('save-section-metric')).toBeInTheDocument();
+    expect(screen.getByTestId('save-modal-metric-sum_value')).toHaveValue('sum_value');
+  });
+
+  it('shows computed dimensions with editable names', () => {
+    useStore.setState({
+      explorerSaveModalOpen: true,
+      explorerComputedColumns: [
+        { name: 'order_month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
+      ],
+    });
+
+    render(<SaveToProjectModal />);
+
+    expect(screen.getByTestId('save-section-dimension')).toBeInTheDocument();
+    expect(screen.getByTestId('save-modal-dimension-order_month')).toHaveValue('order_month');
+  });
+
+  it('passes computed names to save function', async () => {
+    useStore.setState({
+      explorerSaveModalOpen: true,
+      explorerComputedColumns: [
+        { name: 'sum_value', expression: 'SUM(value)', type: 'metric' },
+      ],
+    });
+
+    render(<SaveToProjectModal />);
+
+    fireEvent.change(screen.getByTestId('save-modal-metric-sum_value'), {
+      target: { value: 'total_value' },
+    });
+
+    fireEvent.click(screen.getByTestId('save-modal-confirm'));
+
+    await waitFor(() => {
+      expect(mockSaveToProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          computedNames: { sum_value: 'total_value' },
+        })
+      );
+    });
+  });
+
+  it('shows source name in model section', () => {
+    useStore.setState({ explorerSaveModalOpen: true });
+
+    render(<SaveToProjectModal />);
+
+    expect(screen.getByText('Source: local-duckdb')).toBeInTheDocument();
+  });
+
+  it('does not show metrics section when no computed metrics', () => {
+    useStore.setState({ explorerSaveModalOpen: true });
+
+    render(<SaveToProjectModal />);
+
+    expect(screen.queryByTestId('save-section-metric')).not.toBeInTheDocument();
   });
 });

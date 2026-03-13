@@ -18,6 +18,8 @@ const SQLEditor = ({
   resultsHeight = '400px',
   hideResults = false,
   onQueryComplete,
+  toolbarExtra,
+  toolbarRight,
 }) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
@@ -28,6 +30,7 @@ const SQLEditor = ({
 
   const [sql, setSql] = useState(initialValue);
   const [showError, setShowError] = useState(true);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   // Results pagination state
   const [resultsPage, setResultsPage] = useState(0);
@@ -62,6 +65,18 @@ const SQLEditor = ({
       onQueryComplete({ result: null, error });
     }
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Elapsed timer while query is running
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+    setElapsedMs(0);
+    const interval = setInterval(() => {
+      setElapsedMs((prev) => prev + 100);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   // Update SQL when initialValue changes
   useEffect(() => {
@@ -211,7 +226,7 @@ const SQLEditor = ({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleRun}
               disabled={!sourceName || readOnly}
-              title="Run query (Cmd/Ctrl+Enter)"
+              title={!sourceName ? 'Select a source or set a default source on your model to run queries' : 'Run query (Cmd/Ctrl+Enter)'}
             >
               <PiPlay size={14} />
               Run
@@ -230,10 +245,17 @@ const SQLEditor = ({
 
           {isRunning && (
             <span className="text-xs text-secondary-500">
-              {progressMessage || 'Running...'}
-              {progress > 0 && progress < 1 && ` (${Math.round(progress * 100)}%)`}
+              Running... {(elapsedMs / 1000).toFixed(1)}s
             </span>
           )}
+
+          {!isRunning && !sourceName && (
+            <span className="text-xs text-highlight" data-testid="no-source-warning">
+              No source selected — set a source on your model or select one to run queries
+            </span>
+          )}
+
+          {toolbarExtra}
 
           {isSchemaLoading && (
             <span className="text-xs text-secondary-400">Loading schema...</span>
@@ -243,16 +265,26 @@ const SQLEditor = ({
         <div className="flex items-center gap-2 text-secondary-400">
           <PiKeyboard size={14} />
           <span className="text-xs hidden sm:inline">Cmd+Enter to run</span>
+          {toolbarRight}
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Indeterminate progress bar */}
       {isRunning && (
-        <div className="h-0.5 bg-primary-100 overflow-hidden">
+        <div className="h-0.5 bg-primary-100 overflow-hidden relative">
           <div
-            className="h-full bg-primary transition-all duration-300 ease-out"
-            style={{ width: progress > 0 ? `${progress * 100}%` : '100%' }}
+            className="h-full bg-primary absolute"
+            style={{
+              width: '33%',
+              animation: 'indeterminate 1.5s ease-in-out infinite',
+            }}
           />
+          <style>{`
+            @keyframes indeterminate {
+              0% { left: -33%; }
+              100% { left: 100%; }
+            }
+          `}</style>
         </div>
       )}
 
