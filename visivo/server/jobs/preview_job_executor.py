@@ -26,6 +26,23 @@ MANAGER_TO_PROJECT_FIELD = [
 ]
 
 
+def _merge_objects_into_list(obj_list, new_objects):
+    """Merge new objects into an existing list, replacing by name or appending.
+
+    Args:
+        obj_list: List of existing project objects (modified in place conceptually; returns new list)
+        new_objects: Iterable of (name, object) tuples to merge in
+
+    Returns:
+        Updated list with new objects merged in
+    """
+    by_name = {o.name: o for o in obj_list if hasattr(o, "name")}
+    for name, obj in new_objects:
+        by_name[name] = obj
+    unnamed = [o for o in obj_list if not hasattr(o, "name")]
+    return list(by_name.values()) + unnamed
+
+
 def _inject_cached_objects(flask_app, preview_project):
     """Inject cached objects from all managers into the preview project.
 
@@ -45,21 +62,8 @@ def _inject_cached_objects(flask_app, preview_project):
             continue
 
         obj_list = list(getattr(preview_project, project_field, None) or [])
-        existing_names = {o.name for o in obj_list if hasattr(o, "name")}
-
-        for name, obj in cached.items():
-            if obj is None:
-                continue
-            obj_copy = _deepcopy(obj)
-            if name in existing_names:
-                obj_list = [
-                    obj_copy if hasattr(o, "name") and o.name == name else o for o in obj_list
-                ]
-            else:
-                obj_list.append(obj_copy)
-                existing_names.add(name)
-
-        setattr(preview_project, project_field, obj_list)
+        new_objects = [(name, _deepcopy(obj)) for name, obj in cached.items() if obj is not None]
+        setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
 CONTEXT_OBJECT_TYPES = {
@@ -105,19 +109,8 @@ def _inject_context_objects(context_objects, preview_project):
             continue
 
         obj_list = list(getattr(preview_project, field_name, None) or [])
-        existing_names = {o.name for o in obj_list if hasattr(o, "name")}
-
-        for obj_config in configs:
-            obj = adapter.validate_python(obj_config)
-            if obj.name in existing_names:
-                obj_list = [
-                    obj if hasattr(o, "name") and o.name == obj.name else o for o in obj_list
-                ]
-            else:
-                obj_list.append(obj)
-                existing_names.add(obj.name)
-
-        setattr(preview_project, field_name, obj_list)
+        new_objects = [(obj.name, obj) for obj in (adapter.validate_python(c) for c in configs)]
+        setattr(preview_project, field_name, _merge_objects_into_list(obj_list, new_objects))
 
 
 def clean_config_strings(obj):

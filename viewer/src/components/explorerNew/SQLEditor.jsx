@@ -40,7 +40,7 @@ const SQLEditor = ({
   const [profileColumn, setProfileColumn] = useState(null);
 
   // Query execution hook
-  const { result, error, isRunning, progress, progressMessage, executeQuery, cancel } =
+  const { result, error, isRunning, executeQuery, cancel } =
     useModelQueryJob();
 
   // Schema for autocomplete

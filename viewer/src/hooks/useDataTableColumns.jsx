@@ -26,6 +26,6 @@ export const useDataTableColumns = ({ columns, sorting, onSortChange, onColumnPr
         size: calculateColumnWidth(col.name, col.normalizedType),
         minSize: MIN_RESIZE_WIDTH,
       })),
-    [columns, sorting, onSortChange, onColumnProfileRequest, Header]
+    [columns, sorting, onSortChange, onColumnProfileRequest] // eslint-disable-line react-hooks/exhaustive-deps
   );
 };

@@ -62,26 +62,19 @@ def register_expression_views(app, flask_app, output_dir):
 
                 try:
                     wrapped_sql = f"SELECT {expression} FROM __placeholder__"
-                    transpiled = sqlglot.transpile(wrapped_sql, read=read_dialect, write="duckdb")[
-                        0
-                    ]
+                    parsed = sqlglot.parse_one(wrapped_sql, read=read_dialect or "duckdb")
 
+                    transpiled = parsed.sql(dialect="duckdb")
                     duckdb_expr = transpiled.replace("SELECT ", "", 1).replace(
                         " FROM __placeholder__", ""
                     )
 
                     detected_type = expr_type
-                    try:
-                        parsed = sqlglot.parse_one(
-                            f"SELECT {expression}", read=read_dialect or "duckdb"
-                        )
-                        select_expr = parsed.expressions[0] if parsed.expressions else None
-                        if select_expr and has_aggregate_function(select_expr):
-                            detected_type = "metric"
-                        elif not expr_type:
-                            detected_type = "dimension"
-                    except Exception:
-                        pass
+                    select_expr = parsed.expressions[0] if parsed.expressions else None
+                    if select_expr and has_aggregate_function(select_expr):
+                        detected_type = "metric"
+                    elif not expr_type:
+                        detected_type = "dimension"
 
                     translations.append(
                         {

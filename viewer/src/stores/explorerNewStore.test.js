@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string */
 import useStore from './store';
 import { expandDotNotationProps, replaceModelRefInProps } from './explorerNewStore';
 

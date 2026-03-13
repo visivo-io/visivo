@@ -39,9 +39,7 @@ class FlaskApp:
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
-        self.exploration_repo = ExplorationRepository(
-            os.path.join(output_dir, "explorations.db")
-        )
+        self.exploration_repo = ExplorationRepository(os.path.join(output_dir, "explorations.db"))
 
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()
