@@ -30,12 +30,12 @@ const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
   const [pageSize, setPageSize] = useState(table.rows_per_page || 50);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
-  const isPivotMode = !!(table.columns && table.rows && table.value);
+  const isPivotMode = !!(table.columns && table.rows && table.values);
 
   const pivotConfig = useMemo(() => {
     if (!isPivotMode) return null;
-    return { columns: table.columns, rows: table.rows, value: table.value };
-  }, [isPivotMode, table.columns, table.rows, table.value]);
+    return { columns: table.columns, rows: table.rows, values: table.values };
+  }, [isPivotMode, table.columns, table.rows, table.values]);
 
   const { rows: pivotRows, columns: pivotColumns, isLoading: pivotLoading, error: pivotError } =
     usePivotData(isPivotMode ? pivotConfig : null, isPivotMode ? insightData : null);

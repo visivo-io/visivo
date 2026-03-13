@@ -59,7 +59,8 @@ class Table(SelectorModel, NamedModel, ParentModel):
           - ${ref(sales-insight).region}
         rows:
           - ${ref(sales-insight).product}
-        value: sum(${ref(sales-insight).revenue})
+        values:
+          - sum(${ref(sales-insight).revenue})
         format_cells:
           scope: columns
           min_color: "#ff0000"
@@ -100,9 +101,9 @@ class Table(SelectorModel, NamedModel, ParentModel):
         None,
         description="Pivot row fields using ${ref(insight).field} syntax.",
     )
-    value: Optional[str] = Field(
+    values: Optional[List[str]] = Field(
         None,
-        description="Pivot value with inline aggregation, e.g. sum(${ref(insight).revenue}).",
+        description="Pivot value expressions with inline aggregation, e.g. [sum(${ref(insight).revenue})].",
     )
     format_cells: Optional[FormatCells] = Field(
         None,
@@ -142,13 +143,13 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
         pivot_columns = data.get("columns")
         pivot_rows = data.get("rows")
-        pivot_value = data.get("value")
-        pivot_fields = [pivot_columns, pivot_rows, pivot_value]
+        pivot_values = data.get("values")
+        pivot_fields = [pivot_columns, pivot_rows, pivot_values]
         pivot_set_count = sum(1 for f in pivot_fields if f is not None)
 
         if pivot_set_count > 0 and pivot_set_count < 3:
             raise ValueError(
-                "Pivot configuration requires all three fields: 'columns', 'rows', and 'value'. "
+                "Pivot configuration requires all three fields: 'columns', 'rows', and 'values'. "
                 "Either set all three or none."
             )
 

@@ -9,7 +9,7 @@ import { buildPivotQuery } from '../utils/pivotQueryBuilder';
  * The insight's parquet files must already be loaded into DuckDB
  * (handled by useInsightsData before the table renders).
  *
- * @param {Object} pivotConfig - { columns, rows, value } from table config
+ * @param {Object} pivotConfig - { columns, rows, values } from table config
  * @param {Object} insightData - Insight data from store (with files, props_mapping)
  * @returns {{ rows: Array, columns: Array<{id: string, header: string, accessorKey: string}>, isLoading: boolean, error: string|null }}
  */

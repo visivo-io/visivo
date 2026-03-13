@@ -596,7 +596,9 @@ dashboards:
                 - ${ref(pivot-source-insight).x}
               rows:
                 - ${ref(pivot-source-insight).text}
-              value: sum(${ref(pivot-source-insight).y})
+              values:
+                - sum(${ref(pivot-source-insight).y})
+                - avg(${ref(pivot-source-insight).y})
               format_cells:
                 scope: columns
                 min_color: "#fee0d2"

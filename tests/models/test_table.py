@@ -166,12 +166,12 @@ def test_Table_with_pivot_config():
         "insight": "ref(sales-insight)",
         "columns": ["${ref(sales-insight).region}"],
         "rows": ["${ref(sales-insight).product}"],
-        "value": "sum(${ref(sales-insight).revenue})",
+        "values": ["sum(${ref(sales-insight).revenue})"],
     }
     table = Table(**data)
     assert table.columns == ["${ref(sales-insight).region}"]
     assert table.rows == ["${ref(sales-insight).product}"]
-    assert table.value == "sum(${ref(sales-insight).revenue})"
+    assert table.values == ["sum(${ref(sales-insight).revenue})"]
 
 
 def test_Table_pivot_requires_all_fields():
@@ -192,7 +192,7 @@ def test_Table_pivot_requires_insight():
         "name": "pivot-table",
         "columns": ["${ref(sales-insight).region}"],
         "rows": ["${ref(sales-insight).product}"],
-        "value": "sum(${ref(sales-insight).revenue})",
+        "values": ["sum(${ref(sales-insight).revenue})"],
     }
     with pytest.raises(ValidationError) as exc_info:
         Table(**data)
@@ -221,7 +221,7 @@ def test_Table_with_pivot_and_format_cells():
         "insight": "ref(sales-insight)",
         "columns": ["${ref(sales-insight).region}"],
         "rows": ["${ref(sales-insight).product}"],
-        "value": "sum(${ref(sales-insight).revenue})",
+        "values": ["sum(${ref(sales-insight).revenue})"],
         "format_cells": {
             "scope": "rows_and_columns",
             "min_color": "#000000",
@@ -241,7 +241,7 @@ def test_Table_pivot_no_fields_is_valid():
     table = Table(**data)
     assert table.columns is None
     assert table.rows is None
-    assert table.value is None
+    assert table.values is None
 
 
 def test_Table_serialization_with_pivot():
@@ -250,7 +250,7 @@ def test_Table_serialization_with_pivot():
         "insight": "ref(sales-insight)",
         "columns": ["${ref(sales-insight).region}"],
         "rows": ["${ref(sales-insight).product}"],
-        "value": "sum(${ref(sales-insight).revenue})",
+        "values": ["sum(${ref(sales-insight).revenue})"],
         "format_cells": {
             "scope": "columns",
             "min_color": "#ff0000",
@@ -261,5 +261,5 @@ def test_Table_serialization_with_pivot():
     serialized = table.model_dump(exclude_none=True, mode="json")
     assert serialized["columns"] == ["${ref(sales-insight).region}"]
     assert serialized["rows"] == ["${ref(sales-insight).product}"]
-    assert serialized["value"] == "sum(${ref(sales-insight).revenue})"
+    assert serialized["values"] == ["sum(${ref(sales-insight).revenue})"]
     assert serialized["format_cells"]["scope"] == "columns"

@@ -13,7 +13,7 @@ describe('buildPivotQuery', () => {
       {
         columns: ['${ref(insight).region}'],
         rows: ['${ref(insight).product}'],
-        value: 'sum(${ref(insight).revenue})',
+        values: ['sum(${ref(insight).revenue})'],
       },
       propsMapping,
       'my_table_hash'
@@ -29,7 +29,7 @@ describe('buildPivotQuery', () => {
       {
         columns: ['${ref(insight).region}'],
         rows: ['${ref(insight).product}', '${ref(insight).region}'],
-        value: 'sum(${ref(insight).revenue})',
+        values: ['sum(${ref(insight).revenue})'],
       },
       propsMapping,
       'tbl'
@@ -38,13 +38,27 @@ describe('buildPivotQuery', () => {
     expect(sql).toContain('GROUP BY "product_hash_123", "region_hash_abc"');
   });
 
+  it('handles multiple value expressions', () => {
+    const sql = buildPivotQuery(
+      {
+        columns: ['${ref(insight).region}'],
+        rows: ['${ref(insight).product}'],
+        values: ['sum(${ref(insight).revenue})', 'avg(${ref(insight).revenue})'],
+      },
+      propsMapping,
+      'tbl'
+    );
+
+    expect(sql).toContain('USING sum("revenue_hash_xyz"), avg("revenue_hash_xyz")');
+  });
+
   it('throws for invalid value expression', () => {
     expect(() =>
       buildPivotQuery(
         {
           columns: ['${ref(insight).region}'],
           rows: ['${ref(insight).product}'],
-          value: 'just_a_field',
+          values: ['just_a_field'],
         },
         propsMapping,
         'tbl'
