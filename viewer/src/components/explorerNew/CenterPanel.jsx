@@ -30,7 +30,6 @@ const CenterPanel = () => {
   const toggleEditorCollapsed = useStore((s) => s.toggleExplorerEditorCollapsed);
   const profileColumn = useStore((s) => s.explorerProfileColumn);
   const setProfileColumn = useStore((s) => s.setExplorerProfileColumn);
-  const activeModelName = useStore((s) => s.explorerActiveModelName);
   const centerMode = useStore((s) => s.explorerCenterMode);
   const setCenterMode = useStore((s) => s.setExplorerCenterMode);
   const enrichedResult = useStore((s) => s.explorerEnrichedResult);
@@ -97,14 +96,7 @@ const CenterPanel = () => {
       window.dispatchEvent(new Event('resize'));
     });
     return () => cancelAnimationFrame(frame);
-  }, [editorChartRatio]);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [topBottomRatio]);
+  }, [editorChartRatio, topBottomRatio]);
 
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
