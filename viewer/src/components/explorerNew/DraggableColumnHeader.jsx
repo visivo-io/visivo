@@ -20,7 +20,7 @@ const DraggableColumnHeader = ({ column, sorting, onSortChange, onInfoClick }) =
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`${isDragging ? 'opacity-50' : ''} ${computedStyle}`}
+      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''} ${computedStyle}`}
       data-testid={`draggable-col-${column.name}`}
     >
       <DataTableHeader

@@ -158,11 +158,36 @@ const createExplorerNewSlice = (set, get) => ({
 
     const sql = model.config.sql || model.config.query || '';
 
-    let sourceName = null;
+    let extractedSourceName = null;
     const rawSource = model.config.source;
     if (typeof rawSource === 'string') {
-      const refMatch = rawSource.match(/^ref\((.+)\)$/);
-      sourceName = refMatch ? refMatch[1] : rawSource;
+      // Handle various ref formats: ref(name), ${ref(name)}, ${ ref(name) }
+      const refMatch = rawSource.match(/ref\(([^)]+)\)/);
+      extractedSourceName = refMatch ? refMatch[1].trim() : rawSource;
+    }
+
+    // Match extracted source name against available sources (exact → suffix → contains)
+    const sources = get().explorerSources || [];
+    let matchedSourceName = null;
+    if (extractedSourceName) {
+      const exact = sources.find((s) => s.source_name === extractedSourceName);
+      if (exact) {
+        matchedSourceName = exact.source_name;
+      } else {
+        const suffix = sources.find((s) =>
+          s.source_name.endsWith('-' + extractedSourceName)
+        );
+        if (suffix) {
+          matchedSourceName = suffix.source_name;
+        } else {
+          const contains = sources.find((s) =>
+            s.source_name.includes(extractedSourceName)
+          );
+          if (contains) {
+            matchedSourceName = contains.source_name;
+          }
+        }
+      }
     }
 
     // Find metrics/dimensions belonging to this model
@@ -180,6 +205,17 @@ const createExplorerNewSlice = (set, get) => ({
       return rawModel && stripRef(rawModel) === model.name;
     };
 
+    // Determine source dialect for expression translation
+    // Extract dialect hint from source name (e.g., "local-duckdb" → "duckdb", "local-postgres" → "postgres")
+    const resolvedSourceName = matchedSourceName || extractedSourceName;
+    let sourceDialect = null;
+    if (resolvedSourceName) {
+      const dialectHints = ['duckdb', 'postgres', 'postgresql', 'mysql', 'sqlite', 'snowflake', 'bigquery', 'redshift'];
+      const lowerSrc = resolvedSourceName.toLowerCase();
+      sourceDialect = dialectHints.find((d) => lowerSrc.includes(d)) || null;
+      if (sourceDialect === 'postgresql') sourceDialect = 'postgres';
+    }
+
     const computedCols = [];
     allMetrics.filter(belongsToModel).forEach((m) => {
       if (m.config?.expression) {
@@ -187,6 +223,7 @@ const createExplorerNewSlice = (set, get) => ({
           name: m.name,
           expression: m.config.expression,
           type: 'metric',
+          sourceDialect: sourceDialect && sourceDialect !== 'duckdb' ? sourceDialect : undefined,
         });
       }
     });
@@ -196,13 +233,14 @@ const createExplorerNewSlice = (set, get) => ({
           name: d.name,
           expression: d.config.expression,
           type: 'dimension',
+          sourceDialect: sourceDialect && sourceDialect !== 'duckdb' ? sourceDialect : undefined,
         });
       }
     });
 
     set({
       explorerSql: sql,
-      explorerSourceName: sourceName || get().explorerSourceName,
+      explorerSourceName: matchedSourceName || extractedSourceName || get().explorerSourceName,
       explorerIsEditorCollapsed: false,
       explorerActiveModelName: model.name,
       explorerModelEditMode: 'use',
@@ -210,6 +248,23 @@ const createExplorerNewSlice = (set, get) => ({
       explorerEnrichedResult: null,
       explorerEditStack: [],
     });
+
+    // Auto-load pre-existing parquet data if available
+    import('../api/modelData').then(({ fetchModelData }) => {
+      fetchModelData(model.name).then((data) => {
+        if (data.available && data.rows?.length > 0) {
+          set({
+            explorerQueryResult: {
+              columns: data.columns,
+              rows: data.rows,
+              row_count: data.row_count,
+              truncated: data.truncated || false,
+            },
+            explorerQueryError: null,
+          });
+        }
+      }).catch(() => {});
+    }).catch(() => {});
   },
 
   // --- Actions: Insight Config ---
@@ -308,7 +363,7 @@ const createExplorerNewSlice = (set, get) => ({
     try {
       const { translateExpressions } = await import('../api/expressions');
       const result = await translateExpressions(
-        [{ name: '__validate__', expression, type: 'dimension' }],
+        [{ name: '__validate__', expression, type: '' }],
         sourceDialect
       );
       const errors = (result.errors || []).filter((e) => e.name === '__validate__');
@@ -319,6 +374,7 @@ const createExplorerNewSlice = (set, get) => ({
       return {
         valid: true,
         duckdbExpression: translation?.duckdb_expression || expression,
+        detectedType: translation?.detected_type || 'dimension',
       };
     } catch (err) {
       return { valid: false, error: err.message || 'Validation failed' };
@@ -329,12 +385,13 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerSaveModalOpen: open });
   },
 
-  saveExplorerToProject: async ({ modelName, insightName, chartName, filePath }) => {
+  saveExplorerToProject: async ({ modelName, insightName, chartName, computedNames }) => {
     const {
       explorerSql,
       explorerSourceName,
       explorerInsightConfig,
       explorerChartLayout,
+      explorerComputedColumns,
     } = get();
 
     if (!explorerSql || !explorerSourceName) {
@@ -342,22 +399,49 @@ const createExplorerNewSlice = (set, get) => ({
     }
 
     const projectFilePath = get().projectFilePath;
-    const targetPath = filePath || projectFilePath;
+    const targetPath = projectFilePath;
 
     try {
-      // Save model to server cache with user-chosen name
+      // Build model config with metrics/dimensions from computed columns
       const modelConfig = {
         name: modelName,
         sql: explorerSql,
         source: `\${ref(${explorerSourceName})}`,
       };
+
+      // Add computed columns as model-scoped metrics and dimensions
+      const computedMetrics = (explorerComputedColumns || []).filter((c) => c.type === 'metric');
+      const computedDimensions = (explorerComputedColumns || []).filter((c) => c.type === 'dimension');
+
+      if (computedMetrics.length > 0) {
+        modelConfig.metrics = computedMetrics.map((c) => ({
+          name: computedNames?.[c.name] || c.name,
+          expression: c.expression,
+        }));
+      }
+      if (computedDimensions.length > 0) {
+        modelConfig.dimensions = computedDimensions.map((c) => ({
+          name: computedNames?.[c.name] || c.name,
+          expression: c.expression,
+        }));
+      }
+
       await apiSaveModel(modelName, modelConfig);
 
       // Save insight to server cache with user-chosen name
       const activeModelName = get().explorerActiveModelName;
       let insightProps = expandDotNotationProps(explorerInsightConfig.props);
+      // Replace refs if model name changed
       if (activeModelName && modelName !== activeModelName) {
         insightProps = replaceModelRefInProps(insightProps, activeModelName, modelName);
+      }
+      // Also replace computed column names if they were renamed
+      if (computedNames) {
+        for (const [oldName, newName] of Object.entries(computedNames)) {
+          if (oldName !== newName) {
+            insightProps = replaceModelRefInProps(insightProps, oldName, newName);
+          }
+        }
       }
       const insightConfig = {
         name: insightName,

@@ -1,7 +1,8 @@
 from flask import jsonify, request
 from visivo.logger.logger import Logger
 import sqlglot
-from visivo.query.sqlglot_utils import get_sqlglot_dialect
+from sqlglot import exp
+from visivo.query.sqlglot_utils import get_sqlglot_dialect, has_aggregate_function
 
 
 def register_expression_views(app, flask_app, output_dir):
@@ -69,12 +70,26 @@ def register_expression_views(app, flask_app, output_dir):
                         " FROM __placeholder__", ""
                     )
 
+                    detected_type = expr_type
+                    try:
+                        parsed = sqlglot.parse_one(
+                            f"SELECT {expression}", read=read_dialect or "duckdb"
+                        )
+                        select_expr = parsed.expressions[0] if parsed.expressions else None
+                        if select_expr and has_aggregate_function(select_expr):
+                            detected_type = "metric"
+                        elif not expr_type:
+                            detected_type = "dimension"
+                    except Exception:
+                        pass
+
                     translations.append(
                         {
                             "name": name,
                             "expression": expression,
                             "duckdb_expression": duckdb_expr,
                             "type": expr_type,
+                            "detected_type": detected_type,
                         }
                     )
                 except Exception as e:

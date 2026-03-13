@@ -22,7 +22,7 @@ const DragOverlayContent = ({ data }) => {
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-lg ${colorClass}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border shadow-lg ${colorClass}`}
       data-testid="drag-overlay"
     >
       <Icon size={12} />
@@ -65,7 +65,10 @@ const ExplorerDndContext = ({ children }) => {
             ? '?{${ref(' + activeModelName + ').' + dragData.name + '}}'
             : '?{' + dragData.name + '}';
         } else {
-          value = '?{${ref(' + dragData.name + ')}}';
+          // Model-scoped metrics/dimensions: ref(model).name
+          value = activeModelName
+            ? '?{${ref(' + activeModelName + ').' + dragData.name + '}}'
+            : '?{${ref(' + dragData.name + ')}}';
         }
         setInsightProp(fieldName, value);
       } else if (dropData?.type === 'data-table-drop') {

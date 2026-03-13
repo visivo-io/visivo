@@ -123,33 +123,63 @@ const useExplorerDuckDB = () => {
         }
 
         // Build SELECT with computed columns
-        const computedSelectParts = translatedColumns.map((col) => {
+        // Try each column individually — if one fails (e.g. type mismatch from JSON-loaded data),
+        // replace it with NULL so the rest still work
+        const buildSelectPart = (col) => {
           if (col.type === 'metric') {
-            // Metrics are aggregates - use window function for per-row display
             return `${col.duckdbExpression} OVER () AS "${col.name}"`;
           }
-          // Dimensions are row-level expressions
           return `${col.duckdbExpression} AS "${col.name}"`;
-        });
+        };
 
-        const sql = `SELECT *, ${computedSelectParts.join(', ')} FROM "${duckDBTableName}"`;
-        const result = await runDuckDBQuery(db, sql);
-        const rows = result.toArray().map((row) => {
-          const rowData = row.toJSON();
-          return Object.fromEntries(
-            Object.entries(rowData).map(([key, value]) => [
-              key,
-              typeof value === 'bigint' ? Number(value) : value,
-            ])
-          );
-        });
+        let computedSelectParts = translatedColumns.map(buildSelectPart);
+        let sql = `SELECT *, ${computedSelectParts.join(', ')} FROM "${duckDBTableName}"`;
+        let result;
+        const failedColumns = [];
 
-        // Get column names from the result
-        const columns = [];
-        if (rows.length > 0) {
-          for (const key of Object.keys(rows[0])) {
-            columns.push(key);
+        try {
+          result = await runDuckDBQuery(db, sql);
+        } catch {
+          // Full query failed — test each computed column individually
+          const workingParts = [];
+          for (const col of translatedColumns) {
+            const testSql = `SELECT ${buildSelectPart(col)} FROM "${duckDBTableName}" LIMIT 1`;
+            try {
+              await runDuckDBQuery(db, testSql);
+              workingParts.push(buildSelectPart(col));
+            } catch {
+              failedColumns.push(col.name);
+              workingParts.push(`NULL AS "${col.name}"`);
+            }
           }
+          sql = `SELECT *, ${workingParts.join(', ')} FROM "${duckDBTableName}"`;
+          result = await runDuckDBQuery(db, sql);
+        }
+
+        if (failedColumns.length > 0) {
+          setDuckDBError(`Could not compute: ${failedColumns.join(', ')}`);
+        }
+        // Extract rows via column vectors — avoids toJSON() which
+        // corrupts HUGEINT/Decimal values with extra JSON quoting
+        const fields = result.schema.fields;
+        const numRows = result.numRows;
+        const vectors = fields.map((_, i) => result.getChildAt(i));
+        const columns = fields.map((f) => f.name);
+        const rows = [];
+        for (let r = 0; r < numRows; r++) {
+          const row = {};
+          for (let c = 0; c < fields.length; c++) {
+            let value = vectors[c].get(r);
+            if (typeof value === 'bigint') {
+              value = Number(value);
+            } else if (value !== null && value !== undefined && typeof value === 'object') {
+              const s = String(value);
+              const n = Number(s);
+              value = !isNaN(n) && s.trim() !== '' ? n : s;
+            }
+            row[columns[c]] = value;
+          }
+          rows.push(row);
         }
 
         setEnrichedResult({
