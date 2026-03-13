@@ -980,6 +980,72 @@ describe('explorerNewStore', () => {
       useStore.getState().setExplorerDuckDBTableName('explorer_5');
       expect(useStore.getState().explorerDuckDBTableName).toBe('explorer_5');
     });
+
+    it('updates a computed column expression', () => {
+      useStore.setState({
+        explorerComputedColumns: [
+          { name: 'total', expression: 'SUM(x)', type: 'metric' },
+          { name: 'month', expression: 'DATE_TRUNC(order_date)', type: 'dimension' },
+        ],
+        explorerEnrichedResult: { columns: ['x'], rows: [] },
+      });
+
+      useStore.getState().updateExplorerComputedColumn('total', {
+        expression: 'SUM(amount)',
+        type: 'metric',
+      });
+
+      const cols = useStore.getState().explorerComputedColumns;
+      expect(cols).toHaveLength(2);
+      expect(cols[0].expression).toBe('SUM(amount)');
+      expect(cols[1].expression).toBe('DATE_TRUNC(order_date)');
+    });
+
+    it('updating a computed column clears enriched result', () => {
+      useStore.setState({
+        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
+        explorerEnrichedResult: { columns: ['x', 'col'], rows: [{ x: 1, col: 10 }] },
+      });
+
+      useStore.getState().updateExplorerComputedColumn('col', { expression: 'AVG(x)' });
+
+      expect(useStore.getState().explorerEnrichedResult).toBeNull();
+    });
+
+    it('sets and clears failed computed columns', () => {
+      useStore.getState().setExplorerFailedComputedColumns({
+        formatted_date: 'Type mismatch',
+      });
+
+      expect(useStore.getState().explorerFailedComputedColumns).toEqual({
+        formatted_date: 'Type mismatch',
+      });
+
+      useStore.getState().setExplorerFailedComputedColumns({});
+      expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
+    });
+
+    it('removing a computed column clears failed computed columns', () => {
+      useStore.setState({
+        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
+        explorerFailedComputedColumns: { col: 'Error' },
+      });
+
+      useStore.getState().removeExplorerComputedColumn('col');
+
+      expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
+    });
+
+    it('clearing all computed columns clears failed computed columns', () => {
+      useStore.setState({
+        explorerComputedColumns: [{ name: 'a', expression: 'x', type: 'dimension' }],
+        explorerFailedComputedColumns: { a: 'Error' },
+      });
+
+      useStore.getState().clearExplorerComputedColumns();
+
+      expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
+    });
   });
 
 

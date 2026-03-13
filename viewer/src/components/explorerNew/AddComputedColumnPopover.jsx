@@ -4,7 +4,15 @@ import { PiPlus, PiX, PiCheckCircle, PiWarningCircle, PiSpinner } from 'react-ic
 
 const DEBOUNCE_MS = 750;
 
-const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
+const AddComputedColumnPopover = ({
+  onAdd,
+  onUpdate,
+  onValidate,
+  existingNames,
+  editColumn,
+  onEditClose,
+  anchorElement,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [expression, setExpression] = useState('');
@@ -16,15 +24,30 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
   const popoverRef = useRef(null);
   const debounceRef = useRef(null);
 
-  // Position the popover above the button when opened
+  const isEditMode = !!editColumn;
+
+  // Open in edit mode when editColumn is set
   useEffect(() => {
-    if (!isOpen || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
+    if (editColumn) {
+      setName(editColumn.name);
+      setExpression(editColumn.expression);
+      setDetectedType(editColumn.type);
+      setValidationResult(null);
+      setIsOpen(true);
+    }
+  }, [editColumn]);
+
+  // Position the popover relative to anchor
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = isEditMode ? anchorElement : buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
     setPopoverPos({
       top: rect.top,
       left: rect.right,
     });
-  }, [isOpen]);
+  }, [isOpen, isEditMode, anchorElement]);
 
   // Close on outside click
   useEffect(() => {
@@ -34,12 +57,12 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
         popoverRef.current && !popoverRef.current.contains(e.target) &&
         buttonRef.current && !buttonRef.current.contains(e.target)
       ) {
-        setIsOpen(false);
+        handleCancel();
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -81,6 +104,14 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
     }, DEBOUNCE_MS);
   };
 
+  const resetForm = () => {
+    setName('');
+    setExpression('');
+    setValidationResult(null);
+    setDetectedType(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  };
+
   const handleAdd = () => {
     if (!name.trim() || !expression.trim()) return;
     if (existingNames?.has(name.trim())) {
@@ -89,20 +120,25 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
     }
     const type = detectedType || 'dimension';
     onAdd({ name: name.trim(), expression: expression.trim(), type });
-    setName('');
-    setExpression('');
-    setValidationResult(null);
-    setDetectedType(null);
+    resetForm();
     setIsOpen(false);
   };
 
-  const handleCancel = () => {
-    setName('');
-    setExpression('');
-    setValidationResult(null);
-    setDetectedType(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+  const handleSave = () => {
+    if (!name.trim() || !expression.trim()) return;
+    const type = detectedType || editColumn?.type || 'dimension';
+    onUpdate?.({ name: name.trim(), expression: expression.trim(), type });
+    resetForm();
     setIsOpen(false);
+    onEditClose?.();
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setIsOpen(false);
+    if (isEditMode) {
+      onEditClose?.();
+    }
   };
 
   const popoverContent = isOpen && createPortal(
@@ -117,7 +153,9 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
       data-testid="add-computed-column-popover"
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-secondary-800">Add Computed Column</span>
+        <span className="text-sm font-medium text-secondary-800">
+          {isEditMode ? 'Edit Computed Column' : 'Add Computed Column'}
+        </span>
         <button
           type="button"
           onClick={handleCancel}
@@ -136,7 +174,10 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., total_revenue"
-            className="w-full px-2 py-1.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            disabled={isEditMode}
+            className={`w-full px-2 py-1.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+              isEditMode ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
             data-testid="computed-col-name"
           />
         </div>
@@ -201,12 +242,12 @@ const AddComputedColumnPopover = ({ onAdd, onValidate, existingNames }) => {
         <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
-            onClick={handleAdd}
+            onClick={isEditMode ? handleSave : handleAdd}
             disabled={!name.trim() || !expression.trim()}
             className="px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            data-testid="add-btn"
+            data-testid={isEditMode ? 'save-btn' : 'add-btn'}
           >
-            Add
+            {isEditMode ? 'Save' : 'Add'}
           </button>
           <button
             type="button"

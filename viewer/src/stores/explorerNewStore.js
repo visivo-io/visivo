@@ -96,6 +96,7 @@ const createExplorerNewSlice = (set, get) => ({
   explorerDuckDBTableName: null, // table name in DuckDB WASM
   explorerDuckDBLoading: false,
   explorerDuckDBError: null,
+  explorerFailedComputedColumns: {}, // { columnName: errorMessage }
 
   // --- Save Modal ---
   explorerSaveModalOpen: false,
@@ -340,6 +341,10 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerEnrichedResult: result });
   },
 
+  setExplorerFailedComputedColumns: (failedMap) => {
+    set({ explorerFailedComputedColumns: failedMap });
+  },
+
   addExplorerComputedColumn: (col) => {
     set((state) => {
       const exists = state.explorerComputedColumns.some((c) => c.name === col.name);
@@ -348,15 +353,25 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
-  removeExplorerComputedColumn: (name) => {
+  updateExplorerComputedColumn: (name, updates) => {
     set((state) => ({
-      explorerComputedColumns: state.explorerComputedColumns.filter((c) => c.name !== name),
+      explorerComputedColumns: state.explorerComputedColumns.map((c) =>
+        c.name === name ? { ...c, ...updates } : c
+      ),
       explorerEnrichedResult: null,
     }));
   },
 
+  removeExplorerComputedColumn: (name) => {
+    set((state) => ({
+      explorerComputedColumns: state.explorerComputedColumns.filter((c) => c.name !== name),
+      explorerEnrichedResult: null,
+      explorerFailedComputedColumns: {},
+    }));
+  },
+
   clearExplorerComputedColumns: () => {
-    set({ explorerComputedColumns: [], explorerEnrichedResult: null });
+    set({ explorerComputedColumns: [], explorerEnrichedResult: null, explorerFailedComputedColumns: {} });
   },
 
   // --- Actions: Validate Expressions ---
@@ -692,6 +707,7 @@ const createExplorerNewSlice = (set, get) => ({
       enrichedResult: get().explorerEnrichedResult,
       duckDBTableName: get().explorerDuckDBTableName,
       activeModelName: get().explorerActiveModelName,
+      failedComputedColumns: get().explorerFailedComputedColumns,
     };
 
     set((state) => ({
@@ -760,6 +776,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerDuckDBTableName: null,
       explorerDuckDBError: null,
       explorerActiveModelName: null,
+      explorerFailedComputedColumns: {},
     }));
   },
 
@@ -795,6 +812,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerEnrichedResult: target.enrichedResult || null,
       explorerDuckDBTableName: target.duckDBTableName || null,
       explorerActiveModelName: target.activeModelName || null,
+      explorerFailedComputedColumns: target.failedComputedColumns || {},
     });
   },
 

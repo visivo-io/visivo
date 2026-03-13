@@ -37,7 +37,7 @@ const ChartPreview = ({
 
   const chartLayout = useMemo(() => ({
     autosize: true,
-    margin: { l: 40, r: 10, t: 40, b: 30 },
+   margin: { l: 70, r: 70, t: 50, b: 70 },
     ...chartConfig?.layout,
   }), [chartConfig?.layout]);
 
