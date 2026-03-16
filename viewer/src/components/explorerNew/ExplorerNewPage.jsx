@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import LeftPanel from './LeftPanel';
 import CenterPanel from './CenterPanel';
 import InsightEditorPanel from './InsightEditorPanel';
-import ExplorationTabBar from './ExplorationTabBar';
 import ExplorerDndContext from './ExplorerDndContext';
 import VerticalDivider from '../explorer/VerticalDivider';
 import useStore from '../../stores/store';
@@ -30,7 +29,6 @@ const ExplorerNewPage = () => {
   return (
     <ExplorerDndContext>
       <div className="flex flex-col h-[calc(100vh-3rem)] bg-gray-50 overflow-hidden" data-testid="explorer-new-page">
-        <ExplorationTabBar />
         <div className="flex flex-1 overflow-hidden" ref={containerRef}>
           <div
             style={{ width: leftNavCollapsed ? '48px' : `${leftWidth}%` }}

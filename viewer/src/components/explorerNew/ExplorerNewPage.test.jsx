@@ -28,12 +28,6 @@ jest.mock('./InsightEditorPanel', () => {
   };
 });
 
-jest.mock('./ExplorationTabBar', () => {
-  return function MockExplorationTabBar() {
-    return <div data-testid="exploration-tab-bar">ExplorationTabBar</div>;
-  };
-});
-
 jest.mock('../explorer/VerticalDivider', () => {
   return function MockVerticalDivider({ handleMouseDown }) {
     return (
@@ -60,7 +54,6 @@ describe('ExplorerNewPage', () => {
       explorerActiveModelName: null,
       explorerSql: '',
       explorerSourceName: null,
-      explorerSavedModelName: null,
       explorerInsightConfig: { name: '', props: { type: 'scatter' } },
     });
   });
@@ -77,11 +70,6 @@ describe('ExplorerNewPage', () => {
   it('always renders InsightEditorPanel (no conditional)', () => {
     render(<ExplorerNewPage />);
     expect(screen.getByTestId('insight-editor-panel')).toBeInTheDocument();
-  });
-
-  it('renders ExplorationTabBar', () => {
-    render(<ExplorerNewPage />);
-    expect(screen.getByTestId('exploration-tab-bar')).toBeInTheDocument();
   });
 
   it('renders VerticalDivider when left nav is expanded', () => {

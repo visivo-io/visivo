@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import ChartPreview from '../new-views/common/ChartPreview';
 import useStore from '../../stores/store';
 import { expandDotNotationProps } from '../../stores/explorerNewStore';
@@ -14,19 +14,14 @@ const ExplorerChartPreview = () => {
   const computedColumns = useStore((s) => s.explorerComputedColumns);
   const projectId = useStore((s) => s.project?.id);
 
-  // Auto-set a model name when query results arrive so DnD generates proper ref() patterns
-  useEffect(() => {
-    if (!queryResult?.columns?.length) return;
-    if (useStore.getState().explorerActiveModelName) return;
-    useStore.setState({ explorerActiveModelName: 'preview_model' });
-  }, [queryResult]);
+  // Use a local fallback instead of mutating global store state
+  const effectiveModelName = activeModelName || 'preview_model';
 
   const contextObjects = useMemo(() => {
-    const modelName = activeModelName || 'preview_model';
     if (!explorerSql || !explorerSourceName) return null;
 
     const modelConfig = {
-      name: modelName,
+      name: effectiveModelName,
       sql: explorerSql,
       source: `\${ref(${explorerSourceName})}`,
     };
@@ -42,7 +37,7 @@ const ExplorerChartPreview = () => {
     if (mets.length) modelConfig.metrics = mets;
 
     return { models: [modelConfig] };
-  }, [activeModelName, explorerSql, explorerSourceName, computedColumns]);
+  }, [effectiveModelName, explorerSql, explorerSourceName, computedColumns]);
 
   const hasDataProps = useMemo(() => {
     if (!insightConfig?.props) return false;
@@ -50,21 +45,20 @@ const ExplorerChartPreview = () => {
   }, [insightConfig]);
 
   const backendInsightConfig = useMemo(() => {
-    const modelName = activeModelName || 'preview_model';
-    if (!modelName || !insightConfig?.props?.type) return null;
+    if (!insightConfig?.props?.type) return null;
     if (!hasDataProps) return null;
     return {
-      name: `${modelName}_preview_insight`,
+      name: `${effectiveModelName}_preview_insight`,
       props: expandDotNotationProps(insightConfig.props),
     };
-  }, [activeModelName, insightConfig, hasDataProps]);
+  }, [effectiveModelName, insightConfig, hasDataProps]);
 
   const chartConfig = useMemo(
     () => ({
-      name: `${activeModelName || 'preview'}_chart`,
+      name: `${effectiveModelName}_chart`,
       layout: chartLayout,
     }),
-    [activeModelName, chartLayout]
+    [effectiveModelName, chartLayout]
   );
 
   if (!queryResult?.columns?.length) {
