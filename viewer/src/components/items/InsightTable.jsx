@@ -114,11 +114,14 @@ const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, page, pageSize]);
 
-  // Gradient cell styles
+  // Gradient cell styles - detect numeric columns including stringified bigints
   const numericColumnIds = useMemo(() => {
     if (!pagedRows.length || !dataTableColumns.length) return [];
     return dataTableColumns
-      .filter(col => pagedRows.some(row => typeof row[col.name] === 'number'))
+      .filter(col => pagedRows.some(row => {
+        const val = row[col.name];
+        return typeof val === 'number' || (val != null && val !== '' && !isNaN(Number(val)));
+      }))
       .map(col => col.name);
   }, [pagedRows, dataTableColumns]);
 
