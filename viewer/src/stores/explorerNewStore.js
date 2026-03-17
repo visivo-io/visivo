@@ -168,6 +168,34 @@ const matchSourceName = (extractedName, sources) => {
 };
 
 /**
+ * Build shim key updates from a model state for backward compatibility.
+ * CenterPanel reads flat keys (explorerSql, explorerQueryResult, etc.)
+ * so we sync them whenever the active model changes.
+ */
+const buildShimUpdates = (modelState) => {
+  if (!modelState) {
+    return {
+      explorerSql: '',
+      explorerSourceName: null,
+      explorerQueryResult: null,
+      explorerQueryError: null,
+      explorerComputedColumns: [],
+      explorerEnrichedResult: null,
+      explorerProfileColumn: null,
+    };
+  }
+  return {
+    explorerSql: modelState.sql || '',
+    explorerSourceName: modelState.sourceName,
+    explorerQueryResult: modelState.queryResult,
+    explorerQueryError: modelState.queryError,
+    explorerComputedColumns: modelState.computedColumns || [],
+    explorerEnrichedResult: modelState.enrichedResult,
+    explorerProfileColumn: null,
+  };
+};
+
+/**
  * Determine source dialect from source name for expression translation.
  */
 const detectDialect = (sourceName) => {
@@ -241,19 +269,26 @@ const createExplorerNewSlice = (set, get) => ({
     const state = get();
     const baseName = name || 'model';
     const uniqueName = generateUniqueName(baseName, state.explorerModelTabs);
+    const newModelState = createEmptyModelState(true);
 
     set({
       explorerModelTabs: [...state.explorerModelTabs, uniqueName],
       explorerActiveModelName: uniqueName,
       explorerModelStates: {
         ...state.explorerModelStates,
-        [uniqueName]: createEmptyModelState(true),
+        [uniqueName]: newModelState,
       },
+      ...buildShimUpdates(newModelState),
     });
   },
 
   switchModelTab: (modelName) => {
-    set({ explorerActiveModelName: modelName });
+    const state = get();
+    const modelState = state.explorerModelStates[modelName];
+    set({
+      explorerActiveModelName: modelName,
+      ...buildShimUpdates(modelState),
+    });
   },
 
   closeModelTab: (modelName) => {
@@ -270,6 +305,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerModelTabs: newTabs,
       explorerModelStates: restStates,
       explorerActiveModelName: newActive,
+      ...buildShimUpdates(newActive ? restStates[newActive] : null),
     });
   },
 
@@ -590,6 +626,24 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
+  updateInsightInteraction: (insightName, index, updatedInteraction) => {
+    const state = get();
+    const insight = state.explorerInsightStates[insightName];
+    if (!insight) return;
+
+    set({
+      explorerInsightStates: {
+        ...state.explorerInsightStates,
+        [insightName]: {
+          ...insight,
+          interactions: insight.interactions.map((item, i) =>
+            i === index ? { ...item, ...updatedInteraction } : item
+          ),
+        },
+      },
+    });
+  },
+
   // ====================================================================
   // Chart Actions
   // ====================================================================
@@ -602,6 +656,10 @@ const createExplorerNewSlice = (set, get) => ({
     set((state) => ({
       explorerChartLayout: { ...state.explorerChartLayout, ...updates },
     }));
+  },
+
+  replaceChartLayout: (layout) => {
+    set({ explorerChartLayout: layout });
   },
 
   reorderChartInsights: (orderedNames) => {

@@ -7,6 +7,7 @@ import ExplorerChartPreview from './ExplorerChartPreview';
 import ExplorerErrorBoundary from './ExplorerErrorBoundary';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
 import DraggableColumnHeader from './DraggableColumnHeader';
+import ModelTabBar from './ModelTabBar';
 import VerticalDivider from '../explorer/VerticalDivider';
 import Divider from '../explorer/Divider';
 import useStore from '../../stores/store';
@@ -255,6 +256,9 @@ const CenterPanel = () => {
       data-testid="center-panel"
       ref={containerRef}
     >
+      {/* Model Tab Bar */}
+      <ModelTabBar />
+
       {/* Top row: Editor + Chart */}
       <div style={{ flex: topFlex }} className="overflow-hidden min-h-0" ref={topRowRef}>
         {isWide ? (

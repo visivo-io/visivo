@@ -54,9 +54,10 @@ const DraggableItem = ({ item, type }) => {
 const ExplorerLeftPanel = () => {
   const isCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
   const toggleCollapsed = useStore((s) => s.toggleExplorerLeftNavCollapsed);
-  const handleTableSelect = useStore((s) => s.handleExplorerTableSelect);
-  const handleModelUse = useStore((s) => s.handleExplorerModelUse);
-  const pushEdit = useStore((s) => s.pushExplorerEdit);
+  const handleTableSelect = useStore((s) => s.handleTableSelect);
+  const loadModel = useStore((s) => s.loadModel);
+  const loadChart = useStore((s) => s.loadChart);
+  const setActiveInsight = useStore((s) => s.setActiveInsight);
   const setExplorerSources = useStore((s) => s.setExplorerSources);
   const sourceName = useStore((s) => s.explorerSourceName);
   const setSourceName = useStore((s) => s.setExplorerSourceName);
@@ -137,19 +138,51 @@ const ExplorerLeftPanel = () => {
     [setExplorerSources, sourceName, setSourceName]
   );
 
-  const handleObjectSelect = useCallback(
-    (type, obj) => {
-      pushEdit(type, obj);
-    },
-    [pushEdit]
-  );
-
   const handleModelClick = useCallback(
     (model) => {
-      handleModelUse(model);
-      pushEdit('model', model);
+      loadModel(model);
     },
-    [handleModelUse, pushEdit]
+    [loadModel]
+  );
+
+  const handleChartClick = useCallback(
+    (chart) => {
+      // Resolve chart lineage: find insights and their models
+      const allInsights = useStore.getState().insights || [];
+      const allModels = useStore.getState().models || [];
+
+      // Find insights referenced by this chart
+      const chartInsightRefs = chart.config?.insights || [];
+      const resolvedInsights = [];
+      for (const ref of chartInsightRefs) {
+        const refName = typeof ref === 'string' ? ref.replace(/.*ref\(([^)]+)\).*/, '$1') : null;
+        if (refName) {
+          const found = allInsights.find((i) => i.name === refName);
+          if (found) resolvedInsights.push(found);
+        }
+      }
+
+      // Find models referenced by insights (via props containing ref(modelName))
+      const modelNames = new Set();
+      for (const insight of resolvedInsights) {
+        const propsStr = JSON.stringify(insight.config?.props || {});
+        const matches = propsStr.matchAll(/ref\(([^.)]+)\)/g);
+        for (const match of matches) {
+          modelNames.add(match[1]);
+        }
+      }
+      const resolvedModels = allModels.filter((m) => modelNames.has(m.name));
+
+      loadChart(chart, resolvedInsights, resolvedModels);
+    },
+    [loadChart]
+  );
+
+  const handleInsightClick = useCallback(
+    (insight) => {
+      setActiveInsight(insight.name);
+    },
+    [setActiveInsight]
   );
 
   const isLoading = modelsLoading || metricsLoading || dimensionsLoading || insightsLoading || chartsLoading || inputsLoading;
@@ -289,7 +322,7 @@ const ExplorerLeftPanel = () => {
         {filteredInsights.length > 0 && (
           <ObjectList
             objects={filteredInsights}
-            onSelect={(obj) => handleObjectSelect('insight', obj)}
+            onSelect={handleInsightClick}
             title="Insights"
             objectType="insight"
           />
@@ -299,17 +332,17 @@ const ExplorerLeftPanel = () => {
         {filteredCharts.length > 0 && (
           <ObjectList
             objects={filteredCharts}
-            onSelect={(obj) => handleObjectSelect('chart', obj)}
+            onSelect={handleChartClick}
             title="Charts"
             objectType="chart"
           />
         )}
 
-        {/* Inputs */}
+        {/* Inputs (read-only in explorer — draggable to interaction fields) */}
         {filteredInputs.length > 0 && (
           <ObjectList
             objects={filteredInputs}
-            onSelect={(obj) => handleObjectSelect('input', obj)}
+            onSelect={() => {}}
             title="Inputs"
             objectType="input"
           />
