@@ -25,8 +25,7 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
       // Only collect from items that will be rendered
       if (shouldShowItem && !shouldShowItem(item)) continue;
       item.chart?.insights?.forEach(i => insightNames.add(i.name));
-      item.table?.insights?.forEach(i => insightNames.add(i.name));
-      if (item.table?.insight?.name) insightNames.add(item.table.insight.name);
+      if (item.table?.data?.name) insightNames.add(item.table.data.name);
     }
   }
   return [...insightNames];

@@ -1,4 +1,4 @@
-import { resolveFieldRef, resolveValueExpression, extractAggAndColumn } from './pivotRefResolver';
+import { resolveFieldRef, resolveValueExpression, extractAggAndColumn, parseColumnAlias } from './pivotRefResolver';
 
 /**
  * Build a DuckDB PIVOT SQL query from table pivot configuration.
@@ -33,4 +33,25 @@ export function buildPivotQuery({ columns, rows, values }, propsMapping, tableNa
   const usingClause = usingParts.join(', ');
 
   return `PIVOT (SELECT * FROM "${tableName}") ON ${onClause} USING ${usingClause} GROUP BY ${groupByClause}`;
+}
+
+/**
+ * Build a DuckDB SELECT query for column selection mode (columns without rows/values).
+ *
+ * @param {string[]} columns - Array of column expressions, e.g. ["${ref(insight).x} as Name"]
+ * @param {Object} propsMapping - Insight's props_mapping for ref resolution (null for models)
+ * @param {string} tableName - DuckDB table name
+ * @returns {string} DuckDB SELECT SQL query
+ */
+export function buildColumnSelectQuery(columns, propsMapping, tableName) {
+  const selectParts = columns.map(col => {
+    const { ref, alias } = parseColumnAlias(col);
+    const resolved = resolveFieldRef(ref, propsMapping);
+    if (alias) {
+      return `"${resolved}" AS "${alias}"`;
+    }
+    return `"${resolved}"`;
+  });
+
+  return `SELECT ${selectParts.join(', ')} FROM "${tableName}"`;
 }

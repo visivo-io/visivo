@@ -15,6 +15,7 @@ from visivo.jobs.utils import get_source_for_model
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.insight import Insight
+from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
 from visivo.query.schema_aggregator import SchemaAggregator
 from visivo.query.source_schema_cache import SourceSchemaCache
@@ -327,5 +328,16 @@ def job(
                     item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
                 )
 
-    # Not referenced by any dynamic insight, run the schema-only action
+    # Check if any table references this model directly via 'data' or columns/rows/values
+    from visivo.models.table import Table
+
+    tables = all_descendants_of_type(type=Table, dag=dag)
+    for table in tables:
+        table_models = all_descendants_of_type(type=Model, dag=dag, from_node=table)
+        if sql_model in table_models:
+            return Job(
+                item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
+            )
+
+    # Not referenced by any dynamic insight or table, run the schema-only action
     return Job(item=sql_model, source=source, action=schema_only_action, **kwargs)

@@ -555,13 +555,13 @@ dashboards:
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
 
-      # ===== SECTION 5: TABLE WITH INSIGHT (NEW API) =====
+      # ===== SECTION 5: TABLE WITH DATA SOURCE =====
       - height: compact
         items:
           - markdown:
               content: |
-                ## Table with Insight (New Singular API)
-                Table using new `insight` field with auto-generated columns
+                ## Table with Data Source
+                Table using `data` field with auto-generated columns
                 **Change "Min X Value" above to filter the table data**
 
       - height: compact
@@ -574,7 +574,7 @@ dashboards:
           - width: 12
             table:
               name: filter-input-test-table
-              insight: ${ref(filter-nonaggregate-input-test-insight)}
+              data: ${ref(filter-nonaggregate-input-test-insight)}
               rows_per_page: 25
 
       # ===== SECTION 6: PIVOT TABLE & CELL FORMATTING =====
@@ -591,7 +591,6 @@ dashboards:
           - width: 12
             table:
               name: category-pivot-table
-              insight: ${ref(pivot-source-insight)}
               columns:
                 - ${ref(pivot-source-insight).x}
               rows:
@@ -616,7 +615,7 @@ dashboards:
           - width: 12
             table:
               name: flat-gradient-table
-              insight: ${ref(pivot-source-insight)}
+              data: ${ref(pivot-source-insight)}
               format_cells:
                 scope: row
                 min_color: "#deebf7"

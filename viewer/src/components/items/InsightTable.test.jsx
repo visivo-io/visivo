@@ -59,9 +59,9 @@ describe('InsightTable', () => {
       );
     });
 
-    // DataTable renders column names from the schema objects we pass
-    expect(screen.getByText('col_a')).toBeInTheDocument();
-    expect(screen.getByText('col_b')).toBeInTheDocument();
+    // DataTable renders display names from props_mapping reverse lookup
+    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getByText('Revenue')).toBeInTheDocument();
   });
 
   it('renders data rows via DataTable', async () => {

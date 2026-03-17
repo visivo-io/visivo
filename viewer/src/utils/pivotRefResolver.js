@@ -56,3 +56,18 @@ export function extractAggAndColumn(resolvedExpr) {
   if (!match) return null;
   return { aggFunc: match[1], column: match[2] };
 }
+
+/**
+ * Parse a column expression that may contain an alias.
+ * e.g. "${ref(insight).revenue} as Total Revenue" -> { ref: "${ref(insight).revenue}", alias: "Total Revenue" }
+ * e.g. "${ref(insight).revenue}" -> { ref: "${ref(insight).revenue}", alias: null }
+ *
+ * @param {string} colExpr - Column expression, optionally with " as Alias"
+ * @returns {{ ref: string, alias: string|null }}
+ */
+export function parseColumnAlias(colExpr) {
+  const match = colExpr.match(/^(.+?)\s+as\s+(.+)$/i);
+  if (match) return { ref: match[1].trim(), alias: match[2].trim() };
+  return { ref: colExpr, alias: null };
+}
+

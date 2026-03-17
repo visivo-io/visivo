@@ -31,17 +31,22 @@ const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
   const isPivotMode = !!(table.columns && table.rows && table.values);
+  const isColumnSelectMode = !!(table.columns && !table.rows && !table.values);
+  const hasDuckDBMode = isPivotMode || isColumnSelectMode;
 
-  const pivotConfig = useMemo(() => {
-    if (!isPivotMode) return null;
-    return { columns: table.columns, rows: table.rows, values: table.values };
-  }, [isPivotMode, table.columns, table.rows, table.values]);
+  const duckDBConfig = useMemo(() => {
+    if (!hasDuckDBMode) return null;
+    if (isPivotMode) {
+      return { columns: table.columns, rows: table.rows, values: table.values };
+    }
+    return { columns: table.columns };
+  }, [hasDuckDBMode, isPivotMode, table.columns, table.rows, table.values]);
 
   const { rows: pivotRows, columns: pivotColumns, isLoading: pivotLoading, error: pivotError } =
-    usePivotData(isPivotMode ? pivotConfig : null, isPivotMode ? insightData : null);
+    usePivotData(hasDuckDBMode ? duckDBConfig : null, hasDuckDBMode ? insightData : null);
 
   const { allRows, dataTableColumns } = useMemo(() => {
-    if (isPivotMode) {
+    if (hasDuckDBMode) {
       const cols = pivotColumns.map(col => ({
         name: col.accessorKey || col.id,
         displayName: col.header,
@@ -74,7 +79,7 @@ const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
     }));
 
     return { allRows: data, dataTableColumns: cols };
-  }, [isPivotMode, pivotRows, pivotColumns, insightData]);
+  }, [hasDuckDBMode, pivotRows, pivotColumns, insightData]);
 
   // Client-side global filter
   const filteredRows = useMemo(() => {
@@ -163,11 +168,11 @@ const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
     copyText(url.toString());
   }, [copyText]);
 
-  if (isPivotMode && pivotLoading) {
+  if (hasDuckDBMode && pivotLoading) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isPivotMode && pivotError) {
+  if (hasDuckDBMode && pivotError) {
     return (
       <ItemContainer id={itemNameToSlug(table.name)}>
         <Box sx={{ p: 2, color: 'error.main' }}>Pivot error: {pivotError}</Box>

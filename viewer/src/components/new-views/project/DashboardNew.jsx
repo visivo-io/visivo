@@ -64,16 +64,10 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartBy
         if (insightName) insightNames.add(insightName);
       });
 
-      // Resolve table and collect its insights
+      // Resolve table and collect its data reference
       const table = resolveItem(item.table, getTableByName);
-      table?.insights?.forEach(i => {
-        // Parse insight reference - could be ${ref(name)}, ref(name), or plain name
-        const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
-        if (insightName) insightNames.add(insightName);
-      });
-      // Also collect singular insight from table (handles both object and string ref)
-      if (table?.insight) {
-        const name = typeof table.insight === 'string' ? parseRefValue(table.insight) : table.insight?.name;
+      if (table?.data) {
+        const name = typeof table.data === 'string' ? parseRefValue(table.data) : table.data?.name;
         if (name) insightNames.add(name);
       }
     }
