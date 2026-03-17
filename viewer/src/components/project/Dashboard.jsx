@@ -11,6 +11,7 @@ import { useCallback, useMemo } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
+import { extractRefNamesFromStrings } from '../../utils/refString';
 
 /**
  * Collect all insight names from visible rows for centralized prefetching.
@@ -22,10 +23,16 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
     const row = rows[rowIndex];
     if (!row) continue;
     for (const item of row.items) {
-      // Only collect from items that will be rendered
       if (shouldShowItem && !shouldShowItem(item)) continue;
       item.chart?.insights?.forEach(i => insightNames.add(i.name));
       if (item.table?.data?.name) insightNames.add(item.table.data.name);
+      // Collect refs from columns/rows/values for pivot and column-select tables
+      const refStrings = [
+        ...(item.table?.columns || []),
+        ...(item.table?.rows || []),
+        ...(item.table?.values || []),
+      ];
+      extractRefNamesFromStrings(refStrings).forEach(n => insightNames.add(n));
     }
   }
   return [...insightNames];

@@ -8,7 +8,7 @@ import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { useVisibleRows } from '../../../hooks/useVisibleRows';
-import { parseRefValue } from '../../../utils/refString';
+import { parseRefValue, extractRefNamesFromStrings } from '../../../utils/refString';
 
 /**
  * Resolve an item reference (chart, table, markdown, input) from the store.
@@ -64,12 +64,19 @@ const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartBy
         if (insightName) insightNames.add(insightName);
       });
 
-      // Resolve table and collect its data reference
+      // Resolve table and collect its data reference or refs from columns/rows/values
       const table = resolveItem(item.table, getTableByName);
       if (table?.data) {
         const name = typeof table.data === 'string' ? parseRefValue(table.data) : table.data?.name;
         if (name) insightNames.add(name);
       }
+      const tableConfig = table?.config || table || {};
+      const refStrings = [
+        ...(tableConfig.columns || []),
+        ...(tableConfig.rows || []),
+        ...(tableConfig.values || []),
+      ];
+      extractRefNamesFromStrings(refStrings).forEach(n => insightNames.add(n));
     }
   }
   return [...insightNames];

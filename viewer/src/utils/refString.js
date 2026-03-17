@@ -79,3 +79,25 @@ export const formatMultiRefValue = names => {
   if (!names || names.length === 0) return null;
   return names.map(name => formatRefExpression(name));
 };
+
+/**
+ * Extract all unique ref names from an array of strings that may contain
+ * ${ref(name).field} patterns (including inside expressions like "sum(${ref(name).field})").
+ *
+ * @param {string[]} strings - Array of strings possibly containing ref patterns
+ * @returns {string[]} Unique ref names found
+ */
+export const extractRefNamesFromStrings = (strings) => {
+  if (!strings || !Array.isArray(strings)) return [];
+  const names = new Set();
+  const pattern = /\$\{\s*ref\(\s*([^)]+)\s*\)/g;
+  for (const str of strings) {
+    if (typeof str !== 'string') continue;
+    let match;
+    while ((match = pattern.exec(str)) !== null) {
+      names.add(match[1].trim());
+    }
+    pattern.lastIndex = 0;
+  }
+  return [...names];
+};

@@ -47,7 +47,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import { parseRefValue } from '../../utils/refString';
+import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
@@ -57,12 +57,19 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Support 'data' field - can reference insight or model
   // Handle both resolved object { name: "..." } and raw ref string "${ref(...)}"
   const dataName = useMemo(() => {
-    if (!table.data) return null;
-    if (typeof table.data === 'object' && table.data.name) return table.data.name;
-    if (typeof table.data === 'string') return parseRefValue(table.data);
-    return null;
-  }, [table.data]);
-
+    if (table.data) {
+      if (typeof table.data === 'object' && table.data.name) return table.data.name;
+      if (typeof table.data === 'string') return parseRefValue(table.data);
+    }
+    // For pivot/column-select tables, extract the first ref name from columns/rows/values
+    const refStrings = [
+      ...(table.columns || []),
+      ...(table.rows || []),
+      ...(table.values || []),
+    ];
+    const names = extractRefNamesFromStrings(refStrings);
+    return names.length > 0 ? names[0] : null;
+  }, [table.data, table.columns, table.rows, table.values]);
 
   // Memoize trace names to prevent array recreation
   const traceNames = useMemo(() => {
