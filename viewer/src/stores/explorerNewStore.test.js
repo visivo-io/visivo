@@ -2,410 +2,52 @@
 import useStore from './store';
 import { expandDotNotationProps } from './explorerNewStore';
 
+// Helper to reset all explorer new state
+const resetState = () => {
+  useStore.setState({
+    // Model Tab Management
+    explorerModelTabs: [],
+    explorerActiveModelName: null,
+
+    // Per-Model State
+    explorerModelStates: {},
+
+    // Chart State
+    explorerChartName: null,
+    explorerChartLayout: {},
+    explorerChartInsightNames: [],
+    explorerActiveInsightName: null,
+
+    // Per-Insight State
+    explorerInsightStates: {},
+
+    // DuckDB
+    explorerDuckDBLoading: false,
+    explorerDuckDBError: null,
+    explorerFailedComputedColumns: {},
+
+    // Sources
+    explorerSources: [],
+
+    // UI State
+    explorerLeftNavCollapsed: false,
+    explorerCenterMode: 'split',
+    explorerEditorChartSplit: 0.5,
+    explorerTopBottomSplit: 0.5,
+    explorerProfileColumn: null,
+    explorerIsEditorCollapsed: false,
+  });
+};
+
 describe('explorerNewStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
-    useStore.setState({
-      explorerSourceName: null,
-      explorerSql: '',
-      explorerQueryResult: null,
-      explorerQueryError: null,
-      explorerIsEditorCollapsed: false,
-      explorerProfileColumn: null,
-      explorerActiveModelName: null,
-      explorerModelEditMode: null,
-      explorerEditStack: [],
-      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
-      explorerChartLayout: {},
-      explorerLeftNavCollapsed: false,
-      explorerCenterMode: 'split',
-      explorerEditorChartSplit: 0.5,
-      explorerTopBottomSplit: 0.5,
-      explorerSaveModalOpen: false,
-      explorerComputedColumns: [],
-      explorerEnrichedResult: null,
-      explorerDuckDBTableName: null,
-      explorerDuckDBLoading: false,
-      explorerDuckDBError: null,
-      explorerFailedComputedColumns: {},
-      explorerSources: [],
-    });
+    resetState();
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  describe('setExplorerSourceName', () => {
-    it('sets source name', () => {
-      useStore.getState().setExplorerSourceName('postgres_db');
-      expect(useStore.getState().explorerSourceName).toBe('postgres_db');
-    });
-  });
-
-  describe('setExplorerSql', () => {
-    it('sets SQL text', () => {
-      useStore.getState().setExplorerSql('SELECT 1');
-      expect(useStore.getState().explorerSql).toBe('SELECT 1');
-    });
-  });
-
-  describe('setExplorerQueryResult', () => {
-    it('sets query result and clears error and profile', () => {
-      useStore.setState({
-        explorerQueryError: 'old error',
-        explorerProfileColumn: 'old_col',
-      });
-
-      const mockResult = { columns: ['id'], rows: [{ id: 1 }], row_count: 1 };
-      useStore.getState().setExplorerQueryResult(mockResult);
-
-      const state = useStore.getState();
-      expect(state.explorerQueryResult).toEqual(mockResult);
-      expect(state.explorerQueryError).toBeNull();
-      expect(state.explorerProfileColumn).toBeNull();
-    });
-  });
-
-  describe('setExplorerQueryError', () => {
-    it('sets query error', () => {
-      useStore.getState().setExplorerQueryError('SQL syntax error');
-      expect(useStore.getState().explorerQueryError).toBe('SQL syntax error');
-    });
-  });
-
-  describe('handleExplorerTableSelect', () => {
-    it('sets SQL and source when SQL is empty', () => {
-      useStore.getState().handleExplorerTableSelect({ sourceName: 'pg', table: 'users' });
-
-      const state = useStore.getState();
-      expect(state.explorerSql).toBe('SELECT * FROM users');
-      expect(state.explorerSourceName).toBe('pg');
-      expect(state.explorerIsEditorCollapsed).toBe(false);
-    });
-
-    it('appends to existing SQL', () => {
-      useStore.setState({ explorerSql: 'SELECT * FROM orders' });
-      useStore.getState().handleExplorerTableSelect({ sourceName: 'pg', table: 'users' });
-
-      expect(useStore.getState().explorerSql).toBe(
-        'SELECT * FROM orders\nSELECT * FROM users'
-      );
-    });
-
-    it('keeps existing source if none provided', () => {
-      useStore.setState({ explorerSourceName: 'existing_source' });
-      useStore
-        .getState()
-        .handleExplorerTableSelect({ sourceName: null, table: 'users' });
-
-      expect(useStore.getState().explorerSourceName).toBe('existing_source');
-    });
-  });
-
-  describe('handleExplorerModelUse', () => {
-    it('sets SQL from model config', () => {
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { sql: 'SELECT 1', source: 'pg' } });
-
-      expect(useStore.getState().explorerSql).toBe('SELECT 1');
-    });
-
-    it('sets source name from model config (direct string)', () => {
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { sql: 'SELECT 1', source: 'pg' } });
-
-      expect(useStore.getState().explorerSourceName).toBe('pg');
-    });
-
-    it('strips ref() wrapper from source name', () => {
-      useStore.getState().handleExplorerModelUse({
-        name: 'test',
-        config: { sql: 'SELECT 1', source: 'ref(postgres_db)' },
-      });
-
-      expect(useStore.getState().explorerSourceName).toBe('postgres_db');
-    });
-
-    it('matches source name via suffix when exact match fails', () => {
-      useStore.setState({
-        explorerSources: [
-          { source_name: 'local-sqlite' },
-          { source_name: 'local-duckdb' },
-        ],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'test',
-        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
-      });
-
-      expect(useStore.getState().explorerSourceName).toBe('local-duckdb');
-    });
-
-    it('matches source name via contains when suffix match fails', () => {
-      useStore.setState({
-        explorerSources: [
-          { source_name: 'my-pg-prod' },
-          { source_name: 'staging-duckdb-v2' },
-        ],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'test',
-        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
-      });
-
-      expect(useStore.getState().explorerSourceName).toBe('staging-duckdb-v2');
-    });
-
-    it('prefers exact match over suffix match', () => {
-      useStore.setState({
-        explorerSources: [
-          { source_name: 'duckdb' },
-          { source_name: 'local-duckdb' },
-        ],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'test',
-        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
-      });
-
-      expect(useStore.getState().explorerSourceName).toBe('duckdb');
-    });
-
-    it('keeps existing source if model has no source', () => {
-      useStore.setState({ explorerSourceName: 'existing_source' });
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { sql: 'SELECT 1' } });
-
-      expect(useStore.getState().explorerSourceName).toBe('existing_source');
-    });
-
-    it('sets explorerActiveModelName to model name', () => {
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'my_model', config: { sql: 'SELECT 1' } });
-
-      expect(useStore.getState().explorerActiveModelName).toBe('my_model');
-    });
-
-    it('sets explorerModelEditMode to "use"', () => {
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { sql: 'SELECT 1' } });
-
-      expect(useStore.getState().explorerModelEditMode).toBe('use');
-    });
-
-    it('resets UI state (editor visible)', () => {
-      useStore.setState({
-        explorerIsEditorCollapsed: true,
-      });
-
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { sql: 'SELECT 1' } });
-
-      const state = useStore.getState();
-      expect(state.explorerIsEditorCollapsed).toBe(false);
-    });
-
-    it('handles model with no config gracefully', () => {
-      const before = useStore.getState().explorerSql;
-      useStore.getState().handleExplorerModelUse({ name: 'test' });
-
-      expect(useStore.getState().explorerSql).toBe(before);
-    });
-
-    it('uses query field if sql field is missing', () => {
-      useStore
-        .getState()
-        .handleExplorerModelUse({ name: 'test', config: { query: 'SELECT 2' } });
-
-      expect(useStore.getState().explorerSql).toBe('SELECT 2');
-    });
-  });
-
-  describe('handleExplorerModelUse auto-adds computed columns', () => {
-    it('auto-adds metrics belonging to the model as computed columns', () => {
-      useStore.setState({
-        metrics: [
-          { name: 'revenue', parentModel: 'orders', config: { expression: 'SUM(amount)', model: 'ref(orders)' } },
-          { name: 'other_metric', parentModel: 'users', config: { expression: 'COUNT(*)', model: 'ref(users)' } },
-        ],
-        dimensions: [],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'orders',
-        config: { sql: 'SELECT * FROM orders', source: 'ref(my_source)' },
-      });
-
-      const computed = useStore.getState().explorerComputedColumns;
-      expect(computed).toHaveLength(1);
-      expect(computed[0].name).toBe('revenue');
-      expect(computed[0].type).toBe('metric');
-    });
-
-    it('auto-adds dimensions belonging to the model as computed columns', () => {
-      useStore.setState({
-        metrics: [],
-        dimensions: [
-          { name: 'order_month', config: { expression: "DATE_TRUNC('month', date)", model: 'ref(orders)' } },
-        ],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'orders',
-        config: { sql: 'SELECT 1', source: 'ref(src)' },
-      });
-
-      const computed = useStore.getState().explorerComputedColumns;
-      expect(computed).toHaveLength(1);
-      expect(computed[0].name).toBe('order_month');
-      expect(computed[0].type).toBe('dimension');
-    });
-
-    it('clears editStack when model is used', () => {
-      useStore.setState({
-        explorerEditStack: [{ type: 'model', object: {} }],
-        metrics: [],
-        dimensions: [],
-      });
-
-      useStore.getState().handleExplorerModelUse({
-        name: 'test',
-        config: { sql: 'SELECT 1' },
-      });
-
-      expect(useStore.getState().explorerEditStack).toEqual([]);
-    });
-  });
-
-  describe('explorerSources', () => {
-    it('sets explorer sources', () => {
-      const sources = [{ source_name: 'pg' }, { source_name: 'mysql' }];
-      useStore.getState().setExplorerSources(sources);
-      expect(useStore.getState().explorerSources).toEqual(sources);
-    });
-  });
-
-  describe('UI controls', () => {
-    it('toggles editor collapsed', () => {
-      expect(useStore.getState().explorerIsEditorCollapsed).toBe(false);
-      useStore.getState().toggleExplorerEditorCollapsed();
-      expect(useStore.getState().explorerIsEditorCollapsed).toBe(true);
-      useStore.getState().toggleExplorerEditorCollapsed();
-      expect(useStore.getState().explorerIsEditorCollapsed).toBe(false);
-    });
-
-    it('sets profile column', () => {
-      useStore.getState().setExplorerProfileColumn('email');
-      expect(useStore.getState().explorerProfileColumn).toBe('email');
-    });
-
-    it('toggles left nav collapsed', () => {
-      expect(useStore.getState().explorerLeftNavCollapsed).toBe(false);
-      useStore.getState().toggleExplorerLeftNavCollapsed();
-      expect(useStore.getState().explorerLeftNavCollapsed).toBe(true);
-      useStore.getState().toggleExplorerLeftNavCollapsed();
-      expect(useStore.getState().explorerLeftNavCollapsed).toBe(false);
-    });
-
-    it('sets center mode', () => {
-      useStore.getState().setExplorerCenterMode('chart');
-      expect(useStore.getState().explorerCenterMode).toBe('chart');
-    });
-  });
-
-  describe('insight config', () => {
-    it('sets insight config', () => {
-      const config = { name: 'test', props: { type: 'line' } };
-      useStore.getState().setExplorerInsightConfig(config);
-
-      expect(useStore.getState().explorerInsightConfig).toEqual(config);
-    });
-
-    it('insight config is always initialized (never null)', () => {
-      const config = useStore.getState().explorerInsightConfig;
-      expect(config).toBeDefined();
-      expect(config.props.type).toBe('scatter');
-    });
-  });
-
-  describe('chart layout', () => {
-    it('syncs plotly edits to chart layout', () => {
-      useStore.getState().syncPlotlyEditsToChartLayout({
-        'title.text': 'My Chart',
-      });
-
-      expect(useStore.getState().explorerChartLayout).toEqual({
-        'title.text': 'My Chart',
-      });
-    });
-
-    it('merges layout updates', () => {
-      useStore.setState({
-        explorerChartLayout: { 'title.text': 'Old' },
-      });
-
-      useStore.getState().syncPlotlyEditsToChartLayout({
-        'xaxis.title.text': 'X Axis',
-      });
-
-      expect(useStore.getState().explorerChartLayout).toEqual({
-        'title.text': 'Old',
-        'xaxis.title.text': 'X Axis',
-      });
-    });
-  });
-
-  describe('setExplorerInsightProp', () => {
-    it('sets a single prop without affecting others', () => {
-      useStore.setState({
-        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'col_a' } },
-      });
-
-      useStore.getState().setExplorerInsightProp('y', 'col_b');
-
-      const props = useStore.getState().explorerInsightConfig.props;
-      expect(props.x).toBe('col_a');
-      expect(props.y).toBe('col_b');
-      expect(props.type).toBe('scatter');
-    });
-
-    it('overwrites an existing prop value', () => {
-      useStore.setState({
-        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'old_col' } },
-      });
-
-      useStore.getState().setExplorerInsightProp('x', 'new_col');
-
-      expect(useStore.getState().explorerInsightConfig.props.x).toBe('new_col');
-    });
-  });
-
-  describe('removeExplorerInsightProp', () => {
-    it('removes a prop while keeping others', () => {
-      useStore.setState({
-        explorerInsightConfig: { name: 'test', props: { type: 'scatter', x: 'col_a', y: 'col_b' } },
-      });
-
-      useStore.getState().removeExplorerInsightProp('y');
-
-      const props = useStore.getState().explorerInsightConfig.props;
-      expect(props.x).toBe('col_a');
-      expect(props.y).toBeUndefined();
-      expect(props.type).toBe('scatter');
-    });
-  });
-
+  // ====================================================================
+  // expandDotNotationProps (exported utility)
+  // ====================================================================
   describe('expandDotNotationProps', () => {
     it('passes through flat keys unchanged', () => {
       const result = expandDotNotationProps({ type: 'scatter', x: '?{${ref(m).col}}', y: '?{val}' });
@@ -421,121 +63,942 @@ describe('explorerNewStore', () => {
       const result = expandDotNotationProps({ 'marker.line.width': 2 });
       expect(result).toEqual({ marker: { line: { width: 2 } } });
     });
-  });
 
-  describe('edit stack', () => {
-    it('push/pop/clear work correctly', () => {
-      useStore.getState().pushExplorerEdit('insight', { name: 'test' }, { isCreate: true });
-      expect(useStore.getState().explorerEditStack).toHaveLength(1);
+    it('returns empty object for empty input', () => {
+      expect(expandDotNotationProps({})).toEqual({});
+    });
 
-      useStore.getState().pushExplorerEdit('model', { name: 'model1' });
-      expect(useStore.getState().explorerEditStack).toHaveLength(2);
-
-      useStore.getState().popExplorerEdit();
-      expect(useStore.getState().explorerEditStack).toHaveLength(1);
-
-      useStore.getState().clearExplorerEditStack();
-      expect(useStore.getState().explorerEditStack).toHaveLength(0);
+    it('merges sibling dot-notation keys under same parent', () => {
+      const result = expandDotNotationProps({
+        'marker.color': 'red',
+        'marker.size': 10,
+      });
+      expect(result).toEqual({ marker: { color: 'red', size: 10 } });
     });
   });
 
-  describe('computed columns', () => {
-    it('adds a computed column', () => {
-      useStore.getState().addExplorerComputedColumn({
+  // ====================================================================
+  // Model Tab Actions
+  // ====================================================================
+  describe('createModelTab', () => {
+    it('creates a model tab with auto-generated name when none provided', () => {
+      useStore.getState().createModelTab();
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(1);
+      expect(state.explorerModelTabs[0]).toBe('model');
+      expect(state.explorerActiveModelName).toBe('model');
+      expect(state.explorerModelStates.model).toBeDefined();
+      expect(state.explorerModelStates.model.sql).toBe('');
+      expect(state.explorerModelStates.model.sourceName).toBeNull();
+      expect(state.explorerModelStates.model.queryResult).toBeNull();
+      expect(state.explorerModelStates.model.queryError).toBeNull();
+      expect(state.explorerModelStates.model.computedColumns).toEqual([]);
+      expect(state.explorerModelStates.model.enrichedResult).toBeNull();
+      expect(state.explorerModelStates.model.isNew).toBe(true);
+    });
+
+    it('creates a model tab with a provided name', () => {
+      useStore.getState().createModelTab('my_model');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['my_model']);
+      expect(state.explorerActiveModelName).toBe('my_model');
+      expect(state.explorerModelStates.my_model).toBeDefined();
+    });
+
+    it('generates unique name when name conflicts with existing tabs', () => {
+      useStore.getState().createModelTab('model');
+      useStore.getState().createModelTab('model');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['model', 'model_2']);
+      expect(state.explorerActiveModelName).toBe('model_2');
+    });
+
+    it('switches active tab to the newly created tab', () => {
+      useStore.getState().createModelTab('first');
+      useStore.getState().createModelTab('second');
+
+      expect(useStore.getState().explorerActiveModelName).toBe('second');
+    });
+  });
+
+  describe('switchModelTab', () => {
+    it('sets the active model name', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().switchModelTab('model_a');
+
+      expect(useStore.getState().explorerActiveModelName).toBe('model_a');
+    });
+  });
+
+  describe('closeModelTab', () => {
+    it('removes the tab and its state', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().closeModelTab('model_a');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['model_b']);
+      expect(state.explorerModelStates.model_a).toBeUndefined();
+    });
+
+    it('switches active tab to another tab when active tab is closed', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      useStore.getState().switchModelTab('model_a');
+      useStore.getState().closeModelTab('model_a');
+
+      expect(useStore.getState().explorerActiveModelName).toBe('model_b');
+    });
+
+    it('sets active model to null when last tab is closed', () => {
+      useStore.getState().createModelTab('only_model');
+      useStore.getState().closeModelTab('only_model');
+
+      expect(useStore.getState().explorerActiveModelName).toBeNull();
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+
+    it('does not change active tab if closed tab is not active', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+      // model_b is active
+      useStore.getState().closeModelTab('model_a');
+
+      expect(useStore.getState().explorerActiveModelName).toBe('model_b');
+    });
+  });
+
+  describe('renameModelTab', () => {
+    it('renames the tab in tabs array and model states', () => {
+      useStore.getState().createModelTab('old_name');
+
+      useStore.getState().renameModelTab('old_name', 'new_name');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toEqual(['new_name']);
+      expect(state.explorerModelStates.old_name).toBeUndefined();
+      expect(state.explorerModelStates.new_name).toBeDefined();
+    });
+
+    it('updates active model name if renamed tab is active', () => {
+      useStore.getState().createModelTab('old_name');
+
+      useStore.getState().renameModelTab('old_name', 'new_name');
+
+      expect(useStore.getState().explorerActiveModelName).toBe('new_name');
+    });
+
+    it('does not rename if model is not new (isNew=false)', () => {
+      useStore.getState().createModelTab('loaded_model');
+      useStore.setState({
+        explorerModelStates: {
+          ...useStore.getState().explorerModelStates,
+          loaded_model: {
+            ...useStore.getState().explorerModelStates.loaded_model,
+            isNew: false,
+          },
+        },
+      });
+
+      useStore.getState().renameModelTab('loaded_model', 'different_name');
+
+      // Should not have renamed
+      expect(useStore.getState().explorerModelTabs).toEqual(['loaded_model']);
+      expect(useStore.getState().explorerModelStates.loaded_model).toBeDefined();
+    });
+
+    it('propagates rename through all insight props replacing ref(oldName) with ref(newName)', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          insight_1: {
+            type: 'scatter',
+            props: {
+              x: '?{${ref(old_model).col_a}}',
+              y: '?{${ref(old_model).col_b}}',
+              text: 'static_value',
+            },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['insight_1'],
+      });
+
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      const insightState = useStore.getState().explorerInsightStates.insight_1;
+      expect(insightState.props.x).toBe('?{${ref(new_model).col_a}}');
+      expect(insightState.props.y).toBe('?{${ref(new_model).col_b}}');
+      expect(insightState.props.text).toBe('static_value');
+    });
+
+    it('propagates rename through insight interaction values', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          insight_1: {
+            type: 'scatter',
+            props: {},
+            interactions: [
+              { type: 'filter', value: '?{${ref(old_model).date} > ${ref(input_1)}}' },
+            ],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['insight_1'],
+      });
+
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      const interaction = useStore.getState().explorerInsightStates.insight_1.interactions[0];
+      expect(interaction.value).toBe('?{${ref(new_model).date} > ${ref(input_1)}}');
+    });
+
+    it('propagates rename through typePropsCache', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          insight_1: {
+            type: 'scatter',
+            props: {},
+            interactions: [],
+            typePropsCache: {
+              bar: { x: '?{${ref(old_model).col_a}}' },
+            },
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['insight_1'],
+      });
+
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      const cache = useStore.getState().explorerInsightStates.insight_1.typePropsCache;
+      expect(cache.bar.x).toBe('?{${ref(new_model).col_a}}');
+    });
+  });
+
+  // ====================================================================
+  // Active Model Convenience Actions
+  // ====================================================================
+  describe('setActiveModelSql', () => {
+    it('sets sql on the active model', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSql('SELECT 1');
+
+      expect(useStore.getState().explorerModelStates.my_model.sql).toBe('SELECT 1');
+    });
+
+    it('does nothing if no active model', () => {
+      useStore.getState().setActiveModelSql('SELECT 1');
+      // Should not throw
+      expect(useStore.getState().explorerActiveModelName).toBeNull();
+    });
+  });
+
+  describe('setActiveModelSource', () => {
+    it('sets sourceName on the active model', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('postgres_db');
+
+      expect(useStore.getState().explorerModelStates.my_model.sourceName).toBe('postgres_db');
+    });
+  });
+
+  describe('setActiveModelQueryResult', () => {
+    it('sets query result on active model and clears DuckDB state', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.setState({
+        explorerDuckDBError: 'old error',
+        explorerModelStates: {
+          ...useStore.getState().explorerModelStates,
+          my_model: {
+            ...useStore.getState().explorerModelStates.my_model,
+            enrichedResult: { columns: ['x'], rows: [] },
+          },
+        },
+      });
+
+      const mockResult = { columns: ['id'], rows: [{ id: 1 }], row_count: 1 };
+      useStore.getState().setActiveModelQueryResult(mockResult);
+
+      const state = useStore.getState();
+      expect(state.explorerModelStates.my_model.queryResult).toEqual(mockResult);
+      expect(state.explorerModelStates.my_model.queryError).toBeNull();
+      expect(state.explorerModelStates.my_model.enrichedResult).toBeNull();
+      expect(state.explorerDuckDBError).toBeNull();
+      expect(state.explorerProfileColumn).toBeNull();
+    });
+  });
+
+  describe('setActiveModelQueryError', () => {
+    it('sets query error on the active model', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelQueryError('SQL syntax error');
+
+      expect(useStore.getState().explorerModelStates.my_model.queryError).toBe('SQL syntax error');
+    });
+  });
+
+  describe('addActiveModelComputedColumn', () => {
+    it('adds a computed column to the active model', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().addActiveModelComputedColumn({
         name: 'total_revenue',
         expression: 'SUM(amount)',
         type: 'metric',
       });
 
-      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
-      expect(useStore.getState().explorerComputedColumns[0].name).toBe('total_revenue');
+      const cols = useStore.getState().explorerModelStates.my_model.computedColumns;
+      expect(cols).toHaveLength(1);
+      expect(cols[0].name).toBe('total_revenue');
     });
 
     it('prevents duplicate computed columns', () => {
-      useStore.getState().addExplorerComputedColumn({
-        name: 'total_revenue',
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'total',
         expression: 'SUM(amount)',
         type: 'metric',
       });
-      useStore.getState().addExplorerComputedColumn({
-        name: 'total_revenue',
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'total',
         expression: 'SUM(amount)',
         type: 'metric',
       });
 
-      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
+      expect(useStore.getState().explorerModelStates.my_model.computedColumns).toHaveLength(1);
     });
+  });
 
-    it('removes a computed column', () => {
-      useStore.getState().addExplorerComputedColumn({
-        name: 'total_revenue',
-        expression: 'SUM(amount)',
+  describe('updateActiveModelComputedColumn', () => {
+    it('updates a computed column on the active model and clears enriched result', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'total',
+        expression: 'SUM(x)',
         type: 'metric',
       });
-      useStore.getState().addExplorerComputedColumn({
-        name: 'order_month',
-        expression: "DATE_TRUNC('month', order_date)",
+      // Set an enriched result to verify it gets cleared
+      useStore.setState({
+        explorerModelStates: {
+          ...useStore.getState().explorerModelStates,
+          my_model: {
+            ...useStore.getState().explorerModelStates.my_model,
+            enrichedResult: { columns: ['x'], rows: [] },
+          },
+        },
+      });
+
+      useStore.getState().updateActiveModelComputedColumn('total', { expression: 'SUM(amount)' });
+
+      const modelState = useStore.getState().explorerModelStates.my_model;
+      expect(modelState.computedColumns[0].expression).toBe('SUM(amount)');
+      expect(modelState.enrichedResult).toBeNull();
+    });
+  });
+
+  describe('removeActiveModelComputedColumn', () => {
+    it('removes a computed column and clears enriched result', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'total',
+        expression: 'SUM(x)',
+        type: 'metric',
+      });
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'month',
+        expression: "DATE_TRUNC('month', date)",
         type: 'dimension',
       });
 
-      useStore.getState().removeExplorerComputedColumn('total_revenue');
+      useStore.getState().removeActiveModelComputedColumn('total');
 
-      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
-      expect(useStore.getState().explorerComputedColumns[0].name).toBe('order_month');
+      const modelState = useStore.getState().explorerModelStates.my_model;
+      expect(modelState.computedColumns).toHaveLength(1);
+      expect(modelState.computedColumns[0].name).toBe('month');
+      expect(modelState.enrichedResult).toBeNull();
     });
+  });
 
-    it('removing a computed column clears enriched result', () => {
-      useStore.setState({
-        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
-        explorerEnrichedResult: { columns: ['x', 'col'], rows: [{ x: 1, col: 10 }] },
-      });
-
-      useStore.getState().removeExplorerComputedColumn('col');
-
-      expect(useStore.getState().explorerEnrichedResult).toBeNull();
-    });
-
-    it('clears all computed columns', () => {
-      useStore.setState({
-        explorerComputedColumns: [
-          { name: 'a', expression: 'SUM(x)', type: 'metric' },
-          { name: 'b', expression: 'y', type: 'dimension' },
-        ],
-        explorerEnrichedResult: { columns: ['x'], rows: [] },
-      });
-
-      useStore.getState().clearExplorerComputedColumns();
-
-      expect(useStore.getState().explorerComputedColumns).toHaveLength(0);
-      expect(useStore.getState().explorerEnrichedResult).toBeNull();
-    });
-
-    it('sets enriched result', () => {
+  describe('setActiveModelEnrichedResult', () => {
+    it('sets enriched result on the active model', () => {
+      useStore.getState().createModelTab('my_model');
       const enriched = { columns: ['x', 'sum_x'], rows: [{ x: 1, sum_x: 10 }] };
-      useStore.getState().setExplorerEnrichedResult(enriched);
+      useStore.getState().setActiveModelEnrichedResult(enriched);
 
-      expect(useStore.getState().explorerEnrichedResult).toEqual(enriched);
+      expect(useStore.getState().explorerModelStates.my_model.enrichedResult).toEqual(enriched);
     });
+  });
 
-    it('setExplorerQueryResult clears DuckDB state', () => {
-      useStore.setState({
-        explorerEnrichedResult: { columns: ['x'], rows: [] },
-        explorerDuckDBTableName: 'explorer_1',
-        explorerDuckDBError: 'old error',
-      });
-
-      useStore.getState().setExplorerQueryResult({
-        columns: ['id'],
-        rows: [{ id: 1 }],
-        row_count: 1,
-      });
+  // ====================================================================
+  // Insight Actions
+  // ====================================================================
+  describe('createInsight', () => {
+    it('creates an insight with auto-generated name', () => {
+      useStore.getState().createInsight();
 
       const state = useStore.getState();
-      expect(state.explorerEnrichedResult).toBeNull();
-      expect(state.explorerDuckDBTableName).toBeNull();
-      expect(state.explorerDuckDBError).toBeNull();
+      expect(state.explorerChartInsightNames).toEqual(['insight']);
+      expect(state.explorerActiveInsightName).toBe('insight');
+      expect(state.explorerInsightStates.insight).toBeDefined();
+      expect(state.explorerInsightStates.insight.type).toBe('scatter');
+      expect(state.explorerInsightStates.insight.props).toEqual({});
+      expect(state.explorerInsightStates.insight.interactions).toEqual([]);
+      expect(state.explorerInsightStates.insight.typePropsCache).toEqual({});
+      expect(state.explorerInsightStates.insight.isNew).toBe(true);
     });
 
+    it('creates an insight with a provided name', () => {
+      useStore.getState().createInsight('my_insight');
+
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['my_insight']);
+      expect(useStore.getState().explorerInsightStates.my_insight).toBeDefined();
+    });
+
+    it('generates unique name when conflicting', () => {
+      useStore.getState().createInsight('insight');
+      useStore.getState().createInsight('insight');
+
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['insight', 'insight_2']);
+    });
+
+    it('sets new insight as active', () => {
+      useStore.getState().createInsight('first');
+      useStore.getState().createInsight('second');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('second');
+    });
+  });
+
+  describe('removeInsightFromChart', () => {
+    it('removes insight from chart insight names but keeps state', () => {
+      useStore.getState().createInsight('ins_1');
+      useStore.getState().createInsight('ins_2');
+
+      useStore.getState().removeInsightFromChart('ins_1');
+
+      const state = useStore.getState();
+      expect(state.explorerChartInsightNames).toEqual(['ins_2']);
+      // State is kept for potential undo
+      expect(state.explorerInsightStates.ins_1).toBeDefined();
+    });
+
+    it('switches active insight when active one is removed', () => {
+      useStore.getState().createInsight('ins_1');
+      useStore.getState().createInsight('ins_2');
+      useStore.setState({ explorerActiveInsightName: 'ins_1' });
+
+      useStore.getState().removeInsightFromChart('ins_1');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_2');
+    });
+
+    it('sets active insight to null when last chart insight is removed', () => {
+      useStore.getState().createInsight('only_insight');
+
+      useStore.getState().removeInsightFromChart('only_insight');
+
+      expect(useStore.getState().explorerActiveInsightName).toBeNull();
+    });
+  });
+
+  describe('setActiveInsight', () => {
+    it('sets the active insight name', () => {
+      useStore.getState().createInsight('ins_1');
+      useStore.getState().createInsight('ins_2');
+      useStore.getState().setActiveInsight('ins_1');
+
+      expect(useStore.getState().explorerActiveInsightName).toBe('ins_1');
+    });
+  });
+
+  describe('setInsightType', () => {
+    it('changes insight type and caches old props under old type', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'scatter',
+            props: { x: 'col_a', y: 'col_b', mode: 'markers' },
+          },
+        },
+      });
+
+      useStore.getState().setInsightType('ins', 'bar');
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.type).toBe('bar');
+      expect(insight.typePropsCache.scatter).toEqual({
+        x: 'col_a',
+        y: 'col_b',
+        mode: 'markers',
+      });
+    });
+
+    it('restores cached props when switching to a previously cached type', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'scatter',
+            props: { x: 'a', y: 'b' },
+            typePropsCache: {
+              bar: { x: 'cached_x', y: 'cached_y' },
+            },
+          },
+        },
+      });
+
+      useStore.getState().setInsightType('ins', 'bar');
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.type).toBe('bar');
+      expect(insight.props).toEqual({ x: 'cached_x', y: 'cached_y' });
+    });
+
+    it('sets empty props when switching to a type with no cache', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'scatter',
+            props: { x: 'a' },
+          },
+        },
+      });
+
+      useStore.getState().setInsightType('ins', 'heatmap');
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.type).toBe('heatmap');
+      expect(insight.props).toEqual({});
+    });
+  });
+
+  describe('setInsightProp', () => {
+    it('sets a prop at a dot-notation path', () => {
+      useStore.getState().createInsight('ins');
+
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+
+      expect(useStore.getState().explorerInsightStates.ins.props.x).toBe('col_a');
+    });
+
+    it('overwrites an existing prop value', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'old');
+      useStore.getState().setInsightProp('ins', 'x', 'new');
+
+      expect(useStore.getState().explorerInsightStates.ins.props.x).toBe('new');
+    });
+
+    it('does not affect other props', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+      useStore.getState().setInsightProp('ins', 'y', 'col_b');
+
+      const props = useStore.getState().explorerInsightStates.ins.props;
+      expect(props.x).toBe('col_a');
+      expect(props.y).toBe('col_b');
+    });
+  });
+
+  describe('removeInsightProp', () => {
+    it('removes a prop while keeping others', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().setInsightProp('ins', 'x', 'col_a');
+      useStore.getState().setInsightProp('ins', 'y', 'col_b');
+
+      useStore.getState().removeInsightProp('ins', 'y');
+
+      const props = useStore.getState().explorerInsightStates.ins.props;
+      expect(props.x).toBe('col_a');
+      expect(props.y).toBeUndefined();
+    });
+  });
+
+  describe('addInsightInteraction', () => {
+    it('adds an interaction to the insight', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().addInsightInteraction('ins', { type: 'filter', value: 'x > 1' });
+
+      expect(useStore.getState().explorerInsightStates.ins.interactions).toHaveLength(1);
+      expect(useStore.getState().explorerInsightStates.ins.interactions[0]).toEqual({
+        type: 'filter',
+        value: 'x > 1',
+      });
+    });
+  });
+
+  describe('removeInsightInteraction', () => {
+    it('removes an interaction by index', () => {
+      useStore.getState().createInsight('ins');
+      useStore.getState().addInsightInteraction('ins', { type: 'filter', value: 'a' });
+      useStore.getState().addInsightInteraction('ins', { type: 'sort', value: 'b' });
+
+      useStore.getState().removeInsightInteraction('ins', 0);
+
+      const interactions = useStore.getState().explorerInsightStates.ins.interactions;
+      expect(interactions).toHaveLength(1);
+      expect(interactions[0]).toEqual({ type: 'sort', value: 'b' });
+    });
+  });
+
+  // ====================================================================
+  // Chart Actions
+  // ====================================================================
+  describe('setChartName', () => {
+    it('sets the chart name', () => {
+      useStore.getState().setChartName('my_chart');
+      expect(useStore.getState().explorerChartName).toBe('my_chart');
+    });
+  });
+
+  describe('setChartLayout', () => {
+    it('merges layout updates with existing layout', () => {
+      useStore.setState({ explorerChartLayout: { 'title.text': 'Old' } });
+
+      useStore.getState().setChartLayout({ 'xaxis.title.text': 'X Axis' });
+
+      expect(useStore.getState().explorerChartLayout).toEqual({
+        'title.text': 'Old',
+        'xaxis.title.text': 'X Axis',
+      });
+    });
+
+    it('overwrites existing layout keys', () => {
+      useStore.setState({ explorerChartLayout: { 'title.text': 'Old' } });
+
+      useStore.getState().setChartLayout({ 'title.text': 'New' });
+
+      expect(useStore.getState().explorerChartLayout).toEqual({ 'title.text': 'New' });
+    });
+  });
+
+  describe('reorderChartInsights', () => {
+    it('sets the chart insight names to the given order', () => {
+      useStore.getState().createInsight('ins_a');
+      useStore.getState().createInsight('ins_b');
+      useStore.getState().createInsight('ins_c');
+
+      useStore.getState().reorderChartInsights(['ins_c', 'ins_a', 'ins_b']);
+
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['ins_c', 'ins_a', 'ins_b']);
+    });
+  });
+
+  // ====================================================================
+  // Loading Actions
+  // ====================================================================
+  describe('loadModel', () => {
+    it('creates a model tab from existing model object', () => {
+      const model = {
+        name: 'orders',
+        config: {
+          sql: 'SELECT * FROM orders',
+          source: 'ref(local_sqlite)',
+        },
+      };
+
+      useStore.setState({
+        explorerSources: [{ source_name: 'local_sqlite' }],
+      });
+
+      useStore.getState().loadModel(model);
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toContain('orders');
+      expect(state.explorerActiveModelName).toBe('orders');
+      expect(state.explorerModelStates.orders.sql).toBe('SELECT * FROM orders');
+      expect(state.explorerModelStates.orders.sourceName).toBe('local_sqlite');
+      expect(state.explorerModelStates.orders.isNew).toBe(false);
+    });
+
+    it('does not create duplicate tab if model already loaded', () => {
+      const model = {
+        name: 'orders',
+        config: { sql: 'SELECT * FROM orders' },
+      };
+
+      useStore.getState().loadModel(model);
+      useStore.getState().loadModel(model);
+
+      expect(useStore.getState().explorerModelTabs.filter((t) => t === 'orders')).toHaveLength(1);
+    });
+
+    it('switches to existing tab if model already loaded', () => {
+      useStore.getState().loadModel({ name: 'orders', config: { sql: 'SELECT 1' } });
+      useStore.getState().createModelTab('new_model');
+      useStore.getState().loadModel({ name: 'orders', config: { sql: 'SELECT 1' } });
+
+      expect(useStore.getState().explorerActiveModelName).toBe('orders');
+    });
+
+    it('uses query field if sql field is missing', () => {
+      useStore.getState().loadModel({
+        name: 'test',
+        config: { query: 'SELECT 2' },
+      });
+
+      expect(useStore.getState().explorerModelStates.test.sql).toBe('SELECT 2');
+    });
+
+    it('strips ref() wrapper from source name', () => {
+      useStore.setState({
+        explorerSources: [{ source_name: 'postgres_db' }],
+      });
+
+      useStore.getState().loadModel({
+        name: 'test',
+        config: { sql: 'SELECT 1', source: 'ref(postgres_db)' },
+      });
+
+      expect(useStore.getState().explorerModelStates.test.sourceName).toBe('postgres_db');
+    });
+
+    it('matches source via suffix when exact match fails', () => {
+      useStore.setState({
+        explorerSources: [{ source_name: 'local-duckdb' }],
+      });
+
+      useStore.getState().loadModel({
+        name: 'test',
+        config: { sql: 'SELECT 1', source: 'ref(duckdb)' },
+      });
+
+      expect(useStore.getState().explorerModelStates.test.sourceName).toBe('local-duckdb');
+    });
+
+    it('loads metrics and dimensions as computed columns', () => {
+      useStore.setState({
+        metrics: [
+          {
+            name: 'revenue',
+            parentModel: 'orders',
+            config: { expression: 'SUM(amount)', model: 'ref(orders)' },
+          },
+        ],
+        dimensions: [
+          {
+            name: 'order_month',
+            config: { expression: "DATE_TRUNC('month', date)", model: 'ref(orders)' },
+          },
+        ],
+      });
+
+      useStore.getState().loadModel({
+        name: 'orders',
+        config: { sql: 'SELECT * FROM orders', source: 'ref(src)' },
+      });
+
+      const computedCols = useStore.getState().explorerModelStates.orders.computedColumns;
+      expect(computedCols).toHaveLength(2);
+      expect(computedCols[0].name).toBe('revenue');
+      expect(computedCols[0].type).toBe('metric');
+      expect(computedCols[1].name).toBe('order_month');
+      expect(computedCols[1].type).toBe('dimension');
+    });
+
+    it('handles model with no config gracefully', () => {
+      useStore.getState().loadModel({ name: 'test' });
+      // Should not throw — should not create a tab
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+  });
+
+  describe('loadChart', () => {
+    it('populates chart state and creates model tabs and insights', () => {
+      const chart = {
+        name: 'sales_chart',
+        config: {
+          layout: { 'title.text': 'Sales' },
+        },
+      };
+
+      const insights = [
+        {
+          name: 'sales_scatter',
+          config: {
+            type: 'scatter',
+            props: { x: '?{${ref(orders).month}}', y: '?{${ref(orders).total}}' },
+            interactions: [],
+          },
+          parentModels: ['orders'],
+        },
+        {
+          name: 'revenue_line',
+          config: {
+            type: 'line',
+            props: { x: '?{${ref(revenue).date}}', y: '?{${ref(revenue).amount}}' },
+            interactions: [{ type: 'filter', value: '?{${ref(date_input)} > ...}' }],
+          },
+          parentModels: ['revenue'],
+        },
+      ];
+
+      const models = [
+        { name: 'orders', config: { sql: 'SELECT * FROM orders', source: 'ref(sqlite)' } },
+        { name: 'revenue', config: { sql: 'SELECT * FROM revenue', source: 'ref(postgres)' } },
+      ];
+
+      useStore.setState({
+        explorerSources: [
+          { source_name: 'sqlite' },
+          { source_name: 'postgres' },
+        ],
+        metrics: [],
+        dimensions: [],
+      });
+
+      useStore.getState().loadChart(chart, insights, models);
+
+      const state = useStore.getState();
+
+      // Chart state
+      expect(state.explorerChartName).toBe('sales_chart');
+      expect(state.explorerChartLayout).toEqual({ 'title.text': 'Sales' });
+
+      // Model tabs
+      expect(state.explorerModelTabs).toContain('orders');
+      expect(state.explorerModelTabs).toContain('revenue');
+      expect(state.explorerActiveModelName).toBe('orders'); // first model
+
+      // Insight states
+      expect(state.explorerChartInsightNames).toEqual(['sales_scatter', 'revenue_line']);
+      expect(state.explorerInsightStates.sales_scatter).toBeDefined();
+      expect(state.explorerInsightStates.sales_scatter.type).toBe('scatter');
+      expect(state.explorerInsightStates.revenue_line.type).toBe('line');
+      expect(state.explorerActiveInsightName).toBe('sales_scatter'); // first insight
+
+      // Insight props
+      expect(state.explorerInsightStates.sales_scatter.props).toEqual({
+        x: '?{${ref(orders).month}}',
+        y: '?{${ref(orders).total}}',
+      });
+
+      // Insight interactions
+      expect(state.explorerInsightStates.revenue_line.interactions).toEqual([
+        { type: 'filter', value: '?{${ref(date_input)} > ...}' },
+      ]);
+
+      // Loaded insights are not new
+      expect(state.explorerInsightStates.sales_scatter.isNew).toBe(false);
+    });
+
+    it('does not create duplicate model tabs for insights sharing the same model', () => {
+      const chart = { name: 'chart', config: { layout: {} } };
+      const insights = [
+        { name: 'ins_1', config: { type: 'scatter', props: {}, interactions: [] }, parentModels: ['orders'] },
+        { name: 'ins_2', config: { type: 'bar', props: {}, interactions: [] }, parentModels: ['orders'] },
+      ];
+      const models = [
+        { name: 'orders', config: { sql: 'SELECT 1' } },
+      ];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart, insights, models);
+
+      expect(useStore.getState().explorerModelTabs.filter((t) => t === 'orders')).toHaveLength(1);
+    });
+  });
+
+  describe('handleTableSelect', () => {
+    it('sets SQL and source on the active model when SQL is empty', () => {
+      useStore.getState().createModelTab('my_model');
+
+      useStore.getState().handleTableSelect({ sourceName: 'pg', table: 'users' });
+
+      const modelState = useStore.getState().explorerModelStates.my_model;
+      expect(modelState.sql).toBe('SELECT * FROM "users"');
+      expect(modelState.sourceName).toBe('pg');
+    });
+
+    it('replaces SQL (not appends) when SQL already exists', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSql('SELECT * FROM orders');
+
+      useStore.getState().handleTableSelect({ sourceName: 'pg', table: 'users' });
+
+      expect(useStore.getState().explorerModelStates.my_model.sql).toBe('SELECT * FROM "users"');
+    });
+
+    it('creates a model tab if none exists', () => {
+      useStore.getState().handleTableSelect({ sourceName: 'pg', table: 'users' });
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(1);
+      expect(state.explorerModelStates[state.explorerActiveModelName].sql).toBe(
+        'SELECT * FROM "users"'
+      );
+      expect(state.explorerModelStates[state.explorerActiveModelName].sourceName).toBe('pg');
+    });
+
+    it('keeps existing source if none provided', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('existing_source');
+
+      useStore.getState().handleTableSelect({ sourceName: null, table: 'users' });
+
+      expect(useStore.getState().explorerModelStates.my_model.sourceName).toBe('existing_source');
+    });
+  });
+
+  // ====================================================================
+  // Save-Related Helpers
+  // ====================================================================
+  describe('getModifiedObjects', () => {
+    it('returns new models', () => {
+      useStore.getState().createModelTab('new_model');
+
+      const result = useStore.getState().getModifiedObjects();
+      expect(result.newModels).toContain('new_model');
+    });
+
+    it('returns loaded (non-new) models as modified when their state has been changed', () => {
+      useStore.getState().loadModel({
+        name: 'existing',
+        config: { sql: 'SELECT 1' },
+      });
+
+      const result = useStore.getState().getModifiedObjects();
+      // Loaded models are not new
+      expect(result.newModels).not.toContain('existing');
+    });
+
+    it('returns new insights', () => {
+      useStore.getState().createInsight('new_insight');
+
+      const result = useStore.getState().getModifiedObjects();
+      expect(result.newInsights).toContain('new_insight');
+    });
+
+    it('returns chart name when chart has a name', () => {
+      useStore.getState().setChartName('my_chart');
+      useStore.getState().createInsight('ins');
+
+      const result = useStore.getState().getModifiedObjects();
+      expect(result.chartName).toBe('my_chart');
+    });
+  });
+
+  // ====================================================================
+  // DuckDB Actions
+  // ====================================================================
+  describe('DuckDB actions', () => {
     it('sets DuckDB loading state', () => {
       useStore.getState().setExplorerDuckDBLoading(true);
       expect(useStore.getState().explorerDuckDBLoading).toBe(true);
@@ -547,42 +1010,6 @@ describe('explorerNewStore', () => {
     it('sets DuckDB error state', () => {
       useStore.getState().setExplorerDuckDBError('DuckDB error');
       expect(useStore.getState().explorerDuckDBError).toBe('DuckDB error');
-    });
-
-    it('sets DuckDB table name', () => {
-      useStore.getState().setExplorerDuckDBTableName('explorer_5');
-      expect(useStore.getState().explorerDuckDBTableName).toBe('explorer_5');
-    });
-
-    it('updates a computed column expression', () => {
-      useStore.setState({
-        explorerComputedColumns: [
-          { name: 'total', expression: 'SUM(x)', type: 'metric' },
-          { name: 'month', expression: 'DATE_TRUNC(order_date)', type: 'dimension' },
-        ],
-        explorerEnrichedResult: { columns: ['x'], rows: [] },
-      });
-
-      useStore.getState().updateExplorerComputedColumn('total', {
-        expression: 'SUM(amount)',
-        type: 'metric',
-      });
-
-      const cols = useStore.getState().explorerComputedColumns;
-      expect(cols).toHaveLength(2);
-      expect(cols[0].expression).toBe('SUM(amount)');
-      expect(cols[1].expression).toBe('DATE_TRUNC(order_date)');
-    });
-
-    it('updating a computed column clears enriched result', () => {
-      useStore.setState({
-        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
-        explorerEnrichedResult: { columns: ['x', 'col'], rows: [{ x: 1, col: 10 }] },
-      });
-
-      useStore.getState().updateExplorerComputedColumn('col', { expression: 'AVG(x)' });
-
-      expect(useStore.getState().explorerEnrichedResult).toBeNull();
     });
 
     it('sets and clears failed computed columns', () => {
@@ -597,37 +1024,168 @@ describe('explorerNewStore', () => {
       useStore.getState().setExplorerFailedComputedColumns({});
       expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
     });
+  });
 
-    it('removing a computed column clears failed computed columns', () => {
-      useStore.setState({
-        explorerComputedColumns: [{ name: 'col', expression: 'SUM(x)', type: 'metric' }],
-        explorerFailedComputedColumns: { col: 'Error' },
-      });
-
-      useStore.getState().removeExplorerComputedColumn('col');
-
-      expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
+  // ====================================================================
+  // UI Actions
+  // ====================================================================
+  describe('UI actions', () => {
+    it('sets explorer sources', () => {
+      const sources = [{ source_name: 'pg' }, { source_name: 'mysql' }];
+      useStore.getState().setExplorerSources(sources);
+      expect(useStore.getState().explorerSources).toEqual(sources);
     });
 
-    it('clearing all computed columns clears failed computed columns', () => {
-      useStore.setState({
-        explorerComputedColumns: [{ name: 'a', expression: 'x', type: 'dimension' }],
-        explorerFailedComputedColumns: { a: 'Error' },
-      });
+    it('toggles left nav collapsed', () => {
+      expect(useStore.getState().explorerLeftNavCollapsed).toBe(false);
+      useStore.getState().toggleExplorerLeftNavCollapsed();
+      expect(useStore.getState().explorerLeftNavCollapsed).toBe(true);
+      useStore.getState().toggleExplorerLeftNavCollapsed();
+      expect(useStore.getState().explorerLeftNavCollapsed).toBe(false);
+    });
 
-      useStore.getState().clearExplorerComputedColumns();
+    it('sets center mode', () => {
+      useStore.getState().setExplorerCenterMode('chart');
+      expect(useStore.getState().explorerCenterMode).toBe('chart');
+    });
 
-      expect(useStore.getState().explorerFailedComputedColumns).toEqual({});
+    it('sets profile column', () => {
+      useStore.getState().setExplorerProfileColumn('email');
+      expect(useStore.getState().explorerProfileColumn).toBe('email');
+    });
+
+    it('toggles editor collapsed', () => {
+      expect(useStore.getState().explorerIsEditorCollapsed).toBe(false);
+      useStore.getState().toggleExplorerEditorCollapsed();
+      expect(useStore.getState().explorerIsEditorCollapsed).toBe(true);
+      useStore.getState().toggleExplorerEditorCollapsed();
+      expect(useStore.getState().explorerIsEditorCollapsed).toBe(false);
     });
   });
 
-  describe('save modal', () => {
-    it('setExplorerSaveModalOpen toggles modal state', () => {
-      useStore.getState().setExplorerSaveModalOpen(true);
-      expect(useStore.getState().explorerSaveModalOpen).toBe(true);
+  // ====================================================================
+  // Edge Cases
+  // ====================================================================
+  describe('edge cases', () => {
+    it('renameModelTab handles multiple insights referencing the same model', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          ins_1: {
+            type: 'scatter',
+            props: { x: '?{${ref(old_model).a}}' },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+          ins_2: {
+            type: 'bar',
+            props: { y: '?{${ref(old_model).b}}' },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['ins_1', 'ins_2'],
+      });
 
-      useStore.getState().setExplorerSaveModalOpen(false);
-      expect(useStore.getState().explorerSaveModalOpen).toBe(false);
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      expect(useStore.getState().explorerInsightStates.ins_1.props.x).toBe(
+        '?{${ref(new_model).a}}'
+      );
+      expect(useStore.getState().explorerInsightStates.ins_2.props.y).toBe(
+        '?{${ref(new_model).b}}'
+      );
+    });
+
+    it('active model convenience actions are no-ops when no active model', () => {
+      // None of these should throw
+      useStore.getState().setActiveModelSql('test');
+      useStore.getState().setActiveModelSource('test');
+      useStore.getState().setActiveModelQueryResult({});
+      useStore.getState().setActiveModelQueryError('err');
+      useStore.getState().addActiveModelComputedColumn({ name: 'x', expression: 'y', type: 'metric' });
+      useStore.getState().updateActiveModelComputedColumn('x', {});
+      useStore.getState().removeActiveModelComputedColumn('x');
+      useStore.getState().setActiveModelEnrichedResult({});
+
+      // State should be unchanged
+      expect(useStore.getState().explorerModelStates).toEqual({});
+    });
+
+    it('insight actions on non-existent insight do not throw', () => {
+      // These should be no-ops
+      useStore.getState().setInsightType('nonexistent', 'bar');
+      useStore.getState().setInsightProp('nonexistent', 'x', 'val');
+      useStore.getState().removeInsightProp('nonexistent', 'x');
+      useStore.getState().addInsightInteraction('nonexistent', {});
+      useStore.getState().removeInsightInteraction('nonexistent', 0);
+
+      expect(useStore.getState().explorerInsightStates).toEqual({});
+    });
+
+    it('closeModelTab on non-existent tab does not throw', () => {
+      useStore.getState().closeModelTab('nonexistent');
+      expect(useStore.getState().explorerModelTabs).toEqual([]);
+    });
+
+    it('renameModelTab prevents collision with existing tab name', () => {
+      useStore.getState().createModelTab('model_a');
+      useStore.getState().createModelTab('model_b');
+
+      useStore.getState().renameModelTab('model_a', 'model_b');
+
+      // Should not have renamed — model_b already exists
+      expect(useStore.getState().explorerModelTabs).toEqual(['model_a', 'model_b']);
+      expect(useStore.getState().explorerModelStates.model_a).toBeDefined();
+    });
+
+    it('loadChart called twice replaces insight states from first chart', () => {
+      const chart1 = { name: 'chart_1', config: { layout: {} } };
+      const chart2 = { name: 'chart_2', config: { layout: {} } };
+      const insights1 = [
+        { name: 'ins_from_chart_1', config: { type: 'scatter', props: {}, interactions: [] }, parentModels: ['m1'] },
+      ];
+      const insights2 = [
+        { name: 'ins_from_chart_2', config: { type: 'bar', props: {}, interactions: [] }, parentModels: ['m2'] },
+      ];
+      const models1 = [{ name: 'm1', config: { sql: 'SELECT 1' } }];
+      const models2 = [{ name: 'm2', config: { sql: 'SELECT 2' } }];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart1, insights1, models1);
+      useStore.getState().loadChart(chart2, insights2, models2);
+
+      const state = useStore.getState();
+      // Second chart replaces first chart's insights
+      expect(state.explorerChartInsightNames).toEqual(['ins_from_chart_2']);
+      expect(state.explorerInsightStates.ins_from_chart_1).toBeUndefined();
+      expect(state.explorerInsightStates.ins_from_chart_2).toBeDefined();
+    });
+
+    it('renameModelTab propagates through array-valued insight props', () => {
+      useStore.getState().createModelTab('old_model');
+      useStore.setState({
+        explorerInsightStates: {
+          ins_1: {
+            type: 'scatter',
+            props: {
+              customdata: ['?{${ref(old_model).col_a}}', '?{${ref(old_model).col_b}}'],
+            },
+            interactions: [],
+            typePropsCache: {},
+            isNew: true,
+          },
+        },
+        explorerChartInsightNames: ['ins_1'],
+      });
+
+      useStore.getState().renameModelTab('old_model', 'new_model');
+
+      const props = useStore.getState().explorerInsightStates.ins_1.props;
+      expect(props.customdata[0]).toBe('?{${ref(new_model).col_a}}');
+      expect(props.customdata[1]).toBe('?{${ref(new_model).col_b}}');
     });
   });
 });
