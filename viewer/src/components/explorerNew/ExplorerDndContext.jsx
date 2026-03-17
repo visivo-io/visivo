@@ -13,6 +13,7 @@ const TYPE_COLORS = {
   column: 'bg-secondary-100 text-secondary-800 border-secondary-300',
   metric: 'bg-cyan-100 text-cyan-800 border-cyan-300',
   dimension: 'bg-teal-100 text-teal-800 border-teal-300',
+  insight: 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
 const DragOverlayContent = ({ data }) => {
@@ -32,10 +33,16 @@ const DragOverlayContent = ({ data }) => {
 };
 
 const ExplorerDndContext = ({ children }) => {
-  const setInsightProp = useStore((s) => s.setExplorerInsightProp);
-  const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
-  const storeModelName = useStore((s) => s.explorerActiveModelName);
-  const activeModelName = storeModelName || 'preview_model';
+  const activeModelName = useStore((s) => s.explorerActiveModelName) || 'preview_model';
+  const activeInsightName = useStore((s) => s.explorerActiveInsightName);
+  const setInsightProp = useStore((s) => s.setInsightProp);
+  const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
+  const setActiveModelSource = useStore((s) => s.setActiveModelSource);
+
+  // Backward-compat shims for components not yet migrated
+  const setExplorerInsightProp = useStore((s) => s.setExplorerInsightProp);
+  const addExplorerComputedColumn = useStore((s) => s.addExplorerComputedColumn);
+
   const [activeData, setActiveData] = useState(null);
 
   const sensors = useSensors(
@@ -60,9 +67,13 @@ const ExplorerDndContext = ({ children }) => {
 
       if (dropData?.type === 'axis-zone' || dropData?.type === 'property-zone') {
         const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
-        // All drags generate ref(model).name patterns — activeModelName always has a fallback
         const value = '?{${ref(' + activeModelName + ').' + dragData.name + '}}';
-        setInsightProp(fieldName, value);
+
+        // Update both new multi-insight store and backward-compat shim
+        if (activeInsightName) {
+          setInsightProp(activeInsightName, fieldName, value);
+        }
+        setExplorerInsightProp(fieldName, value);
       } else if (dropData?.type === 'data-table-drop') {
         if (dragData.type === 'metric' || dragData.type === 'dimension') {
           addComputedColumn({
@@ -70,10 +81,27 @@ const ExplorerDndContext = ({ children }) => {
             expression: dragData.expression || dragData.name,
             type: dragData.type,
           });
+          addExplorerComputedColumn({
+            name: dragData.name,
+            expression: dragData.expression || dragData.name,
+            type: dragData.type,
+          });
+        }
+      } else if (dropData?.type === 'source-zone') {
+        if (dragData.type === 'source') {
+          setActiveModelSource(dragData.name);
         }
       }
     },
-    [setInsightProp, addComputedColumn, activeModelName]
+    [
+      activeModelName,
+      activeInsightName,
+      setInsightProp,
+      setExplorerInsightProp,
+      addComputedColumn,
+      addExplorerComputedColumn,
+      setActiveModelSource,
+    ]
   );
 
   const handleDragCancel = useCallback(() => {

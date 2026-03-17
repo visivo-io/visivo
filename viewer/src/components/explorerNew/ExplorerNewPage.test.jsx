@@ -22,13 +22,9 @@ jest.mock('./CenterPanel', () => {
   };
 });
 
-jest.mock('../new-views/common/EditPanel', () => {
-  return function MockEditPanel({ editItem, onClose }) {
-    return (
-      <div data-testid="edit-panel" onClick={onClose}>
-        EditPanel: {editItem?.type} - {editItem?.object?.name}
-      </div>
-    );
+jest.mock('./ExplorerRightPanel', () => {
+  return function MockExplorerRightPanel() {
+    return <div data-testid="right-panel">ExplorerRightPanel</div>;
   };
 });
 
@@ -50,46 +46,31 @@ jest.mock('../../hooks/usePanelResize', () => ({
   }),
 }));
 
-jest.mock('../../hooks/useObjectSave', () => ({
-  useObjectSave: () => jest.fn(),
-}));
-
 describe('ExplorerNewPage', () => {
   beforeEach(() => {
     useStore.setState({
       explorerLeftNavCollapsed: false,
-      explorerEditStack: [],
       explorerActiveModelName: null,
-      explorerSql: '',
-      explorerSourceName: null,
-      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      explorerChartInsightNames: [],
+      explorerInsightStates: {},
+      explorerActiveInsightName: null,
+      explorerChartName: null,
+      explorerChartLayout: {},
     });
   });
 
-  it('renders LeftPanel and CenterPanel', () => {
+  it('renders LeftPanel, CenterPanel, and RightPanel', () => {
     render(<ExplorerNewPage />);
 
     expect(screen.getByTestId('explorer-new-page')).toBeInTheDocument();
     expect(screen.getByTestId('left-panel')).toBeInTheDocument();
     expect(screen.getByTestId('center-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('right-panel')).toBeInTheDocument();
   });
 
-  it('shows empty state when no edit item is selected', () => {
+  it('right panel is always rendered (never conditional)', () => {
     render(<ExplorerNewPage />);
-    expect(screen.getByTestId('edit-panel-empty')).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
-  });
-
-  it('shows EditPanel when an edit item is in the stack', () => {
-    useStore.setState({
-      explorerEditStack: [
-        { type: 'model', object: { name: 'test_model', config: { sql: 'SELECT 1' } } },
-      ],
-    });
-    render(<ExplorerNewPage />);
-    expect(screen.getByTestId('edit-panel')).toBeInTheDocument();
-    expect(screen.getByText(/EditPanel: model - test_model/)).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-panel-empty')).not.toBeInTheDocument();
+    expect(screen.getByTestId('right-panel')).toBeInTheDocument();
   });
 
   it('renders VerticalDivider when left nav is expanded', () => {
@@ -101,5 +82,11 @@ describe('ExplorerNewPage', () => {
     useStore.setState({ explorerLeftNavCollapsed: true });
     render(<ExplorerNewPage />);
     expect(screen.queryByTestId('vertical-divider')).not.toBeInTheDocument();
+  });
+
+  it('does not render EditPanel or edit-panel-empty', () => {
+    render(<ExplorerNewPage />);
+    expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-panel-empty')).not.toBeInTheDocument();
   });
 });

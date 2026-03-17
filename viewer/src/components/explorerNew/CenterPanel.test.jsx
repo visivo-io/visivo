@@ -69,6 +69,13 @@ jest.mock('./ExplorerChartPreview', () => {
   };
 });
 
+// Mock ModelTabBar
+jest.mock('./ModelTabBar', () => {
+  return function MockModelTabBar() {
+    return <div data-testid="model-tab-bar">ModelTabBar</div>;
+  };
+});
+
 // Mock VerticalDivider and Divider
 jest.mock('../explorer/VerticalDivider', () => {
   return function MockVerticalDivider({ handleMouseDown }) {
@@ -175,6 +182,12 @@ describe('CenterPanel', () => {
       explorerDuckDBError: null,
       explorerFailedComputedColumns: {},
     });
+  });
+
+  it('renders ModelTabBar at the top', () => {
+    render(<CenterPanel />);
+
+    expect(screen.getByTestId('model-tab-bar')).toBeInTheDocument();
   });
 
   it('renders SQL Editor and chart preview in wide mode', () => {
