@@ -4,6 +4,7 @@ import SQLEditor from './SQLEditor';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
+import ExplorerErrorBoundary from './ExplorerErrorBoundary';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
 import DraggableColumnHeader from './DraggableColumnHeader';
 import VerticalDivider from '../explorer/VerticalDivider';
@@ -242,7 +243,9 @@ const CenterPanel = () => {
 
   const renderChartSection = () => (
     <div className="h-full overflow-hidden" data-testid="chart-section">
-      <ExplorerChartPreview />
+      <ExplorerErrorBoundary fallback="Chart preview error">
+        <ExplorerChartPreview />
+      </ExplorerErrorBoundary>
     </div>
   );
 

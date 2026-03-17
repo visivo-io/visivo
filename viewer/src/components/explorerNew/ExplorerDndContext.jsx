@@ -34,7 +34,8 @@ const DragOverlayContent = ({ data }) => {
 const ExplorerDndContext = ({ children }) => {
   const setInsightProp = useStore((s) => s.setExplorerInsightProp);
   const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
-  const activeModelName = useStore((s) => s.explorerActiveModelName);
+  const storeModelName = useStore((s) => s.explorerActiveModelName);
+  const activeModelName = storeModelName || 'preview_model';
   const [activeData, setActiveData] = useState(null);
 
   const sensors = useSensors(
@@ -59,17 +60,8 @@ const ExplorerDndContext = ({ children }) => {
 
       if (dropData?.type === 'axis-zone' || dropData?.type === 'property-zone') {
         const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
-        let value;
-        if (dragData.type === 'column') {
-          value = activeModelName
-            ? '?{${ref(' + activeModelName + ').' + dragData.name + '}}'
-            : '?{' + dragData.name + '}';
-        } else {
-          // Model-scoped metrics/dimensions: ref(model).name
-          value = activeModelName
-            ? '?{${ref(' + activeModelName + ').' + dragData.name + '}}'
-            : '?{${ref(' + dragData.name + ')}}';
-        }
+        // All drags generate ref(model).name patterns — activeModelName always has a fallback
+        const value = '?{${ref(' + activeModelName + ').' + dragData.name + '}}';
         setInsightProp(fieldName, value);
       } else if (dropData?.type === 'data-table-drop') {
         if (dragData.type === 'metric' || dragData.type === 'dimension') {

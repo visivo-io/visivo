@@ -64,7 +64,7 @@ describe('ExplorerDndContext', () => {
     expect(screen.getByTestId('dnd-context').dataset.ondragend).toBe('true');
   });
 
-  it('sets column drop as fallback format without active model', () => {
+  it('sets column drop as ref format with preview_model fallback', () => {
     render(
       <ExplorerDndContext>
         <div>Content</div>
@@ -76,7 +76,9 @@ describe('ExplorerDndContext', () => {
       over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
     });
 
-    expect(useStore.getState().explorerInsightConfig.props.x).toBe('?{col_a}');
+    expect(useStore.getState().explorerInsightConfig.props.x).toBe(
+      '?{${ref(preview_model).col_a}}'
+    );
   });
 
   it('sets column drop as full ref format with active model', () => {
@@ -98,7 +100,7 @@ describe('ExplorerDndContext', () => {
     );
   });
 
-  it('sets metric drop as ref format', () => {
+  it('sets metric drop as model-scoped ref format', () => {
     render(
       <ExplorerDndContext>
         <div>Content</div>
@@ -111,11 +113,11 @@ describe('ExplorerDndContext', () => {
     });
 
     expect(useStore.getState().explorerInsightConfig.props.y).toBe(
-      '?{${ref(total_revenue)}}'
+      '?{${ref(preview_model).total_revenue}}'
     );
   });
 
-  it('sets dimension drop as ref format', () => {
+  it('sets dimension drop as model-scoped ref format', () => {
     render(
       <ExplorerDndContext>
         <div>Content</div>
@@ -128,7 +130,7 @@ describe('ExplorerDndContext', () => {
     });
 
     expect(useStore.getState().explorerInsightConfig.props.x).toBe(
-      '?{${ref(order_month)}}'
+      '?{${ref(preview_model).order_month}}'
     );
   });
 
@@ -144,7 +146,9 @@ describe('ExplorerDndContext', () => {
       over: { data: { current: { path: 'marker.color', type: 'property-zone' } } },
     });
 
-    expect(useStore.getState().explorerInsightConfig.props['marker.color']).toBe('?{col_b}');
+    expect(useStore.getState().explorerInsightConfig.props['marker.color']).toBe(
+      '?{${ref(preview_model).col_b}}'
+    );
   });
 
   it('does nothing when dropped on no target', () => {
