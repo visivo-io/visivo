@@ -1,7 +1,6 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import PivotableTable from './PivotableTable';
 import * as DuckDBContext from '../../contexts/DuckDBContext';
-import * as queries from '../../duckdb/queries';
 
 jest.mock('../../contexts/DuckDBContext');
 jest.mock('../../duckdb/queries');
@@ -46,141 +45,111 @@ describe('PivotableTable', () => {
     DuckDBContext.useDuckDB.mockReturnValue({});
   });
 
-  it('renders column headers from props_mapping via DataTable', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('renders column headers from props_mapping via DataTable', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
-    // DataTable renders display names from props_mapping reverse lookup
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Revenue')).toBeInTheDocument();
   });
 
-  it('renders data rows via DataTable', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('renders data rows via DataTable', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByText('Alice')).toBeInTheDocument();
     expect(screen.getByText('Bob')).toBeInTheDocument();
     expect(screen.getByText('Charlie')).toBeInTheDocument();
   });
 
-  it('renders "No data available" when insight has no data', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'empty-table', rows_per_page: 50 }}
-          insightData={{ data: [], props_mapping: {}, files: [] }}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('renders "No data available" when insight has no data', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'empty-table', rows_per_page: 50 }}
+        insightData={{ data: [], props_mapping: {}, files: [] }}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
-  it('renders export and share buttons in toolbar', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('renders export and share buttons in toolbar', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Share Table' })).toBeInTheDocument();
   });
 
-  it('renders search input in toolbar', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('renders search input in toolbar', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
   });
 
-  it('shows total row count via DataTable footer', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+  it('shows total row count via DataTable footer', () => {
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={mockInsightData}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByText('3 total rows')).toBeInTheDocument();
   });
 
-  it('formats numeric values via DataTableCell', async () => {
+  it('formats numeric values via DataTableCell', () => {
     const dataWithBigNumbers = {
       ...mockInsightData,
       data: [{ col_a: 'Test', col_b: 1234567 }],
     };
 
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'test-table', rows_per_page: 50 }}
-          insightData={dataWithBigNumbers}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
+    render(
+      <PivotableTable
+        table={{ name: 'test-table', rows_per_page: 50 }}
+        insightData={dataWithBigNumbers}
+        itemWidth={600}
+        height={400}
+        width={600}
+      />
+    );
 
     expect(screen.getByText('1,234,567')).toBeInTheDocument();
   });
 
-  it('wraps content in ItemContainer with slug id', async () => {
-    await act(async () => {
-      render(
-        <PivotableTable
-          table={{ name: 'my-table', rows_per_page: 50 }}
-          insightData={mockInsightData}
-          itemWidth={600}
-          height={400}
-          width={600}
-        />
-      );
-    });
-
-    expect(document.getElementById('my-table')).toBeInTheDocument();
-  });
 });

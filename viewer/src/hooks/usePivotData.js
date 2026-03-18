@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { runDuckDBQuery, loadInsightParquetFiles } from '../duckdb/queries';
 import { buildPivotQuery, buildColumnSelectQuery } from '../utils/pivotQueryBuilder';
-import { resolveFieldRef, parseColumnAlias, extractAggAndColumn, resolveValueExpression } from '../utils/pivotRefResolver';
+import { extractAggAndColumn, resolveValueExpression } from '../utils/pivotRefResolver';
 
 /**
  * Hook that executes a DuckDB PIVOT or column-select query against already-loaded data.
