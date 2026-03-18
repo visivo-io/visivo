@@ -232,13 +232,13 @@ def test_Table_with_format_cells():
         "name": "formatted-table",
         "data": "ref(my-insight)",
         "format_cells": {
-            "scope": "columns",
+            "scope": "column",
             "min_color": "#ff0000",
             "max_color": "#00ff00",
         },
     }
     table = Table(**data)
-    assert table.format_cells.scope.value == "columns"
+    assert table.format_cells.scope.value == "column"
     assert table.format_cells.min_color == "#ff0000"
     assert table.format_cells.max_color == "#00ff00"
 
@@ -278,7 +278,7 @@ def test_Table_serialization_with_pivot():
         "rows": ["${ref(sales-insight).product}"],
         "values": ["sum(${ref(sales-insight).revenue})"],
         "format_cells": {
-            "scope": "columns",
+            "scope": "column",
             "min_color": "#ff0000",
             "max_color": "#00ff00",
         },
@@ -288,7 +288,7 @@ def test_Table_serialization_with_pivot():
     assert serialized["columns"] == ["${ref(sales-insight).region}"]
     assert serialized["rows"] == ["${ref(sales-insight).product}"]
     assert serialized["values"] == ["sum(${ref(sales-insight).revenue})"]
-    assert serialized["format_cells"]["scope"] == "columns"
+    assert serialized["format_cells"]["scope"] == "column"
 
 
 def test_Table_child_items_with_data():

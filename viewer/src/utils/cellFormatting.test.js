@@ -15,7 +15,7 @@ describe('computeGradientStyles', () => {
 
   it('returns empty map when no rows', () => {
     const result = computeGradientStyles([], numericCols, {
-      scope: 'columns',
+      scope: 'column',
       min_color: '#ff0000',
       max_color: '#00ff00',
     });
@@ -24,17 +24,17 @@ describe('computeGradientStyles', () => {
 
   it('returns empty map when no numeric columns', () => {
     const result = computeGradientStyles(rows, [], {
-      scope: 'columns',
+      scope: 'column',
       min_color: '#ff0000',
       max_color: '#00ff00',
     });
     expect(result.size).toBe(0);
   });
 
-  describe('scope: columns', () => {
+  describe('scope: column', () => {
     it('computes gradient per column', () => {
       const result = computeGradientStyles(rows, numericCols, {
-        scope: 'columns',
+        scope: 'column',
         min_color: '#ff0000',
         max_color: '#00ff00',
       });
@@ -84,7 +84,7 @@ describe('computeGradientStyles', () => {
   it('handles equal min/max (no gradient applied)', () => {
     const sameRows = [{ a: 5 }, { a: 5 }];
     const result = computeGradientStyles(sameRows, ['a'], {
-      scope: 'columns',
+      scope: 'column',
       min_color: '#ff0000',
       max_color: '#00ff00',
     });
@@ -96,7 +96,7 @@ describe('computeGradientStyles', () => {
     const result = computeGradientStyles(
       [{ a: 0 }, { a: 100 }],
       ['a'],
-      { scope: 'columns', min_color: '#f00', max_color: '#0f0' }
+      { scope: 'column', min_color: '#f00', max_color: '#0f0' }
     );
     expect(result.get('0-a')).toEqual({ backgroundColor: 'rgb(255, 0, 0)' });
     expect(result.get('1-a')).toEqual({ backgroundColor: 'rgb(0, 255, 0)' });

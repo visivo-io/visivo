@@ -2,7 +2,7 @@ import Loading from '../common/Loading';
 import React, { useEffect, useState, useMemo } from 'react';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
-import InsightTable from './InsightTable';
+import PivotableTable from './PivotableTable';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -80,7 +80,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Viewport-based loading: Only fetch data when shouldLoad is true
   const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
-  const isInsightTable = !!dataName;
+  const isPivotableTable = !!dataName;
 
   // Read data from store (insight or model data)
   const insightData = useStore(
@@ -278,18 +278,18 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!shouldLoad || (!isDirectQueryResult && !isInsightTable && !tracesData)) {
+  if (!shouldLoad || (!isDirectQueryResult && !isPivotableTable && !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isInsightTable && !insightData) {
+  if (isPivotableTable && !insightData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  // Route to InsightTable component for data-backed tables
+  // Route to PivotableTable component for data-backed tables
   if (dataName && insightData) {
     return (
-      <InsightTable
+      <PivotableTable
         table={table}
         insightData={insightData}
         itemWidth={itemWidth}
@@ -416,7 +416,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
                 </Tooltip>
               </Button>
 
-              {!isDirectQueryResult && !isInsightTable && tracesData && (
+              {!isDirectQueryResult && !isPivotableTable && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
                   onChange={onSelectedCohortChange}

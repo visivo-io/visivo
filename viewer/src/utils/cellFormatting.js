@@ -72,7 +72,7 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
         }
       }
     });
-  } else if (scope === 'columns') {
+  } else if (scope === 'column') {
     for (const colId of numericColumnIds) {
       let colMin = Infinity;
       let colMax = -Infinity;

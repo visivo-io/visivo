@@ -124,6 +124,13 @@ class Table(SelectorModel, NamedModel, ParentModel):
         description="A ${ref()} to a model or insight. Shows all columns from the data source.",
     )
 
+    # Deprecated: use 'data' instead
+    insights: Optional[List[InsightRef]] = Field(
+        None,
+        description="Deprecated. Use 'data' instead.",
+        json_schema_extra={"deprecated": True},
+    )
+
     traces: List[TraceRef] = Field(
         [],
         description="A ${ref()} to a trace or trace defined in line. Data for the table will come from the trace.",
@@ -162,6 +169,8 @@ class Table(SelectorModel, NamedModel, ParentModel):
         items = list(self.traces)
         if self.data:
             items.append(self.data)
+        if self.insights:
+            items.extend(self.insights)
         if self.selector:
             items.append(self.selector)
 

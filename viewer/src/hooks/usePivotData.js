@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import { runDuckDBQuery } from '../duckdb/queries';
+import { runDuckDBQuery, loadInsightParquetFiles } from '../duckdb/queries';
 import { buildPivotQuery, buildColumnSelectQuery } from '../utils/pivotQueryBuilder';
 import { resolveFieldRef, parseColumnAlias, extractAggAndColumn, resolveValueExpression } from '../utils/pivotRefResolver';
 
@@ -22,7 +22,7 @@ export const usePivotData = (config, insightData) => {
   const isColumnSelectMode = !!(config?.columns && !config?.rows && !config?.values);
 
   useEffect(() => {
-    if (!db || !config || !insightData?.files?.length) {
+    if (!db || !config || !insightData?.files?.length || insightData?.data === null) {
       setIsLoading(false);
       return;
     }
@@ -36,6 +36,10 @@ export const usePivotData = (config, insightData) => {
       try {
         const tableName = insightData.files[0].name_hash;
         const propsMapping = insightData.props_mapping || {};
+
+        // Ensure parquet files are loaded into DuckDB before querying
+        await loadInsightParquetFiles(db, insightData.files);
+        if (cancelled) return;
 
         const reverseMapping = {};
         for (const [propPath, hashedName] of Object.entries(propsMapping)) {

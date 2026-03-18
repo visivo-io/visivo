@@ -23,6 +23,7 @@ class TableDeprecation(BaseDeprecationChecker):
 
     The Table model is being simplified:
     - `traces` field -> Use `data` instead
+    - `insights` (plural) -> Use `data` instead
     - `column_defs` -> Auto-generated from data query results
     """
 
@@ -34,6 +35,17 @@ class TableDeprecation(BaseDeprecationChecker):
         tables = project.dag().get_nodes_by_types([Table], True)
 
         for table in tables:
+            if table.insights:
+                warnings.append(
+                    DeprecationWarning(
+                        feature="Table.insights",
+                        message=f"Table '{table.name}' uses deprecated 'insights' field.",
+                        migration="Use 'data: ${{ref(insight-name)}}' instead of 'insights'.",
+                        removal_version=self.REMOVAL_VERSION,
+                        location=table.path,
+                    )
+                )
+
             if table.traces:
                 warnings.append(
                     DeprecationWarning(
@@ -94,6 +106,14 @@ class TableDeprecation(BaseDeprecationChecker):
             for table in data["tables"]:
                 table_name = table.get("name", "unknown")
 
+                if "insights" in table and isinstance(table["insights"], list):
+                    if len(table["insights"]) == 1:
+                        migration = self._create_insights_to_data_migration(
+                            content, table_name, table["insights"][0]
+                        )
+                        if migration:
+                            migrations.append(migration)
+
                 if "column_defs" in table:
                     migration = self._create_remove_column_defs_migration(content, table_name)
                     if migration:
@@ -103,6 +123,52 @@ class TableDeprecation(BaseDeprecationChecker):
 
         except (IOError, UnicodeDecodeError):
             return []
+
+    def _create_insights_to_data_migration(
+        self, content: str, table_name: str, insight_value: str
+    ) -> MigrationAction:
+        """Create migration to convert insights (plural) to data (singular)."""
+        # Match multi-line format:
+        #   insights:
+        #     - ${ref(...)}
+        pattern_multiline = re.compile(
+            rf"^(\s*)insights:\s*\n\s*-\s+({re.escape(insight_value)})\s*$",
+            re.MULTILINE,
+        )
+        match = pattern_multiline.search(content)
+
+        if match:
+            indent = match.group(1)
+            old_text = match.group(0)
+            new_text = f"{indent}data: {insight_value}"
+
+            return MigrationAction(
+                file_path="",
+                old_text=old_text,
+                new_text=new_text,
+                description=f"Table '{table_name}': Convert 'insights' to 'data'",
+            )
+
+        # Match single-line format: insights: [ref(...)]
+        pattern_singleline = re.compile(
+            rf"^(\s*)insights:\s*\[({re.escape(insight_value)})\]\s*$",
+            re.MULTILINE,
+        )
+        match = pattern_singleline.search(content)
+
+        if match:
+            indent = match.group(1)
+            old_text = match.group(0)
+            new_text = f"{indent}data: {insight_value}"
+
+            return MigrationAction(
+                file_path="",
+                old_text=old_text,
+                new_text=new_text,
+                description=f"Table '{table_name}': Convert 'insights' to 'data'",
+            )
+
+        return None
 
     def _create_remove_column_defs_migration(
         self, content: str, table_name: str

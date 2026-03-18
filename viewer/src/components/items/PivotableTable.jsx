@@ -23,7 +23,7 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
 
-const InsightTable = ({ table, insightData, itemWidth, height, width }) => {
+const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState(null);
   const [page, setPage] = useState(0);
@@ -291,4 +291,4 @@ function inferType(rows, key) {
   return COLUMN_TYPES.UNKNOWN;
 }
 
-export default InsightTable;
+export default PivotableTable;

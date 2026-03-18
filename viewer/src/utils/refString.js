@@ -81,8 +81,28 @@ export const formatMultiRefValue = names => {
 };
 
 /**
- * Extract all unique ref names from an array of strings that may contain
+ * Extract all ref names from a single string that may contain
  * ${ref(name).field} patterns (including inside expressions like "sum(${ref(name).field})").
+ *
+ * Unlike parseRefValue which expects the entire string to be a ref,
+ * this finds refs embedded anywhere in the string.
+ *
+ * @param {string} str - String possibly containing ref patterns
+ * @returns {string[]} Ref names found (may contain duplicates)
+ */
+export const extractRefNames = (str) => {
+  if (!str || typeof str !== 'string') return [];
+  const names = [];
+  const pattern = /\$\{\s*ref\(\s*([^)]+)\s*\)/g;
+  let match;
+  while ((match = pattern.exec(str)) !== null) {
+    names.push(match[1].trim());
+  }
+  return names;
+};
+
+/**
+ * Extract all unique ref names from an array of strings.
  *
  * @param {string[]} strings - Array of strings possibly containing ref patterns
  * @returns {string[]} Unique ref names found
@@ -90,14 +110,8 @@ export const formatMultiRefValue = names => {
 export const extractRefNamesFromStrings = (strings) => {
   if (!strings || !Array.isArray(strings)) return [];
   const names = new Set();
-  const pattern = /\$\{\s*ref\(\s*([^)]+)\s*\)/g;
   for (const str of strings) {
-    if (typeof str !== 'string') continue;
-    let match;
-    while ((match = pattern.exec(str)) !== null) {
-      names.add(match[1].trim());
-    }
-    pattern.lastIndex = 0;
+    extractRefNames(str).forEach(n => names.add(n));
   }
   return [...names];
 };

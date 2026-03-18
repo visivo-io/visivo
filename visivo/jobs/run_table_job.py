@@ -17,32 +17,41 @@ import os
 def action(table: Table, dag, output_dir, run_id=DEFAULT_RUN_ID):
     run_output_dir = f"{output_dir}/{run_id}"
     files_directory = f"{run_output_dir}/files"
-    tables_directory = f"{run_output_dir}/tables"
+    insights_directory = f"{run_output_dir}/insights"
 
     try:
         start_time = time()
 
         models = all_descendants_of_type(type=Model, dag=dag, from_node=table)
+        model = models[0] if models else None
+
+        if not model:
+            raise ValueError(f"No model found for table '{table.name}'")
+
+        parquet_path = f"{files_directory}/{model.name_hash()}.parquet"
+        if not os.path.exists(parquet_path):
+            raise ValueError(f"Parquet file not found for model '{model.name}' at {parquet_path}")
+
         files = [
             {
                 "name_hash": model.name_hash(),
-                "signed_data_file_url": f"{files_directory}/{model.name_hash()}.parquet",
+                "signed_data_file_url": parquet_path,
             }
-            for model in models
-            if os.path.exists(f"{files_directory}/{model.name_hash()}.parquet")
         ]
 
         table_data = {
-            "name": table.name,
-            "data_type": "model",
+            "name": model.name,
             "files": files,
-            "query": f'SELECT * FROM "{files[0]["name_hash"]}"' if files else None,
-            "props_mapping": None,
+            "query": f'SELECT * FROM "{model.name_hash()}"',
+            "props_mapping": {},
+            "static_props": {},
+            "split_key": None,
+            "type": "table",
         }
 
-        os.makedirs(tables_directory, exist_ok=True)
-        table_path = os.path.join(tables_directory, f"{table.name_hash()}.json")
-        with open(table_path, "w") as f:
+        os.makedirs(insights_directory, exist_ok=True)
+        insight_path = os.path.join(insights_directory, f"{model.name_hash()}.json")
+        with open(insight_path, "w") as f:
             json.dump(table_data, f, indent=2)
 
         success_message = format_message_success(

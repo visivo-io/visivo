@@ -1,5 +1,5 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
-import InsightTable from './InsightTable';
+import PivotableTable from './PivotableTable';
 import * as DuckDBContext from '../../contexts/DuckDBContext';
 import * as queries from '../../duckdb/queries';
 
@@ -40,7 +40,7 @@ const mockInsightData = {
   files: [{ name_hash: 'test_hash', signed_data_file_url: 'http://example.com/file.parquet' }],
 };
 
-describe('InsightTable', () => {
+describe('PivotableTable', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     DuckDBContext.useDuckDB.mockReturnValue({});
@@ -49,7 +49,7 @@ describe('InsightTable', () => {
   it('renders column headers from props_mapping via DataTable', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}
@@ -67,7 +67,7 @@ describe('InsightTable', () => {
   it('renders data rows via DataTable', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}
@@ -85,7 +85,7 @@ describe('InsightTable', () => {
   it('renders "No data available" when insight has no data', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'empty-table', rows_per_page: 50 }}
           insightData={{ data: [], props_mapping: {}, files: [] }}
           itemWidth={600}
@@ -101,7 +101,7 @@ describe('InsightTable', () => {
   it('renders export and share buttons in toolbar', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}
@@ -118,7 +118,7 @@ describe('InsightTable', () => {
   it('renders search input in toolbar', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}
@@ -134,7 +134,7 @@ describe('InsightTable', () => {
   it('shows total row count via DataTable footer', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}
@@ -155,7 +155,7 @@ describe('InsightTable', () => {
 
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'test-table', rows_per_page: 50 }}
           insightData={dataWithBigNumbers}
           itemWidth={600}
@@ -171,7 +171,7 @@ describe('InsightTable', () => {
   it('wraps content in ItemContainer with slug id', async () => {
     await act(async () => {
       render(
-        <InsightTable
+        <PivotableTable
           table={{ name: 'my-table', rows_per_page: 50 }}
           insightData={mockInsightData}
           itemWidth={600}

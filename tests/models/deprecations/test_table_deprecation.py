@@ -13,6 +13,29 @@ class TestTableDeprecation:
         checker = TableDeprecation()
         assert checker.can_migrate() is True
 
+    def test_migration_converts_insights_to_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_path = os.path.join(tmpdir, "test.yml")
+            with open(yaml_path, "w") as f:
+                f.write(
+                    """
+tables:
+  - name: revenue-table
+    insights:
+      - ref(monthly-revenue)
+    rows_per_page: 100
+"""
+                )
+
+            checker = TableDeprecation()
+            migrations = checker.get_migrations_from_files(tmpdir)
+
+            assert len(migrations) > 0
+            migration = migrations[0]
+            assert "insights" in migration.old_text
+            assert "data:" in migration.new_text
+            assert "ref(monthly-revenue)" in migration.new_text
+
     def test_migration_removes_column_defs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             yaml_path = os.path.join(tmpdir, "test.yml")
