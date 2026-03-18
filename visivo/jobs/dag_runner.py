@@ -24,8 +24,6 @@ from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
 from visivo.jobs.run_sql_model_job import job as sql_model_job
 from visivo.jobs.run_input_job import job as input_job
-from visivo.jobs.run_table_job import job as table_job
-from visivo.jobs.run_table_job import _table_needs_model_job
 from visivo.models.table import Table
 from visivo.jobs.job_tracker import JobTracker
 from visivo.query.source_schema_cache import SourceSchemaCache
@@ -178,13 +176,6 @@ class DagRunner:
                 schema_cache=self.schema_cache,
             )
         elif isinstance(item, Table):
-            if _table_needs_model_job(item):
-                return table_job(
-                    table=item,
-                    output_dir=self.output_dir,
-                    dag=self.project_dag,
-                    run_id=self.run_id,
-                )
             return None
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir, run_id=self.run_id)

@@ -30,6 +30,32 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                 insight_file = os.path.join(output_dir, run_id, "insights", f"{name_hash}.json")
 
                 if not os.path.exists(insight_file):
+                    # Check if a model parquet exists (for model-backed tables)
+                    model_parquet = os.path.join(
+                        output_dir, run_id, "files", f"{name_hash}.parquet"
+                    )
+                    if os.path.exists(model_parquet):
+                        model_data = {
+                            "id": name,
+                            "name": name,
+                            "files": [
+                                {
+                                    "name_hash": name_hash,
+                                    "signed_data_file_url": f"/api/files/{name_hash}/{run_id}/",
+                                }
+                            ],
+                            "query": f'SELECT * FROM "{name_hash}"',
+                            "props_mapping": {},
+                            "static_props": {},
+                            "split_key": None,
+                            "type": "table",
+                        }
+                        insights.append(model_data)
+                        Logger.instance().debug(
+                            f"Synthesized model data for '{name}' from parquet"
+                        )
+                        continue
+
                     Logger.instance().info(f"Insight file not found: {insight_file}")
                     missing_insights.append(name)
                     continue
