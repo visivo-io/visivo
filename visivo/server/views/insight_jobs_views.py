@@ -51,9 +51,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                             "type": "table",
                         }
                         insights.append(model_data)
-                        Logger.instance().debug(
-                            f"Synthesized model data for '{name}' from parquet"
-                        )
+                        Logger.instance().debug(f"Synthesized model data for '{name}' from parquet")
                         continue
 
                     Logger.instance().info(f"Insight file not found: {insight_file}")

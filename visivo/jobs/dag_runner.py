@@ -24,7 +24,6 @@ from visivo.jobs.run_insight_job import job as insight_job
 from visivo.jobs.run_source_schema_job import job as source_schema_job
 from visivo.jobs.run_sql_model_job import job as sql_model_job
 from visivo.jobs.run_input_job import job as input_job
-from visivo.models.table import Table
 from visivo.jobs.job_tracker import JobTracker
 from visivo.query.source_schema_cache import SourceSchemaCache
 from threading import Lock
@@ -175,8 +174,6 @@ class DagRunner:
                 run_id=self.run_id,
                 schema_cache=self.schema_cache,
             )
-        elif isinstance(item, Table):
-            return None
         elif isinstance(item, Source):
             return source_schema_job(source=item, output_dir=self.output_dir, run_id=self.run_id)
         return None
