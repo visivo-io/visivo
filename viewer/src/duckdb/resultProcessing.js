@@ -1,0 +1,47 @@
+/**
+ * Shared utilities for processing DuckDB Arrow query results into JS objects.
+ */
+
+/**
+ * Extract timestamp/date column names from an Arrow schema.
+ * @param {Object} schema - Arrow Table schema with .fields array
+ * @returns {Set<string>} Column names that are timestamp or date types
+ */
+export const getTimestampColumns = schema => {
+  const timestampColumns = new Set();
+  if (schema?.fields) {
+    for (const field of schema.fields) {
+      const typeStr = field.type?.toString() || '';
+      if (typeStr.includes('Timestamp') || typeStr.includes('Date')) {
+        timestampColumns.add(field.name);
+      }
+    }
+  }
+  return timestampColumns;
+};
+
+/**
+ * Process an Arrow query result into an array of plain JS objects.
+ * Handles bigint conversion (timestamps → ISO strings, others → string).
+ *
+ * @param {Object} arrowResult - Arrow Table result from runDuckDBQuery
+ * @returns {Array<Object>} Array of row objects with properly typed values
+ */
+export const processArrowResult = arrowResult => {
+  const timestampColumns = getTimestampColumns(arrowResult.schema);
+
+  return arrowResult.toArray().map(row => {
+    const rowData = row.toJSON();
+    return Object.fromEntries(
+      Object.entries(rowData).map(([key, value]) => {
+        if (typeof value === 'bigint') {
+          if (timestampColumns.has(key)) {
+            return [key, new Date(Number(value) / 1000).toISOString()];
+          }
+          return [key, value.toString()];
+        }
+        return [key, value];
+      })
+    );
+  });
+};

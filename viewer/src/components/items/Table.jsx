@@ -54,8 +54,9 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const isModelData = table.data && (table.data.sql || table.data.args || table.data.models);
+
   // Support 'data' field - can reference insight or model
-  // Handle both resolved object { name: "..." } and raw ref string "${ref(...)}"
   const dataName = useMemo(() => {
     if (table.data) {
       if (typeof table.data === 'object' && table.data.name) return table.data.name;
@@ -82,10 +83,11 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   const isPivotableTable = !!dataName;
 
-  // Read data from store (insight or model data)
+  // Read data from the appropriate store based on data type
   const insightData = useStore(
     useShallow(state => {
       if (!dataName) return null;
+      if (isModelData) return state.modelJobs?.[dataName] || null;
       return state.insightJobs[dataName] || null;
     })
   );

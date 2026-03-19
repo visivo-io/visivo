@@ -2,6 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFetchInsightJobs } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
+import { processArrowResult } from '../duckdb/resultProcessing';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
 import { DEFAULT_RUN_ID } from '../constants';
@@ -130,15 +131,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
 
     const result = await runDuckDBQuery(db, preparedQuery, 3, 1000);
 
-    const processedRows = result.toArray().map(row => {
-      const rowData = row.toJSON();
-      return Object.fromEntries(
-        Object.entries(rowData).map(([key, value]) => [
-          key,
-          typeof value === 'bigint' ? value.toString() : value,
-        ])
-      );
-    });
+    const processedRows = processArrowResult(result);
 
     return {
       [insightName]: {
