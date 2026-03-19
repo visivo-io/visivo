@@ -34,10 +34,12 @@ export const processArrowResult = arrowResult => {
     const rowData = row.toJSON();
     return Object.fromEntries(
       Object.entries(rowData).map(([key, value]) => {
+        if (timestampColumns.has(key) && value != null) {
+          const numVal = typeof value === 'bigint' ? Number(value) : value;
+          // DuckDB timestamps are microseconds; JS Date expects milliseconds
+          return [key, new Date(numVal / 1000).toISOString()];
+        }
         if (typeof value === 'bigint') {
-          if (timestampColumns.has(key)) {
-            return [key, new Date(Number(value) / 1000).toISOString()];
-          }
           return [key, value.toString()];
         }
         return [key, value];
