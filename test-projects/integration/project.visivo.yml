@@ -627,12 +627,40 @@ dashboards:
                 min_color: "#fee0d2"
                 max_color: "#de2d26"
 
-      # ===== SECTION 4: FLAT TABLE WITH GRADIENT =====
+      # ===== SECTION 4: MULTI-LEVEL PIVOT TABLE =====
       - height: compact
         items:
           - markdown:
               content: |
-                ## Flat Insight Table with Row Gradient
+                ## Multi-Level Pivot Table
+                Sales data pivoted by region and quarter (nested column headers), grouped by category and channel.
+                100 rows of data with 7 columns: region, category, quarter, channel, revenue, units_sold, cost.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: sales-pivot-table
+              columns:
+                - ${ref(sales_data).region}
+                - ${ref(sales_data).quarter}
+              rows:
+                - ${ref(sales_data).category}
+                - ${ref(sales_data).channel}
+              values:
+                - sum(${ref(sales_data).revenue})
+                - avg(${ref(sales_data).revenue})
+              format_cells:
+                scope: column
+                min_color: "#f7fbff"
+                max_color: "#08519c"
+
+      # ===== SECTION 5: FLAT TABLE WITH GRADIENT =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Flat Table with Row Gradient
                 Same data without pivot, gradient applied per row across all numeric columns.
 
       - height: large

@@ -84,7 +84,10 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByNam
         ...(tableConfig.rows || []),
         ...(tableConfig.values || []),
       ];
-      extractRefNamesFromStrings(refStrings).forEach(n => insightNames.add(n));
+      extractRefNamesFromStrings(refStrings).forEach(n => {
+        insightNames.add(n);
+        modelNames.add(n);
+      });
     }
   }
   return { insightNames: [...insightNames], modelNames: [...modelNames] };

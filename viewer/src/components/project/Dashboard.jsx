@@ -40,7 +40,10 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem) => {
         ...(item.table?.rows || []),
         ...(item.table?.values || []),
       ];
-      extractRefNamesFromStrings(refStrings).forEach(n => insightNames.add(n));
+      extractRefNamesFromStrings(refStrings).forEach(n => {
+        insightNames.add(n);
+        modelNames.add(n);
+      });
     }
   }
   return { insightNames: [...insightNames], modelNames: [...modelNames] };

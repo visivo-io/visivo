@@ -88,7 +88,8 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     useShallow(state => {
       if (!dataName) return null;
       if (isModelData) return state.modelJobs?.[dataName] || null;
-      return state.insightJobs[dataName] || null;
+      // Check insightJobs first, fall back to modelJobs for model-backed pivot tables
+      return state.insightJobs[dataName] || state.modelJobs?.[dataName] || null;
     })
   );
 
