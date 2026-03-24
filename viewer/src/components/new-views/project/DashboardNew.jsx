@@ -51,9 +51,11 @@ const resolveItem = (itemRef, getItemByName) => {
  */
 const isModelData = data => data && (data.sql || data.args || data.models);
 
-const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set()) => {
   const insightNames = new Set();
   const modelNames = new Set();
+  const pivotRefStrings = [];
+
   for (const rowIndex of visibleRowIndices) {
     const row = rows[rowIndex];
     if (!row) continue;
@@ -79,17 +81,24 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByNam
         }
       }
       const tableConfig = table?.config || table || {};
-      const refStrings = [
+      pivotRefStrings.push(
         ...(tableConfig.columns || []),
         ...(tableConfig.rows || []),
         ...(tableConfig.values || []),
-      ];
-      extractRefNamesFromStrings(refStrings).forEach(n => {
-        insightNames.add(n);
-        modelNames.add(n);
-      });
+      );
     }
   }
+
+  // Classify pivot refs: known insights go to insightNames, everything else to modelNames
+  const allKnown = new Set([...insightNames, ...knownInsightNames]);
+  extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
+    if (allKnown.has(n)) {
+      insightNames.add(n);
+    } else {
+      modelNames.add(n);
+    }
+  });
+
   return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
@@ -204,6 +213,28 @@ const DashboardNew = ({ projectId, dashboardName }) => {
 
   useInputsData(projectId, visibleInputNames);
 
+  const knownInsightNames = useMemo(() => {
+    const names = new Set();
+    for (const row of dashboard?.rows || []) {
+      for (const item of row.items || []) {
+        const chart = resolveItem(item.chart, getChartByName);
+        chart?.insights?.forEach(i => {
+          const n = typeof i === 'string' ? parseRefValue(i) : i?.name;
+          if (n) names.add(n);
+        });
+        const table = resolveItem(item.table, getTableByName);
+        if (table?.data) {
+          const tableData = typeof table.data === 'string' ? table.data : table.data;
+          const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
+          if (name && !(typeof tableData === 'object' && isModelData(tableData))) {
+            names.add(name);
+          }
+        }
+      }
+    }
+    return names;
+  }, [dashboard?.rows, getChartByName, getTableByName]);
+
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
     if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
     const allRowIndices = dashboard.rows.map((_, idx) => idx);
@@ -212,7 +243,8 @@ const DashboardNew = ({ projectId, dashboardName }) => {
       allRowIndices,
       shouldShowItem,
       getChartByName,
-      getTableByName
+      getTableByName,
+      knownInsightNames
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps

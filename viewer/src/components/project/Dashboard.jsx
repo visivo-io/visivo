@@ -19,9 +19,11 @@ const isModelData = data => data && (data.sql || data.args || data.models);
 /**
  * Collect insight and model names from visible rows for centralized prefetching.
  */
-const collectDataNames = (rows, visibleRowIndices, shouldShowItem) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightNames = new Set()) => {
   const insightNames = new Set();
   const modelNames = new Set();
+  const pivotRefStrings = [];
+
   for (const rowIndex of visibleRowIndices) {
     const row = rows[rowIndex];
     if (!row) continue;
@@ -35,17 +37,24 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem) => {
           insightNames.add(item.table.data.name);
         }
       }
-      const refStrings = [
+      pivotRefStrings.push(
         ...(item.table?.columns || []),
         ...(item.table?.rows || []),
         ...(item.table?.values || []),
-      ];
-      extractRefNamesFromStrings(refStrings).forEach(n => {
-        insightNames.add(n);
-        modelNames.add(n);
-      });
+      );
     }
   }
+
+  // Classify pivot refs: known insights go to insightNames, everything else to modelNames
+  const allKnown = new Set([...insightNames, ...knownInsightNames]);
+  extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
+    if (allKnown.has(n)) {
+      insightNames.add(n);
+    } else {
+      modelNames.add(n);
+    }
+  });
+
   return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
@@ -165,14 +174,28 @@ const Dashboard = ({ project, dashboardName }) => {
   // Single batch fetch for all visible inputs (stores results in Zustand)
   useInputsData(project.id, visibleInputNames);
 
+  const knownInsightNames = useMemo(() => {
+    const names = new Set();
+    for (const row of dashboard.rows || []) {
+      for (const item of row.items || []) {
+        item.chart?.insights?.forEach(i => { if (i.name) names.add(i.name); });
+        if (item.table?.data?.name && !isModelData(item.table.data)) {
+          names.add(item.table.data.name);
+        }
+      }
+    }
+    return names;
+  }, [dashboard.rows]);
+
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
     const { insightNames, modelNames } = collectDataNames(
       dashboard.rows || [],
       [...visibleRows],
-      shouldShowItem
+      shouldShowItem,
+      knownInsightNames
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
-  }, [dashboard.rows, visibleRows, shouldShowItem]);
+  }, [dashboard.rows, visibleRows, shouldShowItem, knownInsightNames]);
 
   useInsightsData(project.id, visibleInsightNames);
   useModelsData(project.id, visibleModelNames);
