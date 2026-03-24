@@ -2,19 +2,22 @@ import { useState, useEffect } from 'react';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import { runDuckDBQuery, loadInsightParquetFiles } from '../duckdb/queries';
 import { buildPivotQuery, buildColumnSelectQuery } from '../utils/pivotQueryBuilder';
-import { extractAggAndColumn, resolveValueExpression } from '../utils/pivotRefResolver';
+import { extractAggAndColumn, resolveValueExpression, resolveFieldRef } from '../utils/pivotRefResolver';
+import { parsePivotColumnHierarchy } from '../utils/pivotColumnParser';
 
 /**
  * Hook that executes a DuckDB PIVOT or column-select query against already-loaded data.
  *
  * @param {Object} config - { columns, rows, values } from table config
  * @param {Object} insightData - Insight data from store (with files, props_mapping)
- * @returns {{ rows: Array, columns: Array, isLoading: boolean, error: string|null }}
+ * @returns {{ rows: Array, columns: Array, pivotMeta: Object|null, isLoading: boolean, error: string|null }}
  */
 export const usePivotData = (config, insightData) => {
   const db = useDuckDB();
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
+  const [pivotMeta, setPivotMeta] = useState(null);
+  const [nestedColumns, setNestedColumns] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -78,13 +81,41 @@ export const usePivotData = (config, insightData) => {
         let pivotColumns;
         if (isPivotMode) {
           const aggInfo = buildAggInfo(config.values, propsMapping, reverseMapping);
+          const resolvedRowCols = new Set(
+            config.rows.map(row => resolveFieldRef(row, propsMapping))
+          );
+          const resolvedPivotCols = config.columns.map(col => resolveFieldRef(col, propsMapping));
+
           pivotColumns = resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
                 id: key,
                 header: reverseMapping[key] || formatPivotColumnName(key, aggInfo, reverseMapping),
                 accessorKey: key.replace(/\./g, '___'),
+                isPivotRow: resolvedRowCols.has(key),
               }))
             : [];
+
+          const aggregationLabel = aggInfo
+            .map(({ aggFunc, displayName }) => `${aggFunc} of ${displayName}`)
+            .join(', ');
+          const pivotFieldName = resolvedPivotCols
+            .map(col => reverseMapping[col] || formatSimpleHeader(col))
+            .join(', ');
+          const rowFieldNames = [...resolvedRowCols]
+            .map(col => reverseMapping[col] || formatSimpleHeader(col));
+
+          setPivotMeta({ aggregationLabel, pivotFieldName, rowFieldNames });
+
+          // Build nested column hierarchy for multi-level headers
+          if (resultRows.length > 0) {
+            const resultColumnKeys = Object.keys(resultRows[0]);
+            const nested = parsePivotColumnHierarchy(
+              resultColumnKeys, resolvedRowCols, resolvedPivotCols, aggInfo, reverseMapping
+            );
+            setNestedColumns(nested);
+          } else {
+            setNestedColumns(null);
+          }
         } else {
           pivotColumns = resultRows.length > 0
             ? Object.keys(resultRows[0]).map(key => ({
@@ -93,6 +124,8 @@ export const usePivotData = (config, insightData) => {
                 accessorKey: key.replace(/\./g, '___'),
               }))
             : [];
+          setPivotMeta(null);
+          setNestedColumns(null);
         }
 
         setRows(resultRows);
@@ -115,7 +148,7 @@ export const usePivotData = (config, insightData) => {
     };
   }, [db, config, insightData, isPivotMode, isColumnSelectMode]);
 
-  return { rows, columns, isLoading, error };
+  return { rows, columns, nestedColumns, pivotMeta, isLoading, error };
 };
 
 function cleanPivotValue(value) {
@@ -146,38 +179,26 @@ function buildAggInfo(values, propsMapping, reverseMapping) {
 /**
  * Format a pivot result column name into a readable label.
  * DuckDB PIVOT creates columns like: "blue_sum(\"hash\")" or "blue_max(\"hash\")"
- * We want: "blue - SUM of Revenue"
+ * Returns just the pivot value (e.g. "Blue") since aggregation context is shown in the banner.
  */
 function formatPivotColumnName(key, aggInfo, reverseMapping) {
   if (!aggInfo || aggInfo.length === 0) {
     return formatSimpleHeader(key);
   }
 
-  // DuckDB PIVOT column names follow patterns like:
-  // For single value: "columnValue_aggFunc(colName)" or just "columnValue"
-  // For multiple values: similar but with each agg function
-
-  // Try to match against known agg functions
-  for (const { aggFunc, displayName } of aggInfo) {
+  for (const { aggFunc } of aggInfo) {
     const aggLower = aggFunc.toLowerCase();
-    // Check if key contains the aggregation function name
     const aggPattern = new RegExp(`_${aggLower}\\b|^${aggLower}\\b`, 'i');
     if (aggPattern.test(key)) {
-      // Extract the pivot column value (everything before the agg function)
       const parts = key.split(new RegExp(`_${aggLower}`, 'i'));
       const pivotValue = parts[0] || key;
-      const cleanPivotValue = formatSimpleHeader(pivotValue);
-      return `${cleanPivotValue} - ${aggFunc} of ${displayName}`;
+      return formatSimpleHeader(pivotValue);
     }
   }
 
-  // If only one aggregation and we can't match pattern, try simple split
   if (aggInfo.length === 1) {
-    const { aggFunc, displayName } = aggInfo[0];
-    const cleanKey = formatSimpleHeader(key);
-    // If the key itself is a row group value, just return it
     if (reverseMapping[key]) return reverseMapping[key];
-    return `${cleanKey} - ${aggFunc} of ${displayName}`;
+    return formatSimpleHeader(key);
   }
 
   return formatSimpleHeader(key);

@@ -42,7 +42,7 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
     return { columns: table.columns };
   }, [hasDuckDBMode, isPivotMode, table.columns, table.rows, table.values]);
 
-  const { rows: pivotRows, columns: pivotColumns, isLoading: pivotLoading, error: pivotError } =
+  const { rows: pivotRows, columns: pivotColumns, nestedColumns, pivotMeta, isLoading: pivotLoading, error: pivotError } =
     usePivotData(hasDuckDBMode ? duckDBConfig : null, hasDuckDBMode ? insightData : null);
 
   const { allRows, dataTableColumns } = useMemo(() => {
@@ -52,6 +52,7 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
         displayName: col.header,
         normalizedType: COLUMN_TYPES.UNKNOWN,
         duckdbType: 'VARCHAR',
+        isPivotRow: col.isPivotRow || false,
       }));
       return { allRows: pivotRows, dataTableColumns: cols };
     }
@@ -118,7 +119,7 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
   const numericColumnIds = useMemo(() => {
     if (!pagedRows.length || !dataTableColumns.length) return [];
     return dataTableColumns
-      .filter(col => pagedRows.some(row => {
+      .filter(col => !col.isPivotRow && pagedRows.some(row => {
         const val = row[col.name];
         return typeof val === 'number' || (val != null && val !== '' && !isNaN(Number(val)));
       }))
@@ -171,6 +172,11 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
     copyText(url.toString());
   }, [copyText]);
 
+  const rowColumnIds = useMemo(() => {
+    if (!isPivotMode) return null;
+    return dataTableColumns.filter(c => c.isPivotRow).map(c => c.name);
+  }, [isPivotMode, dataTableColumns]);
+
   if (hasDuckDBMode && pivotLoading) {
     return <Loading text={table.name} width={itemWidth} />;
   }
@@ -184,6 +190,16 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
   }
 
   const tableHeight = height ? height - 60 : undefined;
+
+  const headerBanner = isPivotMode && pivotMeta ? (
+    <div className="flex items-center gap-4 text-xs text-secondary-600">
+      <span className="font-semibold">{pivotMeta.aggregationLabel}</span>
+      <span className="text-secondary-300">|</span>
+      <span>Columns: <span className="font-medium">{pivotMeta.pivotFieldName}</span></span>
+      <span className="text-secondary-300">|</span>
+      <span>Rows: <span className="font-medium">{pivotMeta.rowFieldNames.join(', ')}</span></span>
+    </div>
+  ) : null;
 
   return (
     <ItemContainer id={itemNameToSlug(table.name)}>
@@ -267,6 +283,10 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
         isLoading={false}
         height={tableHeight}
         getCellStyle={table.format_cells ? getCellStyle : undefined}
+        headerBanner={headerBanner}
+        nestedColumns={isPivotMode ? nestedColumns : null}
+        mergeRowColumns={rowColumnIds}
+        stickyLeftColumns={rowColumnIds}
       />
     </ItemContainer>
   );
