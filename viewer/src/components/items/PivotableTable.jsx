@@ -285,7 +285,6 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
         getCellStyle={table.format_cells ? getCellStyle : undefined}
         headerBanner={headerBanner}
         nestedColumns={isPivotMode ? nestedColumns : null}
-        mergeRowColumns={rowColumnIds}
         stickyLeftColumns={rowColumnIds}
       />
     </ItemContainer>

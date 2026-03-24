@@ -103,6 +103,38 @@ describe('parsePivotColumnHierarchy', () => {
     expect(east.columns[0].columns).toHaveLength(1);
   });
 
+  it('parses real DuckDB output with unquoted column names', () => {
+    const resultKeys = [
+      'category', 'channel',
+      'East_Q1_sum(revenue)', 'East_Q1_avg(revenue)',
+      'East_Q2_sum(revenue)', 'East_Q2_avg(revenue)',
+      'North_Q1_sum(revenue)', 'North_Q1_avg(revenue)',
+      'North_Q2_sum(revenue)', 'North_Q2_avg(revenue)',
+    ];
+    const resolvedRowCols = new Set(['category', 'channel']);
+    const resolvedPivotCols = ['region', 'quarter'];
+    const aggInfo = [
+      { aggFunc: 'SUM', displayName: 'Revenue' },
+      { aggFunc: 'AVG', displayName: 'Revenue' },
+    ];
+
+    const result = parsePivotColumnHierarchy(resultKeys, resolvedRowCols, resolvedPivotCols, aggInfo, {});
+
+    // 2 row cols + 2 region groups (East, North)
+    expect(result).toHaveLength(4);
+    expect(result[0].meta.isPivotRow).toBe(true);
+    expect(result[1].meta.isPivotRow).toBe(true);
+
+    const east = result[2];
+    expect(east.header).toBe('East');
+    expect(east.meta.isGroupHeader).toBe(true);
+    expect(east.columns).toHaveLength(2); // Q1, Q2
+    expect(east.columns[0].header).toBe('Q1');
+    expect(east.columns[0].columns).toHaveLength(2); // SUM, AVG
+    expect(east.columns[0].columns[0].accessorKey).toBe('East_Q1_sum(revenue)');
+    expect(east.columns[0].columns[1].accessorKey).toBe('East_Q1_avg(revenue)');
+  });
+
   it('handles row columns with reverse mapping', () => {
     const resultKeys = ['prod_hash_abc', 'east_sum("rev")'];
     const resolvedRowCols = new Set(['prod_hash_abc']);
