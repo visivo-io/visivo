@@ -9,6 +9,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
+import RefTextArea from './RefTextArea';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -331,27 +332,27 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
                 <h3 className="text-sm font-medium text-gray-700">Pivot Configuration</h3>
               </div>
 
-              <StringListField
+              <RefListField
                 label="Columns"
                 items={columns}
                 onChange={setColumns}
-                placeholder="e.g. ref(my-insight).region"
+                helperText="Field references for pivot column headers"
                 error={errors.columns}
               />
 
-              <StringListField
+              <RefListField
                 label="Rows"
                 items={rows}
                 onChange={setRows}
-                placeholder="e.g. ref(my-insight).product"
+                helperText="Field references for pivot row grouping"
                 error={errors.rows}
               />
 
-              <StringListField
+              <RefListField
                 label="Values"
                 items={values}
                 onChange={setValues}
-                placeholder="e.g. sum(ref(my-insight).revenue)"
+                helperText="Aggregation expressions, e.g. sum(...)"
                 error={errors.values}
               />
             </div>
@@ -427,9 +428,9 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 };
 
 /**
- * Reusable component for editing a list of string entries (columns, rows, values).
+ * Reusable component for editing a list of ref expressions using RefTextArea.
  */
-const StringListField = ({ label, items, onChange, placeholder, error }) => {
+const RefListField = ({ label, items, onChange, helperText, error }) => {
   const handleAdd = () => onChange([...items, '']);
   const handleRemove = index => onChange(items.filter((_, i) => i !== index));
   const handleChange = (index, value) => {
@@ -441,7 +442,7 @@ const StringListField = ({ label, items, onChange, placeholder, error }) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm text-gray-600">{label}</label>
+        <label className="text-sm font-medium text-gray-700">{label}</label>
         <button
           type="button"
           onClick={handleAdd}
@@ -452,26 +453,29 @@ const StringListField = ({ label, items, onChange, placeholder, error }) => {
         </button>
       </div>
       {items.map((item, index) => (
-        <div key={index} className="flex items-center gap-1.5">
-          <input
-            type="text"
-            value={item}
-            onChange={e => handleChange(index, e.target.value)}
-            placeholder={placeholder}
-            className={`flex-1 px-2.5 py-1.5 text-sm text-gray-900 bg-white rounded-md border focus:outline-none focus:ring-1 focus:ring-primary-500 ${
-              error ? 'border-red-300' : 'border-gray-300'
-            }`}
-          />
+        <div key={index} className="flex items-start gap-1.5">
+          <div className="flex-1">
+            <RefTextArea
+              value={item}
+              onChange={value => handleChange(index, value)}
+              allowedTypes={['model', 'insight', 'dimension', 'metric']}
+              rows={1}
+              hideAddButton
+            />
+          </div>
           <button
             type="button"
             onClick={() => handleRemove(index)}
-            className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+            className="mt-1 p-0.5 text-gray-400 hover:text-red-500 transition-colors"
             title={`Remove ${label.toLowerCase()} entry`}
           >
             <RemoveCircleOutlineIcon fontSize="small" />
           </button>
         </div>
       ))}
+      {items.length === 0 && helperText && (
+        <p className="text-xs text-gray-400">{helperText}</p>
+      )}
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
