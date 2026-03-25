@@ -49,7 +49,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={mockInsightData}
+        sourceData={mockInsightData}
         itemWidth={600}
         height={400}
         width={600}
@@ -64,7 +64,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={mockInsightData}
+        sourceData={mockInsightData}
         itemWidth={600}
         height={400}
         width={600}
@@ -80,7 +80,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'empty-table', rows_per_page: 50 }}
-        insightData={{ data: [], props_mapping: {}, files: [] }}
+        sourceData={{ data: [], props_mapping: {}, files: [] }}
         itemWidth={600}
         height={400}
         width={600}
@@ -94,7 +94,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={mockInsightData}
+        sourceData={mockInsightData}
         itemWidth={600}
         height={400}
         width={600}
@@ -109,7 +109,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={mockInsightData}
+        sourceData={mockInsightData}
         itemWidth={600}
         height={400}
         width={600}
@@ -123,7 +123,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={mockInsightData}
+        sourceData={mockInsightData}
         itemWidth={600}
         height={400}
         width={600}
@@ -142,7 +142,7 @@ describe('PivotableTable', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
-        insightData={dataWithBigNumbers}
+        sourceData={dataWithBigNumbers}
         itemWidth={600}
         height={400}
         width={600}

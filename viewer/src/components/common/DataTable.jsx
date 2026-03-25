@@ -115,7 +115,7 @@ const DataTable = ({
       }
     }
     return offsets.size > 0 ? offsets : null;
-  }, [stickyLeftColumns, table, tableColumns]);
+  }, [stickyLeftColumns, table]);
 
   // Pagination handlers
   const handlePrevPage = useCallback(() => {

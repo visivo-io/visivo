@@ -121,7 +121,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     data: Optional[DataRefField] = Field(
         None,
-        description="A ${ref()} to a model or insight. Shows all columns from the data source.",
+        description="A ${ ref() } to a model or insight. Shows all columns from the data source.",
     )
 
     # Deprecated: use 'data' instead
@@ -133,7 +133,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     traces: List[TraceRef] = Field(
         [],
-        description="A ${ref()} to a trace or trace defined in line. Data for the table will come from the trace.",
+        description="A ${ ref() } to a trace or trace defined in line. Data for the table will come from the trace.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(

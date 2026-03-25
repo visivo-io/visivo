@@ -23,7 +23,7 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
 
-const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
+const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState(null);
   const [page, setPage] = useState(0);
@@ -43,7 +43,7 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
   }, [hasDuckDBMode, isPivotMode, table.columns, table.rows, table.values]);
 
   const { rows: pivotRows, columns: pivotColumns, nestedColumns, pivotMeta, isLoading: pivotLoading, error: pivotError } =
-    usePivotData(hasDuckDBMode ? duckDBConfig : null, hasDuckDBMode ? insightData : null);
+    usePivotData(hasDuckDBMode ? duckDBConfig : null, hasDuckDBMode ? sourceData : null);
 
   const { allRows, dataTableColumns } = useMemo(() => {
     if (hasDuckDBMode) {
@@ -57,12 +57,12 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
       return { allRows: pivotRows, dataTableColumns: cols };
     }
 
-    const data = insightData?.data || [];
+    const data = sourceData?.data || [];
     if (data.length === 0) return { allRows: [], dataTableColumns: [] };
 
     const reverseMapping = {};
-    if (insightData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(insightData.props_mapping)) {
+    if (sourceData.props_mapping) {
+      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
         const displayName = propPath
           .replace(/^props\./, '')
           .replace(/\./g, ' ')
@@ -80,7 +80,7 @@ const PivotableTable = ({ table, insightData, itemWidth, height, width }) => {
     }));
 
     return { allRows: data, dataTableColumns: cols };
-  }, [hasDuckDBMode, pivotRows, pivotColumns, insightData]);
+  }, [hasDuckDBMode, pivotRows, pivotColumns, sourceData]);
 
   // Client-side global filter
   const filteredRows = useMemo(() => {

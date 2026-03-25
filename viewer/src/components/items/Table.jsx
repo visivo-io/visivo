@@ -84,7 +84,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const isPivotableTable = !!dataName;
 
   // Read data from the appropriate store based on data type
-  const insightData = useStore(
+  const sourceData = useStore(
     useShallow(state => {
       if (!dataName) return null;
       if (isModelData) return state.modelJobs?.[dataName] || null;
@@ -160,9 +160,9 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   // Handle 'data' field (auto-generate columns from data)
   useEffect(() => {
-    if (!dataName || !insightData) return;
+    if (!dataName || !sourceData) return;
 
-    const data = insightData?.data || insightData?.insight;
+    const data = sourceData?.data || sourceData?.insight;
     if (!data || data.length === 0) {
       setColumns([]);
       setTableData([]);
@@ -174,8 +174,8 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     // Build reverse mapping from hashed column name → display name using props_mapping
     // props_mapping is like {"props.x": "hashed_col", "props.y": "other_hash"}
     const reverseMapping = {};
-    if (insightData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(insightData.props_mapping)) {
+    if (sourceData.props_mapping) {
+      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
         // Extract display name from prop path: "props.x" → "X", "props.marker.size" → "Marker Size"
         const displayName = propPath
           .replace(/^props\./, '')
@@ -204,7 +204,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     });
 
     setTableData(transformedData);
-  }, [dataName, insightData]);
+  }, [dataName, sourceData]);
 
 
   const handleExportData = () => {
@@ -285,16 +285,16 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isPivotableTable && !insightData) {
+  if (isPivotableTable && !sourceData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
   // Route to PivotableTable component for data-backed tables
-  if (dataName && insightData) {
+  if (dataName && sourceData) {
     return (
       <PivotableTable
         table={table}
-        insightData={insightData}
+        sourceData={sourceData}
         itemWidth={itemWidth}
         height={height}
         width={width}

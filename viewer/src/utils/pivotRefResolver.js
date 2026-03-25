@@ -1,12 +1,11 @@
 /**
- * Resolve ${ref(insight-name).field} references to DuckDB column names
- * using the insight's props_mapping.
+ * Resolve ${ref(name).field} references to DuckDB column names
+ * using the source's props_mapping.
  *
  * props_mapping maps "props.field_name" -> "hashed_column_name"
  */
 
-const REF_FIELD_PATTERN = /\$\{\s*ref\(\s*[^)]+\s*\)\s*\.\s*([^}\s]+)\s*\}/g;
-const SINGLE_REF_FIELD_PATTERN = /^\$\{\s*ref\(\s*[^)]+\s*\)\s*\.\s*([^}\s]+)\s*\}$/;
+import { REF_FIELD_PATTERN, SINGLE_REF_FIELD_PATTERN } from './refString';
 
 /**
  * Resolve a single ${ref(insight-name).field_name} to its DuckDB column name.

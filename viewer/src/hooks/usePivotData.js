@@ -9,10 +9,10 @@ import { parsePivotColumnHierarchy } from '../utils/pivotColumnParser';
  * Hook that executes a DuckDB PIVOT or column-select query against already-loaded data.
  *
  * @param {Object} config - { columns, rows, values } from table config
- * @param {Object} insightData - Insight data from store (with files, props_mapping)
+ * @param {Object} sourceData - Insight data from store (with files, props_mapping)
  * @returns {{ rows: Array, columns: Array, pivotMeta: Object|null, isLoading: boolean, error: string|null }}
  */
-export const usePivotData = (config, insightData) => {
+export const usePivotData = (config, sourceData) => {
   const db = useDuckDB();
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -25,7 +25,7 @@ export const usePivotData = (config, insightData) => {
   const isColumnSelectMode = !!(config?.columns && !config?.rows && !config?.values);
 
   useEffect(() => {
-    if (!db || !config || !insightData?.files?.length || insightData?.data === null) {
+    if (!db || !config || !sourceData?.files?.length || sourceData?.data === null) {
       setIsLoading(false);
       return;
     }
@@ -37,11 +37,11 @@ export const usePivotData = (config, insightData) => {
       setError(null);
 
       try {
-        const tableName = insightData.files[0].name_hash;
-        const propsMapping = insightData.props_mapping || {};
+        const tableName = sourceData.files[0].name_hash;
+        const propsMapping = sourceData.props_mapping || {};
 
         // Ensure parquet files are loaded into DuckDB before querying
-        await loadInsightParquetFiles(db, insightData.files);
+        await loadInsightParquetFiles(db, sourceData.files);
         if (cancelled) return;
 
         const reverseMapping = {};
@@ -146,7 +146,7 @@ export const usePivotData = (config, insightData) => {
     return () => {
       cancelled = true;
     };
-  }, [db, config, insightData, isPivotMode, isColumnSelectMode]);
+  }, [db, config, sourceData, isPivotMode, isColumnSelectMode]);
 
   return { rows, columns, nestedColumns, pivotMeta, isLoading, error };
 };
