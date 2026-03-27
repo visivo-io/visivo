@@ -214,3 +214,78 @@ To visually verify frontend changes using the Playwright MCP tool:
 4. The Flask backend on `localhost:8000` proxies to the Vite dev server at `localhost:3000`.
 5. With both background tasks running, use Playwright MCP to navigate routes at `localhost:3000`.
 6. **Python backend changes** require killing and restarting `visivo serve`. **JS changes** hot-reload automatically so `yarn start` does not need to be restarted.
+
+### Sandbox Testing (Isolated from User)
+
+Claude's sandbox testing MUST use isolated ports to avoid conflicting with the user's dev environment:
+
+```
+User's environment:          Claude's sandbox:
+  visivo serve → :8000         :8001 (backend)
+  yarn start   → :3000         :3001 (frontend, proxies to :8001)
+```
+
+**Manage the sandbox with a single script:**
+```bash
+bash scripts/sandbox.sh start    # Start backend (:8001) + frontend (:3001)
+bash scripts/sandbox.sh stop     # Stop both servers
+bash scripts/sandbox.sh status   # Check if servers are running
+bash scripts/sandbox.sh test     # Start backend, run endpoint tests, stop
+bash scripts/sandbox.sh restart  # Stop then start
+```
+
+NEVER start sandbox servers with ad-hoc commands — always use `bash scripts/sandbox.sh`.
+Use Playwright MCP or `npx playwright test` against `http://localhost:3001` — never `:3000`.
+
+## Mandatory Testing Protocol
+
+### After EVERY code edit:
+- **Python edits** → `poetry run pytest tests/ -x --tb=short -q` (fail-fast, quiet)
+- **JS edits** → `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false --testPathPattern="<changed-component>"`
+- **Always** run `yarn lint` after JS changes
+- **Python formatting** → `poetry run black --check visivo/` after Python changes
+
+### After completing a feature or phase:
+1. ALL Python tests: `poetry run pytest tests/ -x --tb=short`
+2. ALL JS tests: `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn test --watchAll=false`
+3. JS lint: `cd viewer && source ~/.nvm/nvm.sh; nvm use; yarn lint`
+4. Black check: `poetry run black --check visivo/`
+5. Sandbox endpoint tests (if backend changed): `bash scripts/run_sandbox_tests.sh`
+6. Playwright story tests (if UI changed): `cd viewer && npx playwright test e2e/stories/ --reporter=list`
+
+### NEVER declare work "done" without:
+- All unit tests passing
+- Lint clean (0 errors)
+- New code has corresponding tests (test count must increase)
+- Visual validation via Playwright if UI was changed
+
+### Error Triage: Which Layer to Debug
+- **TypeError in browser console** → Frontend component props/state — NOT backend
+- **API returns 500** → Backend Flask view or manager
+- **API returns correct data but UI is blank** → Frontend rendering issue — check component tree
+- **Tests pass but UI is broken** → Tests mock too aggressively — write integration test
+- **"ref not found" errors** → DAG/YAML resolution — check project config and model refs
+- **DuckDB errors** → Check useExplorerDuckDB hook and expression translation
+
+## Planning Requirements
+
+Every plan Claude creates for a non-trivial task MUST include a **Test Strategy** section:
+
+1. **Which test layers apply**: unit / integration / sandbox / E2E story
+2. **Baseline tests**: which existing tests to run before starting
+3. **New tests to write**: list them explicitly
+4. **Affected user stories**: which `viewer/e2e/stories/*.spec.mjs` files exercise the change
+5. **Phase gates**: if multi-phase, which tests/stories run at each gate
+6. **Sandbox verification**: for backend changes, which endpoints to test
+
+**Example:**
+```
+Test Strategy:
+- Layers: Unit (store + components) + E2E (explorer-first-visit.spec.mjs)
+- Baseline: yarn test (142 passing), pytest tests/ (100+ passing)
+- New tests: ExplorerSqlEditor.test.jsx, store model tab tests
+- Story: explorer-first-visit.spec.mjs steps 1-4
+- Gates: After SQL editor (steps 1-3), after data table (step 4), after DnD (steps 5-6)
+```
+
+**Plans without a Test Strategy section are incomplete.** Think about verification *before* writing code.
