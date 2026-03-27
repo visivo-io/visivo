@@ -42,7 +42,9 @@ except ImportError:
             data = _json.dumps(json).encode() if json else None
             try:
                 req = urllib.request.Request(
-                    url, data=data, method="POST",
+                    url,
+                    data=data,
+                    method="POST",
                     headers={"Content-Type": "application/json"} if data else {},
                 )
                 resp = urllib.request.urlopen(req, timeout=10)
