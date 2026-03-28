@@ -33,7 +33,19 @@ export const usePreviewData = (type, config, options = {}) => {
 
   const previewJobInitializedRef = useRef(false);
 
-  const previewJob = usePreviewJob();
+  const {
+    startRun,
+    resetRun,
+    isRunning,
+    isCompleted,
+    isFailed,
+    status: jobStatus,
+    error: jobError,
+    progress,
+    progressMessage,
+    result,
+    runInstanceId,
+  } = usePreviewJob();
 
   const currentHash = useMemo(() => {
     if (!config) return null;
@@ -66,14 +78,13 @@ export const usePreviewData = (type, config, options = {}) => {
   useEffect(() => {
     if (!config) return;
 
-    if (needsPreviewRun && !previewJob.isRunning && !previewJobInitializedRef.current) {
+    if (needsPreviewRun && !isRunning && !previewJobInitializedRef.current) {
       previewJobInitializedRef.current = true;
 
       setIsLoading(true);
       setError(null);
 
-      previewJob
-        .startRun(config, extraPreviewBody)
+      startRun(config, extraPreviewBody)
         .then(() => {
           setLastPreviewConfig(config);
           setLastPreviewHash(currentHash);
@@ -82,45 +93,44 @@ export const usePreviewData = (type, config, options = {}) => {
           console.error('Failed to start preview run:', err);
           setError(err.message || 'Failed to start preview');
           setIsLoading(false);
+          setLastPreviewHash(currentHash);
         })
         .finally(() => {
           previewJobInitializedRef.current = false;
         });
     }
-  }, [config, needsPreviewRun, previewJob, currentHash, extraPreviewBody]);
+  }, [config, needsPreviewRun, startRun, isRunning, currentHash, extraPreviewBody]);
 
   useEffect(() => {
-    if (previewJob.status === 'completed') {
+    if (jobStatus === 'completed') {
       setIsLoading(false);
-
       setError(null);
-    } else if (previewJob.status === 'failed') {
+    } else if (jobStatus === 'failed') {
       setIsLoading(false);
-
-      setError(previewJob.error || 'Preview failed');
+      setError(jobError || 'Preview failed');
     }
-  }, [previewJob.status, previewJob.error]);
+  }, [jobStatus, jobError]);
 
   const resetPreview = useCallback(() => {
-    previewJob.resetRun();
+    resetRun();
     setLastPreviewConfig(null);
     setLastPreviewHash(null);
     setIsLoading(false);
     setError(null);
-  }, [previewJob]);
+  }, [resetRun]);
 
   return {
-    isLoading: isLoading || previewJob.isRunning,
-    isCompleted: previewJob.isCompleted,
-    isFailed: previewJob.isFailed,
-    error: error || previewJob.error,
-    progress: previewJob.progress,
-    progressMessage: previewJob.progressMessage,
-    result: previewJob.result,
-    runInstanceId: previewJob.runInstanceId,
+    isLoading: isLoading || isRunning,
+    isCompleted,
+    isFailed,
+    error: error || jobError,
+    progress,
+    progressMessage,
+    result,
+    runInstanceId,
     needsPreviewRun,
     resetPreview,
-    status: previewJob.status,
+    status: jobStatus,
   };
 };
 

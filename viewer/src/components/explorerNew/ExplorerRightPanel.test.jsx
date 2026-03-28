@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ExplorerRightPanel from './ExplorerRightPanel';
 import useStore from '../../stores/store';
@@ -27,12 +27,33 @@ jest.mock('./ChartCRUDSection', () => {
   };
 });
 
+jest.mock('./ExplorerSaveModal', () => {
+  return function MockExplorerSaveModal({ onClose }) {
+    return (
+      <div data-testid="explorer-save-modal">
+        SaveModal
+        <button data-testid="mock-save-close" onClick={onClose}>
+          close
+        </button>
+      </div>
+    );
+  };
+});
+
 const defaultState = {
   explorerChartInsightNames: ['insight_a', 'insight_b'],
   explorerActiveInsightName: 'insight_a',
   explorerInsightStates: {
     insight_a: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
-    insight_b: { type: 'bar', props: {}, interactions: [], typePropsCache: {}, isNew: false },
+    insight_b: {
+      type: 'bar',
+      props: {},
+      interactions: [],
+      typePropsCache: {},
+      isNew: false,
+      _originalType: 'bar',
+      _originalProps: {},
+    },
   },
   explorerChartName: 'my_chart',
   explorerChartLayout: {},
@@ -66,12 +87,45 @@ describe('ExplorerRightPanel', () => {
     expect(screen.getByTestId('chart-crud-section')).toBeInTheDocument();
   });
 
-  it('renders save button', () => {
+  it('renders save button disabled when no modifications', () => {
+    useStore.setState({
+      ...defaultState,
+      explorerInsightStates: {
+        insight_a: {
+          type: 'scatter',
+          props: {},
+          interactions: [],
+          typePropsCache: {},
+          isNew: false,
+          _originalType: 'scatter',
+          _originalProps: {},
+        },
+        insight_b: {
+          type: 'bar',
+          props: {},
+          interactions: [],
+          typePropsCache: {},
+          isNew: false,
+          _originalType: 'bar',
+          _originalProps: {},
+        },
+      },
+      explorerModelStates: {},
+    });
+
     render(<ExplorerRightPanel />);
 
     const saveBtn = screen.getByTestId('explorer-save-button');
     expect(saveBtn).toBeInTheDocument();
     expect(saveBtn).toBeDisabled();
+  });
+
+  it('renders save button enabled when there are modifications', () => {
+    render(<ExplorerRightPanel />);
+
+    const saveBtn = screen.getByTestId('explorer-save-button');
+    expect(saveBtn).toBeInTheDocument();
+    expect(saveBtn).not.toBeDisabled();
   });
 
   it('has scrollable content area', () => {
@@ -99,5 +153,28 @@ describe('ExplorerRightPanel', () => {
 
     expect(screen.queryByTestId('insight-crud-insight_a')).not.toBeInTheDocument();
     expect(screen.getByTestId('chart-crud-section')).toBeInTheDocument();
+  });
+
+  it('clicking save button opens save modal when there are changes', () => {
+    render(<ExplorerRightPanel />);
+
+    // Modal should not be visible initially
+    expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
+
+    // Click save button (enabled because defaultState has a new insight)
+    fireEvent.click(screen.getByTestId('explorer-save-button'));
+
+    // Modal should now be visible
+    expect(screen.getByTestId('explorer-save-modal')).toBeInTheDocument();
+  });
+
+  it('closing save modal hides it', () => {
+    render(<ExplorerRightPanel />);
+
+    fireEvent.click(screen.getByTestId('explorer-save-button'));
+    expect(screen.getByTestId('explorer-save-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mock-save-close'));
+    expect(screen.queryByTestId('explorer-save-modal')).not.toBeInTheDocument();
   });
 });

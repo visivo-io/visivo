@@ -27,14 +27,12 @@ def register_model_data_views(app, flask_app, output_dir):
             try:
                 import polars as pl
 
-                df = pl.read_parquet(parquet_path)
+                MAX_ROWS = 10000
+                lazy_df = pl.scan_parquet(parquet_path)
+                row_count = lazy_df.select(pl.len()).collect().item()
+                df = lazy_df.head(MAX_ROWS).collect()
                 columns = df.columns
                 rows = df.to_dicts()
-                row_count = len(rows)
-
-                MAX_ROWS = 10000
-                if row_count > MAX_ROWS:
-                    rows = rows[:MAX_ROWS]
 
                 return (
                     jsonify(

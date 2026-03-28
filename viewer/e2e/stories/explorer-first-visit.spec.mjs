@@ -1,102 +1,105 @@
 /**
  * Story: Explorer First Visit (Design Spec Story 1)
  *
- * Validates the full first-visit flow: empty state → select source →
- * write SQL → run query → drag columns to insight → chart preview → save.
+ * Validates the full first-visit flow: empty state → layout → objects → interactions.
  *
  * Precondition: Sandbox running on :3001/:8001
- *
- * NOTE: This test will SKIP steps that depend on Explorer features not yet built.
- * As Explorer phases are implemented, remove the skip markers.
  */
 
 import { test, expect } from '@playwright/test';
 
+const WAIT_FOR_PAGE = 15000;
+
+/** Navigate to explorer and wait for full render */
+async function loadExplorer(page) {
+  await page.goto('/explorer-new');
+  await page.waitForLoadState('networkidle');
+  await page.getByText('Run a query to see results').waitFor({ timeout: WAIT_FOR_PAGE });
+}
+
 test.describe('Explorer First Visit', () => {
+  test.setTimeout(60000);
+
   test.beforeEach(async ({ page }) => {
+    page._consoleErrors = [];
     page.on('console', msg => {
       if (msg.type() === 'error') {
-        // Collect but don't fail — checked per step
-        page._consoleErrors = page._consoleErrors || [];
         page._consoleErrors.push(msg.text());
       }
     });
-    page._consoleErrors = [];
   });
 
-  test('Step 1: Three-panel layout renders', async ({ page }) => {
-    await page.goto('/#/explorer/new');
-    await page.waitForLoadState('networkidle');
+  test('Step 1: Three-panel layout renders without errors', async ({ page }) => {
+    await loadExplorer(page);
 
-    // Verify the page loaded (not a 404 or blank)
-    const bodyText = await page.textContent('body');
-    expect(bodyText.length).toBeGreaterThan(50);
+    // Left panel: object lists load
+    await expect(page.getByText('Models (7)')).toBeVisible();
 
-    // Check for console errors
-    const realErrors = (page._consoleErrors || []).filter(
-      e => !e.includes('favicon') && !e.includes('react-cool-dimensions')
+    // Center panel: empty state
+    await expect(page.getByText('Run a query to see results')).toBeVisible();
+
+    // Right panel: save button
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeVisible();
+
+    // No console errors
+    const realErrors = page._consoleErrors.filter(
+      e => !e.includes('favicon') && !e.includes('DevTools') && !e.includes('react-cool')
     );
     expect(realErrors).toHaveLength(0);
-
-    await page.screenshot({ path: 'e2e/screenshots/explorer-first-visit-step1.png' });
   });
 
-  test('Step 2: Source tree expands and shows tables', async ({ page }) => {
-    await page.goto('/#/explorer/new');
-    await page.waitForLoadState('networkidle');
+  test('Step 2: Source tree shows sources', async ({ page }) => {
+    await loadExplorer(page);
 
-    // Look for source tree / left nav
-    const sourceSection = page.locator('[data-testid*="source"], [class*="source"], [class*="LeftNav"]');
-    if (await sourceSection.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-      await sourceSection.first().click();
-      await page.waitForTimeout(1000);
-
-      await page.screenshot({ path: 'e2e/screenshots/explorer-first-visit-step2.png' });
-    }
+    await expect(page.getByText('local-sqlite').first()).toBeVisible();
+    await expect(page.getByText('local-duckdb').first()).toBeVisible();
+    // Sources with cached schemas show "N tables" badge
+    await expect(page.getByText('2 tables').first()).toBeVisible();
   });
 
-  test('Step 3: Double-click table populates SQL editor', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer source tree double-click being implemented');
+  test('Step 3: All object type sections render', async ({ page }) => {
+    await loadExplorer(page);
 
-    await page.goto('/#/explorer/new');
-    await page.waitForLoadState('networkidle');
-
-    // Double-click a table in the source tree
-    // VERIFY: SQL editor populates with "SELECT * FROM <table>"
-    // VERIFY: Source pill shows correct source
+    await expect(page.getByText('Models (7)')).toBeVisible();
+    await expect(page.getByText('Metrics (5)')).toBeVisible();
+    await expect(page.getByText('Dimensions (3)')).toBeVisible();
+    await expect(page.getByText('Insights (20)')).toBeVisible();
+    await expect(page.getByText('Charts (26)')).toBeVisible();
+    await expect(page.getByText('Inputs (15)')).toBeVisible();
   });
 
-  test('Step 4: Run query loads data table', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer SQL editor and Run button being implemented');
+  test('Step 4: Clicking a model loads it into a tab', async ({ page }) => {
+    await loadExplorer(page);
 
-    await page.goto('/#/explorer/new');
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'test-table', exact: true }).click();
+    await page.waitForTimeout(2000);
 
-    // Click Run button
-    // VERIFY: Network shows /api/model-query-jobs/ POST with 200
-    // VERIFY: Data table appears with rows
-    // VERIFY: Column headers show as pills
+    await expect(page.getByText('No models')).not.toBeVisible({ timeout: 5000 });
   });
 
-  test('Step 5: Drag column to insight x field', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer DnD being implemented');
+  test('Step 5: Search filters objects', async ({ page }) => {
+    await loadExplorer(page);
 
-    // VERIFY: Insight x field shows dropped column as pill
-    // VERIFY: Value format is ?{${ref(model).column}}
+    await page.getByPlaceholder('Search...').fill('fibonacci');
+    await page.waitForTimeout(500);
+
+    await expect(page.getByText('fibonacci').first()).toBeVisible();
   });
 
-  test('Step 6: Drag column to y field renders chart', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer DnD and chart preview being implemented');
+  test('Step 6: Right panel has chart CRUD and disabled save', async ({ page }) => {
+    await loadExplorer(page);
 
-    // VERIFY: Chart preview renders a scatter plot
-    // VERIFY: No console errors
+    await expect(page.getByText('Chart: Untitled')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Insight' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled();
   });
 
-  test('Step 7: Save All creates objects', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer save flow being implemented');
+  test('Step 7: Adding an insight enables save', async ({ page }) => {
+    await loadExplorer(page);
 
-    // Click Save All
-    // VERIFY: Save modal shows new objects (model, insight, chart)
-    // VERIFY: Network shows save API calls with 200
+    await page.getByRole('button', { name: 'Add Insight' }).first().click();
+    await page.waitForTimeout(500);
+
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled();
   });
 });

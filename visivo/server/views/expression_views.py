@@ -64,10 +64,8 @@ def register_expression_views(app, flask_app, output_dir):
                     wrapped_sql = f"SELECT {expression} FROM __placeholder__"
                     parsed = sqlglot.parse_one(wrapped_sql, read=read_dialect or "duckdb")
 
-                    transpiled = parsed.sql(dialect="duckdb")
-                    duckdb_expr = transpiled.replace("SELECT ", "", 1).replace(
-                        " FROM __placeholder__", ""
-                    )
+                    select_expr = parsed.expressions[0] if parsed.expressions else None
+                    duckdb_expr = select_expr.sql(dialect="duckdb") if select_expr else expression
 
                     detected_type = expr_type
                     select_expr = parsed.expressions[0] if parsed.expressions else None

@@ -6,6 +6,7 @@ from visivo.server.jobs.preview_job_executor import (
     _inject_cached_objects,
     _inject_context_objects,
     MANAGER_TO_PROJECT_FIELD,
+    CONTEXT_OBJECT_TYPES,
 )
 from tests.factories.model_factories import (
     ProjectFactory,
@@ -303,3 +304,18 @@ class TestInjectContextObjects:
         assert len(preview_project.models) == 1
         assert len(preview_project.dimensions) == 1
         assert len(preview_project.metrics) == 1
+
+
+class TestManagerConfig:
+    def test_csv_script_model_manager_in_map(self):
+        field_map = dict(MANAGER_TO_PROJECT_FIELD)
+        assert "csv_script_model_manager" in field_map
+        assert field_map["csv_script_model_manager"] == "csv_script_models"
+
+    def test_local_merge_model_manager_in_map(self):
+        field_map = dict(MANAGER_TO_PROJECT_FIELD)
+        assert "local_merge_model_manager" in field_map
+        assert field_map["local_merge_model_manager"] == "local_merge_models"
+
+    def test_context_object_types_is_set(self):
+        assert isinstance(CONTEXT_OBJECT_TYPES, (set, frozenset))

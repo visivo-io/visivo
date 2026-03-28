@@ -3,6 +3,10 @@ import { useDuckDB } from '../contexts/DuckDBContext';
 import { runDuckDBQuery } from '../duckdb/queries';
 import { getConnection } from '../duckdb/duckdb';
 import useStore from '../stores/store';
+import {
+  selectActiveModelQueryResult,
+  selectActiveModelComputedColumns,
+} from '../stores/explorerNewStore';
 import { translateExpressions } from '../api/expressions';
 
 const EXPLORER_TABLE_PREFIX = 'explorer_';
@@ -18,11 +22,11 @@ const EXPLORER_TABLE_PREFIX = 'explorer_';
  */
 const useExplorerDuckDB = () => {
   const db = useDuckDB();
-  const queryResult = useStore((s) => s.explorerQueryResult);
-  const computedColumns = useStore((s) => s.explorerComputedColumns);
+  const queryResult = useStore(selectActiveModelQueryResult);
+  const computedColumns = useStore(selectActiveModelComputedColumns);
   const setDuckDBLoading = useStore((s) => s.setExplorerDuckDBLoading);
   const setDuckDBError = useStore((s) => s.setExplorerDuckDBError);
-  const setEnrichedResult = useStore((s) => s.setExplorerEnrichedResult);
+  const setEnrichedResult = useStore((s) => s.setActiveModelEnrichedResult);
   const setFailedComputedColumns = useStore((s) => s.setExplorerFailedComputedColumns);
 
   const versionRef = useRef(0);
@@ -188,12 +192,23 @@ const useExplorerDuckDB = () => {
     runPipeline();
   }, [db, queryResult, computedColumns, setEnrichedResult, setDuckDBLoading, setDuckDBError, setFailedComputedColumns]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Drop the DuckDB table on unmount to free resources
+  useEffect(() => {
+    return () => {
+      if (currentTableRef.current && db) {
+        getConnection(db).then((conn) =>
+          conn.query(`DROP TABLE IF EXISTS "${currentTableRef.current}"`).catch(() => {})
+        );
+      }
+    };
+  }, [db]);
+
   // Helper: add a computed column from a metric/dimension definition
   const addComputedFromDefinition = useCallback(
     (item) => {
       if (!item?.name || !item?.config?.expression) return;
 
-      useStore.getState().addExplorerComputedColumn({
+      useStore.getState().addActiveModelComputedColumn({
         name: item.name,
         expression: item.config.expression,
         type: item.config.aggregation ? 'metric' : 'dimension',

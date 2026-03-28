@@ -187,10 +187,54 @@ describe('ModelTabBar', () => {
     expect(screen.getByTestId('status-dot-model_a').className).toContain('bg-green-500');
   });
 
-  it('does not show status dot for non-new models', () => {
+  it('does not show status dot for non-new models with no changes', () => {
+    useStore.setState({
+      explorerModelStates: {
+        ...useStore.getState().explorerModelStates,
+        model_b: {
+          sql: 'SELECT 2',
+          sourceName: 'pg',
+          queryResult: null,
+          queryError: null,
+          computedColumns: [],
+          enrichedResult: null,
+          isNew: false,
+          _originalSql: 'SELECT 2',
+          _originalSourceName: 'pg',
+          _originalComputedColumns: [],
+        },
+      },
+    });
+
     render(<ModelTabBar />);
 
     expect(screen.queryByTestId('status-dot-model_b')).not.toBeInTheDocument();
+  });
+
+  it('shows amber status dot for modified models', () => {
+    useStore.setState({
+      explorerModelStates: {
+        ...useStore.getState().explorerModelStates,
+        model_b: {
+          sql: 'SELECT 999',
+          sourceName: 'pg',
+          queryResult: null,
+          queryError: null,
+          computedColumns: [],
+          enrichedResult: null,
+          isNew: false,
+          _originalSql: 'SELECT 2',
+          _originalSourceName: 'pg',
+          _originalComputedColumns: [],
+        },
+      },
+    });
+
+    render(<ModelTabBar />);
+
+    const dot = screen.getByTestId('status-dot-model_b');
+    expect(dot).toBeInTheDocument();
+    expect(dot.className).toContain('bg-amber-500');
   });
 
   it('shows "No models" state when tabs are empty', () => {

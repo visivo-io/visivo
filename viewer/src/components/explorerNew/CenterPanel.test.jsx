@@ -4,6 +4,13 @@ import '@testing-library/jest-dom';
 import CenterPanel from './CenterPanel';
 import useStore from '../../stores/store';
 
+// Mock DraggableColumnHeader (requires @dnd-kit/core)
+jest.mock('./DraggableColumnHeader', () => {
+  return function MockDraggableColumnHeader(props) {
+    return <th data-testid={`col-header-${props.column?.name || 'unknown'}`}>{props.column?.name}</th>;
+  };
+});
+
 // Mock SQLEditor
 jest.mock('./SQLEditor', () => {
   return function MockSQLEditor({ sourceName, initialValue, onSave, onQueryComplete, hideResults, toolbarExtra, toolbarRight }) {
@@ -104,28 +111,16 @@ jest.mock('../../hooks/useExplorerDuckDB', () => ({
   default: () => {},
 }));
 
-// Mock AddComputedColumnPopover
-jest.mock('./AddComputedColumnPopover', () => {
-  return function MockAddComputedColumnPopover({ editColumn, onUpdate, onEditClose }) {
+// Mock DataSectionToolbar
+jest.mock('./DataSectionToolbar', () => {
+  return function MockDataSectionToolbar(props) {
     return (
-      <div data-testid="add-computed-column-btn">
-        +
-        {editColumn && (
-          <div data-testid="edit-popover">
-            <span data-testid="edit-column-name">{editColumn.name}</span>
-            <span data-testid="edit-column-expression">{editColumn.expression}</span>
-            <button
-              data-testid="save-edit-btn"
-              onClick={() => onUpdate?.({ name: editColumn.name, expression: 'NEW_EXPR', type: editColumn.type })}
-            >
-              Save
-            </button>
-            <button data-testid="close-edit-btn" onClick={onEditClose}>
-              Close
-            </button>
-          </div>
-        )}
-      </div>
+      <div
+        data-testid="data-section-toolbar"
+        data-row-count={props.totalRowCount}
+        data-truncated={String(!!props.truncated)}
+        data-execution-time={props.executionTimeMs || ''}
+      />
     );
   };
 });
@@ -159,25 +154,34 @@ class MockResizeObserver {
 }
 global.ResizeObserver = MockResizeObserver;
 
+const makeModelState = (overrides = {}) => ({
+  sql: '',
+  sourceName: null,
+  queryResult: null,
+  queryError: null,
+  computedColumns: [],
+  enrichedResult: null,
+  isNew: true,
+  ...overrides,
+});
+
 describe('CenterPanel', () => {
   beforeEach(() => {
     useStore.setState({
-      explorerSourceName: 'test_source',
       explorerSources: [{ source_name: 'test_source', source_type: 'postgresql' }],
-      explorerSql: 'SELECT 1',
-      explorerQueryResult: null,
-      explorerQueryError: null,
       explorerIsEditorCollapsed: false,
       explorerProfileColumn: null,
-      explorerActiveModelName: null,
-      explorerModelEditMode: null,
-      explorerEditStack: [],
+      explorerActiveModelName: 'test_model',
+      explorerModelStates: {
+        test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+      },
+      explorerModelTabs: ['test_model'],
       models: [],
-      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      explorerInsightStates: {},
+      explorerActiveInsightName: null,
+      explorerChartInsightNames: [],
       explorerChartLayout: {},
       explorerCenterMode: 'split',
-      explorerComputedColumns: [],
-      explorerEnrichedResult: null,
       explorerDuckDBLoading: false,
       explorerDuckDBError: null,
       explorerFailedComputedColumns: {},
@@ -220,10 +224,16 @@ describe('CenterPanel', () => {
 
   it('renders DataTable when query result exists', () => {
     useStore.setState({
-      explorerQueryResult: {
-        columns: ['id', 'name'],
-        rows: [{ id: 1, name: 'Test' }],
-        row_count: 1,
+      explorerModelStates: {
+        test_model: makeModelState({
+          sql: 'SELECT 1',
+          sourceName: 'test_source',
+          queryResult: {
+            columns: ['id', 'name'],
+            rows: [{ id: 1, name: 'Test' }],
+            row_count: 1,
+          },
+        }),
       },
     });
 
@@ -235,7 +245,13 @@ describe('CenterPanel', () => {
 
   it('shows error state when query error exists', () => {
     useStore.setState({
-      explorerQueryError: 'SQL syntax error near SELECT',
+      explorerModelStates: {
+        test_model: makeModelState({
+          sql: 'SELECT 1',
+          sourceName: 'test_source',
+          queryError: 'SQL syntax error near SELECT',
+        }),
+      },
     });
 
     render(<CenterPanel />);
@@ -264,7 +280,7 @@ describe('CenterPanel', () => {
     fireEvent.click(screen.getByTestId('trigger-query-complete'));
 
     const state = useStore.getState();
-    expect(state.explorerQueryResult).toEqual({
+    expect(state.explorerModelStates.test_model.queryResult).toEqual({
       columns: ['id'],
       rows: [{ id: 1 }],
       row_count: 1,
@@ -276,38 +292,33 @@ describe('CenterPanel', () => {
 
     fireEvent.click(screen.getByTestId('trigger-query-error'));
 
-    expect(useStore.getState().explorerQueryError).toBe('SQL error');
+    expect(useStore.getState().explorerModelStates.test_model.queryError).toBe('SQL error');
   });
 
-  it('shows row count and execution time in results header', () => {
+  it('renders DataSectionToolbar with correct props when query result exists', () => {
     useStore.setState({
-      explorerQueryResult: {
-        columns: ['id'],
-        rows: [{ id: 1 }, { id: 2 }],
-        row_count: 2,
-        execution_time_ms: 150,
+      explorerModelStates: {
+        test_model: makeModelState({
+          sql: 'SELECT 1',
+          sourceName: 'test_source',
+          queryResult: {
+            columns: ['id'],
+            rows: [{ id: 1 }, { id: 2 }],
+            row_count: 2,
+            execution_time_ms: 150,
+            truncated: true,
+          },
+        }),
       },
     });
 
     render(<CenterPanel />);
 
-    expect(screen.getByText('2 rows')).toBeInTheDocument();
-    expect(screen.getByText('150ms')).toBeInTheDocument();
-  });
-
-  it('shows truncated indicator', () => {
-    useStore.setState({
-      explorerQueryResult: {
-        columns: ['id'],
-        rows: [{ id: 1 }],
-        row_count: 1,
-        truncated: true,
-      },
-    });
-
-    render(<CenterPanel />);
-
-    expect(screen.getByText('(truncated)')).toBeInTheDocument();
+    const toolbar = screen.getByTestId('data-section-toolbar');
+    expect(toolbar).toBeInTheDocument();
+    expect(toolbar).toHaveAttribute('data-row-count', '2');
+    expect(toolbar).toHaveAttribute('data-truncated', 'true');
+    expect(toolbar).toHaveAttribute('data-execution-time', '150');
   });
 
   describe('Model Context Banner (removed)', () => {
@@ -360,92 +371,34 @@ describe('CenterPanel', () => {
     });
   });
 
-  describe('computed column errors and editing', () => {
-    beforeEach(() => {
+  describe('DataSectionToolbar integration', () => {
+    it('renders DataSectionToolbar when query result with computed columns exists', () => {
       useStore.setState({
-        explorerQueryResult: {
-          columns: ['id', 'value'],
-          rows: [{ id: 1, value: 10 }],
-          row_count: 1,
+        explorerModelStates: {
+          test_model: makeModelState({
+            sql: 'SELECT 1',
+            sourceName: 'test_source',
+            queryResult: {
+              columns: ['id', 'value'],
+              rows: [{ id: 1, value: 10 }],
+              row_count: 1,
+            },
+            computedColumns: [
+              { name: 'total', expression: 'SUM(value)', type: 'metric' },
+            ],
+          }),
         },
-        explorerComputedColumns: [
-          { name: 'total', expression: 'SUM(value)', type: 'metric' },
-          { name: 'bad_col', expression: 'INVALID()', type: 'dimension' },
-        ],
-        explorerFailedComputedColumns: {
-          bad_col: 'Function INVALID does not exist',
-        },
-      });
-    });
-
-    it('shows error styling on failed computed column pill', () => {
-      render(<CenterPanel />);
-
-      const failedPill = screen.getByTestId('computed-pill-bad_col');
-      expect(failedPill).toBeInTheDocument();
-      expect(failedPill.className).toContain('bg-red-50');
-      expect(failedPill.className).toContain('border-red-200');
-    });
-
-    it('shows normal styling on successful computed column pill', () => {
-      render(<CenterPanel />);
-
-      const goodPill = screen.getByTestId('computed-pill-total');
-      expect(goodPill).toBeInTheDocument();
-      expect(goodPill.className).toContain('bg-cyan-50');
-    });
-
-    it('clicking a computed column pill opens edit popover', () => {
-      render(<CenterPanel />);
-
-      const pill = screen.getByTestId('computed-pill-total');
-      fireEvent.click(pill);
-
-      expect(screen.getByTestId('edit-popover')).toBeInTheDocument();
-      expect(screen.getByTestId('edit-column-name')).toHaveTextContent('total');
-      expect(screen.getByTestId('edit-column-expression')).toHaveTextContent('SUM(value)');
-    });
-
-    it('closing edit popover clears editing state', () => {
-      render(<CenterPanel />);
-
-      const pill = screen.getByTestId('computed-pill-total');
-      fireEvent.click(pill);
-
-      expect(screen.getByTestId('edit-popover')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('close-edit-btn'));
-
-      expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
-    });
-
-    it('does not show global DuckDB error when per-column errors exist', () => {
-      useStore.setState({ explorerDuckDBError: 'Could not compute: bad_col' });
-
-      render(<CenterPanel />);
-
-      expect(screen.queryByTestId('duckdb-error')).not.toBeInTheDocument();
-    });
-
-    it('shows global DuckDB error when no per-column errors', () => {
-      useStore.setState({
-        explorerDuckDBError: 'Table load failed',
-        explorerFailedComputedColumns: {},
       });
 
       render(<CenterPanel />);
 
-      expect(screen.getByTestId('duckdb-error')).toBeInTheDocument();
+      expect(screen.getByTestId('data-section-toolbar')).toBeInTheDocument();
     });
 
-    it('remove button stops propagation and does not open edit', () => {
+    it('does not render DataSectionToolbar when no query result', () => {
       render(<CenterPanel />);
 
-      fireEvent.click(screen.getByTestId('remove-computed-total'));
-
-      expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
-      expect(useStore.getState().explorerComputedColumns).toHaveLength(1);
-      expect(useStore.getState().explorerComputedColumns[0].name).toBe('bad_col');
+      expect(screen.queryByTestId('data-section-toolbar')).not.toBeInTheDocument();
     });
   });
 });

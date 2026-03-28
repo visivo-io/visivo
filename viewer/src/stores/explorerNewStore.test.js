@@ -1,6 +1,19 @@
 /* eslint-disable no-template-curly-in-string */
 import useStore from './store';
-import { expandDotNotationProps } from './explorerNewStore';
+import {
+  expandDotNotationProps,
+  selectActiveModelState,
+  selectActiveModelSql,
+  selectActiveModelSourceName,
+  selectActiveModelQueryResult,
+  selectActiveModelQueryError,
+  selectActiveModelComputedColumns,
+  selectActiveModelEnrichedResult,
+  selectActiveInsightConfig,
+  selectModelStatus,
+  selectInsightStatus,
+  selectHasModifications,
+} from './explorerNewStore';
 
 // Helper to reset all explorer new state
 const resetState = () => {
@@ -32,8 +45,6 @@ const resetState = () => {
     // UI State
     explorerLeftNavCollapsed: false,
     explorerCenterMode: 'split',
-    explorerEditorChartSplit: 0.5,
-    explorerTopBottomSplit: 0.5,
     explorerProfileColumn: null,
     explorerIsEditorCollapsed: false,
   });
@@ -689,18 +700,6 @@ describe('explorerNewStore', () => {
     });
   });
 
-  describe('reorderChartInsights', () => {
-    it('sets the chart insight names to the given order', () => {
-      useStore.getState().createInsight('ins_a');
-      useStore.getState().createInsight('ins_b');
-      useStore.getState().createInsight('ins_c');
-
-      useStore.getState().reorderChartInsights(['ins_c', 'ins_a', 'ins_b']);
-
-      expect(useStore.getState().explorerChartInsightNames).toEqual(['ins_c', 'ins_a', 'ins_b']);
-    });
-  });
-
   // ====================================================================
   // Loading Actions
   // ====================================================================
@@ -958,44 +957,6 @@ describe('explorerNewStore', () => {
   });
 
   // ====================================================================
-  // Save-Related Helpers
-  // ====================================================================
-  describe('getModifiedObjects', () => {
-    it('returns new models', () => {
-      useStore.getState().createModelTab('new_model');
-
-      const result = useStore.getState().getModifiedObjects();
-      expect(result.newModels).toContain('new_model');
-    });
-
-    it('returns loaded (non-new) models as modified when their state has been changed', () => {
-      useStore.getState().loadModel({
-        name: 'existing',
-        config: { sql: 'SELECT 1' },
-      });
-
-      const result = useStore.getState().getModifiedObjects();
-      // Loaded models are not new
-      expect(result.newModels).not.toContain('existing');
-    });
-
-    it('returns new insights', () => {
-      useStore.getState().createInsight('new_insight');
-
-      const result = useStore.getState().getModifiedObjects();
-      expect(result.newInsights).toContain('new_insight');
-    });
-
-    it('returns chart name when chart has a name', () => {
-      useStore.getState().setChartName('my_chart');
-      useStore.getState().createInsight('ins');
-
-      const result = useStore.getState().getModifiedObjects();
-      expect(result.chartName).toBe('my_chart');
-    });
-  });
-
-  // ====================================================================
   // DuckDB Actions
   // ====================================================================
   describe('DuckDB actions', () => {
@@ -1186,6 +1147,605 @@ describe('explorerNewStore', () => {
       const props = useStore.getState().explorerInsightStates.ins_1.props;
       expect(props.customdata[0]).toBe('?{${ref(new_model).col_a}}');
       expect(props.customdata[1]).toBe('?{${ref(new_model).col_b}}');
+    });
+  });
+
+  // ====================================================================
+  // Selectors
+  // ====================================================================
+  describe('selectors', () => {
+    it('selectActiveModelSql returns active model sql', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSql('SELECT 1');
+
+      expect(selectActiveModelSql(useStore.getState())).toBe('SELECT 1');
+    });
+
+    it('selectActiveModelSql returns empty string when no active model', () => {
+      expect(selectActiveModelSql(useStore.getState())).toBe('');
+    });
+
+    it('selectActiveModelSourceName returns active model source', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelSource('pg');
+
+      expect(selectActiveModelSourceName(useStore.getState())).toBe('pg');
+    });
+
+    it('selectActiveModelQueryResult returns active model query result', () => {
+      useStore.getState().createModelTab('my_model');
+      const result = { columns: ['id'], rows: [{ id: 1 }], row_count: 1 };
+      useStore.getState().setActiveModelQueryResult(result);
+
+      expect(selectActiveModelQueryResult(useStore.getState())).toEqual(result);
+    });
+
+    it('selectActiveModelQueryError returns active model query error', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().setActiveModelQueryError('SQL error');
+
+      expect(selectActiveModelQueryError(useStore.getState())).toBe('SQL error');
+    });
+
+    it('selectActiveModelComputedColumns returns active model computed columns', () => {
+      useStore.getState().createModelTab('my_model');
+      useStore.getState().addActiveModelComputedColumn({
+        name: 'total',
+        expression: 'SUM(x)',
+        type: 'metric',
+      });
+
+      expect(selectActiveModelComputedColumns(useStore.getState())).toHaveLength(1);
+      expect(selectActiveModelComputedColumns(useStore.getState())[0].name).toBe('total');
+    });
+
+    it('selectActiveModelEnrichedResult returns active model enriched result', () => {
+      useStore.getState().createModelTab('my_model');
+      const enriched = { columns: ['x'], rows: [{ x: 1 }] };
+      useStore.getState().setActiveModelEnrichedResult(enriched);
+
+      expect(selectActiveModelEnrichedResult(useStore.getState())).toEqual(enriched);
+    });
+
+    it('selectActiveModelState returns null when no active model', () => {
+      expect(selectActiveModelState(useStore.getState())).toBeNull();
+    });
+
+    it('selectActiveInsightConfig returns default when no active insight', () => {
+      const config = selectActiveInsightConfig(useStore.getState());
+      expect(config).toEqual({ name: '', props: { type: 'scatter' } });
+    });
+
+    it('selectActiveInsightConfig returns active insight config', () => {
+      useStore.getState().createInsight('my_insight');
+      useStore.getState().setInsightProp('my_insight', 'x', 'col_a');
+
+      const config = selectActiveInsightConfig(useStore.getState());
+      expect(config.name).toBe('my_insight');
+      expect(config.props.type).toBe('scatter');
+      expect(config.props.x).toBe('col_a');
+    });
+  });
+
+  // ====================================================================
+  // Status Detection Selectors
+  // ====================================================================
+  describe('selectModelStatus', () => {
+    it('returns "new" for a new model', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: { sql: 'SELECT 1', sourceName: null, computedColumns: [], isNew: true },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBe('new');
+    });
+
+    it('returns null for a loaded model with no changes', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [{ name: 'total', expression: 'SUM(x)', type: 'metric' }],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [{ name: 'total', expression: 'SUM(x)', type: 'metric' }],
+          },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBeNull();
+    });
+
+    it('returns "modified" when SQL has changed', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 2',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns "modified" when source has changed', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 1',
+            sourceName: 'mysql',
+            computedColumns: [],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns "modified" when computed columns have changed', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [{ name: 'total', expression: 'SUM(amount)', type: 'metric' }],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns null for non-existent model', () => {
+      expect(selectModelStatus('nonexistent')(useStore.getState())).toBeNull();
+    });
+  });
+
+  describe('selectInsightStatus', () => {
+    it('returns "new" for a new insight', () => {
+      useStore.setState({
+        explorerInsightStates: {
+          i1: { type: 'scatter', props: {}, isNew: true },
+        },
+      });
+      expect(selectInsightStatus('i1')(useStore.getState())).toBe('new');
+    });
+
+    it('returns null for a loaded insight with no changes', () => {
+      useStore.setState({
+        explorerInsightStates: {
+          i1: {
+            type: 'scatter',
+            props: { x: 'col_a' },
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: { x: 'col_a' },
+          },
+        },
+      });
+      expect(selectInsightStatus('i1')(useStore.getState())).toBeNull();
+    });
+
+    it('returns "modified" when type has changed', () => {
+      useStore.setState({
+        explorerInsightStates: {
+          i1: {
+            type: 'bar',
+            props: {},
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: {},
+          },
+        },
+      });
+      expect(selectInsightStatus('i1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns "modified" when props have changed', () => {
+      useStore.setState({
+        explorerInsightStates: {
+          i1: {
+            type: 'scatter',
+            props: { x: 'col_b' },
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: { x: 'col_a' },
+          },
+        },
+      });
+      expect(selectInsightStatus('i1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns null for non-existent insight', () => {
+      expect(selectInsightStatus('nonexistent')(useStore.getState())).toBeNull();
+    });
+  });
+
+  describe('selectHasModifications', () => {
+    it('returns false when all objects are unchanged', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+        explorerInsightStates: {
+          i1: {
+            type: 'scatter',
+            props: {},
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: {},
+          },
+        },
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(false);
+    });
+
+    it('returns true when any model is new', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: { sql: '', sourceName: null, computedColumns: [], isNew: true },
+        },
+        explorerInsightStates: {},
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(true);
+    });
+
+    it('returns true when any model has changed SQL', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: {
+            sql: 'SELECT 2',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+        explorerInsightStates: {},
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(true);
+    });
+
+    it('returns true when any insight is new', () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {
+          i1: { type: 'scatter', props: {}, isNew: true },
+        },
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(true);
+    });
+
+    it('returns true when any insight has changed props', () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {
+          i1: {
+            type: 'scatter',
+            props: { x: 'new_col' },
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: { x: 'old_col' },
+          },
+        },
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(true);
+    });
+
+    it('returns false when model and insight states are empty', () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {},
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(false);
+    });
+  });
+
+  // ====================================================================
+  // Original state snapshots in loadModel/loadChart
+  // ====================================================================
+  describe('loadModel snapshot fields', () => {
+    it('sets _original* fields on loaded model state', () => {
+      useStore.setState({
+        explorerSources: [{ source_name: 'pg' }],
+        metrics: [],
+        dimensions: [],
+      });
+
+      useStore.getState().loadModel({
+        name: 'orders',
+        config: { sql: 'SELECT * FROM orders', source: 'ref(pg)' },
+      });
+
+      const modelState = useStore.getState().explorerModelStates.orders;
+      expect(modelState._originalSql).toBe('SELECT * FROM orders');
+      expect(modelState._originalSourceName).toBe('pg');
+      expect(modelState._originalComputedColumns).toEqual([]);
+    });
+  });
+
+  describe('loadChart snapshot fields', () => {
+    it('sets _original* fields on loaded insight states', () => {
+      const chart = { name: 'chart', config: { layout: {} } };
+      const insights = [
+        {
+          name: 'ins_1',
+          config: { type: 'bar', props: { x: 'col_a' }, interactions: [] },
+        },
+      ];
+      const models = [{ name: 'm1', config: { sql: 'SELECT 1' } }];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart, insights, models);
+
+      const insightState = useStore.getState().explorerInsightStates.ins_1;
+      expect(insightState._originalType).toBe('bar');
+      expect(insightState._originalProps).toEqual({ x: 'col_a' });
+    });
+
+    it('sets _original* fields on loaded model states via loadChart', () => {
+      const chart = { name: 'chart', config: { layout: {} } };
+      const insights = [
+        { name: 'ins_1', config: { type: 'scatter', props: {}, interactions: [] } },
+      ];
+      const models = [{ name: 'm1', config: { sql: 'SELECT 1', source: 'ref(pg)' } }];
+
+      useStore.setState({
+        explorerSources: [{ source_name: 'pg' }],
+        metrics: [],
+        dimensions: [],
+      });
+      useStore.getState().loadChart(chart, insights, models);
+
+      const modelState = useStore.getState().explorerModelStates.m1;
+      expect(modelState._originalSql).toBe('SELECT 1');
+      expect(modelState._originalSourceName).toBe('pg');
+      expect(modelState._originalComputedColumns).toEqual([]);
+    });
+  });
+
+  // ====================================================================
+  // saveExplorerObjects
+  // ====================================================================
+  describe('saveExplorerObjects', () => {
+    let mockSaveModel, mockSaveInsight, mockSaveChart, mockSaveMetric, mockSaveDimension;
+
+    beforeEach(() => {
+      mockSaveModel = jest.fn().mockResolvedValue({ success: true });
+      mockSaveInsight = jest.fn().mockResolvedValue({ success: true });
+      mockSaveChart = jest.fn().mockResolvedValue({ success: true });
+      mockSaveMetric = jest.fn().mockResolvedValue({ success: true });
+      mockSaveDimension = jest.fn().mockResolvedValue({ success: true });
+
+      jest.mock('../api/models', () => ({ saveModel: (...args) => mockSaveModel(...args) }));
+      jest.mock('../api/insights', () => ({ saveInsight: (...args) => mockSaveInsight(...args) }));
+      jest.mock('../api/charts', () => ({ saveChart: (...args) => mockSaveChart(...args) }));
+      jest.mock('../api/metrics', () => ({ saveMetric: (...args) => mockSaveMetric(...args) }));
+      jest.mock('../api/dimensions', () => ({
+        saveDimension: (...args) => mockSaveDimension(...args),
+      }));
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('saves new models and marks them as published on success', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          new_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(mockSaveModel).toHaveBeenCalledWith('new_model', {
+        sql: 'SELECT 1',
+        source: 'ref(pg)',
+      });
+
+      // Verify post-save state updates
+      const modelState = useStore.getState().explorerModelStates.new_model;
+      expect(modelState.isNew).toBe(false);
+      expect(modelState._originalSql).toBe('SELECT 1');
+      expect(modelState._originalSourceName).toBe('pg');
+    });
+
+    it('skips unchanged models', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          stable_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: false,
+            _originalSql: 'SELECT 1',
+            _originalSourceName: 'pg',
+            _originalComputedColumns: [],
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      await useStore.getState().saveExplorerObjects();
+
+      expect(mockSaveModel).not.toHaveBeenCalled();
+    });
+
+    it('saves modified insights and resets originals on success', async () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {
+          my_insight: {
+            type: 'bar',
+            props: { x: 'col_a' },
+            interactions: [],
+            isNew: false,
+            _originalType: 'scatter',
+            _originalProps: {},
+          },
+        },
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(mockSaveInsight).toHaveBeenCalledWith('my_insight', {
+        type: 'bar',
+        props: { x: 'col_a' },
+        interactions: [],
+      });
+
+      const insightState = useStore.getState().explorerInsightStates.my_insight;
+      expect(insightState.isNew).toBe(false);
+      expect(insightState._originalType).toBe('bar');
+      expect(insightState._originalProps).toEqual({ x: 'col_a' });
+    });
+
+    it('saves chart when chart name exists', async () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {},
+        explorerChartName: 'my_chart',
+        explorerChartLayout: { title: 'Test' },
+        explorerChartInsightNames: ['insight_1', 'insight_2'],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(mockSaveChart).toHaveBeenCalledWith('my_chart', {
+        insights: ['ref(insight_1)', 'ref(insight_2)'],
+        layout: { title: 'Test' },
+      });
+    });
+
+    it('saves computed columns as metrics and dimensions', async () => {
+      useStore.setState({
+        explorerModelStates: {
+          my_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [
+              { name: 'total', expression: 'SUM(amount)', type: 'metric' },
+              { name: 'month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
+            ],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      await useStore.getState().saveExplorerObjects();
+
+      expect(mockSaveMetric).toHaveBeenCalledWith('total', {
+        expression: 'SUM(amount)',
+        model: 'ref(my_model)',
+      });
+      expect(mockSaveDimension).toHaveBeenCalledWith('month', {
+        expression: "DATE_TRUNC('month', date)",
+        model: 'ref(my_model)',
+      });
+    });
+
+    it('returns errors and does not reset originals on failure', async () => {
+      mockSaveModel.mockRejectedValue(new Error('Network error'));
+
+      useStore.setState({
+        explorerModelStates: {
+          bad_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toEqual({
+        name: 'bad_model',
+        type: 'model',
+        error: 'Network error',
+      });
+
+      // Original state should NOT be reset
+      const modelState = useStore.getState().explorerModelStates.bad_model;
+      expect(modelState.isNew).toBe(true);
+    });
+
+    it('expands dot-notation props when saving insights', async () => {
+      useStore.setState({
+        explorerModelStates: {},
+        explorerInsightStates: {
+          dot_insight: {
+            type: 'scatter',
+            props: { 'marker.color': 'red', 'marker.size': 10, x: 'col_a' },
+            interactions: [],
+            isNew: true,
+          },
+        },
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+      });
+
+      await useStore.getState().saveExplorerObjects();
+
+      expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
+        type: 'scatter',
+        props: { marker: { color: 'red', size: 10 }, x: 'col_a' },
+        interactions: [],
+      });
     });
   });
 });

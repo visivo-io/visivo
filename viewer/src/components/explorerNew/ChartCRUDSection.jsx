@@ -1,15 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
+import { PiCaretDown, PiCaretRight, PiPlus } from 'react-icons/pi';
+import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
+import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { getSchema } from '../../schemas/schemas';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+
+const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
+  const status = useStore(selectInsightStatus(name));
+  return (
+    <span data-testid={`chart-insight-pill-${name}`}>
+      <EmbeddedPill
+        objectType="insight"
+        label={name}
+        isActive={isActive}
+        onClick={onClick}
+        onRemove={onRemove}
+        statusDot={status}
+      />
+    </span>
+  );
+};
 
 const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const chartName = useStore((s) => s.explorerChartName);
   const chartLayout = useStore((s) => s.explorerChartLayout);
   const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
   const activeInsightName = useStore((s) => s.explorerActiveInsightName);
-  const insightStates = useStore((s) => s.explorerInsightStates);
   const setChartName = useStore((s) => s.setChartName);
   const replaceChartLayout = useStore((s) => s.replaceChartLayout);
   const createInsight = useStore((s) => s.createInsight);
@@ -117,34 +134,15 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
               <p className="text-xs text-gray-400 py-2">No insights added yet</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {chartInsightNames.map((name) => {
-                  const isActive = name === activeInsightName;
-                  const insight = insightStates[name];
-                  return (
-                    <button
-                      key={name}
-                      data-testid={`chart-insight-pill-${name}`}
-                      onClick={() => handleInsightClick(name)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all
-                        bg-purple-100 text-purple-800 border-purple-200
-                        hover:shadow-sm cursor-pointer
-                        ${isActive ? 'ring-2 ring-purple-400' : ''}
-                      `}
-                    >
-                      <span className="truncate max-w-[120px]">{name}</span>
-                      {insight?.isNew && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                      )}
-                      <span
-                        data-testid={`chart-remove-insight-${name}`}
-                        onClick={(e) => handleRemoveInsight(e, name)}
-                        className="text-purple-400 hover:text-red-500 transition-colors ml-0.5"
-                      >
-                        <PiX size={10} />
-                      </span>
-                    </button>
-                  );
-                })}
+                {chartInsightNames.map((name) => (
+                  <InsightPillItem
+                    key={name}
+                    name={name}
+                    isActive={name === activeInsightName}
+                    onClick={() => handleInsightClick(name)}
+                    onRemove={(e) => handleRemoveInsight(e, name)}
+                  />
+                ))}
               </div>
             )}
             <button

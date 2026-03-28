@@ -49,6 +49,9 @@ const AddComputedColumnPopover = ({
     });
   }, [isOpen, isEditMode, anchorElement]);
 
+  // Keep a ref to the latest handleCancel so outside-click always uses current version
+  const handleCancelRef = useRef(null);
+
   // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
@@ -57,12 +60,12 @@ const AddComputedColumnPopover = ({
         popoverRef.current && !popoverRef.current.contains(e.target) &&
         buttonRef.current && !buttonRef.current.contains(e.target)
       ) {
-        handleCancel();
+        handleCancelRef.current?.();
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -80,14 +83,20 @@ const AddComputedColumnPopover = ({
       }
       setIsValidating(true);
       setValidationResult(null);
-      const result = await onValidate(expr.trim());
-      setValidationResult(result);
-      if (result?.valid && result?.detectedType) {
-        setDetectedType(result.detectedType);
-      } else if (!result?.valid) {
+      try {
+        const result = await onValidate(expr.trim());
+        setValidationResult(result);
+        if (result?.valid && result?.detectedType) {
+          setDetectedType(result.detectedType);
+        } else if (!result?.valid) {
+          setDetectedType(null);
+        }
+      } catch (err) {
+        setValidationResult({ valid: false, error: err.message || 'Validation failed' });
         setDetectedType(null);
+      } finally {
+        setIsValidating(false);
       }
-      setIsValidating(false);
     },
     [onValidate]
   );
@@ -133,13 +142,15 @@ const AddComputedColumnPopover = ({
     onEditClose?.();
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     resetForm();
     setIsOpen(false);
     if (isEditMode) {
       onEditClose?.();
     }
-  };
+  }, [isEditMode, onEditClose]);
+
+  handleCancelRef.current = handleCancel;
 
   const popoverContent = isOpen && createPortal(
     <div

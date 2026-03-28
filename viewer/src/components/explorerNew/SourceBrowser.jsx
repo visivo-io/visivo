@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   PiHardDrives,
   PiTable,
@@ -26,6 +26,9 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
   const [loadingNodes, setLoadingNodes] = useState(new Set());
   const [generatingSchemas, setGeneratingSchemas] = useState(new Map());
   const [schemaErrors, setSchemaErrors] = useState(new Map());
+  const cancelledRef = useRef(false);
+
+  useEffect(() => () => { cancelledRef.current = true; }, []);
 
   useEffect(() => {
     const loadSources = async () => {
@@ -111,6 +114,7 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
           throw new Error(status.error || 'Schema generation failed');
         }
 
+        if (cancelledRef.current) return;
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
       }
 

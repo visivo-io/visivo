@@ -68,6 +68,40 @@ const replaceRefsInObject = (obj, oldName, newName) => {
 };
 
 /**
+ * Auto-load pre-existing parquet data for a model if available.
+ */
+const autoLoadModelData = (modelName, get, set) => {
+  import('../api/modelData')
+    .then(({ fetchModelData }) => {
+      fetchModelData(modelName)
+        .then((data) => {
+          if (data.available && data.rows?.length > 0) {
+            const currentState = get();
+            if (currentState.explorerModelStates[modelName]) {
+              set({
+                explorerModelStates: {
+                  ...currentState.explorerModelStates,
+                  [modelName]: {
+                    ...currentState.explorerModelStates[modelName],
+                    queryResult: {
+                      columns: data.columns,
+                      rows: data.rows,
+                      row_count: data.row_count,
+                      truncated: data.truncated || false,
+                    },
+                    queryError: null,
+                  },
+                },
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    })
+    .catch(() => {});
+};
+
+/**
  * Create an empty model state entry.
  */
 const createEmptyModelState = (isNew = true) => ({
@@ -105,7 +139,14 @@ const buildModelStateFromObject = (modelObject, globalState) => {
     return rawModel && stripRef(rawModel) === modelObject.name;
   };
 
-  const sourceDialect = detectDialect(resolvedSourceName);
+  const sourceDialect = (() => {
+    const source = (globalState.explorerSources || []).find(
+      (src) => src.source_name === resolvedSourceName || src.name === resolvedSourceName
+    );
+    if (!source?.type) return null;
+    const d = source.type.toLowerCase();
+    return d === 'postgresql' ? 'postgres' : d;
+  })();
 
   const computedCols = [];
   allMetrics.filter(belongsToModel).forEach((m) => {
@@ -137,6 +178,9 @@ const buildModelStateFromObject = (modelObject, globalState) => {
     computedColumns: computedCols,
     enrichedResult: null,
     isNew: false,
+    _originalSql: sql,
+    _originalSourceName: resolvedSourceName,
+    _originalComputedColumns: JSON.parse(JSON.stringify(computedCols)),
   };
 };
 
@@ -161,59 +205,74 @@ const matchSourceName = (extractedName, sources) => {
   const suffix = sources.find((s) => s.source_name.endsWith('-' + extractedName));
   if (suffix) return suffix.source_name;
 
-  const contains = sources.find((s) => s.source_name.includes(extractedName));
-  if (contains) return contains.source_name;
-
   return null;
 };
 
-/**
- * Build shim key updates from a model state for backward compatibility.
- * CenterPanel reads flat keys (explorerSql, explorerQueryResult, etc.)
- * so we sync them whenever the active model changes.
- */
-const buildShimUpdates = (modelState) => {
-  if (!modelState) {
-    return {
-      explorerSql: '',
-      explorerSourceName: null,
-      explorerQueryResult: null,
-      explorerQueryError: null,
-      explorerComputedColumns: [],
-      explorerEnrichedResult: null,
-      explorerProfileColumn: null,
-    };
-  }
-  return {
-    explorerSql: modelState.sql || '',
-    explorerSourceName: modelState.sourceName,
-    explorerQueryResult: modelState.queryResult,
-    explorerQueryError: modelState.queryError,
-    explorerComputedColumns: modelState.computedColumns || [],
-    explorerEnrichedResult: modelState.enrichedResult,
-    explorerProfileColumn: null,
-  };
+
+// ====================================================================
+// Selectors — derive values from the multi-model / multi-insight state
+// ====================================================================
+
+// Stable fallback references to avoid infinite re-render loops.
+// Zustand's useSyncExternalStore requires getSnapshot to return the
+// same reference when the underlying data hasn't changed.
+const EMPTY_ARRAY = [];
+const DEFAULT_INSIGHT_CONFIG = Object.freeze({ name: '', props: { type: 'scatter' } });
+
+export const selectActiveModelState = (s) => {
+  const name = s.explorerActiveModelName;
+  return name ? s.explorerModelStates[name] : null;
+};
+export const selectActiveModelSql = (s) => selectActiveModelState(s)?.sql || '';
+export const selectActiveModelSourceName = (s) => selectActiveModelState(s)?.sourceName || null;
+export const selectActiveModelQueryResult = (s) => selectActiveModelState(s)?.queryResult || null;
+export const selectActiveModelQueryError = (s) => selectActiveModelState(s)?.queryError || null;
+export const selectActiveModelComputedColumns = (s) =>
+  selectActiveModelState(s)?.computedColumns || EMPTY_ARRAY;
+export const selectActiveModelEnrichedResult = (s) =>
+  selectActiveModelState(s)?.enrichedResult || null;
+
+export const selectActiveInsightConfig = (s) => {
+  const name = s.explorerActiveInsightName;
+  const insight = name ? s.explorerInsightStates[name] : null;
+  if (!insight) return DEFAULT_INSIGHT_CONFIG;
+  return { name, props: { type: insight.type, ...insight.props } };
 };
 
-/**
- * Determine source dialect from source name for expression translation.
- */
-const detectDialect = (sourceName) => {
-  if (!sourceName) return null;
-  const dialectHints = [
-    'duckdb',
-    'postgres',
-    'postgresql',
-    'mysql',
-    'sqlite',
-    'snowflake',
-    'bigquery',
-    'redshift',
-  ];
-  const lowerSrc = sourceName.toLowerCase();
-  let dialect = dialectHints.find((d) => lowerSrc.includes(d)) || null;
-  if (dialect === 'postgresql') dialect = 'postgres';
-  return dialect;
+export const selectModelStatus = (modelName) => (s) => {
+  const state = s.explorerModelStates[modelName];
+  if (!state) return null;
+  if (state.isNew) return 'new';
+  if (state.sql !== state._originalSql) return 'modified';
+  if (state.sourceName !== state._originalSourceName) return 'modified';
+  if (JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns))
+    return 'modified';
+  return null;
+};
+
+export const selectInsightStatus = (insightName) => (s) => {
+  const state = s.explorerInsightStates[insightName];
+  if (!state) return null;
+  if (state.isNew) return 'new';
+  if (state.type !== state._originalType) return 'modified';
+  if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return 'modified';
+  return null;
+};
+
+export const selectHasModifications = (s) => {
+  for (const state of Object.values(s.explorerModelStates || {})) {
+    if (state.isNew) return true;
+    if (state.sql !== state._originalSql) return true;
+    if (state.sourceName !== state._originalSourceName) return true;
+    if (JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns))
+      return true;
+  }
+  for (const state of Object.values(s.explorerInsightStates || {})) {
+    if (state.isNew) return true;
+    if (state.type !== state._originalType) return true;
+    if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return true;
+  }
+  return false;
 };
 
 /**
@@ -256,8 +315,6 @@ const createExplorerNewSlice = (set, get) => ({
   // --- UI State ---
   explorerLeftNavCollapsed: false,
   explorerCenterMode: 'split',
-  explorerEditorChartSplit: 0.5,
-  explorerTopBottomSplit: 0.5,
   explorerProfileColumn: null,
   explorerIsEditorCollapsed: false,
 
@@ -278,16 +335,12 @@ const createExplorerNewSlice = (set, get) => ({
         ...state.explorerModelStates,
         [uniqueName]: newModelState,
       },
-      ...buildShimUpdates(newModelState),
     });
   },
 
   switchModelTab: (modelName) => {
-    const state = get();
-    const modelState = state.explorerModelStates[modelName];
     set({
       explorerActiveModelName: modelName,
-      ...buildShimUpdates(modelState),
     });
   },
 
@@ -305,7 +358,6 @@ const createExplorerNewSlice = (set, get) => ({
       explorerModelTabs: newTabs,
       explorerModelStates: restStates,
       explorerActiveModelName: newActive,
-      ...buildShimUpdates(newActive ? restStates[newActive] : null),
     });
   },
 
@@ -662,10 +714,6 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerChartLayout: layout });
   },
 
-  reorderChartInsights: (orderedNames) => {
-    set({ explorerChartInsightNames: orderedNames });
-  },
-
   // ====================================================================
   // Loading Actions
   // ====================================================================
@@ -693,35 +741,7 @@ const createExplorerNewSlice = (set, get) => ({
       },
     });
 
-    // Auto-load pre-existing parquet data if available
-    import('../api/modelData')
-      .then(({ fetchModelData }) => {
-        fetchModelData(modelName)
-          .then((data) => {
-            if (data.available && data.rows?.length > 0) {
-              const currentState = get();
-              if (currentState.explorerModelStates[modelName]) {
-                set({
-                  explorerModelStates: {
-                    ...currentState.explorerModelStates,
-                    [modelName]: {
-                      ...currentState.explorerModelStates[modelName],
-                      queryResult: {
-                        columns: data.columns,
-                        rows: data.rows,
-                        row_count: data.row_count,
-                        truncated: data.truncated || false,
-                      },
-                      queryError: null,
-                    },
-                  },
-                });
-              }
-            }
-          })
-          .catch(() => {});
-      })
-      .catch(() => {});
+    autoLoadModelData(modelName, get, set);
   },
 
   loadChart: (chartObject, insightObjects, modelObjects) => {
@@ -757,6 +777,8 @@ const createExplorerNewSlice = (set, get) => ({
           : [],
         typePropsCache: {},
         isNew: false,
+        _originalType: insight.config?.type || 'scatter',
+        _originalProps: insight.config?.props ? { ...insight.config.props } : {},
       };
     }
 
@@ -773,34 +795,7 @@ const createExplorerNewSlice = (set, get) => ({
 
     // Auto-load parquet data for each model
     for (const modelName of loadedModels) {
-      import('../api/modelData')
-        .then(({ fetchModelData }) => {
-          fetchModelData(modelName)
-            .then((data) => {
-              if (data.available && data.rows?.length > 0) {
-                const currentState = get();
-                if (currentState.explorerModelStates[modelName]) {
-                  set({
-                    explorerModelStates: {
-                      ...currentState.explorerModelStates,
-                      [modelName]: {
-                        ...currentState.explorerModelStates[modelName],
-                        queryResult: {
-                          columns: data.columns,
-                          rows: data.rows,
-                          row_count: data.row_count,
-                          truncated: data.truncated || false,
-                        },
-                        queryError: null,
-                      },
-                    },
-                  });
-                }
-              }
-            })
-            .catch(() => {});
-        })
-        .catch(() => {});
+      autoLoadModelData(modelName, get, set);
     }
   },
 
@@ -845,42 +840,6 @@ const createExplorerNewSlice = (set, get) => ({
   },
 
   // ====================================================================
-  // Save-Related Helpers
-  // ====================================================================
-
-  getModifiedObjects: () => {
-    const state = get();
-
-    const newModels = [];
-    const modifiedModels = [];
-    for (const [name, modelState] of Object.entries(state.explorerModelStates)) {
-      if (modelState.isNew) {
-        newModels.push(name);
-      } else {
-        modifiedModels.push(name);
-      }
-    }
-
-    const newInsights = [];
-    const modifiedInsights = [];
-    for (const [name, insightState] of Object.entries(state.explorerInsightStates)) {
-      if (insightState.isNew) {
-        newInsights.push(name);
-      } else {
-        modifiedInsights.push(name);
-      }
-    }
-
-    return {
-      newModels,
-      modifiedModels,
-      newInsights,
-      modifiedInsights,
-      chartName: state.explorerChartName,
-    };
-  },
-
-  // ====================================================================
   // DuckDB Actions
   // ====================================================================
 
@@ -921,335 +880,112 @@ const createExplorerNewSlice = (set, get) => ({
   },
 
   // ====================================================================
-  // Backward-Compatible Shims (old single-model API)
-  //
-  // These delegate to the new multi-model API so existing components
-  // continue to work during the migration. They operate on the active
-  // model and provide the old flat-key interface.
+  // Standalone Utilities (not shims)
   // ====================================================================
 
-  // --- Old state keys (computed getters aren't possible in Zustand slices,
-  //     so we keep these as real state that gets synced) ---
-  explorerSourceName: null,
-  explorerSql: '',
-  explorerQueryResult: null,
-  explorerQueryError: null,
-  explorerInsightConfig: { name: '', props: { type: 'scatter' } },
-  explorerComputedColumns: [],
-  explorerEnrichedResult: null,
-  explorerModelEditMode: null,
-  explorerEditStack: [],
-
-  // --- Old actions that delegate to the new API (merged into single set() calls) ---
-  setExplorerSourceName: (sourceName) => {
+  saveExplorerObjects: async () => {
     const state = get();
-    const name = state.explorerActiveModelName;
-    const updates = { explorerSourceName: sourceName };
-    if (name && state.explorerModelStates[name]) {
-      updates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], sourceName },
-      };
-    }
-    set(updates);
-  },
+    const errors = [];
 
-  setExplorerSql: (sql) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    const updates = { explorerSql: sql };
-    if (name && state.explorerModelStates[name]) {
-      updates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], sql },
-      };
-    }
-    set(updates);
-  },
+    // Save models
+    for (const [name, ms] of Object.entries(state.explorerModelStates)) {
+      if (
+        !ms.isNew &&
+        ms.sql === ms._originalSql &&
+        ms.sourceName === ms._originalSourceName &&
+        JSON.stringify(ms.computedColumns) === JSON.stringify(ms._originalComputedColumns)
+      ) {
+        continue;
+      }
+      try {
+        const { saveModel } = await import('../api/models');
+        await saveModel(name, {
+          sql: ms.sql,
+          source: ms.sourceName ? `ref(${ms.sourceName})` : undefined,
+        });
+      } catch (err) {
+        errors.push({ name, type: 'model', error: err.message });
+      }
 
-  setExplorerQueryResult: (result) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    const updates = {
-      explorerQueryResult: result,
-      explorerQueryError: null,
-      explorerProfileColumn: null,
-      explorerEnrichedResult: null,
-      explorerDuckDBError: null,
-    };
-    if (name && state.explorerModelStates[name]) {
-      updates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [name]: {
-          ...state.explorerModelStates[name],
-          queryResult: result,
-          queryError: null,
-          enrichedResult: null,
-        },
-      };
-    }
-    set(updates);
-  },
-
-  setExplorerQueryError: (error) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    const updates = { explorerQueryError: error };
-    if (name && state.explorerModelStates[name]) {
-      updates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], queryError: error },
-      };
-    }
-    set(updates);
-  },
-
-  setExplorerInsightConfig: (config) => {
-    set({ explorerInsightConfig: config });
-  },
-
-  setExplorerInsightProp: (fieldName, value) => {
-    set((state) => ({
-      explorerInsightConfig: {
-        ...state.explorerInsightConfig,
-        props: {
-          ...state.explorerInsightConfig?.props,
-          [fieldName]: value,
-        },
-      },
-    }));
-  },
-
-  removeExplorerInsightProp: (fieldName) => {
-    set((state) => {
-      const { [fieldName]: _, ...restProps } = state.explorerInsightConfig?.props || {};
-      return {
-        explorerInsightConfig: {
-          ...state.explorerInsightConfig,
-          props: restProps,
-        },
-      };
-    });
-  },
-
-  handleExplorerTableSelect: ({ sourceName, table }) => {
-    const tableRef = `SELECT * FROM "${table}"`;
-    const currentSql = get().explorerSql;
-    const newSql = currentSql.trim() ? `${currentSql}\n${tableRef}` : tableRef;
-
-    set({
-      explorerSql: newSql,
-      explorerSourceName: sourceName || get().explorerSourceName,
-      explorerIsEditorCollapsed: false,
-    });
-  },
-
-  handleExplorerModelUse: (model) => {
-    if (!model?.config) return;
-
-    const sql = model.config.sql || model.config.query || '';
-
-    let extractedSourceName = null;
-    const rawSource = model.config.source;
-    if (typeof rawSource === 'string') {
-      const refMatch = rawSource.match(/ref\(([^)]+)\)/);
-      extractedSourceName = refMatch ? refMatch[1].trim() : rawSource;
-    }
-
-    const sources = get().explorerSources || [];
-    let matchedSourceName = null;
-    if (extractedSourceName) {
-      const exact = sources.find((s) => s.source_name === extractedSourceName);
-      if (exact) {
-        matchedSourceName = exact.source_name;
-      } else {
-        const suffix = sources.find((s) =>
-          s.source_name.endsWith('-' + extractedSourceName)
-        );
-        if (suffix) {
-          matchedSourceName = suffix.source_name;
-        } else {
-          const contains = sources.find((s) =>
-            s.source_name.includes(extractedSourceName)
-          );
-          if (contains) {
-            matchedSourceName = contains.source_name;
+      // Save computed columns as metrics/dimensions
+      for (const cc of ms.computedColumns) {
+        try {
+          if (cc.type === 'metric') {
+            const { saveMetric } = await import('../api/metrics');
+            await saveMetric(cc.name, { expression: cc.expression, model: `ref(${name})` });
+          } else {
+            const { saveDimension } = await import('../api/dimensions');
+            await saveDimension(cc.name, { expression: cc.expression, model: `ref(${name})` });
           }
+        } catch (err) {
+          errors.push({ name: cc.name, type: cc.type, error: err.message });
         }
       }
     }
 
-    const allMetrics = get().metrics || [];
-    const allDimensions = get().dimensions || [];
-
-    const stripRef = (value) => {
-      if (typeof value !== 'string') return value;
-      const match = value.match(/^ref\((.+)\)$/);
-      return match ? match[1] : value;
-    };
-
-    const belongsToModel = (item) => {
-      const rawModel = item.parentModel || item.config?.model;
-      return rawModel && stripRef(rawModel) === model.name;
-    };
-
-    const resolvedSourceName = matchedSourceName || extractedSourceName;
-    let sourceDialect = null;
-    if (resolvedSourceName) {
-      const dialectHints = [
-        'duckdb', 'postgres', 'postgresql', 'mysql',
-        'sqlite', 'snowflake', 'bigquery', 'redshift',
-      ];
-      const lowerSrc = resolvedSourceName.toLowerCase();
-      sourceDialect = dialectHints.find((d) => lowerSrc.includes(d)) || null;
-      if (sourceDialect === 'postgresql') sourceDialect = 'postgres';
+    // Save insights
+    for (const [name, is] of Object.entries(state.explorerInsightStates)) {
+      if (
+        !is.isNew &&
+        is.type === is._originalType &&
+        JSON.stringify(is.props) === JSON.stringify(is._originalProps)
+      ) {
+        continue;
+      }
+      try {
+        const { saveInsight } = await import('../api/insights');
+        const expandedProps = expandDotNotationProps(is.props);
+        await saveInsight(name, {
+          type: is.type,
+          props: expandedProps,
+          interactions: is.interactions,
+        });
+      } catch (err) {
+        errors.push({ name, type: 'insight', error: err.message });
+      }
     }
 
-    const computedCols = [];
-    allMetrics.filter(belongsToModel).forEach((m) => {
-      if (m.config?.expression) {
-        computedCols.push({
-          name: m.name,
-          expression: m.config.expression,
-          type: 'metric',
-          sourceDialect: sourceDialect && sourceDialect !== 'duckdb' ? sourceDialect : undefined,
+    // Save chart
+    if (state.explorerChartName) {
+      try {
+        const { saveChart } = await import('../api/charts');
+        await saveChart(state.explorerChartName, {
+          insights: state.explorerChartInsightNames.map((n) => `ref(${n})`),
+          layout: state.explorerChartLayout,
         });
+      } catch (err) {
+        errors.push({ name: state.explorerChartName, type: 'chart', error: err.message });
       }
-    });
-    allDimensions.filter(belongsToModel).forEach((d) => {
-      if (d.config?.expression) {
-        computedCols.push({
-          name: d.name,
-          expression: d.config.expression,
-          type: 'dimension',
-          sourceDialect: sourceDialect && sourceDialect !== 'duckdb' ? sourceDialect : undefined,
-        });
-      }
-    });
-
-    set({
-      explorerSql: sql,
-      explorerSourceName: matchedSourceName || extractedSourceName || get().explorerSourceName,
-      explorerIsEditorCollapsed: false,
-      explorerActiveModelName: model.name,
-      explorerModelEditMode: 'use',
-      explorerComputedColumns: computedCols,
-      explorerEnrichedResult: null,
-      explorerEditStack: [],
-    });
-
-    import('../api/modelData')
-      .then(({ fetchModelData }) => {
-        fetchModelData(model.name)
-          .then((data) => {
-            if (data.available && data.rows?.length > 0) {
-              set({
-                explorerQueryResult: {
-                  columns: data.columns,
-                  rows: data.rows,
-                  row_count: data.row_count,
-                  truncated: data.truncated || false,
-                },
-                explorerQueryError: null,
-              });
-            }
-          })
-          .catch(() => {});
-      })
-      .catch(() => {});
-  },
-
-  syncPlotlyEditsToChartLayout: (layoutUpdates) => {
-    set((state) => ({
-      explorerChartLayout: { ...state.explorerChartLayout, ...layoutUpdates },
-    }));
-  },
-
-  setExplorerEnrichedResult: (result) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    const updates = { explorerEnrichedResult: result };
-    if (name && state.explorerModelStates[name]) {
-      updates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [name]: { ...state.explorerModelStates[name], enrichedResult: result },
-      };
     }
-    set(updates);
-  },
 
-  addExplorerComputedColumn: (col) => {
-    const state = get();
-    const name = state.explorerActiveModelName;
-    const exists = state.explorerComputedColumns.some((c) => c.name === col.name);
-    if (exists) return;
-    const updates = { explorerComputedColumns: [...state.explorerComputedColumns, col] };
-    if (name && state.explorerModelStates[name]) {
-      const modelState = state.explorerModelStates[name];
-      const modelExists = modelState.computedColumns.some((c) => c.name === col.name);
-      if (!modelExists) {
-        updates.explorerModelStates = {
-          ...state.explorerModelStates,
-          [name]: { ...modelState, computedColumns: [...modelState.computedColumns, col] },
+    // Post-save: mark all as published
+    if (errors.length === 0) {
+      const updatedModelStates = {};
+      for (const [name, ms] of Object.entries(state.explorerModelStates)) {
+        updatedModelStates[name] = {
+          ...ms,
+          isNew: false,
+          _originalSql: ms.sql,
+          _originalSourceName: ms.sourceName,
+          _originalComputedColumns: JSON.parse(JSON.stringify(ms.computedColumns)),
         };
       }
+      const updatedInsightStates = {};
+      for (const [name, is] of Object.entries(state.explorerInsightStates)) {
+        updatedInsightStates[name] = {
+          ...is,
+          isNew: false,
+          _originalType: is.type,
+          _originalProps: { ...is.props },
+        };
+      }
+      set({
+        explorerModelStates: updatedModelStates,
+        explorerInsightStates: updatedInsightStates,
+      });
     }
-    set(updates);
-  },
 
-  updateExplorerComputedColumn: (name, updates) => {
-    const state = get();
-    const modelName = state.explorerActiveModelName;
-    const stateUpdates = {
-      explorerComputedColumns: state.explorerComputedColumns.map((c) =>
-        c.name === name ? { ...c, ...updates } : c
-      ),
-      explorerEnrichedResult: null,
-    };
-    if (modelName && state.explorerModelStates[modelName]) {
-      const modelState = state.explorerModelStates[modelName];
-      stateUpdates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [modelName]: {
-          ...modelState,
-          computedColumns: modelState.computedColumns.map((c) =>
-            c.name === name ? { ...c, ...updates } : c
-          ),
-          enrichedResult: null,
-        },
-      };
-    }
-    set(stateUpdates);
-  },
-
-  removeExplorerComputedColumn: (name) => {
-    const state = get();
-    const modelName = state.explorerActiveModelName;
-    const stateUpdates = {
-      explorerComputedColumns: state.explorerComputedColumns.filter((c) => c.name !== name),
-      explorerEnrichedResult: null,
-      explorerFailedComputedColumns: {},
-    };
-    if (modelName && state.explorerModelStates[modelName]) {
-      const modelState = state.explorerModelStates[modelName];
-      stateUpdates.explorerModelStates = {
-        ...state.explorerModelStates,
-        [modelName]: {
-          ...modelState,
-          computedColumns: modelState.computedColumns.filter((c) => c.name !== name),
-          enrichedResult: null,
-        },
-      };
-    }
-    set(stateUpdates);
-  },
-
-  clearExplorerComputedColumns: () => {
-    set({
-      explorerComputedColumns: [],
-      explorerEnrichedResult: null,
-      explorerFailedComputedColumns: {},
-    });
+    return { success: errors.length === 0, errors };
   },
 
   validateExplorerExpression: async (expression, sourceDialect) => {
@@ -1274,21 +1010,6 @@ const createExplorerNewSlice = (set, get) => ({
     }
   },
 
-  pushExplorerEdit: (type, object, options = {}) => {
-    set((state) => ({
-      explorerEditStack: [...state.explorerEditStack, { type, object, ...options }],
-    }));
-  },
-
-  popExplorerEdit: () => {
-    set((state) => ({
-      explorerEditStack: state.explorerEditStack.slice(0, -1),
-    }));
-  },
-
-  clearExplorerEditStack: () => {
-    set({ explorerEditStack: [] });
-  },
 });
 
 export default createExplorerNewSlice;

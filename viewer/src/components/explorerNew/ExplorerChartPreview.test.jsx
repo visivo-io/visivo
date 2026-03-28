@@ -41,18 +41,30 @@ const mockQueryResult = {
   row_count: 1,
 };
 
+const makeModelState = (overrides = {}) => ({
+  sql: '',
+  sourceName: null,
+  queryResult: null,
+  queryError: null,
+  computedColumns: [],
+  enrichedResult: null,
+  isNew: true,
+  ...overrides,
+});
+
 describe('ExplorerChartPreview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useStore.setState({
-      explorerQueryResult: null,
-      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
-      explorerChartLayout: {},
+      explorerModelStates: {
+        preview_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg' }),
+      },
+      explorerModelTabs: ['preview_model'],
       explorerActiveModelName: null,
-      syncPlotlyEditsToChartLayout: jest.fn(),
-      explorerSql: 'SELECT * FROM users',
-      explorerSourceName: 'pg',
-      explorerComputedColumns: [],
+      explorerInsightStates: {},
+      explorerActiveInsightName: null,
+      explorerChartInsightNames: [],
+      explorerChartLayout: {},
       project: { id: 'proj-1' },
     });
   });
@@ -66,9 +78,12 @@ describe('ExplorerChartPreview', () => {
 
   it('shows empty config state when insight has no data props beyond type', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter' } },
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerInsightStates: {},
+      explorerActiveInsightName: null,
     });
 
     render(<ExplorerChartPreview />);
@@ -81,9 +96,14 @@ describe('ExplorerChartPreview', () => {
 
   it('renders ChartPreview when results, active model, and data props exist', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -93,14 +113,21 @@ describe('ExplorerChartPreview', () => {
 
   it('constructs backend insight config with actual model name', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: {
-        name: '',
-        props: {
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: {
           type: 'scatter',
-          x: '?{${ref(sales_model).date}}',
-          y: '?{${ref(sales_model).amount}}',
+          props: {
+            x: '?{${ref(sales_model).date}}',
+            y: '?{${ref(sales_model).amount}}',
+          },
+          interactions: [],
+          typePropsCache: {},
+          isNew: true,
         },
       },
     });
@@ -113,9 +140,14 @@ describe('ExplorerChartPreview', () => {
 
   it('passes chart layout from store', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
       explorerChartLayout: { title: { text: 'My Chart' } },
     });
 
@@ -127,9 +159,14 @@ describe('ExplorerChartPreview', () => {
 
   it('passes projectId from store', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
       project: { id: 'my-project-123' },
     });
 
@@ -140,9 +177,14 @@ describe('ExplorerChartPreview', () => {
 
   it('enables editable layout', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -150,26 +192,35 @@ describe('ExplorerChartPreview', () => {
     expect(screen.getByTestId('cp-editable')).toHaveTextContent('true');
   });
 
-  it('passes syncPlotlyEdits as onLayoutChange', () => {
-    const mockSync = jest.fn();
+  it('passes setChartLayout as onLayoutChange', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      syncPlotlyEditsToChartLayout: mockSync,
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
+      explorerChartLayout: {},
     });
 
     render(<ExplorerChartPreview />);
 
     screen.getByTestId('cp-trigger-layout').click();
-    expect(mockSync).toHaveBeenCalledWith({ title: { text: 'Edited' } });
+    expect(useStore.getState().explorerChartLayout).toEqual({ title: { text: 'Edited' } });
   });
 
   it('uses chart name from active model name', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'my_model',
-      explorerInsightConfig: { name: '', props: { type: 'bar', x: 'date', y: 'amount' } },
+      explorerModelStates: {
+        my_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'bar', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -179,11 +230,14 @@ describe('ExplorerChartPreview', () => {
 
   it('builds contextObjects with model from SQL and source', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      explorerSql: 'SELECT * FROM sales',
-      explorerSourceName: 'pg',
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: 'SELECT * FROM sales', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -196,15 +250,22 @@ describe('ExplorerChartPreview', () => {
 
   it('includes computed columns as dimensions/metrics in contextObjects', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      explorerSql: 'SELECT * FROM sales',
-      explorerSourceName: 'pg',
-      explorerComputedColumns: [
-        { name: 'order_month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
-        { name: 'total_rev', expression: 'SUM(amount)', type: 'metric' },
-      ],
+      explorerModelStates: {
+        sales_model: makeModelState({
+          sql: 'SELECT * FROM sales',
+          sourceName: 'pg',
+          queryResult: mockQueryResult,
+          computedColumns: [
+            { name: 'order_month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
+            { name: 'total_rev', expression: 'SUM(amount)', type: 'metric' },
+          ],
+        }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -223,11 +284,14 @@ describe('ExplorerChartPreview', () => {
 
   it('contextObjects is null when SQL or source missing', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
       explorerActiveModelName: 'sales_model',
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      explorerSql: '',
-      explorerSourceName: 'pg',
+      explorerModelStates: {
+        sales_model: makeModelState({ sql: '', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);
@@ -238,11 +302,14 @@ describe('ExplorerChartPreview', () => {
 
   it('uses preview_model as fallback model name in contextObjects', () => {
     useStore.setState({
-      explorerQueryResult: mockQueryResult,
-      explorerActiveModelName: null,
-      explorerInsightConfig: { name: '', props: { type: 'scatter', x: 'date', y: 'amount' } },
-      explorerSql: 'SELECT 1',
-      explorerSourceName: 'pg',
+      explorerActiveModelName: 'preview_model',
+      explorerModelStates: {
+        preview_model: makeModelState({ sql: 'SELECT 1', sourceName: 'pg', queryResult: mockQueryResult }),
+      },
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+      },
     });
 
     render(<ExplorerChartPreview />);

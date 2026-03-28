@@ -162,10 +162,15 @@ describe('InsightCRUDSection', () => {
     expect(statusDot.className).toContain('bg-green-500');
   });
 
-  it('does not render status dot when not new', () => {
+  it('does not render status dot when not new and unchanged', () => {
     useStore.setState({
       explorerInsightStates: {
-        test_insight: { ...defaultInsightState, isNew: false },
+        test_insight: {
+          ...defaultInsightState,
+          isNew: false,
+          _originalType: 'scatter',
+          _originalProps: { x: '?{${ref(model).col_x}}', y: '?{${ref(model).col_y}}' },
+        },
       },
     });
 
@@ -174,6 +179,28 @@ describe('InsightCRUDSection', () => {
     );
 
     expect(screen.queryByTestId('insight-status-dot-test_insight')).not.toBeInTheDocument();
+  });
+
+  it('shows amber status dot when insight is modified', () => {
+    useStore.setState({
+      explorerInsightStates: {
+        test_insight: {
+          ...defaultInsightState,
+          isNew: false,
+          type: 'bar',
+          _originalType: 'scatter',
+          _originalProps: { x: '?{${ref(model).col_x}}', y: '?{${ref(model).col_y}}' },
+        },
+      },
+    });
+
+    render(
+      <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+    );
+
+    const dot = screen.getByTestId('insight-status-dot-test_insight');
+    expect(dot).toBeInTheDocument();
+    expect(dot.className).toContain('bg-amber-500');
   });
 
   it('renders interactions section with add button when expanded', () => {

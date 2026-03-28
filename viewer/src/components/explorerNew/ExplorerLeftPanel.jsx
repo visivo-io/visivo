@@ -5,13 +5,14 @@ import {
   PiMagnifyingGlass,
   PiX,
   PiSpinner,
-  PiDotsSixVertical,
 } from 'react-icons/pi';
 import { useDraggable } from '@dnd-kit/core';
 import ObjectList from '../new-views/common/ObjectList';
 import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
+import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import SourceBrowser from './SourceBrowser';
 import useStore from '../../stores/store';
+import { selectActiveModelSourceName } from '../../stores/explorerNewStore';
 
 const SECTION_DEFS = [
   { id: 'source', label: 'Sources', storeKey: null },
@@ -24,8 +25,6 @@ const SECTION_DEFS = [
 ];
 
 const DraggableItem = ({ item, type }) => {
-  const Icon = getTypeIcon(type);
-  const colors = getTypeColors(type);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${type}-${item.name}`,
     data: { name: item.name, type, expression: item.config?.expression },
@@ -39,9 +38,7 @@ const DraggableItem = ({ item, type }) => {
       className={`flex items-center gap-2 px-4 py-2 border-b border-gray-100 cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-colors ${isDragging ? 'opacity-50' : ''}`}
       data-testid={`draggable-${type}-${item.name}`}
     >
-      <PiDotsSixVertical size={10} className="text-secondary-300 flex-shrink-0" />
-      <Icon style={{ fontSize: 14 }} className={`${colors.text} flex-shrink-0`} />
-      <span className="text-sm text-gray-700 truncate flex-1">{item.name}</span>
+      <EmbeddedPill objectType={type} label={item.name} as="div" />
       {item.config?.expression && (
         <span className="text-xs text-secondary-400 truncate max-w-[100px]" title={item.config.expression}>
           {item.config.expression}
@@ -59,8 +56,8 @@ const ExplorerLeftPanel = () => {
   const loadChart = useStore((s) => s.loadChart);
   const setActiveInsight = useStore((s) => s.setActiveInsight);
   const setExplorerSources = useStore((s) => s.setExplorerSources);
-  const sourceName = useStore((s) => s.explorerSourceName);
-  const setSourceName = useStore((s) => s.setExplorerSourceName);
+  const sourceName = useStore(selectActiveModelSourceName);
+  const setSourceName = useStore((s) => s.setActiveModelSource);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
 
   // Object stores

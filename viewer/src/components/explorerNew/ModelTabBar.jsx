@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PiPlus, PiX } from 'react-icons/pi';
 import useStore from '../../stores/store';
+import { selectModelStatus } from '../../stores/explorerNewStore';
 
 /**
  * Determine which model names are referenced by insights currently on the chart.
@@ -38,6 +39,93 @@ const getReferencedModelNames = (chartInsightNames, insightStates) => {
   }
 
   return referenced;
+};
+
+const ModelTab = ({
+  tabName,
+  isActive,
+  isReferenced,
+  isRenaming,
+  renameInputRef,
+  renameValue,
+  setRenameValue,
+  handleKeyDown,
+  commitRename,
+  handleDoubleClick,
+  switchModelTab,
+  closeModelTab,
+  showCloseButton,
+}) => {
+  const status = useStore(selectModelStatus(tabName));
+
+  const activeClasses = isActive
+    ? 'bg-amber-50 border-b-2 border-amber-500'
+    : 'bg-white hover:bg-secondary-50 border-b-2 border-transparent';
+
+  const referencedClasses = isReferenced ? 'ring-1 ring-purple-400' : '';
+
+  return (
+    <div
+      className={`
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-t-md
+        border border-secondary-200 border-b-0
+        text-xs font-medium cursor-pointer
+        transition-colors duration-150
+        ${activeClasses}
+        ${referencedClasses}
+      `}
+      data-testid={`model-tab-${tabName}`}
+      onClick={() => {
+        if (!isRenaming) {
+          switchModelTab(tabName);
+        }
+      }}
+    >
+      {status && (
+        <span
+          className={`w-2 h-2 rounded-full flex-shrink-0 ${status === 'new' ? 'bg-green-500' : 'bg-amber-500'}`}
+          data-testid={`status-dot-${tabName}`}
+        />
+      )}
+
+      {isRenaming ? (
+        <input
+          ref={renameInputRef}
+          type="text"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={commitRename}
+          className="text-xs font-medium bg-white border border-amber-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-amber-400 w-24"
+          data-testid="rename-input"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span
+          className="text-amber-800 truncate max-w-[120px]"
+          data-testid={`tab-label-${tabName}`}
+          onDoubleClick={() => handleDoubleClick(tabName)}
+        >
+          {tabName}
+        </span>
+      )}
+
+      {showCloseButton && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            closeModelTab(tabName);
+          }}
+          className="p-0.5 text-secondary-400 hover:text-secondary-600 transition-colors flex-shrink-0"
+          title={`Close ${tabName}`}
+          data-testid={`close-tab-${tabName}`}
+        >
+          <PiX size={10} />
+        </button>
+      )}
+    </div>
+  );
 };
 
 const ModelTabBar = () => {
@@ -132,83 +220,24 @@ const ModelTabBar = () => {
       className="flex items-center gap-1 px-2 py-1 bg-secondary-50 border-b border-secondary-200 overflow-x-auto flex-shrink-0"
       data-testid="model-tab-bar"
     >
-      {tabs.map((tabName) => {
-        const isActive = tabName === activeModelName;
-        const modelState = modelStates[tabName];
-        const isNew = modelState?.isNew;
-        const isReferenced = referencedModels.has(tabName);
-        const isRenaming = renamingTab === tabName;
-
-        const activeClasses = isActive
-          ? 'bg-amber-50 border-b-2 border-amber-500'
-          : 'bg-white hover:bg-secondary-50 border-b-2 border-transparent';
-
-        const referencedClasses = isReferenced ? 'ring-1 ring-purple-400' : '';
-
-        return (
-          <div
-            key={tabName}
-            className={`
-              inline-flex items-center gap-1.5 px-2.5 py-1 rounded-t-md
-              border border-secondary-200 border-b-0
-              text-xs font-medium cursor-pointer
-              transition-colors duration-150
-              ${activeClasses}
-              ${referencedClasses}
-            `}
-            data-testid={`model-tab-${tabName}`}
-            onClick={() => {
-              if (!isRenaming) {
-                switchModelTab(tabName);
-              }
-            }}
-          >
-            {isNew && (
-              <span
-                className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"
-                data-testid={`status-dot-${tabName}`}
-              />
-            )}
-
-            {isRenaming ? (
-              <input
-                ref={renameInputRef}
-                type="text"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={commitRename}
-                className="text-xs font-medium bg-white border border-amber-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-amber-400 w-24"
-                data-testid="rename-input"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span
-                className="text-amber-800 truncate max-w-[120px]"
-                data-testid={`tab-label-${tabName}`}
-                onDoubleClick={() => handleDoubleClick(tabName)}
-              >
-                {tabName}
-              </span>
-            )}
-
-            {tabs.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeModelTab(tabName);
-                }}
-                className="p-0.5 text-secondary-400 hover:text-secondary-600 transition-colors flex-shrink-0"
-                title={`Close ${tabName}`}
-                data-testid={`close-tab-${tabName}`}
-              >
-                <PiX size={10} />
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {tabs.map((tabName) => (
+        <ModelTab
+          key={tabName}
+          tabName={tabName}
+          isActive={tabName === activeModelName}
+          isReferenced={referencedModels.has(tabName)}
+          isRenaming={renamingTab === tabName}
+          renameInputRef={renameInputRef}
+          renameValue={renameValue}
+          setRenameValue={setRenameValue}
+          handleKeyDown={handleKeyDown}
+          commitRename={commitRename}
+          handleDoubleClick={handleDoubleClick}
+          switchModelTab={switchModelTab}
+          closeModelTab={closeModelTab}
+          showCloseButton={tabs.length > 1}
+        />
+      ))}
 
       <button
         type="button"

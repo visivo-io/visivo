@@ -4,6 +4,39 @@ import '@testing-library/jest-dom';
 import ChartCRUDSection from './ChartCRUDSection';
 import useStore from '../../stores/store';
 
+jest.mock('../new-views/lineage/EmbeddedPill', () => {
+  return function MockEmbeddedPill({
+    objectType,
+    label,
+    onRemove,
+    onClick,
+    statusDot,
+    isActive,
+  }) {
+    return (
+      <span
+        data-testid={`embedded-pill-${objectType}-${label}`}
+        data-active={isActive}
+        data-status={statusDot}
+        onClick={onClick}
+      >
+        {label}
+        {onRemove && (
+          <button
+            data-testid={`embedded-pill-remove-${label}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(e);
+            }}
+          >
+            x
+          </button>
+        )}
+      </span>
+    );
+  };
+});
+
 jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange }) => {
     return (
@@ -38,6 +71,8 @@ const defaultState = {
       interactions: [],
       typePropsCache: {},
       isNew: false,
+      _originalType: 'bar',
+      _originalProps: {},
     },
   },
 };
@@ -77,8 +112,8 @@ describe('ChartCRUDSection', () => {
   it('active insight is highlighted', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
 
-    const activePill = screen.getByTestId('chart-insight-pill-insight_1');
-    expect(activePill.className).toContain('ring-2');
+    const activePill = screen.getByTestId('embedded-pill-insight-insight_1');
+    expect(activePill.dataset.active).toBe('true');
   });
 
   it('remove button on pill calls removeInsightFromChart', () => {
@@ -87,7 +122,7 @@ describe('ChartCRUDSection', () => {
 
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
 
-    const removeBtn = screen.getByTestId('chart-remove-insight-insight_2');
+    const removeBtn = screen.getByTestId('embedded-pill-remove-insight_2');
     fireEvent.click(removeBtn);
 
     expect(removeInsightFromChart).toHaveBeenCalledWith('insight_2');
@@ -135,7 +170,7 @@ describe('ChartCRUDSection', () => {
 
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
 
-    const pill = screen.getByTestId('chart-insight-pill-insight_2');
+    const pill = screen.getByTestId('embedded-pill-insight-insight_2');
     fireEvent.click(pill);
 
     expect(setActiveInsight).toHaveBeenCalledWith('insight_2');

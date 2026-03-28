@@ -1,16 +1,24 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
-import { PiCaretUp, PiCaretDown, PiCode, PiChartBar, PiX, PiFunction } from 'react-icons/pi';
+import { PiCaretUp, PiCaretDown, PiCode, PiChartBar } from 'react-icons/pi';
 import SQLEditor from './SQLEditor';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import ExplorerErrorBoundary from './ExplorerErrorBoundary';
-import AddComputedColumnPopover from './AddComputedColumnPopover';
+import DataSectionToolbar from './DataSectionToolbar';
 import DraggableColumnHeader from './DraggableColumnHeader';
 import ModelTabBar from './ModelTabBar';
 import VerticalDivider from '../explorer/VerticalDivider';
 import Divider from '../explorer/Divider';
 import useStore from '../../stores/store';
+import {
+  selectActiveModelSql,
+  selectActiveModelSourceName,
+  selectActiveModelQueryResult,
+  selectActiveModelQueryError,
+  selectActiveModelComputedColumns,
+  selectActiveModelEnrichedResult,
+} from '../../stores/explorerNewStore';
 import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import { usePanelResize } from '../../hooks/usePanelResize';
@@ -19,28 +27,28 @@ import useExplorerDuckDB from '../../hooks/useExplorerDuckDB';
 const NARROW_THRESHOLD = 600;
 
 const CenterPanel = () => {
-  const sourceName = useStore((s) => s.explorerSourceName);
-  const setSourceName = useStore((s) => s.setExplorerSourceName);
+  const sourceName = useStore(selectActiveModelSourceName);
+  const setSourceName = useStore((s) => s.setActiveModelSource);
   const explorerSources = useStore((s) => s.explorerSources);
-  const sql = useStore((s) => s.explorerSql);
-  const setSql = useStore((s) => s.setExplorerSql);
-  const queryResult = useStore((s) => s.explorerQueryResult);
-  const queryError = useStore((s) => s.explorerQueryError);
-  const setQueryResult = useStore((s) => s.setExplorerQueryResult);
-  const setQueryError = useStore((s) => s.setExplorerQueryError);
+  const sql = useStore(selectActiveModelSql);
+  const setSql = useStore((s) => s.setActiveModelSql);
+  const queryResult = useStore(selectActiveModelQueryResult);
+  const queryError = useStore(selectActiveModelQueryError);
+  const setQueryResult = useStore((s) => s.setActiveModelQueryResult);
+  const setQueryError = useStore((s) => s.setActiveModelQueryError);
   const isEditorCollapsed = useStore((s) => s.explorerIsEditorCollapsed);
   const toggleEditorCollapsed = useStore((s) => s.toggleExplorerEditorCollapsed);
   const profileColumn = useStore((s) => s.explorerProfileColumn);
   const setProfileColumn = useStore((s) => s.setExplorerProfileColumn);
   const centerMode = useStore((s) => s.explorerCenterMode);
   const setCenterMode = useStore((s) => s.setExplorerCenterMode);
-  const enrichedResult = useStore((s) => s.explorerEnrichedResult);
-  const computedColumns = useStore((s) => s.explorerComputedColumns);
+  const enrichedResult = useStore(selectActiveModelEnrichedResult);
+  const computedColumns = useStore(selectActiveModelComputedColumns);
   const duckDBLoading = useStore((s) => s.explorerDuckDBLoading);
   const duckDBError = useStore((s) => s.explorerDuckDBError);
-  const removeComputedColumn = useStore((s) => s.removeExplorerComputedColumn);
-  const addComputedColumn = useStore((s) => s.addExplorerComputedColumn);
-  const updateComputedColumn = useStore((s) => s.updateExplorerComputedColumn);
+  const removeComputedColumn = useStore((s) => s.removeActiveModelComputedColumn);
+  const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
+  const updateComputedColumn = useStore((s) => s.updateActiveModelComputedColumn);
   const validateExpression = useStore((s) => s.validateExplorerExpression);
   const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
 
@@ -104,9 +112,6 @@ const CenterPanel = () => {
 
   const [resultsPage, setResultsPage] = useState(0);
   const [resultsPageSize, setResultsPageSize] = useState(1000);
-  const [editingColumn, setEditingColumn] = useState(null);
-  const [editAnchorEl, setEditAnchorEl] = useState(null);
-
   useEffect(() => {
     setResultsPage(0);
   }, [queryResult]);
@@ -123,12 +128,6 @@ const CenterPanel = () => {
     [setQueryResult, setQueryError]
   );
 
-  const handleSqlSave = useCallback(
-    (value) => {
-      setSql(value);
-    },
-    [setSql]
-  );
 
   // Use enriched result (with computed columns) when available, otherwise base result
   const displayResult = enrichedResult || queryResult;
@@ -225,7 +224,7 @@ const CenterPanel = () => {
           <SQLEditor
             sourceName={sourceName}
             initialValue={sql}
-            onSave={handleSqlSave}
+            onSave={setSql}
             height="100%"
             hideResults
             onQueryComplete={handleQueryComplete}
@@ -319,86 +318,20 @@ const CenterPanel = () => {
           {queryResult ? (
             <>
               <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center gap-3 px-3 py-2 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
-                  <span className="text-xs text-secondary-600">
-                    {totalRowCount.toLocaleString()} row{totalRowCount !== 1 ? 's' : ''}
-                  </span>
-                  {queryResult.truncated && (
-                    <span className="text-xs text-secondary-400">(truncated)</span>
-                  )}
-                  {queryResult.execution_time_ms && (
-                    <span className="text-xs text-secondary-400">
-                      {queryResult.execution_time_ms}ms
-                    </span>
-                  )}
-                  {duckDBLoading && (
-                    <span className="text-xs text-primary-500" data-testid="duckdb-loading">
-                      Computing...
-                    </span>
-                  )}
-                  {duckDBError && !Object.keys(failedComputedColumns || {}).length && (
-                    <span className="text-xs text-highlight" data-testid="duckdb-error" title={duckDBError}>
-                      DuckDB error
-                    </span>
-                  )}
-                  <div className="flex items-center gap-1 ml-auto" data-testid="computed-columns-area">
-                    {computedColumns.map((col) => {
-                      const isMetric = col.type === 'metric';
-                      const Icon = isMetric ? PiChartBar : PiFunction;
-                      const isFailed = !!failedComputedColumns?.[col.name];
-                      return (
-                        <span
-                          key={col.name}
-                          data-testid={`computed-pill-${col.name}`}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border cursor-pointer ${
-                            isFailed
-                              ? 'bg-red-50 text-red-800 border-red-200'
-                              : isMetric
-                                ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
-                                : 'bg-teal-50 text-teal-800 border-teal-200'
-                          }`}
-                          title={isFailed ? failedComputedColumns[col.name] : `Click to edit ${col.name}`}
-                          onClick={(e) => {
-                            setEditingColumn(col);
-                            setEditAnchorEl(e.currentTarget);
-                          }}
-                        >
-                          <Icon size={12} className="flex-shrink-0" />
-                          {col.name}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeComputedColumn(col.name);
-                            }}
-                            className="hover:opacity-70 ml-0.5"
-                            title={`Remove ${col.name}`}
-                            data-testid={`remove-computed-${col.name}`}
-                          >
-                            <PiX size={10} />
-                          </button>
-                        </span>
-                      );
-                    })}
-                    <AddComputedColumnPopover
-                      onAdd={addComputedColumn}
-                      onUpdate={(updated) => {
-                        updateComputedColumn(updated.name, {
-                          expression: updated.expression,
-                          type: updated.type,
-                        });
-                      }}
-                      onValidate={handleValidateExpression}
-                      existingNames={allColumnNames}
-                      editColumn={editingColumn}
-                      onEditClose={() => {
-                        setEditingColumn(null);
-                        setEditAnchorEl(null);
-                      }}
-                      anchorElement={editAnchorEl}
-                    />
-                  </div>
-                </div>
+                <DataSectionToolbar
+                  totalRowCount={totalRowCount}
+                  truncated={queryResult.truncated}
+                  executionTimeMs={queryResult.execution_time_ms}
+                  duckDBLoading={duckDBLoading}
+                  duckDBError={duckDBError}
+                  failedComputedColumns={failedComputedColumns}
+                  computedColumns={computedColumns}
+                  onAddComputedColumn={addComputedColumn}
+                  onUpdateComputedColumn={updateComputedColumn}
+                  onRemoveComputedColumn={removeComputedColumn}
+                  onValidateExpression={handleValidateExpression}
+                  allColumnNames={allColumnNames}
+                />
                 <div className="flex-1 min-h-0">
                   <DataTable
                     columns={dataTableColumns}
@@ -409,7 +342,7 @@ const CenterPanel = () => {
                     pageCount={pageCount}
                     onPageChange={setResultsPage}
                     onPageSizeChange={setResultsPageSize}
-                    onColumnProfileRequest={(colName) => setProfileColumn(colName)}
+                    onColumnProfileRequest={setProfileColumn}
                     isLoading={false}
                     height="100%"
                     headerComponent={DraggableColumnHeader}

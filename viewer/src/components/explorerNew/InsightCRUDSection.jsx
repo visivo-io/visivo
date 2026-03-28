@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
 import useStore from '../../stores/store';
+import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
 import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
@@ -26,10 +27,11 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
 
   const [schema, setSchema] = useState(null);
 
+  const status = useStore(selectInsightStatus(insightName));
+
   const type = insightState?.type || 'scatter';
   const props = insightState?.props || {};
   const interactions = insightState?.interactions || [];
-  const isNew = insightState?.isNew || false;
 
   useEffect(() => {
     let cancelled = false;
@@ -127,10 +129,10 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
 
         <span className="text-sm font-medium text-purple-800 truncate flex-1">{insightName}</span>
 
-        {isNew && (
+        {status && (
           <span
             data-testid={`insight-status-dot-${insightName}`}
-            className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${status === 'new' ? 'bg-green-500' : 'bg-amber-500'}`}
           />
         )}
 

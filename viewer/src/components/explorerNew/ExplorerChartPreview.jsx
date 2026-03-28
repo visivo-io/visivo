@@ -1,21 +1,35 @@
 import { useMemo } from 'react';
 import ChartPreview from '../new-views/common/ChartPreview';
 import useStore from '../../stores/store';
-import { expandDotNotationProps } from '../../stores/explorerNewStore';
+import {
+  expandDotNotationProps,
+  selectActiveModelSql,
+  selectActiveModelSourceName,
+  selectActiveModelComputedColumns,
+  selectActiveModelQueryResult,
+} from '../../stores/explorerNewStore';
 
 const ExplorerChartPreview = () => {
-  const queryResult = useStore((s) => s.explorerQueryResult);
-  const insightConfig = useStore((s) => s.explorerInsightConfig);
+  const queryResult = useStore(selectActiveModelQueryResult);
+  const activeInsightName = useStore((s) => s.explorerActiveInsightName);
+  const insightStates = useStore((s) => s.explorerInsightStates);
   const chartLayout = useStore((s) => s.explorerChartLayout);
-  const syncPlotlyEdits = useStore((s) => s.syncPlotlyEditsToChartLayout);
+  const syncPlotlyEdits = useStore((s) => s.setChartLayout);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
-  const explorerSql = useStore((s) => s.explorerSql);
-  const explorerSourceName = useStore((s) => s.explorerSourceName);
-  const computedColumns = useStore((s) => s.explorerComputedColumns);
+  const explorerSql = useStore(selectActiveModelSql);
+  const explorerSourceName = useStore(selectActiveModelSourceName);
+  const computedColumns = useStore(selectActiveModelComputedColumns);
   const projectId = useStore((s) => s.project?.id);
 
   // Use a local fallback instead of mutating global store state
   const effectiveModelName = activeModelName || 'preview_model';
+
+  // Derive insight config from raw state to avoid referential instability
+  const insightConfig = useMemo(() => {
+    const insight = activeInsightName ? insightStates[activeInsightName] : null;
+    if (!insight) return { name: '', props: { type: 'scatter' } };
+    return { name: activeInsightName, props: { type: insight.type, ...insight.props } };
+  }, [activeInsightName, insightStates]);
 
   const contextObjects = useMemo(() => {
     if (!explorerSql || !explorerSourceName) return null;

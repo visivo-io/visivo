@@ -23,6 +23,8 @@ MANAGER_TO_PROJECT_FIELD = [
     ("dashboard_manager", "dashboards"),
     ("input_manager", "inputs"),
     ("markdown_manager", "markdowns"),
+    ("csv_script_model_manager", "csv_script_models"),
+    ("local_merge_model_manager", "local_merge_models"),
 ]
 
 
@@ -66,11 +68,7 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
-CONTEXT_OBJECT_TYPES = {
-    "models": "models",
-    "dimensions": "dimensions",
-    "metrics": "metrics",
-}
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics"}
 
 
 def _get_type_adapter(field_name):

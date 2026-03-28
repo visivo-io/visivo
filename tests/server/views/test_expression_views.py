@@ -106,3 +106,73 @@ class TestExpressionViews:
             content_type="application/json",
         )
         assert response.status_code == 400
+
+    def test_expression_containing_select_keyword(self, client):
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [
+                    {
+                        "name": "has_select",
+                        "expression": "CASE WHEN status = 'SELECT' THEN 1 ELSE 0 END",
+                        "type": "dimension",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["errors"]) == 0
+        expr = data["translations"][0]["duckdb_expression"]
+        assert "CASE" in expr
+        assert "'SELECT'" in expr or "SELECT" in expr
+
+    def test_cross_dialect_transpilation(self, client):
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [
+                    {"name": "pg_cast", "expression": "NOW()::DATE", "type": "dimension"}
+                ],
+                "source_dialect": "postgres",
+            },
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["errors"]) == 0
+        expr = data["translations"][0]["duckdb_expression"]
+        assert expr is not None
+        assert len(expr) > 0
+
+    def test_multiple_expressions_per_request(self, client):
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [
+                    {"name": "a", "expression": "SUM(x)", "type": ""},
+                    {"name": "b", "expression": "UPPER(name)", "type": ""},
+                    {"name": "c", "expression": "COUNT(*)", "type": ""},
+                ],
+            },
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["translations"]) == 3
+        assert data["translations"][0]["detected_type"] == "metric"
+        assert data["translations"][1]["detected_type"] == "dimension"
+        assert data["translations"][2]["detected_type"] == "metric"
+
+    def test_unknown_source_dialect_falls_back(self, client):
+        response = client.post(
+            "/api/expressions/translate/",
+            json={
+                "expressions": [
+                    {"name": "t", "expression": "SUM(amount)", "type": "metric"}
+                ],
+                "source_dialect": "foobar_nonexistent",
+            },
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["translations"]) == 1
+        assert data["translations"][0]["duckdb_expression"] is not None
