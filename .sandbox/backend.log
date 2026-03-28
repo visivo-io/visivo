@@ -1,0 +1,197 @@
+Starting Visivo...
+Initial build completed in 0.82s
+Server running at http://localhost:8001
+Running initial project build...
+ * Serving Flask app 'visivo.server.flask_app'
+ * Debug mode: off
+============================================================
+DEPRECATION WARNINGS
+============================================================
+
+[DEPRECATED] Table.traces (removal: v2.0.0)
+   Table 'awesome-table' uses deprecated 'traces' field.
+   Migration: Convert traces to insights. Manual migration required.
+   Location: project.dashboards[1].rows[2].items[1].table
+
+[DEPRECATED] Table.column_defs (removal: v2.0.0)
+   Table 'awesome-table' uses 'column_defs'.
+   Migration: Remove column_defs. Columns auto-generated. Use SQL aliases for custom headers.
+   Location: project.dashboards[1].rows[2].items[1].table
+
+[DEPRECATED] Table.traces (removal: v2.0.0)
+   Table 'awesome-table-2' uses deprecated 'traces' field.
+   Migration: Convert traces to insights. Manual migration required.
+   Location: project.dashboards[1].rows[3].items[0].table
+
+[DEPRECATED] Table.column_defs (removal: v2.0.0)
+   Table 'awesome-table-2' uses 'column_defs'.
+   Migration: Remove column_defs. Columns auto-generated. Use SQL aliases for custom headers.
+   Location: project.dashboards[1].rows[3].items[0].table
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.dashboards[1].rows[3].items[0].table.traces[0]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'double-simple-line' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.dashboards[2].rows[1].items[2].chart.traces[0]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'example-indicator' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[0]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'surface-trace' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[1]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'indicator-trace' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[2]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'funnel-trace' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[3]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'aggregated-line' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[4]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'simple-line' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[5]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace '3d-line-one' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[6]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace '3d-line-two' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[7]
+
+[DEPRECATED] Trace (removal: v2.0.0)
+   Trace 'fibonacci-waterfall' uses deprecated Trace model.
+   Migration: Convert to Insight. Use 'interactions' for client-side processing.
+   Location: project.traces[8]
+============================================================
+Compile completed in 0.44s imports: 0.0s, parse: 0.31s, artifacts: 0.08s, 
+Running project across 8 threads
+
+Computed 3 options for input split_threshold .......................................................[SUCCESS 0.0s]
+	target/main/inputs/mufotjjbmzizozfuqlairaioauqkb.json
+Computed 3 options for input min_avg_y .............................................................[SUCCESS 0.0s]
+	target/main/inputs/mvdpjmaxdgzkdyzyzhsygcaaigfsb.json
+Computed 2 options for input sort_direction ........................................................[SUCCESS 0.0s]
+	target/main/inputs/mubakulpfoqeignbqlkpmselpbyha.json
+Computed 2 options for input show_markers ..........................................................[SUCCESS 0.0s]
+	target/main/inputs/mexsklrkyqbeeltcplzitkkovsstb.json
+Computed 4 options for input selected_categories ...................................................[SUCCESS 0.0s]
+	target/main/inputs/myhrrnotmjvyskgyayqruvrnpegac.json
+Computed 3 options for input selected_groups .......................................................[SUCCESS 0.0s]
+	target/main/inputs/mxfawpahfsdqrmwwefqftbxfzkgra.json
+Computed 4 options for input selected_tags .........................................................[SUCCESS 0.0s]
+	target/main/inputs/mlydpvozzqcqtiprgnjrrjxwjdsgb.json
+Computed 10 options for input x_value_range ........................................................[SUCCESS 0.0s]
+	target/main/inputs/meprwzgpnnsrhislblbtomyeojeca.json
+Computed 7 options for input slider_day_num ........................................................[SUCCESS 0.0s]
+	target/main/inputs/mhjwuswjkrhozgblrvoiokklziyra.json
+Computed range for input static_date_range .........................................................[SUCCESS 0.0s]
+	target/main/inputs/mtmscqggnazlmunbepstcffbgxedc.json
+Running job for Source Schema local-duckdb .........................................................[RUNNING]
+Computed 5 options for input week_selector .........................................................[SUCCESS 0.0s]
+	target/main/inputs/mtfmfyvawjzbskwywgxmbboiyqzka.json
+Running job for CsvScriptModel waterfall_model .....................................................[RUNNING]
+Running job for CsvScriptModel csv .................................................................[RUNNING]
+Running job for CsvScriptModel markdown-table-base .................................................[RUNNING]
+Built schema for source local-duckdb (3 tables, 6 columns) .........................................[SUCCESS 0.09s]
+Updated data for model markdown-table-base .........................................................[SUCCESS 0.12s]
+	database file: target/main/models/markdown-table-base.duckdb
+Updated data for model csv .........................................................................[SUCCESS 0.12s]
+	database file: target/main/models/csv.duckdb
+Updated data for model waterfall_model .............................................................[SUCCESS 0.15s]
+	database file: target/main/models/waterfall_model.duckdb
+Wrote schema for model nested-and-name .............................................................[SUCCESS 0.04s]
+	target/main/schema/nested-and-name/schema.json
+Wrote schema for model second_local_test_table .....................................................[SUCCESS 0.04s]
+	target/main/schema/second_local_test_table/schema.json
+Updated data for trace markdown-trace-base-with-a-super-super-long-name-markdown-(trunc) ...........[SUCCESS 0.02s]
+Wrote schema for model test-table ..................................................................[SUCCESS 0.03s]
+	target/main/schema/test-table/schema.json
+Updated data for trace indicator-trace .............................................................[SUCCESS 0.02s]
+Updated data for trace double-simple-line ..........................................................[SUCCESS 0.01s]
+Updated data & wrote schema for model daily_metrics ................................................[SUCCESS 0.1s]
+	target/main/files/mobqgdiorzakkrsoygqfhiescleua.parquet
+Updated data & wrote schema for model another_local_test_table .....................................[SUCCESS 0.11s]
+	target/main/files/mwzyeppkbehppwkakfujyloyjgsha.parquet
+Updated data & wrote schema for model local_test_table .............................................[SUCCESS 0.11s]
+	target/main/files/mwygzqlwplqyroayxvtjpiyehvwmb.parquet
+Updated data for trace funnel-trace ................................................................[SUCCESS 0.01s]
+Updated data for trace example-indicator ...........................................................[SUCCESS 0.03s]
+Updated data for trace fibonacci-waterfall .........................................................[SUCCESS 0.03s]
+Updated data for trace 3d-line-two .................................................................[SUCCESS 0.02s]
+Updated data for trace aggregated-line .............................................................[SUCCESS 0.01s]
+Updated data for trace 3d-line-one .................................................................[SUCCESS 0.0s]
+Computed 9 options for input autocomplete_date .....................................................[SUCCESS 0.03s]
+	target/main/inputs/mgvqnicokymlaujuxbmbbqjtkdnzb.json
+Computed 9 options for input selected_x_values .....................................................[SUCCESS 0.05s]
+	target/main/inputs/mfakyhhhsiznungirmzxaffkfcjoa.json
+Validating insight 'split-input-test-insight' with 3 combinations...
+Computed 9 options for input min_x_value ...........................................................[SUCCESS 0.06s]
+	target/main/inputs/mrshxirwciwtcoaboinnhzcsrrwkb.json
+Validation passed for insight 'split-input-test-insight' (3 combinations)
+Validating insight 'filter-aggregate-input-test-insight' with 3 combinations...
+Validation passed for insight 'filter-aggregate-input-test-insight' (3 combinations)
+Updated data for insight aggregated-bar-insight ....................................................[SUCCESS 0.04s]
+Updated data for insight split-input-test-insight ..................................................[SUCCESS 0.01s]
+Updated data for insight fibonacci-split-insight ...................................................[SUCCESS 0.05s]
+Updated data for insight toggle-mode-insight .......................................................[SUCCESS 0.01s]
+Updated data for insight simple-scatter-insight ....................................................[SUCCESS 0.07s]
+Updated data for insight filter-aggregate-input-test-insight .......................................[SUCCESS 0.03s]
+Validating insight 'sort-input-test-insight' with 2 combinations...
+Validating insight 'range-slider-insight' with 10 combinations...
+Validating insight 'slider-day-insight' with 7 combinations...
+Validation passed for insight 'sort-input-test-insight' (2 combinations)
+Validation passed for insight 'slider-day-insight' (7 combinations)
+Validating insight 'date-range-filter-insight' with 2 combinations...
+Validating insight 'chips-split-insight' with 4 combinations...
+Validating insight 'week-selector-insight' with 5 combinations...
+Validation passed for insight 'date-range-filter-insight' (2 combinations)
+Validation passed for insight 'range-slider-insight' (10 combinations)
+Validation passed for insight 'chips-split-insight' (4 combinations)
+Running job for LocalMergeModel join_table .........................................................[RUNNING]
+Updated data for insight sort-input-test-insight ...................................................[SUCCESS 0.02s]
+Validating insight 'date-range-category-insight' with 8 combinations...
+Updated data for insight chips-split-insight .......................................................[SUCCESS 0.0s]
+Updated data for insight date-range-filter-insight .................................................[SUCCESS 0.0s]
+Validation passed for insight 'date-range-category-insight' (8 combinations)
+Updated data for insight slider-day-insight ........................................................[SUCCESS 0.03s]
+Updated data for insight range-slider-insight ......................................................[SUCCESS 0.01s]
+Validation passed for insight 'week-selector-insight' (5 combinations)
+Updated data for trace surface-trace ...............................................................[SUCCESS 0.02s]
+Updated data for insight week-selector-insight .....................................................[SUCCESS 0.01s]
+Updated data for insight date-range-category-insight ...............................................[SUCCESS 0.03s]
+Updated data for insight composite-scatter-insight .................................................[SUCCESS 0.03s]
+Validating insight 'filter-nonaggregate-input-test-insight' with 9 combinations...
+Validation passed for insight 'filter-nonaggregate-input-test-insight' (9 combinations)
+Validating insight 'autocomplete-date-insight' with 9 combinations...
+Validating insight 'checkboxes-filter-insight' with 9 combinations...
+Validation passed for insight 'autocomplete-date-insight' (9 combinations)
+Validation passed for insight 'checkboxes-filter-insight' (9 combinations)
+Updated data for insight filter-nonaggregate-input-test-insight ....................................[SUCCESS 0.01s]
+Updated data for insight autocomplete-date-insight .................................................[SUCCESS 0.0s]
+Updated data for insight checkboxes-filter-insight .................................................[SUCCESS 0.0s]
+Validating insight 'combined-interactions-test-insight' with 54 combinations...
+Validation passed for insight 'combined-interactions-test-insight' (54 combinations)
+Updated data for insight combined-interactions-test-insight ........................................[SUCCESS 0.0s]
+Updated data for model join_table ..................................................................[SUCCESS 0.14s]
+	database file: target/main/models/join_table.duckdb
+Updated data for trace simple-line .................................................................[SUCCESS 0.01s]
