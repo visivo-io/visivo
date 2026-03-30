@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import LeftPanel from './ExplorerLeftPanel';
 import CenterPanel from './CenterPanel';
 import ExplorerRightPanel from './ExplorerRightPanel';
@@ -9,6 +9,22 @@ import { usePanelResize } from '../../hooks/usePanelResize';
 
 const ExplorerNewPage = () => {
   const leftNavCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
+  const modelTabs = useStore((s) => s.explorerModelTabs);
+  const explorerSources = useStore((s) => s.explorerSources);
+  const createModelTab = useStore((s) => s.createModelTab);
+  const fetchDefaults = useStore((s) => s.fetchDefaults);
+
+  // Fetch project defaults on mount (needed for default source selection)
+  useEffect(() => {
+    fetchDefaults();
+  }, [fetchDefaults]);
+
+  // Auto-create a model tab when the page loads with no tabs and sources are available
+  useEffect(() => {
+    if (modelTabs.length === 0 && explorerSources.length > 0) {
+      createModelTab();
+    }
+  }, [modelTabs.length, explorerSources.length, createModelTab]);
 
   const containerRef = useRef(null);
 

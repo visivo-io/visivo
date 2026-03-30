@@ -101,12 +101,41 @@ describe('explorerNewStore', () => {
       expect(state.explorerActiveModelName).toBe('model');
       expect(state.explorerModelStates.model).toBeDefined();
       expect(state.explorerModelStates.model.sql).toBe('');
-      expect(state.explorerModelStates.model.sourceName).toBeNull();
       expect(state.explorerModelStates.model.queryResult).toBeNull();
       expect(state.explorerModelStates.model.queryError).toBeNull();
       expect(state.explorerModelStates.model.computedColumns).toEqual([]);
       expect(state.explorerModelStates.model.enrichedResult).toBeNull();
       expect(state.explorerModelStates.model.isNew).toBe(true);
+    });
+
+    it('defaults sourceName to project default source when available', () => {
+      useStore.setState({
+        defaults: { source_name: 'my-default-source' },
+        explorerSources: [{ source_name: 'first-source' }],
+      });
+
+      useStore.getState().createModelTab();
+
+      expect(useStore.getState().explorerModelStates.model.sourceName).toBe('my-default-source');
+    });
+
+    it('defaults sourceName to first available source when no project default', () => {
+      useStore.setState({
+        defaults: null,
+        explorerSources: [{ source_name: 'first-source' }, { source_name: 'second-source' }],
+      });
+
+      useStore.getState().createModelTab();
+
+      expect(useStore.getState().explorerModelStates.model.sourceName).toBe('first-source');
+    });
+
+    it('defaults sourceName to null when no sources available', () => {
+      useStore.setState({ defaults: null, explorerSources: [] });
+
+      useStore.getState().createModelTab();
+
+      expect(useStore.getState().explorerModelStates.model.sourceName).toBeNull();
     });
 
     it('creates a model tab with a provided name', () => {
@@ -782,6 +811,38 @@ describe('explorerNewStore', () => {
       expect(useStore.getState().explorerModelStates.test.sourceName).toBe('local-duckdb');
     });
 
+    it('falls back to project default source when model has no source', () => {
+      useStore.setState({
+        defaults: { source_name: 'my-default-source' },
+        explorerSources: [{ source_name: 'first-source' }],
+      });
+
+      useStore.getState().loadModel({
+        name: 'no_source_model',
+        config: { sql: 'SELECT 1' },
+      });
+
+      expect(useStore.getState().explorerModelStates.no_source_model.sourceName).toBe(
+        'my-default-source'
+      );
+    });
+
+    it('falls back to first available source when model has no source and no project default', () => {
+      useStore.setState({
+        defaults: null,
+        explorerSources: [{ source_name: 'first-source' }, { source_name: 'second-source' }],
+      });
+
+      useStore.getState().loadModel({
+        name: 'no_source_model',
+        config: { sql: 'SELECT 1' },
+      });
+
+      expect(useStore.getState().explorerModelStates.no_source_model.sourceName).toBe(
+        'first-source'
+      );
+    });
+
     it('loads metrics and dimensions as computed columns', () => {
       useStore.setState({
         metrics: [
@@ -1231,13 +1292,22 @@ describe('explorerNewStore', () => {
   // Status Detection Selectors
   // ====================================================================
   describe('selectModelStatus', () => {
-    it('returns "new" for a new model', () => {
+    it('returns "new" for a new model with SQL content', () => {
       useStore.setState({
         explorerModelStates: {
           m1: { sql: 'SELECT 1', sourceName: null, computedColumns: [], isNew: true },
         },
       });
       expect(selectModelStatus('m1')(useStore.getState())).toBe('new');
+    });
+
+    it('returns null for a new model with empty SQL (auto-created default)', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: { sql: '', sourceName: null, computedColumns: [], isNew: true },
+        },
+      });
+      expect(selectModelStatus('m1')(useStore.getState())).toBeNull();
     });
 
     it('returns null for a loaded model with no changes', () => {
@@ -1400,10 +1470,20 @@ describe('explorerNewStore', () => {
       expect(selectHasModifications(useStore.getState())).toBe(false);
     });
 
-    it('returns true when any model is new', () => {
+    it('returns false when a new model has empty SQL (auto-created default)', () => {
       useStore.setState({
         explorerModelStates: {
           m1: { sql: '', sourceName: null, computedColumns: [], isNew: true },
+        },
+        explorerInsightStates: {},
+      });
+      expect(selectHasModifications(useStore.getState())).toBe(false);
+    });
+
+    it('returns true when a new model has SQL content', () => {
+      useStore.setState({
+        explorerModelStates: {
+          m1: { sql: 'SELECT 1', sourceName: null, computedColumns: [], isNew: true },
         },
         explorerInsightStates: {},
       });
@@ -1523,6 +1603,77 @@ describe('explorerNewStore', () => {
       expect(modelState._originalSql).toBe('SELECT 1');
       expect(modelState._originalSourceName).toBe('pg');
       expect(modelState._originalComputedColumns).toEqual([]);
+    });
+  });
+
+  describe('loadChart interaction transformation', () => {
+    it('transforms API interactions ({split: "..."}) to UI format ({type, value})', () => {
+      const chart = { name: 'chart', config: { layout: {} } };
+      const insights = [
+        {
+          name: 'ins_1',
+          config: {
+            type: 'bar',
+            props: { x: 'col_a' },
+            interactions: [
+              { split: '?{${ref(model).col} > 5}' },
+              { sort: '?{${ref(model).col} ASC}' },
+              { filter: '?{${ref(model).col} = 1}' },
+            ],
+          },
+        },
+      ];
+      const models = [{ name: 'm1', config: { sql: 'SELECT 1' } }];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart, insights, models);
+
+      const insightState = useStore.getState().explorerInsightStates.ins_1;
+      expect(insightState.interactions).toEqual([
+        { type: 'split', value: '?{${ref(model).col} > 5}' },
+        { type: 'sort', value: '?{${ref(model).col} ASC}' },
+        { type: 'filter', value: '?{${ref(model).col} = 1}' },
+      ]);
+    });
+
+    it('handles interactions already in UI format', () => {
+      const chart = { name: 'chart', config: { layout: {} } };
+      const insights = [
+        {
+          name: 'ins_1',
+          config: {
+            type: 'scatter',
+            props: {},
+            interactions: [{ type: 'filter', value: 'test' }],
+          },
+        },
+      ];
+      const models = [{ name: 'm1', config: { sql: 'SELECT 1' } }];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart, insights, models);
+
+      expect(useStore.getState().explorerInsightStates.ins_1.interactions).toEqual([
+        { type: 'filter', value: 'test' },
+      ]);
+    });
+
+    it('loads chart layout into store', () => {
+      const chart = {
+        name: 'my_chart',
+        config: { layout: { title: { text: 'My Chart Title' } } },
+      };
+      const insights = [
+        { name: 'ins', config: { type: 'scatter', props: {}, interactions: [] } },
+      ];
+      const models = [{ name: 'm', config: { sql: 'SELECT 1' } }];
+
+      useStore.setState({ metrics: [], dimensions: [] });
+      useStore.getState().loadChart(chart, insights, models);
+
+      expect(useStore.getState().explorerChartLayout).toEqual({
+        title: { text: 'My Chart Title' },
+      });
     });
   });
 

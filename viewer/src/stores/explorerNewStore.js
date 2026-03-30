@@ -123,7 +123,11 @@ const buildModelStateFromObject = (modelObject, globalState) => {
   const extractedSourceName = extractSourceName(modelObject.config?.source);
   const sources = globalState.explorerSources || [];
   const matchedSource = matchSourceName(extractedSourceName, sources);
-  const resolvedSourceName = matchedSource || extractedSourceName;
+
+  // Source priority: model's explicit source > project default > first available
+  const projectDefaultSource = globalState.defaults?.source_name || null;
+  const firstAvailableSource = sources[0]?.source_name || null;
+  const resolvedSourceName = matchedSource || extractedSourceName || projectDefaultSource || firstAvailableSource;
 
   const allMetrics = globalState.metrics || [];
   const allDimensions = globalState.dimensions || [];
@@ -242,7 +246,8 @@ export const selectActiveInsightConfig = (s) => {
 export const selectModelStatus = (modelName) => (s) => {
   const state = s.explorerModelStates[modelName];
   if (!state) return null;
-  if (state.isNew) return 'new';
+  if (state.isNew && state.sql) return 'new';
+  if (state.isNew && !state.sql) return null;
   if (state.sql !== state._originalSql) return 'modified';
   if (state.sourceName !== state._originalSourceName) return 'modified';
   if (JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns))
@@ -261,10 +266,13 @@ export const selectInsightStatus = (insightName) => (s) => {
 
 export const selectHasModifications = (s) => {
   for (const state of Object.values(s.explorerModelStates || {})) {
-    if (state.isNew) return true;
-    if (state.sql !== state._originalSql) return true;
-    if (state.sourceName !== state._originalSourceName) return true;
-    if (JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns))
+    if (state.isNew && state.sql) return true;
+    if (!state.isNew && state.sql !== state._originalSql) return true;
+    if (!state.isNew && state.sourceName !== state._originalSourceName) return true;
+    if (
+      !state.isNew &&
+      JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns)
+    )
       return true;
   }
   for (const state of Object.values(s.explorerInsightStates || {})) {
@@ -326,7 +334,12 @@ const createExplorerNewSlice = (set, get) => ({
     const state = get();
     const baseName = name || 'model';
     const uniqueName = generateUniqueName(baseName, state.explorerModelTabs);
-    const newModelState = createEmptyModelState(true);
+
+    // Default source priority: project defaults > first available source > null
+    const projectDefaultSource = state.defaults?.source_name || null;
+    const firstAvailableSource = (state.explorerSources || [])[0]?.source_name || null;
+    const defaultSource = projectDefaultSource || firstAvailableSource;
+    const newModelState = { ...createEmptyModelState(true), sourceName: defaultSource };
 
     set({
       explorerModelTabs: [...state.explorerModelTabs, uniqueName],
@@ -563,6 +576,26 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
+  renameInsight: (oldName, newName) => {
+    const state = get();
+    const insightState = state.explorerInsightStates[oldName];
+    if (!insightState || !insightState.isNew) return;
+    if (Object.keys(state.explorerInsightStates).includes(newName)) return;
+
+    const { [oldName]: movedState, ...restStates } = state.explorerInsightStates;
+    const newChartInsightNames = state.explorerChartInsightNames.map((n) =>
+      n === oldName ? newName : n
+    );
+    const newActiveInsight =
+      state.explorerActiveInsightName === oldName ? newName : state.explorerActiveInsightName;
+
+    set({
+      explorerInsightStates: { ...restStates, [newName]: movedState },
+      explorerChartInsightNames: newChartInsightNames,
+      explorerActiveInsightName: newActiveInsight,
+    });
+  },
+
   removeInsightFromChart: (insightName) => {
     const state = get();
     const newChartInsights = state.explorerChartInsightNames.filter((n) => n !== insightName);
@@ -747,9 +780,19 @@ const createExplorerNewSlice = (set, get) => ({
   loadChart: (chartObject, insightObjects, modelObjects) => {
     const state = get();
 
-    // Build model tabs and states using local variables (never mutate state directly)
-    let newTabs = [...state.explorerModelTabs];
+    // Remove auto-created empty model tabs (isNew with no SQL) — they're clutter when loading a chart
+    let newTabs = state.explorerModelTabs.filter((tabName) => {
+      const ms = state.explorerModelStates[tabName];
+      return !(ms && ms.isNew && !ms.sql);
+    });
     let newModelStates = { ...state.explorerModelStates };
+    for (const tabName of state.explorerModelTabs) {
+      const ms = state.explorerModelStates[tabName];
+      if (ms && ms.isNew && !ms.sql) {
+        const { [tabName]: _, ...rest } = newModelStates;
+        newModelStates = rest;
+      }
+    }
     const loadedModels = new Set();
 
     for (const model of modelObjects) {
@@ -769,12 +812,21 @@ const createExplorerNewSlice = (set, get) => ({
     const insightNames = [];
     for (const insight of insightObjects) {
       insightNames.push(insight.name);
+      // Transform interactions from API format ({split: "?{...}"}) to UI format ({type: 'split', value: '...'})
+      const rawInteractions = insight.config?.interactions || [];
+      const transformedInteractions = rawInteractions.map((i) => {
+        // API format: { split: "?{...}" } or { filter: "?{...}" } or { sort: "?{...}" }
+        const key = Object.keys(i).find((k) => ['filter', 'split', 'sort'].includes(k));
+        if (key) return { type: key, value: i[key] };
+        // Already in UI format { type, value }
+        if (i.type && 'value' in i) return { ...i };
+        return { type: 'filter', value: '' };
+      });
+
       insightStates[insight.name] = {
         type: insight.config?.type || 'scatter',
         props: insight.config?.props ? { ...insight.config.props } : {},
-        interactions: insight.config?.interactions
-          ? insight.config.interactions.map((i) => ({ ...i }))
-          : [],
+        interactions: transformedInteractions,
         typePropsCache: {},
         isNew: false,
         _originalType: insight.config?.type || 'scatter',
@@ -782,10 +834,16 @@ const createExplorerNewSlice = (set, get) => ({
       };
     }
 
+    // Set active model to the first chart model (not the first tab overall)
+    const firstChartModel = modelObjects.length > 0 ? modelObjects[0].name : null;
+    const activeModel = firstChartModel && newTabs.includes(firstChartModel)
+      ? firstChartModel
+      : (newTabs.length > 0 ? newTabs[0] : null);
+
     set({
       explorerModelTabs: newTabs,
       explorerModelStates: newModelStates,
-      explorerActiveModelName: newTabs.length > 0 ? newTabs[0] : null,
+      explorerActiveModelName: activeModel,
       explorerChartName: chartObject.name,
       explorerChartLayout: chartObject.config?.layout ? { ...chartObject.config.layout } : {},
       explorerChartInsightNames: insightNames,

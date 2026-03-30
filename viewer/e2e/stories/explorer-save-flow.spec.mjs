@@ -5,14 +5,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const WAIT_FOR_PAGE = 15000;
-
-async function loadExplorer(page) {
-  await page.goto('/explorer-new');
-  await page.waitForLoadState('networkidle');
-  await page.getByText('Run a query to see results').waitFor({ timeout: WAIT_FOR_PAGE });
-}
+import { loadExplorer, typeSql } from '../helpers/explorer.mjs';
 
 test.describe('Explorer Save Flow', () => {
   test.setTimeout(60000);
@@ -25,10 +18,12 @@ test.describe('Explorer Save Flow', () => {
     await expect(saveButton).toBeDisabled();
   });
 
-  test('Step 2: Creating new model enables save', async ({ page }) => {
+  test('Step 2: Creating new model with SQL enables save', async ({ page }) => {
     await loadExplorer(page);
 
-    await page.getByRole('button', { name: 'Add model' }).click();
+    // Auto-created empty model tab does not enable save;
+    // typing SQL into it is a real user action that enables save
+    await typeSql(page, 'SELECT 1');
     await page.waitForTimeout(500);
 
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled();
@@ -37,7 +32,8 @@ test.describe('Explorer Save Flow', () => {
   test('Step 3: Clicking save opens modal', async ({ page }) => {
     await loadExplorer(page);
 
-    await page.getByRole('button', { name: 'Add model' }).click();
+    // Type SQL to enable save (empty auto-created model does not enable save)
+    await typeSql(page, 'SELECT 1');
     await page.waitForTimeout(500);
 
     await page.getByRole('button', { name: 'Save to Project' }).click();

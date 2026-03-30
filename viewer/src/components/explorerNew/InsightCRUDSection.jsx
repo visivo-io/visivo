@@ -24,8 +24,11 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const removeInsightInteraction = useStore((s) => s.removeInsightInteraction);
   const updateInsightInteraction = useStore((s) => s.updateInsightInteraction);
   const setActiveInsight = useStore((s) => s.setActiveInsight);
+  const renameInsight = useStore((s) => s.renameInsight);
 
   const [schema, setSchema] = useState(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   const status = useStore(selectInsightStatus(insightName));
 
@@ -106,6 +109,14 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
     [insightName, removeInsightInteraction]
   );
 
+  const commitRename = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== insightName) {
+      renameInsight(insightName, trimmed);
+    }
+    setIsRenaming(false);
+  }, [renameValue, insightName, renameInsight]);
+
   if (!insightState) return null;
 
   return (
@@ -127,7 +138,35 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        <span className="text-sm font-medium text-purple-800 truncate flex-1">{insightName}</span>
+        {isRenaming ? (
+          <input
+            autoFocus
+            data-testid={`insight-rename-input-${insightName}`}
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onBlur={() => commitRename()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') setIsRenaming(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-medium text-purple-800 bg-white border border-purple-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-purple-400 flex-1"
+          />
+        ) : (
+          <span
+            className="text-sm font-medium text-purple-800 truncate flex-1 cursor-pointer"
+            data-testid={`insight-name-${insightName}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (insightState?.isNew) {
+                setIsRenaming(true);
+                setRenameValue(insightName);
+              }
+            }}
+          >
+            {insightName}
+          </span>
+        )}
 
         {status && (
           <span

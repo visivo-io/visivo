@@ -24,12 +24,17 @@ const ExplorerChartPreview = () => {
   // Use a local fallback instead of mutating global store state
   const effectiveModelName = activeModelName || 'preview_model';
 
+  // Use first chart insight as fallback when none is actively expanded
+  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
+  const effectiveInsightName =
+    activeInsightName || (chartInsightNames.length > 0 ? chartInsightNames[0] : null);
+
   // Derive insight config from raw state to avoid referential instability
   const insightConfig = useMemo(() => {
-    const insight = activeInsightName ? insightStates[activeInsightName] : null;
+    const insight = effectiveInsightName ? insightStates[effectiveInsightName] : null;
     if (!insight) return { name: '', props: { type: 'scatter' } };
-    return { name: activeInsightName, props: { type: insight.type, ...insight.props } };
-  }, [activeInsightName, insightStates]);
+    return { name: effectiveInsightName, props: { type: insight.type, ...insight.props } };
+  }, [effectiveInsightName, insightStates]);
 
   const contextObjects = useMemo(() => {
     if (!explorerSql || !explorerSourceName) return null;
