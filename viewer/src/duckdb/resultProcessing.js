@@ -2,6 +2,8 @@
  * Shared utilities for processing DuckDB Arrow query results into JS objects.
  */
 
+import { DataType } from 'apache-arrow';
+
 /**
  * Extract timestamp/date column names from an Arrow schema.
  * @param {Object} schema - Arrow Table schema with .fields array
@@ -11,8 +13,7 @@ export const getTimestampColumns = schema => {
   const timestampColumns = new Set();
   if (schema?.fields) {
     for (const field of schema.fields) {
-      const typeStr = field.type?.toString() || '';
-      if (typeStr.includes('Timestamp') || typeStr.includes('Date')) {
+      if (DataType.isTimestamp(field.type) || DataType.isDate(field.type)) {
         timestampColumns.add(field.name);
       }
     }

@@ -319,25 +319,28 @@ def job(
     if schema_cache is not None:
         kwargs["schema_cache"] = schema_cache
 
-    # Check if any insight is dynamic and references this sql_model
+    # Check if this model needs data (parquet) output:
+    # 1. Referenced by a dynamic insight, or
+    # 2. Referenced directly by a table (via 'data' or columns/rows/values)
+    needs_data = False
+
     for insight in insights:
-        if insight.is_dynamic(dag):
-            # Check if this sql_model is in the insight's dependent models
-            if sql_model in insight.get_all_dependent_models(dag):
-                return Job(
-                    item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
-                )
+        if insight.is_dynamic(dag) and sql_model in insight.get_all_dependent_models(dag):
+            needs_data = True
+            break
 
-    # Check if any table references this model directly via 'data' or columns/rows/values
-    from visivo.models.table import Table
+    if not needs_data:
+        from visivo.models.table import Table
 
-    tables = all_descendants_of_type(type=Table, dag=dag)
-    for table in tables:
-        table_models = all_descendants_of_type(type=Model, dag=dag, from_node=table)
-        if sql_model in table_models:
-            return Job(
-                item=sql_model, source=source, action=model_query_and_schema_action, **kwargs
-            )
+        tables = all_descendants_of_type(type=Table, dag=dag)
+        for table in tables:
+            table_models = all_descendants_of_type(type=Model, dag=dag, from_node=table)
+            if sql_model in table_models:
+                needs_data = True
+                break
+
+    if needs_data:
+        return Job(item=sql_model, source=source, action=model_query_and_schema_action, **kwargs)
 
     # Not referenced by any dynamic insight or table, run the schema-only action
     return Job(item=sql_model, source=source, action=schema_only_action, **kwargs)
