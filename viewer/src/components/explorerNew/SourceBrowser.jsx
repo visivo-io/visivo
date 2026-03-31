@@ -26,9 +26,13 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
   const [loadingNodes, setLoadingNodes] = useState(new Set());
   const [generatingSchemas, setGeneratingSchemas] = useState(new Map());
   const [schemaErrors, setSchemaErrors] = useState(new Map());
+  const [expandedErrors, setExpandedErrors] = useState(new Set());
   const cancelledRef = useRef(false);
 
-  useEffect(() => () => { cancelledRef.current = true; }, []);
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => { cancelledRef.current = true; };
+  }, []);
 
   useEffect(() => {
     const loadSources = async () => {
@@ -257,22 +261,8 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
         const hasCachedSchema = source.has_cached_schema;
 
         const getBadge = () => {
-          if (isGenerating) return generationStatus.message || 'Generating...';
-          if (source.total_tables != null) return `${source.total_tables} tables`;
+          if (isGenerating) return 'Connecting...';
           return null;
-        };
-
-        const getActions = () => {
-          if (hasCachedSchema && !isGenerating) {
-            return [
-              {
-                label: 'Refresh Schema',
-                icon: <PiArrowClockwise size={12} />,
-                onClick: (e) => handleGenerateSchema(source.source_name, e),
-              },
-            ];
-          }
-          return [];
         };
 
         return (
@@ -285,15 +275,38 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
             isExpanded={expandedNodes.has(sourceKey)}
             isLoading={loadingNodes.has(sourceKey) || isGenerating}
             errorMessage={errorMsg}
+            errorCollapsed={!expandedErrors.has(source.source_name)}
             onClick={() => {
               if (isGenerating) return;
+              if (errorMsg) {
+                setExpandedErrors((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(source.source_name)) {
+                    next.delete(source.source_name);
+                  } else {
+                    next.add(source.source_name);
+                  }
+                  return next;
+                });
+                return;
+              }
               if (!hasCachedSchema) {
                 handleGenerateSchema(source.source_name);
                 return;
               }
               toggleNode(sourceKey, () => fetchSourceTables(source.source_name));
             }}
-            actions={getActions()}
+            actions={
+              hasCachedSchema && !isGenerating
+                ? [
+                    {
+                      label: 'Refresh Schema',
+                      icon: <PiArrowClockwise size={12} />,
+                      onClick: (e) => handleGenerateSchema(source.source_name, e),
+                    },
+                  ]
+                : []
+            }
             level={0}
           >
             {renderTables(source.source_name, sourceKey)}

@@ -53,8 +53,6 @@ test.describe('Explorer First Visit', () => {
 
     await expect(page.getByText('local-sqlite').first()).toBeVisible();
     await expect(page.getByText('local-duckdb').first()).toBeVisible();
-    // Sources with cached schemas show "N tables" badge
-    await expect(page.getByText('2 tables').first()).toBeVisible();
   });
 
   test('Step 3: All object type sections render', async ({ page }) => {

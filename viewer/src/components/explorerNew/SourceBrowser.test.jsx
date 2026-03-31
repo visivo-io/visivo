@@ -22,6 +22,8 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
     onDoubleClick,
     children,
     errorMessage,
+    errorCollapsed,
+    actions,
   }) => {
     return (
       <div
@@ -30,6 +32,7 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
         data-loading={isLoading}
         data-badge={badge}
         data-error={errorMessage}
+        data-error-collapsed={errorCollapsed}
       >
         <button data-testid={`click-${type}-${label}`} onClick={onClick}>
           {label}
@@ -42,6 +45,16 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
             dbl-{label}
           </button>
         )}
+        {actions &&
+          actions.map((action, idx) => (
+            <button
+              key={idx}
+              data-testid={`action-${type}-${label}-${action.label}`}
+              onClick={() => action.onClick()}
+            >
+              {action.label}
+            </button>
+          ))}
         {isExpanded && children}
       </div>
     );
@@ -254,7 +267,7 @@ describe('SourceBrowser', () => {
     });
   });
 
-  it('displays badge with table count for sources', async () => {
+  it('does not display table count badge for sources', async () => {
     render(
       <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
     );
@@ -262,6 +275,151 @@ describe('SourceBrowser', () => {
     await screen.findByTestId('tree-node-source-postgres_db');
 
     const sourceNode = screen.getByTestId('tree-node-source-postgres_db');
-    expect(sourceNode).toHaveAttribute('data-badge', '5 tables');
+    expect(sourceNode).not.toHaveAttribute('data-badge');
+  });
+
+  it('shows refresh action for sources with cached schema', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('tree-node-source-postgres_db');
+
+    expect(
+      screen.getByTestId('action-source-postgres_db-Refresh Schema')
+    ).toBeInTheDocument();
+    // No refresh action for source without cached schema
+    expect(
+      screen.queryByTestId('action-source-mysql_db-Refresh Schema')
+    ).not.toBeInTheDocument();
+  });
+
+  it('refresh action triggers schema generation and clears spinner on completion', async () => {
+    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-456' });
+    fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed' });
+    fetchSourceSchemaJobs
+      .mockResolvedValueOnce(mockSources)
+      .mockResolvedValueOnce(mockSources);
+
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('action-source-postgres_db-Refresh Schema');
+
+    // Click the refresh action
+    fireEvent.click(screen.getByTestId('action-source-postgres_db-Refresh Schema'));
+
+    // Should show loading state
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-postgres_db')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+    });
+
+    // Should show Connecting... badge
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-postgres_db')).toHaveAttribute(
+        'data-badge',
+        'Connecting...'
+      );
+    });
+
+    // After completion, loading should clear
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-postgres_db')).toHaveAttribute(
+        'data-loading',
+        'false'
+      );
+    });
+
+    // Badge should be cleared
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-postgres_db')).not.toHaveAttribute(
+        'data-badge'
+      );
+    });
+
+    expect(generateSourceSchema).toHaveBeenCalledWith('postgres_db');
+  });
+
+  it('error messages are collapsed by default', async () => {
+    const sourcesWithError = [
+      { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
+    ];
+    fetchSourceSchemaJobs.mockResolvedValue(sourcesWithError);
+    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-err' });
+    fetchSchemaGenerationStatus.mockResolvedValue({
+      status: 'failed',
+      error: 'Connection refused',
+    });
+
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-broken_db');
+
+    // Click to trigger schema generation which will fail
+    fireEvent.click(screen.getByTestId('click-source-broken_db'));
+
+    // Wait for error to appear
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute('data-error');
+    });
+
+    // Error should be collapsed by default
+    expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute(
+      'data-error-collapsed',
+      'true'
+    );
+  });
+
+  it('clicking an errored source toggles error visibility', async () => {
+    const sourcesWithError = [
+      { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
+    ];
+    fetchSourceSchemaJobs.mockResolvedValue(sourcesWithError);
+    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-err' });
+    fetchSchemaGenerationStatus.mockResolvedValue({
+      status: 'failed',
+      error: 'Connection refused',
+    });
+
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-broken_db');
+
+    // Trigger schema generation (fails)
+    fireEvent.click(screen.getByTestId('click-source-broken_db'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute('data-error');
+    });
+
+    // Error collapsed by default
+    expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute(
+      'data-error-collapsed',
+      'true'
+    );
+
+    // Click again to expand error
+    fireEvent.click(screen.getByTestId('click-source-broken_db'));
+
+    expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute(
+      'data-error-collapsed',
+      'false'
+    );
+
+    // Click again to collapse error
+    fireEvent.click(screen.getByTestId('click-source-broken_db'));
+
+    expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute(
+      'data-error-collapsed',
+      'true'
+    );
   });
 });
