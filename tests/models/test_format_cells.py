@@ -11,7 +11,7 @@ def test_format_cells_valid():
 
 
 def test_format_cells_all_scopes():
-    for scope_val in ["row", "column", "rows_and_columns"]:
+    for scope_val in ["row", "column", "table"]:
         fc = FormatCells(scope=scope_val, min_color="#000000", max_color="#ffffff")
         assert fc.scope.value == scope_val
 

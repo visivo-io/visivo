@@ -48,7 +48,7 @@ export function computeGradientStyles(rows, numericColumnIds, formatCells) {
   const minRgb = parseHex(min_color);
   const maxRgb = parseHex(max_color);
 
-  if (scope === 'rows_and_columns') {
+  if (scope === 'table') {
     let globalMin = Infinity;
     let globalMax = -Infinity;
     for (const row of rows) {

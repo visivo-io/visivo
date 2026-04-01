@@ -6,7 +6,7 @@ from visivo.models.base.base_model import BaseModel
 class FormatCellsScope(str, Enum):
     row = "row"
     column = "column"
-    rows_and_columns = "rows_and_columns"
+    table = "table"
 
 
 class FormatCells(BaseModel):
@@ -27,7 +27,7 @@ class FormatCells(BaseModel):
 
     scope: FormatCellsScope = Field(
         description="Scope for gradient calculation: 'row' computes min/max per row, "
-        "'column' per column, 'rows_and_columns' across all numeric cells."
+        "'column' per column, 'table' across all numeric cells."
     )
     min_color: str = Field(description="Hex color for minimum values, e.g. '#ff0000'")
     max_color: str = Field(description="Hex color for maximum values, e.g. '#00ff00'")

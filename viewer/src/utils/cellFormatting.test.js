@@ -52,10 +52,10 @@ describe('computeGradientStyles', () => {
     });
   });
 
-  describe('scope: rows_and_columns', () => {
+  describe('scope: table', () => {
     it('computes gradient globally', () => {
       const result = computeGradientStyles(rows, numericCols, {
-        scope: 'rows_and_columns',
+        scope: 'table',
         min_color: '#000000',
         max_color: '#ffffff',
       });

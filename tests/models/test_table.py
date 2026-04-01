@@ -250,7 +250,7 @@ def test_Table_with_pivot_and_format_cells():
         "rows": ["${ref(sales-insight).product}"],
         "values": ["sum(${ref(sales-insight).revenue})"],
         "format_cells": {
-            "scope": "rows_and_columns",
+            "scope": "table",
             "min_color": "#000000",
             "max_color": "#ffffff",
         },
