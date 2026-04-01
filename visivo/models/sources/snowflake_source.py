@@ -120,6 +120,11 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
     def get_dialect(self):
         return "snowflake"
 
+    protocol: Optional[str] = Field(
+        None,
+        description="The protocol to use for the connection. Set to 'http' for local emulators.",
+    )
+
     def url(self):
         from snowflake.sqlalchemy import URL
 
@@ -138,6 +143,14 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
             url_attributes["warehouse"] = self.warehouse
         if self.role:
             url_attributes["role"] = self.role
+
+        host = self.get_host()
+        if host:
+            url_attributes["host"] = host
+        if self.port:
+            url_attributes["port"] = self.port
+        if self.protocol:
+            url_attributes["protocol"] = self.protocol
 
         database = self.get_database()
         if database:

@@ -30,6 +30,19 @@ services:
       timeout: 5s
       retries: 10
 
+  fakesnow:
+    build:
+      context: .
+      dockerfile: tests/setup/fakesnow.Dockerfile
+    restart: always
+    ports:
+      - 12345:12345
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:12345/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   clickhouse:
     image: "clickhouse/clickhouse-server:latest"
     restart: always

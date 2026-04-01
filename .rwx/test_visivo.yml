@@ -254,20 +254,25 @@ tasks:
       - tests/setup/populate_ci_clickhouse.sql
 
   - key: test-snowflake
-    use: visivo-install
+    docker: true
+    use: [visivo-install]
+    background-processes:
+      - key: fakesnow
+        run: docker run -p 12345:12345 $(docker build -q -f tests/setup/fakesnow.Dockerfile .)
+        ready-check: curl -sf http://localhost:12345/ || exit 1
     run: |
+      python tests/setup/seed_fakesnow.py
       cd test-projects/integration
-      ../../dist/visivo/visivo run -s remote-snowflake
-      python validate_run_results.py --source remote-snowflake
+      ../../dist/visivo/visivo run -s local-snowflake
+      python validate_run_results.py --source local-snowflake
     env:
       STACKTRACE: true
       DEBUG: true
-      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
-      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
-    filter: 
+    filter:
       - dist
       - test-projects/integration
+      - tests/setup/populate_ci_snowflake.sql
+      - tests/setup/fakesnow.Dockerfile
 
   - key: test-bigquery
     use: visivo-install
