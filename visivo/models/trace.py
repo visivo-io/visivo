@@ -119,8 +119,8 @@ class Trace(NamedModel, ParentModel):
     )
     relations: Optional[List[generate_ref_field(Relation)]] = Field(
         None,
-        description="List of relations to use when joining models for metrics. Can be relation names using ref() syntax "
-        "(e.g., 'ref(orders_to_users)'), context references (e.g., '${orders_to_users}'), "
+        description="List of relations to use when joining models for metrics. Can be relation names using ${ ref() } syntax "
+        "(e.g., '${ ref(orders_to_users) }') "
         "or inline Relation objects with 'left_model', 'right_model', 'condition', etc. "
         "These define the preferred join paths when metrics from different models are used together.",
     )

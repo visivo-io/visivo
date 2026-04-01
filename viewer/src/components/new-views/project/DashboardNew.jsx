@@ -6,9 +6,10 @@ import Table from '../../items/Table';
 import Markdown from '../../items/Markdown';
 import Input from '../../items/Input';
 import { useInsightsData } from '../../../hooks/useInsightsData';
+import { useModelsData } from '../../../hooks/useModelsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { useVisibleRows } from '../../../hooks/useVisibleRows';
-import { parseRefValue } from '../../../utils/refString';
+import { parseRefValue, extractRefNamesFromStrings } from '../../../utils/refString';
 
 /**
  * Resolve an item reference (chart, table, markdown, input) from the store.
@@ -48,32 +49,57 @@ const resolveItem = (itemRef, getItemByName) => {
 /**
  * Collect all insight names from visible rows for centralized prefetching.
  */
-const collectInsightNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName) => {
+const isModelData = data => data && (data.sql || data.args || data.models);
+
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set()) => {
   const insightNames = new Set();
+  const modelNames = new Set();
+  const pivotRefStrings = [];
+
   for (const rowIndex of visibleRowIndices) {
     const row = rows[rowIndex];
     if (!row) continue;
     for (const item of row.items) {
       if (shouldShowItem && !shouldShowItem(item)) continue;
 
-      // Resolve chart and collect its insights
       const chart = resolveItem(item.chart, getChartByName);
       chart?.insights?.forEach(i => {
-        // Parse insight reference - could be ${ref(name)}, ref(name), or plain name
         const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
         if (insightName) insightNames.add(insightName);
       });
 
-      // Resolve table and collect its insights
       const table = resolveItem(item.table, getTableByName);
-      table?.insights?.forEach(i => {
-        // Parse insight reference - could be ${ref(name)}, ref(name), or plain name
-        const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
-        if (insightName) insightNames.add(insightName);
-      });
+      if (table?.data) {
+        const tableData = typeof table.data === 'string' ? table.data : table.data;
+        const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
+        if (name) {
+          if (typeof tableData === 'object' && isModelData(tableData)) {
+            modelNames.add(name);
+          } else {
+            insightNames.add(name);
+          }
+        }
+      }
+      const tableConfig = table?.config || table || {};
+      pivotRefStrings.push(
+        ...(tableConfig.columns || []),
+        ...(tableConfig.rows || []),
+        ...(tableConfig.values || []),
+      );
     }
   }
-  return [...insightNames];
+
+  // Classify pivot refs: known insights go to insightNames, everything else to modelNames
+  const allKnown = new Set([...insightNames, ...knownInsightNames]);
+  extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
+    if (allKnown.has(n)) {
+      insightNames.add(n);
+    } else {
+      modelNames.add(n);
+    }
+  });
+
+  return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
 /**
@@ -187,24 +213,45 @@ const DashboardNew = ({ projectId, dashboardName }) => {
 
   useInputsData(projectId, visibleInputNames);
 
-  // Centralized insight prefetching - fetch for ALL rows (optimize later)
-  const visibleInsightNames = useMemo(() => {
-    if (!dashboard?.rows) return [];
-    // Collect from all rows, not just visible ones
+  const knownInsightNames = useMemo(() => {
+    const names = new Set();
+    for (const row of dashboard?.rows || []) {
+      for (const item of row.items || []) {
+        const chart = resolveItem(item.chart, getChartByName);
+        chart?.insights?.forEach(i => {
+          const n = typeof i === 'string' ? parseRefValue(i) : i?.name;
+          if (n) names.add(n);
+        });
+        const table = resolveItem(item.table, getTableByName);
+        if (table?.data) {
+          const tableData = typeof table.data === 'string' ? table.data : table.data;
+          const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
+          if (name && !(typeof tableData === 'object' && isModelData(tableData))) {
+            names.add(name);
+          }
+        }
+      }
+    }
+    return names;
+  }, [dashboard?.rows, getChartByName, getTableByName]);
+
+  const { visibleInsightNames, visibleModelNames } = useMemo(() => {
+    if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
     const allRowIndices = dashboard.rows.map((_, idx) => idx);
-    return collectInsightNames(
+    const { insightNames, modelNames } = collectDataNames(
       dashboard.rows,
       allRowIndices,
       shouldShowItem,
       getChartByName,
-      getTableByName
+      getTableByName,
+      knownInsightNames
     );
-  // charts/tables are included so this re-runs when store data loads;
-  // getChartByName/getTableByName use get() internally and have stable references
+    return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
 
   useInsightsData(projectId, visibleInsightNames);
+  useModelsData(projectId, visibleModelNames);
 
   // Render a dashboard item
   const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items) => {

@@ -3,18 +3,20 @@ import useStore, { ObjectStatus } from '../../../stores/store';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
-import { setAtPath } from './embeddedObjectUtils';
+import RefTextArea from './RefTextArea';
 
 /**
  * TableEditForm - Form component for editing/creating tables
  *
- * Tables combine insights with pagination configuration.
+ * Tables can use:
+ * - `data` field to reference a single insight or model as their data source
+ * - `columns`, `rows`, `values` fields for pivot table configuration
  *
  * Props:
  * - table: Table object to edit (null for create mode)
@@ -24,12 +26,22 @@ import { setAtPath } from './embeddedObjectUtils';
  * - onNavigateToEmbedded: Callback(type, object) to navigate to embedded objects
  */
 const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
-  const { deleteTable, checkPublishStatus, insights: storeInsights, fetchInsights } = useStore();
+  const {
+    deleteTable,
+    checkPublishStatus,
+    insights: storeInsights,
+    fetchInsights,
+    models: storeModels,
+    fetchModels,
+  } = useStore();
 
   // Form state
   const [name, setName] = useState('');
-  const [insights, setInsights] = useState([]);
+  const [dataRef, setDataRef] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [columns, setColumns] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [values, setValues] = useState([]);
 
   // UI state
   const [errors, setErrors] = useState({});
@@ -41,46 +53,52 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
   const isEditMode = !!table && !isCreate;
   const isNewObject = table?.status === ObjectStatus.NEW;
 
-  // Get available insights from the insight store
-  const availableInsights = storeInsights?.map(i => i.name) || [];
+  // Combine insights and models for the data source dropdown
+  const availableInsights = storeInsights?.map(i => ({ name: i.name, type: 'insight' })) || [];
+  const availableModels = storeModels?.map(m => ({ name: m.name, type: 'model' })) || [];
+  const hasPivotFields = columns.length > 0 || rows.length > 0 || values.length > 0;
 
   // Rows per page options
   const ROWS_PER_PAGE_OPTIONS = [3, 5, 15, 25, 50, 100, 500, 1000];
 
-  // Fetch insights on mount if needed
+  // Fetch insights and models on mount if needed
   useEffect(() => {
     if (!storeInsights || storeInsights.length === 0) {
       fetchInsights();
     }
-  }, [storeInsights, fetchInsights]);
+    if (!storeModels || storeModels.length === 0) {
+      fetchModels();
+    }
+  }, [storeInsights, fetchInsights, storeModels, fetchModels]);
 
-  // Detect embedded insights (objects vs refs)
-  const rawInsights = table?.config?.insights || table?.insights || [];
-  const embeddedInsights = rawInsights
-    .map((insight, index) => ({ insight, index }))
-    .filter(({ insight }) => typeof insight === 'object');
+  // Detect embedded data (object vs ref)
+  const rawData = table?.config?.data || table?.data;
+  const isEmbeddedData = rawData && typeof rawData === 'object';
 
   // Initialize form when table changes
   useEffect(() => {
     if (table) {
-      // Edit mode - populate from existing table
+      const config = table.config || table;
       setName(table.name || '');
 
-      // Extract insight refs (strings only, not embedded objects)
-      const tableInsights = table.config?.insights || table.insights || [];
-      setInsights(
-        tableInsights
-          .filter(i => typeof i === 'string')
-          .map(i => parseRefValue(i))
-      );
+      const tableData = config.data;
+      if (typeof tableData === 'string') {
+        setDataRef(parseRefValue(tableData) || '');
+      } else {
+        setDataRef('');
+      }
 
-      // Rows per page
-      setRowsPerPage(table.config?.rows_per_page || table.rows_per_page || 25);
+      setRowsPerPage(config.rows_per_page || 25);
+      setColumns(config.columns || []);
+      setRows(config.rows || []);
+      setValues(config.values || []);
     } else if (isCreate) {
-      // Create mode - reset form
       setName('');
-      setInsights([]);
+      setDataRef('');
       setRowsPerPage(25);
+      setColumns([]);
+      setRows([]);
+      setValues([]);
     }
     setErrors({});
     setSaveError(null);
@@ -94,8 +112,20 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
       newErrors.name = nameError;
     }
 
-    if (insights.length === 0) {
-      newErrors.data = 'At least one insight is required';
+    if (!dataRef && !isEmbeddedData && !hasPivotFields) {
+      newErrors.data = 'A data source or pivot configuration (columns/rows/values) is required';
+    }
+
+    if (dataRef && hasPivotFields) {
+      newErrors.data = 'Cannot use both data source and columns/rows/values';
+    }
+
+    if ((rows.length > 0 || values.length > 0) && columns.length === 0) {
+      newErrors.columns = 'Columns are required when using rows and values';
+    }
+
+    if ((rows.length > 0) !== (values.length > 0)) {
+      newErrors.rows = 'Rows and values must be specified together';
     }
 
     setErrors(newErrors);
@@ -108,21 +138,21 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     setSaving(true);
     setSaveError(null);
 
-    // Build config object
     const config = {
       name,
       rows_per_page: rowsPerPage,
     };
 
-    // Combine ref insights with embedded insights (preserve embedded)
-    const refInsights = insights.map(i => formatRef(i));
-    const embeddedInsightObjects = embeddedInsights.map(({ insight }) => insight);
-
-    if (refInsights.length > 0 || embeddedInsightObjects.length > 0) {
-      config.insights = [...refInsights, ...embeddedInsightObjects];
+    if (isEmbeddedData) {
+      config.data = rawData;
+    } else if (dataRef) {
+      config.data = formatRef(dataRef);
     }
 
-    // Call unified save - parent handles routing and panel close
+    if (columns.length > 0) config.columns = columns;
+    if (rows.length > 0) config.rows = rows;
+    if (values.length > 0) config.values = values;
+
     const result = await onSave('table', name, config);
 
     setSaving(false);
@@ -144,24 +174,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
       setSaveError(result?.error || 'Failed to delete table');
       setShowDeleteConfirm(false);
     }
-  };
-
-  // Insight management
-  const addInsight = () => {
-    const availableToAdd = availableInsights.filter(i => !insights.includes(i));
-    if (availableToAdd.length > 0) {
-      setInsights([...insights, availableToAdd[0]]);
-    }
-  };
-
-  const removeInsight = index => {
-    setInsights(insights.filter((_, i) => i !== index));
-  };
-
-  const updateInsight = (index, value) => {
-    const updated = [...insights];
-    updated[index] = value;
-    setInsights(updated);
   };
 
   return (
@@ -232,101 +244,119 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             </div>
           </div>
 
-          {/* Insights Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-              <h3 className="text-sm font-medium text-gray-700">Insights</h3>
-              <button
-                type="button"
-                onClick={addInsight}
-                disabled={availableInsights.filter(i => !insights.includes(i)).length === 0}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <AddIcon fontSize="small" />
-                Add Insight
-              </button>
-            </div>
+          {/* Data Source Section */}
+          {!hasPivotFields && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                <h3 className="text-sm font-medium text-gray-700">Data Source</h3>
+              </div>
 
-            {availableInsights.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No insights available. Create insights first to add them to tables.
-              </p>
-            ) : insights.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
-                No insights added. Add insights to display data in this table.
-              </p>
-            ) : (
-              insights.map((insight, index) => (
-                <div key={index} className="flex items-center gap-2">
+              {isEmbeddedData ? (
+                (() => {
+                  const insightTypeConfig = getTypeByValue('insight');
+                  const InsightIcon = insightTypeConfig?.icon;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToEmbedded) {
+                          const syntheticObject = {
+                            name: rawData.name || '(embedded data)',
+                            config: rawData,
+                            _embedded: { parentType: 'table', parentName: table.name, path: 'data' },
+                          };
+                          onNavigateToEmbedded('insight', syntheticObject, {
+                            applyToParent: (parentConfig, newConfig) => ({
+                              ...parentConfig,
+                              data: newConfig,
+                            }),
+                          });
+                        }
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${insightTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${insightTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
+                    >
+                      {InsightIcon && <InsightIcon fontSize="small" className={insightTypeConfig?.colors?.text || 'text-gray-600'} />}
+                      <span className={`text-sm font-medium ${insightTypeConfig?.colors?.text || 'text-gray-700'}`}>
+                        {rawData.name || 'Embedded data source'}
+                      </span>
+                      <ChevronRightIcon fontSize="small" className={`ml-auto ${insightTypeConfig?.colors?.text || 'text-gray-600'}`} />
+                    </button>
+                  );
+                })()
+              ) : (
+                <div className="relative">
                   <select
-                    value={insight}
-                    onChange={e => updateInsight(index, e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    id="tableData"
+                    value={dataRef}
+                    onChange={e => setDataRef(e.target.value)}
+                    className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.data ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   >
-                    {availableInsights.map(i => (
-                      <option key={i} value={i} disabled={insights.includes(i) && i !== insight}>
-                        {i}
-                      </option>
-                    ))}
+                    <option value="">Select a data source...</option>
+                    {availableInsights.length > 0 && (
+                      <optgroup label="Insights">
+                        {availableInsights.map(i => (
+                          <option key={`insight-${i.name}`} value={i.name}>
+                            {i.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {availableModels.length > 0 && (
+                      <optgroup label="Models">
+                        {availableModels.map(m => (
+                          <option key={`model-${m.name}`} value={m.name}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => removeInsight(index)}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    title="Remove insight"
+                  <label
+                    htmlFor="tableData"
+                    className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
                   >
-                    <RemoveIcon fontSize="small" />
-                  </button>
+                    Data
+                  </label>
+                  {errors.data && <p className="mt-1 text-xs text-red-500">{errors.data}</p>}
                 </div>
-              ))
-            )}
+              )}
+            </div>
+          )}
 
-            {errors.data && <p className="text-xs text-red-500">{errors.data}</p>}
+          {/* Pivot Configuration Section */}
+          {!dataRef && !isEmbeddedData && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                <h3 className="text-sm font-medium text-gray-700">Pivot Configuration</h3>
+              </div>
 
-            {/* Embedded Insights Section */}
-            {embeddedInsights.length > 0 && (() => {
-              const insightTypeConfig = getTypeByValue('insight');
-              const InsightIcon = insightTypeConfig?.icon;
-              return (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Embedded Insights</h4>
-                  <div className="space-y-2">
-                    {embeddedInsights.map(({ insight, index }) => {
-                      const insightConfig = insight;
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => {
-                            if (onNavigateToEmbedded) {
-                              // Create synthetic insight with embedded marker
-                              const syntheticInsight = {
-                                name: insightConfig.name || `(embedded insight ${index + 1})`,
-                                config: insightConfig,
-                                _embedded: { parentType: 'table', parentName: table.name, path: `insights[${index}]` },
-                              };
-                              // Navigate with applyToParent to update table's insights array on save
-                              onNavigateToEmbedded('insight', syntheticInsight, {
-                                applyToParent: (parentConfig, newInsightConfig) =>
-                                  setAtPath(parentConfig, `insights[${index}]`, newInsightConfig),
-                              });
-                            }
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${insightTypeConfig?.colors?.node || 'bg-gray-50 border-gray-200'} ${insightTypeConfig?.colors?.bgHover || 'hover:bg-gray-100'}`}
-                        >
-                          {InsightIcon && <InsightIcon fontSize="small" className={insightTypeConfig?.colors?.text || 'text-gray-600'} />}
-                          <span className={`text-sm font-medium ${insightTypeConfig?.colors?.text || 'text-gray-700'}`}>
-                            Insight: {insightConfig.name || `${index + 1}`}
-                          </span>
-                          <ChevronRightIcon fontSize="small" className={`ml-auto ${insightTypeConfig?.colors?.text || 'text-gray-600'}`} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+              <RefListField
+                label="Columns"
+                items={columns}
+                onChange={setColumns}
+                helperText="Field references for pivot column headers"
+                error={errors.columns}
+              />
+
+              <RefListField
+                label="Rows"
+                items={rows}
+                onChange={setRows}
+                helperText="Field references for pivot row grouping"
+                error={errors.rows}
+              />
+
+              <RefListField
+                label="Values"
+                items={values}
+                onChange={setValues}
+                helperText="Aggregation expressions, e.g. sum(...)"
+                error={errors.values}
+              />
+            </div>
+          )}
 
           {/* Save Error */}
           {saveError && <div className="p-3 rounded-md bg-red-50 text-red-700 text-sm">{saveError}</div>}
@@ -364,7 +394,6 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
         <div className="flex justify-between items-center px-4 py-3">
           <div className="flex gap-2">
-            {/* Delete button - only in edit mode */}
             {isEditMode && !showDeleteConfirm && (
               <button
                 type="button"
@@ -395,6 +424,60 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
         </div>
       </div>
     </>
+  );
+};
+
+/**
+ * Reusable component for editing a list of ref expressions using RefTextArea.
+ */
+const RefListField = ({ label, items, onChange, helperText, error }) => {
+  const handleAdd = () => onChange([...items, '']);
+  const handleRemove = index => onChange(items.filter((_, i) => i !== index));
+  const handleChange = (index, value) => {
+    const updated = [...items];
+    updated[index] = value;
+    onChange(updated);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="flex items-center gap-0.5 text-xs text-primary-600 hover:text-primary-700"
+        >
+          <AddIcon fontSize="inherit" />
+          Add
+        </button>
+      </div>
+      {items.map((item, index) => (
+        <div key={index} className="flex items-start gap-1.5">
+          <div className="flex-1">
+            <RefTextArea
+              value={item}
+              onChange={value => handleChange(index, value)}
+              allowedTypes={['model', 'insight', 'dimension', 'metric']}
+              rows={1}
+              hideAddButton
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRemove(index)}
+            className="mt-1 p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+            title={`Remove ${label.toLowerCase()} entry`}
+          >
+            <RemoveCircleOutlineIcon fontSize="small" />
+          </button>
+        </div>
+      ))}
+      {items.length === 0 && helperText && (
+        <p className="text-xs text-gray-400">{helperText}</p>
+      )}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
   );
 };
 

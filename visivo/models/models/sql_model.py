@@ -39,7 +39,7 @@ class SqlModel(Model, ParentModel):
 
     source: Optional[SourceRefField] = Field(
         None,
-        description="A source object defined inline or a ref() to a chart. Override the defaults.source_name",
+        description="A source object defined inline or a ${ ref() } to a source. Override the defaults.source_name",
         alias="target",
     )
 

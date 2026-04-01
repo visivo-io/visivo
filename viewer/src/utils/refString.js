@@ -10,6 +10,16 @@
  * Use `parseRefValue` to extract the name from any format.
  */
 
+// Shared regex patterns for ref string matching
+// Matches ${ref(name).field} globally — captures the field name
+export const REF_FIELD_PATTERN = /\$\{\s*ref\(\s*[^)]+\s*\)\s*\.\s*([^}\s]+)\s*\}/g;
+// Matches a single ${ref(name).field} — captures the field name
+export const SINGLE_REF_FIELD_PATTERN = /^\$\{\s*ref\(\s*[^)]+\s*\)\s*\.\s*([^}\s]+)\s*\}$/;
+// Matches ${ref(name)} — captures the name
+export const CONTEXT_REF_PATTERN = /^\$\{\s*ref\(\s*([^)]+)\s*\)\s*\}$/;
+// Matches ${ref(name)...} anywhere — captures the name (global)
+export const REF_NAME_PATTERN = /\$\{\s*ref\(\s*([^)]+)\s*\)/g;
+
 /**
  * Extract name from a ref string.
  * Handles: ${ref(name)}, ${ ref( name ) }, ref(name), or raw name (returned as-is).
@@ -20,7 +30,7 @@ export const parseRefValue = value => {
   if (typeof value !== 'string') return null;
 
   // Match ${ ref(name) } pattern (context string format)
-  const contextRefMatch = value.match(/^\$\{\s*ref\(\s*([^)]+)\s*\)\s*\}$/);
+  const contextRefMatch = value.match(CONTEXT_REF_PATTERN);
   if (contextRefMatch) {
     return contextRefMatch[1].trim();
   }
@@ -78,4 +88,40 @@ export const parseMultiRefValue = value => {
 export const formatMultiRefValue = names => {
   if (!names || names.length === 0) return null;
   return names.map(name => formatRefExpression(name));
+};
+
+/**
+ * Extract all ref names from a single string that may contain
+ * ${ref(name).field} patterns (including inside expressions like "sum(${ref(name).field})").
+ *
+ * Unlike parseRefValue which expects the entire string to be a ref,
+ * this finds refs embedded anywhere in the string.
+ *
+ * @param {string} str - String possibly containing ref patterns
+ * @returns {string[]} Ref names found (may contain duplicates)
+ */
+export const extractRefNames = (str) => {
+  if (!str || typeof str !== 'string') return [];
+  const names = [];
+  const pattern = new RegExp(REF_NAME_PATTERN.source, REF_NAME_PATTERN.flags);
+  let match;
+  while ((match = pattern.exec(str)) !== null) {
+    names.push(match[1].trim());
+  }
+  return names;
+};
+
+/**
+ * Extract all unique ref names from an array of strings.
+ *
+ * @param {string[]} strings - Array of strings possibly containing ref patterns
+ * @returns {string[]} Unique ref names found
+ */
+export const extractRefNamesFromStrings = (strings) => {
+  if (!strings || !Array.isArray(strings)) return [];
+  const names = new Set();
+  for (const str of strings) {
+    extractRefNames(str).forEach(n => names.add(n));
+  }
+  return [...names];
 };

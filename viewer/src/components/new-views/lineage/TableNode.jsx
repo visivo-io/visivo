@@ -31,13 +31,12 @@ const TableNode = ({ data, selected }) => {
   const colors = typeConfig?.colors || DEFAULT_COLORS;
   const Icon = typeConfig?.icon;
 
-  // Check for embedded insights in table config (traces not supported for embedded display)
+  // Check for embedded data in table config
   const config = table?.config || {};
-  const insights = config.insights || [];
+  const dataField = config.data;
 
-  // Count embedded insights (not refs)
-  const embeddedInsights = insights.filter(isEmbeddedObject);
-  const hasEmbeddedObjects = embeddedInsights.length > 0;
+  // Check if data is an embedded object (not a ref string)
+  const hasEmbeddedObjects = dataField && isEmbeddedObject(dataField);
 
   // Get embedded types for small icon indicators (use full table object)
   const embeddedTypes = getEmbeddedTypes(table || data, 'table');
@@ -59,17 +58,14 @@ const TableNode = ({ data, selected }) => {
           {name}
         </span>
 
-        {/* Embedded insight pills */}
+        {/* Embedded data pill */}
         {hasEmbeddedObjects && (
           <div className="flex flex-wrap gap-1">
-            {embeddedInsights.map((insight, index) => (
-              <EmbeddedPill
-                key={`insight-${index}`}
-                objectType="insight"
-                label={insight.name || 'insight'}
-                onClick={() => data.onEditEmbeddedInsight?.(insight, index)}
-              />
-            ))}
+            <EmbeddedPill
+              objectType="insight"
+              label={dataField.name || 'data'}
+              onClick={() => data.onEditEmbeddedInsight?.(dataField, 0)}
+            />
           </div>
         )}
       </div>

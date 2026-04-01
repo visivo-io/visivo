@@ -111,3 +111,16 @@ models:
         expression: "Count(value)"
       - name: avg_value
         expression: "AVG(value)"
+
+  - name: sales_data
+    source: ${ref(local-duckdb)}
+    sql: |
+      SELECT
+        (['North','South','East','West'])[1 + (i % 4)] AS region,
+        (['Electronics','Clothing','Food','Furniture','Books'])[1 + ((i // 4) % 5)] AS category,
+        (['Q1','Q2','Q3','Q4'])[1 + ((i // 20) % 4)] AS quarter,
+        (['Online','Store','Wholesale'])[1 + (i % 3)] AS channel,
+        ROUND(50 + (i * 17 % 200) + (i * 7 % 50), 2) AS revenue,
+        CAST((i * 3 % 40) + 5 AS INTEGER) AS units_sold,
+        ROUND(10 + (i * 13 % 30) + ((i * 7 % 20) * 0.5), 2) AS cost
+      FROM generate_series(0, 99) AS t(i)
