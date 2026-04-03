@@ -43,13 +43,29 @@ const ExplorerSaveModal = ({ onClose }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const { newModels, modifiedModels, newInsights, modifiedInsights, hasChart } = useMemo(() => {
+  const {
+    newModels,
+    modifiedModels,
+    newInsights,
+    modifiedInsights,
+    newMetrics,
+    newDimensions,
+    hasChart,
+  } = useMemo(() => {
     const newM = [];
     const modM = [];
+    const newMet = [];
+    const newDim = [];
     for (const [name, ms] of Object.entries(modelStates)) {
       const status = getModelStatus(ms);
       if (status === 'new') newM.push(name);
       else if (status === 'modified') modM.push(name);
+
+      // Extract computed columns as metrics/dimensions
+      for (const cc of ms.computedColumns || []) {
+        if (cc.type === 'metric') newMet.push(cc.name);
+        else newDim.push(cc.name);
+      }
     }
 
     const newI = [];
@@ -65,12 +81,19 @@ const ExplorerSaveModal = ({ onClose }) => {
       modifiedModels: modM,
       newInsights: newI,
       modifiedInsights: modI,
+      newMetrics: newMet,
+      newDimensions: newDim,
       hasChart: !!chartName,
     };
   }, [modelStates, insightStates, chartName]);
 
   const totalChanges =
-    newModels.length + modifiedModels.length + newInsights.length + modifiedInsights.length;
+    newModels.length +
+    modifiedModels.length +
+    newInsights.length +
+    modifiedInsights.length +
+    newMetrics.length +
+    newDimensions.length;
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -106,7 +129,10 @@ const ExplorerSaveModal = ({ onClose }) => {
         )}
 
         {/* New objects */}
-        {(newModels.length > 0 || newInsights.length > 0) && (
+        {(newModels.length > 0 ||
+          newInsights.length > 0 ||
+          newMetrics.length > 0 ||
+          newDimensions.length > 0) && (
           <div className="mb-3">
             <p className="text-xs font-medium text-secondary-500 uppercase tracking-wide mb-1.5">
               New
@@ -125,6 +151,24 @@ const ExplorerSaveModal = ({ onClose }) => {
                 <EmbeddedPill
                   key={`insight-${name}`}
                   objectType="insight"
+                  label={name}
+                  statusDot="new"
+                  as="div"
+                />
+              ))}
+              {newMetrics.map((name) => (
+                <EmbeddedPill
+                  key={`metric-${name}`}
+                  objectType="metric"
+                  label={name}
+                  statusDot="new"
+                  as="div"
+                />
+              ))}
+              {newDimensions.map((name) => (
+                <EmbeddedPill
+                  key={`dimension-${name}`}
+                  objectType="dimension"
                   label={name}
                   statusDot="new"
                   as="div"

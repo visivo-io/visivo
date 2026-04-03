@@ -7,6 +7,8 @@
  * US-11B: Remove all insights — chart still exists
  * US-12: Add interaction to insight
  *
+ * Note: An insight is auto-created on first visit (named "insight").
+ *
  * Precondition: Sandbox running on :3001/:8001
  */
 
@@ -19,16 +21,11 @@ test.describe('Explorer Insight CRUD', () => {
   test('US-9: Create insight and change type', async ({ page }) => {
     await loadExplorer(page);
 
-    // Click "Add Insight" in the right panel
-    await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
-
-    // Verify: New insight section appears with default type "scatter"
+    // Auto-created insight already exists as "insight"
     const insightSection = page.locator('[data-testid="insight-crud-section-insight"]');
     await expect(insightSection).toBeVisible({ timeout: 5000 });
 
-    // Insight auto-expands on creation (createInsight sets it as active)
-    // Verify the type select is visible with default "scatter"
+    // It should be auto-expanded with type select visible
     const typeSelect = page.locator('[data-testid="insight-type-select-insight"]');
     await expect(typeSelect).toBeVisible({ timeout: 5000 });
     await expect(typeSelect).toHaveValue('scatter');
@@ -44,27 +41,28 @@ test.describe('Explorer Insight CRUD', () => {
   test('US-10: Add multiple insights to a chart', async ({ page }) => {
     await loadExplorer(page);
 
-    // Click "Add Insight" twice
+    // Auto-created "insight" already exists. Add two more.
     await page.locator('[data-testid="right-panel-add-insight"]').click();
     await page.waitForTimeout(500);
     await page.locator('[data-testid="right-panel-add-insight"]').click();
     await page.waitForTimeout(500);
 
-    // Verify: Two insight sections exist in the right panel
+    // Verify: Three insight sections exist (auto-created + 2 new)
     await expect(
       page.locator('[data-testid="insight-crud-section-insight"]')
     ).toBeVisible({ timeout: 5000 });
     await expect(
       page.locator('[data-testid="insight-crud-section-insight_2"]')
     ).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="insight-crud-section-insight_3"]')
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('US-11: Remove insight from chart', async ({ page }) => {
     await loadExplorer(page);
 
-    // Add 2 insights
-    await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
+    // Add another insight alongside auto-created "insight"
     await page.locator('[data-testid="right-panel-add-insight"]').click();
     await page.waitForTimeout(500);
 
@@ -76,7 +74,7 @@ test.describe('Explorer Insight CRUD', () => {
       page.locator('[data-testid="insight-crud-section-insight_2"]')
     ).toBeVisible({ timeout: 5000 });
 
-    // Remove the first insight via the X button on the header
+    // Remove the auto-created insight via the X button
     await page.locator('[data-testid="insight-remove-insight"]').click();
     await page.waitForTimeout(500);
 
@@ -92,11 +90,7 @@ test.describe('Explorer Insight CRUD', () => {
   test('US-11B: Remove all insights — chart still exists', async ({ page }) => {
     await loadExplorer(page);
 
-    // Add 1 insight
-    await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
-
-    // Verify insight is visible
+    // Auto-created insight exists
     await expect(
       page.locator('[data-testid="insight-crud-section-insight"]')
     ).toBeVisible({ timeout: 5000 });
@@ -110,21 +104,20 @@ test.describe('Explorer Insight CRUD', () => {
       page.locator('[data-testid="insight-crud-section-insight"]')
     ).not.toBeVisible({ timeout: 5000 });
 
-    // Verify: "No insights added yet" message in the chart CRUD section
-    await expect(page.getByText('No insights added yet')).toBeVisible({ timeout: 5000 });
+    // Verify: Chart still exists (chart header visible)
+    await expect(page.locator('[data-testid="chart-header"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Chart: Untitled')).toBeVisible({ timeout: 5000 });
 
-    // Verify: Chart name input still visible (chart still exists)
-    await expect(page.locator('[data-testid="chart-name-input"]')).toBeVisible({ timeout: 5000 });
+    // Verify: No insight sections remain
+    const insightSections = page.locator('[data-testid^="insight-crud-section-"]');
+    expect(await insightSections.count()).toBe(0);
   });
 
   test('US-12: Add interaction to insight', async ({ page }) => {
     await loadExplorer(page);
 
-    // Add an insight (it auto-expands because createInsight sets it as active)
-    await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
-
-    // Click "Add Interaction" button within the insight section
+    // Auto-created "insight" is already expanded
+    // Click "Add Interaction" button within it
     await page.locator('[data-testid="insight-add-interaction-insight"]').click();
     await page.waitForTimeout(300);
 

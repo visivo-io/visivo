@@ -142,6 +142,18 @@ describe('ExplorerRightPanel', () => {
     expect(screen.getByTestId('right-panel-add-insight')).toBeInTheDocument();
   });
 
+  it('renders chart section above insight sections', () => {
+    const { container } = render(<ExplorerRightPanel />);
+
+    // Get all rendered text content — chart should appear before insights
+    const fullText = container.textContent;
+    const chartPos = fullText.indexOf('ChartCRUDSection');
+    const insightPos = fullText.indexOf('InsightCRUD:');
+
+    expect(chartPos).toBeGreaterThanOrEqual(0);
+    expect(insightPos).toBeGreaterThan(chartPos);
+  });
+
   it('renders empty state when no insights exist', () => {
     useStore.setState({
       explorerChartInsightNames: [],

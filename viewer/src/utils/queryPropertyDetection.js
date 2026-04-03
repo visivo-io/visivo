@@ -124,5 +124,6 @@ export function hashQueryProps(config) {
   const queryProps = extractQueryAffectingProps(config);
   const sortedKeys = Object.keys(queryProps).sort();
   const normalized = sortedKeys.map(key => `${key}:${queryProps[key]}`).join('|');
+
   return normalized;
 }

@@ -44,11 +44,10 @@ export function SchemaEditor({
     return allProperties.filter(prop => addedProperties.has(prop.path));
   }, [allProperties, addedProperties]);
 
-  const lastSchemaRef = useRef(null);
+  const lastValueKeysRef = useRef('');
 
   useEffect(() => {
-    if (lastSchemaRef.current === schema) return;
-    lastSchemaRef.current = schema;
+    if (!schema) return;
 
     const extractPaths = (obj, prefix = '') => {
       const paths = [];
@@ -64,8 +63,20 @@ export function SchemaEditor({
     };
 
     const pathsWithValues = extractPaths(value);
+    const valueKeysKey = pathsWithValues.sort().join(',');
+
+    // Only update if value paths actually changed (avoid infinite loop)
+    if (valueKeysKey === lastValueKeysRef.current) return;
+    lastValueKeysRef.current = valueKeysKey;
+
     const validPaths = pathsWithValues.filter(path => allProperties.some(p => p.path === path));
-    setAddedProperties(new Set([...initiallyExpanded, ...validPaths]));
+    setAddedProperties(prev => {
+      const next = new Set([...initiallyExpanded, ...validPaths]);
+      for (const p of prev) {
+        if (allProperties.some(ap => ap.path === p)) next.add(p);
+      }
+      return next;
+    });
   }, [schema, value, allProperties, initiallyExpanded]);
 
   const handlePropertyChange = useCallback(

@@ -22,6 +22,7 @@ const ChartPreview = ({
   onLayoutChange,
   editableLayout = true,
   contextObjects,
+  additionalInsightKeys,
 }) => {
   const extraPreviewBody = useMemo(
     () => (contextObjects ? { context_objects: contextObjects } : undefined),
@@ -30,10 +31,17 @@ const ChartPreview = ({
   const { isLoading, error, progress, progressMessage, previewInsightKey } =
     useInsightPreviewData(insightConfig, { projectId, extraPreviewBody });
 
-  const chartInsights = useMemo(
-    () => (previewInsightKey ? [{ name: previewInsightKey }] : []),
-    [previewInsightKey]
-  );
+  const chartInsights = useMemo(() => {
+    const insights = previewInsightKey ? [{ name: previewInsightKey }] : [];
+    if (additionalInsightKeys) {
+      for (const key of additionalInsightKeys) {
+        if (key && key !== previewInsightKey) {
+          insights.push({ name: key });
+        }
+      }
+    }
+    return insights;
+  }, [previewInsightKey, additionalInsightKeys]);
 
   const chartLayout = useMemo(() => ({
     autosize: true,

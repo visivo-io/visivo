@@ -61,7 +61,7 @@ test.describe('Explorer First Visit', () => {
     await expect(page.getByText('Models (7)')).toBeVisible();
     await expect(page.getByText('Metrics (5)')).toBeVisible();
     await expect(page.getByText('Dimensions (3)')).toBeVisible();
-    await expect(page.getByText('Insights (20)')).toBeVisible();
+    await expect(page.getByText('Insights (21)')).toBeVisible();
     await expect(page.getByText('Charts (26)')).toBeVisible();
     await expect(page.getByText('Inputs (15)')).toBeVisible();
   });
@@ -84,20 +84,29 @@ test.describe('Explorer First Visit', () => {
     await expect(page.getByText('fibonacci').first()).toBeVisible();
   });
 
-  test('Step 6: Right panel has chart CRUD and disabled save', async ({ page }) => {
+  test('Step 6: Right panel has chart above auto-created insight', async ({ page }) => {
     await loadExplorer(page);
 
     await expect(page.getByText('Chart: Untitled')).toBeVisible();
+    // An insight is auto-created on first visit
+    const insightSection = page.locator('[data-testid^="insight-crud-section-"]');
+    await expect(insightSection.first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: 'Add Insight' }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled();
+    // Save is enabled because auto-created insight is new
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled();
   });
 
-  test('Step 7: Adding an insight enables save', async ({ page }) => {
+  test('Step 7: Adding a second insight creates it below the first', async ({ page }) => {
     await loadExplorer(page);
+
+    // Auto-created insight already exists
+    const insightsBefore = page.locator('[data-testid^="insight-crud-section-"]');
+    await expect(insightsBefore.first()).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
     await page.waitForTimeout(500);
 
-    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled();
+    const insightsAfter = page.locator('[data-testid^="insight-crud-section-"]');
+    expect(await insightsAfter.count()).toBeGreaterThanOrEqual(2);
   });
 });

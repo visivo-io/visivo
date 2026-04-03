@@ -296,7 +296,11 @@ const RefTextArea = ({
 
   // Render a ref pill for display mode
   const renderRefPill = (name, property, key) => {
-    const type = getObjectTypeByName(name);
+    // When property is present (e.g., ref(model).metric_name), check if the property
+    // is a known metric/dimension and color accordingly. Fall back to parent name lookup.
+    const type = property
+      ? (getObjectTypeByName(property) || getObjectTypeByName(name))
+      : getObjectTypeByName(name);
     const typeConfig = type ? getTypeByValue(type) : null;
     const colors = typeConfig?.colors || DEFAULT_COLORS;
     const TypeIcon = typeConfig?.icon;

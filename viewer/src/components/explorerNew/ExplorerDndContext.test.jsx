@@ -127,7 +127,7 @@ describe('ExplorerDndContext', () => {
     );
   });
 
-  it('sets metric drop as model-scoped ref format', () => {
+  it('sets model-scoped metric drop with parentModel in ref', () => {
     useStore.setState({
       explorerActiveInsightName: 'ins_1',
       explorerInsightStates: {
@@ -142,16 +142,16 @@ describe('ExplorerDndContext', () => {
     );
 
     capturedOnDragEnd({
-      active: { data: { current: { name: 'total_revenue', type: 'metric' } } },
+      active: { data: { current: { name: 'total_revenue', type: 'metric', parentModel: 'orders_model' } } },
       over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
     });
 
     expect(useStore.getState().explorerInsightStates.ins_1.props.y).toBe(
-      '?{${ref(preview_model).total_revenue}}'
+      '?{${ref(orders_model).total_revenue}}'
     );
   });
 
-  it('sets dimension drop as model-scoped ref format', () => {
+  it('sets global metric drop as bare ref (no parentModel)', () => {
     useStore.setState({
       explorerActiveInsightName: 'ins_1',
       explorerInsightStates: {
@@ -166,12 +166,36 @@ describe('ExplorerDndContext', () => {
     );
 
     capturedOnDragEnd({
-      active: { data: { current: { name: 'order_month', type: 'dimension' } } },
+      active: { data: { current: { name: 'composite_metric', type: 'metric' } } },
+      over: { data: { current: { fieldName: 'y', type: 'axis-zone' } } },
+    });
+
+    expect(useStore.getState().explorerInsightStates.ins_1.props.y).toBe(
+      '?{${ref(composite_metric)}}'
+    );
+  });
+
+  it('sets model-scoped dimension drop with parentModel in ref', () => {
+    useStore.setState({
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+      },
+    });
+
+    render(
+      <ExplorerDndContext>
+        <div>Content</div>
+      </ExplorerDndContext>
+    );
+
+    capturedOnDragEnd({
+      active: { data: { current: { name: 'order_month', type: 'dimension', parentModel: 'orders_model' } } },
       over: { data: { current: { fieldName: 'x', type: 'axis-zone' } } },
     });
 
     expect(useStore.getState().explorerInsightStates.ins_1.props.x).toBe(
-      '?{${ref(preview_model).order_month}}'
+      '?{${ref(orders_model).order_month}}'
     );
   });
 

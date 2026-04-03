@@ -10,12 +10,13 @@ import { loadExplorer, typeSql } from '../helpers/explorer.mjs';
 test.describe('Explorer Save Flow', () => {
   test.setTimeout(60000);
 
-  test('Step 1: Save button disabled on fresh page', async ({ page }) => {
+  test('Step 1: Save button enabled on fresh page (auto-created insight)', async ({ page }) => {
     await loadExplorer(page);
 
+    // Auto-created insight is isNew=true, so save is enabled immediately
     const saveButton = page.getByRole('button', { name: 'Save to Project' });
     await expect(saveButton).toBeVisible();
-    await expect(saveButton).toBeDisabled();
+    await expect(saveButton).toBeEnabled();
   });
 
   test('Step 2: Creating new model with SQL enables save', async ({ page }) => {

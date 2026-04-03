@@ -249,6 +249,28 @@ describe('ExplorerSaveModal', () => {
     expect(screen.getByTestId('embedded-pill-chart-my_chart')).toBeInTheDocument();
   });
 
+  it('shows computed columns as metric and dimension pills', () => {
+    useStore.setState({
+      ...baseState,
+      explorerModelStates: {
+        my_model: {
+          sql: 'SELECT x FROM t',
+          sourceName: 'src',
+          computedColumns: [
+            { name: 'total_x', expression: 'SUM(x)', type: 'metric' },
+            { name: 'x_label', expression: 'CAST(x AS VARCHAR)', type: 'dimension' },
+          ],
+          isNew: true,
+        },
+      },
+    });
+    render(<ExplorerSaveModal onClose={mockOnClose} />);
+
+    expect(screen.getByTestId('embedded-pill-metric-total_x')).toBeInTheDocument();
+    expect(screen.getByTestId('embedded-pill-dimension-x_label')).toBeInTheDocument();
+    expect(screen.getByTestId('save-modal-confirm')).not.toBeDisabled();
+  });
+
   it('save button is disabled when no changes exist', () => {
     useStore.setState(stateUnchanged);
     render(<ExplorerSaveModal onClose={mockOnClose} />);

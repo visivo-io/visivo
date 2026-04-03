@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import useStore from '../../stores/store';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import { formatRefExpression } from '../../utils/refString';
 
 const DragOverlayContent = ({ data }) => {
   if (!data) return null;
@@ -46,7 +47,20 @@ const ExplorerDndContext = ({ children }) => {
 
       if (dropData?.type === 'axis-zone' || dropData?.type === 'property-zone') {
         const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
-        const value = '?{${ref(' + activeModelName + ').' + dragData.name + '}}';
+
+        let value;
+        if (dragData.type === 'metric' || dragData.type === 'dimension') {
+          if (dragData.parentModel) {
+            // Model-scoped metric/dimension: ?{${ref(parentModel).name}}
+            value = '?{' + formatRefExpression(dragData.parentModel, dragData.name) + '}';
+          } else {
+            // Global/standalone metric/dimension: ?{${ref(name)}}
+            value = '?{' + formatRefExpression(dragData.name) + '}';
+          }
+        } else {
+          // Columns (implicit dimensions from data table): ?{${ref(activeModel).column}}
+          value = '?{' + formatRefExpression(activeModelName, dragData.name) + '}';
+        }
 
         if (activeInsightName) {
           setInsightProp(activeInsightName, fieldName, value);

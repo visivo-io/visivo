@@ -42,7 +42,13 @@ const ExplorerRightPanel = () => {
     >
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* Insight Sections */}
+        {/* Chart Section (container — always at top) */}
+        <ChartCRUDSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />
+
+        {/* Divider */}
+        <div className="border-t-2 border-gray-200" />
+
+        {/* Insight Sections (below chart — shows hierarchy) */}
         {chartInsightNames.map((name) => (
           <InsightCRUDSection
             key={name}
@@ -61,12 +67,6 @@ const ExplorerRightPanel = () => {
           <PiPlus size={14} />
           Add Insight
         </button>
-
-        {/* Divider */}
-        <div className="border-t-2 border-gray-200" />
-
-        {/* Chart Section */}
-        <ChartCRUDSection isExpanded={chartExpanded} onToggleExpand={handleToggleChart} />
       </div>
 
       {/* Save Button (fixed at bottom) */}

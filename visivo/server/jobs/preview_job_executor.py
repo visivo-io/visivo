@@ -68,7 +68,7 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
-CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics"}
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations"}
 
 
 def _get_type_adapter(field_name):
@@ -87,6 +87,14 @@ def _get_type_adapter(field_name):
         from visivo.models.metric import Metric
 
         return TypeAdapter(Metric)
+    elif field_name == "inputs":
+        from visivo.models.inputs.fields import InputField
+
+        return TypeAdapter(InputField)
+    elif field_name == "relations":
+        from visivo.models.relation import Relation
+
+        return TypeAdapter(Relation)
     return None
 
 

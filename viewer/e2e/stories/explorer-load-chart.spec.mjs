@@ -34,4 +34,21 @@ test.describe('Explorer Load Existing Chart', () => {
 
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled({ timeout: 5000 });
   });
+
+  test('Step 3: Loaded chart shows layout properties in right panel', async ({ page }) => {
+    await loadExplorer(page);
+
+    // Load a chart that has layout properties (e.g., title)
+    await page.getByRole('button', { name: 'aggregated-bar-chart', exact: true }).click();
+    await page.waitForTimeout(5000);
+
+    // Chart section should be visible and expanded
+    const chartSection = page.locator('[data-testid="chart-crud-section"]');
+    await expect(chartSection).toBeVisible({ timeout: 5000 });
+
+    // Layout properties should show non-zero count (chart has title, etc.)
+    // Wait for schema to load and properties to populate
+    const propCount = chartSection.locator('text=/[1-9]\\d* of \\d+ properties/');
+    await expect(propCount).toBeVisible({ timeout: 10000 });
+  });
 });

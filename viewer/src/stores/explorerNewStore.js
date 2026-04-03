@@ -308,6 +308,7 @@ const createExplorerNewSlice = (set, get) => ({
   explorerChartLayout: {},
   explorerChartInsightNames: [],
   explorerActiveInsightName: null,
+  explorerChartInputNames: [],
 
   // --- Per-Insight State ---
   explorerInsightStates: {},
@@ -777,7 +778,7 @@ const createExplorerNewSlice = (set, get) => ({
     autoLoadModelData(modelName, get, set);
   },
 
-  loadChart: (chartObject, insightObjects, modelObjects) => {
+  loadChart: (chartObject, insightObjects, modelObjects, inputObjects = []) => {
     const state = get();
 
     // Remove auto-created empty model tabs (isNew with no SQL) — they're clutter when loading a chart
@@ -849,6 +850,7 @@ const createExplorerNewSlice = (set, get) => ({
       explorerChartInsightNames: insightNames,
       explorerInsightStates: insightStates,
       explorerActiveInsightName: insightNames.length > 0 ? insightNames[0] : null,
+      explorerChartInputNames: inputObjects.map((i) => i.name),
     });
 
     // Auto-load parquet data for each model
@@ -993,10 +995,13 @@ const createExplorerNewSlice = (set, get) => ({
       try {
         const { saveInsight } = await import('../api/insights');
         const expandedProps = expandDotNotationProps(is.props);
+        const backendInteractions = (is.interactions || [])
+          .filter((i) => i.value)
+          .map((i) => ({ [i.type]: i.value }));
         await saveInsight(name, {
           type: is.type,
           props: expandedProps,
-          interactions: is.interactions,
+          ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
         });
       } catch (err) {
         errors.push({ name, type: 'insight', error: err.message });

@@ -27,7 +27,12 @@ const SECTION_DEFS = [
 const DraggableItem = ({ item, type }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${type}-${item.name}`,
-    data: { name: item.name, type, expression: item.config?.expression },
+    data: {
+      name: item.name,
+      type,
+      expression: item.config?.expression,
+      parentModel: item.parentModel || null,
+    },
   });
 
   return (
@@ -38,7 +43,7 @@ const DraggableItem = ({ item, type }) => {
       className={`flex items-center gap-2 px-4 py-2 border-b border-gray-100 cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-colors ${isDragging ? 'opacity-50' : ''}`}
       data-testid={`draggable-${type}-${item.name}`}
     >
-      <EmbeddedPill objectType={type} label={item.name} as="div" />
+      <EmbeddedPill objectType={type} label={item.name} statusDot={item.status || null} as="div" />
       {item.config?.expression && (
         <span className="text-xs text-secondary-400 truncate max-w-[100px]" title={item.config.expression}>
           {item.config.expression}
@@ -59,6 +64,8 @@ const ExplorerLeftPanel = () => {
   const sourceName = useStore(selectActiveModelSourceName);
   const setSourceName = useStore((s) => s.setActiveModelSource);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
+  const explorerModelStates = useStore((s) => s.explorerModelStates);
+  const explorerInsightStates = useStore((s) => s.explorerInsightStates);
 
   // Object stores
   const models = useStore((s) => s.models || []);
@@ -100,21 +107,64 @@ const ExplorerLeftPanel = () => {
     [searchQuery]
   );
 
+  // Merge explorer-created objects into API-fetched lists
+  const mergedModels = useMemo(() => {
+    const apiNames = new Set(models.map((m) => m.name));
+    const newModels = Object.entries(explorerModelStates)
+      .filter(([name, ms]) => ms.isNew && ms.sql && !apiNames.has(name))
+      .map(([name]) => ({ name, status: 'new' }));
+    return [...models, ...newModels];
+  }, [models, explorerModelStates]);
+
+  const mergedInsights = useMemo(() => {
+    const apiNames = new Set(insights.map((i) => i.name));
+    const newInsights = Object.entries(explorerInsightStates)
+      .filter(([name, is]) => is.isNew && !apiNames.has(name))
+      .map(([name]) => ({ name, status: 'new' }));
+    return [...insights, ...newInsights];
+  }, [insights, explorerInsightStates]);
+
+  const mergedMetrics = useMemo(() => {
+    const apiNames = new Set(metrics.map((m) => m.name));
+    const newMetrics = [];
+    for (const [modelName, ms] of Object.entries(explorerModelStates)) {
+      for (const cc of ms.computedColumns || []) {
+        if (cc.type === 'metric' && !apiNames.has(cc.name)) {
+          newMetrics.push({ name: cc.name, config: { expression: cc.expression }, status: 'new', parentModel: modelName });
+        }
+      }
+    }
+    return [...metrics, ...newMetrics];
+  }, [metrics, explorerModelStates]);
+
+  const mergedDimensions = useMemo(() => {
+    const apiNames = new Set(dimensions.map((d) => d.name));
+    const newDimensions = [];
+    for (const [modelName, ms] of Object.entries(explorerModelStates)) {
+      for (const cc of ms.computedColumns || []) {
+        if (cc.type === 'dimension' && !apiNames.has(cc.name)) {
+          newDimensions.push({ name: cc.name, config: { expression: cc.expression }, status: 'new', parentModel: modelName });
+        }
+      }
+    }
+    return [...dimensions, ...newDimensions];
+  }, [dimensions, explorerModelStates]);
+
   const filteredModels = useMemo(
-    () => models.filter((m) => matchesSearch(m.name)),
-    [models, matchesSearch]
+    () => mergedModels.filter((m) => matchesSearch(m.name)),
+    [mergedModels, matchesSearch]
   );
   const filteredMetrics = useMemo(
-    () => metrics.filter((m) => matchesSearch(m.name)),
-    [metrics, matchesSearch]
+    () => mergedMetrics.filter((m) => matchesSearch(m.name)),
+    [mergedMetrics, matchesSearch]
   );
   const filteredDimensions = useMemo(
-    () => dimensions.filter((d) => matchesSearch(d.name)),
-    [dimensions, matchesSearch]
+    () => mergedDimensions.filter((d) => matchesSearch(d.name)),
+    [mergedDimensions, matchesSearch]
   );
   const filteredInsights = useMemo(
-    () => insights.filter((i) => matchesSearch(i.name)),
-    [insights, matchesSearch]
+    () => mergedInsights.filter((i) => matchesSearch(i.name)),
+    [mergedInsights, matchesSearch]
   );
   const filteredCharts = useMemo(
     () => charts.filter((c) => matchesSearch(c.name)),
@@ -144,9 +194,11 @@ const ExplorerLeftPanel = () => {
 
   const handleChartClick = useCallback(
     (chart) => {
-      // Resolve chart lineage: find insights and their models
+      // Resolve chart lineage: find insights, models, and inputs
       const allInsights = useStore.getState().insights || [];
       const allModels = useStore.getState().models || [];
+      const allInputs = useStore.getState().inputs || [];
+      const allInputNames = new Set(allInputs.map((i) => i.name));
 
       // Find insights referenced by this chart
       const chartInsightRefs = chart.config?.insights || [];
@@ -159,18 +211,25 @@ const ExplorerLeftPanel = () => {
         }
       }
 
-      // Find models referenced by insights (via props containing ref(modelName))
+      // Find all ref names from insight props AND interactions
       const modelNames = new Set();
+      const inputNames = new Set();
       for (const insight of resolvedInsights) {
-        const propsStr = JSON.stringify(insight.config?.props || {});
-        const matches = propsStr.matchAll(/ref\(([^.)]+)\)/g);
+        const searchStr = JSON.stringify(insight.config || {});
+        const matches = searchStr.matchAll(/ref\(([^.)]+)\)/g);
         for (const match of matches) {
-          modelNames.add(match[1]);
+          const name = match[1];
+          if (allInputNames.has(name)) {
+            inputNames.add(name);
+          } else {
+            modelNames.add(name);
+          }
         }
       }
       const resolvedModels = allModels.filter((m) => modelNames.has(m.name));
+      const resolvedInputs = allInputs.filter((i) => inputNames.has(i.name));
 
-      loadChart(chart, resolvedInsights, resolvedModels);
+      loadChart(chart, resolvedInsights, resolvedModels, resolvedInputs);
     },
     [loadChart]
   );

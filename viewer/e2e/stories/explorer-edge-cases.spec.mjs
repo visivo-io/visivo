@@ -88,19 +88,18 @@ test.describe('Explorer Edge Cases', () => {
     await expect(page.getByText('Models (7)')).toBeVisible({ timeout: 3000 });
   });
 
-  test('US-24C: Save button enables after writing SQL in new model', async ({ page }) => {
+  test('US-24C: Save button is enabled on fresh page due to auto-created insight', async ({ page }) => {
     await loadExplorer(page);
 
-    // Save should be disabled on fresh load (auto-created empty model does not count)
-    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled({
+    // Save is enabled on fresh load because auto-created insight is isNew=true
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled({
       timeout: 5000,
     });
 
-    // Type SQL into the auto-created model tab — this is a real user action
+    // Typing SQL keeps it enabled
     await typeSql(page, 'SELECT 1');
     await page.waitForTimeout(500);
 
-    // Save should now be enabled (new model with SQL = modification detected)
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled({
       timeout: 5000,
     });

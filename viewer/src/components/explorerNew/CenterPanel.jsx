@@ -5,6 +5,7 @@ import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import ExplorerErrorBoundary from './ExplorerErrorBoundary';
+import ExplorerInputsToolbar from './ExplorerInputsToolbar';
 import DataSectionToolbar from './DataSectionToolbar';
 import DraggableColumnHeader from './DraggableColumnHeader';
 import ModelTabBar from './ModelTabBar';
@@ -51,6 +52,7 @@ const CenterPanel = () => {
   const updateComputedColumn = useStore((s) => s.updateActiveModelComputedColumn);
   const validateExpression = useStore((s) => s.validateExplorerExpression);
   const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
+  const projectId = useStore((s) => s.project?.id);
 
   // Initialize DuckDB integration for computed columns
   useExplorerDuckDB();
@@ -242,10 +244,13 @@ const CenterPanel = () => {
   );
 
   const renderChartSection = () => (
-    <div className="h-full overflow-hidden" data-testid="chart-section">
-      <ExplorerErrorBoundary fallback="Chart preview error">
-        <ExplorerChartPreview />
-      </ExplorerErrorBoundary>
+    <div className="h-full flex flex-col overflow-hidden" data-testid="chart-section">
+      <ExplorerInputsToolbar projectId={projectId} />
+      <div className="flex-1 min-h-0">
+        <ExplorerErrorBoundary fallback="Chart preview error">
+          <ExplorerChartPreview />
+        </ExplorerErrorBoundary>
+      </div>
     </div>
   );
 

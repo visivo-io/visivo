@@ -1783,7 +1783,6 @@ describe('explorerNewStore', () => {
       expect(mockSaveInsight).toHaveBeenCalledWith('my_insight', {
         type: 'bar',
         props: { x: 'col_a' },
-        interactions: [],
       });
 
       const insightState = useStore.getState().explorerInsightStates.my_insight;
@@ -1895,7 +1894,6 @@ describe('explorerNewStore', () => {
       expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
         type: 'scatter',
         props: { marker: { color: 'red', size: 10 }, x: 'col_a' },
-        interactions: [],
       });
     });
   });

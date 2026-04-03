@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import LeftPanel from './ExplorerLeftPanel';
 import CenterPanel from './CenterPanel';
 import ExplorerRightPanel from './ExplorerRightPanel';
@@ -11,7 +11,9 @@ const ExplorerNewPage = () => {
   const leftNavCollapsed = useStore((s) => s.explorerLeftNavCollapsed);
   const modelTabs = useStore((s) => s.explorerModelTabs);
   const explorerSources = useStore((s) => s.explorerSources);
+  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
   const createModelTab = useStore((s) => s.createModelTab);
+  const createInsight = useStore((s) => s.createInsight);
   const fetchDefaults = useStore((s) => s.fetchDefaults);
 
   // Fetch project defaults on mount (needed for default source selection)
@@ -25,6 +27,15 @@ const ExplorerNewPage = () => {
       createModelTab();
     }
   }, [modelTabs.length, explorerSources.length, createModelTab]);
+
+  // Auto-create an insight on initial page load only (not when user removes all insights)
+  const insightAutoCreated = useRef(false);
+  useEffect(() => {
+    if (modelTabs.length > 0 && chartInsightNames.length === 0 && !insightAutoCreated.current) {
+      insightAutoCreated.current = true;
+      createInsight();
+    }
+  }, [modelTabs.length, chartInsightNames.length, createInsight]);
 
   const containerRef = useRef(null);
 
