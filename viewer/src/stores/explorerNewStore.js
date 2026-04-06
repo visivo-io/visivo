@@ -676,16 +676,32 @@ const createExplorerNewSlice = (set, get) => ({
     if (!insight) return;
 
     const oldType = insight.type;
-    const oldProps = { ...insight.props };
+    const cache = insight.typePropsCache || {};
 
-    // Cache current props under the old type
+    // Save full props under the old type key (for exact restoration when switching back)
+    // Flatten ALL leaf string values (including nested like marker.color) into shared cache
+    const shared = { ...(cache._shared || {}) };
+    const flattenToShared = (obj, prefix = '') => {
+      for (const [key, val] of Object.entries(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof val === 'string') {
+          shared[path] = val;
+        } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+          flattenToShared(val, path);
+        }
+      }
+    };
+    flattenToShared(insight.props);
+
     const updatedCache = {
-      ...(insight.typePropsCache || {}),
-      [oldType]: oldProps,
+      ...cache,
+      [oldType]: { ...insight.props },
+      _shared: shared,
     };
 
-    // Restore cached props for the new type, or start fresh
-    const restoredProps = updatedCache[type] || {};
+    // If switching to a previously visited type, restore its exact props
+    // Otherwise start empty — InsightCRUDSection will restore shared flat values
+    const restoredProps = updatedCache[type] ? { ...updatedCache[type] } : {};
 
     set({
       explorerInsightStates: {
@@ -695,6 +711,49 @@ const createExplorerNewSlice = (set, get) => ({
           type,
           props: restoredProps,
           typePropsCache: updatedCache,
+        },
+      },
+    });
+  },
+
+  restorePropsFromCache: (insightName, allSchemaPropertyPaths) => {
+    const state = get();
+    const insight = state.explorerInsightStates[insightName];
+    if (!insight?.typePropsCache?._shared) return;
+    // Don't restore if props already have values (exact type restoration already ran)
+    if (Object.keys(insight.props).length > 0) return;
+
+    // allSchemaPropertyPaths includes ALL valid paths for the type
+    const validSet = new Set(allSchemaPropertyPaths);
+    let restored = {};
+    for (const [key, val] of Object.entries(insight.typePropsCache._shared)) {
+      if (validSet.has(key)) {
+        // Build nested object structure from dot-notation keys
+        // e.g., 'marker.color' → { marker: { color: val } }
+        const keys = key.split('.');
+        if (keys.length === 1) {
+          restored[key] = val;
+        } else {
+          let current = restored;
+          for (let i = 0; i < keys.length - 1; i++) {
+            if (!current[keys[i]] || typeof current[keys[i]] !== 'object') {
+              current[keys[i]] = {};
+            }
+            current = current[keys[i]];
+          }
+          current[keys[keys.length - 1]] = val;
+        }
+      }
+    }
+
+    if (Object.keys(restored).length === 0) return;
+
+    set({
+      explorerInsightStates: {
+        ...state.explorerInsightStates,
+        [insightName]: {
+          ...insight,
+          props: { ...insight.props, ...restored },
         },
       },
     });
@@ -711,6 +770,7 @@ const createExplorerNewSlice = (set, get) => ({
         [insightName]: {
           ...insight,
           props: { ...insight.props, [path]: value },
+          typePropsCache: { ...(insight.typePropsCache || {}), [path]: value },
         },
       },
     });
@@ -878,14 +938,19 @@ const createExplorerNewSlice = (set, get) => ({
         return { type: 'filter', value: '' };
       });
 
+      // Type can be at config.type (top-level) or config.props.type (nested in props)
+      const insightType = insight.config?.type || insight.config?.props?.type || 'scatter';
+      // Store props without the type field (type is stored separately)
+      const { type: _propsType, ...propsWithoutType } = insight.config?.props || {};
+
       insightStates[insight.name] = {
-        type: insight.config?.type || 'scatter',
-        props: insight.config?.props ? { ...insight.config.props } : {},
+        type: insightType,
+        props: propsWithoutType,
         interactions: transformedInteractions,
         typePropsCache: {},
         isNew: false,
-        _originalType: insight.config?.type || 'scatter',
-        _originalProps: insight.config?.props ? { ...insight.config.props } : {},
+        _originalType: insightType,
+        _originalProps: { ...propsWithoutType },
       };
     }
 

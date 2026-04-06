@@ -141,6 +141,153 @@ test.describe('Interaction Loading — Pill Display', () => {
     expect(hasColor).toBe(true);
   });
 
+  test('Loaded insight shows correct type from config', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    // The combined-interactions-test-insight has type: bar in its config
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    // The type select should show "Bar" not "Scatter / Line"
+    const typeSelect = page.locator('[data-testid^="insight-type-select-"]').first();
+    await expect(typeSelect).toBeVisible({ timeout: 5000 });
+    await expect(typeSelect).toHaveValue('bar');
+  });
+
+  test('Type switching preserves props and caches per type', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    const typeSelect = page.locator('[data-testid^="insight-type-select-"]').first();
+    await expect(typeSelect).toHaveValue('bar');
+
+    // Count current properties shown
+    const propsSection = page.locator('[data-testid^="insight-crud-section-"]').first();
+    const propCountText = propsSection.locator('text=/\\d+ of \\d+ properties/').first();
+    await expect(propCountText).toBeVisible({ timeout: 10000 });
+
+    const getDisplayedCount = async () => {
+      const text = await propCountText.textContent();
+      return parseInt(text.match(/(\d+) of/)?.[1] || '0');
+    };
+
+    const barPropCount = await getDisplayedCount();
+    expect(barPropCount).toBeGreaterThan(0);
+
+    // Switch to Scatter (shares x, y props with bar)
+    await typeSelect.selectOption('scatter');
+    await expect(typeSelect).toHaveValue('scatter');
+
+    // Wait for schema to load and props to render
+    await expect(propCountText).toBeVisible({ timeout: 10000 });
+    const scatterPropCount = await getDisplayedCount();
+    // Scatter should have props (x, y carried over from bar)
+    expect(scatterPropCount).toBeGreaterThan(0);
+
+    // Switch back to Bar — props should be restored from cache
+    await typeSelect.selectOption('bar');
+    await expect(typeSelect).toHaveValue('bar');
+
+    await expect(propCountText).toBeVisible({ timeout: 10000 });
+    const restoredBarCount = await getDisplayedCount();
+    // Should have same number of props as originally
+    expect(restoredBarCount).toBe(barPropCount);
+  });
+
+  test('Type switch bar→scatter→bar preserves all props including marker.color', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    const typeSelect = page.locator('[data-testid^="insight-type-select-"]').first();
+    await expect(typeSelect).toHaveValue('bar');
+
+    // Verify bar has marker.color visually rendered
+    const propsSection = page.locator('[data-testid^="insight-crud-section-"]').first();
+    await expect(propsSection.getByText('marker.color')).toBeVisible({ timeout: 5000 });
+
+    // Verify bar has x and y
+    const propCountText = propsSection.locator('text=/\\d+ of \\d+ properties/').first();
+    await expect(propCountText).toBeVisible({ timeout: 5000 });
+    const barCount = parseInt((await propCountText.textContent()).match(/(\d+) of/)?.[1] || '0');
+    expect(barCount).toBe(3); // x, y, marker.color
+
+    // Verify marker.color VALUE is present (the CASE WHEN expression, not just the label)
+    // Look for the "CASE WHEN" text or pill content that proves the value is filled
+    await expect(propsSection.getByText('CASE WHEN').first()).toBeVisible({ timeout: 5000 });
+
+    // Switch to scatter
+    await typeSelect.selectOption('scatter');
+    await expect(typeSelect).toHaveValue('scatter');
+    await page.waitForTimeout(2000);
+
+    // Scatter should show marker.color WITH its value (not "Click to edit...")
+    await expect(propsSection.getByText('marker.color')).toBeVisible({ timeout: 5000 });
+    // The CASE WHEN expression should still be present — not empty
+    await expect(propsSection.getByText('CASE WHEN').first()).toBeVisible({ timeout: 5000 });
+    // "Click to edit..." should NOT be visible for marker.color
+    const markerRow = propsSection.getByText('marker.color').locator('xpath=ancestor::div[3]');
+    await expect(markerRow.getByText('Click to edit')).not.toBeVisible({ timeout: 2000 });
+
+    // Switch back to bar
+    await typeSelect.selectOption('bar');
+    await expect(typeSelect).toHaveValue('bar');
+    await page.waitForTimeout(2000);
+
+    // marker.color must be visually rendered with VALUE after round-trip
+    await expect(propsSection.getByText('marker.color')).toBeVisible({ timeout: 5000 });
+    await expect(propsSection.getByText('CASE WHEN').first()).toBeVisible({ timeout: 5000 });
+    const restoredCount = parseInt((await propCountText.textContent()).match(/(\d+) of/)?.[1] || '0');
+    expect(restoredCount).toBe(barCount);
+  });
+
+  test('Type switch to pie produces no preview error', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    const typeSelect = page.locator('[data-testid^="insight-type-select-"]').first();
+    await typeSelect.selectOption('pie');
+    await expect(typeSelect).toHaveValue('pie');
+    await page.waitForTimeout(3000);
+
+    // No preview error (pie shouldn't get stale marker props)
+    await expect(page.locator('text=Preview Failed')).not.toBeVisible({ timeout: 2000 });
+  });
+
+  test('Type switch bar→pie→bar restores marker.color value', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    const typeSelect = page.locator('[data-testid^="insight-type-select-"]').first();
+    await expect(typeSelect).toHaveValue('bar');
+
+    const propsSection = page.locator('[data-testid^="insight-crud-section-"]').first();
+
+    // Verify initial bar has marker.color with CASE WHEN value
+    await expect(propsSection.getByText('marker.color')).toBeVisible({ timeout: 5000 });
+    await expect(propsSection.getByText('CASE WHEN').first()).toBeVisible({ timeout: 5000 });
+
+    // Switch to pie
+    await typeSelect.selectOption('pie');
+    await expect(typeSelect).toHaveValue('pie');
+    await page.waitForTimeout(2000);
+
+    // Switch back to bar — per-type cache restores full props
+    await typeSelect.selectOption('bar');
+    await expect(typeSelect).toHaveValue('bar');
+
+    // marker.color must be visible WITH its value (wait for schema load + SchemaEditor detection)
+    await expect(propsSection.getByText('marker.color')).toBeVisible({ timeout: 10000 });
+    await expect(propsSection.getByText('CASE WHEN').first()).toBeVisible({ timeout: 5000 });
+    // Must NOT show "Click to edit..."
+    const markerRow = propsSection.getByText('marker.color').locator('xpath=ancestor::div[3]');
+    await expect(markerRow.getByText('Click to edit')).not.toBeVisible({ timeout: 2000 });
+  });
+
   test('US-INT-5: Edit interaction value preserves pills', async ({ page }) => {
     await loadExplorerWithChart(page, 'sort-input-test-chart');
 

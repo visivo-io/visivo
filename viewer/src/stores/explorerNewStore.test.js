@@ -561,7 +561,7 @@ describe('explorerNewStore', () => {
   });
 
   describe('setInsightType', () => {
-    it('changes insight type and caches old props under old type', () => {
+    it('saves full props under old type and flattened leaf values in shared cache', () => {
       useStore.getState().createInsight('ins');
       useStore.setState({
         explorerInsightStates: {
@@ -569,7 +569,7 @@ describe('explorerNewStore', () => {
           ins: {
             ...useStore.getState().explorerInsightStates.ins,
             type: 'scatter',
-            props: { x: 'col_a', y: 'col_b', mode: 'markers' },
+            props: { x: 'col_a', y: 'col_b', marker: { color: 'red' } },
           },
         },
       });
@@ -578,54 +578,74 @@ describe('explorerNewStore', () => {
 
       const insight = useStore.getState().explorerInsightStates.ins;
       expect(insight.type).toBe('bar');
-      expect(insight.typePropsCache.scatter).toEqual({
-        x: 'col_a',
-        y: 'col_b',
-        mode: 'markers',
-      });
-    });
-
-    it('restores cached props when switching to a previously cached type', () => {
-      useStore.getState().createInsight('ins');
-      useStore.setState({
-        explorerInsightStates: {
-          ...useStore.getState().explorerInsightStates,
-          ins: {
-            ...useStore.getState().explorerInsightStates.ins,
-            type: 'scatter',
-            props: { x: 'a', y: 'b' },
-            typePropsCache: {
-              bar: { x: 'cached_x', y: 'cached_y' },
-            },
-          },
-        },
-      });
-
-      useStore.getState().setInsightType('ins', 'bar');
-
-      const insight = useStore.getState().explorerInsightStates.ins;
-      expect(insight.type).toBe('bar');
-      expect(insight.props).toEqual({ x: 'cached_x', y: 'cached_y' });
-    });
-
-    it('sets empty props when switching to a type with no cache', () => {
-      useStore.getState().createInsight('ins');
-      useStore.setState({
-        explorerInsightStates: {
-          ...useStore.getState().explorerInsightStates,
-          ins: {
-            ...useStore.getState().explorerInsightStates.ins,
-            type: 'scatter',
-            props: { x: 'a' },
-          },
-        },
-      });
-
-      useStore.getState().setInsightType('ins', 'heatmap');
-
-      const insight = useStore.getState().explorerInsightStates.ins;
-      expect(insight.type).toBe('heatmap');
       expect(insight.props).toEqual({});
+      // Full props saved under scatter key (including nested objects)
+      expect(insight.typePropsCache.scatter).toEqual({ x: 'col_a', y: 'col_b', marker: { color: 'red' } });
+      // Shared cache has ALL leaf string values flattened (including nested paths)
+      expect(insight.typePropsCache._shared).toEqual({ x: 'col_a', y: 'col_b', 'marker.color': 'red' });
+    });
+
+    it('restores exact props when switching back to previous type', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'scatter',
+            props: { x: 'a', y: 'b', marker: { color: 'red' } },
+            typePropsCache: {},
+          },
+        },
+      });
+
+      useStore.getState().setInsightType('ins', 'bar');
+      expect(useStore.getState().explorerInsightStates.ins.props).toEqual({});
+
+      useStore.getState().setInsightType('ins', 'scatter');
+      expect(useStore.getState().explorerInsightStates.ins.props).toEqual({
+        x: 'a', y: 'b', marker: { color: 'red' },
+      });
+    });
+
+    it('restorePropsFromCache restores shared flat values for new types', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'bar',
+            props: {},
+            typePropsCache: { _shared: { x: 'col_a', y: 'col_b', mode: 'markers' } },
+          },
+        },
+      });
+
+      useStore.getState().restorePropsFromCache('ins', ['x', 'y']);
+
+      const insight = useStore.getState().explorerInsightStates.ins;
+      expect(insight.props.x).toBe('col_a');
+      expect(insight.props.y).toBe('col_b');
+      expect(insight.props.mode).toBeUndefined();
+    });
+
+    it('restorePropsFromCache skips when props already populated', () => {
+      useStore.getState().createInsight('ins');
+      useStore.setState({
+        explorerInsightStates: {
+          ...useStore.getState().explorerInsightStates,
+          ins: {
+            ...useStore.getState().explorerInsightStates.ins,
+            type: 'scatter',
+            props: { x: 'existing' },
+            typePropsCache: { _shared: { x: 'cached', y: 'cached' } },
+          },
+        },
+      });
+
+      useStore.getState().restorePropsFromCache('ins', ['x', 'y']);
+      expect(useStore.getState().explorerInsightStates.ins.props).toEqual({ x: 'existing' });
     });
   });
 

@@ -44,7 +44,7 @@ export function SchemaEditor({
     return allProperties.filter(prop => addedProperties.has(prop.path));
   }, [allProperties, addedProperties]);
 
-  const lastValueKeysRef = useRef('');
+  const lastEffectKeyRef = useRef('');
 
   useEffect(() => {
     if (!schema) return;
@@ -63,11 +63,13 @@ export function SchemaEditor({
     };
 
     const pathsWithValues = extractPaths(value);
-    const valueKeysKey = pathsWithValues.sort().join(',');
+    // Include both value paths AND schema identity to detect when schema changes
+    const schemaKey = allProperties.length.toString();
+    const effectKey = pathsWithValues.sort().join(',') + '|' + schemaKey;
 
-    // Only update if value paths actually changed (avoid infinite loop)
-    if (valueKeysKey === lastValueKeysRef.current) return;
-    lastValueKeysRef.current = valueKeysKey;
+    // Only update if value paths or schema changed (avoid infinite loop)
+    if (effectKey === lastEffectKeyRef.current) return;
+    lastEffectKeyRef.current = effectKey;
 
     const validPaths = pathsWithValues.filter(path => allProperties.some(p => p.path === path));
     setAddedProperties(prev => {

@@ -5,6 +5,7 @@ import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
 import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
 import RefTextArea from '../new-views/common/RefTextArea';
 
 const INTERACTION_TYPES = [
@@ -26,6 +27,7 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const updateInsightInteraction = useStore((s) => s.updateInsightInteraction);
   const setActiveInsight = useStore((s) => s.setActiveInsight);
   const renameInsight = useStore((s) => s.renameInsight);
+  const restorePropsFromCache = useStore((s) => s.restorePropsFromCache);
 
   const [schema, setSchema] = useState(null);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -40,12 +42,22 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
   useEffect(() => {
     let cancelled = false;
     getSchema(type).then((s) => {
-      if (!cancelled) setSchema(s);
+      if (!cancelled) {
+        setSchema(s);
+        // Restore cached prop values that are valid for this type's schema
+        // Use ALL property paths (including nested like marker.color) for precise matching
+        if (s) {
+          const defs = s.$defs || {};
+          const allProps = flattenSchemaProperties(s, '', defs);
+          const validPaths = allProps.map((p) => p.path).filter((p) => p !== 'type');
+          restorePropsFromCache(insightName, validPaths);
+        }
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [type]);
+  }, [type, insightName, restorePropsFromCache]);
 
   const requiredFieldNames = useMemo(() => {
     return getRequiredFields(type).map((f) => f.name);
