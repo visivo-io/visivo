@@ -244,9 +244,9 @@ const CenterPanel = () => {
   );
 
   const renderChartSection = () => (
-    <div className="h-full flex flex-col overflow-hidden" data-testid="chart-section">
+    <div className="h-full flex flex-col" data-testid="chart-section">
       <ExplorerInputsToolbar projectId={projectId} />
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ExplorerErrorBoundary fallback="Chart preview error">
           <ExplorerChartPreview />
         </ExplorerErrorBoundary>

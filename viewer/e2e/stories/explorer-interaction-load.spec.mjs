@@ -71,6 +71,76 @@ test.describe('Interaction Loading — Pill Display', () => {
     expect(text).not.toContain('?{');
   });
 
+  test('US-INT-21: Load chart with input interactions — input toolbar renders and works', async ({
+    page,
+  }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    // Input toolbar should appear above chart (3 inputs: split_threshold, min_x_value, sort_direction)
+    const toolbar = page.locator('[data-testid="explorer-inputs-toolbar"]');
+    await expect(toolbar).toBeVisible({ timeout: 15000 });
+
+    // Toolbar should show input count and input labels
+    await expect(toolbar.getByText(/Inputs/)).toBeVisible();
+    await expect(toolbar.getByText(/Min X Value/)).toBeVisible({ timeout: 10000 });
+    await expect(toolbar.getByText(/Sort Direction/)).toBeVisible({ timeout: 5000 });
+    await expect(toolbar.getByText(/Split Threshold/)).toBeVisible({ timeout: 5000 });
+
+    // min_x_value is a query-based dropdown — find its container and click the dropdown button
+    // The dropdown shows current value "0" (default) with a chevron
+    const minXSection = toolbar.locator('h2:has-text("Min X Value")').locator('xpath=ancestor::div[contains(@class, "min-w")]');
+    const dropdownBtn = minXSection.locator('button').first();
+    await expect(dropdownBtn).toBeVisible({ timeout: 5000 });
+
+    // Record current value before change
+    const valueBefore = await dropdownBtn.textContent();
+
+    // Click to open dropdown
+    await dropdownBtn.click();
+
+    // Dropdown options render as buttons in an absolute-positioned menu
+    // Options are values from local_test_table.x (0-8)
+    // The dropdown menu has class "absolute z-50" containing option buttons
+    const dropdownMenu = minXSection.locator('.absolute');
+    await expect(dropdownMenu).toBeVisible({ timeout: 5000 });
+
+    // Find and click the option with value "1"
+    const option1 = dropdownMenu.locator('button').filter({ hasText: /^1$/ });
+    await expect(option1).toBeVisible({ timeout: 3000 });
+    await option1.click();
+
+    // Verify the value changed
+    const valueAfter = await dropdownBtn.textContent();
+    expect(valueAfter).not.toBe(valueBefore);
+  });
+
+  test('Insight props show input refs as colored pills (not grey)', async ({ page }) => {
+    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+
+    // Expand the insight section
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    // The marker.color prop contains ${ref(split_threshold).value}
+    // It should render as a colored pill (indigo for inputs), not grey
+    // Look for the props section and find pills
+    const propsSection = page.locator('[data-testid^="insight-crud-section-"]').first();
+    await expect(propsSection).toBeVisible({ timeout: 10000 });
+
+    // Check for pill elements — should NOT contain grey/default pills for input refs
+    // The text "split_threshold" should appear in a colored pill
+    const splitThresholdPill = propsSection.getByText('split_threshold').first();
+    await expect(splitThresholdPill).toBeVisible({ timeout: 10000 });
+
+    // Verify the pill has a colored background (not the default grey)
+    // Input pills use indigo colors (bg-indigo-100)
+    const pillContainer = splitThresholdPill.locator('xpath=ancestor::span[contains(@class, "inline-flex")]');
+    const hasColor = await pillContainer.evaluate(
+      el => !el.className.includes('bg-gray') && el.className.includes('bg-')
+    ).catch(() => false);
+    expect(hasColor).toBe(true);
+  });
+
   test('US-INT-5: Edit interaction value preserves pills', async ({ page }) => {
     await loadExplorerWithChart(page, 'sort-input-test-chart');
 

@@ -155,7 +155,7 @@ export function PropertyRow({
             rows={2}
             helperText={description}
             disabled={disabled}
-            allowedTypes={['model', 'dimension', 'metric']}
+            allowedTypes={['model', 'dimension', 'metric', 'input']}
           />
         ) : (
           <FieldComponent
