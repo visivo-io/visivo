@@ -19,18 +19,16 @@ async function addComputedColumn(page, name, expression) {
   if (!(await addBtn.isVisible({ timeout: 3000 }).catch(() => false))) return false;
 
   await addBtn.click();
-  await page.waitForTimeout(500);
 
   const popover = page.locator('[data-testid="add-computed-column-popover"]');
+  await popover.waitFor({ state: 'visible', timeout: 5000 });
   await popover.locator('input').first().fill(name);
   await popover.locator('textarea, input').last().fill(expression);
-  await page.waitForTimeout(2000); // Wait for validation
 
   const confirmBtn = popover.getByRole('button', { name: /add/i });
-  if (!(await confirmBtn.isEnabled({ timeout: 3000 }).catch(() => false))) return false;
+  if (!(await confirmBtn.isEnabled({ timeout: 5000 }).catch(() => false))) return false;
 
   await confirmBtn.click();
-  await page.waitForTimeout(1000);
   return true;
 }
 
@@ -63,7 +61,6 @@ test.describe('Save Modal — Computed Column Objects', () => {
 
     // Open save modal
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     const modal = page.locator('[data-testid="explorer-save-modal"]');
     await expect(modal).toBeVisible();
@@ -79,7 +76,6 @@ test.describe('Save Modal — Computed Column Objects', () => {
     expect(added).toBe(true);
 
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     const modal = page.locator('[data-testid="explorer-save-modal"]');
     await expect(modal).toBeVisible();
@@ -97,7 +93,6 @@ test.describe('Save Modal — Computed Column Objects', () => {
     await addComputedColumn(page, 'x_label', 'CAST(x AS VARCHAR)');
 
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     const modal = page.locator('[data-testid="explorer-save-modal"]');
     await expect(modal).toBeVisible();
@@ -119,7 +114,6 @@ test.describe('Save Modal — Computed Column Objects', () => {
 
     // Open save modal
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     const modal = page.locator('[data-testid="explorer-save-modal"]');
     await expect(modal).toBeVisible();
@@ -142,11 +136,9 @@ test.describe('Save Modal — Computed Column Objects', () => {
     await expect(pill).toBeVisible({ timeout: 3000 });
     const removeBtn = pill.locator('[data-testid="pill-remove"]');
     await removeBtn.click();
-    await page.waitForTimeout(500);
 
     // Open save modal
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     const modal = page.locator('[data-testid="explorer-save-modal"]');
     await expect(modal).toBeVisible();

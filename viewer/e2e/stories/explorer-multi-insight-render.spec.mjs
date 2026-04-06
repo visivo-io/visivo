@@ -39,7 +39,6 @@ async function getTraceCount(page) {
 /** Wait for the chart preview to have a Plotly plot rendered. */
 async function waitForChart(page) {
   await page.waitForSelector('.js-plotly-plot', { timeout: 15000 });
-  await page.waitForTimeout(2000);
 }
 
 test.describe('Multiple Insights — Concurrent Rendering', () => {
@@ -61,13 +60,11 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // First insight is auto-created or we add one
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Configure first insight's x and y via SchemaEditor drop targets or manual input
     // For this test, just verify the insight count and trace rendering
     // Add a second insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Verify both insight pills exist in chart section
     const insightPills = page.locator('[data-testid^="chart-insight-pill-"]');
@@ -88,7 +85,6 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Create first insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Record initial state
     const hasChartBefore = await page
@@ -102,7 +98,6 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Add second insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(2000);
 
     // Trace count should not decrease (first trace still present)
     const hasChartAfter = await page
@@ -120,14 +115,11 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Create two insights
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Click on first insight header to make it active
     const firstInsight = page.locator('[data-testid^="insight-header-"]').first();
     await firstInsight.click();
-    await page.waitForTimeout(1000);
 
     const hasChart = await page.locator('.js-plotly-plot').isVisible({ timeout: 5000 }).catch(() => false);
     if (hasChart) {
@@ -136,7 +128,6 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
       // Click on second insight header
       const secondInsight = page.locator('[data-testid^="insight-header-"]').nth(1);
       await secondInsight.click();
-      await page.waitForTimeout(1000);
 
       const traceCount2 = await getTraceCount(page);
 
@@ -150,14 +141,11 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Create two insights
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Remove the first insight
     const removeBtn = page.locator('[data-testid^="insight-remove-"]').first();
     await removeBtn.click();
-    await page.waitForTimeout(1000);
 
     // One insight pill should remain
     const pillsAfter = page.locator('[data-testid^="chart-insight-pill-"]');
@@ -176,11 +164,8 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Create three insights
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Change types for variety
     const typeSelects = page.locator('[data-testid^="insight-type-select-"]');
@@ -188,11 +173,8 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     if (selectCount >= 3) {
       await typeSelects.nth(0).selectOption('scatter');
-      await page.waitForTimeout(300);
       await typeSelects.nth(1).selectOption('bar');
-      await page.waitForTimeout(300);
       await typeSelects.nth(2).selectOption('line');
-      await page.waitForTimeout(1000);
     }
 
     // All three should be in the chart's insight list
@@ -212,9 +194,7 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Create two insights
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     const pillCount = await page.locator('[data-testid^="chart-insight-pill-"]').count();
 
@@ -231,8 +211,6 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
     // Find a chart that has multiple insights and load it
     // Look for any chart in the left nav that might have multiple insights
-    const chartButtons = page.locator('[data-testid="left-panel-content"]').getByRole('button');
-    await page.waitForTimeout(2000);
 
     // Load a chart — charts section should have items
     const chartsSection = page.getByText('Charts').first();
@@ -246,7 +224,7 @@ test.describe('Multiple Insights — Concurrent Rendering', () => {
 
       if (await firstChart.isVisible({ timeout: 3000 }).catch(() => false)) {
         await firstChart.click();
-        await page.waitForTimeout(3000);
+        await page.locator('[data-testid="chart-crud-section"], [data-testid="chart-header"]').first().waitFor({ timeout: 10000 });
 
         // Check how many insight pills are in the chart section
         const pillCount = await page.locator('[data-testid^="chart-insight-pill-"]').count();

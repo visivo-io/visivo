@@ -32,7 +32,6 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Change type to "bar"
     await typeSelect.selectOption('bar');
-    await page.waitForTimeout(300);
 
     // Verify type changed
     await expect(typeSelect).toHaveValue('bar');
@@ -43,9 +42,7 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Auto-created "insight" already exists. Add two more.
     await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
     await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
 
     // Verify: Three insight sections exist (auto-created + 2 new)
     await expect(
@@ -64,7 +61,6 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Add another insight alongside auto-created "insight"
     await page.locator('[data-testid="right-panel-add-insight"]').click();
-    await page.waitForTimeout(500);
 
     // Verify both are visible
     await expect(
@@ -76,7 +72,6 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Remove the auto-created insight via the X button
     await page.locator('[data-testid="insight-remove-insight"]').click();
-    await page.waitForTimeout(500);
 
     // Verify: First insight gone, second remains
     await expect(
@@ -97,7 +92,6 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Remove it
     await page.locator('[data-testid="insight-remove-insight"]').click();
-    await page.waitForTimeout(500);
 
     // Verify: Insight section gone
     await expect(
@@ -119,7 +113,6 @@ test.describe('Explorer Insight CRUD', () => {
     // Auto-created "insight" is already expanded
     // Click "Add Interaction" button within it
     await page.locator('[data-testid="insight-add-interaction-insight"]').click();
-    await page.waitForTimeout(300);
 
     // Verify: Interaction row appears with a type dropdown (filter/split/sort)
     const interactionRow = page.locator('[data-testid="insight-interaction-0"]');

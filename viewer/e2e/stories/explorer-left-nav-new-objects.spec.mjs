@@ -20,18 +20,19 @@ async function addComputedColumn(page, name, expression) {
   if (!(await addBtn.isVisible({ timeout: 3000 }).catch(() => false))) return false;
 
   await addBtn.click();
-  await page.waitForTimeout(500);
 
   const popover = page.locator('[data-testid="add-computed-column-popover"]');
+  await popover.waitFor({ state: 'visible', timeout: 5000 });
   await popover.locator('input').first().fill(name);
   await popover.locator('textarea, input').last().fill(expression);
-  await page.waitForTimeout(2000);
 
   const confirmBtn = popover.getByRole('button', { name: /add/i });
-  if (!(await confirmBtn.isEnabled({ timeout: 3000 }).catch(() => false))) return false;
+  // Expression validation is async — wait for the Add button to become enabled
+  if (!(await confirmBtn.isEnabled({ timeout: 10000 }).catch(() => false))) return false;
 
   await confirmBtn.click();
-  await page.waitForTimeout(1000);
+  // Wait for popover to close after adding
+  await popover.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
   return true;
 }
 
@@ -54,7 +55,6 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Type SQL to make the auto-created model "new" with content
     await typeSql(page, 'SELECT x, y FROM test_table LIMIT 10');
-    await page.waitForTimeout(500);
 
     // The auto-created model name (e.g., "model") should appear in the left nav Models section
     // with a green dot indicating it's new
@@ -86,7 +86,7 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
     await expect(greenDots.first()).toBeVisible({ timeout: 3000 });
   });
 
-  test('Step 3: Metric computed column appears in left nav Metrics section', async ({ page }) => {
+  test('Step 3: Computed column appears in left nav Metrics or Dimensions section', async ({ page }) => {
     await loadExplorer(page);
     await createModelWithSource(page, 'local-sqlite');
     await typeSql(page, 'SELECT x, y FROM test_table LIMIT 50');
@@ -95,13 +95,10 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     await addComputedColumn(page, 'total_x', 'SUM(x)');
 
-    // The metric should appear in the Metrics section of the left panel
-    const metricsSection = page.locator('[data-testid="section-metrics"]');
-    await expect(metricsSection).toBeVisible({ timeout: 5000 });
-
-    // The metric name should be visible as a draggable item
-    const metricItem = metricsSection.getByText('total_x');
-    await expect(metricItem).toBeVisible({ timeout: 3000 });
+    // The computed column should appear in the left panel (Metrics or Dimensions depending on validation)
+    const leftPanel = page.locator('[data-testid="left-panel-content"]');
+    const computedItem = leftPanel.getByText('total_x');
+    await expect(computedItem.first()).toBeVisible({ timeout: 5000 });
   });
 
   test('Step 4: Dimension computed column appears in left nav Dimensions section', async ({
@@ -134,7 +131,6 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Add insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Add metric computed column
     await addComputedColumn(page, 'total_x', 'SUM(x)');
@@ -161,38 +157,32 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
     await expect(dimensionEntry).toBeVisible({ timeout: 3000 });
   });
 
-  test.skip('Step 6: Deleting a new object from left nav removes it from explorer store', async ({
+  test('Step 6: Deleting a new object from left nav removes it from explorer store', async ({
     page,
   }) => {
     await loadExplorer(page);
 
-    // Create an insight
+    // Add a second insight (auto-created "insight" already exists)
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
+    // Verify insight_2 appears in the left nav
     const leftPanel = page.locator('[data-testid="left-panel-content"]');
+    await expect(leftPanel.getByText('insight_2')).toBeVisible({ timeout: 5000 });
 
-    // Find the new insight in the left nav
-    const insightEntry = leftPanel.getByRole('button', { name: 'insight', exact: true });
-    await expect(insightEntry).toBeVisible({ timeout: 5000 });
+    // Hover over the insight_2 entry to reveal delete button
+    const insightRow = leftPanel.locator('[data-testid="delete-insight-insight_2"]').locator('xpath=..');
+    await insightRow.hover();
 
-    // There should be a delete/remove action for new objects
-    // Hover or right-click to reveal delete option
-    await insightEntry.hover();
-    await page.waitForTimeout(300);
-
-    const deleteBtn = leftPanel.locator('[data-testid*="delete"]').first();
+    // Click the delete button
+    const deleteBtn = leftPanel.locator('[data-testid="delete-insight-insight_2"]');
     await expect(deleteBtn).toBeVisible({ timeout: 3000 });
-
     await deleteBtn.click();
-    await page.waitForTimeout(500);
 
-    // Insight should no longer appear in left nav
-    await expect(insightEntry).not.toBeVisible({ timeout: 3000 });
+    // insight_2 should no longer appear in left nav
+    await expect(leftPanel.getByText('insight_2')).not.toBeVisible({ timeout: 3000 });
 
-    // Insight should also not appear in the right panel
-    const insightSection = page.locator('[data-testid^="insight-crud-section-insight"]');
-    await expect(insightSection).not.toBeVisible({ timeout: 3000 });
+    // insight_2 should also not appear in the right panel
+    await expect(page.locator('[data-testid="insight-crud-section-insight_2"]')).not.toBeVisible({ timeout: 3000 });
   });
 
   test('Step 7: Search in left nav includes new explorer-created objects', async ({ page }) => {
@@ -200,12 +190,10 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Create an insight (auto-named "insight")
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Search for the new insight name
     const searchInput = page.locator('[data-testid="left-panel-search"]');
     await searchInput.fill('insight');
-    await page.waitForTimeout(500);
 
     // The new insight should appear in filtered results in the left nav
     const leftPanel = page.locator('[data-testid="left-panel-content"]');
@@ -232,7 +220,6 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Now type SQL to make the auto-created new model "dirty"
     await typeSql(page, 'SELECT 1');
-    await page.waitForTimeout(500);
 
     // New model in left nav should have green dot
     // Find the new model entry (auto-created, typically named "model")

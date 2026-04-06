@@ -61,6 +61,10 @@ const ExplorerLeftPanel = () => {
   const loadChart = useStore((s) => s.loadChart);
   const setActiveInsight = useStore((s) => s.setActiveInsight);
   const setExplorerSources = useStore((s) => s.setExplorerSources);
+  const closeModelTab = useStore((s) => s.closeModelTab);
+  const deleteExplorerInsight = useStore((s) => s.deleteExplorerInsight);
+  const resetModel = useStore((s) => s.resetModel);
+  const resetInsight = useStore((s) => s.resetInsight);
   const sourceName = useStore(selectActiveModelSourceName);
   const setSourceName = useStore((s) => s.setActiveModelSource);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
@@ -107,22 +111,51 @@ const ExplorerLeftPanel = () => {
     [searchQuery]
   );
 
-  // Merge explorer-created objects into API-fetched lists
+  // Helper to detect model modification status
+  const getModelStatus = useCallback((ms) => {
+    if (!ms) return null;
+    if (ms.isNew && ms.sql) return 'new';
+    if (ms.isNew && !ms.sql) return null;
+    if (ms.sql !== ms._originalSql) return 'modified';
+    if (ms.sourceName !== ms._originalSourceName) return 'modified';
+    if (JSON.stringify(ms.computedColumns) !== JSON.stringify(ms._originalComputedColumns)) return 'modified';
+    return null;
+  }, []);
+
+  const getInsightStatus = useCallback((is) => {
+    if (!is) return null;
+    if (is.isNew) return 'new';
+    if (is.type !== is._originalType) return 'modified';
+    if (JSON.stringify(is.props) !== JSON.stringify(is._originalProps)) return 'modified';
+    return null;
+  }, []);
+
+  // Merge explorer-created objects into API-fetched lists (with modified status)
   const mergedModels = useMemo(() => {
+    const apiModels = models.map((m) => {
+      const es = explorerModelStates[m.name];
+      const status = es ? getModelStatus(es) : null;
+      return status ? { ...m, status } : m;
+    });
     const apiNames = new Set(models.map((m) => m.name));
     const newModels = Object.entries(explorerModelStates)
       .filter(([name, ms]) => ms.isNew && ms.sql && !apiNames.has(name))
       .map(([name]) => ({ name, status: 'new' }));
-    return [...models, ...newModels];
-  }, [models, explorerModelStates]);
+    return [...apiModels, ...newModels];
+  }, [models, explorerModelStates, getModelStatus]);
 
   const mergedInsights = useMemo(() => {
+    const apiInsights = insights.map((i) => {
+      const es = explorerInsightStates[i.name];
+      const status = es ? getInsightStatus(es) : null;
+      return status ? { ...i, status } : i;
+    });
     const apiNames = new Set(insights.map((i) => i.name));
     const newInsights = Object.entries(explorerInsightStates)
       .filter(([name, is]) => is.isNew && !apiNames.has(name))
       .map(([name]) => ({ name, status: 'new' }));
-    return [...insights, ...newInsights];
-  }, [insights, explorerInsightStates]);
+    return [...apiInsights, ...newInsights];
+  }, [insights, explorerInsightStates, getInsightStatus]);
 
   const mergedMetrics = useMemo(() => {
     const apiNames = new Set(metrics.map((m) => m.name));
@@ -345,6 +378,8 @@ const ExplorerLeftPanel = () => {
             objects={filteredModels}
             selectedName={activeModelName}
             onSelect={handleModelClick}
+            onDelete={(obj) => closeModelTab(obj.name)}
+            onReset={(obj) => resetModel(obj.name)}
             title="Models"
             objectType="model"
           />
@@ -379,6 +414,8 @@ const ExplorerLeftPanel = () => {
           <ObjectList
             objects={filteredInsights}
             onSelect={handleInsightClick}
+            onDelete={(obj) => deleteExplorerInsight(obj.name)}
+            onReset={(obj) => resetInsight(obj.name)}
             title="Insights"
             objectType="insight"
           />

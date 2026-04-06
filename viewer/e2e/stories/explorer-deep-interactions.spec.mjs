@@ -30,24 +30,21 @@ test.describe('Explorer Deep Interactions', () => {
       const popover = page.locator('[data-testid="add-computed-column-popover"]');
       await popover.locator('input').first().fill('total_x');
       await popover.locator('textarea, input').last().fill('SUM(x)');
-      await page.waitForTimeout(2000);
       const addBtn = popover.getByRole('button', { name: /add/i });
-      if (await addBtn.isEnabled({ timeout: 3000 }).catch(() => false)) {
+      await addBtn.waitFor({ state: 'visible', timeout: 5000 });
+      if (await addBtn.isEnabled({ timeout: 10000 }).catch(() => false)) {
         await addBtn.click();
-        await page.waitForTimeout(1000);
       }
 
       // Add dimension
       await addTrigger.click();
-      await page.waitForTimeout(500);
       const popover2 = page.locator('[data-testid="add-computed-column-popover"]');
       await popover2.locator('input').first().fill('x_str');
       await popover2.locator('textarea, input').last().fill('CAST(x AS VARCHAR)');
-      await page.waitForTimeout(2000);
       const addBtn2 = popover2.getByRole('button', { name: /add/i });
+      await addBtn2.waitFor({ state: 'visible', timeout: 5000 });
       if (await addBtn2.isEnabled({ timeout: 3000 }).catch(() => false)) {
         await addBtn2.click();
-        await page.waitForTimeout(1000);
       }
 
       // Both pills should be visible
@@ -69,18 +66,16 @@ test.describe('Explorer Deep Interactions', () => {
       const popover = page.locator('[data-testid="add-computed-column-popover"]');
       await popover.locator('input').first().fill('total_x');
       await popover.locator('textarea, input').last().fill('SUM(x)');
-      await page.waitForTimeout(2000);
       const addBtn = popover.getByRole('button', { name: /add/i });
-      if (await addBtn.isEnabled({ timeout: 3000 }).catch(() => false)) {
+      await addBtn.waitFor({ state: 'visible', timeout: 5000 });
+      if (await addBtn.isEnabled({ timeout: 10000 }).catch(() => false)) {
         await addBtn.click();
-        await page.waitForTimeout(1000);
       }
     }
 
     // Now re-run the query with different SQL
     await typeSql(page, 'SELECT x, y FROM test_table WHERE x > 0 LIMIT 50');
     await runQuery(page);
-    await page.waitForTimeout(2000);
 
     // Computed column pill should still be in toolbar
     await page.screenshot({ path: 'e2e/screenshots/us5c-after-rerun.png' });
@@ -93,21 +88,18 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Create insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Find type selector
     const typeSelect = page.locator('select').filter({ hasText: 'scatter' });
     if (await typeSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Change to bar
       await typeSelect.selectOption('bar');
-      await page.waitForTimeout(500);
 
       // Verify bar is selected
       await expect(typeSelect).toHaveValue('bar');
 
       // Change back to scatter
       await typeSelect.selectOption('scatter');
-      await page.waitForTimeout(500);
 
       // Verify scatter is back
       await expect(typeSelect).toHaveValue('scatter');
@@ -121,23 +113,19 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Create insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Create second insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
-    // Remove the first insight (find × button)
+    // Remove the first insight (find x button)
     const removeButtons = page.locator('button').filter({ hasText: '×' });
     const firstRemove = removeButtons.first();
     if (await firstRemove.isVisible({ timeout: 2000 }).catch(() => false)) {
       await firstRemove.click();
-      await page.waitForTimeout(500);
     }
 
     // Add a new insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // The new insight should have a unique name (not conflict with existing)
     await page.screenshot({ path: 'e2e/screenshots/us11c-unique-names.png' });
@@ -148,18 +136,14 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Create insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Find "Add Interaction" button within the insight section
     const addInteraction = page.getByRole('button', { name: /Add Interaction/i });
     if (await addInteraction.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Add 3 interactions
       await addInteraction.click();
-      await page.waitForTimeout(300);
       await addInteraction.click();
-      await page.waitForTimeout(300);
       await addInteraction.click();
-      await page.waitForTimeout(300);
 
       // Find interaction remove buttons and remove the middle one (2nd)
       const interactionRemoves = page.locator('[data-testid*="remove-interaction"]');
@@ -167,7 +151,6 @@ test.describe('Explorer Deep Interactions', () => {
 
       if (count >= 3) {
         await interactionRemoves.nth(1).click();
-        await page.waitForTimeout(500);
 
         // Should have 2 interactions remaining
         const remaining = await interactionRemoves.count();
@@ -185,21 +168,18 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Load existing model from left panel
     await page.getByRole('button', { name: 'test-table', exact: true }).click();
-    await page.waitForTimeout(2000);
+    await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
 
     // Append to SQL
     await page.locator('.view-lines').first().click();
     await page.keyboard.press('End');
     await page.keyboard.type(' LIMIT 10', { delay: 5 });
-    await page.waitForTimeout(300);
 
     // Create new tab
     await page.getByRole('button', { name: 'Add model' }).click();
-    await page.waitForTimeout(500);
 
     // Switch back to first tab
     await page.getByText('test-table').first().click();
-    await page.waitForTimeout(1000);
 
     // SQL should still contain our edit
     await page.screenshot({ path: 'e2e/screenshots/us13c-sql-preserved.png' });
@@ -210,11 +190,10 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Load existing model
     await page.getByRole('button', { name: 'test-table', exact: true }).click();
-    await page.waitForTimeout(2000);
+    await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
 
     // Double-click the tab
     await page.getByText('test-table').first().dblclick();
-    await page.waitForTimeout(500);
 
     // Rename input should NOT appear (isNew=false for loaded models)
     const renameInput = page.locator('input[value="test-table"]');
@@ -229,9 +208,9 @@ test.describe('Explorer Deep Interactions', () => {
   test('US-18B: Load chart with insights — all insights listed in right panel', async ({ page }) => {
     await loadExplorer(page);
 
-    // Load a chart
+    // Load a chart and wait for chart section to appear
     await page.getByRole('button', { name: 'simple-scatter-chart', exact: true }).click();
-    await page.waitForTimeout(3000);
+    await page.locator('[data-testid="chart-crud-section"], [data-testid="chart-header"]').first().waitFor({ timeout: 10000 });
 
     // Check insight section — should have insight(s) from the chart
     // The right panel should show at least one insight section
@@ -245,9 +224,9 @@ test.describe('Explorer Deep Interactions', () => {
   test('US-19B: Load chart, modify insight type, verify save enabled', async ({ page }) => {
     await loadExplorer(page);
 
-    // Load chart
+    // Load chart and wait for chart section to appear
     await page.getByRole('button', { name: 'simple-scatter-chart', exact: true }).click();
-    await page.waitForTimeout(3000);
+    await page.locator('[data-testid="chart-crud-section"], [data-testid="chart-header"]').first().waitFor({ timeout: 10000 });
 
     // Save should be disabled initially
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled({ timeout: 5000 });
@@ -258,7 +237,6 @@ test.describe('Explorer Deep Interactions', () => {
       const currentType = await typeSelect.first().inputValue();
       const newType = currentType === 'scatter' ? 'bar' : 'scatter';
       await typeSelect.first().selectOption(newType);
-      await page.waitForTimeout(500);
 
       // Save should now be enabled (insight modified)
       await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled({ timeout: 5000 });
@@ -280,11 +258,9 @@ test.describe('Explorer Deep Interactions', () => {
 
     // Create first insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Create second insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(500);
 
     // Verify 2 insights in the chart's insight list
     // Check the Chart section for insight pills

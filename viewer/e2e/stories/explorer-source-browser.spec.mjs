@@ -70,7 +70,6 @@ test.describe('Explorer Source Browser', () => {
 
     // Click to collapse
     await sqliteRow.click();
-    await page.waitForTimeout(1000);
 
     // Verify: either tables hidden OR aria-expanded changed
     const ariaAfter = await sqliteRow.getAttribute('aria-expanded');
@@ -86,7 +85,6 @@ test.describe('Explorer Source Browser', () => {
 
     // Expand test_table to show columns
     await page.getByText('local_test_table').first().click();
-    await page.waitForTimeout(2000);
 
     // Columns should be visible with type badges
     const sourcePanel = page.locator('[data-testid="source-browser"]');
@@ -115,10 +113,6 @@ test.describe('Explorer Source Browser', () => {
     // Click the refresh button
     const refreshButton = page.getByTestId('action-Refresh Schema').first();
     await refreshButton.click();
-
-    // Schema regeneration may be fast for local sources — wait for it to complete
-    // and verify tables are still visible afterward (no stuck spinner)
-    await page.waitForTimeout(3000);
 
     // Connecting badge should NOT be stuck (either never appeared or already cleared)
     await expect(page.getByText('Connecting...').first()).not.toBeVisible({ timeout: 15000 });
@@ -185,7 +179,6 @@ test.describe('Explorer Source Browser', () => {
 
     const searchInput = page.getByPlaceholder('Search...');
     await searchInput.fill('sqlite');
-    await page.waitForTimeout(500);
 
     // local-sqlite should remain visible
     await expect(page.getByText('local-sqlite').first()).toBeVisible();
@@ -201,12 +194,10 @@ test.describe('Explorer Source Browser', () => {
 
     // Filter
     await searchInput.fill('sqlite');
-    await page.waitForTimeout(500);
     await expect(page.getByText('local-duckdb')).not.toBeVisible();
 
     // Clear
     await searchInput.fill('');
-    await page.waitForTimeout(500);
     await expect(page.getByText('local-duckdb').first()).toBeVisible();
     await expect(page.getByText('local-sqlite').first()).toBeVisible();
   });
@@ -220,7 +211,6 @@ test.describe('Explorer Source Browser', () => {
 
     // Double-click a table to load it
     await page.getByText('local_test_table').first().dblclick();
-    await page.waitForTimeout(2000);
 
     // The table should appear as a model tab or in the center panel
     await expect(page.getByText('No models')).not.toBeVisible({ timeout: 5000 });

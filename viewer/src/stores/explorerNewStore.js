@@ -612,6 +612,60 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
+  deleteExplorerInsight: (insightName) => {
+    const state = get();
+    const { [insightName]: _, ...restInsights } = state.explorerInsightStates;
+    const newChartInsights = state.explorerChartInsightNames.filter((n) => n !== insightName);
+    const newActive = state.explorerActiveInsightName === insightName
+      ? (newChartInsights.length > 0 ? newChartInsights[0] : null)
+      : state.explorerActiveInsightName;
+
+    set({
+      explorerInsightStates: restInsights,
+      explorerChartInsightNames: newChartInsights,
+      explorerActiveInsightName: newActive,
+    });
+  },
+
+  resetModel: (modelName) => {
+    const state = get();
+    const ms = state.explorerModelStates[modelName];
+    if (!ms || ms.isNew) return;
+
+    set({
+      explorerModelStates: {
+        ...state.explorerModelStates,
+        [modelName]: {
+          ...ms,
+          sql: ms._originalSql,
+          sourceName: ms._originalSourceName,
+          computedColumns: JSON.parse(JSON.stringify(ms._originalComputedColumns || [])),
+          queryResult: null,
+          enrichedResult: null,
+          queryError: null,
+        },
+      },
+    });
+  },
+
+  resetInsight: (insightName) => {
+    const state = get();
+    const is = state.explorerInsightStates[insightName];
+    if (!is || is.isNew) return;
+
+    set({
+      explorerInsightStates: {
+        ...state.explorerInsightStates,
+        [insightName]: {
+          ...is,
+          type: is._originalType,
+          props: { ...is._originalProps },
+          typePropsCache: {},
+        },
+      },
+    });
+  },
+
   setActiveInsight: (insightName) => {
     set({ explorerActiveInsightName: insightName });
   },

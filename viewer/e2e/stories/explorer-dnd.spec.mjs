@@ -75,7 +75,6 @@ test.describe('Explorer Drag & Drop', () => {
 
     // Create insight first so SchemaEditor renders with droppable=true
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // The insight should be expanded with property rows
     // Check if droppable property targets exist
@@ -110,7 +109,6 @@ test.describe('Explorer Drag & Drop', () => {
 
     // Create insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Check for droppable property targets
     const xDropTarget = page.locator('[data-testid*="droppable-property-x"]');
@@ -121,13 +119,11 @@ test.describe('Explorer Drag & Drop', () => {
       const colX = page.locator('[data-testid="draggable-col-x"]');
       if (await colX.isVisible({ timeout: 3000 }).catch(() => false)) {
         await dragAndDrop(page, colX, xDropTarget);
-        await page.waitForTimeout(1000);
 
         // Now drag column y to the SAME x axis (replacement)
         const colY = page.locator('[data-testid="draggable-col-y"]');
         if (await colY.isVisible({ timeout: 3000 }).catch(() => false)) {
           await dragAndDrop(page, colY, xDropTarget);
-          await page.waitForTimeout(1000);
         }
       }
     }
@@ -146,7 +142,6 @@ test.describe('Explorer Drag & Drop', () => {
 
     // Create insight
     await page.getByRole('button', { name: 'Add Insight' }).first().click();
-    await page.waitForTimeout(1000);
 
     // Try to drag x column to x axis and y column to y axis
     const xDrop = page.locator('[data-testid*="droppable-property-x"]');
@@ -161,12 +156,10 @@ test.describe('Explorer Drag & Drop', () => {
 
       if (await colX.isVisible({ timeout: 3000 }).catch(() => false)) {
         await dragAndDrop(page, colX, xDrop);
-        await page.waitForTimeout(1000);
       }
 
       if (await colY.isVisible({ timeout: 3000 }).catch(() => false)) {
         await dragAndDrop(page, colY, yDrop);
-        await page.waitForTimeout(2000);
       }
 
       // Chart preview should now render (look for Plotly chart or canvas)

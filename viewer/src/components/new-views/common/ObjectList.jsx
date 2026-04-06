@@ -1,4 +1,5 @@
 import React from 'react';
+import { PiX, PiArrowCounterClockwise } from 'react-icons/pi';
 import { ObjectStatus } from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 import { getEmbeddedTypes, EmbeddedTypesIndicator } from './EmbeddedTypesIndicator';
@@ -26,6 +27,8 @@ const ObjectList = ({
   objects,
   selectedName,
   onSelect,
+  onDelete,
+  onReset,
   title = 'Objects',
   objectType = 'source',
 }) => {
@@ -54,43 +57,72 @@ const ObjectList = ({
       <div className="flex-1 overflow-y-auto">
         {objects.map(obj => {
           const isSelected = obj.name === selectedName;
+          const isNew = obj.status === ObjectStatus.NEW;
+          const isModified = obj.status === ObjectStatus.MODIFIED;
           return (
-            <button
-              key={obj.name}
-              onClick={() => onSelect(obj)}
-              className={`
-                w-full text-left px-4 py-2.5
-                flex items-center gap-2
-                transition-colors border-b border-gray-100
-                ${isSelected ? `${colors.bg} border-l-2 ${colors.borderSelected}` : 'hover:bg-gray-50'}
-              `}
-              style={isSelected ? { borderLeftColor: 'currentColor' } : undefined}
-            >
-              {/* Status indicator */}
-              <StatusDot status={obj.status} />
-
-              {/* Icon */}
-              {Icon && (
-                <Icon fontSize="small" className={isSelected ? colors.text : 'text-gray-400'} />
-              )}
-
-              {/* Name */}
-              <span
-                className={`text-sm truncate flex-1 ${isSelected ? `${colors.text} font-medium` : 'text-gray-700'}`}
+            <div key={obj.name} className="group relative">
+              <button
+                onClick={() => onSelect(obj)}
+                className={`
+                  w-full text-left px-4 py-2.5
+                  flex items-center gap-2
+                  transition-colors border-b border-gray-100
+                  ${isSelected ? `${colors.bg} border-l-2 ${colors.borderSelected}` : 'hover:bg-gray-50'}
+                `}
+                style={isSelected ? { borderLeftColor: 'currentColor' } : undefined}
               >
-                {obj.name}
-              </span>
+                {/* Status indicator */}
+                <StatusDot status={obj.status} />
 
-              {/* Embedded children indicator */}
-              <EmbeddedTypesIndicator types={getEmbeddedTypes(obj, objectType)} />
+                {/* Icon */}
+                {Icon && (
+                  <Icon fontSize="small" className={isSelected ? colors.text : 'text-gray-400'} />
+                )}
 
-              {/* Type badge */}
-              {obj.type && (
-                <span className={`text-xs px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
-                  {obj.type}
+                {/* Name */}
+                <span
+                  className={`text-sm truncate flex-1 ${isSelected ? `${colors.text} font-medium` : 'text-gray-700'}`}
+                >
+                  {obj.name}
                 </span>
+
+                {/* Embedded children indicator */}
+                <EmbeddedTypesIndicator types={getEmbeddedTypes(obj, objectType)} />
+
+                {/* Type badge */}
+                {obj.type && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
+                    {obj.type}
+                  </span>
+                )}
+              </button>
+
+              {/* Delete button for new objects */}
+              {isNew && onDelete && (
+                <button
+                  type="button"
+                  data-testid={`delete-${objectType}-${obj.name}`}
+                  onClick={(e) => { e.stopPropagation(); onDelete(obj); }}
+                  title="Delete"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <PiX size={14} />
+                </button>
               )}
-            </button>
+
+              {/* Reset button for modified objects */}
+              {isModified && onReset && (
+                <button
+                  type="button"
+                  data-testid={`reset-${objectType}-${obj.name}`}
+                  onClick={(e) => { e.stopPropagation(); onReset(obj); }}
+                  title="Reset to original"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <PiArrowCounterClockwise size={14} />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>

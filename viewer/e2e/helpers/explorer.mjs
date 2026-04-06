@@ -26,7 +26,8 @@ export async function loadExplorer(page) {
 export async function loadExplorerWithModel(page, modelName) {
   await loadExplorer(page);
   await page.getByRole('button', { name: modelName, exact: true }).click();
-  await page.waitForTimeout(2000);
+  // Wait for the model tab to actually load (editor area becomes available)
+  await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
 }
 
 /**
@@ -35,7 +36,8 @@ export async function loadExplorerWithModel(page, modelName) {
 export async function loadExplorerWithChart(page, chartName) {
   await loadExplorer(page);
   await page.getByRole('button', { name: chartName, exact: true }).click();
-  await page.waitForTimeout(3000);
+  // Wait for the chart to load (chart name input becomes visible in right panel)
+  await page.locator('[data-testid="chart-name-input"]').waitFor({ timeout: 10000 });
 }
 
 /**
@@ -45,7 +47,9 @@ export async function loadExplorerWithChart(page, chartName) {
  */
 export async function createModelWithSource(page, sourceName = null) {
   await page.getByRole('button', { name: 'Add model' }).click();
-  await page.waitForTimeout(500);
+
+  // Wait for the new model tab to appear (editor area becomes available)
+  await page.locator('.view-lines').first().waitFor({ timeout: 10000 });
 
   // Override source if a specific one was requested
   if (sourceName) {
@@ -54,7 +58,6 @@ export async function createModelWithSource(page, sourceName = null) {
       await sourceSelect.selectOption(sourceName);
     }
   }
-  await page.waitForTimeout(300);
 }
 
 /**
@@ -66,14 +69,13 @@ export async function typeSql(page, sql) {
   // Click the Monaco editor's visible line area
   const editorArea = page.locator('.view-lines');
   await editorArea.first().click({ timeout: 10000 });
-  await page.waitForTimeout(200);
 
   // Select all existing content and replace
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
   await page.keyboard.press(`${modifier}+a`);
+  // Brief pause to let Monaco process the select-all before typing
   await page.waitForTimeout(100);
   await page.keyboard.type(sql, { delay: 5 });
-  await page.waitForTimeout(300);
 }
 
 /**
@@ -82,8 +84,11 @@ export async function typeSql(page, sql) {
 export async function runQuery(page) {
   const runButton = page.getByRole('button', { name: 'Run' });
   await runButton.click();
-  // Wait for query to complete (data table or error appears)
-  await page.waitForTimeout(3000);
+  // Wait for either query results (row count) or error state
+  await Promise.race([
+    page.locator('text=/\\d+ rows?/').first().waitFor({ timeout: 15000 }),
+    page.locator('text=/error/i').first().waitFor({ timeout: 15000 }),
+  ]);
 }
 
 /**

@@ -23,7 +23,6 @@ test.describe('Explorer Edge Cases', () => {
 
     // Search for something that doesn't exist
     await page.getByPlaceholder('Search...').fill('zzz_nonexistent_thing_xyz');
-    await page.waitForTimeout(500);
 
     // Models section should either not be visible or show 0 count
     const modelsSection = page.getByText('Models (7)');
@@ -31,7 +30,6 @@ test.describe('Explorer Edge Cases', () => {
 
     // Clear search
     await page.getByPlaceholder('Search...').fill('');
-    await page.waitForTimeout(500);
 
     // Models section should reappear
     await expect(page.getByText('Models (7)')).toBeVisible({ timeout: 5000 });
@@ -42,14 +40,12 @@ test.describe('Explorer Edge Cases', () => {
 
     // Load a model to create a tab
     await page.getByRole('button', { name: 'test-table', exact: true }).click();
-    await page.waitForTimeout(2000);
 
     // Verify center panel has content (model tab is active, no "No models" visible)
     await expect(page.getByText('No models')).not.toBeVisible({ timeout: 5000 });
 
     // Search for something nonexistent to filter the left panel
     await page.getByPlaceholder('Search...').fill('zzz_nothing');
-    await page.waitForTimeout(500);
 
     // Left panel should be filtered (models section hidden/empty)
     const modelsSection = page.getByText('Models (7)');
@@ -74,14 +70,12 @@ test.describe('Explorer Edge Cases', () => {
 
     // Collapse sidebar
     await page.getByRole('button', { name: 'Collapse sidebar' }).click();
-    await page.waitForTimeout(500);
 
     // Search box should NOT be visible in collapsed state
     await expect(page.getByPlaceholder('Search...')).not.toBeVisible({ timeout: 3000 });
 
     // Expand sidebar
     await page.getByRole('button', { name: 'Expand sidebar' }).click();
-    await page.waitForTimeout(500);
 
     // Search box and models should be visible again
     await expect(page.getByPlaceholder('Search...')).toBeVisible({ timeout: 3000 });
@@ -98,7 +92,6 @@ test.describe('Explorer Edge Cases', () => {
 
     // Typing SQL keeps it enabled
     await typeSql(page, 'SELECT 1');
-    await page.waitForTimeout(500);
 
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled({
       timeout: 5000,

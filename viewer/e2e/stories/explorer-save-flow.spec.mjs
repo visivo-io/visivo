@@ -25,7 +25,6 @@ test.describe('Explorer Save Flow', () => {
     // Auto-created empty model tab does not enable save;
     // typing SQL into it is a real user action that enables save
     await typeSql(page, 'SELECT 1');
-    await page.waitForTimeout(500);
 
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeEnabled();
   });
@@ -35,10 +34,8 @@ test.describe('Explorer Save Flow', () => {
 
     // Type SQL to enable save (empty auto-created model does not enable save)
     await typeSql(page, 'SELECT 1');
-    await page.waitForTimeout(500);
 
     await page.getByRole('button', { name: 'Save to Project' }).click();
-    await page.waitForTimeout(500);
 
     // Modal buttons appear
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible({ timeout: 5000 });
@@ -48,7 +45,8 @@ test.describe('Explorer Save Flow', () => {
     await loadExplorer(page);
 
     await page.getByRole('button', { name: 'simple-scatter-chart', exact: true }).click();
-    await page.waitForTimeout(3000);
+    // Wait for the chart to fully load
+    await expect(page.locator('[data-testid="chart-name-input"]')).toBeVisible({ timeout: 10000 });
 
     await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled({ timeout: 5000 });
   });
