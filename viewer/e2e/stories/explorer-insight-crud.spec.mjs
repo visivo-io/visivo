@@ -124,7 +124,7 @@ test.describe('Explorer Insight CRUD', () => {
 
     // Verify: Value input is present
     await expect(
-      page.locator('[data-testid="interaction-value-input-0"]')
+      page.locator('[data-testid="interaction-value-field-0"]')
     ).toBeVisible({ timeout: 5000 });
   });
 });

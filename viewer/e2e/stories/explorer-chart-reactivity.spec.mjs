@@ -50,7 +50,7 @@ test.describe('Chart Reactivity — Interactions & Layout', () => {
     await expect(page.locator('[data-testid="interaction-type-select-0"]')).toHaveValue('filter');
 
     // Value input should be present
-    await expect(page.locator('[data-testid="interaction-value-input-0"]')).toBeVisible();
+    await expect(page.locator('[data-testid="interaction-value-field-0"]')).toBeVisible();
   });
 
   test('Step 3: Changing interaction type updates the dropdown', async ({ page }) => {

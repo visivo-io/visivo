@@ -5,6 +5,7 @@ import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
 import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+import RefTextArea from '../new-views/common/RefTextArea';
 
 const INTERACTION_TYPES = [
   { value: 'filter', label: 'Filter' },
@@ -241,16 +242,23 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
                       </option>
                     ))}
                   </select>
-                  <input
-                    data-testid={`interaction-value-input-${index}`}
-                    type="text"
-                    value={interaction.value || ''}
-                    onChange={(e) => {
-                      updateInsightInteraction(insightName, index, { value: e.target.value });
-                    }}
-                    placeholder="Value..."
-                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-                  />
+                  <div className="flex-1" data-testid={`interaction-value-field-${index}`}>
+                    <RefTextArea
+                      value={(() => {
+                        const v = interaction.value || '';
+                        const m = v.match(/^\?\{([\s\S]*)\}$/);
+                        return m ? m[1] : v;
+                      })()}
+                      onChange={(newVal) => {
+                        updateInsightInteraction(insightName, index, {
+                          value: newVal ? `?{${newVal}}` : '',
+                        });
+                      }}
+                      label=""
+                      rows={1}
+                      allowedTypes={['model', 'dimension', 'metric', 'input']}
+                    />
+                  </div>
                   <button
                     data-testid={`insight-remove-interaction-${index}`}
                     onClick={() => handleRemoveInteraction(index)}

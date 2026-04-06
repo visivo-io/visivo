@@ -74,6 +74,7 @@ const RefTextArea = ({
   const dimensions = useStore(state => state.dimensions);
   const metrics = useStore(state => state.metrics);
   const relations = useStore(state => state.relations);
+  const inputs = useStore(state => state.inputs);
 
   // Build list of available objects based on allowed types
   const availableObjects = useMemo(() => {
@@ -109,8 +110,14 @@ const RefTextArea = ({
       });
     }
 
+    if (allowedTypes.includes('input')) {
+      (inputs || []).forEach(obj => {
+        objects.push({ name: obj.name, type: 'input', config: obj.config });
+      });
+    }
+
     return objects;
-  }, [allowedTypes, sources, models, dimensions, metrics, relations]);
+  }, [allowedTypes, sources, models, dimensions, metrics, relations, inputs]);
 
   // Helper to find object type by name (for display mode pills)
   const getObjectTypeByName = useCallback(
