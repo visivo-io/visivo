@@ -166,9 +166,7 @@ class TestExpressionViews:
         response = client.post(
             "/api/expressions/translate/",
             json={
-                "expressions": [
-                    {"name": "t", "expression": "SUM(amount)", "type": "metric"}
-                ],
+                "expressions": [{"name": "t", "expression": "SUM(amount)", "type": "metric"}],
                 "source_dialect": "foobar_nonexistent",
             },
         )

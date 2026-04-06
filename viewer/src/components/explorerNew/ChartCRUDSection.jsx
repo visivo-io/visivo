@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus } from 'react-icons/pi';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
