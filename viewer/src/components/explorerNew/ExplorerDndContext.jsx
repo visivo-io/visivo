@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
 import useStore from '../../stores/store';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import { formatRefExpression } from '../../utils/refString';
@@ -22,6 +22,7 @@ const ExplorerDndContext = ({ children }) => {
   const setInsightProp = useStore((s) => s.setInsightProp);
   const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
   const setActiveModelSource = useStore((s) => s.setActiveModelSource);
+  const updateInsightInteraction = useStore((s) => s.updateInsightInteraction);
 
   const [activeData, setActiveData] = useState(null);
 
@@ -51,14 +52,14 @@ const ExplorerDndContext = ({ children }) => {
         let value;
         if (dragData.type === 'metric' || dragData.type === 'dimension') {
           if (dragData.parentModel) {
-            // Model-scoped metric/dimension: ?{${ref(parentModel).name}}
             value = '?{' + formatRefExpression(dragData.parentModel, dragData.name) + '}';
           } else {
-            // Global/standalone metric/dimension: ?{${ref(name)}}
             value = '?{' + formatRefExpression(dragData.name) + '}';
           }
+        } else if (dragData.type === 'input') {
+          const accessor = dragData.inputType === 'multi-select' ? 'values' : 'value';
+          value = '?{' + formatRefExpression(dragData.name, accessor) + '}';
         } else {
-          // Columns (implicit dimensions from data table): ?{${ref(activeModel).column}}
           value = '?{' + formatRefExpression(activeModelName, dragData.name) + '}';
         }
 
@@ -73,6 +74,32 @@ const ExplorerDndContext = ({ children }) => {
             type: dragData.type,
           });
         }
+      } else if (dropData?.type === 'interaction-zone') {
+        const { insightName, index } = dropData;
+        if (!insightName) return;
+
+        // Build ref expression (without ?{} — the interaction handler adds it)
+        let refExpr;
+        if (dragData.type === 'metric' || dragData.type === 'dimension') {
+          refExpr = dragData.parentModel
+            ? formatRefExpression(dragData.parentModel, dragData.name)
+            : formatRefExpression(dragData.name);
+        } else if (dragData.type === 'input') {
+          const accessor = dragData.inputType === 'multi-select' ? 'values' : 'value';
+          refExpr = formatRefExpression(dragData.name, accessor);
+        } else {
+          refExpr = formatRefExpression(activeModelName, dragData.name);
+        }
+
+        // Get current value, strip ?{}, append ref, re-wrap
+        const state = useStore.getState();
+        const insight = state.explorerInsightStates[insightName];
+        if (insight) {
+          const currentValue = insight.interactions[index]?.value || '';
+          const inner = currentValue.match(/^\?\{([\s\S]*)\}$/)?.[1] || currentValue;
+          const newInner = inner ? `${inner} ${refExpr}` : refExpr;
+          updateInsightInteraction(insightName, index, { value: `?{${newInner}}` });
+        }
       } else if (dropData?.type === 'source-zone') {
         if (dragData.type === 'source') {
           setActiveModelSource(dragData.name);
@@ -85,6 +112,7 @@ const ExplorerDndContext = ({ children }) => {
       setInsightProp,
       addComputedColumn,
       setActiveModelSource,
+      updateInsightInteraction,
     ]
   );
 
@@ -95,6 +123,7 @@ const ExplorerDndContext = ({ children }) => {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}

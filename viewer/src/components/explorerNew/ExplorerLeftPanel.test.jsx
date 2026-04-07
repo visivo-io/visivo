@@ -267,11 +267,11 @@ describe('ExplorerLeftPanel', () => {
     expect(screen.getByTestId('object-item-insight-revenue_insight')).toBeInTheDocument();
   });
 
-  it('renders ObjectList for inputs', () => {
+  it('renders inputs as draggable items', () => {
     render(<ExplorerLeftPanel />);
 
-    expect(screen.getByTestId('object-list-input')).toBeInTheDocument();
-    expect(screen.getByTestId('object-item-input-date_input')).toBeInTheDocument();
+    expect(screen.getByTestId('section-inputs')).toBeInTheDocument();
+    expect(screen.getByTestId('draggable-input-date_input')).toBeInTheDocument();
   });
 
   it('shows loading indicator when any data is loading', () => {

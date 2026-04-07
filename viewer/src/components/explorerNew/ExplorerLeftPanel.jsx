@@ -32,6 +32,7 @@ const DraggableItem = ({ item, type }) => {
       type,
       expression: item.config?.expression,
       parentModel: item.parentModel || null,
+      inputType: item.config?.type || null,
     },
   });
 
@@ -431,14 +432,16 @@ const ExplorerLeftPanel = () => {
           />
         )}
 
-        {/* Inputs (read-only in explorer — draggable to interaction fields) */}
+        {/* Inputs (draggable to interaction fields and prop fields) */}
         {filteredInputs.length > 0 && (
-          <ObjectList
-            objects={filteredInputs}
-            onSelect={() => {}}
-            title="Inputs"
-            objectType="input"
-          />
+          <div data-testid="section-inputs">
+            <div className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide border-b ${getTypeColors('input').bg} ${getTypeColors('input').text} ${getTypeColors('input').border}`}>
+              Inputs ({filteredInputs.length})
+            </div>
+            {filteredInputs.map((inp) => (
+              <DraggableItem key={inp.name} item={inp} type="input" />
+            ))}
+          </div>
         )}
 
         {/* Empty state */}

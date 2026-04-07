@@ -40,11 +40,8 @@ async function dragAndDrop(page, sourceLocator, targetLocator) {
   await page.mouse.move(sourceX + 10, sourceY, { steps: 3 });
   await page.waitForTimeout(100);
 
-  // Move to target
+  // Move to target and drop immediately
   await page.mouse.move(targetX, targetY, { steps: 10 });
-  await page.waitForTimeout(100);
-
-  // Drop
   await page.mouse.up();
   await page.waitForTimeout(500);
 }

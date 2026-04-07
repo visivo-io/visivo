@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PiCaretDown, PiCaretRight, PiX, PiPlus } from 'react-icons/pi';
+import { useDroppable } from '@dnd-kit/core';
 import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { CHART_TYPES, getSchema } from '../../schemas/schemas';
@@ -7,6 +8,65 @@ import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
 import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
 import RefTextArea from '../new-views/common/RefTextArea';
+
+const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `interaction-zone-${insightName}-${index}`,
+    data: { type: 'interaction-zone', insightName, index },
+  });
+
+  const innerValue = (() => {
+    const v = interaction.value || '';
+    const m = v.match(/^\?\{([\s\S]*)\}$/);
+    return m ? m[1] : v;
+  })();
+
+  return (
+    <div
+      data-testid={`insight-interaction-${index}`}
+      className="flex items-center gap-2"
+    >
+      <select
+        data-testid={`interaction-type-select-${index}`}
+        value={interaction.type || 'filter'}
+        onChange={(e) => {
+          updateInsightInteraction(insightName, index, { type: e.target.value });
+        }}
+        className="text-xs border border-gray-300 rounded-md px-1.5 py-1 bg-white"
+      >
+        {INTERACTION_TYPES.map((it) => (
+          <option key={it.value} value={it.value}>
+            {it.label}
+          </option>
+        ))}
+      </select>
+      <div
+        ref={setNodeRef}
+        className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
+        data-testid={`interaction-value-field-${index}`}
+      >
+        <RefTextArea
+          value={innerValue}
+          onChange={(newVal) => {
+            updateInsightInteraction(insightName, index, {
+              value: newVal ? `?{${newVal}}` : '',
+            });
+          }}
+          label=""
+          rows={1}
+          allowedTypes={['model', 'dimension', 'metric', 'input']}
+        />
+      </div>
+      <button
+        data-testid={`insight-remove-interaction-${index}`}
+        onClick={() => handleRemoveInteraction(index)}
+        className="text-gray-400 hover:text-red-500 transition-colors"
+      >
+        <PiX size={12} />
+      </button>
+    </div>
+  );
+};
 
 const INTERACTION_TYPES = [
   { value: 'filter', label: 'Filter' },
@@ -235,50 +295,14 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
             <label className="block text-xs font-medium text-gray-600 mb-1">Interactions</label>
             <div className="space-y-2">
               {interactions.map((interaction, index) => (
-                <div
+                <InteractionRow
                   key={index}
-                  data-testid={`insight-interaction-${index}`}
-                  className="flex items-center gap-2"
-                >
-                  <select
-                    data-testid={`interaction-type-select-${index}`}
-                    value={interaction.type || 'filter'}
-                    onChange={(e) => {
-                      updateInsightInteraction(insightName, index, { type: e.target.value });
-                    }}
-                    className="text-xs border border-gray-300 rounded-md px-1.5 py-1 bg-white"
-                  >
-                    {INTERACTION_TYPES.map((it) => (
-                      <option key={it.value} value={it.value}>
-                        {it.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="flex-1" data-testid={`interaction-value-field-${index}`}>
-                    <RefTextArea
-                      value={(() => {
-                        const v = interaction.value || '';
-                        const m = v.match(/^\?\{([\s\S]*)\}$/);
-                        return m ? m[1] : v;
-                      })()}
-                      onChange={(newVal) => {
-                        updateInsightInteraction(insightName, index, {
-                          value: newVal ? `?{${newVal}}` : '',
-                        });
-                      }}
-                      label=""
-                      rows={1}
-                      allowedTypes={['model', 'dimension', 'metric', 'input']}
-                    />
-                  </div>
-                  <button
-                    data-testid={`insight-remove-interaction-${index}`}
-                    onClick={() => handleRemoveInteraction(index)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <PiX size={12} />
-                  </button>
-                </div>
+                  interaction={interaction}
+                  index={index}
+                  insightName={insightName}
+                  updateInsightInteraction={updateInsightInteraction}
+                  handleRemoveInteraction={handleRemoveInteraction}
+                />
               ))}
             </div>
             <button

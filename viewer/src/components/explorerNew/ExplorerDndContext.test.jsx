@@ -223,6 +223,88 @@ describe('ExplorerDndContext', () => {
     );
   });
 
+  it('drops column on interaction-zone with ?{} wrapped ref', () => {
+    useStore.setState({
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: {
+          type: 'scatter', props: {}, interactions: [{ type: 'filter', value: '' }],
+          typePropsCache: {}, isNew: true,
+        },
+      },
+    });
+
+    render(
+      <ExplorerDndContext>
+        <div>Content</div>
+      </ExplorerDndContext>
+    );
+
+    capturedOnDragEnd({
+      active: { data: { current: { name: 'col_a', type: 'column' } } },
+      over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
+    });
+
+    expect(useStore.getState().explorerInsightStates.ins_1.interactions[0].value).toBe(
+      '?{${ref(preview_model).col_a}}'
+    );
+  });
+
+  it('drops metric with parentModel on interaction-zone', () => {
+    useStore.setState({
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: {
+          type: 'scatter', props: {}, interactions: [{ type: 'filter', value: '' }],
+          typePropsCache: {}, isNew: true,
+        },
+      },
+    });
+
+    render(
+      <ExplorerDndContext>
+        <div>Content</div>
+      </ExplorerDndContext>
+    );
+
+    capturedOnDragEnd({
+      active: { data: { current: { name: 'avg_value', type: 'metric', parentModel: 'daily_metrics' } } },
+      over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
+    });
+
+    expect(useStore.getState().explorerInsightStates.ins_1.interactions[0].value).toBe(
+      '?{${ref(daily_metrics).avg_value}}'
+    );
+  });
+
+  it('appends to existing interaction value on drop', () => {
+    useStore.setState({
+      explorerActiveInsightName: 'ins_1',
+      explorerInsightStates: {
+        ins_1: {
+          type: 'scatter', props: {},
+          interactions: [{ type: 'filter', value: '?{${ref(model).x} > }' }],
+          typePropsCache: {}, isNew: true,
+        },
+      },
+    });
+
+    render(
+      <ExplorerDndContext>
+        <div>Content</div>
+      </ExplorerDndContext>
+    );
+
+    capturedOnDragEnd({
+      active: { data: { current: { name: 'threshold', type: 'input', inputType: 'single-select' } } },
+      over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
+    });
+
+    expect(useStore.getState().explorerInsightStates.ins_1.interactions[0].value).toBe(
+      '?{${ref(model).x} >  ${ref(threshold).value}}'
+    );
+  });
+
   it('does nothing when dropped on no target', () => {
     useStore.setState({
       explorerActiveInsightName: 'ins_1',
