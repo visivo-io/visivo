@@ -3,12 +3,14 @@ import ChartPreview from '../new-views/common/ChartPreview';
 import { useInsightPreviewData } from '../../hooks/usePreviewData';
 import { useInputsData } from '../../hooks/useInputsData';
 import useStore from '../../stores/store';
+import { useShallow } from 'zustand/react/shallow';
 import {
   expandDotNotationProps,
   selectActiveModelSql,
   selectActiveModelSourceName,
   selectActiveModelComputedColumns,
   selectActiveModelQueryResult,
+  selectDerivedInputNames,
 } from '../../stores/explorerNewStore';
 
 /**
@@ -39,11 +41,11 @@ const ExplorerChartPreview = () => {
   const computedColumns = useStore(selectActiveModelComputedColumns);
   const projectId = useStore((s) => s.project?.id);
   const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
-  const chartInputNames = useStore((s) => s.explorerChartInputNames);
+  const derivedInputNames = useStore(useShallow(selectDerivedInputNames));
   const storeInputs = useStore((s) => s.inputs || []);
 
-  // Load input data (parquet, options, defaults) for chart's referenced inputs
-  useInputsData(projectId, chartInputNames);
+  // Load input data (parquet, options, defaults) for dynamically referenced inputs
+  useInputsData(projectId, derivedInputNames);
 
   const [secondaryKeys, setSecondaryKeys] = useState({});
 
@@ -101,7 +103,7 @@ const ExplorerChartPreview = () => {
     // Include input configs so the backend DAG can resolve ${ref(input).accessor}
     // Strip API-only fields (name_hash, structure) that the Pydantic model rejects
     const inputConfigs = storeInputs
-      .filter((i) => chartInputNames.includes(i.name))
+      .filter((i) => derivedInputNames.includes(i.name))
       .map((i) => {
         const { name_hash, structure, ...cleanConfig } = i.config || {};
         return { ...cleanConfig, name: i.name };
@@ -109,7 +111,7 @@ const ExplorerChartPreview = () => {
     if (inputConfigs.length > 0) ctx.inputs = inputConfigs;
 
     return ctx;
-  }, [effectiveModelName, explorerSql, explorerSourceName, computedColumns, chartInputNames, storeInputs]);
+  }, [effectiveModelName, explorerSql, explorerSourceName, computedColumns, derivedInputNames, storeInputs]);
 
   const extraPreviewBody = useMemo(
     () => (contextObjects ? { context_objects: contextObjects } : undefined),

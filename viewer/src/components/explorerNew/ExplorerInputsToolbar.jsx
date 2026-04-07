@@ -1,16 +1,18 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PiCaretDown, PiCaretUp, PiSliders } from 'react-icons/pi';
 import useStore from '../../stores/store';
+import { useShallow } from 'zustand/react/shallow';
+import { selectDerivedInputNames } from '../../stores/explorerNewStore';
 import Input from '../items/Input';
 
 const ExplorerInputsToolbar = ({ projectId }) => {
-  const chartInputNames = useStore((s) => s.explorerChartInputNames);
+  const derivedInputNames = useStore(useShallow(selectDerivedInputNames));
   const storeInputs = useStore((s) => s.inputs || []);
   const [collapsed, setCollapsed] = useState(false);
 
   const inputConfigs = useMemo(
     () =>
-      chartInputNames
+      derivedInputNames
         .map((name) => {
           const storeInput = storeInputs.find((i) => i.name === name);
           if (!storeInput) return null;
@@ -18,7 +20,7 @@ const ExplorerInputsToolbar = ({ projectId }) => {
           return { name: storeInput.name, ...storeInput.config };
         })
         .filter(Boolean),
-    [chartInputNames, storeInputs]
+    [derivedInputNames, storeInputs]
   );
 
   const handleToggle = useCallback(() => {

@@ -284,6 +284,47 @@ export const selectHasModifications = (s) => {
 };
 
 /**
+ * Derive input names by scanning all interaction values and prop values for ref(inputName) patterns.
+ * Returns an array of input names that should appear in the toolbar.
+ * Updates dynamically when interactions/props change (unlike explorerChartInputNames which is static).
+ */
+export const selectDerivedInputNames = (s) => {
+  const inputNameSet = new Set((s.inputs || []).map((i) => i.name));
+  if (inputNameSet.size === 0) return [];
+
+  const found = new Set();
+
+  // Scan all insight interactions and props
+  for (const insight of Object.values(s.explorerInsightStates || {})) {
+    // Scan interactions
+    for (const interaction of insight.interactions || []) {
+      if (typeof interaction.value === 'string') {
+        const matches = interaction.value.matchAll(/ref\(([^.)]+)\)/g);
+        for (const m of matches) {
+          if (inputNameSet.has(m[1])) found.add(m[1]);
+        }
+      }
+    }
+    // Scan props (flat string values and nested objects)
+    const scanProps = (obj) => {
+      for (const val of Object.values(obj || {})) {
+        if (typeof val === 'string') {
+          const matches = val.matchAll(/ref\(([^.)]+)\)/g);
+          for (const m of matches) {
+            if (inputNameSet.has(m[1])) found.add(m[1]);
+          }
+        } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+          scanProps(val);
+        }
+      }
+    };
+    scanProps(insight.props);
+  }
+
+  return [...found];
+};
+
+/**
  * ExplorerNew Store Slice
  *
  * Multi-model, multi-insight architecture for the ExplorerNew composition layer.

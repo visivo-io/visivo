@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loadExplorer } from '../helpers/explorer.mjs';
+import { loadExplorer, loadExplorerWithChart } from '../helpers/explorer.mjs';
 
 async function dragAndDrop(page, sourceLocator, targetLocator) {
   const sourceBox = await sourceLocator.boundingBox();
@@ -92,5 +92,45 @@ test.describe('Input-Driven Interactions', () => {
     const pillText = await dropZone.textContent();
     expect(pillText).toContain('selected_x_values');
     expect(pillText).toContain('.values');
+  });
+
+  test('US-INT-12: Click input pill accessor to change it', async ({ page }) => {
+    await loadExplorerWithChart(page, 'checkboxes-filter-chart');
+
+    // Expand the insight section
+    const insightHeader = page.locator('[data-testid^="insight-header-"]').first();
+    await insightHeader.click();
+
+    // The interaction should have a pill for selected_x_values with .values accessor
+    const interactionField = page.locator('[data-testid^="interaction-value-field-"]').first();
+    await expect(interactionField).toBeVisible({ timeout: 10000 });
+
+    // Find the clickable accessor text on the pill
+    const accessorBtn = page.locator('[data-testid="accessor-selected_x_values"]');
+    await expect(accessorBtn).toBeVisible({ timeout: 5000 });
+    expect(await accessorBtn.textContent()).toBe('.values');
+
+    // Click to open the accessor dropdown
+    await accessorBtn.click();
+
+    // Dropdown should appear with multi-select options
+    const dropdown = page.locator('[data-testid="accessor-dropdown-selected_x_values"]');
+    await expect(dropdown).toBeVisible({ timeout: 3000 });
+
+    // Should have all multi-select accessor options
+    await expect(page.locator('[data-testid="accessor-option-values"]')).toBeVisible();
+    await expect(page.locator('[data-testid="accessor-option-first"]')).toBeVisible();
+    await expect(page.locator('[data-testid="accessor-option-last"]')).toBeVisible();
+    await expect(page.locator('[data-testid="accessor-option-min"]')).toBeVisible();
+    await expect(page.locator('[data-testid="accessor-option-max"]')).toBeVisible();
+
+    // Select .first
+    await page.locator('[data-testid="accessor-option-first"]').click();
+
+    // Accessor should now show .first
+    await expect(accessorBtn).toHaveText('.first', { timeout: 3000 });
+
+    // Dropdown should be closed
+    await expect(dropdown).not.toBeVisible();
   });
 });

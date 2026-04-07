@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Editor from '@monaco-editor/react';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
@@ -301,6 +302,31 @@ const RefTextArea = ({
     }, 150);
   }, [onChange, internalValue]);
 
+  // Determine if a ref name is an input and get its available accessors
+  const getInputAccessors = useCallback((refName) => {
+    const input = (inputs || []).find(i => i.name === refName);
+    if (!input) return null;
+    const inputType = input.config?.type;
+    if (inputType === 'multi-select') return ['values', 'first', 'last', 'min', 'max'];
+    return ['value'];
+  }, [inputs]);
+
+  const [accessorDropdown, setAccessorDropdown] = useState(null); // { name, property, key }
+  const accessorAnchorRef = useRef(null);
+
+  const handleAccessorChange = useCallback((refName, oldAccessor, newAccessor) => {
+    if (oldAccessor === newAccessor) {
+      setAccessorDropdown(null);
+      return;
+    }
+    // Replace ${ref(name).oldAccessor} with ${ref(name).newAccessor} in the value
+    const oldRef = formatRefExpression(refName, oldAccessor);
+    const newRef = formatRefExpression(refName, newAccessor);
+    const updated = (value || '').replace(oldRef, newRef);
+    onChange(updated);
+    setAccessorDropdown(null);
+  }, [value, onChange]);
+
   // Render a ref pill for display mode
   const renderRefPill = (name, property, key) => {
     // When property is present (e.g., ref(model).metric_name), check if the property
@@ -312,15 +338,64 @@ const RefTextArea = ({
     const colors = typeConfig?.colors || DEFAULT_COLORS;
     const TypeIcon = typeConfig?.icon;
 
+    const inputAccessors = property ? getInputAccessors(name) : null;
+    const isAccessorClickable = inputAccessors && inputAccessors.length > 1;
+    const showDropdown = accessorDropdown?.name === name && accessorDropdown?.key === key;
+
+    const dropdownPortal = showDropdown && accessorAnchorRef.current
+      ? createPortal(
+          <div
+            className="fixed bg-white border border-gray-200 rounded shadow-lg min-w-[100px]"
+            style={{
+              zIndex: 9999,
+              top: accessorAnchorRef.current.getBoundingClientRect().bottom + 2,
+              left: accessorAnchorRef.current.getBoundingClientRect().left,
+            }}
+            data-testid={`accessor-dropdown-${name}`}
+          >
+            {inputAccessors.map(acc => (
+              <button
+                key={acc}
+                type="button"
+                className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-100 ${acc === property ? 'font-bold bg-gray-50' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAccessorChange(name, property, acc);
+                }}
+                data-testid={`accessor-option-${acc}`}
+              >
+                .{acc}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      : null;
+
     return (
-      <span
-        key={key}
-        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text}`}
-      >
-        {TypeIcon && <TypeIcon style={{ fontSize: 12 }} />}
-        <span>{name}</span>
-        {property && <span className="opacity-70">.{property}</span>}
-      </span>
+      <React.Fragment key={key}>
+        <span
+          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text}`}
+        >
+          {TypeIcon && <TypeIcon style={{ fontSize: 12 }} />}
+          <span>{name}</span>
+          {property && (
+            <span
+              ref={isAccessorClickable && showDropdown ? accessorAnchorRef : (isAccessorClickable ? (el) => { if (el) accessorAnchorRef.current = el; } : undefined)}
+              className={`${isAccessorClickable ? 'cursor-pointer hover:underline' : ''} opacity-70`}
+              onClick={isAccessorClickable ? (e) => {
+                e.stopPropagation();
+                accessorAnchorRef.current = e.currentTarget;
+                setAccessorDropdown(showDropdown ? null : { name, property, key });
+              } : undefined}
+              data-testid={isAccessorClickable ? `accessor-${name}` : undefined}
+            >
+              .{property}
+            </span>
+          )}
+        </span>
+        {dropdownPortal}
+      </React.Fragment>
     );
   };
 
