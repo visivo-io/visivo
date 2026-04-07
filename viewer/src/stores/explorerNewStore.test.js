@@ -1419,9 +1419,11 @@ describe('explorerNewStore', () => {
           i1: {
             type: 'scatter',
             props: { x: 'col_a' },
+            interactions: [],
             isNew: false,
             _originalType: 'scatter',
             _originalProps: { x: 'col_a' },
+            _originalInteractions: [],
           },
         },
       });
@@ -1481,9 +1483,11 @@ describe('explorerNewStore', () => {
           i1: {
             type: 'scatter',
             props: {},
+            interactions: [],
             isNew: false,
             _originalType: 'scatter',
             _originalProps: {},
+            _originalInteractions: [],
           },
         },
       });

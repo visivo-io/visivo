@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PiTrash, PiCode, PiSliders } from 'react-icons/pi';
 import RefTextArea from '../RefTextArea';
@@ -44,6 +44,13 @@ export function PropertyRow({
 
   const isQueryMode = useMemo(() => isQueryStringValue(value), [value]);
   const [forceQueryMode, setForceQueryMode] = useState(() => isQueryStringValue(value));
+
+  // Auto-enter query mode when value externally changes to ?{...} (e.g., chart load, DnD drop)
+  useEffect(() => {
+    if (isQueryStringValue(value) && !forceQueryMode) {
+      setForceQueryMode(true);
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const staticSchema = useMemo(() => getStaticSchema(schema, defs), [schema, defs]);
   const fieldType = useMemo(() => resolveFieldType(schema, defs), [schema, defs]);

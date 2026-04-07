@@ -261,6 +261,7 @@ export const selectInsightStatus = (insightName) => (s) => {
   if (state.isNew) return 'new';
   if (state.type !== state._originalType) return 'modified';
   if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return 'modified';
+  if (JSON.stringify(state.interactions) !== JSON.stringify(state._originalInteractions || [])) return 'modified';
   return null;
 };
 
@@ -279,6 +280,7 @@ export const selectHasModifications = (s) => {
     if (state.isNew) return true;
     if (state.type !== state._originalType) return true;
     if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return true;
+    if (JSON.stringify(state.interactions) !== JSON.stringify(state._originalInteractions || [])) return true;
   }
   return false;
 };
@@ -701,6 +703,7 @@ const createExplorerNewSlice = (set, get) => ({
           ...is,
           type: is._originalType,
           props: { ...is._originalProps },
+          interactions: JSON.parse(JSON.stringify(is._originalInteractions || [])),
           typePropsCache: {},
         },
       },
@@ -992,6 +995,7 @@ const createExplorerNewSlice = (set, get) => ({
         isNew: false,
         _originalType: insightType,
         _originalProps: { ...propsWithoutType },
+        _originalInteractions: JSON.parse(JSON.stringify(transformedInteractions)),
       };
     }
 
@@ -1148,7 +1152,8 @@ const createExplorerNewSlice = (set, get) => ({
       if (
         !is.isNew &&
         is.type === is._originalType &&
-        JSON.stringify(is.props) === JSON.stringify(is._originalProps)
+        JSON.stringify(is.props) === JSON.stringify(is._originalProps) &&
+        JSON.stringify(is.interactions) === JSON.stringify(is._originalInteractions || [])
       ) {
         continue;
       }
@@ -1200,6 +1205,7 @@ const createExplorerNewSlice = (set, get) => ({
           isNew: false,
           _originalType: is.type,
           _originalProps: { ...is.props },
+          _originalInteractions: JSON.parse(JSON.stringify(is.interactions || [])),
         };
       }
       set({

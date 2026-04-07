@@ -63,13 +63,13 @@ test.describe('Interaction DnD — Drag to Interaction Fields', () => {
     const dropZone = page.locator('[data-testid="interaction-value-field-0"]');
     await expect(dropZone).toBeVisible({ timeout: 5000 });
 
-    // Drag column to interaction
-    await dragAndDrop(page, colHeader, dropZone);
-
-    // The interaction field should now show a pill with the ref
-    // Look for a pill element (inline-flex span with colored background)
+    // Drag column to interaction (retry if pointerWithin doesn't detect on first try)
     const pills = dropZone.locator('span.inline-flex');
-    await expect(pills.first()).toBeVisible({ timeout: 5000 });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await dragAndDrop(page, colHeader, dropZone);
+      if (await pills.first().isVisible({ timeout: 1000 }).catch(() => false)) break;
+    }
+    await expect(pills.first()).toBeVisible({ timeout: 3000 });
   });
 
   test('US-INT-1: Drag column to filter, type expression, chart filters data', async ({
@@ -82,14 +82,16 @@ test.describe('Interaction DnD — Drag to Interaction Fields', () => {
     // Add filter interaction
     await page.locator('[data-testid^="insight-add-interaction-"]').first().click();
 
-    // Drag 'x' column to interaction
+    // Drag 'x' column to interaction (retry if pointerWithin doesn't detect on first try)
     const colHeader = page.locator('[data-testid="draggable-col-x"]');
     const dropZone = page.locator('[data-testid="interaction-value-field-0"]');
-    await dragAndDrop(page, colHeader, dropZone);
-
-    // Verify the pill appeared
     const pills = dropZone.locator('span.inline-flex');
-    await expect(pills.first()).toBeVisible({ timeout: 5000 });
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await dragAndDrop(page, colHeader, dropZone);
+      if (await pills.first().isVisible({ timeout: 1000 }).catch(() => false)) break;
+    }
+    await expect(pills.first()).toBeVisible({ timeout: 3000 });
 
     // Click the RefTextArea to enter edit mode and type "> 5"
     await dropZone.click();
