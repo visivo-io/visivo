@@ -103,6 +103,36 @@ export const isInsideDollarBrace = (text, position) => {
 // Re-exported here for backward compatibility with existing imports
 export { formatRef, formatRefExpression } from './refString';
 
+/**
+ * Serialize a contentEditable DOM container back to a raw ref string.
+ * Walks child nodes: text nodes → textContent, pill elements (with data-ref-name) → ${ref(name).property}
+ */
+export const serializeContentEditableToRefString = (container) => {
+  if (!container) return '';
+  let result = '';
+  const walk = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      // Strip zero-width spaces used for cursor positioning
+      result += node.textContent.replace(/\u200B/g, '');
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const refName = node.getAttribute('data-ref-name');
+      if (refName) {
+        const refProperty = node.getAttribute('data-ref-property');
+        result += refProperty ? `\${ref(${refName}).${refProperty}}` : `\${ref(${refName})}`;
+      } else {
+        // Recurse into non-pill elements (e.g., wrapper divs)
+        for (const child of node.childNodes) {
+          walk(child);
+        }
+      }
+    }
+  };
+  for (const child of container.childNodes) {
+    walk(child);
+  }
+  return result;
+};
+
 export class ContextString {
   constructor(value) {
     this.value = value;
