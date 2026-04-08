@@ -273,6 +273,7 @@ tasks:
       - test-projects/integration
       - tests/setup/populate_ci_snowflake.sql
       - tests/setup/fakesnow.Dockerfile
+      - tests/setup/seed_fakesnow.py
 
   - key: test-bigquery
     use: visivo-install
