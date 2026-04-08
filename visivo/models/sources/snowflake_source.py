@@ -80,6 +80,11 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         8, description="The pool size that is used for this connection."
     )
 
+    protocol: Optional[str] = Field(
+        None,
+        description="The protocol to use for the connection.",
+    )
+
     def get_private_key_path(self) -> Optional[str]:
         """Get the resolved private key path value."""
         return self._resolve_field(self.private_key_path)
@@ -119,11 +124,6 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
 
     def get_dialect(self):
         return "snowflake"
-
-    protocol: Optional[str] = Field(
-        None,
-        description="The protocol to use for the connection. Set to 'http' for local emulators.",
-    )
 
     def url(self):
         from snowflake.sqlalchemy import URL
