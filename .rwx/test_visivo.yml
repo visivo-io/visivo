@@ -259,7 +259,7 @@ tasks:
     background-processes:
       - key: fakesnow
         run: docker run -p 12345:12345 $(docker build -q -f tests/setup/fakesnow.Dockerfile .)
-        ready-check: curl -sf http://localhost:12345/ || exit 1
+        ready-check: python -c "import socket; s=socket.create_connection(('localhost',12345),timeout=2); s.close()"
     run: |
       python tests/setup/seed_fakesnow.py
       cd test-projects/integration

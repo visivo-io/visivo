@@ -38,7 +38,7 @@ services:
     ports:
       - 12345:12345
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:12345/')"]
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost',12345),timeout=2); s.close()"]
       interval: 5s
       timeout: 5s
       retries: 5
