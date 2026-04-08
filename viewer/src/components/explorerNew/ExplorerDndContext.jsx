@@ -49,22 +49,34 @@ const ExplorerDndContext = ({ children }) => {
       if (dropData?.type === 'axis-zone' || dropData?.type === 'property-zone') {
         const fieldName = dropData.type === 'axis-zone' ? dropData.fieldName : dropData.path;
 
-        let value;
+        let refExpr;
         if (dragData.type === 'metric' || dragData.type === 'dimension') {
-          if (dragData.parentModel) {
-            value = '?{' + formatRefExpression(dragData.parentModel, dragData.name) + '}';
-          } else {
-            value = '?{' + formatRefExpression(dragData.name) + '}';
-          }
+          refExpr = dragData.parentModel
+            ? formatRefExpression(dragData.parentModel, dragData.name)
+            : formatRefExpression(dragData.name);
         } else if (dragData.type === 'input') {
           const accessor = dragData.inputType === 'multi-select' ? 'values' : 'value';
-          value = '?{' + formatRefExpression(dragData.name, accessor) + '}';
+          refExpr = formatRefExpression(dragData.name, accessor);
         } else {
-          value = '?{' + formatRefExpression(activeModelName, dragData.name) + '}';
+          refExpr = formatRefExpression(activeModelName, dragData.name);
         }
 
-        if (activeInsightName) {
-          setInsightProp(activeInsightName, fieldName, value);
+        // Check if the drop target's RefTextArea has an active cursor
+        const dropEl = document.querySelector(
+          dropData.type === 'axis-zone'
+            ? `[data-testid="droppable-property-${fieldName}"]`
+            : `[data-testid="droppable-property-${dropData.path}"]`
+        );
+        const hasCursor = dropEl?.querySelector('[data-has-cursor="true"]');
+        if (hasCursor && activeInsightName) {
+          // Insert at cursor position
+          hasCursor.dispatchEvent(new CustomEvent('ref-insert-at-cursor', {
+            detail: { refExpr },
+            bubbles: false,
+          }));
+        } else if (activeInsightName) {
+          // Replace entire value
+          setInsightProp(activeInsightName, fieldName, '?{' + refExpr + '}');
         }
       } else if (dropData?.type === 'data-table-drop') {
         if (dragData.type === 'metric' || dragData.type === 'dimension') {
@@ -91,14 +103,20 @@ const ExplorerDndContext = ({ children }) => {
           refExpr = formatRefExpression(activeModelName, dragData.name);
         }
 
-        // Get current value, strip ?{}, append ref, re-wrap
-        const state = useStore.getState();
-        const insight = state.explorerInsightStates[insightName];
-        if (insight) {
-          const currentValue = insight.interactions[index]?.value || '';
-          const inner = currentValue.match(/^\?\{([\s\S]*)\}$/)?.[1] || currentValue;
-          const newInner = inner ? `${inner} ${refExpr}` : refExpr;
-          updateInsightInteraction(insightName, index, { value: `?{${newInner}}` });
+        // Check if the interaction field's RefTextArea has an active cursor
+        const dropEl = document.querySelector(
+          `[data-testid="interaction-value-field-${index}"]`
+        );
+        const hasCursor = dropEl?.querySelector('[data-has-cursor="true"]');
+        if (hasCursor) {
+          // Insert at cursor position — RefTextArea handles ?{} wrapping via onChange
+          hasCursor.dispatchEvent(new CustomEvent('ref-insert-at-cursor', {
+            detail: { refExpr },
+            bubbles: false,
+          }));
+        } else {
+          // No cursor — replace entire value
+          updateInsightInteraction(insightName, index, { value: `?{${refExpr}}` });
         }
       } else if (dropData?.type === 'source-zone') {
         if (dragData.type === 'source') {

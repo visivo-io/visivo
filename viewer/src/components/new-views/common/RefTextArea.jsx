@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { renderToStaticMarkup } from 'react-dom/server';
 import useStore from '../../../stores/store';
 import { getTypeByValue, DEFAULT_COLORS } from './objectTypeConfigs';
 import { parseTextWithRefs } from '../../../utils/contextString';
@@ -97,7 +98,18 @@ const RefTextArea = ({
       (relations || []).forEach(obj => objects.push({ name: obj.name, type: 'relation', config: obj.config }));
     }
     if (allowedTypes.includes('input')) {
-      (inputs || []).forEach(obj => objects.push({ name: obj.name, type: 'input', config: obj.config }));
+      (inputs || []).forEach(obj => {
+        // Show inputs with their default accessor (single-select → .value, multi-select → .values)
+        const inputType = obj.config?.type;
+        const defaultAccessor = inputType === 'multi-select' ? 'values' : 'value';
+        objects.push({
+          name: obj.name,
+          type: 'input',
+          property: defaultAccessor,
+          displayName: `${obj.name}.${defaultAccessor}`,
+          config: obj.config,
+        });
+      });
     }
     return objects;
   }, [allowedTypes, sources, models, dimensions, metrics, relations, inputs, modelStates]);
@@ -170,16 +182,17 @@ const RefTextArea = ({
 
   // --- DOM Building ---
 
-  const getPillColors = useCallback((name, property) => {
+  const getPillTypeConfig = useCallback((name, property) => {
     const type = property
       ? (getObjectTypeByName(property) || getObjectTypeByName(name))
       : getObjectTypeByName(name);
-    const typeConfig = type ? getTypeByValue(type) : null;
-    return typeConfig?.colors || DEFAULT_COLORS;
+    return type ? getTypeByValue(type) : null;
   }, [getObjectTypeByName]);
 
   const createPillElement = useCallback((name, property) => {
-    const colors = getPillColors(name, property);
+    const typeConfig = getPillTypeConfig(name, property);
+    const colors = typeConfig?.colors || DEFAULT_COLORS;
+    const IconComponent = typeConfig?.icon;
     const inputAccessors = property ? getInputAccessors(name) : null;
     const isAccessorClickable = inputAccessors && inputAccessors.length > 1;
 
@@ -188,6 +201,16 @@ const RefTextArea = ({
     pill.setAttribute('data-ref-name', name);
     if (property) pill.setAttribute('data-ref-property', property);
     pill.className = `inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded text-xs font-medium cursor-text align-middle ${colors.bg} ${colors.text}`;
+
+    // Render MUI icon via renderToStaticMarkup for parity with left nav pills
+    if (IconComponent) {
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'flex items-center';
+      iconSpan.innerHTML = renderToStaticMarkup(
+        React.createElement(IconComponent, { style: { fontSize: 12 } })
+      );
+      pill.appendChild(iconSpan);
+    }
 
     const nameSpan = document.createElement('span');
     nameSpan.textContent = name;
@@ -206,7 +229,7 @@ const RefTextArea = ({
     }
 
     return pill;
-  }, [getPillColors, getInputAccessors]);
+  }, [getPillTypeConfig, getInputAccessors]);
 
   const buildDOMFromValue = useCallback((val) => {
     const el = editableRef.current;

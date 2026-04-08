@@ -34,6 +34,7 @@ export const OBJECT_TYPES = [
     label: 'Sources',
     singularLabel: 'Source',
     icon: StorageIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-orange-100',
@@ -54,6 +55,7 @@ export const OBJECT_TYPES = [
     label: 'Models',
     singularLabel: 'Model',
     icon: ViewInArIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-amber-100',
@@ -110,6 +112,7 @@ export const OBJECT_TYPES = [
     label: 'Dimensions',
     singularLabel: 'Dimension',
     icon: CategoryIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-teal-100',
@@ -130,6 +133,7 @@ export const OBJECT_TYPES = [
     label: 'Metrics',
     singularLabel: 'Metric',
     icon: AnalyticsIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-cyan-100',
@@ -150,6 +154,7 @@ export const OBJECT_TYPES = [
     label: 'Relations',
     singularLabel: 'Relation',
     icon: AccountTreeIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-blue-100',
@@ -170,6 +175,7 @@ export const OBJECT_TYPES = [
     label: 'Inputs',
     singularLabel: 'Input',
     icon: TuneIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-indigo-100',
@@ -188,6 +194,7 @@ export const OBJECT_TYPES = [
     label: 'Insights',
     singularLabel: 'Insight',
     icon: InsightsIcon,
+
     enabled: true,
     colors: {
       bg: 'bg-purple-100',

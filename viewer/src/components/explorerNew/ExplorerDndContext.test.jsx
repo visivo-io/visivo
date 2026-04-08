@@ -277,7 +277,7 @@ describe('ExplorerDndContext', () => {
     );
   });
 
-  it('appends to existing interaction value on drop', () => {
+  it('replaces entire interaction value on drop when no cursor', () => {
     useStore.setState({
       explorerActiveInsightName: 'ins_1',
       explorerInsightStates: {
@@ -300,8 +300,9 @@ describe('ExplorerDndContext', () => {
       over: { data: { current: { type: 'interaction-zone', insightName: 'ins_1', index: 0 } } },
     });
 
+    // No cursor in the field → replace entire value (not append)
     expect(useStore.getState().explorerInsightStates.ins_1.interactions[0].value).toBe(
-      '?{${ref(model).x} >  ${ref(threshold).value}}'
+      '?{${ref(threshold).value}}'
     );
   });
 

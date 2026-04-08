@@ -35,7 +35,7 @@ const ExplorerInputsToolbar = ({ projectId }) => {
 
   return (
     <div
-      className="border-b border-gray-200 bg-gray-50 flex-shrink-0 relative z-1000"
+      className="border-b border-gray-200 bg-gray-50 flex-shrink-0 relative z-10"
       data-testid="explorer-inputs-toolbar"
     >
       <button

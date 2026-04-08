@@ -282,3 +282,42 @@ test.describe('RefTextArea — @ Mention System', () => {
     await expect(pills.first()).toBeVisible({ timeout: 3000 });
   });
 });
+
+test.describe('RefTextArea — Copy/Paste', () => {
+  test.setTimeout(90000);
+
+  test('US-REF-7: Paste text with ref pattern renders as pill', async ({ page }) => {
+    await loadExplorer(page);
+    await typeSql(page, 'SELECT x, y FROM test_table LIMIT 10');
+    await runQuery(page);
+
+    // Add an interaction
+    await page.locator('[data-testid^="insight-add-interaction-"]').first().click();
+    await expect(page.locator('[data-testid="insight-interaction-0"]')).toBeVisible({ timeout: 5000 });
+
+    const dropZone = page.locator('[data-testid="interaction-value-field-0"]');
+    const editable = dropZone.locator('[contenteditable="true"]');
+    await editable.click();
+
+    // Paste a ref string via clipboard
+    await page.evaluate(() => {
+      const text = '${ref(test_model).x} > 5';
+      const el = document.querySelector('[data-testid="ref-textarea-editable"]');
+      const dt = new DataTransfer();
+      dt.setData('text/plain', text);
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(500);
+
+    // Should render as a pill + text, not raw ref syntax
+    const pills = dropZone.locator('span.inline-flex');
+    await expect(pills.first()).toBeVisible({ timeout: 3000 });
+
+    // The "> 5" text should be visible
+    const fieldText = await dropZone.textContent();
+    expect(fieldText).toContain('> 5');
+
+    // No raw ${ref should be visible
+    expect(fieldText).not.toContain('${ref');
+  });
+});
