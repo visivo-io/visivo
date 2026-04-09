@@ -112,77 +112,71 @@ const ExplorerLeftPanel = () => {
     [searchQuery]
   );
 
-  // Helper to detect model modification status
-  const getModelStatus = useCallback((ms) => {
-    if (!ms) return null;
-    if (ms.isNew && ms.sql) return 'new';
-    if (ms.isNew && !ms.sql) return null;
-    if (ms.sql !== ms._originalSql) return 'modified';
-    if (ms.sourceName !== ms._originalSourceName) return 'modified';
-    if (JSON.stringify(ms.computedColumns) !== JSON.stringify(ms._originalComputedColumns)) return 'modified';
-    return null;
-  }, []);
+  // Status from backend diff result
+  const diffResult = useStore((s) => s.explorerDiffResult);
 
-  const getInsightStatus = useCallback((is) => {
-    if (!is) return null;
-    if (is.isNew) return 'new';
-    if (is.type !== is._originalType) return 'modified';
-    if (JSON.stringify(is.props) !== JSON.stringify(is._originalProps)) return 'modified';
-    return null;
-  }, []);
-
-  // Merge explorer-created objects into API-fetched lists (with modified status)
+  // Merge explorer-created objects into API-fetched lists (with status from diff)
   const mergedModels = useMemo(() => {
+    const modelStatuses = diffResult?.models || {};
     const apiModels = models.map((m) => {
-      const es = explorerModelStates[m.name];
-      const status = es ? getModelStatus(es) : null;
+      const status = modelStatuses[m.name] || null;
       return status ? { ...m, status } : m;
     });
     const apiNames = new Set(models.map((m) => m.name));
     const newModels = Object.entries(explorerModelStates)
-      .filter(([name, ms]) => ms.isNew && ms.sql && !apiNames.has(name))
-      .map(([name]) => ({ name, status: 'new' }));
+      .filter(([name, ms]) => !apiNames.has(name) && ms.sql)
+      .map(([name]) => ({ name, status: modelStatuses[name] || 'new' }));
     return [...apiModels, ...newModels];
-  }, [models, explorerModelStates, getModelStatus]);
+  }, [models, explorerModelStates, diffResult]);
 
   const mergedInsights = useMemo(() => {
+    const insightStatuses = diffResult?.insights || {};
     const apiInsights = insights.map((i) => {
-      const es = explorerInsightStates[i.name];
-      const status = es ? getInsightStatus(es) : null;
+      const status = insightStatuses[i.name] || null;
       return status ? { ...i, status } : i;
     });
     const apiNames = new Set(insights.map((i) => i.name));
     const newInsights = Object.entries(explorerInsightStates)
-      .filter(([name, is]) => is.isNew && !apiNames.has(name))
-      .map(([name]) => ({ name, status: 'new' }));
+      .filter(([name]) => !apiNames.has(name))
+      .map(([name]) => ({ name, status: insightStatuses[name] || 'new' }));
     return [...apiInsights, ...newInsights];
-  }, [insights, explorerInsightStates, getInsightStatus]);
+  }, [insights, explorerInsightStates, diffResult]);
 
   const mergedMetrics = useMemo(() => {
+    const metricStatuses = diffResult?.metrics || {};
     const apiNames = new Set(metrics.map((m) => m.name));
+    const apiMetrics = metrics.map((m) => {
+      const status = metricStatuses[m.name] || null;
+      return status ? { ...m, status } : m;
+    });
     const newMetrics = [];
     for (const [modelName, ms] of Object.entries(explorerModelStates)) {
       for (const cc of ms.computedColumns || []) {
         if (cc.type === 'metric' && !apiNames.has(cc.name)) {
-          newMetrics.push({ name: cc.name, config: { expression: cc.expression }, status: 'new', parentModel: modelName });
+          newMetrics.push({ name: cc.name, config: { expression: cc.expression }, status: metricStatuses[cc.name] || 'new', parentModel: modelName });
         }
       }
     }
-    return [...metrics, ...newMetrics];
-  }, [metrics, explorerModelStates]);
+    return [...apiMetrics, ...newMetrics];
+  }, [metrics, explorerModelStates, diffResult]);
 
   const mergedDimensions = useMemo(() => {
+    const dimensionStatuses = diffResult?.dimensions || {};
     const apiNames = new Set(dimensions.map((d) => d.name));
+    const apiDimensions = dimensions.map((d) => {
+      const status = dimensionStatuses[d.name] || null;
+      return status ? { ...d, status } : d;
+    });
     const newDimensions = [];
     for (const [modelName, ms] of Object.entries(explorerModelStates)) {
       for (const cc of ms.computedColumns || []) {
         if (cc.type === 'dimension' && !apiNames.has(cc.name)) {
-          newDimensions.push({ name: cc.name, config: { expression: cc.expression }, status: 'new', parentModel: modelName });
+          newDimensions.push({ name: cc.name, config: { expression: cc.expression }, status: dimensionStatuses[cc.name] || 'new', parentModel: modelName });
         }
       }
     }
-    return [...dimensions, ...newDimensions];
-  }, [dimensions, explorerModelStates]);
+    return [...apiDimensions, ...newDimensions];
+  }, [dimensions, explorerModelStates, diffResult]);
 
   const filteredModels = useMemo(
     () => mergedModels.filter((m) => matchesSearch(m.name)),
@@ -200,10 +194,18 @@ const ExplorerLeftPanel = () => {
     () => mergedInsights.filter((i) => matchesSearch(i.name)),
     [mergedInsights, matchesSearch]
   );
-  const filteredCharts = useMemo(
-    () => charts.filter((c) => matchesSearch(c.name)),
-    [charts, matchesSearch]
-  );
+  const explorerChartName = useStore((s) => s.explorerChartName);
+
+  const filteredCharts = useMemo(() => {
+    const chartStatus = diffResult?.chart || null;
+    const merged = charts.map((c) => {
+      if (c.name === explorerChartName && chartStatus) {
+        return { ...c, status: chartStatus };
+      }
+      return c;
+    });
+    return merged.filter((c) => matchesSearch(c.name));
+  }, [charts, matchesSearch, explorerChartName, diffResult]);
   const filteredInputs = useMemo(
     () => inputs.filter((i) => matchesSearch(i.name)),
     [inputs, matchesSearch]

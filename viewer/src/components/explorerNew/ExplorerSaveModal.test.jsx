@@ -23,84 +23,7 @@ const baseState = {
   explorerChartName: null,
   explorerChartLayout: {},
   explorerChartInsightNames: [],
-};
-
-const stateWithNewModel = {
-  ...baseState,
-  explorerModelStates: {
-    new_model: {
-      sql: 'SELECT 1',
-      sourceName: 'src',
-      computedColumns: [],
-      isNew: true,
-    },
-  },
-};
-
-const stateWithModifiedModel = {
-  ...baseState,
-  explorerModelStates: {
-    existing_model: {
-      sql: 'SELECT * FROM orders',
-      sourceName: 'src',
-      computedColumns: [],
-      isNew: false,
-      _originalSql: 'SELECT 1',
-      _originalSourceName: 'src',
-      _originalComputedColumns: [],
-    },
-  },
-};
-
-const stateWithNewInsight = {
-  ...baseState,
-  explorerInsightStates: {
-    new_insight: {
-      type: 'scatter',
-      props: {},
-      interactions: [],
-      isNew: true,
-    },
-  },
-};
-
-const stateWithModifiedInsight = {
-  ...baseState,
-  explorerInsightStates: {
-    existing_insight: {
-      type: 'bar',
-      props: { x: 'col_a' },
-      interactions: [],
-      isNew: false,
-      _originalType: 'scatter',
-      _originalProps: {},
-    },
-  },
-};
-
-const stateUnchanged = {
-  ...baseState,
-  explorerModelStates: {
-    stable_model: {
-      sql: 'SELECT 1',
-      sourceName: 'src',
-      computedColumns: [],
-      isNew: false,
-      _originalSql: 'SELECT 1',
-      _originalSourceName: 'src',
-      _originalComputedColumns: [],
-    },
-  },
-  explorerInsightStates: {
-    stable_insight: {
-      type: 'scatter',
-      props: {},
-      interactions: [],
-      isNew: false,
-      _originalType: 'scatter',
-      _originalProps: {},
-    },
-  },
+  explorerDiffResult: null,
 };
 
 describe('ExplorerSaveModal', () => {
@@ -117,71 +40,67 @@ describe('ExplorerSaveModal', () => {
   });
 
   it('renders modal with title', () => {
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { new_model: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     expect(screen.getByTestId('explorer-save-modal')).toBeInTheDocument();
     expect(screen.getByText('Save to Project')).toBeInTheDocument();
   });
 
   it('shows new models with green status dot', () => {
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { new_model: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     const pill = screen.getByTestId('embedded-pill-model-new_model');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'new');
   });
 
   it('shows modified models with amber status dot', () => {
-    useStore.setState(stateWithModifiedModel);
+    useStore.setState({ explorerDiffResult: { models: { existing_model: 'modified' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     const pill = screen.getByTestId('embedded-pill-model-existing_model');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'modified');
   });
 
-  it('does not show unchanged models', () => {
-    useStore.setState(stateUnchanged);
+  it('does not show unchanged objects', () => {
+    useStore.setState({
+      explorerDiffResult: {
+        models: { stable_model: null },
+        insights: { stable_insight: null },
+      },
+    });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     expect(screen.queryByTestId('embedded-pill-model-stable_model')).not.toBeInTheDocument();
     expect(screen.queryByTestId('embedded-pill-insight-stable_insight')).not.toBeInTheDocument();
   });
 
   it('shows new insights with green status dot', () => {
-    useStore.setState(stateWithNewInsight);
+    useStore.setState({ explorerDiffResult: { insights: { new_insight: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     const pill = screen.getByTestId('embedded-pill-insight-new_insight');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'new');
   });
 
   it('shows modified insights with amber status dot', () => {
-    useStore.setState(stateWithModifiedInsight);
+    useStore.setState({ explorerDiffResult: { insights: { existing_insight: 'modified' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     const pill = screen.getByTestId('embedded-pill-insight-existing_insight');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'modified');
   });
 
   it('cancel button calls onClose', () => {
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     fireEvent.click(screen.getByTestId('save-modal-cancel'));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
   it('save button calls saveExplorerObjects', async () => {
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
-
     await waitFor(() => {
       expect(mockSaveExplorerObjects).toHaveBeenCalledTimes(1);
     });
@@ -189,25 +108,17 @@ describe('ExplorerSaveModal', () => {
 
   it('shows loading state during save', async () => {
     let resolvePromise;
-    const slowSave = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
+    const slowSave = new Promise((resolve) => { resolvePromise = resolve; });
     mockSaveExplorerObjects.mockReturnValue(slowSave);
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
-
     await waitFor(() => {
       expect(screen.getByText('Saving...')).toBeInTheDocument();
     });
     expect(screen.getByTestId('save-modal-confirm')).toBeDisabled();
-
     resolvePromise({ success: true, errors: [] });
-
-    await waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalled();
-    });
+    await waitFor(() => { expect(mockOnClose).toHaveBeenCalled(); });
   });
 
   it('shows error message on save failure', async () => {
@@ -215,11 +126,9 @@ describe('ExplorerSaveModal', () => {
       success: false,
       errors: [{ name: 'my_model', type: 'model', error: 'Network error' }],
     });
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { my_model: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
-
     await waitFor(() => {
       expect(screen.getByTestId('save-error')).toBeInTheDocument();
     });
@@ -228,53 +137,63 @@ describe('ExplorerSaveModal', () => {
   });
 
   it('calls onClose on successful save', async () => {
-    useStore.setState(stateWithNewModel);
+    useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
-
-    await waitFor(() => {
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(() => { expect(mockOnClose).toHaveBeenCalledTimes(1); });
   });
 
-  it('shows chart section when chart name exists', () => {
+  it('shows new chart in NEW section', () => {
     useStore.setState({
-      ...stateWithNewModel,
       explorerChartName: 'my_chart',
-      explorerChartInsightNames: ['insight_1'],
+      explorerDiffResult: { chart: 'new' },
     });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
-    expect(screen.getByTestId('embedded-pill-chart-my_chart')).toBeInTheDocument();
+    const pill = screen.getByTestId('embedded-pill-chart-my_chart');
+    expect(pill).toBeInTheDocument();
+    expect(pill).toHaveAttribute('data-status', 'new');
   });
 
-  it('shows computed columns as metric and dimension pills', () => {
+  it('shows modified chart in MODIFIED section', () => {
     useStore.setState({
-      ...baseState,
-      explorerModelStates: {
-        my_model: {
-          sql: 'SELECT x FROM t',
-          sourceName: 'src',
-          computedColumns: [
-            { name: 'total_x', expression: 'SUM(x)', type: 'metric' },
-            { name: 'x_label', expression: 'CAST(x AS VARCHAR)', type: 'dimension' },
-          ],
-          isNew: true,
-        },
-      },
+      explorerChartName: 'my_chart',
+      explorerDiffResult: { chart: 'modified' },
     });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
-
-    expect(screen.getByTestId('embedded-pill-metric-total_x')).toBeInTheDocument();
-    expect(screen.getByTestId('embedded-pill-dimension-x_label')).toBeInTheDocument();
-    expect(screen.getByTestId('save-modal-confirm')).not.toBeDisabled();
+    const pill = screen.getByTestId('embedded-pill-chart-my_chart');
+    expect(pill).toBeInTheDocument();
+    expect(pill).toHaveAttribute('data-status', 'modified');
   });
 
-  it('save button is disabled when no changes exist', () => {
-    useStore.setState(stateUnchanged);
+  it('does not show chart when unchanged', () => {
+    useStore.setState({
+      explorerChartName: 'my_chart',
+      explorerDiffResult: { chart: null },
+    });
     render(<ExplorerSaveModal onClose={mockOnClose} />);
+    expect(screen.queryByTestId('embedded-pill-chart-my_chart')).not.toBeInTheDocument();
+  });
 
+  it('shows new metrics from diff result', () => {
+    useStore.setState({
+      explorerDiffResult: { metrics: { total_x: 'new', existing_met: null } },
+    });
+    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    expect(screen.getByTestId('embedded-pill-metric-total_x')).toBeInTheDocument();
+    expect(screen.queryByTestId('embedded-pill-metric-existing_met')).not.toBeInTheDocument();
+  });
+
+  it('save button is disabled when no changes', () => {
+    useStore.setState({
+      explorerDiffResult: { models: { m: null }, insights: { i: null } },
+    });
+    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    expect(screen.getByTestId('save-modal-confirm')).toBeDisabled();
+  });
+
+  it('save button is disabled when diff result is null', () => {
+    useStore.setState({ explorerDiffResult: null });
+    render(<ExplorerSaveModal onClose={mockOnClose} />);
     expect(screen.getByTestId('save-modal-confirm')).toBeDisabled();
   });
 });

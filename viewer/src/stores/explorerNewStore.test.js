@@ -1514,20 +1514,11 @@ describe('explorerNewStore', () => {
       expect(selectHasModifications(useStore.getState())).toBe(true);
     });
 
-    it('returns true when any model has changed SQL', () => {
+    it('returns true when diff result shows modified model', () => {
       useStore.setState({
-        explorerModelStates: {
-          m1: {
-            sql: 'SELECT 2',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
-          },
-        },
+        explorerModelStates: { m1: { sql: 'SELECT 2', sourceName: 'pg', computedColumns: [], isNew: false } },
         explorerInsightStates: {},
+        explorerDiffResult: { models: { m1: 'modified' } },
       });
       expect(selectHasModifications(useStore.getState())).toBe(true);
     });
@@ -1542,18 +1533,11 @@ describe('explorerNewStore', () => {
       expect(selectHasModifications(useStore.getState())).toBe(true);
     });
 
-    it('returns true when any insight has changed props', () => {
+    it('returns true when diff result shows modified insight', () => {
       useStore.setState({
         explorerModelStates: {},
-        explorerInsightStates: {
-          i1: {
-            type: 'scatter',
-            props: { x: 'new_col' },
-            isNew: false,
-            _originalType: 'scatter',
-            _originalProps: { x: 'old_col' },
-          },
-        },
+        explorerInsightStates: { i1: { type: 'scatter', props: { x: 'new_col' }, isNew: false } },
+        explorerDiffResult: { insights: { i1: 'modified' } },
       });
       expect(selectHasModifications(useStore.getState())).toBe(true);
     });
@@ -1562,6 +1546,7 @@ describe('explorerNewStore', () => {
       useStore.setState({
         explorerModelStates: {},
         explorerInsightStates: {},
+        explorerDiffResult: null,
       });
       expect(selectHasModifications(useStore.getState())).toBe(false);
     });
@@ -1752,11 +1737,9 @@ describe('explorerNewStore', () => {
         source: 'ref(pg)',
       });
 
-      // Verify post-save state updates
+      // Verify post-save state: isNew is false
       const modelState = useStore.getState().explorerModelStates.new_model;
       expect(modelState.isNew).toBe(false);
-      expect(modelState._originalSql).toBe('SELECT 1');
-      expect(modelState._originalSourceName).toBe('pg');
     });
 
     it('skips unchanged models', async () => {
@@ -1808,10 +1791,9 @@ describe('explorerNewStore', () => {
         props: { type: 'bar', x: 'col_a' },
       });
 
+      // Verify post-save state: isNew is false
       const insightState = useStore.getState().explorerInsightStates.my_insight;
       expect(insightState.isNew).toBe(false);
-      expect(insightState._originalType).toBe('bar');
-      expect(insightState._originalProps).toEqual({ x: 'col_a' });
     });
 
     it('saves chart when chart name exists', async () => {

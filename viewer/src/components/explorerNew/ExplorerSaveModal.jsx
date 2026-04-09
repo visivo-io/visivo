@@ -3,97 +3,45 @@ import useStore from '../../stores/store';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 
 /**
- * Determines the status of a model state entry.
- * Returns 'new', 'modified', or null (unchanged).
- */
-const getModelStatus = (ms) => {
-  if (!ms) return null;
-  if (ms.isNew) return 'new';
-  if (ms.sql !== ms._originalSql) return 'modified';
-  if (ms.sourceName !== ms._originalSourceName) return 'modified';
-  if (JSON.stringify(ms.computedColumns) !== JSON.stringify(ms._originalComputedColumns))
-    return 'modified';
-  return null;
-};
-
-/**
- * Determines the status of an insight state entry.
- * Returns 'new', 'modified', or null (unchanged).
- */
-const getInsightStatus = (is) => {
-  if (!is) return null;
-  if (is.isNew) return 'new';
-  if (is.type !== is._originalType) return 'modified';
-  if (JSON.stringify(is.props) !== JSON.stringify(is._originalProps)) return 'modified';
-  return null;
-};
-
-/**
  * ExplorerSaveModal - Shows a summary of objects to be saved and handles the save operation.
+ *
+ * Reads modification status from explorerDiffResult (populated by backend /api/explorer/diff/).
  *
  * Props:
  * - onClose: (function) called when the modal should close (cancel or successful save)
  */
 const ExplorerSaveModal = ({ onClose }) => {
-  const modelStates = useStore((s) => s.explorerModelStates);
-  const insightStates = useStore((s) => s.explorerInsightStates);
+  const diffResult = useStore((s) => s.explorerDiffResult);
   const chartName = useStore((s) => s.explorerChartName);
   const saveExplorerObjects = useStore((s) => s.saveExplorerObjects);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const {
-    newModels,
-    modifiedModels,
-    newInsights,
-    modifiedInsights,
-    newMetrics,
-    newDimensions,
-    hasChart,
-  } = useMemo(() => {
-    const newM = [];
-    const modM = [];
-    const newMet = [];
-    const newDim = [];
-    for (const [name, ms] of Object.entries(modelStates)) {
-      const status = getModelStatus(ms);
-      if (status === 'new') newM.push(name);
-      else if (status === 'modified') modM.push(name);
+  const { newItems, modifiedItems, chartStatus } = useMemo(() => {
+    const newArr = [];
+    const modArr = [];
 
-      // Extract computed columns as metrics/dimensions
-      for (const cc of ms.computedColumns || []) {
-        if (cc.type === 'metric') newMet.push(cc.name);
-        else newDim.push(cc.name);
+    if (diffResult) {
+      for (const [category, statuses] of Object.entries(diffResult)) {
+        if (category === 'chart') continue;
+        // Map category to objectType (e.g., "models" → "model")
+        const objectType = category.replace(/s$/, '');
+        for (const [name, status] of Object.entries(statuses || {})) {
+          if (status === 'new') newArr.push({ name, objectType });
+          else if (status === 'modified') modArr.push({ name, objectType });
+        }
       }
     }
 
-    const newI = [];
-    const modI = [];
-    for (const [name, is] of Object.entries(insightStates)) {
-      const status = getInsightStatus(is);
-      if (status === 'new') newI.push(name);
-      else if (status === 'modified') modI.push(name);
-    }
-
     return {
-      newModels: newM,
-      modifiedModels: modM,
-      newInsights: newI,
-      modifiedInsights: modI,
-      newMetrics: newMet,
-      newDimensions: newDim,
-      hasChart: !!chartName,
+      newItems: newArr,
+      modifiedItems: modArr,
+      chartStatus: diffResult?.chart || null,
     };
-  }, [modelStates, insightStates, chartName]);
+  }, [diffResult]);
 
-  const totalChanges =
-    newModels.length +
-    modifiedModels.length +
-    newInsights.length +
-    modifiedInsights.length +
-    newMetrics.length +
-    newDimensions.length;
+  const totalChanges = newItems.length + modifiedItems.length + (chartStatus ? 1 : 0);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -124,97 +72,52 @@ const ExplorerSaveModal = ({ onClose }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
         <h3 className="text-lg font-medium text-secondary-900 mb-4">Save to Project</h3>
 
-        {totalChanges === 0 && !hasChart && (
+        {totalChanges === 0 && (
           <p className="text-sm text-secondary-500 mb-4">No changes to save.</p>
         )}
 
         {/* New objects */}
-        {(newModels.length > 0 ||
-          newInsights.length > 0 ||
-          newMetrics.length > 0 ||
-          newDimensions.length > 0) && (
+        {(newItems.length > 0 || chartStatus === 'new') && (
           <div className="mb-3">
             <p className="text-xs font-medium text-secondary-500 uppercase tracking-wide mb-1.5">
               New
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {newModels.map((name) => (
+              {newItems.map(({ name, objectType }) => (
                 <EmbeddedPill
-                  key={`model-${name}`}
-                  objectType="model"
+                  key={`${objectType}-${name}`}
+                  objectType={objectType}
                   label={name}
                   statusDot="new"
                   as="div"
                 />
               ))}
-              {newInsights.map((name) => (
-                <EmbeddedPill
-                  key={`insight-${name}`}
-                  objectType="insight"
-                  label={name}
-                  statusDot="new"
-                  as="div"
-                />
-              ))}
-              {newMetrics.map((name) => (
-                <EmbeddedPill
-                  key={`metric-${name}`}
-                  objectType="metric"
-                  label={name}
-                  statusDot="new"
-                  as="div"
-                />
-              ))}
-              {newDimensions.map((name) => (
-                <EmbeddedPill
-                  key={`dimension-${name}`}
-                  objectType="dimension"
-                  label={name}
-                  statusDot="new"
-                  as="div"
-                />
-              ))}
+              {chartStatus === 'new' && (
+                <EmbeddedPill objectType="chart" label={chartName} statusDot="new" as="div" />
+              )}
             </div>
           </div>
         )}
 
         {/* Modified objects */}
-        {(modifiedModels.length > 0 || modifiedInsights.length > 0) && (
+        {(modifiedItems.length > 0 || chartStatus === 'modified') && (
           <div className="mb-3">
             <p className="text-xs font-medium text-secondary-500 uppercase tracking-wide mb-1.5">
               Modified
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {modifiedModels.map((name) => (
+              {modifiedItems.map(({ name, objectType }) => (
                 <EmbeddedPill
-                  key={`model-${name}`}
-                  objectType="model"
+                  key={`${objectType}-${name}`}
+                  objectType={objectType}
                   label={name}
                   statusDot="modified"
                   as="div"
                 />
               ))}
-              {modifiedInsights.map((name) => (
-                <EmbeddedPill
-                  key={`insight-${name}`}
-                  objectType="insight"
-                  label={name}
-                  statusDot="modified"
-                  as="div"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Chart */}
-        {hasChart && (
-          <div className="mb-3">
-            <p className="text-xs font-medium text-secondary-500 uppercase tracking-wide mb-1.5">
-              Chart
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              <EmbeddedPill objectType="chart" label={chartName} as="div" />
+              {chartStatus === 'modified' && (
+                <EmbeddedPill objectType="chart" label={chartName} statusDot="modified" as="div" />
+              )}
             </div>
           </div>
         )}

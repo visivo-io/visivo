@@ -32,7 +32,7 @@ export const insightToCanonicalConfig = (insightState) => {
  */
 export const modelToCanonicalConfig = (modelState) => ({
   sql: modelState.sql,
-  source: modelState.sourceName,
+  source: modelState.sourceName ? `ref(${modelState.sourceName})` : undefined,
 });
 
 /**
@@ -314,26 +314,38 @@ export const selectChartStatus = (s) => {
   const cachedChart = (s.charts || []).find((c) => c.name === s.explorerChartName);
   if (!cachedChart) return 'new';
   const contextConfig = chartToCanonicalConfig(s);
-  return getObjectStatus(contextConfig, cachedChart?.config);
+  // Compare only the fields we track (cached config may have extra fields like name, description)
+  const cachedConfig = {
+    insights: cachedChart.config?.insights || [],
+    layout: cachedChart.config?.layout || {},
+  };
+  return getObjectStatus(contextConfig, cachedConfig);
 };
 
 export const selectHasModifications = (s) => {
-  for (const state of Object.values(s.explorerModelStates || {})) {
-    if (state.isNew && state.sql) return true;
-    if (!state.isNew && state.sql !== state._originalSql) return true;
-    if (!state.isNew && state.sourceName !== state._originalSourceName) return true;
-    if (
-      !state.isNew &&
-      JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns)
-    )
-      return true;
+  const diff = s.explorerDiffResult;
+  if (!diff) {
+    // Fallback: if no diff result yet, check if any context objects exist
+    for (const state of Object.values(s.explorerModelStates || {})) {
+      if (state.isNew && state.sql) return true;
+    }
+    for (const state of Object.values(s.explorerInsightStates || {})) {
+      if (state.isNew) return true;
+    }
+    return false;
   }
-  for (const state of Object.values(s.explorerInsightStates || {})) {
-    if (state.isNew) return true;
-    if (state.type !== state._originalType) return true;
-    if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return true;
-    if (JSON.stringify(state.interactions) !== JSON.stringify(state._originalInteractions || [])) return true;
+
+  // Check all diff categories for non-null statuses
+  for (const category of ['models', 'insights', 'metrics', 'dimensions']) {
+    const statuses = diff[category];
+    if (statuses) {
+      for (const status of Object.values(statuses)) {
+        if (status) return true;
+      }
+    }
   }
+  if (diff.chart) return true;
+
   return false;
 };
 
@@ -407,6 +419,9 @@ const createExplorerNewSlice = (set, get) => ({
 
   // --- Per-Insight State ---
   explorerInsightStates: {},
+
+  // --- Diff Result (from backend /api/explorer/diff/) ---
+  explorerDiffResult: null,
 
   // --- DuckDB (shared, operates on active model) ---
   explorerDuckDBLoading: false,
@@ -1156,6 +1171,69 @@ const createExplorerNewSlice = (set, get) => ({
   },
 
   // ====================================================================
+  // Backend Diff — Modification Tracking
+  // ====================================================================
+
+  fetchExplorerDiff: async () => {
+    const state = get();
+    const payload = {};
+
+    // Build models payload — only send sql (source is project-level, not user-edited)
+    const modelConfigs = {};
+    for (const [name, ms] of Object.entries(state.explorerModelStates)) {
+      if (!ms.sql) continue;
+      modelConfigs[name] = { sql: ms.sql };
+    }
+    if (Object.keys(modelConfigs).length > 0) payload.models = modelConfigs;
+
+    // Build insights payload
+    const insightConfigs = {};
+    for (const [name, is] of Object.entries(state.explorerInsightStates)) {
+      const expandedProps = expandDotNotationProps(is.props);
+      const backendInteractions = (is.interactions || [])
+        .filter((i) => i.value)
+        .map((i) => ({ [i.type]: i.value }));
+      insightConfigs[name] = {
+        props: { type: is.type, ...expandedProps },
+        ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
+      };
+    }
+    if (Object.keys(insightConfigs).length > 0) payload.insights = insightConfigs;
+
+    // Build chart payload
+    if (state.explorerChartName) {
+      payload.chart = {
+        name: state.explorerChartName,
+        insights: state.explorerChartInsightNames.map((n) => `ref(${n})`),
+        layout: state.explorerChartLayout || {},
+      };
+    }
+
+    // Build metrics/dimensions from computed columns — only send expression
+    const metricConfigs = {};
+    const dimensionConfigs = {};
+    for (const [, ms] of Object.entries(state.explorerModelStates)) {
+      for (const cc of ms.computedColumns || []) {
+        const entry = { expression: cc.expression };
+        if (cc.type === 'metric') metricConfigs[cc.name] = entry;
+        else dimensionConfigs[cc.name] = entry;
+      }
+    }
+    if (Object.keys(metricConfigs).length > 0) payload.metrics = metricConfigs;
+    if (Object.keys(dimensionConfigs).length > 0) payload.dimensions = dimensionConfigs;
+
+    try {
+      const { fetchDiff } = await import('../api/explorer');
+      const result = await fetchDiff(payload);
+      set({ explorerDiffResult: result });
+      return result;
+    } catch (err) {
+      set({ explorerDiffResult: null });
+      return null;
+    }
+  },
+
+  // ====================================================================
   // Standalone Utilities (not shims)
   // ====================================================================
 
@@ -1237,32 +1315,37 @@ const createExplorerNewSlice = (set, get) => ({
       }
     }
 
-    // Post-save: mark all as published
+    // Post-save: refresh cached API stores so diff resolves to "unchanged"
     if (errors.length === 0) {
+      // Mark all context objects as not new
       const updatedModelStates = {};
       for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-        updatedModelStates[name] = {
-          ...ms,
-          isNew: false,
-          _originalSql: ms.sql,
-          _originalSourceName: ms.sourceName,
-          _originalComputedColumns: JSON.parse(JSON.stringify(ms.computedColumns)),
-        };
+        updatedModelStates[name] = { ...ms, isNew: false };
       }
       const updatedInsightStates = {};
       for (const [name, is] of Object.entries(state.explorerInsightStates)) {
-        updatedInsightStates[name] = {
-          ...is,
-          isNew: false,
-          _originalType: is.type,
-          _originalProps: { ...is.props },
-          _originalInteractions: JSON.parse(JSON.stringify(is.interactions || [])),
-        };
+        updatedInsightStates[name] = { ...is, isNew: false };
       }
       set({
         explorerModelStates: updatedModelStates,
         explorerInsightStates: updatedInsightStates,
       });
+
+      // Refresh cached API stores — this makes the diff return null (unchanged)
+      // for all objects that were just saved
+      try {
+        await Promise.all([
+          get().fetchInsights?.(),
+          get().fetchModels?.(),
+          get().fetchCharts?.(),
+          get().fetchMetrics?.(),
+          get().fetchDimensions?.(),
+        ]);
+        // Re-run diff to update status dots
+        await get().fetchExplorerDiff();
+      } catch {
+        // Cache refresh is best-effort — save already succeeded
+      }
     }
 
     return { success: errors.length === 0, errors };

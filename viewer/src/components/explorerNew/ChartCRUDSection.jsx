@@ -23,6 +23,7 @@ const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
 };
 
 const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
+  const isLoadedChart = useStore((s) => (s.charts || []).some((c) => c.name === s.explorerChartName));
   const chartName = useStore((s) => s.explorerChartName);
   const chartLayout = useStore((s) => s.explorerChartLayout);
   const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
@@ -122,8 +123,9 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
               type="text"
               value={chartName || ''}
               onChange={handleNameChange}
+              disabled={isLoadedChart}
               placeholder="Chart name..."
-              className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white focus:ring-2 focus:ring-pink-200 focus:border-pink-400 transition-colors"
+              className={`w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-pink-200 focus:border-pink-400 transition-colors ${isLoadedChart ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
             />
           </div>
 

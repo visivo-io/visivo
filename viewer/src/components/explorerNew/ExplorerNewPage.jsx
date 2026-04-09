@@ -15,6 +15,22 @@ const ExplorerNewPage = () => {
   const createModelTab = useStore((s) => s.createModelTab);
   const createInsight = useStore((s) => s.createInsight);
   const fetchDefaults = useStore((s) => s.fetchDefaults);
+  const fetchExplorerDiff = useStore((s) => s.fetchExplorerDiff);
+
+  // Watch explorer state changes to trigger backend diff (debounced)
+  const explorerModelStates = useStore((s) => s.explorerModelStates);
+  const explorerInsightStates = useStore((s) => s.explorerInsightStates);
+  const explorerChartName = useStore((s) => s.explorerChartName);
+  const explorerChartLayout = useStore((s) => s.explorerChartLayout);
+
+  const diffTimerRef = useRef(null);
+  useEffect(() => {
+    if (diffTimerRef.current) clearTimeout(diffTimerRef.current);
+    diffTimerRef.current = setTimeout(() => {
+      fetchExplorerDiff();
+    }, 300);
+    return () => clearTimeout(diffTimerRef.current);
+  }, [explorerModelStates, explorerInsightStates, explorerChartName, explorerChartLayout, chartInsightNames, fetchExplorerDiff]);
 
   // Fetch project defaults on mount (needed for default source selection)
   useEffect(() => {
