@@ -1805,8 +1805,7 @@ describe('explorerNewStore', () => {
 
       expect(result.success).toBe(true);
       expect(mockSaveInsight).toHaveBeenCalledWith('my_insight', {
-        type: 'bar',
-        props: { x: 'col_a' },
+        props: { type: 'bar', x: 'col_a' },
       });
 
       const insightState = useStore.getState().explorerInsightStates.my_insight;
@@ -1916,8 +1915,7 @@ describe('explorerNewStore', () => {
       await useStore.getState().saveExplorerObjects();
 
       expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
-        type: 'scatter',
-        props: { marker: { color: 'red', size: 10 }, x: 'col_a' },
+        props: { type: 'scatter', marker: { color: 'red', size: 10 }, x: 'col_a' },
       });
     });
   });

@@ -9,6 +9,50 @@ import { generateUniqueName } from '../utils/uniqueName';
  * All values are passed through unchanged — they should already be
  * in ?{...} query-string format.
  */
+// --- Canonical config builders for cached-vs-context diffing ---
+
+/**
+ * Convert explorer insight state to API-comparable config.
+ * Matches the shape that Pydantic Insight model expects:
+ * { props: { type, ...expandedProps }, interactions: [{ filter: "..." }] }
+ */
+export const insightToCanonicalConfig = (insightState) => {
+  const expandedProps = expandDotNotationProps(insightState.props);
+  const backendInteractions = (insightState.interactions || [])
+    .filter((i) => i.value)
+    .map((i) => ({ [i.type]: i.value }));
+  return {
+    props: { type: insightState.type, ...expandedProps },
+    ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
+  };
+};
+
+/**
+ * Convert explorer model state to API-comparable config.
+ */
+export const modelToCanonicalConfig = (modelState) => ({
+  sql: modelState.sql,
+  source: modelState.sourceName,
+});
+
+/**
+ * Convert explorer chart state to API-comparable config.
+ */
+export const chartToCanonicalConfig = (s) => ({
+  insights: (s.explorerChartInsightNames || []).map((n) => `ref(${n})`),
+  layout: s.explorerChartLayout || {},
+});
+
+/**
+ * Universal status derivation: compare context config against cached API config.
+ * Returns 'new' | 'modified' | null (unchanged)
+ */
+export const getObjectStatus = (contextConfig, cachedConfig) => {
+  if (!cachedConfig) return 'new';
+  if (JSON.stringify(contextConfig) !== JSON.stringify(cachedConfig)) return 'modified';
+  return null;
+};
+
 export const expandDotNotationProps = (props) => {
   const result = {};
   for (const [key, value] of Object.entries(props)) {
@@ -263,6 +307,14 @@ export const selectInsightStatus = (insightName) => (s) => {
   if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return 'modified';
   if (JSON.stringify(state.interactions) !== JSON.stringify(state._originalInteractions || [])) return 'modified';
   return null;
+};
+
+export const selectChartStatus = (s) => {
+  if (!s.explorerChartName) return null;
+  const cachedChart = (s.charts || []).find((c) => c.name === s.explorerChartName);
+  if (!cachedChart) return 'new';
+  const contextConfig = chartToCanonicalConfig(s);
+  return getObjectStatus(contextConfig, cachedChart?.config);
 };
 
 export const selectHasModifications = (s) => {
@@ -1164,8 +1216,7 @@ const createExplorerNewSlice = (set, get) => ({
           .filter((i) => i.value)
           .map((i) => ({ [i.type]: i.value }));
         await saveInsight(name, {
-          type: is.type,
-          props: expandedProps,
+          props: { type: is.type, ...expandedProps },
           ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
         });
       } catch (err) {
