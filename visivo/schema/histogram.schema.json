@@ -3794,7 +3794,8 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "x"
   ],
   "additionalProperties": false
 }

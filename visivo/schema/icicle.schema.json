@@ -4138,7 +4138,10 @@
     }
   },
   "required": [
-    "type"
+    "type",
+    "values",
+    "labels",
+    "parents"
   ],
   "additionalProperties": false
 }
