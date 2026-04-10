@@ -180,7 +180,8 @@ describe('ModelTabBar', () => {
     expect(state.explorerModelTabs).not.toContain('model_a');
   });
 
-  it('shows green status dot for isNew models', () => {
+  it('shows green status dot for new models', () => {
+    useStore.setState({ explorerDiffResult: { models: { model_a: 'new' } } });
     render(<ModelTabBar />);
 
     expect(screen.getByTestId('status-dot-model_a')).toBeInTheDocument();
@@ -199,9 +200,6 @@ describe('ModelTabBar', () => {
           computedColumns: [],
           enrichedResult: null,
           isNew: false,
-          _originalSql: 'SELECT 2',
-          _originalSourceName: 'pg',
-          _originalComputedColumns: [],
         },
       },
     });
@@ -213,21 +211,7 @@ describe('ModelTabBar', () => {
 
   it('shows amber status dot for modified models', () => {
     useStore.setState({
-      explorerModelStates: {
-        ...useStore.getState().explorerModelStates,
-        model_b: {
-          sql: 'SELECT 999',
-          sourceName: 'pg',
-          queryResult: null,
-          queryError: null,
-          computedColumns: [],
-          enrichedResult: null,
-          isNew: false,
-          _originalSql: 'SELECT 2',
-          _originalSourceName: 'pg',
-          _originalComputedColumns: [],
-        },
-      },
+      explorerDiffResult: { models: { model_b: 'modified' } },
     });
 
     render(<ModelTabBar />);

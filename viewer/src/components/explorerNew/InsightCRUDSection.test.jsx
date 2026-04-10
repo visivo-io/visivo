@@ -152,7 +152,8 @@ describe('InsightCRUDSection', () => {
     expect(removeInsightFromChart).toHaveBeenCalledWith('test_insight');
   });
 
-  it('status dot renders green for isNew', () => {
+  it('status dot renders green for new insight', () => {
+    useStore.setState({ explorerDiffResult: { insights: { test_insight: 'new' } } });
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
@@ -168,10 +169,9 @@ describe('InsightCRUDSection', () => {
         test_insight: {
           ...defaultInsightState,
           isNew: false,
-          _originalType: 'scatter',
-          _originalProps: { x: '?{${ref(model).col_x}}', y: '?{${ref(model).col_y}}' },
         },
       },
+      explorerDiffResult: { insights: { test_insight: null } },
     });
 
     render(
@@ -188,10 +188,9 @@ describe('InsightCRUDSection', () => {
           ...defaultInsightState,
           isNew: false,
           type: 'bar',
-          _originalType: 'scatter',
-          _originalProps: { x: '?{${ref(model).col_x}}', y: '?{${ref(model).col_y}}' },
         },
       },
+      explorerDiffResult: { insights: { test_insight: 'modified' } },
     });
 
     render(

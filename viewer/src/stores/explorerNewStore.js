@@ -9,50 +9,6 @@ import { generateUniqueName } from '../utils/uniqueName';
  * All values are passed through unchanged — they should already be
  * in ?{...} query-string format.
  */
-// --- Canonical config builders for cached-vs-context diffing ---
-
-/**
- * Convert explorer insight state to API-comparable config.
- * Matches the shape that Pydantic Insight model expects:
- * { props: { type, ...expandedProps }, interactions: [{ filter: "..." }] }
- */
-export const insightToCanonicalConfig = (insightState) => {
-  const expandedProps = expandDotNotationProps(insightState.props);
-  const backendInteractions = (insightState.interactions || [])
-    .filter((i) => i.value)
-    .map((i) => ({ [i.type]: i.value }));
-  return {
-    props: { type: insightState.type, ...expandedProps },
-    ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
-  };
-};
-
-/**
- * Convert explorer model state to API-comparable config.
- */
-export const modelToCanonicalConfig = (modelState) => ({
-  sql: modelState.sql,
-  source: modelState.sourceName ? `ref(${modelState.sourceName})` : undefined,
-});
-
-/**
- * Convert explorer chart state to API-comparable config.
- */
-export const chartToCanonicalConfig = (s) => ({
-  insights: (s.explorerChartInsightNames || []).map((n) => `ref(${n})`),
-  layout: s.explorerChartLayout || {},
-});
-
-/**
- * Universal status derivation: compare context config against cached API config.
- * Returns 'new' | 'modified' | null (unchanged)
- */
-export const getObjectStatus = (contextConfig, cachedConfig) => {
-  if (!cachedConfig) return 'new';
-  if (JSON.stringify(contextConfig) !== JSON.stringify(cachedConfig)) return 'modified';
-  return null;
-};
-
 export const expandDotNotationProps = (props) => {
   const result = {};
   for (const [key, value] of Object.entries(props)) {
@@ -226,9 +182,6 @@ const buildModelStateFromObject = (modelObject, globalState) => {
     computedColumns: computedCols,
     enrichedResult: null,
     isNew: false,
-    _originalSql: sql,
-    _originalSourceName: resolvedSourceName,
-    _originalComputedColumns: JSON.parse(JSON.stringify(computedCols)),
   };
 };
 
@@ -288,38 +241,11 @@ export const selectActiveInsightConfig = (s) => {
 };
 
 export const selectModelStatus = (modelName) => (s) => {
-  const state = s.explorerModelStates[modelName];
-  if (!state) return null;
-  if (state.isNew && state.sql) return 'new';
-  if (state.isNew && !state.sql) return null;
-  if (state.sql !== state._originalSql) return 'modified';
-  if (state.sourceName !== state._originalSourceName) return 'modified';
-  if (JSON.stringify(state.computedColumns) !== JSON.stringify(state._originalComputedColumns))
-    return 'modified';
-  return null;
+  return s.explorerDiffResult?.models?.[modelName] || null;
 };
 
 export const selectInsightStatus = (insightName) => (s) => {
-  const state = s.explorerInsightStates[insightName];
-  if (!state) return null;
-  if (state.isNew) return 'new';
-  if (state.type !== state._originalType) return 'modified';
-  if (JSON.stringify(state.props) !== JSON.stringify(state._originalProps)) return 'modified';
-  if (JSON.stringify(state.interactions) !== JSON.stringify(state._originalInteractions || [])) return 'modified';
-  return null;
-};
-
-export const selectChartStatus = (s) => {
-  if (!s.explorerChartName) return null;
-  const cachedChart = (s.charts || []).find((c) => c.name === s.explorerChartName);
-  if (!cachedChart) return 'new';
-  const contextConfig = chartToCanonicalConfig(s);
-  // Compare only the fields we track (cached config may have extra fields like name, description)
-  const cachedConfig = {
-    insights: cachedChart.config?.insights || [],
-    layout: cachedChart.config?.layout || {},
-  };
-  return getObjectStatus(contextConfig, cachedConfig);
+  return s.explorerDiffResult?.insights?.[insightName] || null;
 };
 
 export const selectHasModifications = (s) => {
@@ -742,14 +668,25 @@ const createExplorerNewSlice = (set, get) => ({
     const ms = state.explorerModelStates[modelName];
     if (!ms || ms.isNew) return;
 
+    // Restore from cached API object
+    const cachedModel = (state.models || []).find((m) => m.name === modelName);
+    if (!cachedModel) return;
+
+    const config = cachedModel.config;
+    const extractSourceName = (rawSource) => {
+      if (typeof rawSource !== 'string') return null;
+      const refMatch = rawSource.match(/ref\(([^)]+)\)/);
+      return refMatch ? refMatch[1].trim() : rawSource;
+    };
+
     set({
       explorerModelStates: {
         ...state.explorerModelStates,
         [modelName]: {
           ...ms,
-          sql: ms._originalSql,
-          sourceName: ms._originalSourceName,
-          computedColumns: JSON.parse(JSON.stringify(ms._originalComputedColumns || [])),
+          sql: config?.sql || ms.sql,
+          sourceName: extractSourceName(config?.source) || ms.sourceName,
+          computedColumns: JSON.parse(JSON.stringify(ms.computedColumns || [])),
           queryResult: null,
           enrichedResult: null,
           queryError: null,
@@ -763,14 +700,26 @@ const createExplorerNewSlice = (set, get) => ({
     const is = state.explorerInsightStates[insightName];
     if (!is || is.isNew) return;
 
+    // Restore from cached API object
+    const cachedInsight = (state.insights || []).find((i) => i.name === insightName);
+    if (!cachedInsight) return;
+
+    const config = cachedInsight.config;
+    const insightType = config?.props?.type || config?.type || 'scatter';
+    const { type: _t, ...propsWithoutType } = config?.props || {};
+    const interactions = (config?.interactions || []).map((i) => {
+      const key = Object.keys(i).find((k) => ['filter', 'split', 'sort'].includes(k));
+      return key ? { type: key, value: i[key] } : { type: 'filter', value: '' };
+    });
+
     set({
       explorerInsightStates: {
         ...state.explorerInsightStates,
         [insightName]: {
           ...is,
-          type: is._originalType,
-          props: { ...is._originalProps },
-          interactions: JSON.parse(JSON.stringify(is._originalInteractions || [])),
+          type: insightType,
+          props: propsWithoutType,
+          interactions,
           typePropsCache: {},
         },
       },
@@ -1071,9 +1020,6 @@ const createExplorerNewSlice = (set, get) => ({
         interactions: transformedInteractions,
         typePropsCache: {},
         isNew: false,
-        _originalType: insightType,
-        _originalProps: { ...propsWithoutType },
-        _originalInteractions: JSON.parse(JSON.stringify(transformedInteractions)),
       };
     }
 
@@ -1253,15 +1199,11 @@ const createExplorerNewSlice = (set, get) => ({
     const errors = [];
 
     // Save models
+    const diff = state.explorerDiffResult || {};
     for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-      if (
-        !ms.isNew &&
-        ms.sql === ms._originalSql &&
-        ms.sourceName === ms._originalSourceName &&
-        JSON.stringify(ms.computedColumns) === JSON.stringify(ms._originalComputedColumns)
-      ) {
-        continue;
-      }
+      // Skip unchanged models (diff result is null)
+      if (diff.models && diff.models[name] === null) continue;
+      if (!ms.sql) continue;
       try {
         const { saveModel } = await import('../api/models');
         await saveModel(name, {
@@ -1290,14 +1232,8 @@ const createExplorerNewSlice = (set, get) => ({
 
     // Save insights
     for (const [name, is] of Object.entries(state.explorerInsightStates)) {
-      if (
-        !is.isNew &&
-        is.type === is._originalType &&
-        JSON.stringify(is.props) === JSON.stringify(is._originalProps) &&
-        JSON.stringify(is.interactions) === JSON.stringify(is._originalInteractions || [])
-      ) {
-        continue;
-      }
+      // Skip unchanged insights (diff result is null)
+      if (diff.insights && diff.insights[name] === null) continue;
       try {
         const { saveInsight } = await import('../api/insights');
         const expandedProps = expandDotNotationProps(is.props);

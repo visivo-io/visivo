@@ -29,9 +29,9 @@ class TestExplorerDiffViews:
             manager = Mock()
             manager.published_objects = {}
             manager.get = Mock(return_value=None)
-            manager.validate_object = Mock(side_effect=lambda config: Mock(
-                model_dump=Mock(return_value=config)
-            ))
+            manager.validate_object = Mock(
+                side_effect=lambda config: Mock(model_dump=Mock(return_value=config))
+            )
             manager.objects_equal = Mock(return_value=True)
             setattr(flask_app, attr, manager)
 
@@ -71,18 +71,12 @@ class TestExplorerDiffViews:
     def test_unchanged_model_returns_null(self, client, app):
         """Model in published_objects with matching config → status is null."""
         published_model = Mock()
-        published_model.model_dump = Mock(
-            return_value={"name": "my_model", "sql": "SELECT 1"}
-        )
+        published_model.model_dump = Mock(return_value={"name": "my_model", "sql": "SELECT 1"})
         app.flask_app.model_manager.get = Mock(return_value=published_model)
 
         # validate_object returns the same dump as published
         app.flask_app.model_manager.validate_object = Mock(
-            return_value=Mock(
-                model_dump=Mock(
-                    return_value={"name": "my_model", "sql": "SELECT 1"}
-                )
-            )
+            return_value=Mock(model_dump=Mock(return_value={"name": "my_model", "sql": "SELECT 1"}))
         )
 
         response = client.post(
@@ -97,17 +91,11 @@ class TestExplorerDiffViews:
     def test_modified_model_returns_modified(self, client, app):
         """Model in published_objects with different config → status is 'modified'."""
         published_model = Mock()
-        published_model.model_dump = Mock(
-            return_value={"name": "my_model", "sql": "SELECT 1"}
-        )
+        published_model.model_dump = Mock(return_value={"name": "my_model", "sql": "SELECT 1"})
         app.flask_app.model_manager.get = Mock(return_value=published_model)
 
         app.flask_app.model_manager.validate_object = Mock(
-            return_value=Mock(
-                model_dump=Mock(
-                    return_value={"name": "my_model", "sql": "SELECT 2"}
-                )
-            )
+            return_value=Mock(model_dump=Mock(return_value={"name": "my_model", "sql": "SELECT 2"}))
         )
 
         response = client.post(
@@ -159,9 +147,7 @@ class TestExplorerDiffViews:
     def test_validation_failure_returns_modified(self, client, app):
         """If Pydantic validation fails, treat as modified (something changed)."""
         app.flask_app.model_manager.validate_object = Mock(
-            side_effect=ValidationError.from_exception_data(
-                title="test", line_errors=[]
-            )
+            side_effect=ValidationError.from_exception_data(title="test", line_errors=[])
         )
 
         response = client.post(
@@ -213,7 +199,10 @@ class TestExplorerDiffViews:
             "/api/explorer/diff/",
             json={
                 "models": {"m1": {"sql": "SELECT 1"}, "m2": {"sql": "SELECT 2"}},
-                "insights": {"i1": {"props": {"type": "scatter"}}, "i2": {"props": {"type": "bar"}}},
+                "insights": {
+                    "i1": {"props": {"type": "scatter"}},
+                    "i2": {"props": {"type": "bar"}},
+                },
                 "chart": {"name": "c1", "insights": [], "layout": {}},
                 "metrics": {"met1": {"expression": "SUM(x)"}},
                 "dimensions": {"dim1": {"expression": "x"}},

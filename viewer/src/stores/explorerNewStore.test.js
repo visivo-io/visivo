@@ -1312,155 +1312,50 @@ describe('explorerNewStore', () => {
   // Status Detection Selectors
   // ====================================================================
   describe('selectModelStatus', () => {
-    it('returns "new" for a new model with SQL content', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: { sql: 'SELECT 1', sourceName: null, computedColumns: [], isNew: true },
-        },
-      });
+    it('returns status from explorerDiffResult', () => {
+      useStore.setState({ explorerDiffResult: { models: { m1: 'new' } } });
       expect(selectModelStatus('m1')(useStore.getState())).toBe('new');
     });
 
-    it('returns null for a new model with empty SQL (auto-created default)', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: { sql: '', sourceName: null, computedColumns: [], isNew: true },
-        },
-      });
+    it('returns modified from diff result', () => {
+      useStore.setState({ explorerDiffResult: { models: { m1: 'modified' } } });
+      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns null when diff shows unchanged', () => {
+      useStore.setState({ explorerDiffResult: { models: { m1: null } } });
       expect(selectModelStatus('m1')(useStore.getState())).toBeNull();
-    });
-
-    it('returns null for a loaded model with no changes', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [{ name: 'total', expression: 'SUM(x)', type: 'metric' }],
-            isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [{ name: 'total', expression: 'SUM(x)', type: 'metric' }],
-          },
-        },
-      });
-      expect(selectModelStatus('m1')(useStore.getState())).toBeNull();
-    });
-
-    it('returns "modified" when SQL has changed', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: {
-            sql: 'SELECT 2',
-            sourceName: 'pg',
-            computedColumns: [],
-            isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
-          },
-        },
-      });
-      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
-    });
-
-    it('returns "modified" when source has changed', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: {
-            sql: 'SELECT 1',
-            sourceName: 'mysql',
-            computedColumns: [],
-            isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
-          },
-        },
-      });
-      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
-    });
-
-    it('returns "modified" when computed columns have changed', () => {
-      useStore.setState({
-        explorerModelStates: {
-          m1: {
-            sql: 'SELECT 1',
-            sourceName: 'pg',
-            computedColumns: [{ name: 'total', expression: 'SUM(amount)', type: 'metric' }],
-            isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
-          },
-        },
-      });
-      expect(selectModelStatus('m1')(useStore.getState())).toBe('modified');
     });
 
     it('returns null for non-existent model', () => {
+      useStore.setState({ explorerDiffResult: { models: {} } });
       expect(selectModelStatus('nonexistent')(useStore.getState())).toBeNull();
+    });
+
+    it('returns null when diff result is null', () => {
+      useStore.setState({ explorerDiffResult: null });
+      expect(selectModelStatus('m1')(useStore.getState())).toBeNull();
     });
   });
 
   describe('selectInsightStatus', () => {
-    it('returns "new" for a new insight', () => {
-      useStore.setState({
-        explorerInsightStates: {
-          i1: { type: 'scatter', props: {}, isNew: true },
-        },
-      });
+    it('returns status from explorerDiffResult', () => {
+      useStore.setState({ explorerDiffResult: { insights: { i1: 'new' } } });
       expect(selectInsightStatus('i1')(useStore.getState())).toBe('new');
     });
 
-    it('returns null for a loaded insight with no changes', () => {
-      useStore.setState({
-        explorerInsightStates: {
-          i1: {
-            type: 'scatter',
-            props: { x: 'col_a' },
-            interactions: [],
-            isNew: false,
-            _originalType: 'scatter',
-            _originalProps: { x: 'col_a' },
-            _originalInteractions: [],
-          },
-        },
-      });
+    it('returns modified from diff result', () => {
+      useStore.setState({ explorerDiffResult: { insights: { i1: 'modified' } } });
+      expect(selectInsightStatus('i1')(useStore.getState())).toBe('modified');
+    });
+
+    it('returns null when diff shows unchanged', () => {
+      useStore.setState({ explorerDiffResult: { insights: { i1: null } } });
       expect(selectInsightStatus('i1')(useStore.getState())).toBeNull();
     });
 
-    it('returns "modified" when type has changed', () => {
-      useStore.setState({
-        explorerInsightStates: {
-          i1: {
-            type: 'bar',
-            props: {},
-            isNew: false,
-            _originalType: 'scatter',
-            _originalProps: {},
-          },
-        },
-      });
-      expect(selectInsightStatus('i1')(useStore.getState())).toBe('modified');
-    });
-
-    it('returns "modified" when props have changed', () => {
-      useStore.setState({
-        explorerInsightStates: {
-          i1: {
-            type: 'scatter',
-            props: { x: 'col_b' },
-            isNew: false,
-            _originalType: 'scatter',
-            _originalProps: { x: 'col_a' },
-          },
-        },
-      });
-      expect(selectInsightStatus('i1')(useStore.getState())).toBe('modified');
-    });
-
     it('returns null for non-existent insight', () => {
+      useStore.setState({ explorerDiffResult: { insights: {} } });
       expect(selectInsightStatus('nonexistent')(useStore.getState())).toBeNull();
     });
   });
@@ -1474,9 +1369,6 @@ describe('explorerNewStore', () => {
             sourceName: 'pg',
             computedColumns: [],
             isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
           },
         },
         explorerInsightStates: {
@@ -1485,9 +1377,6 @@ describe('explorerNewStore', () => {
             props: {},
             interactions: [],
             isNew: false,
-            _originalType: 'scatter',
-            _originalProps: {},
-            _originalInteractions: [],
           },
         },
       });
@@ -1510,6 +1399,7 @@ describe('explorerNewStore', () => {
           m1: { sql: 'SELECT 1', sourceName: null, computedColumns: [], isNew: true },
         },
         explorerInsightStates: {},
+        explorerDiffResult: null,
       });
       expect(selectHasModifications(useStore.getState())).toBe(true);
     });
@@ -1553,68 +1443,6 @@ describe('explorerNewStore', () => {
   });
 
   // ====================================================================
-  // Original state snapshots in loadModel/loadChart
-  // ====================================================================
-  describe('loadModel snapshot fields', () => {
-    it('sets _original* fields on loaded model state', () => {
-      useStore.setState({
-        explorerSources: [{ source_name: 'pg' }],
-        metrics: [],
-        dimensions: [],
-      });
-
-      useStore.getState().loadModel({
-        name: 'orders',
-        config: { sql: 'SELECT * FROM orders', source: 'ref(pg)' },
-      });
-
-      const modelState = useStore.getState().explorerModelStates.orders;
-      expect(modelState._originalSql).toBe('SELECT * FROM orders');
-      expect(modelState._originalSourceName).toBe('pg');
-      expect(modelState._originalComputedColumns).toEqual([]);
-    });
-  });
-
-  describe('loadChart snapshot fields', () => {
-    it('sets _original* fields on loaded insight states', () => {
-      const chart = { name: 'chart', config: { layout: {} } };
-      const insights = [
-        {
-          name: 'ins_1',
-          config: { type: 'bar', props: { x: 'col_a' }, interactions: [] },
-        },
-      ];
-      const models = [{ name: 'm1', config: { sql: 'SELECT 1' } }];
-
-      useStore.setState({ metrics: [], dimensions: [] });
-      useStore.getState().loadChart(chart, insights, models);
-
-      const insightState = useStore.getState().explorerInsightStates.ins_1;
-      expect(insightState._originalType).toBe('bar');
-      expect(insightState._originalProps).toEqual({ x: 'col_a' });
-    });
-
-    it('sets _original* fields on loaded model states via loadChart', () => {
-      const chart = { name: 'chart', config: { layout: {} } };
-      const insights = [
-        { name: 'ins_1', config: { type: 'scatter', props: {}, interactions: [] } },
-      ];
-      const models = [{ name: 'm1', config: { sql: 'SELECT 1', source: 'ref(pg)' } }];
-
-      useStore.setState({
-        explorerSources: [{ source_name: 'pg' }],
-        metrics: [],
-        dimensions: [],
-      });
-      useStore.getState().loadChart(chart, insights, models);
-
-      const modelState = useStore.getState().explorerModelStates.m1;
-      expect(modelState._originalSql).toBe('SELECT 1');
-      expect(modelState._originalSourceName).toBe('pg');
-      expect(modelState._originalComputedColumns).toEqual([]);
-    });
-  });
-
   describe('loadChart interaction transformation', () => {
     it('transforms API interactions ({split: "..."}) to UI format ({type, value})', () => {
       const chart = { name: 'chart', config: { layout: {} } };
@@ -1750,15 +1578,13 @@ describe('explorerNewStore', () => {
             sourceName: 'pg',
             computedColumns: [],
             isNew: false,
-            _originalSql: 'SELECT 1',
-            _originalSourceName: 'pg',
-            _originalComputedColumns: [],
           },
         },
         explorerInsightStates: {},
         explorerChartName: null,
         explorerChartLayout: {},
         explorerChartInsightNames: [],
+        explorerDiffResult: { models: { stable_model: null } },
       });
 
       await useStore.getState().saveExplorerObjects();
@@ -1775,8 +1601,6 @@ describe('explorerNewStore', () => {
             props: { x: 'col_a' },
             interactions: [],
             isNew: false,
-            _originalType: 'scatter',
-            _originalProps: {},
           },
         },
         explorerChartName: null,
