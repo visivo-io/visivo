@@ -80,6 +80,11 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         8, description="The pool size that is used for this connection."
     )
 
+    protocol: Optional[str] = Field(
+        None,
+        description="The protocol to use for the connection.",
+    )
+
     def get_private_key_path(self) -> Optional[str]:
         """Get the resolved private key path value."""
         return self._resolve_field(self.private_key_path)
@@ -138,6 +143,14 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
             url_attributes["warehouse"] = self.warehouse
         if self.role:
             url_attributes["role"] = self.role
+
+        host = self.get_host()
+        if host:
+            url_attributes["host"] = host
+        if self.port:
+            url_attributes["port"] = self.port
+        if self.protocol:
+            url_attributes["protocol"] = self.protocol
 
         database = self.get_database()
         if database:

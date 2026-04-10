@@ -225,6 +225,17 @@ sources:
     password: "${env.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD}"
     role: PROD
 
+  - name: local-snowflake
+    type: snowflake
+    database: JARED_DEV
+    account: test
+    db_schema: DEFAULT
+    username: test
+    password: test
+    host: localhost
+    port: 12345
+    protocol: http
+
   - name: remote-bigquery
     type: bigquery
     database: test

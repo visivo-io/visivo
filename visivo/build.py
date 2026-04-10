@@ -27,6 +27,8 @@ def build():
         "flask_socketio",
         "--collect-submodules",
         "sqlglot",
+        "--collect-submodules",
+        "snowflake.connector",
         "-n",
         "visivo",
         "--add-data",
