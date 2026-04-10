@@ -57,6 +57,7 @@ const defaultState = {
   explorerChartLayout: { title: { text: 'My Chart' } },
   explorerChartInsightNames: ['insight_1', 'insight_2'],
   explorerActiveInsightName: 'insight_1',
+  charts: [],
   explorerInsightStates: {
     insight_1: {
       type: 'scatter',
@@ -71,8 +72,6 @@ const defaultState = {
       interactions: [],
       typePropsCache: {},
       isNew: false,
-      _originalType: 'bar',
-      _originalProps: {},
     },
   },
 };
@@ -82,36 +81,37 @@ describe('ChartCRUDSection', () => {
     useStore.setState(defaultState);
   });
 
-  it('renders chart name input', () => {
+  it('renders chart name in header', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-    const nameInput = screen.getByTestId('chart-name-input');
-    expect(nameInput).toBeInTheDocument();
-    expect(nameInput.value).toBe('test_chart');
+    expect(screen.getByText('test_chart')).toBeInTheDocument();
   });
 
-  it('name change calls setChartName', () => {
-    const setChartName = jest.fn();
-    useStore.setState({ setChartName });
-
+  it('chart name is clickable for rename when not loaded', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const nameEl = screen.getByTestId('chart-name-input');
+    fireEvent.click(nameEl);
+    // Should enter rename mode — input appears
+    const renameInput = screen.getByTestId('chart-name-input');
+    expect(renameInput.tagName).toBe('INPUT');
+  });
 
-    const nameInput = screen.getByTestId('chart-name-input');
-    fireEvent.change(nameInput, { target: { value: 'new_chart_name' } });
-
-    expect(setChartName).toHaveBeenCalledWith('new_chart_name');
+  it('chart name is not clickable for rename when loaded', () => {
+    useStore.setState({ charts: [{ name: 'test_chart' }] });
+    render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const nameEl = screen.getByTestId('chart-name-input');
+    fireEvent.click(nameEl);
+    // Should NOT enter rename mode — still a span
+    expect(nameEl.tagName).toBe('SPAN');
   });
 
   it('renders insight list with pills', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
     expect(screen.getByTestId('chart-insight-pill-insight_1')).toBeInTheDocument();
     expect(screen.getByTestId('chart-insight-pill-insight_2')).toBeInTheDocument();
   });
 
   it('active insight is highlighted', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
     const activePill = screen.getByTestId('embedded-pill-insight-insight_1');
     expect(activePill.dataset.active).toBe('true');
   });
@@ -119,71 +119,60 @@ describe('ChartCRUDSection', () => {
   it('remove button on pill calls removeInsightFromChart', () => {
     const removeInsightFromChart = jest.fn();
     useStore.setState({ removeInsightFromChart });
-
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-    const removeBtn = screen.getByTestId('embedded-pill-remove-insight_2');
-    fireEvent.click(removeBtn);
-
+    fireEvent.click(screen.getByTestId('embedded-pill-remove-insight_2'));
     expect(removeInsightFromChart).toHaveBeenCalledWith('insight_2');
   });
 
   it('add insight button calls createInsight', () => {
     const createInsight = jest.fn();
     useStore.setState({ createInsight });
-
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-    const addBtn = screen.getByTestId('chart-add-insight');
-    fireEvent.click(addBtn);
-
+    fireEvent.click(screen.getByTestId('chart-add-insight'));
     expect(createInsight).toHaveBeenCalled();
   });
 
   it('renders layout SchemaEditor when expanded', () => {
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
     expect(screen.getByTestId('chart-schema-editor')).toBeInTheDocument();
   });
 
-  it('does not render content when collapsed', () => {
+  it('does not render SchemaEditor when collapsed', () => {
     render(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
-
-    expect(screen.queryByTestId('chart-name-input')).not.toBeInTheDocument();
     expect(screen.queryByTestId('chart-schema-editor')).not.toBeInTheDocument();
+  });
+
+  it('chart name is always visible in header even when collapsed', () => {
+    render(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+    expect(screen.getByText('test_chart')).toBeInTheDocument();
   });
 
   it('collapse/expand toggle works', () => {
     const onToggleExpand = jest.fn();
-
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={onToggleExpand} />);
-
-    const toggleBtn = screen.getByTestId('chart-toggle');
-    fireEvent.click(toggleBtn);
-
+    fireEvent.click(screen.getByTestId('chart-toggle'));
     expect(onToggleExpand).toHaveBeenCalled();
+  });
+
+  it('close button calls closeChart', () => {
+    const closeChart = jest.fn();
+    useStore.setState({ closeChart });
+    render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    fireEvent.click(screen.getByTestId('chart-close'));
+    expect(closeChart).toHaveBeenCalled();
   });
 
   it('clicking an insight pill calls setActiveInsight', () => {
     const setActiveInsight = jest.fn();
     useStore.setState({ setActiveInsight });
-
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
-    const pill = screen.getByTestId('embedded-pill-insight-insight_2');
-    fireEvent.click(pill);
-
+    fireEvent.click(screen.getByTestId('embedded-pill-insight-insight_2'));
     expect(setActiveInsight).toHaveBeenCalledWith('insight_2');
   });
 
   it('renders empty insights message when no insights', () => {
-    useStore.setState({
-      explorerChartInsightNames: [],
-      explorerInsightStates: {},
-    });
-
+    useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
     render(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-
     expect(screen.getByText(/no insights/i)).toBeInTheDocument();
   });
 });

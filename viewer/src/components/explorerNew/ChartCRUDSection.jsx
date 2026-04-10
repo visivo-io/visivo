@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PiCaretDown, PiCaretRight, PiPlus } from 'react-icons/pi';
+import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
@@ -33,8 +33,11 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const createInsight = useStore((s) => s.createInsight);
   const removeInsightFromChart = useStore((s) => s.removeInsightFromChart);
   const setActiveInsight = useStore((s) => s.setActiveInsight);
+  const closeChart = useStore((s) => s.closeChart);
 
   const [layoutSchema, setLayoutSchema] = useState(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -45,13 +48,6 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
       cancelled = true;
     };
   }, []);
-
-  const handleNameChange = useCallback(
-    (e) => {
-      setChartName(e.target.value);
-    },
-    [setChartName]
-  );
 
   const handleLayoutChange = useCallback(
     (newValue) => {
@@ -88,12 +84,28 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
     [onToggleExpand]
   );
 
+  const handleClose = useCallback(
+    (e) => {
+      e.stopPropagation();
+      closeChart?.();
+    },
+    [closeChart]
+  );
+
+  const commitRename = useCallback(() => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== chartName) {
+      setChartName(trimmed);
+    }
+    setIsRenaming(false);
+  }, [renameValue, chartName, setChartName]);
+
   return (
     <div
       data-testid="chart-crud-section"
       className="border border-gray-200 rounded-lg overflow-hidden"
     >
-      {/* Header */}
+      {/* Header — name integrated, matching insight pattern */}
       <div
         data-testid="chart-header"
         onClick={onToggleExpand}
@@ -107,28 +119,51 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        <span className="text-sm font-medium text-pink-800 truncate flex-1">
-          Chart: {chartName || 'Untitled'}
-        </span>
+        <span className="text-sm text-pink-600 flex-shrink-0">Chart:</span>
+
+        {isRenaming ? (
+          <input
+            autoFocus
+            data-testid="chart-name-input"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onBlur={() => commitRename()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') setIsRenaming(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-medium text-pink-800 bg-white border border-pink-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-pink-400 flex-1"
+          />
+        ) : (
+          <span
+            className={`text-sm font-medium text-pink-800 truncate flex-1 ${!isLoadedChart ? 'cursor-pointer' : ''}`}
+            data-testid="chart-name-input"
+            onClick={(e) => {
+              if (!isLoadedChart) {
+                e.stopPropagation();
+                setIsRenaming(true);
+                setRenameValue(chartName || '');
+              }
+            }}
+          >
+            {chartName || 'Untitled'}
+          </span>
+        )}
+
+        <button
+          data-testid="chart-close"
+          onClick={handleClose}
+          className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+          title="Close chart"
+        >
+          <PiX size={14} />
+        </button>
       </div>
 
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-3 py-3 space-y-4 border-l-4 border-pink-400">
-          {/* Chart Name */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
-            <input
-              data-testid="chart-name-input"
-              type="text"
-              value={chartName || ''}
-              onChange={handleNameChange}
-              disabled={isLoadedChart}
-              placeholder="Chart name..."
-              className={`w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-pink-200 focus:border-pink-400 transition-colors ${isLoadedChart ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
-            />
-          </div>
-
           {/* Insight List */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Insights</label>

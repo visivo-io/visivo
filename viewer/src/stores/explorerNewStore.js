@@ -973,6 +973,17 @@ const createExplorerNewSlice = (set, get) => ({
     set({ explorerChartLayout: layout });
   },
 
+  closeChart: () => {
+    set({
+      explorerChartName: null,
+      explorerChartLayout: {},
+      explorerChartInsightNames: [],
+      explorerActiveInsightName: null,
+      explorerInsightStates: {},
+      explorerDiffResult: null,
+    });
+  },
+
   // ====================================================================
   // Loading Actions
   // ====================================================================
