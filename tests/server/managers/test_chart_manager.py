@@ -133,7 +133,6 @@ class TestChartManager:
         chart = ChartFactory.build(
             name="chart_with_insight_ref",
             insights=["ref(test_insight)"],
-            traces=[],
         )
 
         # Create a project with both the insight and the chart
@@ -164,7 +163,6 @@ class TestChartManager:
         chart = ChartFactory.build(
             name="multi_insight_chart",
             insights=["ref(insight_alpha)", "ref(insight_beta)"],
-            traces=[],
         )
 
         project = ProjectFactory.build(

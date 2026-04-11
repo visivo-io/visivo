@@ -1,6 +1,5 @@
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
-from visivo.models.trace import Trace
 from visivo.models.insight import Insight
 from visivo.models.inputs.input import Input
 import click
@@ -124,44 +123,6 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
         except Exception as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload data for '{name}': {repr(e)}"
-            )
-            raise
-
-
-@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_trace_records(batch, project_id, json_headers, host, progress):
-    """
-    Asynchronously creates a trace record on the server.
-    """
-    body = list(
-        map(
-            lambda data_file_upload: {
-                "name": data_file_upload["name"].split(".")[0],
-                "project_id": project_id,
-                "data_file_id": data_file_upload["id"],
-            },
-            batch,
-        )
-    )
-    async with semaphore_3:
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                url = f"{host}/api/traces/"
-                response = await client.post(url, json=body, headers=json_headers)
-                response.raise_for_status()
-                progress["completed"] += 1
-                Logger.instance().success(
-                    f"\t{len(batch)} traces created [{progress['completed']}/{progress['total']}]"
-                )
-                return response.json()
-        except httpx.HTTPStatusError as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} traces: {repr(e)} - Response: {e.response.text}"
-            )
-            raise
-        except Exception as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} traces: {repr(e)}"
             )
             raise
 
@@ -330,75 +291,6 @@ async def create_model_records(batch, project_id, json_headers, host, progress):
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} models: {repr(e)}"
             )
             raise
-
-
-async def process_traces_async(traces, output_dir, project_id, form_headers, json_headers, host):
-    """
-    Coordinates the asynchronous upload of trace data files and the creation of trace records.
-    """
-    batch_size = 20
-    total_operations = len(traces)  # Each trace has a data upload
-
-    # For each batch upload
-    total_operations += 3 * math.ceil(len(traces) / batch_size)
-    progress = {"completed": 0, "total": total_operations}
-
-    tasks = []
-    for i in range(0, len(traces), batch_size):
-        traces_batch = traces[i : i + batch_size]
-        traces_batch_file_names = list(map(lambda trace: trace.name, traces_batch))
-        create_trace_files_task = start_files(
-            traces_batch_file_names, "trace", form_headers, host, progress
-        )
-        tasks.append(create_trace_files_task)
-    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
-        raise click.ClickException("Failed to create trace data files.")
-
-    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
-
-    tasks = []
-    for data_file_upload in data_file_uploads:
-        # Upload data files concurrently
-        trace_name = data_file_upload["name"].split(".")[0]
-        data_file_task = upload_file(
-            trace_name,
-            data_file_upload["upload_url"],
-            f"traces/{trace_name}/data.json",
-            output_dir,
-            form_headers,
-            progress,
-        )
-        tasks.append(data_file_task)
-
-    # Wait for all data uploads to complete and gather results
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to upload trace data.")
-
-    data_file_ids = [item["id"] for item in data_file_uploads]
-
-    tasks = []
-    for i in range(0, len(data_file_ids), batch_size):
-        batch = data_file_ids[i : i + batch_size]
-        create_trace_files_task = finish_files(batch, "trace", form_headers, host, progress)
-        tasks.append(create_trace_files_task)
-
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish trace data files.")
-
-    # Prepare to create trace records based on successful uploads
-    tasks = []
-    for i in range(0, len(traces), batch_size):
-        batch = data_file_uploads[i : i + batch_size]
-        task = create_trace_records(batch, project_id, json_headers, host, progress)
-        tasks.append(task)
-
-    # Execute the creation of trace records concurrently
-    response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create trace records.")
 
 
 async def process_dashboards_async(
@@ -877,31 +769,6 @@ def deploy_phase(
         project_data = response.json()
         project_id = project_data["id"]
         project_url = project_data["url"]
-
-        # Process traces
-        Logger.instance().info(f"")
-        send_progress("Processing trace uploads and record creations...", "info")
-        process_traces_start_time = time()
-
-        traces = []
-        dag = project.dag()
-        dashboards = all_descendants_of_type(type=Dashboard, dag=dag)
-        for dashboard in dashboards:
-            traces.extend(all_descendants_of_type(type=Trace, dag=dag, from_node=dashboard))
-        traces = list(set(traces))
-        asyncio.run(
-            process_traces_async(
-                traces=traces,
-                output_dir=run_output_dir,
-                project_id=project_id,
-                form_headers=form_headers,
-                json_headers=json_headers,
-                host=host,
-            )
-        )
-        send_progress(
-            f"Trace uploads completed in {time() - process_traces_start_time:.2f} seconds", "info"
-        )
 
         # Process thumbnails
         send_progress("Processing dashboard uploads...", "info")

@@ -126,8 +126,18 @@ nav:
           - Inputs:
               - SingleSelectInput:
                   - reference/configuration/Inputs/SingleSelectInput/index.md
+                  - SingleSelectDisplay:
+                      - reference/configuration/Inputs/SingleSelectInput/SingleSelectDisplay/index.md
+                      - SingleSelectDefault:
+                          - reference/configuration/Inputs/SingleSelectInput/SingleSelectDisplay/SingleSelectDefault/index.md
               - MultiSelectInput:
                   - reference/configuration/Inputs/MultiSelectInput/index.md
+                  - MultiSelectDisplay:
+                      - reference/configuration/Inputs/MultiSelectInput/MultiSelectDisplay/index.md
+                      - MultiSelectDefault:
+                          - reference/configuration/Inputs/MultiSelectInput/MultiSelectDisplay/MultiSelectDefault/index.md
+                  - RangeConfig:
+                      - reference/configuration/Inputs/MultiSelectInput/RangeConfig/index.md
           - Insight:
               - reference/configuration/Insight/index.md
               - InsightInteraction:
@@ -231,6 +241,8 @@ nav:
                       - reference/configuration/Insight/Props/Volume/index.md
                   - Waterfall:
                       - reference/configuration/Insight/Props/Waterfall/index.md
+          - Markdown:
+              - reference/configuration/Markdown/index.md
           - Metric:
               - reference/configuration/Metric/index.md
           - Models:
@@ -271,117 +283,8 @@ nav:
                   - reference/configuration/Sources/ClickhouseSource/index.md
           - Table:
               - reference/configuration/Table/index.md
-              - TableColumnDefinition:
-                  - reference/configuration/Table/TableColumnDefinition/index.md
-                  - TableColumn:
-                      - reference/configuration/Table/TableColumnDefinition/TableColumn/index.md
-                      - AggregationEnum:
-                          - reference/configuration/Table/TableColumnDefinition/TableColumn/AggregationEnum/index.md
-          - Trace:
-              - reference/configuration/Trace/index.md
-              - TraceColumns:
-                  - reference/configuration/Trace/TraceColumns/index.md
-              - Model:
-                  - reference/configuration/Trace/Model/index.md
-              - Props:
-                  - Bar:
-                      - reference/configuration/Trace/Props/Bar/index.md
-                  - Barpolar:
-                      - reference/configuration/Trace/Props/Barpolar/index.md
-                  - Box:
-                      - reference/configuration/Trace/Props/Box/index.md
-                  - Candlestick:
-                      - reference/configuration/Trace/Props/Candlestick/index.md
-                  - Carpet:
-                      - reference/configuration/Trace/Props/Carpet/index.md
-                  - Choropleth:
-                      - reference/configuration/Trace/Props/Choropleth/index.md
-                  - Choroplethmap:
-                      - reference/configuration/Trace/Props/Choroplethmap/index.md
-                  - Choroplethmapbox:
-                      - reference/configuration/Trace/Props/Choroplethmapbox/index.md
-                  - Cone:
-                      - reference/configuration/Trace/Props/Cone/index.md
-                  - Contour:
-                      - reference/configuration/Trace/Props/Contour/index.md
-                  - Contourcarpet:
-                      - reference/configuration/Trace/Props/Contourcarpet/index.md
-                  - Densitymap:
-                      - reference/configuration/Trace/Props/Densitymap/index.md
-                  - Densitymapbox:
-                      - reference/configuration/Trace/Props/Densitymapbox/index.md
-                  - Funnel:
-                      - reference/configuration/Trace/Props/Funnel/index.md
-                  - Funnelarea:
-                      - reference/configuration/Trace/Props/Funnelarea/index.md
-                  - Heatmap:
-                      - reference/configuration/Trace/Props/Heatmap/index.md
-                  - Histogram:
-                      - reference/configuration/Trace/Props/Histogram/index.md
-                  - Histogram2d:
-                      - reference/configuration/Trace/Props/Histogram2d/index.md
-                  - Histogram2dcontour:
-                      - reference/configuration/Trace/Props/Histogram2dcontour/index.md
-                  - Icicle:
-                      - reference/configuration/Trace/Props/Icicle/index.md
-                  - Image:
-                      - reference/configuration/Trace/Props/Image/index.md
-                  - Indicator:
-                      - reference/configuration/Trace/Props/Indicator/index.md
-                  - Isosurface:
-                      - reference/configuration/Trace/Props/Isosurface/index.md
-                  - Mesh3d:
-                      - reference/configuration/Trace/Props/Mesh3d/index.md
-                  - Ohlc:
-                      - reference/configuration/Trace/Props/Ohlc/index.md
-                  - Parcats:
-                      - reference/configuration/Trace/Props/Parcats/index.md
-                  - Parcoords:
-                      - reference/configuration/Trace/Props/Parcoords/index.md
-                  - Pie:
-                      - reference/configuration/Trace/Props/Pie/index.md
-                  - Sankey:
-                      - reference/configuration/Trace/Props/Sankey/index.md
-                  - Scatter:
-                      - reference/configuration/Trace/Props/Scatter/index.md
-                  - Scatter3d:
-                      - reference/configuration/Trace/Props/Scatter3d/index.md
-                  - Scattercarpet:
-                      - reference/configuration/Trace/Props/Scattercarpet/index.md
-                  - Scattergeo:
-                      - reference/configuration/Trace/Props/Scattergeo/index.md
-                  - Scattergl:
-                      - reference/configuration/Trace/Props/Scattergl/index.md
-                  - Scattermap:
-                      - reference/configuration/Trace/Props/Scattermap/index.md
-                  - Scattermapbox:
-                      - reference/configuration/Trace/Props/Scattermapbox/index.md
-                  - Scatterpolar:
-                      - reference/configuration/Trace/Props/Scatterpolar/index.md
-                  - Scatterpolargl:
-                      - reference/configuration/Trace/Props/Scatterpolargl/index.md
-                  - Scattersmith:
-                      - reference/configuration/Trace/Props/Scattersmith/index.md
-                  - Scatterternary:
-                      - reference/configuration/Trace/Props/Scatterternary/index.md
-                  - Splom:
-                      - reference/configuration/Trace/Props/Splom/index.md
-                  - Streamtube:
-                      - reference/configuration/Trace/Props/Streamtube/index.md
-                  - Sunburst:
-                      - reference/configuration/Trace/Props/Sunburst/index.md
-                  - Surface:
-                      - reference/configuration/Trace/Props/Surface/index.md
-                  - Treemap:
-                      - reference/configuration/Trace/Props/Treemap/index.md
-                  - Violin:
-                      - reference/configuration/Trace/Props/Violin/index.md
-                  - Volume:
-                      - reference/configuration/Trace/Props/Volume/index.md
-                  - Waterfall:
-                      - reference/configuration/Trace/Props/Waterfall/index.md
-              - Test:
-                  - reference/configuration/Trace/Test/index.md
+              - FormatCells:
+                  - reference/configuration/Table/FormatCells/index.md
       - Functions:
           - On Compile:
               - reference/functions/jinja/index.md

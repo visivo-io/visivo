@@ -15,7 +15,6 @@ from visivo.models.project import Project
 from visivo.models.row import Row
 from visivo.models.source import CreateSourceRequest, SourceTypeEnum
 from visivo.models.table import Table
-from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.views.utils import create_source_dashboard, load_csv, write_project_file
@@ -194,20 +193,9 @@ def register_project_views(app, flask_app, output_dir):
                 name="file_extract_model",
                 sql=f'SELECT {", ".join(quoted_cols)} FROM "{table_name}"',
             )
-            trace = Trace(
-                name="file_extract_trace",
-                model=model,
-                columns={col[1]: f'"{col[1]}"' for col in columns},
-                props={"type": "scatter"},
-            )
-            column_defs = [
-                {"header": col[1].replace("_", " ").title(), "key": f"columns.{col[1]}"}
-                for col in columns
-            ]
             table = Table(
                 name=f"{table_name}_table",
-                traces=[trace],
-                column_defs=[{"trace_name": trace.name, "columns": column_defs}],
+                data=model,
             )
             dashboard = Dashboard(
                 name="Uploaded File Dashboard", rows=[Row(items=[Item(table=table)])]

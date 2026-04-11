@@ -25,14 +25,3 @@ export const executeQuery = async (query, projectId, sourceName, worksheetId = n
   };
 };
 
-export const fetchTraceQuery = async traceName => {
-  const response = await fetch(getUrl('traceQuery', { traceName }));
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch trace query');
-  }
-
-  const result = await response.json();
-  return result.query;
-};

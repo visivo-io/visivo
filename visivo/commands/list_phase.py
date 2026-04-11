@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
-from visivo.models.trace import Trace
 
 
 def list_phase(project, object_type):
@@ -21,13 +20,10 @@ def list_phase(project, object_type):
                     collected.append(name)
                 elif isinstance(item, Model) and target_type == "models":
                     collected.append(name)
-                elif isinstance(item, Trace) and target_type == "traces":
-                    collected.append(name)
 
         return collected
 
     objects = collect_objects(project, object_type)
     objects = list(map(lambda x: f" - {x}", objects))
 
-    # Print each object's name on a new line
     print(f"{object_type}:\n" + "\n".join(objects))

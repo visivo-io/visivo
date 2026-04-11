@@ -1,6 +1,5 @@
 import { useEffect, useCallback } from 'react';
 import useStore from '../stores/store';
-import { fetchTraceQuery } from '../services/queryService';
 import { fetchExplorer } from '../api/explorer';
 import { getAncestors } from '../components/lineage/graphUtils';
 
@@ -219,29 +218,6 @@ export const useExplorerLogic = () => {
                   }, 100);
                 }
               }, 200);
-            }
-            break;
-          }
-          case 'trace': {
-            let newQuery = '';
-            try {
-              newQuery = await fetchTraceQuery(item.name);
-            } catch (err) {
-              setError(`Failed to fetch trace query: ${err.message}`);
-              return;
-            }
-
-            setQuery(newQuery);
-            if (selectedSource) {
-              setSelectedSource(selectedSource);
-            }
-
-            // Update active worksheet with new query
-            if (activeWorksheetId) {
-              await updateWorksheetData(activeWorksheetId, {
-                query: newQuery,
-                selected_source: selectedSource?.name,
-              });
             }
             break;
           }

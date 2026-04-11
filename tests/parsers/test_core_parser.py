@@ -23,20 +23,6 @@ def test_Core_Parser_with_one_of_each_project():
             "name": "project",
             "dashboards": [{"name": "dashboard"}],
             "charts": [{"name": "chart"}],
-            "traces": [
-                {
-                    "name": "trace",
-                    "model": {
-                        "sql": "select * from table",
-                        "source": {
-                            "name": "source",
-                            "database": "postgresql",
-                            "type": "postgresql",
-                        },
-                    },
-                    "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
-                }
-            ],
         },
         name=PROJECT_FILE_NAME,
     )
@@ -45,7 +31,6 @@ def test_Core_Parser_with_one_of_each_project():
     assert project.name == "project"
     assert project.dashboards[0].name == "dashboard"
     assert project.charts[0].name == "chart"
-    assert project.traces[0].name == "trace"
 
 
 def test_Core_Parser_with_env_var(monkeypatch):
@@ -107,8 +92,9 @@ def test_Core_Parser_invalid_yaml():
 def test_Core_Parser_value_error():
     project_file = temp_file(
         contents="""
-        traces: 
-            - name: Trace Name
+        sources:
+            - name: src
+              type: not_a_real_type
         """,
         name=PROJECT_FILE_NAME,
     )
@@ -117,7 +103,7 @@ def test_Core_Parser_value_error():
     with pytest.raises(LineValidationError) as exc_info:
         core_parser.parse()
 
-    assert f"Location: {project_file}:3" in str(exc_info.value)
+    assert f"Location: {project_file}" in str(exc_info.value)
 
 
 def test_Core_Parser_success():

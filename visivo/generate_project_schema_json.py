@@ -12,11 +12,6 @@ validate schema client side and to power flask app api endpoints.
 
 
 def reload_and_generate_schema():
-    # Store original environment state
-
-    trace_module = import_module("visivo.models.trace")
-    reload(trace_module)
-
     project_module = import_module("visivo.models.project")
     reload(project_module)
 

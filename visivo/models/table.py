@@ -1,17 +1,14 @@
 import re
-from typing import Any, List, Optional, TypeAlias, Union
+from typing import Any, List, Optional, Union
 from typing_extensions import Annotated
 
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.insight import Insight
-from visivo.models.table_column_definition import TableColumnDefinition
-from visivo.models.trace import Trace
 from visivo.models.format_cells import FormatCells
 from pydantic import Field, Discriminator, Tag
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import (
-    generate_ref_field,
     RefStringType,
     ContextStringType,
 )
@@ -23,9 +20,6 @@ from visivo.query.patterns import extract_ref_names
 
 from pydantic import model_validator
 from enum import IntEnum
-
-TraceRef: TypeAlias = generate_ref_field(Trace)
-InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
 def get_data_discriminator_value(value):
@@ -124,23 +118,6 @@ class Table(SelectorModel, NamedModel, ParentModel):
         description="A ${ ref() } to a model or insight. Shows all columns from the data source.",
     )
 
-    # Deprecated: use 'data' instead
-    insights: Optional[List[InsightRef]] = Field(
-        None,
-        description="Deprecated. Use 'data' instead.",
-        json_schema_extra={"deprecated": True},
-    )
-
-    traces: List[TraceRef] = Field(
-        [],
-        description="A ${ ref() } to a trace or trace defined in line. Data for the table will come from the trace.",
-    )
-
-    column_defs: Optional[List[TableColumnDefinition]] = Field(
-        None,
-        description="A list of column definitions for trace-based tables.",
-    )
-
     rows_per_page: RowsPerPageEnum = Field(
         RowsPerPageEnum.fifty,
         description="The number of rows to show per page. Default is 50 rows",
@@ -166,11 +143,9 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        items = list(self.traces)
+        items = []
         if self.data:
             items.append(self.data)
-        if self.insights:
-            items.extend(self.insights)
         if self.selector:
             items.append(self.selector)
 
@@ -191,17 +166,6 @@ class Table(SelectorModel, NamedModel, ParentModel):
     @model_validator(mode="before")
     @classmethod
     def validate_table_config(cls, data: Any):
-        traces = data.get("traces")
-        column_defs = data.get("column_defs")
-
-        if column_defs:
-            trace_names = list(map(lambda t: NamedModel.get_name(t), traces or []))
-            for cd in column_defs:
-                if "trace_name" in cd and cd["trace_name"] not in trace_names:
-                    raise ValueError(
-                        f"Column def trace name '{cd['trace_name']}' is not present in trace list on table."
-                    )
-
         has_data = data.get("data") is not None
         has_columns = data.get("columns") is not None
         has_rows = data.get("rows") is not None

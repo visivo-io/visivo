@@ -20,7 +20,6 @@ from visivo.models.base.base_model import REF_PROPERTY_PATTERN
 from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN, get_model_name_from_match
 from visivo.models.dashboards.fields import DashboardField
 from visivo.models.chart import Chart
-from visivo.models.trace import Trace
 from visivo.models.insight import Insight
 from visivo.models.markdown import Markdown
 from visivo.models.table import Table
@@ -60,7 +59,6 @@ class Project(NamedModel, ParentModel):
         alias="targets",
     )
     models: List[ModelField] = []
-    traces: List[Trace] = []
     insights: List[Insight] = []
     markdowns: List[Markdown] = Field(
         [],

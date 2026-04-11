@@ -129,7 +129,6 @@ class TestTableManager:
         table = TableFactory.build(
             name="table_with_data_ref",
             data="ref(test_insight)",
-            traces=[],
         )
 
         project = ProjectFactory.build(
@@ -160,7 +159,6 @@ class TestTableManager:
                 "${ref(insight_alpha).x}",
                 "${ref(insight_beta).y}",
             ],
-            traces=[],
         )
 
         project = ProjectFactory.build(

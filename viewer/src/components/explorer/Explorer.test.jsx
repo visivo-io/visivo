@@ -74,7 +74,6 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../services/queryService', () => ({
   executeQuery: jest.fn(),
-  fetchTraceQuery: jest.fn(),
 }));
 
 jest.mock('../../api/explorer', () => ({

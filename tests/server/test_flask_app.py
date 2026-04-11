@@ -291,7 +291,6 @@ def test_execute_query_no_sources(client, worksheet_repo, output_dir):
         sources=[],
         dashboards=[],  # Override default dashboard creation
         models=[],  # Override default model creation
-        traces=[],  # Ensure no traces
         charts=[],  # Ensure no charts
         tables=[],  # Ensure no tables
     )
