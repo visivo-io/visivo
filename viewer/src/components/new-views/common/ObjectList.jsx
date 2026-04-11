@@ -59,6 +59,7 @@ const ObjectList = ({
           const isSelected = obj.name === selectedName;
           const isNew = obj.status === ObjectStatus.NEW;
           const isModified = obj.status === ObjectStatus.MODIFIED;
+          const hasActionBtn = (isNew && onDelete) || (isModified && onReset);
           return (
             <div key={obj.name} className="group relative">
               <button
@@ -67,6 +68,7 @@ const ObjectList = ({
                   w-full text-left px-4 py-2.5
                   flex items-center gap-2
                   transition-colors border-b border-gray-100
+                  ${hasActionBtn ? 'pr-8' : ''}
                   ${isSelected ? `${colors.bg} border-l-2 ${colors.borderSelected}` : 'hover:bg-gray-50'}
                 `}
                 style={isSelected ? { borderLeftColor: 'currentColor' } : undefined}

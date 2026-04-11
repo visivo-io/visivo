@@ -66,6 +66,7 @@ const ExplorerLeftPanel = () => {
   const deleteExplorerInsight = useStore((s) => s.deleteExplorerInsight);
   const resetModel = useStore((s) => s.resetModel);
   const resetInsight = useStore((s) => s.resetInsight);
+  const resetChart = useStore((s) => s.resetChart);
   const sourceName = useStore(selectActiveModelSourceName);
   const setSourceName = useStore((s) => s.setActiveModelSource);
   const activeModelName = useStore((s) => s.explorerActiveModelName);
@@ -230,6 +231,9 @@ const ExplorerLeftPanel = () => {
 
   const handleChartClick = useCallback(
     (chart) => {
+      // Skip if this chart is already loaded
+      if (chart.name === useStore.getState().explorerChartName) return;
+
       // Resolve chart lineage: find insights, models, and inputs
       const allInsights = useStore.getState().insights || [];
       const allModels = useStore.getState().models || [];
@@ -429,6 +433,7 @@ const ExplorerLeftPanel = () => {
           <ObjectList
             objects={filteredCharts}
             onSelect={handleChartClick}
+            onReset={(obj) => obj.name === explorerChartName && resetChart()}
             title="Charts"
             objectType="chart"
           />

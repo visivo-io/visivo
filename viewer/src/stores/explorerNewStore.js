@@ -933,6 +933,25 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
+  resetChart: () => {
+    const state = get();
+    const cachedChart = (state.charts || []).find((c) => c.name === state.explorerChartName);
+    if (!cachedChart) return;
+
+    const config = cachedChart.config;
+    const insightRefs = config?.insights || [];
+    const insightNames = insightRefs.map((ref) => {
+      const match = typeof ref === 'string' ? ref.match(/ref\(([^)]+)\)/) : null;
+      return match ? match[1].trim() : ref;
+    });
+
+    set({
+      explorerChartLayout: config?.layout ? JSON.parse(JSON.stringify(config.layout)) : {},
+      explorerChartInsightNames: insightNames,
+      explorerActiveInsightName: insightNames.length > 0 ? insightNames[0] : null,
+    });
+  },
+
   // ====================================================================
   // Loading Actions
   // ====================================================================
