@@ -1238,10 +1238,10 @@ const createExplorerNewSlice = (set, get) => ({
         try {
           if (cc.type === 'metric') {
             const { saveMetric } = await import('../api/metrics');
-            await saveMetric(cc.name, { expression: cc.expression, model: `ref(${name})` });
+            await saveMetric(cc.name, { expression: cc.expression });
           } else {
             const { saveDimension } = await import('../api/dimensions');
-            await saveDimension(cc.name, { expression: cc.expression, model: `ref(${name})` });
+            await saveDimension(cc.name, { expression: cc.expression });
           }
         } catch (err) {
           errors.push({ name: cc.name, type: cc.type, error: err.message });

@@ -1661,11 +1661,9 @@ describe('explorerNewStore', () => {
 
       expect(mockSaveMetric).toHaveBeenCalledWith('total', {
         expression: 'SUM(amount)',
-        model: 'ref(my_model)',
       });
       expect(mockSaveDimension).toHaveBeenCalledWith('month', {
         expression: "DATE_TRUNC('month', date)",
-        model: 'ref(my_model)',
       });
     });
 
