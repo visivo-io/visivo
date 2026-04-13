@@ -9,7 +9,6 @@ from visivo.models.inputs.input import Input
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
 from visivo.models.metric import Metric
 from visivo.models.relation import Relation
@@ -66,7 +65,6 @@ class Project(NamedModel, ParentModel):
     )
     tables: List[Table] = []
     charts: List[Chart] = []
-    selectors: List[Selector] = []
     inputs: List[InputField] = []
     dashboards: List[DashboardField] = []
     metrics: List[Metric] = Field(

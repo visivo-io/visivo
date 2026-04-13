@@ -9,16 +9,6 @@ def test_Table_simple_data():
     assert table.name == "development"
 
 
-def test_Table_with_selector():
-    data = {"name": "development", "selector": "ref(Other Selector)"}
-    table = Table(**data)
-    assert table.selector == "ref(Other Selector)"
-
-    data = {"name": "development", "selector": {"name": "Selector"}}
-    table = Table(**data)
-    assert table.selector.name == "Selector"
-
-
 def test_Table_with_data_insight_ref():
     data = {
         "name": "revenue-table",

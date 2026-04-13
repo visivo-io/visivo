@@ -5,7 +5,6 @@ import createEditorSlice from './editorStore';
 import createExplorerSlice from './explorerStore';
 import createCommonSlice from './commonStore';
 import createProjectSlice from './projectStore';
-import createSelectorSlice from './selectorStore';
 import createInsightJobsSlice from './insightJobsStore';
 import createWorksheetSlice from './worksheetStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
@@ -34,7 +33,6 @@ const useStore = create(
     ...createEditorSlice(...a),
     ...createExplorerSlice(...a),
     ...createProjectSlice(...a),
-    ...createSelectorSlice(...a),
     ...createInsightJobsSlice(...a),
     ...createWorksheetSlice(...a),
     ...createSourceSlice(...a),

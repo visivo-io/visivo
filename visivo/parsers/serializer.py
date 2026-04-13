@@ -1,8 +1,6 @@
-from visivo.logger.logger import Logger
-from visivo.models.dag import all_descendants, all_descendants_of_type
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.inputs.input import Input
 from visivo.models.insight import Insight
-from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
 from visivo.models.project import Project
 from visivo.models.chart import Chart
@@ -34,7 +32,6 @@ class Serializer:
         all_insights = []
         all_charts = []
         all_tables = []
-        all_selectors = []
         all_inputs = []
 
         for node in dag.nodes():
@@ -48,8 +45,6 @@ class Serializer:
                 all_charts.append(node.model_dump(exclude_none=True, mode="json"))
             elif isinstance(node, Table):
                 all_tables.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Selector):
-                all_selectors.append(node.model_dump(exclude_none=True, mode="json"))
             elif isinstance(node, Input):
                 all_inputs.append(node.model_dump(exclude_none=True, mode="json"))
 
@@ -61,7 +56,6 @@ class Serializer:
             "insights": all_insights,
             "charts": all_charts,
             "tables": all_tables,
-            "selectors": all_selectors,
             "inputs": all_inputs,
         }
 
@@ -94,7 +88,6 @@ class Serializer:
             "tables": [],
             "models": [],
             "sources": [],
-            "selectors": [],
             "inputs": [],
         }
 
@@ -126,15 +119,6 @@ class Serializer:
                     i.model_dump(exclude_none=True, mode="json") for i in insights
                 ]
 
-                if chart.selector:
-                    selectors = all_descendants_of_type(
-                        type=Selector, dag=dag, from_node=chart, depth=1
-                    )
-                    if selectors:
-                        selector = selectors[0]
-                        selector_dict = selector.model_dump(exclude_none=True, mode="json")
-                        chart_dict["selector"] = selector_dict
-
                 item_dict["chart"] = chart_dict
 
         if actual_item.table or (isinstance(item_dict.get("table"), str)):
@@ -158,33 +142,7 @@ class Serializer:
                                 exclude_none=True, mode="json"
                             )
 
-                if table.selector:
-                    selectors = all_descendants_of_type(
-                        type=Selector, dag=dag, from_node=table, depth=1
-                    )
-                    if selectors:
-                        selector = selectors[0]
-                        selector_dict = selector.model_dump(exclude_none=True, mode="json")
-                        table_dict["selector"] = selector_dict
-
                 item_dict["table"] = table_dict
-
-        if actual_item.selector or (isinstance(item_dict.get("selector"), str)):
-            selectors = all_descendants_of_type(
-                type=Selector, dag=dag, from_node=actual_item, depth=1
-            )
-            if selectors:
-                selector = selectors[0]
-                selector_dict = selector.model_dump(exclude_none=True, mode="json")
-                options = [
-                    opt
-                    for opt in all_descendants(dag=dag, from_node=selector, depth=1)
-                    if not isinstance(opt, Selector)
-                ]
-                selector_dict["options"] = [
-                    opt.model_dump(exclude_none=True, mode="json") for opt in options
-                ]
-                item_dict["selector"] = selector_dict
 
         if actual_item.input or (isinstance(item_dict.get("input"), str)):
             inputs = all_descendants_of_type(type=Input, dag=dag, from_node=actual_item, depth=1)
@@ -221,22 +179,6 @@ class Serializer:
                         )
                         if resolved_models:
                             component.data = resolved_models[0]
-                    if component.selector:
-                        component.selector = all_descendants_of_type(
-                            type=Selector, dag=dag, from_node=component, depth=1
-                        )[0]
-
-                if item.selector:
-                    item.selector = all_descendants_of_type(
-                        type=Selector, dag=dag, from_node=item, depth=1
-                    )[0]
-                    options = [
-                        option
-                        for option in all_descendants(dag=dag, from_node=item.selector, depth=1)
-                        if not isinstance(option, Selector)
-                    ]
-                    item.selector.options = options
-
                 if item.input:
                     item.input = all_descendants_of_type(
                         type=Input, dag=dag, from_node=item, depth=1
@@ -249,6 +191,5 @@ class Serializer:
         project.tables = []
         project.models = []
         project.sources = []
-        project.selectors = []
         project.inputs = []
         return project

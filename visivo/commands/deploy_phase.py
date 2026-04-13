@@ -794,6 +794,7 @@ def deploy_phase(
         Logger.instance().info(f"")
         send_progress("Processing insight uploads...", "info")
         process_insights_start_time = time()
+        dag = project.dag()
         insights = all_descendants_of_type(type=Insight, dag=dag)
         if insights:
             asyncio.run(

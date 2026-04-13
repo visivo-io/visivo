@@ -2,7 +2,6 @@ import re
 from typing import Any, List, Optional, Union
 from typing_extensions import Annotated
 
-from visivo.models.base.selector_model import SelectorModel
 from visivo.models.insight import Insight
 from visivo.models.format_cells import FormatCells
 from pydantic import Field, Discriminator, Tag
@@ -71,7 +70,7 @@ class RowsPerPageEnum(IntEnum):
     one_thousand = 1000
 
 
-class Table(SelectorModel, NamedModel, ParentModel):
+class Table(NamedModel, ParentModel):
     """
     Tables enable you to represent data in a tabular format.
 
@@ -146,8 +145,6 @@ class Table(SelectorModel, NamedModel, ParentModel):
         items = []
         if self.data:
             items.append(self.data)
-        if self.selector:
-            items.append(self.selector)
 
         all_ref_strings = []
         for field_list in [self.columns, self.rows, self.values]:

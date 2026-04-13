@@ -1,6 +1,5 @@
 from visivo.models.base.named_model import NamedModel
 from visivo.models.inputs.fields import InputField
-from visivo.models.selector import Selector
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.markdown import Markdown
@@ -12,7 +11,7 @@ from visivo.models.table import Table
 
 class Item(NamedModel, ParentModel):
     """
-    The Item houses a single chart, table, selector, markdown, or input object.
+    The Item houses a single chart, table, markdown, or input object.
 
     It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.
 
@@ -26,8 +25,6 @@ class Item(NamedModel, ParentModel):
         table: ref(table-name)
       - width: 2
         chart: ref(chart-name)
-      - width: 1
-        selector: ref(selector-name)
       - width: 1
         input: ref(input-name)
     ```
@@ -68,9 +65,6 @@ class Item(NamedModel, ParentModel):
     table: Optional[generate_ref_field(Table)] = Field(
         None, description="A Table object defined inline or a ${ ref() } to a table."
     )
-    selector: Optional[generate_ref_field(Selector)] = Field(
-        None, description="A Selector object defined inline or a ${ ref() } to a selector."
-    )
     input: Optional[generate_ref_field(InputField)] = Field(
         None, description="An Input object defined inline or a ${ ref() } to an input."
     )
@@ -78,17 +72,16 @@ class Item(NamedModel, ParentModel):
     @model_validator(mode="before")
     @classmethod
     def validate_unique_item_types(cls, data: any):
-        markdown, chart, table, selector, input = (
+        markdown, chart, table, input = (
             data.get("markdown"),
             data.get("chart"),
             data.get("table"),
-            data.get("selector"),
             data.get("input"),
         )
-        items_set = [i for i in [markdown, chart, table, selector, input] if i is not None]
+        items_set = [i for i in [markdown, chart, table, input] if i is not None]
         if len(items_set) > 1:
             raise ValueError(
-                'only one of the "markdown", "chart", "table", "selector", or "input" properties should be set on an item'
+                'only one of the "markdown", "chart", "table", or "input" properties should be set on an item'
             )
         return data
 
@@ -103,8 +96,6 @@ class Item(NamedModel, ParentModel):
             return self.table
         if self.chart is not None:
             return self.chart
-        if self.selector is not None:
-            return self.selector
         if self.input is not None:
             return self.input
         if self.markdown is not None and isinstance(self.markdown, Markdown):

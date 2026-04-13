@@ -187,7 +187,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
    * Get the combined "type:name" value for the current item selection
    */
   const getSelectedValue = item => {
-    for (const field of ['chart', 'table', 'markdown', 'selector', 'input']) {
+    for (const field of ['chart', 'table', 'markdown', 'input']) {
       const val = item[field];
       if (val) {
         const objName = parseRefValue(val);
@@ -201,7 +201,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
    * Get the object type of the currently selected item (for icon display)
    */
   const getSelectedType = item => {
-    for (const field of ['chart', 'table', 'markdown', 'selector', 'input']) {
+    for (const field of ['chart', 'table', 'markdown', 'input']) {
       if (item[field]) return field;
     }
     return null;

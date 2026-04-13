@@ -1,7 +1,6 @@
 from typing import List, Optional, TypeAlias
 from pydantic import Field
 
-from visivo.models.base.selector_model import SelectorModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import generate_ref_field
@@ -11,7 +10,7 @@ from visivo.models.insight import Insight
 InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
-class Chart(SelectorModel, NamedModel, ParentModel):
+class Chart(NamedModel, ParentModel):
     """
     ## Overview
     Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
@@ -205,7 +204,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
 
     def child_items(self):
         """Return child items for DAG construction"""
-        return self.insights + [self.selector]
+        return self.insights
 
     insights: List[InsightRef] = Field(
         [],

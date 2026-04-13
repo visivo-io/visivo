@@ -1,10 +1,7 @@
 import Chart from '../items/Chart';
 import Table from '../items/Table';
-import Selector from '../items/Selector';
 import useDimensions from 'react-cool-dimensions';
 import { throwError } from '../../api/utils';
-import { useSearchParams } from 'react-router-dom';
-import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
 import { useCallback, useMemo } from 'react';
@@ -79,7 +76,6 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
 };
 
 const Dashboard = ({ project, dashboardName }) => {
-  const [searchParams] = useSearchParams();
 
   // Viewport-based loading: Track which rows are visible
   const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
@@ -132,16 +128,9 @@ const Dashboard = ({ project, dashboardName }) => {
       if (!namedModel || !namedModel.name) {
         return true;
       }
-      const selector = getSelectorByOptionName(project, namedModel.name);
-      if (selector && searchParams.has(selector.name)) {
-        const selectedNames = searchParams.get(selector.name).split(',');
-        if (!selectedNames.includes(namedModel.name)) {
-          return false;
-        }
-      }
       return true;
     },
-    [project, searchParams]
+    []
   );
 
   const shouldShowItem = useCallback(
@@ -154,8 +143,6 @@ const Dashboard = ({ project, dashboardName }) => {
         object = item.chart;
       } else if (item.table) {
         object = item.table;
-      } else if (item.selector) {
-        object = item.selector;
       } else if (item.input) {
         object = item.input;
       }
@@ -267,15 +254,6 @@ const Dashboard = ({ project, dashboardName }) => {
           shouldLoad={shouldLoad}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         />
-      );
-    } else if (item.selector) {
-      return (
-        <Selector
-          selector={item.selector}
-          project={project}
-          itemWidth={item.width}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        ></Selector>
       );
     } else if (item.chart) {
       return (

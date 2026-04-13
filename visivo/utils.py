@@ -30,7 +30,6 @@ PROJECT_CHILDREN = [
     "metrics",
     "models",
     "relations",
-    "selectors",
     "sources",
     "tables",
 ]

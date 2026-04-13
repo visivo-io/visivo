@@ -1,3 +1,5 @@
+import re
+
 import factory
 from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
@@ -6,7 +8,6 @@ from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.props.insight_props import InsightProps
-from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.redshift_source import RedshiftSource
@@ -213,6 +214,47 @@ class InsightFactory(factory.Factory):
     name = "insight"
     props = factory.SubFactory(InsightPropsFactory)
 
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        # Legacy compatibility: accept `model=` / `tests=` kwargs from the
+        # old Trace API and translate them into Insight-compatible shape.
+        legacy_model = kwargs.pop("model", None)
+        kwargs.pop("tests", None)
+        kwargs.pop("cohort_on", None)
+        kwargs.pop("filters", None)
+        kwargs.pop("order_by", None)
+        kwargs.pop("columns", None)
+
+        if legacy_model is not None:
+            if isinstance(legacy_model, str):
+                match = re.search(r"ref\(\s*([^)\s]+)\s*\)", legacy_model)
+                model_name = match.group(1) if match else legacy_model
+            elif hasattr(legacy_model, "name"):
+                model_name = legacy_model.name
+            else:
+                model_name = None
+
+            if model_name:
+                props = kwargs.get("props") or InsightProps(
+                    type="scatter",
+                    x=f"?{{ ${{ ref({model_name}).x }} }}",
+                    y=f"?{{ ${{ ref({model_name}).y }} }}",
+                )
+                if isinstance(props, InsightProps):
+                    props = InsightProps(
+                        type=props.type,
+                        x=f"?{{ ${{ ref({model_name}).x }} }}",
+                        y=f"?{{ ${{ ref({model_name}).y }} }}",
+                    )
+                kwargs["props"] = props
+
+        return super()._create(model_class, *args, **kwargs)
+
+
+# Back-compat alias for tests that still reference the old Trace API.
+# Insights replace Traces; the factory silently translates legacy kwargs.
+TraceFactory = InsightFactory
+
 
 class JobFactory(factory.Factory):
     class Meta:
@@ -223,22 +265,12 @@ class JobFactory(factory.Factory):
     action = None
 
 
-class SelectorFactory(factory.Factory):
-    class Meta:
-        model = Selector
-
-    name = "selector"
-    type = "single"
-    options = []
-
-
 class ChartFactory(factory.Factory):
     class Meta:
         model = Chart
 
     name = "chart"
     insights = factory.List([factory.SubFactory(InsightFactory) for _ in range(1)])
-    selector = factory.SubFactory(SelectorFactory)
 
     class Params:
         insight_ref = factory.Trait(insights=["ref(insight_name)"])
@@ -249,7 +281,6 @@ class TableFactory(factory.Factory):
         model = Table
 
     name = "table"
-    selector = factory.SubFactory(SelectorFactory)
 
 
 class ItemFactory(factory.Factory):

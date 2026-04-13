@@ -1081,7 +1081,6 @@
         "{\"name\": \"test table\", \"is_inline_defined\": true}"
       ],
       "name": "project",
-      "selectors": [],
       "sources": [
         {
           "database": "local.db",
