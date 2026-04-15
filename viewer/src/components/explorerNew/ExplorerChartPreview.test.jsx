@@ -5,47 +5,44 @@ import '@testing-library/jest-dom';
 import ExplorerChartPreview from './ExplorerChartPreview';
 import useStore from '../../stores/store';
 
+// Capture the chart preview job hook args across renders so we can assert on payload shape.
+let lastPreviewRequest = null;
+
+jest.mock('../../hooks/usePreviewData', () => ({
+  useChartPreviewJob: jest.fn((previewRequest) => {
+    lastPreviewRequest = previewRequest;
+    return {
+      isLoading: false,
+      isCompleted: false,
+      isFailed: false,
+      error: null,
+      progress: 0,
+      progressMessage: '',
+      runInstanceId: null,
+      previewRunId: null,
+      previewInsightKeys: (previewRequest?.insight_names || []).map(n => `__preview__${n}`),
+      status: null,
+      resetPreview: jest.fn(),
+    };
+  }),
+}));
+
+jest.mock('../../hooks/useInputsData', () => ({
+  useInputsData: jest.fn(),
+}));
+
 jest.mock('../new-views/common/ChartPreview', () => {
-  return function MockChartPreview({
-    chartConfig,
-    insightConfig,
-    projectId,
-    onLayoutChange,
-    editableLayout,
-    contextObjects,
-    additionalInsightKeys,
-  }) {
+  return function MockChartPreview({ chartConfig, insightKeys, projectId }) {
     return (
       <div data-testid="chart-preview-component">
         <span data-testid="cp-chart-name">{chartConfig?.name}</span>
-        <span data-testid="cp-insight-name">{insightConfig?.name}</span>
-        <span data-testid="cp-insight-type">{insightConfig?.props?.type}</span>
-        <span data-testid="cp-insight-props">{JSON.stringify(insightConfig?.props)}</span>
+        <span data-testid="cp-insight-keys">{JSON.stringify(insightKeys)}</span>
         <span data-testid="cp-project-id">{projectId}</span>
-        <span data-testid="cp-editable">{String(editableLayout)}</span>
         <span data-testid="cp-layout">{JSON.stringify(chartConfig?.layout)}</span>
-        <span data-testid="cp-context-objects">{JSON.stringify(contextObjects)}</span>
-        <span data-testid="cp-additional-keys">{JSON.stringify(additionalInsightKeys)}</span>
-        {onLayoutChange && (
-          <button
-            data-testid="cp-trigger-layout"
-            onClick={() => onLayoutChange({ title: { text: 'Edited' } })}
-          />
-        )}
       </div>
     );
   };
 });
-
-jest.mock('../../hooks/usePreviewData', () => ({
-  useInsightPreviewData: () => ({ previewInsightKey: null }),
-}));
-
-const mockQueryResult = {
-  columns: ['date', 'amount'],
-  rows: [{ date: '2024-01', amount: 100 }],
-  row_count: 1,
-};
 
 const makeModelState = (overrides = {}) => ({
   sql: '',
@@ -58,82 +55,58 @@ const makeModelState = (overrides = {}) => ({
   ...overrides,
 });
 
+const defaultState = {
+  explorerModelStates: {},
+  explorerModelTabs: [],
+  explorerActiveModelName: null,
+  explorerInsightStates: {},
+  explorerActiveInsightName: null,
+  explorerChartInsightNames: [],
+  explorerChartName: 'test_chart',
+  explorerChartLayout: {},
+  project: { id: 'proj-1' },
+  inputs: [],
+  setChartLayout: layout => useStore.setState({ explorerChartLayout: layout }),
+};
+
 describe('ExplorerChartPreview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useStore.setState({
-      explorerModelStates: {
-        preview_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg' }),
-      },
-      explorerModelTabs: ['preview_model'],
-      explorerActiveModelName: null,
-      explorerInsightStates: {},
-      explorerActiveInsightName: null,
-      explorerChartInsightNames: [],
-      explorerChartLayout: {},
-      project: { id: 'proj-1' },
-      setChartLayout: (layout) => useStore.setState({ explorerChartLayout: layout }),
-    });
+    lastPreviewRequest = null;
+    useStore.setState(defaultState);
   });
 
-  it('shows empty state when no query results', () => {
+  it('shows empty state when no insights attached to chart', () => {
     render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('chart-empty-no-results')).toBeInTheDocument();
-    expect(screen.getByText('Run a query to see chart preview')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-empty-no-insights')).toBeInTheDocument();
+    expect(lastPreviewRequest).toBeNull();
   });
 
-  it('shows empty config state when insight has no data props beyond type', () => {
+  it('renders ChartPreview when at least one insight has data props', () => {
     useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerInsightStates: {},
-      explorerActiveInsightName: null,
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('chart-empty-no-config')).toBeInTheDocument();
-    expect(
-      screen.getByText('Drag columns to axis fields to see chart preview')
-    ).toBeInTheDocument();
-  });
-
-  it('renders ChartPreview when results, active model, and data props exist', () => {
-    useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
-      },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('chart-preview-component')).toBeInTheDocument();
-  });
-
-  it('constructs backend insight config with actual model name', () => {
-    useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
       explorerChartInsightNames: ['ins_1'],
       explorerInsightStates: {
         ins_1: {
           type: 'scatter',
-          props: {
-            x: '?{${ref(sales_model).date}}',
-            y: '?{${ref(sales_model).amount}}',
-          },
+          props: { x: '?{${ref(sales).date}}', y: '?{${ref(sales).amount}}' },
+          interactions: [],
+          typePropsCache: {},
+          isNew: true,
+        },
+      },
+    });
+
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('chart-preview-component')).toBeInTheDocument();
+  });
+
+  it('uses raw insight names in insight_names (no concatenation)', () => {
+    useStore.setState({
+      explorerChartInsightNames: ['my_insight'],
+      explorerInsightStates: {
+        my_insight: {
+          type: 'scatter',
+          props: { x: '?{${ref(sales).date}}', y: '?{${ref(sales).amount}}' },
           interactions: [],
           typePropsCache: {},
           isNew: true,
@@ -143,196 +116,165 @@ describe('ExplorerChartPreview', () => {
 
     render(<ExplorerChartPreview />);
 
-    expect(screen.getByTestId('cp-insight-name')).toHaveTextContent('sales_model_ins_1_preview');
-    expect(screen.getByTestId('cp-insight-type')).toHaveTextContent('scatter');
+    expect(lastPreviewRequest.insight_names).toEqual(['my_insight']);
+    expect(lastPreviewRequest.context_objects.insights[0].name).toBe('my_insight');
   });
 
-  it('passes chart layout from store', () => {
+  it('sends one request containing every chart insight', () => {
     useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
+      explorerChartInsightNames: ['a', 'b', 'c'],
       explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
-      },
-      explorerChartLayout: { title: { text: 'My Chart' } },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    const layout = JSON.parse(screen.getByTestId('cp-layout').textContent);
-    expect(layout.title.text).toBe('My Chart');
-  });
-
-  it('passes projectId from store', () => {
-    useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
-      },
-      project: { id: 'my-project-123' },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    expect(screen.getByTestId('cp-project-id')).toHaveTextContent('my-project-123');
-  });
-
-  it('enables editable layout', () => {
-    useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        a: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+        b: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+        c: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
       },
     });
 
     render(<ExplorerChartPreview />);
 
-    expect(screen.getByTestId('cp-editable')).toHaveTextContent('true');
+    expect(lastPreviewRequest.insight_names).toEqual(['a', 'b', 'c']);
+    expect(lastPreviewRequest.context_objects.insights).toHaveLength(3);
   });
 
-  it('passes setChartLayout as onLayoutChange', () => {
+  it('includes every explorerModelStates entry as a model override', () => {
     useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
       explorerChartInsightNames: ['ins_1'],
       explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        ins_1: {
+          type: 'scatter',
+          props: { x: '?{${ref(sales).date}}' },
+          interactions: [],
+        },
       },
-      explorerChartLayout: {},
-    });
-
-    render(<ExplorerChartPreview />);
-
-    screen.getByTestId('cp-trigger-layout').click();
-    expect(useStore.getState().explorerChartLayout).toEqual({ title: { text: 'Edited' } });
-  });
-
-  it('uses chart name from active model name', () => {
-    useStore.setState({
-      explorerActiveModelName: 'my_model',
       explorerModelStates: {
-        my_model: makeModelState({ sql: 'SELECT * FROM users', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'bar', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        sales_model: makeModelState({ sql: 'SELECT * FROM sales', sourceName: 'pg' }),
+        orders_model: makeModelState({ sql: 'SELECT * FROM orders', sourceName: 'pg' }),
       },
     });
 
     render(<ExplorerChartPreview />);
 
-    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('my_model_chart');
+    expect(lastPreviewRequest.context_objects.models).toHaveLength(2);
+    const modelNames = lastPreviewRequest.context_objects.models.map(m => m.name);
+    expect(modelNames).toContain('sales_model');
+    expect(modelNames).toContain('orders_model');
   });
 
-  it('builds contextObjects with model from SQL and source', () => {
+  it('attaches computed columns as dimensions/metrics', () => {
     useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: 'SELECT * FROM sales', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
       explorerChartInsightNames: ['ins_1'],
       explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
       },
-    });
-
-    render(<ExplorerChartPreview />);
-
-    const ctx = JSON.parse(screen.getByTestId('cp-context-objects').textContent);
-    expect(ctx.models).toEqual([
-      { name: 'sales_model', sql: 'SELECT * FROM sales', source: '${ref(pg)}' },
-    ]);
-  });
-
-  it('includes computed columns as dimensions/metrics in contextObjects', () => {
-    useStore.setState({
-      explorerActiveModelName: 'sales_model',
       explorerModelStates: {
-        sales_model: makeModelState({
+        sales: makeModelState({
           sql: 'SELECT * FROM sales',
           sourceName: 'pg',
-          queryResult: mockQueryResult,
           computedColumns: [
             { name: 'order_month', expression: "DATE_TRUNC('month', date)", type: 'dimension' },
             { name: 'total_rev', expression: 'SUM(amount)', type: 'metric' },
           ],
         }),
       },
-      explorerActiveInsightName: 'ins_1',
-      explorerChartInsightNames: ['ins_1'],
-      explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
-      },
     });
 
     render(<ExplorerChartPreview />);
 
-    const ctx = JSON.parse(screen.getByTestId('cp-context-objects').textContent);
-    expect(ctx.models).toEqual([
-      {
-        name: 'sales_model',
-        sql: 'SELECT * FROM sales',
-        source: '${ref(pg)}',
-        dimensions: [{ name: 'order_month', expression: "DATE_TRUNC('month', date)" }],
-        metrics: [{ name: 'total_rev', expression: 'SUM(amount)' }],
-      },
+    const model = lastPreviewRequest.context_objects.models[0];
+    expect(model.dimensions).toEqual([
+      { name: 'order_month', expression: "DATE_TRUNC('month', date)" },
     ]);
+    expect(model.metrics).toEqual([{ name: 'total_rev', expression: 'SUM(amount)' }]);
   });
 
-  it('contextObjects is null when SQL or source missing', () => {
+  it('builds preview request with no model tab open', () => {
     useStore.setState({
-      explorerActiveModelName: 'sales_model',
-      explorerModelStates: {
-        sales_model: makeModelState({ sql: '', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
       explorerChartInsightNames: ['ins_1'],
       explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+      },
+      explorerModelStates: {},
+      explorerModelTabs: [],
+      explorerActiveModelName: null,
+    });
+
+    render(<ExplorerChartPreview />);
+
+    expect(lastPreviewRequest).not.toBeNull();
+    expect(lastPreviewRequest.insight_names).toEqual(['ins_1']);
+    // No models in context_objects when nothing is being edited
+    expect(lastPreviewRequest.context_objects.models).toBeUndefined();
+  });
+
+  it('passes chart name from store', () => {
+    useStore.setState({
+      explorerChartName: 'my_cool_chart',
+      explorerChartInsightNames: ['ins_1'],
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+      },
+    });
+
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('cp-chart-name')).toHaveTextContent('my_cool_chart');
+  });
+
+  it('passes chart layout from store', () => {
+    useStore.setState({
+      explorerChartInsightNames: ['ins_1'],
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+      },
+      explorerChartLayout: { title: { text: 'My Chart' } },
+    });
+
+    render(<ExplorerChartPreview />);
+    const layout = JSON.parse(screen.getByTestId('cp-layout').textContent);
+    expect(layout.title.text).toBe('My Chart');
+  });
+
+  it('passes projectId', () => {
+    useStore.setState({
+      project: { id: 'my-project-123' },
+      explorerChartInsightNames: ['ins_1'],
+      explorerInsightStates: {
+        ins_1: { type: 'scatter', props: { x: '?{${ref(m).x}}' }, interactions: [] },
+      },
+    });
+
+    render(<ExplorerChartPreview />);
+    expect(screen.getByTestId('cp-project-id')).toHaveTextContent('my-project-123');
+  });
+
+  it('forwards backend-format interactions', () => {
+    useStore.setState({
+      explorerChartInsightNames: ['ins_1'],
+      explorerInsightStates: {
+        ins_1: {
+          type: 'scatter',
+          props: { x: '?{${ref(m).x}}' },
+          interactions: [{ type: 'filter', value: '?{${ref(m).x} > 5}' }],
+        },
       },
     });
 
     render(<ExplorerChartPreview />);
 
-    const ctx = screen.getByTestId('cp-context-objects').textContent;
-    expect(ctx).toBe('null');
+    const insight = lastPreviewRequest.context_objects.insights[0];
+    expect(insight.interactions).toEqual([{ filter: '?{${ref(m).x} > 5}' }]);
   });
 
-  it('uses preview_model as fallback model name in contextObjects', () => {
+  it('drops insights with no data props beyond type', () => {
     useStore.setState({
-      explorerActiveModelName: 'preview_model',
-      explorerModelStates: {
-        preview_model: makeModelState({ sql: 'SELECT 1', sourceName: 'pg', queryResult: mockQueryResult }),
-      },
-      explorerActiveInsightName: 'ins_1',
       explorerChartInsightNames: ['ins_1'],
       explorerInsightStates: {
-        ins_1: { type: 'scatter', props: { x: 'date', y: 'amount' }, interactions: [], typePropsCache: {}, isNew: true },
+        ins_1: { type: 'scatter', props: {}, interactions: [] },
       },
     });
 
     render(<ExplorerChartPreview />);
 
-    const ctx = JSON.parse(screen.getByTestId('cp-context-objects').textContent);
-    expect(ctx.models[0].name).toBe('preview_model');
+    // No data props → insight is dropped → request is null
+    expect(lastPreviewRequest).toBeNull();
   });
 });

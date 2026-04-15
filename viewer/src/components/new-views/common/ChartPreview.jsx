@@ -1,6 +1,5 @@
 import { useMemo, useCallback } from 'react';
 import Chart from '../../items/Chart';
-import { useInsightPreviewData } from '../../../hooks/usePreviewData';
 import CircularProgress from '@mui/material/CircularProgress';
 
 const EDITABLE_PLOTLY_CONFIG = {
@@ -15,46 +14,48 @@ const READONLY_PLOTLY_CONFIG = {
   displayModeBar: false,
 };
 
+/**
+ * ChartPreview - presentational wrapper around <Chart> that renders loading/error/empty
+ * states and forwards a list of insight store keys to the renderer.
+ *
+ * Callers are responsible for driving the underlying preview job (via
+ * useChartPreviewJob or useInsightPreviewData) and passing the resulting
+ * store keys in `insightKeys`.
+ */
 const ChartPreview = ({
   chartConfig,
-  insightConfig,
+  insightKeys,
   projectId,
   onLayoutChange,
   editableLayout = true,
-  contextObjects,
-  additionalInsightKeys,
+  isLoading = false,
+  error = null,
+  progress = 0,
+  progressMessage = '',
 }) => {
-  const extraPreviewBody = useMemo(
-    () => (contextObjects ? { context_objects: contextObjects } : undefined),
-    [contextObjects]
+  const chartInsights = useMemo(
+    () => (insightKeys || []).filter(Boolean).map(name => ({ name })),
+    [insightKeys]
   );
-  const { isLoading, error, progress, progressMessage, previewInsightKey } =
-    useInsightPreviewData(insightConfig, { projectId, extraPreviewBody });
 
-  const chartInsights = useMemo(() => {
-    const insights = previewInsightKey ? [{ name: previewInsightKey }] : [];
-    if (additionalInsightKeys) {
-      for (const key of additionalInsightKeys) {
-        if (key && key !== previewInsightKey) {
-          insights.push({ name: key });
-        }
-      }
-    }
-    return insights;
-  }, [previewInsightKey, additionalInsightKeys]);
+  const chartLayout = useMemo(
+    () => ({
+      autosize: true,
+      margin: { l: 70, r: 70, t: 50, b: 70 },
+      ...chartConfig?.layout,
+    }),
+    [chartConfig?.layout]
+  );
 
-  const chartLayout = useMemo(() => ({
-    autosize: true,
-   margin: { l: 70, r: 70, t: 50, b: 70 },
-    ...chartConfig?.layout,
-  }), [chartConfig?.layout]);
-
-  const chart = useMemo(() => ({
-    name: chartConfig?.name || 'Preview Chart',
-    insights: chartInsights,
-    traces: [],
-    layout: chartLayout,
-  }), [chartConfig?.name, chartInsights, chartLayout]);
+  const chart = useMemo(
+    () => ({
+      name: chartConfig?.name || 'Preview Chart',
+      insights: chartInsights,
+      traces: [],
+      layout: chartLayout,
+    }),
+    [chartConfig?.name, chartInsights, chartLayout]
+  );
 
   const plotlyConfig = useMemo(
     () => (editableLayout ? EDITABLE_PLOTLY_CONFIG : READONLY_PLOTLY_CONFIG),
@@ -62,7 +63,7 @@ const ChartPreview = ({
   );
 
   const handleRelayout = useCallback(
-    (update) => {
+    update => {
       if (!update || !onLayoutChange) return;
       const layoutUpdates = {};
       if (update['title.text'] !== undefined) {
@@ -115,13 +116,13 @@ const ChartPreview = ({
     );
   }
 
-  if (!previewInsightKey) {
+  if (chartInsights.length === 0) {
     return (
       <div
         className="flex items-center justify-center h-full bg-gray-50"
         data-testid="chart-preview-empty"
       >
-        <span className="text-sm text-secondary-400">Run a query to see chart preview</span>
+        <span className="text-sm text-secondary-400">Drag columns to axis fields to see chart preview</span>
       </div>
     );
   }

@@ -42,14 +42,21 @@ describe('usePreviewJob', () => {
 
       let id;
       await act(async () => {
-        id = await result.current.startRun({ name: 'my-insight', props: { x: 1 } });
+        id = await result.current.startRun({
+          insight_names: ['my-insight'],
+          context_objects: { insights: [{ name: 'my-insight', props: { x: 1 } }] },
+        });
       });
 
       expect(id).toBe('run-42');
       expect(fetch).toHaveBeenCalledWith('/api/insight-jobs/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: { name: 'my-insight', props: { x: 1 } }, run: true }),
+        body: JSON.stringify({
+          insight_names: ['my-insight'],
+          context_objects: { insights: [{ name: 'my-insight', props: { x: 1 } }] },
+          run: true,
+        }),
       });
       expect(result.current.runInstanceId).toBe('run-42');
 

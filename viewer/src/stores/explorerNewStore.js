@@ -2,6 +2,81 @@
 import { generateUniqueName } from '../utils/uniqueName';
 
 /**
+ * Thrown by create/rename actions when the proposed name collides with any
+ * existing object (cached or context) across all object types. UI submit
+ * handlers should catch this and surface the message inline.
+ */
+export class NameCollisionError extends Error {
+  constructor(name, collisionType) {
+    super(
+      `Name "${name}" is already in use${
+        collisionType ? ` by a ${collisionType}` : ''
+      }. Choose a different name.`
+    );
+    this.name = 'NameCollisionError';
+    this.code = 'NAME_COLLISION';
+    this.collisionName = name;
+    this.collisionType = collisionType;
+  }
+}
+
+/**
+ * Collect every object name the store knows about, across cached API
+ * collections and explorer context working stores. Names are project-wide
+ * unique because refs like `ref(foo)` are untyped — the DAG resolver cannot
+ * distinguish a model named `foo` from a metric named `foo`.
+ *
+ * Returns a Map<name, type> so collision errors can surface which kind of
+ * object the caller is colliding with.
+ */
+export const getAllKnownNames = (state) => {
+  const known = new Map();
+  const cachedCollections = [
+    ['insight', state.insights],
+    ['model', state.models],
+    ['source', state.sources],
+    ['chart', state.charts],
+    ['input', state.inputs],
+    ['metric', state.metrics],
+    ['dimension', state.dimensions],
+    ['relation', state.relations],
+    ['table', state.tables],
+    ['dashboard', state.dashboards],
+  ];
+  for (const [type, collection] of cachedCollections) {
+    for (const obj of collection || []) {
+      if (obj && obj.name && !known.has(obj.name)) known.set(obj.name, type);
+    }
+  }
+  for (const name of Object.keys(state.explorerInsightStates || {})) {
+    if (!known.has(name)) known.set(name, 'insight');
+  }
+  for (const name of Object.keys(state.explorerModelStates || {})) {
+    if (!known.has(name)) known.set(name, 'model');
+  }
+  for (const name of state.explorerModelTabs || []) {
+    if (!known.has(name)) known.set(name, 'model');
+  }
+  return known;
+};
+
+/**
+ * Throws NameCollisionError if `name` is in use by any object, excluding the
+ * entry identified by `excludingName` (used by rename flows to allow a no-op
+ * rename-to-self).
+ */
+export const assertNameUnique = (state, name, { excludingName } = {}) => {
+  if (!name) return;
+  const known = getAllKnownNames(state);
+  if (excludingName && known.has(excludingName)) {
+    known.delete(excludingName);
+  }
+  if (known.has(name)) {
+    throw new NameCollisionError(name, known.get(name));
+  }
+};
+
+/**
  * Expand dot-notation keys in insight props to nested objects.
  *
  * Explorer stores flat keys with dots (e.g., 'marker.color') for convenience.
@@ -303,19 +378,25 @@ export const selectHasModifications = (s) => {
 };
 
 /**
- * Derive input names by scanning all interaction values and prop values for ref(inputName) patterns.
- * Returns an array of input names that should appear in the toolbar.
- * Updates dynamically when interactions/props change (unlike explorerChartInputNames which is static).
+ * Derive input names by scanning interaction values and prop values for ref(inputName)
+ * patterns — scoped to insights currently attached to the chart. Detached insights
+ * keep their working copy in explorerInsightStates, but their inputs should not
+ * leak into the toolbar.
  */
 export const selectDerivedInputNames = (s) => {
   const inputNameSet = new Set((s.inputs || []).map((i) => i.name));
   if (inputNameSet.size === 0) return [];
 
+  const chartInsightNames = s.explorerChartInsightNames || [];
+  if (chartInsightNames.length === 0) return [];
+
+  const insightStates = s.explorerInsightStates || {};
   const found = new Set();
 
-  // Scan all insight interactions and props
-  for (const insight of Object.values(s.explorerInsightStates || {})) {
-    // Scan interactions
+  for (const insightName of chartInsightNames) {
+    const insight = insightStates[insightName];
+    if (!insight) continue;
+
     for (const interaction of insight.interactions || []) {
       if (typeof interaction.value === 'string') {
         const matches = interaction.value.matchAll(/ref\(([^.)]+)\)/g);
@@ -324,7 +405,6 @@ export const selectDerivedInputNames = (s) => {
         }
       }
     }
-    // Scan props (flat string values and nested objects)
     const scanProps = (obj) => {
       for (const val of Object.values(obj || {})) {
         if (typeof val === 'string') {
@@ -368,7 +448,6 @@ const createExplorerNewSlice = (set, get) => ({
   explorerChartLayout: {},
   explorerChartInsightNames: [],
   explorerActiveInsightName: null,
-  explorerChartInputNames: [],
 
   // --- Per-Insight State ---
   explorerInsightStates: {},
@@ -396,8 +475,21 @@ const createExplorerNewSlice = (set, get) => ({
 
   createModelTab: (name) => {
     const state = get();
-    const baseName = name || 'model';
-    const uniqueName = generateUniqueName(baseName, state.explorerModelTabs);
+    let finalName;
+    if (name) {
+      // User-supplied name — enforce cross-type uniqueness strictly.
+      assertNameUnique(state, name);
+      finalName = name;
+    } else {
+      // Auto-disambiguate against current tabs + working copies only. Users
+      // rename before saving; cross-type collision against cached objects is
+      // caught at save time by setChartName / saveExplorerObjects.
+      const existing = new Set([
+        ...state.explorerModelTabs,
+        ...Object.keys(state.explorerModelStates || {}),
+      ]);
+      finalName = generateUniqueName('model', Array.from(existing));
+    }
 
     // Default source priority: project defaults > first available source > null
     const projectDefaultSource = state.defaults?.source_name || null;
@@ -406,11 +498,11 @@ const createExplorerNewSlice = (set, get) => ({
     const newModelState = { ...createEmptyModelState(true), sourceName: defaultSource };
 
     set({
-      explorerModelTabs: [...state.explorerModelTabs, uniqueName],
-      explorerActiveModelName: uniqueName,
+      explorerModelTabs: [...state.explorerModelTabs, finalName],
+      explorerActiveModelName: finalName,
       explorerModelStates: {
         ...state.explorerModelStates,
-        [uniqueName]: newModelState,
+        [finalName]: newModelState,
       },
     });
   },
@@ -424,16 +516,18 @@ const createExplorerNewSlice = (set, get) => ({
   closeModelTab: (modelName) => {
     const state = get();
     const newTabs = state.explorerModelTabs.filter((t) => t !== modelName);
-    const { [modelName]: _, ...restStates } = state.explorerModelStates;
 
     let newActive = state.explorerActiveModelName;
     if (newActive === modelName) {
       newActive = newTabs.length > 0 ? newTabs[0] : null;
     }
 
+    // Preserve explorerModelStates — the working copy outlives the tab. Insights
+    // that reference this model continue to resolve via the context store overlay.
+    // Explicit cleanup is the user's responsibility (reset button for modified,
+    // delete for new) — tab close is a UI-only concept.
     set({
       explorerModelTabs: newTabs,
-      explorerModelStates: restStates,
       explorerActiveModelName: newActive,
     });
   },
@@ -442,7 +536,10 @@ const createExplorerNewSlice = (set, get) => ({
     const state = get();
     const modelState = state.explorerModelStates[oldName];
     if (!modelState || !modelState.isNew) return;
-    if (state.explorerModelTabs.includes(newName)) return; // prevent collision
+    if (oldName === newName) return;
+
+    // Throws NameCollisionError on cross-type collision — UI catches and shows inline.
+    assertNameUnique(state, newName, { excludingName: oldName });
 
     const newTabs = state.explorerModelTabs.map((t) => (t === oldName ? newName : t));
     const { [oldName]: oldState, ...restStates } = state.explorerModelStates;
@@ -621,13 +718,22 @@ const createExplorerNewSlice = (set, get) => ({
 
   createInsight: (name) => {
     const state = get();
-    const baseName = name || 'insight';
-    const uniqueName = generateUniqueName(baseName, Object.keys(state.explorerInsightStates));
+    let finalName;
+    if (name) {
+      // User-supplied name — enforce cross-type uniqueness strictly.
+      assertNameUnique(state, name);
+      finalName = name;
+    } else {
+      // No name provided (Add button click) — auto-disambiguate against
+      // current explorer working copies only. Users rename before saving;
+      // cross-type collision against cached objects is caught at save time.
+      finalName = generateUniqueName('insight', Object.keys(state.explorerInsightStates));
+    }
 
     set({
       explorerInsightStates: {
         ...state.explorerInsightStates,
-        [uniqueName]: {
+        [finalName]: {
           type: 'scatter',
           props: {},
           interactions: [],
@@ -635,8 +741,8 @@ const createExplorerNewSlice = (set, get) => ({
           isNew: true,
         },
       },
-      explorerChartInsightNames: [...state.explorerChartInsightNames, uniqueName],
-      explorerActiveInsightName: uniqueName,
+      explorerChartInsightNames: [...state.explorerChartInsightNames, finalName],
+      explorerActiveInsightName: finalName,
     });
   },
 
@@ -659,17 +765,16 @@ const createExplorerNewSlice = (set, get) => ({
 
     const insightState = transformInsightToUiState(insight);
 
-    // Resolve model/input dependencies from the insight config (mirror handleChartClick)
+    // Resolve model dependencies from the insight config to auto-open tabs
+    // for models the insight references. Input dependencies are handled by
+    // selectDerivedInputNames dynamically, so no input-name tracking needed.
     const allInputNames = new Set((state.inputs || []).map((i) => i.name));
     const searchStr = JSON.stringify(insight.config || {});
     const matches = [...searchStr.matchAll(/ref\(([^.)]+)\)/g)];
     const modelNames = new Set();
-    const inputNames = new Set();
     for (const match of matches) {
       const name = match[1];
-      if (allInputNames.has(name)) {
-        inputNames.add(name);
-      } else {
+      if (!allInputNames.has(name)) {
         modelNames.add(name);
       }
     }
@@ -688,13 +793,6 @@ const createExplorerNewSlice = (set, get) => ({
       newlyAddedModelNames.push(modelName);
     }
 
-    // Compute new input names list (append missing)
-    const existingInputs = new Set(state.explorerChartInputNames);
-    const newInputNames = [...state.explorerChartInputNames];
-    for (const n of inputNames) {
-      if (!existingInputs.has(n)) newInputNames.push(n);
-    }
-
     set({
       explorerChartInsightNames: [...state.explorerChartInsightNames, insightName],
       explorerInsightStates: {
@@ -704,7 +802,6 @@ const createExplorerNewSlice = (set, get) => ({
       explorerActiveInsightName: insightName,
       explorerModelTabs: newModelTabs,
       explorerModelStates: newModelStates,
-      explorerChartInputNames: newInputNames,
     });
 
     // Auto-load parquet data for newly added models
@@ -720,7 +817,10 @@ const createExplorerNewSlice = (set, get) => ({
     const state = get();
     const insightState = state.explorerInsightStates[oldName];
     if (!insightState || !insightState.isNew) return;
-    if (Object.keys(state.explorerInsightStates).includes(newName)) return;
+    if (oldName === newName) return;
+
+    // Throws NameCollisionError on cross-type collision — UI catches and shows inline.
+    assertNameUnique(state, newName, { excludingName: oldName });
 
     const { [oldName]: movedState, ...restStates } = state.explorerInsightStates;
     const newChartInsightNames = state.explorerChartInsightNames.map((n) =>
@@ -1012,6 +1112,13 @@ const createExplorerNewSlice = (set, get) => ({
   // ====================================================================
 
   setChartName: (name) => {
+    const state = get();
+    // If the chart is already loaded (from cache), renaming would be a rename —
+    // assert uniqueness excluding the current name. For a fresh/unsaved chart
+    // (explorerChartName === null or matches a NEW chart), also assert uniqueness.
+    if (name && name !== state.explorerChartName) {
+      assertNameUnique(state, name, { excludingName: state.explorerChartName });
+    }
     set({ explorerChartName: name });
   },
 
@@ -1085,7 +1192,7 @@ const createExplorerNewSlice = (set, get) => ({
     autoLoadModelData(modelName, get, set);
   },
 
-  loadChart: (chartObject, insightObjects, modelObjects, inputObjects = []) => {
+  loadChart: (chartObject, insightObjects, modelObjects) => {
     const state = get();
 
     // Remove auto-created empty model tabs (isNew with no SQL) — they're clutter when loading a chart
@@ -1138,7 +1245,6 @@ const createExplorerNewSlice = (set, get) => ({
       explorerChartInsightNames: insightNames,
       explorerInsightStates: insightStates,
       explorerActiveInsightName: insightNames.length > 0 ? insightNames[0] : null,
-      explorerChartInputNames: inputObjects.map((i) => i.name),
     });
 
     // Auto-load parquet data for each model
@@ -1153,7 +1259,15 @@ const createExplorerNewSlice = (set, get) => ({
 
     // Create a model tab if none exists
     if (!state.explorerActiveModelName) {
-      const uniqueName = generateUniqueName('model', state.explorerModelTabs);
+      const uniqueName = generateUniqueName(
+        'model',
+        Array.from(
+          new Set([
+            ...state.explorerModelTabs,
+            ...Object.keys(state.explorerModelStates || {}),
+          ])
+        )
+      );
       set({
         explorerModelTabs: [...state.explorerModelTabs, uniqueName],
         explorerActiveModelName: uniqueName,

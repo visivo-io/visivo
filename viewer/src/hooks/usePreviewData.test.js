@@ -93,7 +93,11 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config, undefined);
+    // New batched contract: single-insight auto-wraps into {insight_names, context_objects}
+    expect(mockStartRun).toHaveBeenCalledWith({
+      insight_names: ['test'],
+      context_objects: { insights: [config] },
+    });
   });
 
   test('triggers preview when needsInitialPreview is true and no prior preview', () => {
@@ -104,7 +108,24 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config, undefined);
+    expect(mockStartRun).toHaveBeenCalledWith({
+      insight_names: ['test'],
+      context_objects: { insights: [config] },
+    });
+  });
+
+  test('passes explicit requestBody when provided instead of wrapping config', () => {
+    const config = { name: 'test', props: { x: '?{col1}' } };
+    const requestBody = {
+      insight_names: ['test', 'other'],
+      context_objects: { insights: [config, { name: 'other' }] },
+    };
+
+    renderHook(() =>
+      usePreviewData('insights', config, { needsInitialPreview: true, requestBody })
+    );
+
+    expect(mockStartRun).toHaveBeenCalledWith(requestBody);
   });
 
   test('does not trigger preview when needsInitialPreview is false and no savedConfig', () => {
@@ -252,13 +273,14 @@ describe('useInsightPreviewData', () => {
     );
   });
 
-  test('passes preview-{name} runId when preview is completed', () => {
+  test('passes run_id from result when preview is completed', () => {
     usePreviewJob.mockReturnValue(
       makePreviewJob({
         runInstanceId: 'run-456',
         status: 'completed',
         isCompleted: true,
-        result: { files: [] },
+        // New contract: backend returns run_id in the polling result
+        result: { insights: {}, run_id: 'preview-run-456' },
       })
     );
 
@@ -269,7 +291,29 @@ describe('useInsightPreviewData', () => {
     expect(useInsightsData).toHaveBeenCalledWith(
       'proj-1',
       ['my-insight'],
-      'preview-my-insight',
+      'preview-run-456',
+      { storeKeyPrefix: '__preview__', cacheKey: 'run-456' }
+    );
+  });
+
+  test('passes null runId when result is completed but has no run_id', () => {
+    usePreviewJob.mockReturnValue(
+      makePreviewJob({
+        runInstanceId: 'run-456',
+        status: 'completed',
+        isCompleted: true,
+        result: {},
+      })
+    );
+
+    renderHook(() =>
+      useInsightPreviewData({ name: 'my-insight' }, { projectId: 'proj-1' })
+    );
+
+    expect(useInsightsData).toHaveBeenCalledWith(
+      'proj-1',
+      ['my-insight'],
+      null,
       { storeKeyPrefix: '__preview__', cacheKey: 'run-456' }
     );
   });

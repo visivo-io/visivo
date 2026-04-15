@@ -1,189 +1,124 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo } from 'react';
 import ChartPreview from '../new-views/common/ChartPreview';
-import { useInsightPreviewData } from '../../hooks/usePreviewData';
+import { useChartPreviewJob } from '../../hooks/usePreviewData';
 import { useInputsData } from '../../hooks/useInputsData';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import {
   expandDotNotationProps,
-  selectActiveModelSql,
-  selectActiveModelSourceName,
-  selectActiveModelComputedColumns,
-  selectActiveModelQueryResult,
   selectDerivedInputNames,
 } from '../../stores/explorerNewStore';
 
-/**
- * Triggers a preview job for a single insight and reports back its preview key.
- * Renders nothing — purely a side-effect component.
- */
-const InsightPreviewTrigger = ({ insightConfig, projectId, extraPreviewBody, onPreviewKey }) => {
-  const { previewInsightKey } = useInsightPreviewData(insightConfig, {
-    projectId,
-    extraPreviewBody,
-  });
-
-  useEffect(() => {
-    onPreviewKey(insightConfig?.name, previewInsightKey);
-  }, [insightConfig?.name, previewInsightKey, onPreviewKey]);
-
-  return null;
-};
-
 const ExplorerChartPreview = () => {
-  const queryResult = useStore(selectActiveModelQueryResult);
-  const insightStates = useStore((s) => s.explorerInsightStates);
-  const chartLayout = useStore((s) => s.explorerChartLayout);
-  const syncPlotlyEdits = useStore((s) => s.setChartLayout);
-  const activeModelName = useStore((s) => s.explorerActiveModelName);
-  const explorerSql = useStore(selectActiveModelSql);
-  const explorerSourceName = useStore(selectActiveModelSourceName);
-  const computedColumns = useStore(selectActiveModelComputedColumns);
-  const projectId = useStore((s) => s.project?.id);
-  const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
+  const insightStates = useStore(s => s.explorerInsightStates);
+  const modelStates = useStore(s => s.explorerModelStates);
+  const chartLayout = useStore(s => s.explorerChartLayout);
+  const chartName = useStore(s => s.explorerChartName);
+  const syncPlotlyEdits = useStore(s => s.setChartLayout);
+  const projectId = useStore(s => s.project?.id);
+  const chartInsightNames = useStore(s => s.explorerChartInsightNames);
   const derivedInputNames = useStore(useShallow(selectDerivedInputNames));
-  const storeInputs = useStore((s) => s.inputs || []);
+  const storeInputs = useStore(s => s.inputs || []);
 
   // Load input data (parquet, options, defaults) for dynamically referenced inputs
   useInputsData(projectId, derivedInputNames);
 
-  const [secondaryKeys, setSecondaryKeys] = useState({});
+  // Build the batched preview request: every insight on the chart + every
+  // edited object in the explorer's working stores. The backend overlays them
+  // onto the published project and runs all insights in one DAG invocation.
+  const previewRequest = useMemo(() => {
+    if (!chartInsightNames || chartInsightNames.length === 0) return null;
 
-  const effectiveModelName = activeModelName || 'preview_model';
-
-  // Build configs for ALL chart insights
-  const allInsightConfigs = useMemo(() => {
-    return chartInsightNames
-      .map((name) => {
-        const insight = insightStates[name];
-        if (!insight) return null;
-        const props = { type: insight.type, ...insight.props };
-        const hasDataProps = Object.keys(props).some((k) => k !== 'type');
+    const insightOverrides = chartInsightNames
+      .map(name => {
+        const state = insightStates?.[name];
+        if (!state) return null;
+        const props = { type: state.type, ...state.props };
+        const hasDataProps = Object.keys(props).some(k => k !== 'type');
         if (!hasDataProps) return null;
-
-        // Transform interactions from UI format {type, value} to backend format {filter/split/sort: value}
-        const backendInteractions = (insight.interactions || [])
-          .filter((i) => i.value)
-          .map((i) => ({ [i.type]: i.value }));
-
+        const backendInteractions = (state.interactions || [])
+          .filter(i => i.value)
+          .map(i => ({ [i.type]: i.value }));
         return {
-          name: `${effectiveModelName}_${name}_preview`,
+          name,
           props: expandDotNotationProps(props),
           ...(backendInteractions.length > 0 ? { interactions: backendInteractions } : {}),
         };
       })
       .filter(Boolean);
-  }, [chartInsightNames, insightStates, effectiveModelName]);
 
-  // Primary insight = first config (drives loading/error UX)
-  const primaryConfig = allInsightConfigs.length > 0 ? allInsightConfigs[0] : null;
-  const secondaryConfigs = allInsightConfigs.slice(1);
+    if (insightOverrides.length === 0) return null;
 
-  const contextObjects = useMemo(() => {
-    if (!explorerSql || !explorerSourceName) return null;
+    const modelOverrides = Object.entries(modelStates || {})
+      .map(([name, state]) => {
+        if (!state?.sql || !state?.sourceName) return null;
+        const modelConfig = {
+          name,
+          sql: state.sql,
+          source: `\${ref(${state.sourceName})}`,
+        };
+        const dims = (state.computedColumns || [])
+          .filter(c => c.type === 'dimension')
+          .map(c => ({ name: c.name, expression: c.expression }));
+        const mets = (state.computedColumns || [])
+          .filter(c => c.type === 'metric')
+          .map(c => ({ name: c.name, expression: c.expression }));
+        if (dims.length) modelConfig.dimensions = dims;
+        if (mets.length) modelConfig.metrics = mets;
+        return modelConfig;
+      })
+      .filter(Boolean);
 
-    const modelConfig = {
-      name: effectiveModelName,
-      sql: explorerSql,
-      source: `\${ref(${explorerSourceName})}`,
-    };
-
-    const dims = computedColumns
-      .filter((c) => c.type === 'dimension')
-      .map((c) => ({ name: c.name, expression: c.expression }));
-    const mets = computedColumns
-      .filter((c) => c.type === 'metric')
-      .map((c) => ({ name: c.name, expression: c.expression }));
-
-    if (dims.length) modelConfig.dimensions = dims;
-    if (mets.length) modelConfig.metrics = mets;
-
-    const ctx = { models: [modelConfig] };
-
-    // Include input configs so the backend DAG can resolve ${ref(input).accessor}
-    // Strip API-only fields (name_hash, structure) that the Pydantic model rejects
-    const inputConfigs = storeInputs
-      .filter((i) => derivedInputNames.includes(i.name))
-      .map((i) => {
+    const inputOverrides = (storeInputs || [])
+      .filter(i => derivedInputNames.includes(i.name))
+      .map(i => {
         const { name_hash, structure, ...cleanConfig } = i.config || {};
         return { ...cleanConfig, name: i.name };
       });
-    if (inputConfigs.length > 0) ctx.inputs = inputConfigs;
 
-    return ctx;
-  }, [effectiveModelName, explorerSql, explorerSourceName, computedColumns, derivedInputNames, storeInputs]);
+    const context_objects = { insights: insightOverrides };
+    if (modelOverrides.length) context_objects.models = modelOverrides;
+    if (inputOverrides.length) context_objects.inputs = inputOverrides;
 
-  const extraPreviewBody = useMemo(
-    () => (contextObjects ? { context_objects: contextObjects } : undefined),
-    [contextObjects]
-  );
+    return {
+      insight_names: chartInsightNames,
+      context_objects,
+    };
+  }, [chartInsightNames, insightStates, modelStates, storeInputs, derivedInputNames]);
 
-  const handleSecondaryKey = useCallback((configName, key) => {
-    setSecondaryKeys((prev) => {
-      if (prev[configName] === key) return prev;
-      return { ...prev, [configName]: key };
-    });
-  }, []);
-
-  const additionalInsightKeys = useMemo(
-    () => secondaryConfigs.map((c) => secondaryKeys[c.name]).filter(Boolean),
-    [secondaryConfigs, secondaryKeys]
-  );
+  const previewJob = useChartPreviewJob(previewRequest, { projectId });
 
   const chartConfig = useMemo(
     () => ({
-      name: `${effectiveModelName}_chart`,
+      name: chartName || 'Preview Chart',
       layout: chartLayout,
     }),
-    [effectiveModelName, chartLayout]
+    [chartName, chartLayout]
   );
 
-  if (!queryResult?.columns?.length) {
+  if (!chartInsightNames || chartInsightNames.length === 0) {
     return (
       <div
         className="flex items-center justify-center h-full bg-gray-50"
-        data-testid="chart-empty-no-results"
+        data-testid="chart-empty-no-insights"
       >
-        <span className="text-sm text-secondary-400">Run a query to see chart preview</span>
-      </div>
-    );
-  }
-
-  if (!primaryConfig) {
-    return (
-      <div
-        className="flex items-center justify-center h-full bg-gray-50"
-        data-testid="chart-empty-no-config"
-      >
-        <span className="text-sm text-secondary-400">
-          Drag columns to axis fields to see chart preview
-        </span>
+        <span className="text-sm text-secondary-400">Add an insight to see chart preview</span>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Trigger preview jobs for secondary insights */}
-      {secondaryConfigs.map((config) => (
-        <InsightPreviewTrigger
-          key={config.name}
-          insightConfig={config}
-          projectId={projectId}
-          extraPreviewBody={extraPreviewBody}
-          onPreviewKey={handleSecondaryKey}
-        />
-      ))}
-      <ChartPreview
-        chartConfig={chartConfig}
-        insightConfig={primaryConfig}
-        projectId={projectId}
-        onLayoutChange={syncPlotlyEdits}
-        editableLayout={true}
-        contextObjects={contextObjects}
-        additionalInsightKeys={additionalInsightKeys}
-      />
-    </>
+    <ChartPreview
+      chartConfig={chartConfig}
+      insightKeys={previewJob.previewInsightKeys}
+      projectId={projectId}
+      onLayoutChange={syncPlotlyEdits}
+      editableLayout={true}
+      isLoading={previewJob.isLoading}
+      error={previewJob.error}
+      progress={previewJob.progress}
+      progressMessage={previewJob.progressMessage}
+    />
   );
 };
 

@@ -6,6 +6,19 @@ import useStore from '../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
 /**
+ * Build the batched preview POST body for a single insight.
+ * Used by useInsightPreviewData to adapt the single-insight API to the
+ * backend's list-based contract.
+ */
+const buildSingleInsightBody = (insightConfig, extraContextObjects = {}) => ({
+  insight_names: [insightConfig.name],
+  context_objects: {
+    ...extraContextObjects,
+    insights: [insightConfig],
+  },
+});
+
+/**
  * Generic hook for managing preview data with smart diff detection.
  *
  * This hook:
@@ -16,15 +29,18 @@ import { useShallow } from 'zustand/react/shallow';
  * 5. Optionally triggers initial preview if no data exists in main run
  *
  * @param {string} type - Type of object to preview ('insights', 'charts', etc.)
- * @param {Object} config - Current object configuration
+ * @param {Object} config - Current object configuration (used for diff hashing)
  * @param {Object} options - Optional configuration
  * @param {string} options.projectId - Project ID (for fetching saved configs)
  * @param {Object} options.savedConfig - Pre-fetched saved config (bypasses fetch)
  * @param {boolean} options.needsInitialPreview - If true, run preview even on first load
+ * @param {Object} options.requestBody - POST body for the batched preview contract.
+ *   Expected shape: { insight_names: [...], context_objects: {...} }. If not
+ *   provided, a single-insight body is built from `config`.
  * @returns {Object} Preview data state
  */
 export const usePreviewData = (type, config, options = {}) => {
-  const { savedConfig, needsInitialPreview = false, extraPreviewBody } = options;
+  const { savedConfig, needsInitialPreview = false, requestBody, extraContextObjects } = options;
 
   const [lastPreviewConfig, setLastPreviewConfig] = useState(null);
   const [lastPreviewHash, setLastPreviewHash] = useState(null);
@@ -84,7 +100,9 @@ export const usePreviewData = (type, config, options = {}) => {
       setIsLoading(true);
       setError(null);
 
-      startRun(config, extraPreviewBody)
+      const body = requestBody || buildSingleInsightBody(config, extraContextObjects);
+
+      startRun(body)
         .then(() => {
           setLastPreviewConfig(config);
           setLastPreviewHash(currentHash);
@@ -99,7 +117,7 @@ export const usePreviewData = (type, config, options = {}) => {
           previewJobInitializedRef.current = false;
         });
     }
-  }, [config, needsPreviewRun, startRun, isRunning, currentHash, extraPreviewBody]);
+  }, [config, needsPreviewRun, startRun, isRunning, currentHash, requestBody, extraContextObjects]);
 
   useEffect(() => {
     if (jobStatus === 'completed') {
@@ -180,11 +198,11 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     needsInitialPreview: insightNotInMain,
   });
 
-  // Load insights data when preview completes.
-  // runId is null until preview completes, so useInsightsData won't fetch before data is on disk.
-  // cacheKey = runInstanceId ensures React Query re-fetches on each new preview run
-  // (since runId is the same preview-{name} string every time).
-  const previewRunId = previewState.isCompleted ? `preview-${insightConfig?.name}` : null;
+  // Load insights data when preview completes. The backend now puts the real
+  // filesystem run_id (preview-{job_id}) in result.run_id; read it from there
+  // instead of hardcoding preview-{insightName}.
+  const previewRunId =
+    previewState.isCompleted && previewState.result?.run_id ? previewState.result.run_id : null;
 
   const insightsDataState = useInsightsData(
     options.projectId,
@@ -222,5 +240,112 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     previewInsightKey,
     data: previewInsightEntry?.data || null,
     insight: previewInsightEntry || null,
+  };
+};
+
+/**
+ * Batched chart-level preview hook.
+ *
+ * Takes a full request body matching the backend's batched preview contract
+ * ({ insight_names, context_objects }) and orchestrates:
+ *
+ *   1. One POST to /api/insight-jobs/ per distinct request (debounced by hash).
+ *   2. Polling via usePreviewJob until the run completes.
+ *   3. Reading result.run_id from the polling response (the real filesystem run_id).
+ *   4. Fetching every insight's data via useInsightsData with that run_id,
+ *      storing each under insightJobs[__preview__<name>].
+ *
+ * Consumers (e.g., ExplorerChartPreview) pass chartInsightNames and the explorer's
+ * in-flight working stores as overrides; Chart.jsx reads the results from the
+ * store by name and renders them together.
+ *
+ * @param {Object|null} previewRequest - { insight_names: [...], context_objects: {...} }
+ *   or null when there's nothing to preview.
+ * @param {Object} options
+ * @param {string} options.projectId
+ * @returns {Object} Preview state
+ */
+export const useChartPreviewJob = (previewRequest, options = {}) => {
+  const { projectId } = options;
+
+  const {
+    startRun,
+    resetRun,
+    isRunning,
+    isCompleted,
+    isFailed,
+    status: jobStatus,
+    error: jobError,
+    progress,
+    progressMessage,
+    result,
+    runInstanceId,
+  } = usePreviewJob();
+
+  const requestHash = useMemo(() => {
+    if (!previewRequest || !previewRequest.insight_names?.length) return null;
+    return JSON.stringify(previewRequest);
+  }, [previewRequest]);
+
+  const [lastFiredHash, setLastFiredHash] = useState(null);
+  const [localError, setLocalError] = useState(null);
+  const fireRef = useRef(false);
+
+  useEffect(() => {
+    if (!requestHash) return;
+    if (requestHash === lastFiredHash) return;
+    if (fireRef.current) return;
+    if (isRunning) return;
+
+    fireRef.current = true;
+    setLocalError(null);
+
+    startRun(previewRequest)
+      .then(() => {
+        setLastFiredHash(requestHash);
+      })
+      .catch(err => {
+        console.error('Failed to start chart preview run:', err);
+        setLocalError(err.message || 'Failed to start preview');
+      })
+      .finally(() => {
+        fireRef.current = false;
+      });
+  }, [requestHash, previewRequest, startRun, isRunning, lastFiredHash]);
+
+  // Real filesystem run_id comes from the polling response on completion.
+  const previewRunId = useMemo(() => {
+    if (!isCompleted) return null;
+    return result?.run_id || null;
+  }, [isCompleted, result]);
+
+  const namesToLoad = useMemo(
+    () => (previewRunId ? previewRequest?.insight_names || [] : []),
+    [previewRunId, previewRequest]
+  );
+
+  const insightsDataState = useInsightsData(projectId, namesToLoad, previewRunId, {
+    storeKeyPrefix: PREVIEW_STORE_PREFIX,
+    cacheKey: runInstanceId,
+  });
+
+  const resetPreview = useCallback(() => {
+    resetRun();
+    setLastFiredHash(null);
+    setLocalError(null);
+  }, [resetRun]);
+
+  return {
+    isLoading: isRunning || insightsDataState.isInsightsLoading,
+    isCompleted,
+    isFailed,
+    error: localError || jobError || insightsDataState.error,
+    progress,
+    progressMessage,
+    runInstanceId,
+    previewRunId,
+    previewInsightKeys: namesToLoad.map(name => PREVIEW_STORE_PREFIX + name),
+    status: jobStatus,
+    resetPreview,
   };
 };

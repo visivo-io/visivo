@@ -98,12 +98,26 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
     [closeChart]
   );
 
+  const [renameError, setRenameError] = useState(null);
+
   const commitRename = useCallback(() => {
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== chartName) {
-      setChartName(trimmed);
+      try {
+        setChartName(trimmed);
+        setRenameError(null);
+        setIsRenaming(false);
+      } catch (err) {
+        if (err?.code === 'NAME_COLLISION') {
+          setRenameError(err.message);
+          return;
+        }
+        throw err;
+      }
+    } else {
+      setRenameError(null);
+      setIsRenaming(false);
     }
-    setIsRenaming(false);
   }, [renameValue, chartName, setChartName]);
 
   return (
@@ -128,19 +142,39 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
         <span className="text-sm text-pink-600 flex-shrink-0">Chart:</span>
 
         {isRenaming ? (
-          <input
-            autoFocus
-            data-testid="chart-name-input"
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onBlur={() => commitRename()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename();
-              if (e.key === 'Escape') setIsRenaming(false);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-pink-800 bg-white border border-pink-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-pink-400 flex-1"
-          />
+          <span className="flex-1 flex flex-col">
+            <input
+              autoFocus
+              data-testid="chart-name-input"
+              value={renameValue}
+              onChange={(e) => {
+                setRenameValue(e.target.value);
+                if (renameError) setRenameError(null);
+              }}
+              onBlur={() => commitRename()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') {
+                  setRenameError(null);
+                  setIsRenaming(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={`text-sm font-medium text-pink-800 bg-white border rounded px-1 py-0 outline-none focus:ring-1 ${
+                renameError
+                  ? 'border-red-400 focus:ring-red-400'
+                  : 'border-pink-300 focus:ring-pink-400'
+              }`}
+            />
+            {renameError && (
+              <span
+                data-testid="chart-rename-error"
+                className="text-xs text-red-600 mt-0.5"
+              >
+                {renameError}
+              </span>
+            )}
+          </span>
         ) : (
           <span
             className={`text-sm font-medium text-pink-800 truncate flex-1 ${!isLoadedChart ? 'cursor-pointer' : ''}`}

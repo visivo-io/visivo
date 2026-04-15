@@ -251,25 +251,22 @@ const ExplorerLeftPanel = () => {
         }
       }
 
-      // Find all ref names from insight props AND interactions
+      // Walk insight refs to collect only model dependencies — inputs are
+      // handled dynamically by selectDerivedInputNames at render time.
       const modelNames = new Set();
-      const inputNames = new Set();
       for (const insight of resolvedInsights) {
         const searchStr = JSON.stringify(insight.config || {});
         const matches = searchStr.matchAll(/ref\(([^.)]+)\)/g);
         for (const match of matches) {
           const name = match[1];
-          if (allInputNames.has(name)) {
-            inputNames.add(name);
-          } else {
+          if (!allInputNames.has(name)) {
             modelNames.add(name);
           }
         }
       }
       const resolvedModels = allModels.filter((m) => modelNames.has(m.name));
-      const resolvedInputs = allInputs.filter((i) => inputNames.has(i.name));
 
-      loadChart(chart, resolvedInsights, resolvedModels, resolvedInputs);
+      loadChart(chart, resolvedInsights, resolvedModels);
     },
     [loadChart]
   );

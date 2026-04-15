@@ -2,7 +2,7 @@
 
 import os
 import json
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from visivo.models.insight import Insight
 from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
@@ -68,7 +68,7 @@ def _inject_cached_objects(flask_app, preview_project):
         setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
 
 
-CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations"}
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations", "insights"}
 
 
 def _get_type_adapter(field_name):
@@ -95,6 +95,8 @@ def _get_type_adapter(field_name):
         from visivo.models.relation import Relation
 
         return TypeAdapter(Relation)
+    elif field_name == "insights":
+        return TypeAdapter(Insight)
     return None
 
 
@@ -131,23 +133,59 @@ def clean_config_strings(obj):
     return obj
 
 
-def execute_insight_preview_job(
-    job_id, config, flask_app, output_dir, run_manager, context_objects=None
+def _assert_insights_present(project, insight_names):
+    """Verify every requested insight is in the merged project. Raises ValueError otherwise."""
+    project_insight_names = {i.name for i in (project.insights or [])}
+    missing = [name for name in insight_names if name not in project_insight_names]
+    if missing:
+        raise ValueError(
+            f"Preview requested for insights not present in project: {missing}. "
+            f"Available: {sorted(project_insight_names)}"
+        )
+
+
+def _read_insight_result(output_dir, run_id, insight_name):
+    """Read one insight's result file and rewrite its signed_data_file_url path segments."""
+    name_hash = alpha_hash(insight_name)
+    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
+    if not os.path.exists(insight_path):
+        raise Exception(f"Insight file not found at {insight_path} after execution")
+    with open(insight_path, "r") as f:
+        insight_data = json.load(f)
+    for file_info in insight_data.get("files", []):
+        file_path = file_info.get("signed_data_file_url", "")
+        if file_path:
+            filename = os.path.basename(file_path)
+            file_hash = filename.replace(".parquet", "")
+            file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
+    return insight_data
+
+
+def execute_preview_job(
+    job_id, insight_names, flask_app, output_dir, run_manager, context_objects=None
 ):
     """
-    Execute a preview run for an insight configuration.
+    Execute a batched preview run for one or more insights.
 
     Args:
-        job_id: Unique run identifier (kept as job_id for API compatibility)
-        config: Insight configuration dict
+        job_id: Unique run identifier (also used for the filesystem run_id)
+        insight_names: List of insight names to render. The backend builds a multi-node
+            DAG filter from these names and runs them all in one invocation; shared
+            upstream work is deduplicated by project_dag.combine_dags.
         flask_app: Flask application instance with project
         output_dir: Output directory for files
         run_manager: PreviewRunManager instance
+        context_objects: Optional dict of {type: [configs]} overrides (models, insights,
+            sources, inputs, metrics, dimensions, relations). Bodies for any insights
+            in insight_names that are not already published should be sent here.
 
     Returns:
         None (updates run status via run_manager)
     """
     try:
+        if not insight_names:
+            raise ValueError("Preview job requires at least one insight name")
+
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
@@ -155,16 +193,7 @@ def execute_insight_preview_job(
             progress_message="Validating config",
         )
 
-        # Clean newlines and whitespace from config strings
-        config = clean_config_strings(config)
-
-        insight_adapter = TypeAdapter(Insight)
-        insight = insight_adapter.validate_python(config)
-
-        if not insight.name:
-            insight.name = f"preview_{job_id[:8]}"
-
-        run_id = f"preview-{insight.name}"
+        cleaned_context_objects = clean_config_strings(context_objects) if context_objects else {}
 
         run_manager.update_status(
             job_id,
@@ -173,32 +202,25 @@ def execute_insight_preview_job(
             progress_message="Preparing execution",
         )
 
-        # Create a modified project with the preview insight replacing any existing one
         from copy import deepcopy
 
         preview_project = deepcopy(flask_app.project)
 
         _inject_cached_objects(flask_app, preview_project)
-        _inject_context_objects(context_objects, preview_project)
+        _inject_context_objects(cleaned_context_objects, preview_project)
 
-        # Remove existing insight with same name if it exists
-        preview_project.insights = [
-            i for i in (preview_project.insights or []) if i.name != insight.name
-        ]
+        _assert_insights_present(preview_project, insight_names)
 
-        # Add the preview insight
-        if preview_project.insights is None:
-            preview_project.insights = []
-        preview_project.insights.append(insight)
-
-        # Invalidate the cached DAG so it rebuilds with injected/new objects
         preview_project.invalidate_dag_cache()
+
+        run_id = f"preview-{job_id}"
+        dag_filter = ",".join(f"+{name}+" for name in insight_names)
 
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
             progress=0.5,
-            progress_message=f"Executing query for {insight.name or 'preview'}",
+            progress_message=f"Executing preview for {len(insight_names)} insight(s)",
         )
 
         runner = FilteredRunner(
@@ -206,7 +228,7 @@ def execute_insight_preview_job(
             output_dir=output_dir,
             threads=1,
             soft_failure=True,
-            dag_filter=f"+{insight.name}+",
+            dag_filter=dag_filter,
             server_url="",
             working_dir=preview_project.path or "",
             run_id=run_id,
@@ -214,38 +236,25 @@ def execute_insight_preview_job(
 
         runner.run()
 
-        name_hash = alpha_hash(insight.name)
-        insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
-        if os.path.exists(insight_path):
-            run_manager.update_status(
-                job_id,
-                RunStatus.RUNNING,
-                progress=0.9,
-                progress_message="Finalizing results",
-            )
+        run_manager.update_status(
+            job_id,
+            RunStatus.RUNNING,
+            progress=0.9,
+            progress_message="Finalizing results",
+        )
 
-            with open(insight_path, "r") as f:
-                insight_data = json.load(f)
+        results = {name: _read_insight_result(output_dir, run_id, name) for name in insight_names}
 
-            for file_info in insight_data.get("files", []):
-                file_path = file_info.get("signed_data_file_url", "")
-                if file_path:
-                    filename = os.path.basename(file_path)
-                    file_hash = filename.replace(".parquet", "")
-                    file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
-
-            run_manager.set_result(job_id, insight_data)
-            run_manager.update_status(
-                job_id,
-                RunStatus.COMPLETED,
-                progress=1.0,
-                progress_message="Preview completed successfully",
-            )
-        else:
-            raise Exception(f"Insight file not found at {insight_path} after execution")
+        run_manager.set_result(job_id, {"insights": results, "run_id": run_id})
+        run_manager.update_status(
+            job_id,
+            RunStatus.COMPLETED,
+            progress=1.0,
+            progress_message="Preview completed successfully",
+        )
 
     except ValidationError as e:
-        error_msg = f"Invalid insight configuration: {str(e)}"
+        error_msg = f"Invalid preview configuration: {str(e)}"
         run_manager.update_status(
             job_id, RunStatus.FAILED, error=error_msg, progress_message="Validation failed"
         )

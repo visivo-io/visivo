@@ -143,6 +143,19 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       ];
     }
 
+    // Default legend position: horizontal below plot. Long insight names would
+    // otherwise eat plot width when stacked top-right. User-supplied legend
+    // config takes precedence.
+    if (!l.legend) {
+      l.legend = { orientation: 'h', y: -0.2, x: 0 };
+    }
+
+    // Default margins that give the below-plot legend room to render. User
+    // layout overrides still take precedence.
+    if (!l.margin) {
+      l.margin = { t: 40, r: 20, b: 80, l: 60 };
+    }
+
     // Preserve user interactions (zoom, pan) across re-renders
     if (!l.uirevision) {
       l.uirevision = chart.name;

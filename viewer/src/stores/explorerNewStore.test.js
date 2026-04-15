@@ -13,6 +13,10 @@ import {
   selectModelStatus,
   selectInsightStatus,
   selectHasModifications,
+  selectDerivedInputNames,
+  assertNameUnique,
+  getAllKnownNames,
+  NameCollisionError,
 } from './explorerNewStore';
 
 // Helper to reset all explorer new state
@@ -147,13 +151,25 @@ describe('explorerNewStore', () => {
       expect(state.explorerModelStates.my_model).toBeDefined();
     });
 
-    it('generates unique name when name conflicts with existing tabs', () => {
+    it('throws NameCollisionError when explicit name collides with existing tab', () => {
       useStore.getState().createModelTab('model');
-      useStore.getState().createModelTab('model');
+      // Under the new cross-type uniqueness contract, explicit names are strict.
+      // Auto-disambiguation only happens when no name is provided.
+      expect(() => useStore.getState().createModelTab('model')).toThrow(NameCollisionError);
 
       const state = useStore.getState();
-      expect(state.explorerModelTabs).toEqual(['model', 'model_2']);
-      expect(state.explorerActiveModelName).toBe('model_2');
+      // Nothing was added by the failed call
+      expect(state.explorerModelTabs).toEqual(['model']);
+    });
+
+    it('auto-disambiguates across all known names when called without a name', () => {
+      useStore.getState().createModelTab();
+      useStore.getState().createModelTab();
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toHaveLength(2);
+      expect(state.explorerModelTabs[0]).toBe('model');
+      expect(state.explorerModelTabs[1]).toBe('model_2');
     });
 
     it('switches active tab to the newly created tab', () => {
@@ -175,14 +191,16 @@ describe('explorerNewStore', () => {
   });
 
   describe('closeModelTab', () => {
-    it('removes the tab and its state', () => {
+    it('removes the tab but preserves the model state', () => {
       useStore.getState().createModelTab('model_a');
       useStore.getState().createModelTab('model_b');
       useStore.getState().closeModelTab('model_a');
 
       const state = useStore.getState();
       expect(state.explorerModelTabs).toEqual(['model_b']);
-      expect(state.explorerModelStates.model_a).toBeUndefined();
+      // Working copy persists; the context store outlives the tab so insights
+      // that reference this model can still resolve their refs.
+      expect(state.explorerModelStates.model_a).toBeDefined();
     });
 
     it('switches active tab to another tab when active tab is closed', () => {
@@ -503,11 +521,19 @@ describe('explorerNewStore', () => {
       expect(useStore.getState().explorerInsightStates.my_insight).toBeDefined();
     });
 
-    it('generates unique name when conflicting', () => {
+    it('throws NameCollisionError when explicit name collides with existing insight', () => {
       useStore.getState().createInsight('insight');
-      useStore.getState().createInsight('insight');
+      expect(() => useStore.getState().createInsight('insight')).toThrow(NameCollisionError);
+      expect(useStore.getState().explorerChartInsightNames).toEqual(['insight']);
+    });
 
-      expect(useStore.getState().explorerChartInsightNames).toEqual(['insight', 'insight_2']);
+    it('auto-disambiguates across all known names when called without a name', () => {
+      useStore.getState().createInsight();
+      useStore.getState().createInsight();
+      const names = useStore.getState().explorerChartInsightNames;
+      expect(names).toHaveLength(2);
+      expect(names[0]).toBe('insight');
+      expect(names[1]).toBe('insight_2');
     });
 
     it('sets new insight as active', () => {
@@ -536,7 +562,6 @@ describe('explorerNewStore', () => {
         explorerActiveInsightName: null,
         explorerModelTabs: [],
         explorerModelStates: {},
-        explorerChartInputNames: [],
         insights: [],
         models: [],
         inputs: [],
@@ -619,7 +644,7 @@ describe('explorerNewStore', () => {
       expect(state.explorerModelStates.model_a.sql).toBe('SELECT * FROM t');
     });
 
-    it('auto-appends missing input dependency referenced by the insight', () => {
+    it('adds an insight referencing an input; selectDerivedInputNames picks it up', () => {
       const cachedInsight = {
         name: 'cached_insight',
         config: {
@@ -639,8 +664,10 @@ describe('explorerNewStore', () => {
 
       useStore.getState().addExistingInsightToChart('cached_insight');
 
-      const state = useStore.getState();
-      expect(state.explorerChartInputNames).toContain('threshold_input');
+      // The dynamic selector (not a stored field) is now the source of truth
+      // for "which inputs are referenced by the chart's insights."
+      const derivedInputs = selectDerivedInputNames(useStore.getState());
+      expect(derivedInputs).toContain('threshold_input');
     });
 
     it('does not duplicate model tab when dependency is already loaded', () => {
@@ -1340,13 +1367,15 @@ describe('explorerNewStore', () => {
       expect(useStore.getState().explorerModelTabs).toEqual([]);
     });
 
-    it('renameModelTab prevents collision with existing tab name', () => {
+    it('renameModelTab throws NameCollisionError on collision with existing tab name', () => {
       useStore.getState().createModelTab('model_a');
       useStore.getState().createModelTab('model_b');
 
-      useStore.getState().renameModelTab('model_a', 'model_b');
+      expect(() => useStore.getState().renameModelTab('model_a', 'model_b')).toThrow(
+        NameCollisionError
+      );
 
-      // Should not have renamed — model_b already exists
+      // Nothing was changed — both tabs remain with their original names
       expect(useStore.getState().explorerModelTabs).toEqual(['model_a', 'model_b']);
       expect(useStore.getState().explorerModelStates.model_a).toBeDefined();
     });
@@ -1888,6 +1917,328 @@ describe('explorerNewStore', () => {
 
       expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
         props: { type: 'scatter', marker: { color: 'red', size: 10 }, x: 'col_a' },
+      });
+    });
+  });
+
+  describe('selectDerivedInputNames (scope by chart attachment)', () => {
+    beforeEach(() => {
+      useStore.setState({
+        inputs: [
+          { name: 'my_input', config: {} },
+          { name: 'other_input', config: {} },
+        ],
+      });
+    });
+
+    it('returns empty array when no insights are attached to the chart', () => {
+      useStore.setState({
+        explorerChartInsightNames: [],
+        explorerInsightStates: {
+          detached: {
+            type: 'scatter',
+            props: { x: '?{${ref(my_input).value}}' },
+            interactions: [],
+          },
+        },
+      });
+      expect(selectDerivedInputNames(useStore.getState())).toEqual([]);
+    });
+
+    it('only includes inputs referenced by chart-attached insights', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['attached'],
+        explorerInsightStates: {
+          attached: {
+            type: 'scatter',
+            props: { x: '?{${ref(my_input).value}}' },
+            interactions: [],
+          },
+          detached: {
+            type: 'scatter',
+            props: { x: '?{${ref(other_input).value}}' },
+            interactions: [],
+          },
+        },
+      });
+      const names = selectDerivedInputNames(useStore.getState());
+      expect(names).toEqual(['my_input']);
+      expect(names).not.toContain('other_input');
+    });
+
+    it('drops inputs when the referencing insight is detached from the chart', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['ins'],
+        explorerInsightStates: {
+          ins: {
+            type: 'scatter',
+            props: { x: '?{${ref(my_input).value}}' },
+            interactions: [],
+          },
+        },
+      });
+      expect(selectDerivedInputNames(useStore.getState())).toEqual(['my_input']);
+
+      useStore.getState().removeInsightFromChart('ins');
+
+      expect(selectDerivedInputNames(useStore.getState())).toEqual([]);
+      // Working copy preserved even though selector returns []
+      expect(useStore.getState().explorerInsightStates.ins).toBeDefined();
+    });
+
+    it('scans interactions for ref(input) patterns in attached insights only', () => {
+      useStore.setState({
+        explorerChartInsightNames: ['attached'],
+        explorerInsightStates: {
+          attached: {
+            type: 'scatter',
+            props: {},
+            interactions: [{ type: 'filter', value: '${ref(my_input).value} > 5' }],
+          },
+          detached: {
+            type: 'scatter',
+            props: {},
+            interactions: [{ type: 'filter', value: '${ref(other_input).value} < 10' }],
+          },
+        },
+      });
+      const names = selectDerivedInputNames(useStore.getState());
+      expect(names).toEqual(['my_input']);
+    });
+  });
+
+  describe('closeModelTab preserves model context store', () => {
+    it('leaves explorerModelStates[name] intact when tab is closed', () => {
+      useStore.getState().createModelTab('working_model');
+      useStore.setState({
+        explorerModelStates: {
+          working_model: {
+            sql: 'SELECT * FROM t',
+            sourceName: 'pg',
+            queryResult: null,
+            queryError: null,
+            computedColumns: [],
+            enrichedResult: null,
+            isNew: true,
+          },
+        },
+      });
+
+      useStore.getState().closeModelTab('working_model');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).not.toContain('working_model');
+      expect(state.explorerModelStates.working_model).toBeDefined();
+      expect(state.explorerModelStates.working_model.sql).toBe('SELECT * FROM t');
+    });
+  });
+
+  describe('cross-object-type name uniqueness', () => {
+    beforeEach(() => {
+      useStore.setState({
+        insights: [{ name: 'cached_insight' }],
+        models: [{ name: 'cached_model' }],
+        sources: [{ name: 'cached_source' }],
+        charts: [{ name: 'cached_chart' }],
+        inputs: [{ name: 'cached_input' }],
+        metrics: [{ name: 'cached_metric' }],
+        dimensions: [{ name: 'cached_dimension' }],
+        relations: [{ name: 'cached_relation' }],
+        tables: [],
+        dashboards: [],
+      });
+    });
+
+    describe('getAllKnownNames', () => {
+      it('collects names from every cached collection', () => {
+        const known = getAllKnownNames(useStore.getState());
+        expect(known.get('cached_insight')).toBe('insight');
+        expect(known.get('cached_model')).toBe('model');
+        expect(known.get('cached_source')).toBe('source');
+        expect(known.get('cached_chart')).toBe('chart');
+        expect(known.get('cached_input')).toBe('input');
+        expect(known.get('cached_metric')).toBe('metric');
+        expect(known.get('cached_dimension')).toBe('dimension');
+        expect(known.get('cached_relation')).toBe('relation');
+      });
+
+      it('collects names from context stores (insight/model states and tabs)', () => {
+        useStore.setState({
+          explorerInsightStates: { ctx_insight: { type: 'scatter', props: {}, interactions: [] } },
+          explorerModelStates: { ctx_model: { sql: '', sourceName: null, isNew: true } },
+          explorerModelTabs: ['ctx_model', 'tab_only_model'],
+        });
+        const known = getAllKnownNames(useStore.getState());
+        expect(known.get('ctx_insight')).toBe('insight');
+        expect(known.get('ctx_model')).toBe('model');
+        expect(known.get('tab_only_model')).toBe('model');
+      });
+    });
+
+    describe('assertNameUnique', () => {
+      it('returns silently when name is unused', () => {
+        expect(() => assertNameUnique(useStore.getState(), 'brand_new_name')).not.toThrow();
+      });
+
+      it('throws NameCollisionError on same-type collision', () => {
+        expect(() => assertNameUnique(useStore.getState(), 'cached_insight')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('throws NameCollisionError on cross-type collision (insight vs model)', () => {
+        expect(() => assertNameUnique(useStore.getState(), 'cached_model')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('error carries the collision type for UI rendering', () => {
+        let caught = null;
+        try {
+          assertNameUnique(useStore.getState(), 'cached_chart');
+        } catch (e) {
+          caught = e;
+        }
+        expect(caught).toBeInstanceOf(NameCollisionError);
+        expect(caught.collisionType).toBe('chart');
+        expect(caught.collisionName).toBe('cached_chart');
+        expect(caught.code).toBe('NAME_COLLISION');
+      });
+
+      it('skips the excludingName entry for rename-to-self', () => {
+        expect(() =>
+          assertNameUnique(useStore.getState(), 'cached_insight', {
+            excludingName: 'cached_insight',
+          })
+        ).not.toThrow();
+      });
+    });
+
+    describe('createInsight', () => {
+      it('throws NameCollisionError when provided name collides with cached insight', () => {
+        expect(() => useStore.getState().createInsight('cached_insight')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('throws NameCollisionError when provided name collides cross-type with a model', () => {
+        expect(() => useStore.getState().createInsight('cached_model')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('throws NameCollisionError when provided name collides with context insight', () => {
+        useStore.setState({
+          explorerInsightStates: { ctx_ins: { type: 'scatter', props: {}, interactions: [] } },
+        });
+        expect(() => useStore.getState().createInsight('ctx_ins')).toThrow(NameCollisionError);
+      });
+
+      it('auto-disambiguates against current explorer insight states only', () => {
+        useStore.setState({
+          // Cached collisions are ignored for auto-pick — they're handled at save.
+          insights: [{ name: 'insight' }],
+          explorerInsightStates: {
+            insight: { type: 'scatter', props: {}, interactions: [], isNew: true },
+          },
+          explorerChartInsightNames: ['insight'],
+        });
+        useStore.getState().createInsight();
+        const state = useStore.getState();
+        // insight_2 because the explorer already has 'insight' in its working state
+        expect(state.explorerChartInsightNames).toContain('insight_2');
+      });
+    });
+
+    describe('renameInsight', () => {
+      beforeEach(() => {
+        useStore.setState({
+          explorerInsightStates: {
+            to_rename: { type: 'scatter', props: {}, interactions: [], isNew: true },
+          },
+          explorerChartInsightNames: ['to_rename'],
+        });
+      });
+
+      it('renames successfully to a unique name', () => {
+        useStore.getState().renameInsight('to_rename', 'renamed');
+        const state = useStore.getState();
+        expect(state.explorerInsightStates.renamed).toBeDefined();
+        expect(state.explorerInsightStates.to_rename).toBeUndefined();
+        expect(state.explorerChartInsightNames).toContain('renamed');
+      });
+
+      it('throws NameCollisionError when new name collides with cached object', () => {
+        expect(() => useStore.getState().renameInsight('to_rename', 'cached_insight')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('throws NameCollisionError on cross-type collision with a model', () => {
+        expect(() => useStore.getState().renameInsight('to_rename', 'cached_model')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('allows rename-to-self without throwing', () => {
+        expect(() => useStore.getState().renameInsight('to_rename', 'to_rename')).not.toThrow();
+      });
+    });
+
+    describe('createModelTab', () => {
+      it('throws NameCollisionError when provided name collides with cached model', () => {
+        expect(() => useStore.getState().createModelTab('cached_model')).toThrow(NameCollisionError);
+      });
+
+      it('throws NameCollisionError on cross-type collision with an insight', () => {
+        expect(() => useStore.getState().createModelTab('cached_insight')).toThrow(
+          NameCollisionError
+        );
+      });
+
+      it('auto-disambiguates against current tabs + states only', () => {
+        useStore.setState({
+          // Cached collisions are ignored for auto-pick — they're handled at save.
+          models: [{ name: 'model' }],
+          explorerModelTabs: ['model'],
+          explorerModelStates: {
+            model: { sql: '', sourceName: null, isNew: true },
+          },
+        });
+        useStore.getState().createModelTab();
+        const state = useStore.getState();
+        expect(state.explorerModelTabs).toContain('model_2');
+      });
+    });
+
+    describe('renameModelTab', () => {
+      beforeEach(() => {
+        useStore.getState().createModelTab('to_rename_model');
+      });
+
+      it('throws NameCollisionError when new name collides cross-type with a chart', () => {
+        expect(() =>
+          useStore.getState().renameModelTab('to_rename_model', 'cached_chart')
+        ).toThrow(NameCollisionError);
+      });
+
+      it('renames successfully to a unique name', () => {
+        useStore.getState().renameModelTab('to_rename_model', 'renamed_model');
+        const state = useStore.getState();
+        expect(state.explorerModelTabs).toContain('renamed_model');
+        expect(state.explorerModelStates.renamed_model).toBeDefined();
+      });
+    });
+
+    describe('setChartName', () => {
+      it('throws NameCollisionError on cross-type collision with a model', () => {
+        useStore.setState({ explorerChartName: 'my_chart' });
+        expect(() => useStore.getState().setChartName('cached_model')).toThrow(NameCollisionError);
+      });
+
+      it('allows setting the same name as the currently-loaded chart (rename-to-self)', () => {
+        useStore.setState({ explorerChartName: 'cached_chart' });
+        expect(() => useStore.getState().setChartName('cached_chart')).not.toThrow();
       });
     });
   });

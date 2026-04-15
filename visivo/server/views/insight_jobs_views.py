@@ -6,7 +6,7 @@ from flask import jsonify, request
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 from visivo.server.managers.preview_run_manager import PreviewRunManager, RunStatus
-from visivo.server.jobs.preview_job_executor import execute_insight_preview_job
+from visivo.server.jobs.preview_job_executor import execute_preview_job
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -104,13 +104,14 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
     @app.route("/api/insight-jobs/", methods=["POST"])
     def run_insight_preview():
-        """Execute a preview job for an unsaved/modified insight.
+        """Execute a batched preview job for one or more insights.
 
         POST body: {
-            "config": {...},  # Insight configuration
-            "run": true       # Flag to execute the job
+            "insight_names": ["a", "b", ...],  # Names of insights to render
+            "context_objects": {...},          # Optional: overlay of edited objects
+            "run": true                        # Flag to execute the job
         }
-        Returns: {"job_id": "uuid"}
+        Returns: {"run_instance_id": "uuid"}
         """
         try:
             Logger.instance().info("Received POST to /api/insight-jobs/")
@@ -119,51 +120,47 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             if not data:
                 return jsonify({"message": "Request body is required"}), 400
 
-            # Check if this is a preview job execution request
             if not data.get("run"):
                 return jsonify({"message": "run parameter must be true to execute preview"}), 400
 
-            config = data.get("config")
-            if not config:
-                return jsonify({"message": "config field is required"}), 400
+            insight_names = data.get("insight_names")
+            if not insight_names or not isinstance(insight_names, list):
+                return (
+                    jsonify({"message": "insight_names field is required and must be a list"}),
+                    400,
+                )
 
             context_objects = data.get("context_objects")
 
-            # Create run via PreviewRunManager (or get existing run if already running)
+            run_config = {"insight_names": insight_names, "context_objects": context_objects}
+
             Logger.instance().info("Getting PreviewRunManager instance")
             run_manager = PreviewRunManager.instance()
             Logger.instance().info("Checking for existing run")
-            existing_run_id = run_manager.find_existing_run(config, object_type="insight")
+            existing_run_id = run_manager.find_existing_run(run_config, object_type="insight")
 
             if existing_run_id:
-                # Run with this config already exists and is running
                 Logger.instance().info(f"Returning existing preview run {existing_run_id}")
-                return jsonify({"run_instance_id": existing_run_id}), 202  # 202 Accepted
+                return jsonify({"run_instance_id": existing_run_id}), 202
 
-            # Invalidate any completed runs for this insight to force fresh execution with new config
-            insight_name = config.get("name")
-            if insight_name:
-                Logger.instance().info(
-                    f"Invalidating any completed runs for insight: {insight_name}"
-                )
+            Logger.instance().info(f"Invalidating any completed runs for insights: {insight_names}")
+            for insight_name in insight_names:
                 run_manager.invalidate_completed_runs_for_insight(insight_name)
 
-            # Create new run
             Logger.instance().info("Creating new run")
-            job_id = run_manager.create_run(config, object_type="insight")
+            job_id = run_manager.create_run(run_config, object_type="insight")
             Logger.instance().info(f"Created run with job_id: {job_id}")
 
-            # Execute job in background thread
             thread = threading.Thread(
-                target=execute_insight_preview_job,
-                args=(job_id, config, flask_app, output_dir, run_manager),
+                target=execute_preview_job,
+                args=(job_id, insight_names, flask_app, output_dir, run_manager),
                 kwargs={"context_objects": context_objects},
                 daemon=True,
             )
             thread.start()
 
             Logger.instance().info(f"Started preview job {job_id}")
-            return jsonify({"run_instance_id": job_id}), 202  # 202 Accepted
+            return jsonify({"run_instance_id": job_id}), 202
 
         except Exception as e:
             Logger.instance().error(f"Error creating preview job: {str(e)}")

@@ -283,15 +283,16 @@ class PreviewRunManager:
 
     def invalidate_completed_runs_for_insight(self, insight_name: str):
         """
-        Remove any completed or failed runs for the given insight name.
-        This forces a fresh execution when the insight config changes.
+        Remove any completed or failed insight runs whose config references insight_name.
+        Handles the batched preview shape {"insight_names": [...], "context_objects": {...}}
+        by checking list membership.
         """
         with self._runs_lock:
             runs_to_delete = [
                 run_id
                 for run_id, run in self._runs.items()
                 if run.object_type == "insight"
-                and run.config.get("name") == insight_name
+                and insight_name in (run.config.get("insight_names") or [])
                 and run.status in (RunStatus.COMPLETED, RunStatus.FAILED)
             ]
 

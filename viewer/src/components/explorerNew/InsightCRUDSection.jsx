@@ -182,12 +182,26 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
     [insightName, removeInsightInteraction]
   );
 
+  const [renameError, setRenameError] = useState(null);
+
   const commitRename = useCallback(() => {
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== insightName) {
-      renameInsight(insightName, trimmed);
+      try {
+        renameInsight(insightName, trimmed);
+        setRenameError(null);
+        setIsRenaming(false);
+      } catch (err) {
+        if (err?.code === 'NAME_COLLISION') {
+          setRenameError(err.message);
+          return;
+        }
+        throw err;
+      }
+    } else {
+      setRenameError(null);
+      setIsRenaming(false);
     }
-    setIsRenaming(false);
   }, [renameValue, insightName, renameInsight]);
 
   if (!insightState) return null;
@@ -212,19 +226,39 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
         </button>
 
         {isRenaming ? (
-          <input
-            autoFocus
-            data-testid={`insight-rename-input-${insightName}`}
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onBlur={() => commitRename()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename();
-              if (e.key === 'Escape') setIsRenaming(false);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-purple-800 bg-white border border-purple-300 rounded px-1 py-0 outline-none focus:ring-1 focus:ring-purple-400 flex-1"
-          />
+          <span className="flex-1 flex flex-col">
+            <input
+              autoFocus
+              data-testid={`insight-rename-input-${insightName}`}
+              value={renameValue}
+              onChange={(e) => {
+                setRenameValue(e.target.value);
+                if (renameError) setRenameError(null);
+              }}
+              onBlur={() => commitRename()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') {
+                  setRenameError(null);
+                  setIsRenaming(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={`text-sm font-medium text-purple-800 bg-white border rounded px-1 py-0 outline-none focus:ring-1 ${
+                renameError
+                  ? 'border-red-400 focus:ring-red-400'
+                  : 'border-purple-300 focus:ring-purple-400'
+              }`}
+            />
+            {renameError && (
+              <span
+                data-testid={`insight-rename-error-${insightName}`}
+                className="text-xs text-red-600 mt-0.5"
+              >
+                {renameError}
+              </span>
+            )}
+          </span>
         ) : (
           <span
             className="text-sm font-medium text-purple-800 truncate flex-1 cursor-pointer"
