@@ -518,6 +518,174 @@ describe('explorerNewStore', () => {
     });
   });
 
+  describe('addExistingInsightToChart', () => {
+    const makeCachedInsight = (overrides = {}) => ({
+      name: 'cached_insight',
+      config: {
+        props: { type: 'bar', x: '?{${ref(model_a).col_x}}', y: '?{${ref(model_a).col_y}}' },
+        interactions: [{ filter: '?{${ref(model_a).col_x} > 5}' }],
+        ...overrides,
+      },
+    });
+
+    beforeEach(() => {
+      // Reset any leftover state
+      useStore.setState({
+        explorerChartInsightNames: [],
+        explorerInsightStates: {},
+        explorerActiveInsightName: null,
+        explorerModelTabs: [],
+        explorerModelStates: {},
+        explorerChartInputNames: [],
+        insights: [],
+        models: [],
+        inputs: [],
+        metrics: [],
+        dimensions: [],
+        explorerSources: [{ source_name: 'pg' }],
+      });
+    });
+
+    it('adds an API insight to the chart with transformed UI state', () => {
+      const cachedInsight = makeCachedInsight();
+      useStore.setState({
+        insights: [cachedInsight],
+        models: [{ name: 'model_a', config: { sql: 'SELECT * FROM t' } }],
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      expect(state.explorerChartInsightNames).toEqual(['cached_insight']);
+      expect(state.explorerActiveInsightName).toBe('cached_insight');
+
+      const insightState = state.explorerInsightStates.cached_insight;
+      expect(insightState).toBeDefined();
+      expect(insightState.type).toBe('bar');
+      expect(insightState.isNew).toBe(false);
+      // Interactions transformed from API format to UI format
+      expect(insightState.interactions).toEqual([
+        { type: 'filter', value: '?{${ref(model_a).col_x} > 5}' },
+      ]);
+      // Props stored without type
+      expect(insightState.props.type).toBeUndefined();
+      expect(insightState.props.x).toBe('?{${ref(model_a).col_x}}');
+    });
+
+    it('no-ops list mutation but focuses active when insight already on chart', () => {
+      const cachedInsight = makeCachedInsight();
+      useStore.setState({
+        insights: [cachedInsight],
+        explorerChartInsightNames: ['cached_insight', 'other_insight'],
+        explorerInsightStates: {
+          cached_insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: false },
+          other_insight: { type: 'scatter', props: {}, interactions: [], typePropsCache: {}, isNew: true },
+        },
+        explorerActiveInsightName: 'other_insight',
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      expect(state.explorerChartInsightNames).toEqual(['cached_insight', 'other_insight']);
+      expect(state.explorerActiveInsightName).toBe('cached_insight');
+    });
+
+    it('no-ops when insight is not in the cached insights list', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      useStore.setState({ insights: [] });
+
+      useStore.getState().addExistingInsightToChart('missing_insight');
+
+      const state = useStore.getState();
+      expect(state.explorerChartInsightNames).toEqual([]);
+      expect(state.explorerInsightStates).toEqual({});
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('auto-loads missing model dependency referenced by the insight', () => {
+      const cachedInsight = makeCachedInsight();
+      useStore.setState({
+        insights: [cachedInsight],
+        models: [{ name: 'model_a', config: { sql: 'SELECT * FROM t', source: 'ref(pg)' } }],
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      expect(state.explorerModelTabs).toContain('model_a');
+      expect(state.explorerModelStates.model_a).toBeDefined();
+      expect(state.explorerModelStates.model_a.sql).toBe('SELECT * FROM t');
+    });
+
+    it('auto-appends missing input dependency referenced by the insight', () => {
+      const cachedInsight = {
+        name: 'cached_insight',
+        config: {
+          props: {
+            type: 'bar',
+            x: '?{${ref(model_a).col_x}}',
+            y: '?{${ref(threshold_input).value}}',
+          },
+          interactions: [],
+        },
+      };
+      useStore.setState({
+        insights: [cachedInsight],
+        models: [{ name: 'model_a', config: { sql: 'SELECT 1' } }],
+        inputs: [{ name: 'threshold_input', config: { type: 'single-select' } }],
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      expect(state.explorerChartInputNames).toContain('threshold_input');
+    });
+
+    it('does not duplicate model tab when dependency is already loaded', () => {
+      const cachedInsight = makeCachedInsight();
+      useStore.setState({
+        insights: [cachedInsight],
+        models: [{ name: 'model_a', config: { sql: 'SELECT * FROM t' } }],
+        explorerModelTabs: ['model_a'],
+        explorerModelStates: {
+          model_a: { sql: 'SELECT 1', sourceName: 'pg', queryResult: null, queryError: null, computedColumns: [], enrichedResult: null, isNew: false },
+        },
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      // Should still be only one model_a tab
+      expect(state.explorerModelTabs.filter((t) => t === 'model_a')).toHaveLength(1);
+      // Existing state should not have been overwritten
+      expect(state.explorerModelStates.model_a.sql).toBe('SELECT 1');
+    });
+
+    it('handles missing model in cache (skips without error)', () => {
+      const cachedInsight = {
+        name: 'cached_insight',
+        config: {
+          props: { type: 'bar', x: '?{${ref(unknown_model).col}}' },
+          interactions: [],
+        },
+      };
+      useStore.setState({
+        insights: [cachedInsight],
+        models: [], // unknown_model not cached
+      });
+
+      useStore.getState().addExistingInsightToChart('cached_insight');
+
+      const state = useStore.getState();
+      // Insight still added
+      expect(state.explorerChartInsightNames).toEqual(['cached_insight']);
+      // But no model tab auto-loaded
+      expect(state.explorerModelTabs).not.toContain('unknown_model');
+    });
+  });
+
   describe('removeInsightFromChart', () => {
     it('removes insight from chart insight names but keeps state', () => {
       useStore.getState().createInsight('ins_1');

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
+import { useDroppable } from '@dnd-kit/core';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
@@ -38,6 +39,11 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const [layoutSchema, setLayoutSchema] = useState(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+
+  const { setNodeRef: setInsightDropRef, isOver: isInsightOver } = useDroppable({
+    id: 'chart-insight-zone',
+    data: { type: 'insight-zone' },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -164,11 +170,19 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
       {/* Expanded Content */}
       {isExpanded && (
         <div className="px-3 py-3 space-y-4 border-l-4 border-pink-400">
-          {/* Insight List */}
-          <div>
+          {/* Insight List (drop zone for existing insights from left nav) */}
+          <div
+            ref={setInsightDropRef}
+            data-testid="chart-insight-drop-zone"
+            className={`rounded p-2 transition-all ${
+              isInsightOver ? 'ring-2 ring-pink-400 ring-offset-1 bg-pink-50/50' : ''
+            }`}
+          >
             <label className="block text-xs font-medium text-gray-600 mb-1">Insights</label>
             {chartInsightNames.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No insights added yet</p>
+              <p className="text-xs text-gray-400 py-2">
+                No insights added yet. Drag from left nav or click below.
+              </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {chartInsightNames.map((name) => (

@@ -425,6 +425,7 @@ const ExplorerLeftPanel = () => {
             onReset={(obj) => resetInsight(obj.name)}
             title="Insights"
             objectType="insight"
+            draggableType="insight"
           />
         )}
 

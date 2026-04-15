@@ -186,6 +186,33 @@ const buildModelStateFromObject = (modelObject, globalState) => {
 };
 
 /**
+ * Transform an API insight object to UI state format.
+ * Extracts type from config (handling both top-level and props-nested),
+ * separates type from props, and converts interactions from API format
+ * ({filter: "..."}) to UI format ({type: 'filter', value: '...'}).
+ */
+const transformInsightToUiState = (insight) => {
+  const rawInteractions = insight.config?.interactions || [];
+  const transformedInteractions = rawInteractions.map((i) => {
+    const key = Object.keys(i).find((k) => ['filter', 'split', 'sort'].includes(k));
+    if (key) return { type: key, value: i[key] };
+    if (i.type && 'value' in i) return { ...i };
+    return { type: 'filter', value: '' };
+  });
+
+  const insightType = insight.config?.type || insight.config?.props?.type || 'scatter';
+  const { type: _propsType, ...propsWithoutType } = insight.config?.props || {};
+
+  return {
+    type: insightType,
+    props: propsWithoutType,
+    interactions: transformedInteractions,
+    typePropsCache: {},
+    isNew: false,
+  };
+};
+
+/**
  * Extract source name from a ref() string or return as-is.
  */
 const extractSourceName = (rawSource) => {
@@ -613,6 +640,82 @@ const createExplorerNewSlice = (set, get) => ({
     });
   },
 
+  addExistingInsightToChart: (insightName) => {
+    const state = get();
+
+    // Duplicate: already on chart → just focus it
+    if (state.explorerChartInsightNames.includes(insightName)) {
+      set({ explorerActiveInsightName: insightName });
+      return;
+    }
+
+    // Look up cached API insight
+    const insight = (state.insights || []).find((i) => i.name === insightName);
+    if (!insight) {
+      // eslint-disable-next-line no-console
+      console.warn(`addExistingInsightToChart: insight '${insightName}' not found in cache`);
+      return;
+    }
+
+    const insightState = transformInsightToUiState(insight);
+
+    // Resolve model/input dependencies from the insight config (mirror handleChartClick)
+    const allInputNames = new Set((state.inputs || []).map((i) => i.name));
+    const searchStr = JSON.stringify(insight.config || {});
+    const matches = [...searchStr.matchAll(/ref\(([^.)]+)\)/g)];
+    const modelNames = new Set();
+    const inputNames = new Set();
+    for (const match of matches) {
+      const name = match[1];
+      if (allInputNames.has(name)) {
+        inputNames.add(name);
+      } else {
+        modelNames.add(name);
+      }
+    }
+
+    // Compute new model tabs and states (auto-load missing models)
+    const existingTabs = new Set(state.explorerModelTabs);
+    const newlyAddedModelNames = [];
+    const newModelTabs = [...state.explorerModelTabs];
+    const newModelStates = { ...state.explorerModelStates };
+    for (const modelName of modelNames) {
+      if (existingTabs.has(modelName)) continue;
+      const modelObj = (state.models || []).find((m) => m.name === modelName);
+      if (!modelObj) continue;
+      newModelTabs.push(modelName);
+      newModelStates[modelName] = buildModelStateFromObject(modelObj, state);
+      newlyAddedModelNames.push(modelName);
+    }
+
+    // Compute new input names list (append missing)
+    const existingInputs = new Set(state.explorerChartInputNames);
+    const newInputNames = [...state.explorerChartInputNames];
+    for (const n of inputNames) {
+      if (!existingInputs.has(n)) newInputNames.push(n);
+    }
+
+    set({
+      explorerChartInsightNames: [...state.explorerChartInsightNames, insightName],
+      explorerInsightStates: {
+        ...state.explorerInsightStates,
+        [insightName]: insightState,
+      },
+      explorerActiveInsightName: insightName,
+      explorerModelTabs: newModelTabs,
+      explorerModelStates: newModelStates,
+      explorerChartInputNames: newInputNames,
+    });
+
+    // Auto-load parquet data for newly added models
+    for (const modelName of newlyAddedModelNames) {
+      autoLoadModelData(modelName, get, set);
+    }
+
+    // Refresh diff status
+    get().fetchExplorerDiff?.();
+  },
+
   renameInsight: (oldName, newName) => {
     const state = get();
     const insightState = state.explorerInsightStates[oldName];
@@ -1017,29 +1120,7 @@ const createExplorerNewSlice = (set, get) => ({
     const insightNames = [];
     for (const insight of insightObjects) {
       insightNames.push(insight.name);
-      // Transform interactions from API format ({split: "?{...}"}) to UI format ({type: 'split', value: '...'})
-      const rawInteractions = insight.config?.interactions || [];
-      const transformedInteractions = rawInteractions.map((i) => {
-        // API format: { split: "?{...}" } or { filter: "?{...}" } or { sort: "?{...}" }
-        const key = Object.keys(i).find((k) => ['filter', 'split', 'sort'].includes(k));
-        if (key) return { type: key, value: i[key] };
-        // Already in UI format { type, value }
-        if (i.type && 'value' in i) return { ...i };
-        return { type: 'filter', value: '' };
-      });
-
-      // Type can be at config.type (top-level) or config.props.type (nested in props)
-      const insightType = insight.config?.type || insight.config?.props?.type || 'scatter';
-      // Store props without the type field (type is stored separately)
-      const { type: _propsType, ...propsWithoutType } = insight.config?.props || {};
-
-      insightStates[insight.name] = {
-        type: insightType,
-        props: propsWithoutType,
-        interactions: transformedInteractions,
-        typePropsCache: {},
-        isNew: false,
-      };
+      insightStates[insight.name] = transformInsightToUiState(insight);
     }
 
     // Set active model to the first chart model (not the first tab overall)

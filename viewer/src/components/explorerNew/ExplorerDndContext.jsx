@@ -23,6 +23,7 @@ const ExplorerDndContext = ({ children }) => {
   const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
   const setActiveModelSource = useStore((s) => s.setActiveModelSource);
   const updateInsightInteraction = useStore((s) => s.updateInsightInteraction);
+  const addExistingInsightToChart = useStore((s) => s.addExistingInsightToChart);
 
   const [activeData, setActiveData] = useState(null);
 
@@ -122,6 +123,10 @@ const ExplorerDndContext = ({ children }) => {
         if (dragData.type === 'source') {
           setActiveModelSource(dragData.name);
         }
+      } else if (dropData?.type === 'insight-zone') {
+        if (dragData.type === 'insight' && dragData.name) {
+          addExistingInsightToChart(dragData.name);
+        }
       }
     },
     [
@@ -131,6 +136,7 @@ const ExplorerDndContext = ({ children }) => {
       addComputedColumn,
       setActiveModelSource,
       updateInsightInteraction,
+      addExistingInsightToChart,
     ]
   );
 

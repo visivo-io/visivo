@@ -327,4 +327,63 @@ describe('ExplorerDndContext', () => {
 
     expect(useStore.getState().explorerInsightStates.ins_1.props).toEqual({});
   });
+
+  describe('insight-zone drops', () => {
+    it('calls addExistingInsightToChart when an insight is dropped on insight-zone', () => {
+      const addExistingInsightToChart = jest.fn();
+      useStore.setState({
+        addExistingInsightToChart,
+        insights: [{ name: 'cached_insight', config: { props: { type: 'bar' } } }],
+      });
+
+      render(
+        <ExplorerDndContext>
+          <div>Content</div>
+        </ExplorerDndContext>
+      );
+
+      capturedOnDragEnd({
+        active: { data: { current: { name: 'cached_insight', type: 'insight' } } },
+        over: { data: { current: { type: 'insight-zone' } } },
+      });
+
+      expect(addExistingInsightToChart).toHaveBeenCalledWith('cached_insight');
+    });
+
+    it('does not call addExistingInsightToChart for non-insight drag types', () => {
+      const addExistingInsightToChart = jest.fn();
+      useStore.setState({ addExistingInsightToChart });
+
+      render(
+        <ExplorerDndContext>
+          <div>Content</div>
+        </ExplorerDndContext>
+      );
+
+      capturedOnDragEnd({
+        active: { data: { current: { name: 'col_a', type: 'column' } } },
+        over: { data: { current: { type: 'insight-zone' } } },
+      });
+
+      expect(addExistingInsightToChart).not.toHaveBeenCalled();
+    });
+
+    it('does not call addExistingInsightToChart when drag has no name', () => {
+      const addExistingInsightToChart = jest.fn();
+      useStore.setState({ addExistingInsightToChart });
+
+      render(
+        <ExplorerDndContext>
+          <div>Content</div>
+        </ExplorerDndContext>
+      );
+
+      capturedOnDragEnd({
+        active: { data: { current: { type: 'insight' } } },
+        over: { data: { current: { type: 'insight-zone' } } },
+      });
+
+      expect(addExistingInsightToChart).not.toHaveBeenCalled();
+    });
+  });
 });
