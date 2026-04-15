@@ -99,8 +99,10 @@ test.describe('Explorer Insight CRUD', () => {
     ).not.toBeVisible({ timeout: 5000 });
 
     // Verify: Chart still exists (chart header visible)
-    await expect(page.locator('[data-testid="chart-header"]')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Chart: Untitled')).toBeVisible({ timeout: 5000 });
+    const chartHeader = page.locator('[data-testid="chart-header"]');
+    await expect(chartHeader).toBeVisible({ timeout: 5000 });
+    await expect(chartHeader).toContainText('Chart:');
+    await expect(chartHeader.getByTestId('chart-name-input')).toHaveValue('Untitled', { timeout: 5000 });
 
     // Verify: No insight sections remain
     const insightSections = page.locator('[data-testid^="insight-crud-section-"]');

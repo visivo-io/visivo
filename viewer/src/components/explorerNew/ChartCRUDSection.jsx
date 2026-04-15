@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
@@ -37,8 +37,19 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const closeChart = useStore((s) => s.closeChart);
 
   const [layoutSchema, setLayoutSchema] = useState(null);
-  const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const skipNextCommitRef = useRef(false);
+
+  // Keep the local editing value in sync with the chart name when we're not
+  // actively typing, so switching charts updates the displayed text.
+  useEffect(() => {
+    if (!isEditing) {
+      setRenameValue(chartName || 'Untitled');
+      setRenameError(null);
+    }
+  }, [chartName, isEditing]);
 
   const { setNodeRef: setInsightDropRef, isOver: isInsightOver } = useDroppable({
     id: 'chart-insight-zone',
@@ -98,25 +109,32 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
     [closeChart]
   );
 
-  const [renameError, setRenameError] = useState(null);
-
   const commitRename = useCallback(() => {
+    // Escape handler sets this to cancel the onBlur commit that immediately
+    // follows .blur(). Without this, commitRename reads stale renameValue
+    // before React flushes Escape's state resets.
+    if (skipNextCommitRef.current) {
+      skipNextCommitRef.current = false;
+      return;
+    }
+    setIsEditing(false);
     const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== chartName) {
-      try {
-        setChartName(trimmed);
-        setRenameError(null);
-        setIsRenaming(false);
-      } catch (err) {
-        if (err?.code === 'NAME_COLLISION') {
-          setRenameError(err.message);
-          return;
-        }
-        throw err;
-      }
-    } else {
+    if (!trimmed || trimmed === (chartName || 'Untitled') || trimmed === 'Untitled') {
       setRenameError(null);
-      setIsRenaming(false);
+      setRenameValue(chartName || 'Untitled');
+      return;
+    }
+    try {
+      setChartName(trimmed);
+      setRenameError(null);
+    } catch (err) {
+      if (err?.code === 'NAME_COLLISION') {
+        setRenameError(err.message);
+        // Stay in editing mode so the user can correct
+        setIsEditing(true);
+        return;
+      }
+      throw err;
     }
   }, [renameValue, chartName, setChartName]);
 
@@ -139,57 +157,43 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
           {isExpanded ? <PiCaretDown size={14} /> : <PiCaretRight size={14} />}
         </button>
 
-        <span className="text-sm text-pink-600 flex-shrink-0">Chart:</span>
+        <span className="text-sm text-pink-600 flex-shrink-0">{'Chart: '}</span>
 
-        {isRenaming ? (
-          <span className="flex-1 flex flex-col">
-            <input
-              autoFocus
-              data-testid="chart-name-input"
-              value={renameValue}
-              onChange={(e) => {
-                setRenameValue(e.target.value);
-                if (renameError) setRenameError(null);
-              }}
-              onBlur={() => commitRename()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') {
-                  setRenameError(null);
-                  setIsRenaming(false);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className={`text-sm font-medium text-pink-800 bg-white border rounded px-1 py-0 outline-none focus:ring-1 ${
-                renameError
-                  ? 'border-red-400 focus:ring-red-400'
-                  : 'border-pink-300 focus:ring-pink-400'
-              }`}
-            />
-            {renameError && (
-              <span
-                data-testid="chart-rename-error"
-                className="text-xs text-red-600 mt-0.5"
-              >
-                {renameError}
-              </span>
-            )}
-          </span>
-        ) : (
-          <span
-            className={`text-sm font-medium text-pink-800 truncate flex-1 ${!isLoadedChart ? 'cursor-pointer' : ''}`}
+        <span className="flex-1 flex flex-col">
+          <input
             data-testid="chart-name-input"
-            onClick={(e) => {
-              if (!isLoadedChart) {
-                e.stopPropagation();
-                setIsRenaming(true);
-                setRenameValue(chartName || '');
+            value={renameValue}
+            disabled={isLoadedChart}
+            onFocus={() => setIsEditing(true)}
+            onChange={(e) => {
+              setRenameValue(e.target.value);
+              if (renameError) setRenameError(null);
+            }}
+            onBlur={() => commitRename()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.target.blur();
+              if (e.key === 'Escape') {
+                skipNextCommitRef.current = true;
+                setRenameError(null);
+                setRenameValue(chartName || 'Untitled');
+                setIsEditing(false);
+                e.target.blur();
               }
             }}
-          >
-            {chartName || 'Untitled'}
-          </span>
-        )}
+            onClick={(e) => e.stopPropagation()}
+            className={`text-sm font-medium text-pink-800 bg-transparent border-0 border-b border-transparent px-0 py-0 outline-none focus:border-pink-400 disabled:cursor-default ${
+              renameError ? 'border-red-400 focus:border-red-400' : ''
+            }`}
+          />
+          {renameError && (
+            <span
+              data-testid="chart-rename-error"
+              className="text-xs text-red-600 mt-0.5"
+            >
+              {renameError}
+            </span>
+          )}
+        </span>
 
         <button
           data-testid="chart-close"

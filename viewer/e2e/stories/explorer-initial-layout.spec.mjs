@@ -148,10 +148,11 @@ test.describe('Initial Layout -- Right Panel Ordering', () => {
   });
 
   test('Step 8: Chart header says "Chart: Untitled" with insight below', async () => {
-    // Chart header should show "Chart: Untitled"
+    // Chart header should show "Chart:" label + "Untitled" in the name input
     const chartHeader = page.locator('[data-testid="chart-header"]');
     await expect(chartHeader).toBeVisible({ timeout: 5000 });
-    await expect(chartHeader).toContainText('Chart: Untitled');
+    await expect(chartHeader).toContainText('Chart:');
+    await expect(chartHeader.getByTestId('chart-name-input')).toHaveValue('Untitled');
 
     // Insight section should exist below the chart
     const insightSections = page.locator('[data-testid^="insight-crud-section-"]');

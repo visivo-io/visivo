@@ -40,7 +40,7 @@ test.describe('Explorer First Visit', () => {
 
   test('Step 1: Three-panel layout renders without errors', async () => {
     // Left panel: object lists load
-    await expect(page.getByText('Models (7)')).toBeVisible();
+    await expect(page.getByText('Models (8)')).toBeVisible();
 
     // Center panel: empty state
     await expect(page.getByText('Run a query to see results')).toBeVisible();
@@ -61,7 +61,7 @@ test.describe('Explorer First Visit', () => {
   });
 
   test('Step 3: All object type sections render', async () => {
-    await expect(page.getByText('Models (7)')).toBeVisible();
+    await expect(page.getByText('Models (8)')).toBeVisible();
     await expect(page.getByText('Metrics (5)')).toBeVisible();
     await expect(page.getByText('Dimensions (3)')).toBeVisible();
     await expect(page.getByText('Insights (21)')).toBeVisible();
@@ -82,7 +82,9 @@ test.describe('Explorer First Visit', () => {
   });
 
   test('Step 6: Right panel has chart above auto-created insight', async () => {
-    await expect(page.getByText('Chart: Untitled')).toBeVisible();
+    // Chart header shows "Chart:" label and the chart name input with "Untitled"
+    await expect(page.getByText('Chart:', { exact: false })).toBeVisible();
+    await expect(page.getByTestId('chart-name-input')).toHaveValue('Untitled');
     // An insight is auto-created on first visit
     const insightSection = page.locator('[data-testid^="insight-crud-section-"]');
     await expect(insightSection.first()).toBeVisible({ timeout: 5000 });

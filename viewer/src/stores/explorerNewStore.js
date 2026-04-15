@@ -351,19 +351,22 @@ export const selectInsightStatus = (insightName) => (s) => {
 };
 
 export const selectHasModifications = (s) => {
-  const diff = s.explorerDiffResult;
-  if (!diff) {
-    // Fallback: if no diff result yet, check if any context objects exist
-    for (const state of Object.values(s.explorerModelStates || {})) {
-      if (state.isNew && state.sql) return true;
-    }
-    for (const state of Object.values(s.explorerInsightStates || {})) {
-      if (state.isNew) return true;
-    }
-    return false;
+  // Brand-new local objects (isNew=true) may not appear in the backend diff
+  // at all — the diff only tracks changes to objects the backend already
+  // knows about. Always check the context store first so the save button
+  // enables on fresh page load when an auto-created insight exists, even
+  // after fetchExplorerDiff has hydrated explorerDiffResult.
+  for (const state of Object.values(s.explorerModelStates || {})) {
+    if (state.isNew && state.sql) return true;
+  }
+  for (const state of Object.values(s.explorerInsightStates || {})) {
+    if (state.isNew) return true;
   }
 
-  // Check all diff categories for non-null statuses
+  // Then check the diff result for modifications to existing cached objects.
+  const diff = s.explorerDiffResult;
+  if (!diff) return false;
+
   for (const category of ['models', 'insights', 'metrics', 'dimensions']) {
     const statuses = diff[category];
     if (statuses) {

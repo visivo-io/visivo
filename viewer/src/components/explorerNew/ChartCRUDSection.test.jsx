@@ -86,25 +86,24 @@ describe('ChartCRUDSection', () => {
 
   it('renders chart name in header', () => {
     renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(screen.getByText('test_chart')).toBeInTheDocument();
+    // Chart name is now always rendered as an input (disabled when loaded,
+    // editable otherwise). Assert by value rather than text content.
+    expect(screen.getByDisplayValue('test_chart')).toBeInTheDocument();
   });
 
-  it('chart name is clickable for rename when not loaded', () => {
+  it('chart name input is editable when chart is new (not loaded)', () => {
     renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
     const nameEl = screen.getByTestId('chart-name-input');
-    fireEvent.click(nameEl);
-    // Should enter rename mode — input appears
-    const renameInput = screen.getByTestId('chart-name-input');
-    expect(renameInput.tagName).toBe('INPUT');
+    expect(nameEl.tagName).toBe('INPUT');
+    expect(nameEl).not.toBeDisabled();
   });
 
-  it('chart name is not clickable for rename when loaded', () => {
+  it('chart name input is disabled when chart is loaded from cache', () => {
     useStore.setState({ charts: [{ name: 'test_chart' }] });
     renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
     const nameEl = screen.getByTestId('chart-name-input');
-    fireEvent.click(nameEl);
-    // Should NOT enter rename mode — still a span
-    expect(nameEl.tagName).toBe('SPAN');
+    expect(nameEl.tagName).toBe('INPUT');
+    expect(nameEl).toBeDisabled();
   });
 
   it('renders insight list with pills', () => {
@@ -147,7 +146,7 @@ describe('ChartCRUDSection', () => {
 
   it('chart name is always visible in header even when collapsed', () => {
     renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    expect(screen.getByText('test_chart')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('test_chart')).toBeInTheDocument();
   });
 
   it('collapse/expand toggle works', () => {

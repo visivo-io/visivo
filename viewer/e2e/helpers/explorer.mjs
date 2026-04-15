@@ -2,7 +2,7 @@
  * Shared helpers for Explorer E2E tests.
  *
  * All explorer tests run against sandbox at :3001/:8001.
- * Integration project has: 7 models, 5 metrics, 3 dimensions, 20 insights, 26 charts, 15 inputs.
+ * Integration project has: 8 models, 5 metrics, 3 dimensions, 20 insights, 26 charts, 15 inputs.
  * Sources: local-sqlite (2 tables), local-duckdb (3 tables), and others.
  */
 

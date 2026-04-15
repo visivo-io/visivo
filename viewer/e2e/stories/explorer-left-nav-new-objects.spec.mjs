@@ -208,7 +208,7 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Existing models (from API) should NOT have green dots
     // Wait for models to load
-    await expect(page.getByText('Models (7)')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 10000 });
 
     // Click on an existing model to verify it has no green dot
     const existingModel = leftPanel.getByRole('button', { name: 'test-table', exact: true });
