@@ -60,7 +60,7 @@ class Item(NamedModel, ParentModel):
     )
     markdown: Optional[Union[generate_ref_field(Markdown), str]] = Field(
         None,
-        description="A Markdown object defined inline, a ref() to a markdown, or a markdown string (deprecated).",
+        description="A Markdown object defined inline, a ${ ref() } to a markdown, or a markdown string (deprecated).",
     )
     align: Optional[Literal["left", "center", "right"]] = Field(
         None,
@@ -71,16 +71,16 @@ class Item(NamedModel, ParentModel):
         description="DEPRECATED: Use the justify property on the Markdown model instead. Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.",
     )
     chart: Optional[generate_ref_field(Chart)] = Field(
-        None, description="A chart object defined inline or a ref() to a chart."
+        None, description="A chart object defined inline or a ${ ref() } to a chart."
     )
     table: Optional[generate_ref_field(Table)] = Field(
-        None, description="A Table object defined inline or a ref() to a table"
+        None, description="A Table object defined inline or a ${ ref() } to a table."
     )
     selector: Optional[generate_ref_field(Selector)] = Field(
-        None, description="A Selector object defined inline or a ref() to a selector"
+        None, description="A Selector object defined inline or a ${ ref() } to a selector."
     )
     input: Optional[generate_ref_field(InputField)] = Field(
-        None, description="An Input object defined inline or a ref() to a input"
+        None, description="An Input object defined inline or a ${ ref() } to an input."
     )
 
     @model_validator(mode="before")

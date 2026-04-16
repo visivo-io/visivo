@@ -9,27 +9,53 @@ import Markdown from '../items/Markdown';
 import Input from '../items/Input';
 import { useCallback, useMemo } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
+import { useModelsData } from '../../hooks/useModelsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
+import { extractRefNamesFromStrings } from '../../utils/refString';
+
+const isModelData = data => data && (data.sql || data.args || data.models);
 
 /**
- * Collect all insight names from visible rows for centralized prefetching.
- * This enables a single useInsightsData call instead of N calls from individual Charts/Tables.
+ * Collect insight and model names from visible rows for centralized prefetching.
  */
-const collectInsightNames = (rows, visibleRowIndices, shouldShowItem) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightNames = new Set()) => {
   const insightNames = new Set();
+  const modelNames = new Set();
+  const pivotRefStrings = [];
+
   for (const rowIndex of visibleRowIndices) {
     const row = rows[rowIndex];
     if (!row) continue;
     for (const item of row.items) {
-      // Only collect from items that will be rendered
       if (shouldShowItem && !shouldShowItem(item)) continue;
       item.chart?.insights?.forEach(i => insightNames.add(i.name));
-      item.table?.insights?.forEach(i => insightNames.add(i.name));
-      if (item.table?.insight?.name) insightNames.add(item.table.insight.name);
+      if (item.table?.data?.name) {
+        if (isModelData(item.table.data)) {
+          modelNames.add(item.table.data.name);
+        } else {
+          insightNames.add(item.table.data.name);
+        }
+      }
+      pivotRefStrings.push(
+        ...(item.table?.columns || []),
+        ...(item.table?.rows || []),
+        ...(item.table?.values || []),
+      );
     }
   }
-  return [...insightNames];
+
+  // Classify pivot refs: known insights go to insightNames, everything else to modelNames
+  const allKnown = new Set([...insightNames, ...knownInsightNames]);
+  extractRefNamesFromStrings(pivotRefStrings).forEach(n => {
+    if (allKnown.has(n)) {
+      insightNames.add(n);
+    } else {
+      modelNames.add(n);
+    }
+  });
+
+  return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
 /**
@@ -148,15 +174,31 @@ const Dashboard = ({ project, dashboardName }) => {
   // Single batch fetch for all visible inputs (stores results in Zustand)
   useInputsData(project.id, visibleInputNames);
 
-  // Centralized insight prefetching: Collect all insight names from visible rows
-  // and load them in a single batch. Charts/Tables read from Zustand store.
-  const visibleInsightNames = useMemo(
-    () => collectInsightNames(dashboard.rows || [], [...visibleRows], shouldShowItem),
-    [dashboard.rows, visibleRows, shouldShowItem]
-  );
+  const knownInsightNames = useMemo(() => {
+    const names = new Set();
+    for (const row of dashboard.rows || []) {
+      for (const item of row.items || []) {
+        item.chart?.insights?.forEach(i => { if (i.name) names.add(i.name); });
+        if (item.table?.data?.name && !isModelData(item.table.data)) {
+          names.add(item.table.data.name);
+        }
+      }
+    }
+    return names;
+  }, [dashboard.rows]);
 
-  // Single combined fetch for all visible insights (stores results in Zustand)
+  const { visibleInsightNames, visibleModelNames } = useMemo(() => {
+    const { insightNames, modelNames } = collectDataNames(
+      dashboard.rows || [],
+      [...visibleRows],
+      shouldShowItem,
+      knownInsightNames
+    );
+    return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
+  }, [dashboard.rows, visibleRows, shouldShowItem, knownInsightNames]);
+
   useInsightsData(project.id, visibleInsightNames);
+  useModelsData(project.id, visibleModelNames);
 
   const renderRow = (row, rowIndex) => {
     if (!shouldShowNamedModel(row)) {

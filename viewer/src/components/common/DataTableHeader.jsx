@@ -57,7 +57,7 @@ const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
       <div className="flex items-center gap-1.5 min-w-0">
         <TypeIcon className={`${column.computedError ? 'text-red-500' : 'text-secondary-400'} flex-shrink-0`} size={14} />
         <span className={`text-sm font-medium truncate flex-1 ${column.computedError ? 'text-red-600' : 'text-secondary-700'}`}>
-          {column.name}
+          {column.displayName || column.name}
         </span>
         {column.computedError && (
           <PiWarningCircle

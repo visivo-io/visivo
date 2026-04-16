@@ -110,7 +110,7 @@ inputs:
     options: ?{select distinct cast(x as varchar) FROM ${ref(local_test_table)} }
     display:
       type: checkboxes
-      default: 
+      default:
         values: all
 
 
@@ -224,6 +224,17 @@ sources:
     warehouse: DEV
     password: "${env.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD}"
     role: PROD
+
+  - name: local-snowflake
+    type: snowflake
+    database: JARED_DEV
+    account: test
+    db_schema: DEFAULT
+    username: test
+    password: test
+    host: localhost
+    port: 12345
+    protocol: http
 
   - name: remote-bigquery
     type: bigquery
@@ -555,14 +566,37 @@ dashboards:
           - input: ${ref(selected_categories)}
           - input: ${ref(selected_groups)}
 
-      # ===== SECTION 5: TABLE WITH INSIGHT (NEW API) =====
+  - name: new-tables-dashboard
+    level: 0
+    tags:
+      - "tables"
+      - "new"
+    rows:
+      # ===== SECTION 1: TABLE WITH MODEL (data field) =====
       - height: compact
         items:
           - markdown:
               content: |
-                ## Table with Insight (New Singular API)
-                Table using new `insight` field with auto-generated columns
-                **Change "Min X Value" above to filter the table data**
+                # New Table Features
+                ## Direct Model Reference
+                Table using `data` field referencing a model directly. Shows all columns from the model output.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: model-data-table
+              data: ${ref(daily_metrics)}
+              rows_per_page: 25
+
+      # ===== SECTION 2: TABLE WITH INSIGHT (data field) =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Insight Data Reference
+                Table using `data` field referencing an insight. Auto-generates columns from insight query results.
+                **Change "Min X Value" to filter the table data**
 
       - height: compact
         items:
@@ -574,8 +608,82 @@ dashboards:
           - width: 12
             table:
               name: filter-input-test-table
-              insight: ${ref(filter-nonaggregate-input-test-insight)}
+              data: ${ref(filter-nonaggregate-input-test-insight)}
               rows_per_page: 25
+
+      # ===== SECTION 3: PIVOT TABLE =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Pivot Table with Cell Formatting
+                Pivots category across columns, groups by day_num, sums and averages value.
+                Gradient heatmap highlights high/low values per column.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: category-pivot-table
+              columns:
+                - ${ref(pivot-source-insight).x}
+              rows:
+                - ${ref(pivot-source-insight).text}
+                - ${ref(pivot-source-insight).y}
+              values:
+                - sum(${ref(pivot-source-insight).y})
+                - avg(${ref(pivot-source-insight).y})
+              format_cells:
+                scope: column
+                min_color: "#fee0d2"
+                max_color: "#de2d26"
+
+      # ===== SECTION 4: MULTI-LEVEL PIVOT TABLE =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Multi-Level Pivot Table
+                Sales data pivoted by region and quarter (nested column headers), grouped by category and channel.
+                100 rows of data with 7 columns: region, category, quarter, channel, revenue, units_sold, cost.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: sales-pivot-table
+              columns:
+                - ${ref(sales_data).region}
+                - ${ref(sales_data).quarter}
+              rows:
+                - ${ref(sales_data).category}
+                - ${ref(sales_data).channel}
+              values:
+                - sum(${ref(sales_data).revenue})
+                - avg(${ref(sales_data).revenue})
+              format_cells:
+                scope: column
+                min_color: "#f7fbff"
+                max_color: "#08519c"
+
+      # ===== SECTION 5: FLAT TABLE WITH GRADIENT =====
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                ## Flat Table with Row Gradient
+                Same data without pivot, gradient applied per row across all numeric columns.
+
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: flat-gradient-table
+              data: ${ref(pivot-source-insight)}
+              format_cells:
+                scope: row
+                min_color: "#deebf7"
+                max_color: "#3182bd"
 
   - name: table-dashboard
     level: 1
@@ -770,3 +878,9 @@ dashboards:
       - height: xlarge
         items:
           - chart: ${ ref(surface-chart) }
+tables:
+  - name: new_table
+    traces: []
+    rows_per_page: 25
+    columns:
+      - ${ref(sales_data).region}

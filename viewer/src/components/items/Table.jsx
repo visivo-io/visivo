@@ -2,6 +2,7 @@ import Loading from '../common/Loading';
 import React, { useEffect, useState, useMemo } from 'react';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
+import PivotableTable from './PivotableTable';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -46,23 +47,30 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Support new singular 'insight' field
-  const insightName = useMemo(() => {
-    if (table.insight?.name) return table.insight.name;
-    return null;
-  }, [table.insight]);
+  const isModelData = table.data && (table.data.sql || table.data.args || table.data.models);
 
-  // Support deprecated plural 'insights' field
-  const insightNames = useMemo(() => {
-    if (!table.insights?.length) return [];
-    return table.insights.map(insight => insight.name);
-  }, [table.insights]);
+  // Support 'data' field - can reference insight or model
+  const dataName = useMemo(() => {
+    if (table.data) {
+      if (typeof table.data === 'object' && table.data.name) return table.data.name;
+      if (typeof table.data === 'string') return parseRefValue(table.data);
+    }
+    // For pivot/column-select tables, extract the first ref name from columns/rows/values
+    const refStrings = [
+      ...(table.columns || []),
+      ...(table.rows || []),
+      ...(table.values || []),
+    ];
+    const names = extractRefNamesFromStrings(refStrings);
+    return names.length > 0 ? names[0] : null;
+  }, [table.data, table.columns, table.rows, table.values]);
 
   // Memoize trace names to prevent array recreation
   const traceNames = useMemo(() => {
@@ -73,25 +81,15 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   // Viewport-based loading: Only fetch data when shouldLoad is true
   const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
 
-  const isInsightTable = !!insightName || insightNames.length > 0;
+  const isPivotableTable = !!dataName;
 
-  // Read singular insight data from store
-  const insightData = useStore(
+  // Read data from the appropriate store based on data type
+  const sourceData = useStore(
     useShallow(state => {
-      if (!insightName) return null;
-      return state.insightJobs[insightName] || null;
-    })
-  );
-
-  // Read plural insights data from store (deprecated)
-  const insightsData = useStore(
-    useShallow(state => {
-      if (!insightNames.length) return null;
-      const data = {};
-      for (const name of insightNames) {
-        if (state.insightJobs[name]) data[name] = state.insightJobs[name];
-      }
-      return Object.keys(data).length > 0 ? data : null;
+      if (!dataName) return null;
+      if (isModelData) return state.modelJobs?.[dataName] || null;
+      // Check insightJobs first, fall back to modelJobs for model-backed pivot tables
+      return state.insightJobs[dataName] || state.modelJobs?.[dataName] || null;
     })
   );
 
@@ -160,11 +158,11 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
       .replace(/\b\w/g, char => char.toUpperCase());
   };
 
-  // Handle new singular 'insight' field (auto-generate columns from data)
+  // Handle 'data' field (auto-generate columns from data)
   useEffect(() => {
-    if (!insightName || !insightData) return;
+    if (!dataName || !sourceData) return;
 
-    const data = insightData?.data || insightData?.insight;
+    const data = sourceData?.data || sourceData?.insight;
     if (!data || data.length === 0) {
       setColumns([]);
       setTableData([]);
@@ -176,8 +174,8 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     // Build reverse mapping from hashed column name → display name using props_mapping
     // props_mapping is like {"props.x": "hashed_col", "props.y": "other_hash"}
     const reverseMapping = {};
-    if (insightData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(insightData.props_mapping)) {
+    if (sourceData.props_mapping) {
+      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
         // Extract display name from prop path: "props.x" → "X", "props.marker.size" → "Marker Size"
         const displayName = propPath
           .replace(/^props\./, '')
@@ -206,40 +204,8 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     });
 
     setTableData(transformedData);
-  }, [insightName, insightData]);
+  }, [dataName, sourceData]);
 
-  // Handle deprecated plural 'insights' field (uses column_defs)
-  useEffect(() => {
-    if (insightName) return; // singular takes precedence
-    if (!insightNames.length || !insightsData) return;
-
-    const firstInsightName = table.insights[0]?.name;
-    const insightObj = insightsData?.[firstInsightName];
-    const insightColObj =
-      (table.column_defs || []).filter(column => column.insight_name === firstInsightName)[0]?.columns ?? [];
-
-    if (insightObj?.insight && insightColObj) {
-      const insightColumns = insightColObj.map((col, idx) => ({
-        id: col.id ?? `col_${idx}`,
-        header: col.header,
-        accessorKey: col.key.replace(/^columns\./, '').replace(/^props\./, ''),
-        enableGrouping: false,
-        markdown: col.markdown,
-      }));
-
-      setColumns(insightColumns);
-
-      setTableData(
-        insightObj.insight.map((row, idx) => {
-          const transformedRow = {};
-          Object.entries(row).forEach(([key, value]) => {
-            transformedRow[key.replace(/\./g, '___')] = value;
-          });
-          return { id: idx, ...transformedRow };
-        })
-      );
-    }
-  }, [insightName, insightNames, insightsData, table.insights, table.column_defs]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -315,12 +281,25 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
   // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!shouldLoad || (!isDirectQueryResult && !isInsightTable && !tracesData)) {
+  if (!shouldLoad || (!isDirectQueryResult && !isPivotableTable && !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  if (isInsightTable && !insightData && !insightsData) {
+  if (isPivotableTable && !sourceData) {
     return <Loading text={table.name} width={itemWidth} />;
+  }
+
+  // Route to PivotableTable component for data-backed tables
+  if (dataName && sourceData) {
+    return (
+      <PivotableTable
+        table={table}
+        sourceData={sourceData}
+        itemWidth={itemWidth}
+        height={height}
+        width={width}
+      />
+    );
   }
 
   const tableTheme = createTheme({
@@ -440,7 +419,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
                 </Tooltip>
               </Button>
 
-              {!isDirectQueryResult && !isInsightTable && tracesData && (
+              {!isDirectQueryResult && !isPivotableTable && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
                   onChange={onSelectedCohortChange}

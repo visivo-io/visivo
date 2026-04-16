@@ -211,11 +211,11 @@ class Chart(SelectorModel, NamedModel, ParentModel):
 
     traces: List[TraceRef] = Field(
         [],
-        description="A list of traces either written in line in the chart or called using the ref() function. Supports both for backward compatibility and future interactivity features.",
+        description="A list of traces either written in line in the chart or called using the ${ ref() } function.",
     )
     insights: List[InsightRef] = Field(
         [],
-        description="A list of insights either written in line in the chart or called using the ref() function. Supports both for backward compatibility and future interactivity features.",
+        description="A list of insights either written in line in the chart or called using the ${ ref() } function.",
     )
 
     layout: Optional[Layout] = Field(

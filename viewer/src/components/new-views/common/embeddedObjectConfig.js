@@ -40,15 +40,19 @@ export const EMBEDDED_OBJECT_CONFIGS = [
     isArray: true, // Indicates this is an array of embedded objects
   },
   {
-    // Tables can have embedded insights
+    // Tables can have an embedded data source (insight or model)
     parentTypes: ['table'],
     embeddedType: 'insight',
-    pathGetter: (index) => `insights[${index}]`,
-    configGetter: (parentData, index) => parentData.table?.insights?.[index],
-    applyToParent: (parentConfig, newConfig, index) =>
-      setAtPath(parentConfig, `insights[${index}]`, newConfig),
-    nameFormatter: (parentName, index) => `(embedded insight ${index + 1} in ${parentName})`,
-    isArray: true,
+    pathGetter: () => 'data',
+    configGetter: (parentData) => {
+      const data = parentData.table?.data;
+      return (typeof data === 'object') ? data : undefined;
+    },
+    applyToParent: (parentConfig, newConfig) => ({
+      ...parentConfig,
+      data: newConfig,
+    }),
+    nameFormatter: (parentName) => `(embedded data in ${parentName})`,
   },
 ];
 

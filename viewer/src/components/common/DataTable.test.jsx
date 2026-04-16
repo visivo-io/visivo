@@ -122,6 +122,17 @@ describe('DataTable', () => {
     expect(screen.getByText('Columns (3/3)')).toBeInTheDocument();
   });
 
+  it('renders headerBanner when provided', () => {
+    const banner = <div>SUM of Revenue | Columns: Region</div>;
+    render(<DataTable {...defaultProps} headerBanner={banner} />);
+    expect(screen.getByText('SUM of Revenue | Columns: Region')).toBeInTheDocument();
+  });
+
+  it('does not render headerBanner when not provided', () => {
+    render(<DataTable {...defaultProps} />);
+    expect(screen.queryByText('SUM of Revenue | Columns: Region')).not.toBeInTheDocument();
+  });
+
   it('opens column visibility dropdown on click', () => {
     render(<DataTable {...defaultProps} />);
     const columnsButton = screen.getByText('Columns (3/3)');

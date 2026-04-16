@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
@@ -31,12 +31,23 @@ const DataTable = ({
   height = '100%',
   // Custom header component (for drag-and-drop)
   headerComponent,
+  // Optional cell styling callback: (rowIndex, columnId) => style object or undefined
+  getCellStyle,
+  // Optional banner rendered above column headers (e.g. pivot metadata)
+  headerBanner,
+  // Optional nested column definitions for multi-level headers
+  nestedColumns,
+  // Optional array of column IDs to visually merge when consecutive rows share the same value
+  mergeRowColumns,
+  // Optional array of column IDs to stick to the left when scrolling horizontally
+  stickyLeftColumns,
 }) => {
   const parentRef = useRef(null);
 
   // Build tanstack column definitions via hook
   const tableColumns = useDataTableColumns({
     columns,
+    nestedColumns,
     sorting,
     onSortChange,
     onColumnProfileRequest,
@@ -75,6 +86,40 @@ const DataTable = ({
 
   const virtualRows = rowVirtualizer.getVirtualItems();
 
+  // Pre-compute merge map for visual row merging
+  const mergeMap = useMemo(() => {
+    if (!mergeRowColumns?.length || !tableRows.length) return null;
+    const map = new Map();
+    for (let i = 1; i < tableRows.length; i++) {
+      let allPreviousMatch = true;
+      for (const colId of mergeRowColumns) {
+        const curr = tableRows[i].getValue(colId);
+        const prev = tableRows[i - 1].getValue(colId);
+        if (allPreviousMatch && curr === prev) {
+          map.set(`${i}-${colId}`, true);
+        } else {
+          allPreviousMatch = false;
+        }
+      }
+    }
+    return map;
+  }, [tableRows, mergeRowColumns]);
+
+  // Compute sticky left offsets for row columns
+  const stickyLeftOffsets = useMemo(() => {
+    if (!stickyLeftColumns?.length) return null;
+    const leafHeaders = table.getHeaderGroups().at(-1)?.headers || [];
+    const offsets = new Map();
+    let cumLeft = 0;
+    for (const header of leafHeaders) {
+      if (stickyLeftColumns.includes(header.column.id)) {
+        offsets.set(header.column.id, cumLeft);
+        cumLeft += header.getSize();
+      }
+    }
+    return offsets.size > 0 ? offsets : null;
+  }, [stickyLeftColumns, table]);
+
   // Pagination handlers
   const handlePrevPage = useCallback(() => {
     if (page > 0) onPageChange?.(page - 1);
@@ -109,9 +154,10 @@ const DataTable = ({
     );
   }
 
-  // Compute total grid width for horizontal scrolling
+  // Compute total grid width from leaf headers (last header group)
   const headerGroups = table.getHeaderGroups();
-  const totalWidth = headerGroups[0]?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
+  const leafHeaderGroup = headerGroups[headerGroups.length - 1];
+  const totalWidth = leafHeaderGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
 
   return (
     <div
@@ -130,27 +176,71 @@ const DataTable = ({
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
           <div className="sticky top-0 z-10 bg-secondary-100 border-b border-secondary-200">
-            {headerGroups.map(headerGroup => (
-              <div key={headerGroup.id} className="flex">
-                {headerGroup.headers.map(header => (
-                  <div
-                    key={header.id}
-                    className="border-r border-secondary-200 last:border-r-0 relative"
-                    style={{ width: header.getSize() }}
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    <div
-                      role="separator"
-                      aria-orientation="vertical"
-                      onMouseDown={header.getResizeHandler()}
-                      onTouchStart={header.getResizeHandler()}
-                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none
-                        ${header.column.getIsResizing() ? 'bg-primary-400' : 'hover:bg-secondary-300'}`}
-                    />
-                  </div>
-                ))}
+            {headerBanner && (
+              <div className="border-b border-secondary-200 bg-secondary-50 px-3 py-1.5">
+                {headerBanner}
               </div>
-            ))}
+            )}
+            {headerGroups.map((headerGroup, groupIndex) => {
+              const isLeafRow = groupIndex === headerGroups.length - 1;
+              return (
+                <div
+                  key={headerGroup.id}
+                  className={`flex ${!isLeafRow ? 'border-b border-secondary-200' : ''}`}
+                >
+                  {headerGroup.headers.map(header => {
+                    if (header.isPlaceholder) {
+                      const isPivotRow = header.column.columnDef.meta?.isPivotRow;
+                      const stickyStyle = stickyLeftOffsets?.has(header.column.id)
+                        ? { position: 'sticky', left: stickyLeftOffsets.get(header.column.id), zIndex: 3 }
+                        : {};
+                      return (
+                        <div
+                          key={header.id}
+                          className={`border-r border-secondary-200 last:border-r-0 ${isPivotRow ? 'bg-secondary-200' : 'bg-secondary-100'}`}
+                          style={{ width: header.getSize(), ...stickyStyle }}
+                        />
+                      );
+                    }
+
+                    const isGroupHeader = header.column.columnDef.meta?.isGroupHeader;
+                    const isPivotRow = header.column.columnDef.meta?.isPivotRow;
+                    const isLeaf = !header.subHeaders || header.subHeaders.length === 0;
+                    const stickyStyle = isLeaf && stickyLeftOffsets?.has(header.column.id)
+                      ? { position: 'sticky', left: stickyLeftOffsets.get(header.column.id), zIndex: 3 }
+                      : {};
+
+                    let headerClass = 'border-r border-secondary-200 last:border-r-0 relative';
+                    if (isPivotRow) {
+                      headerClass += ' bg-secondary-200 font-semibold';
+                    } else if (isGroupHeader) {
+                      headerClass += ' bg-secondary-100 border-b border-secondary-200';
+                    }
+
+                    return (
+                      <div
+                        key={header.id}
+                        className={headerClass}
+                        style={{ width: header.getSize(), ...stickyStyle }}
+                        colSpan={header.colSpan}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {isLeaf && (
+                          <div
+                            role="separator"
+                            aria-orientation="vertical"
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none
+                              ${header.column.getIsResizing() ? 'bg-primary-400' : 'hover:bg-secondary-300'}`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
 
           {/* Virtual body */}
@@ -175,15 +265,41 @@ const DataTable = ({
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  {row.getVisibleCells().map(cell => (
-                    <div
-                      key={cell.id}
-                      className="border-r border-secondary-100 last:border-r-0 overflow-hidden"
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  ))}
+                  {row.getVisibleCells().map(cell => {
+                    const isPivotRow = cell.column.columnDef.meta?.isPivotRow;
+                    const isMerged = mergeMap?.get(`${virtualRow.index}-${cell.column.id}`);
+                    const cellStyle = getCellStyle
+                      ? {
+                          width: cell.column.getSize(),
+                          ...getCellStyle(virtualRow.index, cell.column.id),
+                        }
+                      : { width: cell.column.getSize() };
+
+                    // Apply sticky left positioning for row columns
+                    if (stickyLeftOffsets?.has(cell.column.id)) {
+                      cellStyle.position = 'sticky';
+                      cellStyle.left = stickyLeftOffsets.get(cell.column.id);
+                      cellStyle.zIndex = 2;
+                    }
+
+                    let cellClass = 'border-r border-secondary-100 last:border-r-0 overflow-hidden';
+                    if (isPivotRow) {
+                      cellClass += ' bg-secondary-100 font-semibold';
+                    }
+                    if (isMerged) {
+                      cellClass += ' border-t-0';
+                    }
+
+                    return (
+                      <div
+                        key={cell.id}
+                        className={cellClass}
+                        style={cellStyle}
+                      >
+                        {isMerged ? null : flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

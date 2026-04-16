@@ -23,12 +23,12 @@ describe('embeddedObjectConfig', () => {
       expect(config.isArray).toBe(true);
     });
 
-    it('returns config for table with embedded insight', () => {
+    it('returns config for table with embedded data', () => {
       const config = getEmbeddedConfig('table', 'insight');
       expect(config).toBeDefined();
       expect(config.parentTypes).toContain('table');
       expect(config.embeddedType).toBe('insight');
-      expect(config.isArray).toBe(true);
+      expect(config.isArray).toBeUndefined();
     });
 
     it('returns null for invalid combinations', () => {
@@ -171,23 +171,29 @@ describe('embeddedObjectConfig', () => {
         expect(result.insights[1]).toBe('new_insight');
       });
 
-      it('creates handler for table with embedded insights', () => {
+      it('creates handler for table with embedded data', () => {
         const parentData = {
           table: {
             name: 'test_table',
-            insights: [{ name: 'insight1', config: { query: 'SELECT 1' } }],
+            data: { name: 'insight1', props: { type: 'scatter', x: '?{x}', y: '?{y}' } },
           },
         };
 
         const handler = createEmbeddedEditHandler(clearEdit, pushEdit, 'table', parentData, 'insight');
         expect(handler).toBeDefined();
 
-        // Execute the handler
-        const insightConfig = parentData.table.insights[0];
-        handler(insightConfig, 0);
+        // Execute the handler (single embedded, not array)
+        handler();
 
-        expect(pushEdit.mock.calls[1][1].name).toBe('(embedded insight 1 in test_table)');
+        expect(pushEdit.mock.calls[1][1].name).toBe('(embedded data in test_table)');
         expect(pushEdit.mock.calls[1][1]._embedded.parentType).toBe('table');
+        expect(pushEdit.mock.calls[1][1]._embedded.path).toBe('data');
+
+        // Check applyToParent replaces data field
+        const applyToParent = pushEdit.mock.calls[1][2].applyToParent;
+        const parentConfig = { name: 'test_table', data: { old: true } };
+        const result = applyToParent(parentConfig, { new: true });
+        expect(result.data).toEqual({ new: true });
       });
     });
   });

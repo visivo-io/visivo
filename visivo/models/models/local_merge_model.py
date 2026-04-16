@@ -44,7 +44,7 @@ class LocalMergeModel(Model, ParentModel):
         description="The sql used to generate your base data",
     )
     models: List[generate_ref_field(Model)] = Field(
-        description="A model object defined inline or a ref() to a model."
+        description="A model object defined inline or a ${ ref() } to a model."
     )
 
     def get_duckdb_source(self, output_dir, dag) -> DuckdbSource:

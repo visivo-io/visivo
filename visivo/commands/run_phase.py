@@ -74,10 +74,12 @@ def run_phase(
 
     Logger.instance().debug(f"DAG filter: {dag_filter}")
     # Initialize project defaults if not present
-    if threads is None and project.defaults and project.defaults.threads:
+    if threads is not None:
+        threads = int(threads)
+    elif project.defaults and project.defaults.threads:
         threads = project.defaults.threads
     else:
-        threads = int(threads)
+        threads = 8
 
     source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)

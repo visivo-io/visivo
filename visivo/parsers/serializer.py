@@ -179,11 +179,21 @@ class Serializer:
                 traces = all_descendants_of_type(type=Trace, dag=dag, from_node=table, depth=1)
                 table_dict["traces"] = [self._dereference_trace_dict(t, dag) for t in traces]
 
-                # Inline insights
-                insights = all_descendants_of_type(type=Insight, dag=dag, from_node=table, depth=1)
-                table_dict["insights"] = [
-                    i.model_dump(exclude_none=True, mode="json") for i in insights
-                ]
+                # Inline data (insight or model)
+                if table.data:
+                    insights = all_descendants_of_type(
+                        type=Insight, dag=dag, from_node=table, depth=1
+                    )
+                    if insights:
+                        table_dict["data"] = insights[0].model_dump(exclude_none=True, mode="json")
+                    else:
+                        models = all_descendants_of_type(
+                            type=Model, dag=dag, from_node=table, depth=1
+                        )
+                        if models:
+                            table_dict["data"] = models[0].model_dump(
+                                exclude_none=True, mode="json"
+                            )
 
                 # Inline selector
                 if table.selector:
@@ -278,9 +288,16 @@ class Serializer:
                     resolved_insights = all_descendants_of_type(
                         type=Insight, dag=dag, from_node=component, depth=1
                     )
-                    component.insights = resolved_insights
-                    if hasattr(component, "insight") and component.insight and resolved_insights:
-                        component.insight = resolved_insights[0]
+                    if hasattr(component, "insights"):
+                        component.insights = resolved_insights
+                    if hasattr(component, "data") and component.data and resolved_insights:
+                        component.data = resolved_insights[0]
+                    elif hasattr(component, "data") and component.data:
+                        resolved_models = all_descendants_of_type(
+                            type=Model, dag=dag, from_node=component, depth=1
+                        )
+                        if resolved_models:
+                            component.data = resolved_models[0]
                     if component.selector:
                         component.selector = all_descendants_of_type(
                             type=Selector, dag=dag, from_node=component, depth=1
@@ -307,8 +324,9 @@ class Serializer:
 
                     # Insights no longer have a direct model field
                     # Model references are now embedded in props using ${ref(model).field} syntax
-                    for insight in component.insights:
-                        pass  # No model resolution needed
+                    if hasattr(component, "insights"):
+                        for insight in component.insights:
+                            pass  # No model resolution needed
 
                 if item.selector:
                     item.selector = all_descendants_of_type(

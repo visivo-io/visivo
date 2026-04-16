@@ -25,6 +25,7 @@ import createDashboardSlice from './dashboardStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerNewSlice from './explorerNewStore';
+import createModelJobsSlice from './modelJobsStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -54,6 +55,7 @@ const useStore = create(
     ...createCsvScriptModelSlice(...a),
     ...createLocalMergeModelSlice(...a),
     ...createExplorerNewSlice(...a),
+    ...createModelJobsSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: state => ({ scrollPositions: state.scrollPositions }),
