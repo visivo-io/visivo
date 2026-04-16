@@ -91,6 +91,7 @@ export const testSourceConnectionFromConfig = async sourceConfig => {
   }
 };
 
+// POST for read: payload contains full working state (SQL, props, layout) that exceeds GET URL length limits.
 export const fetchDiff = async (payload) => {
   const response = await fetch('/api/explorer/diff/', {
     method: 'POST',

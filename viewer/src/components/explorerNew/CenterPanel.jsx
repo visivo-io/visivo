@@ -350,7 +350,7 @@ const CenterPanel = () => {
                     onColumnProfileRequest={setProfileColumn}
                     isLoading={false}
                     height="100%"
-                    headerComponent={DraggableColumnHeader}
+                    HeaderComponent={DraggableColumnHeader}
                   />
                 </div>
               </div>

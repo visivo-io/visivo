@@ -30,7 +30,7 @@ const DataTable = ({
   // Layout
   height = '100%',
   // Custom header component (for drag-and-drop)
-  headerComponent,
+  HeaderComponent,
   // Optional cell styling callback: (rowIndex, columnId) => style object or undefined
   getCellStyle,
   // Optional banner rendered above column headers (e.g. pivot metadata)
@@ -51,7 +51,7 @@ const DataTable = ({
     sorting,
     onSortChange,
     onColumnProfileRequest,
-    HeaderComponent: headerComponent,
+    HeaderComponent,
   });
 
   // Column visibility state
