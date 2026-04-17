@@ -42,7 +42,7 @@ const Home = () => {
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <Link to="/lineage" className="col-span-1">
+        <Link to="/lineage-new" className="col-span-1">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiTreeStructure className="w-12 h-12 mb-4 text-gray-700" />
@@ -55,7 +55,7 @@ const Home = () => {
             </div>
           </div>
         </Link>
-        <Link to="/explorer" className="col-span-1">
+        <Link to="/explorer-new" className="col-span-1">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiMagnifyingGlass className="w-12 h-12 mb-4 text-gray-700" />
@@ -66,7 +66,7 @@ const Home = () => {
             </div>
           </div>
         </Link>
-        <Link to="/editor" className="col-span-1">
+        <Link to="/editor-new" className="col-span-1">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiPencil className="w-12 h-12 mb-4 text-gray-700" />

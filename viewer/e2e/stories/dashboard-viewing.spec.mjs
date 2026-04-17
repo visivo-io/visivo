@@ -24,6 +24,11 @@ test.describe('Dashboard Viewing', () => {
     // Should show navigation links (Explorer, Lineage, Editor, Project)
     await expect(page.getByText('Explorer').first()).toBeVisible({ timeout: 10000 });
 
+    // Lock down the Phase 1 rewire: Explorer card href points to /explorer-new
+    await expect(page.locator('a[href="/explorer-new"]')).toHaveCount(1);
+    await expect(page.locator('a[href="/lineage-new"]')).toHaveCount(1);
+    await expect(page.locator('a[href="/editor-new"]')).toHaveCount(1);
+
     const realErrors = consoleErrors.filter(
       e => !e.includes('favicon') && !e.includes('DevTools') && !e.includes('react-cool')
     );
