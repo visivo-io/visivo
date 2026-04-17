@@ -120,7 +120,7 @@ class TestTelemetryEvents:
     def test_api_event_error_status(self):
         """Test API event with error status code."""
         event = APIEvent.create(
-            endpoint="/api/worksheet/{id}", method="GET", status_code=404, duration_ms=50
+            endpoint="/api/nonexistent/{id}", method="GET", status_code=404, duration_ms=50
         )
 
         assert event.properties["status_code"] == 404

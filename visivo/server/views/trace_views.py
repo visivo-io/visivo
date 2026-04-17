@@ -1,11 +1,9 @@
-import json
 import os
 import glob
 from flask import jsonify, request, send_file
 
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
-from visivo.utils import get_utc_now
 from visivo.server.services.query_service import execute_query_on_source
 from visivo.constants import DEFAULT_RUN_ID
 
@@ -64,28 +62,10 @@ def register_trace_views(app, flask_app, output_dir):
 
             query = data["query"]
             source_name = data.get("source")
-            worksheet_id = data.get("worksheet_id")
 
             # Use the query service to execute the query
             # This provides enhanced error messages, result truncation, and execution time tracking
             response_data = execute_query_on_source(query, source_name, flask_app._project)
-
-            # If worksheet_id is provided, save the results
-            if worksheet_id:
-                query_stats = {
-                    "timestamp": get_utc_now().isoformat(),
-                    "source": response_data["source_name"],
-                    "execution_time": response_data["execution_time"],
-                    "is_truncated": response_data.get("is_truncated", False),
-                }
-                # Save results (excluding source_name and execution_time from saved data)
-                result_data = {
-                    "columns": response_data["columns"],
-                    "rows": response_data["rows"],
-                }
-                flask_app.worksheet_repo.save_results(
-                    worksheet_id, json.dumps(result_data), json.dumps(query_stats)
-                )
 
             return jsonify(response_data), 200
 
