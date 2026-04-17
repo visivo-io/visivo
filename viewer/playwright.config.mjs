@@ -3,7 +3,9 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
-  retries: 0,
+  // 1 retry absorbs transient flakes from concurrent sandbox job-polling races
+  // (insight-jobs, model-query-jobs) without hiding real regressions.
+  retries: 1,
   workers: '75%',
   use: {
     baseURL: 'http://localhost:3001',

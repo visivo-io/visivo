@@ -8,7 +8,6 @@ import ProjectContainer from './components/project/ProjectContainer';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Lineage from './components/lineage/Lineage';
-import Explorer from './components/explorer/Explorer';
 import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
@@ -44,15 +43,6 @@ const LocalRouter = createBrowserRouter(
           element={<Lineage />}
           handle={{
             crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
-          }}
-        />
-        <Route
-          id="explorer"
-          path="/explorer"
-          element={<Explorer />}
-          loader={loadProject}
-          handle={{
-            crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
           }}
         />
         <Route

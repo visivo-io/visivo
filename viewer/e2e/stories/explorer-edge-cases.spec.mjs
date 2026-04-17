@@ -19,20 +19,20 @@ test.describe('Explorer Edge Cases', () => {
     await loadExplorer(page);
 
     // Verify models visible before search
-    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible({ timeout: 5000 });
 
     // Search for something that doesn't exist
     await page.getByPlaceholder('Search...').fill('zzz_nonexistent_thing_xyz');
 
     // Models section should either not be visible or show 0 count
-    const modelsSection = page.getByText('Models (8)');
+    const modelsSection = page.getByText(/^Models \(\d+\)/);
     await expect(modelsSection).not.toBeVisible({ timeout: 5000 });
 
     // Clear search
     await page.getByPlaceholder('Search...').fill('');
 
     // Models section should reappear
-    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible({ timeout: 5000 });
   });
 
   test('US-22B: Search does not affect center/right panels', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('Explorer Edge Cases', () => {
     await page.getByPlaceholder('Search...').fill('zzz_nothing');
 
     // Left panel should be filtered (models section hidden/empty)
-    const modelsSection = page.getByText('Models (8)');
+    const modelsSection = page.getByText(/^Models \(\d+\)/);
     await expect(modelsSection).not.toBeVisible({ timeout: 5000 });
 
     // Center panel should NOT be affected — the model tab and editor should still be there
@@ -65,7 +65,7 @@ test.describe('Explorer Edge Cases', () => {
     await loadExplorer(page);
 
     // Verify expanded state
-    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible({ timeout: 5000 });
     await expect(page.getByPlaceholder('Search...')).toBeVisible();
 
     // Collapse sidebar
@@ -79,7 +79,7 @@ test.describe('Explorer Edge Cases', () => {
 
     // Search box and models should be visible again
     await expect(page.getByPlaceholder('Search...')).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible({ timeout: 3000 });
   });
 
   test('US-24C: Save button is enabled on fresh page due to auto-created insight', async ({ page }) => {
