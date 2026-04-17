@@ -84,13 +84,13 @@ jest.mock('./ModelTabBar', () => {
 });
 
 // Mock VerticalDivider and Divider
-jest.mock('../explorer/VerticalDivider', () => {
+jest.mock('../common/VerticalDivider', () => {
   return function MockVerticalDivider({ handleMouseDown }) {
     return <div data-testid="vertical-divider" onMouseDown={handleMouseDown}>VD</div>;
   };
 });
 
-jest.mock('../explorer/Divider', () => {
+jest.mock('../common/Divider', () => {
   return function MockDivider({ handleMouseDown }) {
     return <div data-testid="horizontal-divider" onMouseDown={handleMouseDown}>HD</div>;
   };

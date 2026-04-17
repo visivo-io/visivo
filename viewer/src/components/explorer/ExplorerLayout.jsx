@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ExplorerTree from '../explorerTree/ExplorerTree';
 import QueryPanel from './QueryPanel';
-import VerticalDivider from './VerticalDivider';
+import VerticalDivider from '../common/VerticalDivider';
 import { Container, MainContent, RightPanel, Info } from './Explorer.styles';
 import CreateObjectModal from '../editors/CreateObjectModal';
 import AddIcon from '@mui/icons-material/Add';

@@ -2,7 +2,7 @@ import React from 'react';
 import ObjectsPanel from './ObjectsPanel';
 import EditorPanel from './editorPanel/EditorPanel';
 import PreviewPanel from './PreviewPanel';
-import Divider from '../explorer/Divider';
+import Divider from '../common/Divider';
 import CreateObjectModal from './CreateObjectModal';
 import useStore from '../../stores/store';
 import { HiPlus, HiChevronRight } from 'react-icons/hi';

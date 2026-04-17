@@ -28,7 +28,7 @@ jest.mock('./ExplorerRightPanel', () => {
   };
 });
 
-jest.mock('../explorer/VerticalDivider', () => {
+jest.mock('../common/VerticalDivider', () => {
   return function MockVerticalDivider({ handleMouseDown }) {
     return (
       <div data-testid="vertical-divider" onMouseDown={handleMouseDown}>
