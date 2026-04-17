@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 const WAIT_FOR_PAGE = 15000;
 
 async function loadExplorer(page) {
-  await page.goto('/explorer-new');
+  await page.goto('/explorer');
   await page.waitForLoadState('networkidle');
   await page.getByText('Run a query to see results').waitFor({ timeout: WAIT_FOR_PAGE });
 }

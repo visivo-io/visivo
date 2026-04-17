@@ -1,9 +1,8 @@
 /**
  * Story: Editor New Smoke
  *
- * Safety-net smoke for the editor-new view. Confirms the route loads, the
+ * Safety-net smoke for the editor view. Confirms the route loads, the
  * object list renders sources and models, and there are no console errors.
- * Targets `/editor-new` pre-rename; flips to `/editor` in the rename phase.
  *
  * Precondition: Sandbox running on :3001/:8001
  */
@@ -28,7 +27,7 @@ test.describe('Editor New Smoke', () => {
       }
     });
 
-    await page.goto('/editor-new');
+    await page.goto('/editor');
     await page.waitForLoadState('networkidle');
     await page.getByText(/^Sources \(\d+\)/).first().waitFor({ timeout: WAIT_FOR_PAGE });
   });

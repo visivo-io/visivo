@@ -1,9 +1,8 @@
 /**
  * Story: Lineage New Smoke
  *
- * Safety-net smoke for the lineage-new view. Confirms the route loads, React
+ * Safety-net smoke for the lineage view. Confirms the route loads, React
  * Flow renders with at least one node, and there are no console errors.
- * Targets `/lineage-new` pre-rename; flips to `/lineage` in the rename phase.
  *
  * Precondition: Sandbox running on :3001/:8001
  */
@@ -28,7 +27,7 @@ test.describe('Lineage New Smoke', () => {
       }
     });
 
-    await page.goto('/lineage-new');
+    await page.goto('/lineage');
     await page.waitForLoadState('networkidle');
     await page.locator('.react-flow').waitFor({ timeout: WAIT_FOR_PAGE });
   });

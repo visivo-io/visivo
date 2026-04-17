@@ -35,23 +35,22 @@ const LocalRouter = createBrowserRouter(
         loader={loadError}
         handle={{ crumb: () => <a href="/">Home</a> }}
       >
-        {/* Hidden new views - accessible via URL only, not in navigation */}
         <Route
-          id="lineage-new"
-          path="/lineage-new"
+          id="lineage"
+          path="/lineage"
           element={<LineageNew />}
           loader={loadProject}
           handle={{
-            crumb: () => <BreadcrumbLink to="/lineage-new">Lineage (New)</BreadcrumbLink>,
+            crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
           }}
         />
         <Route
-          id="editor-new"
-          path="/editor-new"
+          id="editor"
+          path="/editor"
           element={<EditorNew />}
           loader={loadProject}
           handle={{
-            crumb: () => <BreadcrumbLink to="/editor-new">Editor (New)</BreadcrumbLink>,
+            crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
           }}
         />
         <Route
@@ -68,11 +67,11 @@ const LocalRouter = createBrowserRouter(
           }}
         />
         <Route
-          id="explorer-new"
-          path="/explorer-new"
+          id="explorer"
+          path="/explorer"
           element={<ExplorerNewPage />}
           handle={{
-            crumb: () => <BreadcrumbLink to="/explorer-new">Explorer (New)</BreadcrumbLink>,
+            crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
           }}
         />
         <Route
