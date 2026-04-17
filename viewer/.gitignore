@@ -12,6 +12,7 @@ src/schemas/*.schema.json
 
 # testing
 /coverage
+/test-results/
 
 # production
 /build

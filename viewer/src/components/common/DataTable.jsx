@@ -29,6 +29,8 @@ const DataTable = ({
   isQuerying = false,
   // Layout
   height = '100%',
+  // Custom header component (for drag-and-drop)
+  HeaderComponent,
   // Optional cell styling callback: (rowIndex, columnId) => style object or undefined
   getCellStyle,
   // Optional banner rendered above column headers (e.g. pivot metadata)
@@ -49,6 +51,7 @@ const DataTable = ({
     sorting,
     onSortChange,
     onColumnProfileRequest,
+    HeaderComponent,
   });
 
   // Column visibility state

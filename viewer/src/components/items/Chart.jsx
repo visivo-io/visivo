@@ -16,7 +16,7 @@ import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
-const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false }, ref) => {
+const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
@@ -143,6 +143,19 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       ];
     }
 
+    // Default legend position: horizontal below plot. Long insight names would
+    // otherwise eat plot width when stacked top-right. User-supplied legend
+    // config takes precedence.
+    if (!l.legend) {
+      l.legend = { orientation: 'h', y: -0.2, x: 0 };
+    }
+
+    // Default margins that give the below-plot legend room to render. User
+    // layout overrides still take precedence.
+    if (!l.margin) {
+      l.margin = { t: 40, r: 20, b: 80, l: 60 };
+    }
+
     // Preserve user interactions (zoom, pan) across re-renders
     if (!l.uirevision) {
       l.uirevision = chart.name;
@@ -156,14 +169,16 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
     return l;
   }, [chart.layout, chart.name, hideToolbar]);
 
-  const plotLayout = useMemo(
-    () => ({ ...layoutRef, height, width }),
-    [layoutRef, height, width]
-  );
+  const plotLayout = useMemo(() => {
+    const layout = { ...layoutRef };
+    if (height !== undefined) layout.height = height;
+    if (width !== undefined) layout.width = width;
+    return layout;
+  }, [layoutRef, height, width]);
 
   const plotConfig = useMemo(
-    () => ({ displayModeBar: false, responsive: true }),
-    []
+    () => plotlyConfig || { displayModeBar: false, responsive: true },
+    [plotlyConfig]
   );
 
   if (isDataLoading) {
@@ -177,6 +192,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
 
   return (
     <ItemContainer
+      className={hideToolbar ? 'h-full' : ''}
       onMouseOver={() => setHovering(true)}
       onMouseOut={() => setHovering(false)}
       id={itemNameToSlug(chart.name)}
@@ -227,6 +243,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
         onAfterPlot={() => {
           setIsLoading(false);
         }}
+        onRelayout={onRelayout}
       />
     </ItemContainer>
   );

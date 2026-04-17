@@ -24,6 +24,7 @@ import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
+import createExplorerNewSlice from './explorerNewStore';
 import createModelJobsSlice from './modelJobsStore';
 
 // Re-export ObjectStatus for convenience
@@ -53,6 +54,7 @@ const useStore = create(
     ...createDashboardSlice(...a),
     ...createCsvScriptModelSlice(...a),
     ...createLocalMergeModelSlice(...a),
+    ...createExplorerNewSlice(...a),
     ...createModelJobsSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',

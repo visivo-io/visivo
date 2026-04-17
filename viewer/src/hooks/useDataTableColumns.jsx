@@ -7,22 +7,23 @@ import { COLUMN_TYPES } from '../duckdb/schemaUtils';
 
 const MIN_RESIZE_WIDTH = 60;
 
-export const useDataTableColumns = ({ columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest }) => {
+export const useDataTableColumns = ({ columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest, HeaderComponent }) => {
   return useMemo(() => {
     if (nestedColumns) {
       return attachRenderers(nestedColumns, { sorting, onSortChange, onColumnProfileRequest });
     }
 
-    return columns.map(col => buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest }));
-  }, [columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest]);
+    return columns.map(col => buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest, HeaderComponent }));
+  }, [columns, nestedColumns, sorting, onSortChange, onColumnProfileRequest, HeaderComponent]);
 };
 
-function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest }) {
+function buildLeafColumnDef(col, { sorting, onSortChange, onColumnProfileRequest, HeaderComponent }) {
+  const Header = HeaderComponent || DataTableHeader;
   return {
     id: col.name,
     accessorKey: col.name,
     header: () => (
-      <DataTableHeader
+      <Header
         column={col}
         sorting={sorting}
         onSortChange={onSortChange}

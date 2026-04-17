@@ -21,11 +21,12 @@ export const usePreviewJob = () => {
   const currentRunIdRef = useRef(null);
 
   /**
-   * Start a preview run
-   * @param {Object} config - Insight configuration to preview
+   * Start a preview run.
+   * @param {Object} body - Request body. For the batched preview contract, pass
+   *   { insight_names, context_objects }. The hook injects { run: true } automatically.
    * @returns {Promise<string>} run_instance_id
    */
-  const startRun = useCallback(async config => {
+  const startRun = useCallback(async (body = {}) => {
     try {
       setError(null);
       setStatus(null);
@@ -40,7 +41,7 @@ export const usePreviewJob = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          config,
+          ...body,
           run: true,
         }),
       });

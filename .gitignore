@@ -19,6 +19,10 @@ env.bak/
 venv.bak/
 prds/
 
+.sandbox/
+viewer/e2e/screenshots/
+viewer/test-results/
+
 target
 /dist/
 build/
@@ -41,3 +45,4 @@ mk_docs.log
 visivo.spec
 
 .claude/worktrees/
+test-resulsts/
