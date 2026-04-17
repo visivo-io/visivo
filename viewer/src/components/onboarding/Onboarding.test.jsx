@@ -17,11 +17,9 @@ jest.mock(
       <div data-testid="project-modal">Project Modal</div>
     )
 );
-jest.mock(
-  '../editors/CreateObjectModal',
-  () => props =>
-    props.isOpen ? <div data-testid="create-object-modal">Create Object Modal</div> : null
-);
+jest.mock('../new-views/common/SourceEditForm', () => () => (
+  <div data-testid="source-edit-form">Source Edit Form</div>
+));
 jest.mock('../common/Loading', () => ({ text }) => (
   <div data-testid="loading">{text || 'Loading...'}</div>
 ));

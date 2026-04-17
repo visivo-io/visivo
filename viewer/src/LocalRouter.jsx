@@ -7,8 +7,6 @@ import Home from './components/Home';
 import ProjectContainer from './components/project/ProjectContainer';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
-import Lineage from './components/lineage/Lineage';
-import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
 import EditorNew from './components/new-views/editor/EditorNew';
@@ -37,23 +35,6 @@ const LocalRouter = createBrowserRouter(
         loader={loadError}
         handle={{ crumb: () => <a href="/">Home</a> }}
       >
-        <Route
-          id="lineage"
-          path="/lineage"
-          element={<Lineage />}
-          handle={{
-            crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
-          }}
-        />
-        <Route
-          id="editor"
-          path="/editor"
-          element={<Editor />}
-          loader={loadProject}
-          handle={{
-            crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
-          }}
-        />
         {/* Hidden new views - accessible via URL only, not in navigation */}
         <Route
           id="lineage-new"

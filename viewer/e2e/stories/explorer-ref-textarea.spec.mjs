@@ -117,14 +117,11 @@ test.describe('RefTextArea — Inline Pill Editing', () => {
     const pills = interactionField.locator('span.inline-flex');
     await expect(pills.first()).toBeVisible({ timeout: 5000 });
 
-    // Scroll pill into view before using mouse coordinates
-    const firstPill = pills.first();
-    await firstPill.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(200);
-
-    // Click on the RIGHT side of the first pill to place cursor after it
-    const box = await firstPill.boundingBox();
-    await page.mouse.click(box.x + box.width - 2, box.y + box.height / 2);
+    // Wait for React to settle so the pill DOM stays attached during click.
+    // Use element-relative click (position option) instead of page.mouse.click —
+    // Playwright auto-waits for stability and re-resolves the element.
+    await page.waitForTimeout(500);
+    await pills.first().click({ position: { x: 1, y: 4 } });
     await page.waitForTimeout(200);
 
     // Type text — it should appear near the pill
