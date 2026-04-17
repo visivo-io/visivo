@@ -80,22 +80,16 @@ async function getLegendAndPlotRects(page) {
 test.describe('Chart Legend Default Position', () => {
   test.setTimeout(60000);
 
-  test('chart with multi-insight uses horizontal legend default', async ({ page }) => {
-    // Load an existing multi-insight chart from the integration project.
-    // combined-interactions-test-chart is known to have multiple insights.
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+  test('chart with multi-trace split uses horizontal legend default', async ({ page }) => {
+    // fibonacci-split-chart uses a split interaction on its insight, which
+    // produces multiple traces at render time — exactly the scenario where
+    // Plotly renders a legend and our horizontal-below-plot default applies.
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const layout = await getPlotlyLayout(page);
     expect(layout).not.toBeNull();
-
-    // Plotly omits `_fullLayout.legend` for single-trace charts. When the
-    // chart renders without a legend there is nothing to assert about its
-    // orientation — skip the remainder of the test rather than fail.
-    if (!layout.legend) {
-      test.skip(true, 'Plotly did not render a legend (single-trace render)');
-      return;
-    }
+    expect(layout.legend).not.toBeNull();
 
     // Default is horizontal orientation below the plot area
     expect(layout.legend.orientation).toBe('h');
@@ -104,7 +98,7 @@ test.describe('Chart Legend Default Position', () => {
   });
 
   test('computed layout has a non-zero bottom margin', async ({ page }) => {
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const layout = await getPlotlyLayout(page);
@@ -115,7 +109,7 @@ test.describe('Chart Legend Default Position', () => {
   });
 
   test('legend sits in the bottom half of the chart (below-plot position)', async ({ page }) => {
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const rects = await page.evaluate(() => {
