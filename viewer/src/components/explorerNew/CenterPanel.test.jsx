@@ -111,17 +111,10 @@ jest.mock('../../hooks/useExplorerDuckDB', () => ({
   default: () => {},
 }));
 
-// Mock DataSectionToolbar
+// Mock DataSectionToolbar — reads from store internally, no props from CenterPanel
 jest.mock('./DataSectionToolbar', () => {
-  return function MockDataSectionToolbar(props) {
-    return (
-      <div
-        data-testid="data-section-toolbar"
-        data-row-count={props.totalRowCount}
-        data-truncated={String(!!props.truncated)}
-        data-execution-time={props.executionTimeMs || ''}
-      />
-    );
+  return function MockDataSectionToolbar() {
+    return <div data-testid="data-section-toolbar" />;
   };
 });
 
@@ -295,7 +288,7 @@ describe('CenterPanel', () => {
     expect(useStore.getState().explorerModelStates.test_model.queryError).toBe('SQL error');
   });
 
-  it('renders DataSectionToolbar with correct props when query result exists', () => {
+  it('renders DataSectionToolbar when query result exists', () => {
     useStore.setState({
       explorerModelStates: {
         test_model: makeModelState({
@@ -305,8 +298,6 @@ describe('CenterPanel', () => {
             columns: ['id'],
             rows: [{ id: 1 }, { id: 2 }],
             row_count: 2,
-            execution_time_ms: 150,
-            truncated: true,
           },
         }),
       },
@@ -314,11 +305,8 @@ describe('CenterPanel', () => {
 
     render(<CenterPanel />);
 
-    const toolbar = screen.getByTestId('data-section-toolbar');
-    expect(toolbar).toBeInTheDocument();
-    expect(toolbar).toHaveAttribute('data-row-count', '2');
-    expect(toolbar).toHaveAttribute('data-truncated', 'true');
-    expect(toolbar).toHaveAttribute('data-execution-time', '150');
+    // DataSectionToolbar reads from the store directly — CenterPanel just mounts it
+    expect(screen.getByTestId('data-section-toolbar')).toBeInTheDocument();
   });
 
   describe('Model Context Banner (removed)', () => {

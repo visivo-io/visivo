@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import AddComputedColumnPopover from './AddComputedColumnPopover';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import useStore from '../../stores/store';
+import {
+  selectActiveModelComputedColumns,
+  selectActiveModelQueryResult,
+  selectActiveModelEnrichedResult,
+  selectActiveModelSourceName,
+} from '../../stores/explorerNewStore';
 
-const DataSectionToolbar = ({
-  totalRowCount,
-  truncated,
-  executionTimeMs,
-  duckDBLoading,
-  duckDBError,
-  failedComputedColumns,
-  computedColumns,
-  onAddComputedColumn,
-  onUpdateComputedColumn,
-  onRemoveComputedColumn,
-  onValidateExpression,
-  allColumnNames,
-}) => {
+const DataSectionToolbar = () => {
+  const queryResult = useStore(selectActiveModelQueryResult);
+  const enrichedResult = useStore(selectActiveModelEnrichedResult);
+  const computedColumns = useStore(selectActiveModelComputedColumns);
+  const duckDBLoading = useStore((s) => s.explorerDuckDBLoading);
+  const duckDBError = useStore((s) => s.explorerDuckDBError);
+  const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
+  const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
+  const updateComputedColumn = useStore((s) => s.updateActiveModelComputedColumn);
+  const removeComputedColumn = useStore((s) => s.removeActiveModelComputedColumn);
+  const validateExpression = useStore((s) => s.validateExplorerExpression);
+  const sourceName = useStore(selectActiveModelSourceName);
+
+  const displayResult = enrichedResult || queryResult;
+  const totalRowCount = displayResult?.row_count || displayResult?.rows?.length || 0;
+  const truncated = queryResult?.truncated || false;
+  const executionTimeMs = queryResult?.execution_time_ms || null;
+
+  const allColumnNames = useMemo(() => {
+    const names = new Set(displayResult?.columns || []);
+    (computedColumns || []).forEach((c) => names.add(c.name));
+    return names;
+  }, [displayResult, computedColumns]);
+
+  const handleValidateExpression = useCallback(
+    (expression) => validateExpression(expression, sourceName),
+    [validateExpression, sourceName]
+  );
+
   const [editingColumn, setEditingColumn] = useState(null);
   const [editAnchorEl, setEditAnchorEl] = useState(null);
 
@@ -42,7 +64,7 @@ const DataSectionToolbar = ({
         </span>
       )}
       <div className="flex items-center gap-1 ml-auto" data-testid="computed-columns-area">
-        {computedColumns.map((col) => {
+        {(computedColumns || []).map((col) => {
           const isFailed = !!failedComputedColumns?.[col.name];
           return (
             <span key={col.name} data-testid={`computed-pill-${col.name}`}>
@@ -53,7 +75,7 @@ const DataSectionToolbar = ({
                   setEditingColumn(col);
                   setEditAnchorEl(e?.currentTarget || e?.target);
                 }}
-                onRemove={() => onRemoveComputedColumn(col.name)}
+                onRemove={() => removeComputedColumn(col.name)}
                 tooltip={
                   isFailed
                     ? failedComputedColumns[col.name]
@@ -67,14 +89,14 @@ const DataSectionToolbar = ({
           );
         })}
         <AddComputedColumnPopover
-          onAdd={onAddComputedColumn}
+          onAdd={addComputedColumn}
           onUpdate={(updated) => {
-            onUpdateComputedColumn(updated.name, {
+            updateComputedColumn(updated.name, {
               expression: updated.expression,
               type: updated.type,
             });
           }}
-          onValidate={onValidateExpression}
+          onValidate={handleValidateExpression}
           existingNames={allColumnNames}
           editColumn={editingColumn}
           onEditClose={() => {

@@ -45,12 +45,6 @@ const CenterPanel = () => {
   const setCenterMode = useStore((s) => s.setExplorerCenterMode);
   const enrichedResult = useStore(selectActiveModelEnrichedResult);
   const computedColumns = useStore(selectActiveModelComputedColumns);
-  const duckDBLoading = useStore((s) => s.explorerDuckDBLoading);
-  const duckDBError = useStore((s) => s.explorerDuckDBError);
-  const removeComputedColumn = useStore((s) => s.removeActiveModelComputedColumn);
-  const addComputedColumn = useStore((s) => s.addActiveModelComputedColumn);
-  const updateComputedColumn = useStore((s) => s.updateActiveModelComputedColumn);
-  const validateExpression = useStore((s) => s.validateExplorerExpression);
   const failedComputedColumns = useStore((s) => s.explorerFailedComputedColumns);
   const projectId = useStore((s) => s.project?.id);
 
@@ -138,13 +132,6 @@ const CenterPanel = () => {
     [enrichedResult]
   );
 
-  // All column names (base + computed) for duplicate checking
-  const allColumnNames = useMemo(() => {
-    const names = new Set(displayResult?.columns || []);
-    computedColumns.forEach((c) => names.add(c.name));
-    return names;
-  }, [displayResult, computedColumns]);
-
   const computedColumnMap = useMemo(() => {
     const map = {};
     (computedColumns || []).forEach((c) => { map[c.name] = c.type; });
@@ -176,11 +163,6 @@ const CenterPanel = () => {
     if (!colDef) return null;
     return computeColumnProfile(profileColumn, colDef, displayResult.rows);
   }, [profileColumn, displayResult, dataTableColumns]);
-
-  const handleValidateExpression = useCallback(
-    (expression) => validateExpression(expression, sourceName),
-    [validateExpression, sourceName]
-  );
 
   const topFlex = topBottomRatio;
   const bottomFlex = 1 - topBottomRatio;
@@ -323,20 +305,7 @@ const CenterPanel = () => {
           {queryResult ? (
             <>
               <div className="flex-1 flex flex-col min-w-0">
-                <DataSectionToolbar
-                  totalRowCount={totalRowCount}
-                  truncated={queryResult.truncated}
-                  executionTimeMs={queryResult.execution_time_ms}
-                  duckDBLoading={duckDBLoading}
-                  duckDBError={duckDBError}
-                  failedComputedColumns={failedComputedColumns}
-                  computedColumns={computedColumns}
-                  onAddComputedColumn={addComputedColumn}
-                  onUpdateComputedColumn={updateComputedColumn}
-                  onRemoveComputedColumn={removeComputedColumn}
-                  onValidateExpression={handleValidateExpression}
-                  allColumnNames={allColumnNames}
-                />
+                <DataSectionToolbar />
                 <div className="flex-1 min-h-0">
                   <DataTable
                     columns={dataTableColumns}

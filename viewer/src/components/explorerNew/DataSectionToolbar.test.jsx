@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DataSectionToolbar from './DataSectionToolbar';
+import useStore from '../../stores/store';
 
 // Mock EmbeddedPill
 jest.mock('../new-views/lineage/EmbeddedPill', () => {
@@ -63,159 +64,248 @@ jest.mock('./AddComputedColumnPopover', () => {
   };
 });
 
-const defaultProps = {
-  totalRowCount: 0,
-  truncated: false,
-  executionTimeMs: null,
-  duckDBLoading: false,
-  duckDBError: null,
-  failedComputedColumns: {},
-  computedColumns: [],
-  onAddComputedColumn: jest.fn(),
-  onUpdateComputedColumn: jest.fn(),
-  onRemoveComputedColumn: jest.fn(),
-  onValidateExpression: jest.fn(),
-  allColumnNames: new Set(),
+const defaultStoreState = {
+  explorerModelTabs: ['model_a'],
+  explorerActiveModelName: 'model_a',
+  explorerModelStates: {
+    model_a: {
+      sql: 'SELECT 1',
+      sourceName: 'pg',
+      queryResult: { columns: ['x', 'y'], rows: [{ x: 1, y: 2 }], row_count: 1 },
+      queryError: null,
+      computedColumns: [],
+      enrichedResult: null,
+      isNew: true,
+    },
+  },
+  explorerDuckDBLoading: false,
+  explorerDuckDBError: null,
+  explorerFailedComputedColumns: {},
+  addActiveModelComputedColumn: jest.fn(),
+  updateActiveModelComputedColumn: jest.fn(),
+  removeActiveModelComputedColumn: jest.fn(),
+  validateExplorerExpression: jest.fn(),
 };
 
-const renderToolbar = (overrides = {}) => {
-  const props = { ...defaultProps, ...overrides };
-  return render(<DataSectionToolbar {...props} />);
+const setupStore = (overrides = {}) => {
+  useStore.setState({ ...defaultStoreState, ...overrides });
 };
 
 describe('DataSectionToolbar', () => {
-  it('renders row count', () => {
-    renderToolbar({ totalRowCount: 42 });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupStore();
+  });
+
+  it('renders row count from the active model query result', () => {
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          queryResult: { columns: ['x'], rows: Array(42).fill({ x: 1 }), row_count: 42 },
+        },
+      },
+    });
+    render(<DataSectionToolbar />);
     expect(screen.getByText('42 rows')).toBeInTheDocument();
   });
 
   it('renders singular row for count of 1', () => {
-    renderToolbar({ totalRowCount: 1 });
+    render(<DataSectionToolbar />);
     expect(screen.getByText('1 row')).toBeInTheDocument();
   });
 
-  it('shows truncated indicator when truncated is true', () => {
-    renderToolbar({ truncated: true, totalRowCount: 5 });
+  it('shows truncated indicator when query result is truncated', () => {
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          queryResult: { columns: ['x'], rows: [{ x: 1 }], row_count: 1, truncated: true },
+        },
+      },
+    });
+    render(<DataSectionToolbar />);
     expect(screen.getByText('(truncated)')).toBeInTheDocument();
   });
 
-  it('does not show truncated indicator when truncated is false', () => {
-    renderToolbar({ truncated: false, totalRowCount: 5 });
+  it('does not show truncated indicator when not truncated', () => {
+    render(<DataSectionToolbar />);
     expect(screen.queryByText('(truncated)')).not.toBeInTheDocument();
   });
 
   it('shows execution time when provided', () => {
-    renderToolbar({ totalRowCount: 10, executionTimeMs: 150 });
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          queryResult: {
+            columns: ['x'],
+            rows: [{ x: 1 }],
+            row_count: 1,
+            execution_time_ms: 150,
+          },
+        },
+      },
+    });
+    render(<DataSectionToolbar />);
     expect(screen.getByText('150ms')).toBeInTheDocument();
   });
 
   it('does not show execution time when not provided', () => {
-    renderToolbar({ totalRowCount: 10, executionTimeMs: null });
+    render(<DataSectionToolbar />);
     expect(screen.queryByText(/ms$/)).not.toBeInTheDocument();
   });
 
   it('shows DuckDB loading indicator', () => {
-    renderToolbar({ totalRowCount: 10, duckDBLoading: true });
+    setupStore({ explorerDuckDBLoading: true });
+    render(<DataSectionToolbar />);
     expect(screen.getByTestId('duckdb-loading')).toBeInTheDocument();
     expect(screen.getByText('Computing...')).toBeInTheDocument();
   });
 
   it('shows DuckDB error when present and no per-column errors', () => {
-    renderToolbar({
-      totalRowCount: 10,
-      duckDBError: 'Table load failed',
-      failedComputedColumns: {},
+    setupStore({
+      explorerDuckDBError: 'Table load failed',
+      explorerFailedComputedColumns: {},
     });
+    render(<DataSectionToolbar />);
     expect(screen.getByTestId('duckdb-error')).toBeInTheDocument();
   });
 
   it('hides DuckDB error when per-column errors exist', () => {
-    renderToolbar({
-      totalRowCount: 10,
-      duckDBError: 'Could not compute: bad_col',
-      failedComputedColumns: { bad_col: 'Function INVALID does not exist' },
+    setupStore({
+      explorerDuckDBError: 'Could not compute: bad_col',
+      explorerFailedComputedColumns: { bad_col: 'Function INVALID does not exist' },
     });
+    render(<DataSectionToolbar />);
     expect(screen.queryByTestId('duckdb-error')).not.toBeInTheDocument();
   });
 
   it('renders a pill for each computed column', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [
-        { name: 'total', expression: 'SUM(value)', type: 'metric' },
-        { name: 'category', expression: 'UPPER(cat)', type: 'dimension' },
-      ],
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [
+            { name: 'total', expression: 'SUM(value)', type: 'metric' },
+            { name: 'category', expression: 'UPPER(cat)', type: 'dimension' },
+          ],
+        },
+      },
     });
+    render(<DataSectionToolbar />);
     expect(screen.getByTestId('computed-pill-total')).toBeInTheDocument();
     expect(screen.getByTestId('computed-pill-category')).toBeInTheDocument();
   });
 
   it('metric pills render with metric objectType', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+        },
+      },
     });
+    render(<DataSectionToolbar />);
     const pill = screen.getByTestId('pill-metric-total');
     expect(pill).toBeInTheDocument();
     expect(pill.dataset.objectType).toBe('metric');
   });
 
   it('dimension pills render with dimension objectType', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'category', expression: 'UPPER(cat)', type: 'dimension' }],
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'category', expression: 'UPPER(cat)', type: 'dimension' }],
+        },
+      },
     });
+    render(<DataSectionToolbar />);
     const pill = screen.getByTestId('pill-dimension-category');
     expect(pill).toBeInTheDocument();
     expect(pill.dataset.objectType).toBe('dimension');
   });
 
   it('failed columns have red styling via className override', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'bad_col', expression: 'INVALID()', type: 'dimension' }],
-      failedComputedColumns: { bad_col: 'Function INVALID does not exist' },
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'bad_col', expression: 'INVALID()', type: 'dimension' }],
+        },
+      },
+      explorerFailedComputedColumns: { bad_col: 'Function INVALID does not exist' },
     });
+    render(<DataSectionToolbar />);
     const pill = screen.getByTestId('pill-dimension-bad_col');
     expect(pill.className).toContain('bg-red-50');
     expect(pill.className).toContain('border-red-200');
   });
 
   it('clicking pill opens edit mode (sets editColumn)', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+        },
+      },
     });
+    render(<DataSectionToolbar />);
 
-    const pill = screen.getByTestId('pill-metric-total');
-    fireEvent.click(pill);
+    fireEvent.click(screen.getByTestId('pill-metric-total'));
 
     expect(screen.getByTestId('edit-popover')).toBeInTheDocument();
     expect(screen.getByTestId('edit-column-name')).toHaveTextContent('total');
     expect(screen.getByTestId('edit-column-expression')).toHaveTextContent('SUM(value)');
   });
 
-  it('clicking remove button calls onRemoveComputedColumn', () => {
+  it('clicking remove button calls removeActiveModelComputedColumn', () => {
     const onRemove = jest.fn();
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
-      onRemoveComputedColumn: onRemove,
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+        },
+      },
+      removeActiveModelComputedColumn: onRemove,
     });
+    render(<DataSectionToolbar />);
 
     fireEvent.click(screen.getByTestId('pill-remove-total'));
     expect(onRemove).toHaveBeenCalledWith('total');
   });
 
   it('remove button does not open edit mode (stopPropagation)', () => {
-    renderToolbar({
-      totalRowCount: 5,
-      computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          computedColumns: [{ name: 'total', expression: 'SUM(value)', type: 'metric' }],
+        },
+      },
     });
+    render(<DataSectionToolbar />);
 
     fireEvent.click(screen.getByTestId('pill-remove-total'));
 
-    // Edit popover should NOT appear because stopPropagation prevents click on parent pill
     expect(screen.queryByTestId('edit-popover')).not.toBeInTheDocument();
+  });
+
+  it('uses enrichedResult for row count when available', () => {
+    setupStore({
+      explorerModelStates: {
+        model_a: {
+          ...defaultStoreState.explorerModelStates.model_a,
+          queryResult: { columns: ['x'], rows: [{ x: 1 }], row_count: 1 },
+          enrichedResult: { columns: ['x', 'total'], rows: Array(5).fill({ x: 1 }), row_count: 5 },
+        },
+      },
+    });
+    render(<DataSectionToolbar />);
+    expect(screen.getByText('5 rows')).toBeInTheDocument();
   });
 });
