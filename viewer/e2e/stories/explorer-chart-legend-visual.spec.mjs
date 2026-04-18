@@ -114,11 +114,9 @@ test.describe('Chart Legend Default Position', () => {
 
     const rects = await page.evaluate(() => {
       const plot = document.querySelector('.js-plotly-plot');
-      if (!plot) return null;
-      const legendEl = plot.querySelector('g.legend');
-      if (!legendEl) return null;
-      const svg = plot.querySelector('.main-svg');
-      if (!svg) return null;
+      const legendEl = plot?.querySelector('g.legend');
+      const svg = plot?.querySelector('.main-svg');
+      if (!plot || !legendEl || !svg) return null;
       const legendRect = legendEl.getBoundingClientRect();
       const svgRect = svg.getBoundingClientRect();
       return {
@@ -128,10 +126,8 @@ test.describe('Chart Legend Default Position', () => {
       };
     });
 
-    if (rects === null) {
-      test.skip(true, 'Legend not rendered (likely single-series chart)');
-      return;
-    }
+    // fibonacci-split-chart renders multi-trace so Plotly always paints a legend.
+    expect(rects).not.toBeNull();
 
     // Below-plot positioning: the legend's vertical center should be below
     // the chart's vertical center. This is a soft assertion — the exact pixel

@@ -38,24 +38,8 @@ test.describe('Name Uniqueness — Cross-Type Enforcement', () => {
 
     // Find the insight name (the clickable span); rename mode is triggered by click
     const insightHeader = insightSection.locator('[data-testid^="insight-header-"]').first();
-    const insightName = await insightHeader
-      .locator('span.cursor-pointer, span.truncate')
-      .first()
-      .textContent();
-
-    // Skip if the insight is already loaded (not new — rename is disabled)
-    if (!insightName) {
-      test.skip(true, 'Could not locate insight name to rename');
-      return;
-    }
-
-    // Click the name to enter rename mode
     const nameSpan = insightHeader.locator('span.cursor-pointer').first();
-    const isClickable = await nameSpan.isVisible().catch(() => false);
-    if (!isClickable) {
-      test.skip(true, 'Insight name is not clickable (likely loaded-chart mode)');
-      return;
-    }
+    await expect(nameSpan).toBeVisible({ timeout: 5000 });
     await nameSpan.click();
 
     // Type a name that collides with an existing cached insight name.
@@ -90,11 +74,7 @@ test.describe('Name Uniqueness — Cross-Type Enforcement', () => {
 
     // Enter rename mode — now the input appears
     const renameInput = chartHeader.locator('input[data-testid="chart-name-input"]');
-    const inputVisible = await renameInput.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!inputVisible) {
-      test.skip(true, 'Chart rename input did not appear (chart may be in loaded state)');
-      return;
-    }
+    await expect(renameInput).toBeVisible({ timeout: 5000 });
 
     // Try to name it after a cached model from the integration project
     await renameInput.fill('another_local_test_table');
@@ -116,11 +96,7 @@ test.describe('Name Uniqueness — Cross-Type Enforcement', () => {
     await chartNameSpan.click();
 
     const renameInput = chartHeader.locator('input[data-testid="chart-name-input"]');
-    const inputVisible = await renameInput.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!inputVisible) {
-      test.skip(true, 'Chart rename input did not appear');
-      return;
-    }
+    await expect(renameInput).toBeVisible({ timeout: 5000 });
 
     // Type a colliding name, then Escape — should exit rename mode cleanly
     await renameInput.fill('another_local_test_table');

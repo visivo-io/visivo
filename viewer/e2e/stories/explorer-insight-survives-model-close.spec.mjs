@@ -39,13 +39,12 @@ test.describe('Insight Survives Model Close', () => {
       return;
     }
 
-    // Find a closable model tab (new tabs have close buttons)
-    const closableTab = page.locator('[data-testid^="model-tab-"] button').first();
-    const canClose = await closableTab.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!canClose) {
-      test.skip(true, 'No closable model tab found');
-      return;
-    }
+    // Close-button only appears when there are 2+ tabs. Since this test just
+    // verifies that model-state reads succeed after a chart load, there's no
+    // need to click a close button here — the `initialModelStates` snapshot
+    // above is sufficient. Assert that the snapshot contains at least one
+    // entry so any future regression in explorerModelStates surfaces.
+    expect(initialModelStates.length).toBeGreaterThan(0);
   });
 
   test('chart preview still renders after closing a model tab', async ({ page }) => {
@@ -60,17 +59,16 @@ test.describe('Insight Survives Model Close', () => {
     });
     expect(initialTraces).toBeGreaterThan(0);
 
-    // Look for a model tab close button. If we find one and can close it,
-    // the preview should still render.
-    const closeBtn = page.locator('[data-testid="model-tab-close"]').first();
-    const hasClose = await closeBtn.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!hasClose) {
-      // No closable tab — nothing to test. Not a failure.
-      test.skip(true, 'No model tab close button visible');
-      return;
-    }
+    // Close buttons only render when there are 2+ tabs (can't close the last
+    // tab). Add a second tab so a close button appears on the first one.
+    await page.getByRole('button', { name: 'Add model' }).click();
+    await page.waitForTimeout(500);
 
-    await closeBtn.click();
+    // Close the first (chart-associated) tab. The working copy should persist
+    // in explorerModelStates so the chart preview keeps rendering.
+    const firstTabClose = page.locator('[data-testid^="close-tab-"]').first();
+    await expect(firstTabClose).toBeVisible({ timeout: 5000 });
+    await firstTabClose.click();
     await page.waitForTimeout(1000);
 
     // The plot should still exist (chart preview survived the tab close)
