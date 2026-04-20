@@ -87,6 +87,12 @@ tasks:
       while IFS=$'\t' read -r added deleted filepath; do
         [ "$added" = "-" ] && continue
 
+        # Resolve git rename syntax "dir/{old => new}/file" → "dir/new/file"
+        # so existence checks below match the post-rename location.
+        if echo "$filepath" | grep -q '{.* => .*}'; then
+          filepath=$(echo "$filepath" | sed 's|{[^}]* => \([^}]*\)}|\1|')
+        fi
+
         if echo "$filepath" | grep -qE '^tests/integration/'; then
           BE_TEST_INT_ADD=$((BE_TEST_INT_ADD + added))
           BE_TEST_INT_DEL=$((BE_TEST_INT_DEL + deleted))
@@ -111,12 +117,14 @@ tasks:
           BE_PROD_ADD=$((BE_PROD_ADD + added))
           BE_PROD_DEL=$((BE_PROD_DEL + deleted))
           BE_PROD_FILES=$((BE_PROD_FILES + 1))
-          echo "$filepath" >> /tmp/be_prod_files.txt
+          # Skip deleted files — coverage lookup has nothing to report on them.
+          [ -f "$filepath" ] && echo "$filepath" >> /tmp/be_prod_files.txt
         elif echo "$filepath" | grep -qE '^viewer/src/'; then
           FE_PROD_ADD=$((FE_PROD_ADD + added))
           FE_PROD_DEL=$((FE_PROD_DEL + deleted))
           FE_PROD_FILES=$((FE_PROD_FILES + 1))
-          echo "$filepath" >> /tmp/fe_prod_files.txt
+          # Skip deleted files — coverage lookup has nothing to report on them.
+          [ -f "$filepath" ] && echo "$filepath" >> /tmp/fe_prod_files.txt
         else
           OTHER_ADD=$((OTHER_ADD + added))
           OTHER_DEL=$((OTHER_DEL + deleted))
