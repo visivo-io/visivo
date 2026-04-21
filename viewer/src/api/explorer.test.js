@@ -1,5 +1,4 @@
 import {
-  fetchExplorer,
   fetchSourceMetadata,
   fetchDatabases,
   fetchSchemas,
@@ -18,32 +17,6 @@ describe('explorer API functions', () => {
   beforeEach(() => {
     fetch.mockClear();
     console.error.mockClear();
-  });
-
-  describe('fetchExplorer', () => {
-    it('should fetch explorer data successfully', async () => {
-      const mockData = { models: [], traces: [] };
-      fetch.mockResolvedValueOnce({
-        status: 200,
-        json: async () => mockData,
-      });
-
-      const result = await fetchExplorer();
-
-      expect(fetch).toHaveBeenCalledWith('/api/explorer/');
-      expect(result).toEqual(mockData);
-      expect(console.error).not.toHaveBeenCalled();
-    });
-
-    it('should return null and log error on failure', async () => {
-      fetch.mockResolvedValueOnce({
-        status: 404,
-      });
-
-      const result = await fetchExplorer();
-
-      expect(result).toBeNull();
-    });
   });
 
   describe('fetchSourceMetadata', () => {
@@ -375,7 +348,7 @@ describe('explorer API functions', () => {
 
       let result;
       try {
-        result = await fetchExplorer();
+        result = await fetchSourceMetadata();
       } catch (e) {
         result = null;
       }
@@ -388,7 +361,6 @@ describe('explorer API functions', () => {
       fetch.mockRejectedValue(networkError);
 
       // Test each function throws the error
-      await expect(fetchExplorer()).rejects.toThrow('Connection refused');
       await expect(fetchSourceMetadata()).rejects.toThrow('Connection refused');
       await expect(fetchDatabases('test')).rejects.toThrow('Connection refused');
       await expect(fetchSchemas('test', 'db')).rejects.toThrow('Connection refused');

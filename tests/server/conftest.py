@@ -1,7 +1,6 @@
 import os
 import pytest
 from visivo.server.flask_app import FlaskApp
-from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from tests.factories.model_factories import ProjectFactory, SourceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
@@ -41,11 +40,3 @@ def integration_client(integration_app):
     with working managers and a real SQLite database.
     """
     return integration_app.app.test_client()
-
-
-@pytest.fixture
-def integration_worksheet_repo(output_dir):
-    """Worksheet repository backed by a real SQLite database."""
-    os.makedirs(output_dir, exist_ok=True)
-    db_path = os.path.join(output_dir, "worksheets.db")
-    return WorksheetRepository(db_path)

@@ -18,6 +18,7 @@ ENV/
 env.bak/
 venv.bak/
 prds/
+test-results/
 
 .sandbox/
 viewer/e2e/screenshots/

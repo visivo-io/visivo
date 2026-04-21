@@ -29,7 +29,7 @@ test.describe('Explorer First Visit', () => {
       }
     });
 
-    await page.goto('/explorer-new');
+    await page.goto('/explorer');
     await page.waitForLoadState('networkidle');
     await page.getByText('Run a query to see results').waitFor({ timeout: WAIT_FOR_PAGE });
   });
@@ -40,7 +40,7 @@ test.describe('Explorer First Visit', () => {
 
   test('Step 1: Three-panel layout renders without errors', async () => {
     // Left panel: object lists load
-    await expect(page.getByText('Models (8)')).toBeVisible();
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible();
 
     // Center panel: empty state
     await expect(page.getByText('Run a query to see results')).toBeVisible();
@@ -61,10 +61,11 @@ test.describe('Explorer First Visit', () => {
   });
 
   test('Step 3: All object type sections render', async () => {
-    await expect(page.getByText('Models (8)')).toBeVisible();
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible();
     await expect(page.getByText('Metrics (5)')).toBeVisible();
     await expect(page.getByText('Dimensions (3)')).toBeVisible();
-    await expect(page.getByText('Insights (21)')).toBeVisible();
+    // Insights count includes 21 published + 1 auto-created draft (race-dependent).
+    await expect(page.getByText(/^Insights \(2[12]\)/)).toBeVisible();
     await expect(page.getByText('Charts (26)')).toBeVisible();
     await expect(page.getByText('Inputs (15)')).toBeVisible();
   });

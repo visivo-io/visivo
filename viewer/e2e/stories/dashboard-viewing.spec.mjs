@@ -24,6 +24,12 @@ test.describe('Dashboard Viewing', () => {
     // Should show navigation links (Explorer, Lineage, Editor, Project)
     await expect(page.getByText('Explorer').first()).toBeVisible({ timeout: 10000 });
 
+    // Lock down nav hrefs (clean paths, not -new). TopNav and Home cards
+    // both expose these links, so just assert at least one of each is present.
+    await expect(page.locator('a[href="/explorer"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/lineage"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/editor"]').first()).toBeVisible();
+
     const realErrors = consoleErrors.filter(
       e => !e.includes('favicon') && !e.includes('DevTools') && !e.includes('react-cool')
     );

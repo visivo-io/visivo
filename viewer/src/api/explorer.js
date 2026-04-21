@@ -1,15 +1,3 @@
-import { getUrl } from '../contexts/URLContext';
-
-export const fetchExplorer = async () => {
-  const response = await fetch(getUrl('explorer'));
-  if (response.status === 200) {
-    const data = await response.json();
-    return data;
-  } else {
-    return null;
-  }
-};
-
 export const fetchSourceMetadata = async () => {
   const response = await fetch('/api/project/sources_metadata/');
   if (response.status === 200) {

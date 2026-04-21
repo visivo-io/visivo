@@ -9,8 +9,8 @@ import ExplorerInputsToolbar from './ExplorerInputsToolbar';
 import DataSectionToolbar from './DataSectionToolbar';
 import DraggableColumnHeader from './DraggableColumnHeader';
 import ModelTabBar from './ModelTabBar';
-import VerticalDivider from '../explorer/VerticalDivider';
-import Divider from '../explorer/Divider';
+import VerticalDivider from '../common/VerticalDivider';
+import Divider from '../common/Divider';
 import useStore from '../../stores/store';
 import {
   selectActiveModelSql,

@@ -80,10 +80,11 @@ async function getLegendAndPlotRects(page) {
 test.describe('Chart Legend Default Position', () => {
   test.setTimeout(60000);
 
-  test('chart with multi-insight uses horizontal legend default', async ({ page }) => {
-    // Load an existing multi-insight chart from the integration project.
-    // combined-interactions-test-chart is known to have multiple insights.
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+  test('chart with multi-trace split uses horizontal legend default', async ({ page }) => {
+    // fibonacci-split-chart uses a split interaction on its insight, which
+    // produces multiple traces at render time — exactly the scenario where
+    // Plotly renders a legend and our horizontal-below-plot default applies.
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const layout = await getPlotlyLayout(page);
@@ -97,7 +98,7 @@ test.describe('Chart Legend Default Position', () => {
   });
 
   test('computed layout has a non-zero bottom margin', async ({ page }) => {
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const layout = await getPlotlyLayout(page);
@@ -108,16 +109,14 @@ test.describe('Chart Legend Default Position', () => {
   });
 
   test('legend sits in the bottom half of the chart (below-plot position)', async ({ page }) => {
-    await loadExplorerWithChart(page, 'combined-interactions-test-chart');
+    await loadExplorerWithChart(page, 'fibonacci-split-chart');
     await waitForPlot(page);
 
     const rects = await page.evaluate(() => {
       const plot = document.querySelector('.js-plotly-plot');
-      if (!plot) return null;
-      const legendEl = plot.querySelector('g.legend');
-      if (!legendEl) return null;
-      const svg = plot.querySelector('.main-svg');
-      if (!svg) return null;
+      const legendEl = plot?.querySelector('g.legend');
+      const svg = plot?.querySelector('.main-svg');
+      if (!plot || !legendEl || !svg) return null;
       const legendRect = legendEl.getBoundingClientRect();
       const svgRect = svg.getBoundingClientRect();
       return {
@@ -127,10 +126,8 @@ test.describe('Chart Legend Default Position', () => {
       };
     });
 
-    if (rects === null) {
-      test.skip(true, 'Legend not rendered (likely single-series chart)');
-      return;
-    }
+    // fibonacci-split-chart renders multi-trace so Plotly always paints a legend.
+    expect(rects).not.toBeNull();
 
     // Below-plot positioning: the legend's vertical center should be below
     // the chart's vertical center. This is a soft assertion — the exact pixel

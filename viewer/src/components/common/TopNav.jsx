@@ -19,10 +19,9 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Detect if viewing from localhost:3000 to route to new pages
+  // `/project-new` is the local-dev-only path that renders ProjectNew;
+  // the dist build still serves the old ProjectContainer at `/project`.
   const isLocalDev = window.location.hostname === 'localhost' && window.location.port === '3000';
-  const lineageRoute = isLocalDev ? '/lineage-new' : '/lineage';
-  const editorRoute = isLocalDev ? '/editor-new' : '/editor';
   const projectRoute = isLocalDev ? '/project-new' : '/project';
 
   return (
@@ -41,13 +40,13 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
           <TumblerNavItem
             icon={PiTreeStructure}
             label="Lineage"
-            to={lineageRoute}
+            to="/lineage"
             tooltip="Visualize your project's dag to understand dependencies"
           />
           <TumblerNavItem
             icon={PiPencil}
             label="Editor"
-            to={editorRoute}
+            to="/editor"
             tooltip="Edit project objects and create new charts, traces, and more"
           />
           <TumblerNavItem
