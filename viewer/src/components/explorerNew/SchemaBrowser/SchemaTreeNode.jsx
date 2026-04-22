@@ -15,6 +15,7 @@ const SchemaTreeNode = ({
   children,
   statusIcon,
   errorMessage,
+  errorCollapsed = false,
 }) => {
   const isExpandable = type !== 'column';
 
@@ -67,25 +68,26 @@ const SchemaTreeNode = ({
         )}
 
         {actions && actions.length > 0 && (
-          <span className="opacity-0 group-hover:opacity-100 ml-auto flex items-center gap-1 pr-2 transition-opacity duration-150">
+          <span className="ml-auto flex items-center gap-1 pr-2">
             {actions.map((action, idx) => (
               <button
                 key={idx}
-                className="text-xs text-primary hover:text-primary-700 px-1.5 py-0.5 rounded hover:bg-primary-50 transition-colors"
+                className="flex items-center justify-center text-gray-400 hover:text-primary transition-colors p-0.5 rounded hover:bg-primary-50"
                 onClick={e => {
                   e.stopPropagation();
                   action.onClick();
                 }}
+                title={action.label}
                 data-testid={`action-${action.label}`}
               >
-                {action.label}
+                {action.icon || action.label}
               </button>
             ))}
           </span>
         )}
       </div>
 
-      {errorMessage && (
+      {errorMessage && !errorCollapsed && (
         <div
           className="text-xs text-highlight-600 px-2 py-1.5 bg-highlight-50 border-b border-highlight-100"
           style={{ paddingLeft: level * 16 + 28 }}

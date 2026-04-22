@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Box, Button, Collapse, Typography } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { PiPlus, PiCaretUp } from 'react-icons/pi';
 import { PropertyRow } from './PropertyRow';
 import { PropertySearch } from './PropertySearch';
 import {
@@ -20,6 +18,7 @@ import {
  * @param {Array<string>} props.excludeProperties - Properties to hide (e.g., ['type'])
  * @param {Array<string>} props.initiallyExpanded - Properties to show by default
  * @param {boolean} props.disabled - Whether the editor is disabled
+ * @param {boolean} props.droppable - Whether property rows support DnD drops
  */
 export function SchemaEditor({
   schema,
@@ -28,50 +27,34 @@ export function SchemaEditor({
   excludeProperties = ['type'],
   initiallyExpanded = [],
   disabled = false,
+  droppable = false,
 }) {
-  // Track which properties the user has added to the form
   const [addedProperties, setAddedProperties] = useState(() => new Set(initiallyExpanded));
-
-  // Track whether the property picker is open
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
 
-  // Get $defs from schema (memoized to prevent unnecessary re-renders)
   const defs = useMemo(() => schema?.$defs || {}, [schema]);
 
-  // Flatten all available properties from schema
   const allProperties = useMemo(() => {
     if (!schema) return [];
-
     const flattened = flattenSchemaProperties(schema, '', defs);
-
-    // Filter out excluded properties
     return flattened.filter(prop => !excludeProperties.includes(prop.path.split('.')[0]));
   }, [schema, defs, excludeProperties]);
 
-  // Properties that are currently shown in the form
   const displayedProperties = useMemo(() => {
     return allProperties.filter(prop => addedProperties.has(prop.path));
   }, [allProperties, addedProperties]);
 
-  // Track the last schema we initialized for (to detect schema changes)
-  const lastSchemaRef = useRef(null);
+  const lastEffectKeyRef = useRef('');
 
-  // Initialize addedProperties when schema changes or on mount
-  // This extracts existing values from the value prop
   useEffect(() => {
-    // Only run when schema actually changes (different object reference)
-    if (lastSchemaRef.current === schema) return;
-    lastSchemaRef.current = schema;
+    if (!schema) return;
 
-    // Extract all paths that have values in the current value object
     const extractPaths = (obj, prefix = '') => {
       const paths = [];
       if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return paths;
-
       Object.keys(obj).forEach(key => {
         const path = prefix ? `${prefix}.${key}` : key;
         paths.push(path);
-
         if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
           paths.push(...extractPaths(obj[key], path));
         }
@@ -80,15 +63,24 @@ export function SchemaEditor({
     };
 
     const pathsWithValues = extractPaths(value);
+    // Include both value paths AND schema identity to detect when schema changes
+    const schemaKey = allProperties.length.toString();
+    const effectKey = pathsWithValues.sort().join(',') + '|' + schemaKey;
 
-    // Find paths that exist in the schema
+    // Only update if value paths or schema changed (avoid infinite loop)
+    if (effectKey === lastEffectKeyRef.current) return;
+    lastEffectKeyRef.current = effectKey;
+
     const validPaths = pathsWithValues.filter(path => allProperties.some(p => p.path === path));
-
-    // Set added properties to include initiallyExpanded + any paths with values
-    setAddedProperties(new Set([...initiallyExpanded, ...validPaths]));
+    setAddedProperties(prev => {
+      const next = new Set([...initiallyExpanded, ...validPaths]);
+      for (const p of prev) {
+        if (allProperties.some(ap => ap.path === p)) next.add(p);
+      }
+      return next;
+    });
   }, [schema, value, allProperties, initiallyExpanded]);
 
-  // Handle property value change
   const handlePropertyChange = useCallback(
     (path, newValue) => {
       const updatedValue = setValueAtPath(value, path, newValue);
@@ -97,14 +89,10 @@ export function SchemaEditor({
     [value, onChange]
   );
 
-  // Handle property removal
   const handlePropertyRemove = useCallback(
     path => {
-      // Remove the value
       const updatedValue = setValueAtPath(value, path, undefined);
       onChange(updatedValue);
-
-      // Remove from added properties
       setAddedProperties(prev => {
         const next = new Set(prev);
         next.delete(path);
@@ -114,7 +102,6 @@ export function SchemaEditor({
     [value, onChange]
   );
 
-  // Handle property toggle in search
   const handlePropertyToggle = useCallback(path => {
     setAddedProperties(prev => {
       const next = new Set(prev);
@@ -127,7 +114,6 @@ export function SchemaEditor({
     });
   }, []);
 
-  // Sort displayed properties - top-level first, then nested
   const sortedDisplayedProperties = useMemo(() => {
     return [...displayedProperties].sort((a, b) => {
       const aDepth = a.path.split('.').length;
@@ -139,62 +125,51 @@ export function SchemaEditor({
 
   if (!schema) {
     return (
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography color="text.secondary">No schema available</Typography>
-      </Box>
+      <div className="p-3 text-center">
+        <span className="text-sm text-gray-500">No schema available</span>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div className="flex flex-col gap-2">
       {/* Property picker toggle */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={showPropertyPicker ? <ExpandLessIcon /> : <AddIcon />}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
           onClick={() => setShowPropertyPicker(!showPropertyPicker)}
           disabled={disabled}
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {showPropertyPicker ? <PiCaretUp size={12} /> : <PiPlus size={12} />}
           {showPropertyPicker ? 'Hide Properties' : 'Add Properties'}
-        </Button>
+        </button>
 
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+        <span className="ml-auto text-xs text-gray-500">
           {displayedProperties.length} of {allProperties.length} properties
-        </Typography>
-      </Box>
+        </span>
+      </div>
 
       {/* Property search/picker */}
-      <Collapse in={showPropertyPicker}>
+      {showPropertyPicker && (
         <PropertySearch
           properties={allProperties}
           selectedPaths={addedProperties}
           onToggle={handlePropertyToggle}
           disabled={disabled}
         />
-      </Collapse>
+      )}
 
       {/* Displayed properties */}
       {sortedDisplayedProperties.length === 0 ? (
-        <Box
-          sx={{
-            p: 3,
-            textAlign: 'center',
-            bgcolor: 'grey.50',
-            borderRadius: 1,
-            border: '1px dashed',
-            borderColor: 'grey.300',
-          }}
-        >
-          <Typography color="text.secondary" gutterBottom>
-            No properties added yet
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Click "Add Properties" to select which fields to configure
-          </Typography>
-        </Box>
+        <div className="p-4 text-center bg-gray-50 rounded-md border border-dashed border-gray-300">
+          <p className="text-sm text-gray-500 mb-1">No properties added yet</p>
+          <p className="text-xs text-gray-400">
+            Click &quot;Add Properties&quot; to select which fields to configure
+          </p>
+        </div>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <div className="flex flex-col gap-1.5">
           {sortedDisplayedProperties.map(prop => (
             <PropertyRow
               key={prop.path}
@@ -206,11 +181,12 @@ export function SchemaEditor({
               defs={defs}
               description={prop.description}
               disabled={disabled}
+              droppable={droppable}
             />
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 

@@ -2,13 +2,123 @@
 
 import os
 import json
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from visivo.models.insight import Insight
 from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.server.managers.preview_run_manager import RunStatus
 from visivo.models.base.named_model import alpha_hash
+
+
+MANAGER_TO_PROJECT_FIELD = [
+    ("model_manager", "models"),
+    ("source_manager", "sources"),
+    ("dimension_manager", "dimensions"),
+    ("metric_manager", "metrics"),
+    ("insight_manager", "insights"),
+    ("chart_manager", "charts"),
+    ("relation_manager", "relations"),
+    ("table_manager", "tables"),
+    ("dashboard_manager", "dashboards"),
+    ("input_manager", "inputs"),
+    ("markdown_manager", "markdowns"),
+    ("csv_script_model_manager", "csv_script_models"),
+    ("local_merge_model_manager", "local_merge_models"),
+]
+
+
+def _merge_objects_into_list(obj_list, new_objects):
+    """Merge new objects into an existing list, replacing by name or appending.
+
+    Args:
+        obj_list: List of existing project objects (modified in place conceptually; returns new list)
+        new_objects: Iterable of (name, object) tuples to merge in
+
+    Returns:
+        Updated list with new objects merged in
+    """
+    by_name = {o.name: o for o in obj_list if hasattr(o, "name")}
+    for name, obj in new_objects:
+        by_name[name] = obj
+    unnamed = [o for o in obj_list if not hasattr(o, "name")]
+    return list(by_name.values()) + unnamed
+
+
+def _inject_cached_objects(flask_app, preview_project):
+    """Inject cached objects from all managers into the preview project.
+
+    This ensures preview can resolve refs to objects that exist only in
+    the cached tier (created/modified via the editor or explorer) and
+    not yet published to YAML.
+    """
+    from copy import deepcopy as _deepcopy
+
+    for manager_attr, project_field in MANAGER_TO_PROJECT_FIELD:
+        manager = getattr(flask_app, manager_attr, None)
+        if not manager:
+            continue
+
+        cached = manager.cached_objects
+        if not cached:
+            continue
+
+        obj_list = list(getattr(preview_project, project_field, None) or [])
+        new_objects = [(name, _deepcopy(obj)) for name, obj in cached.items() if obj is not None]
+        setattr(preview_project, project_field, _merge_objects_into_list(obj_list, new_objects))
+
+
+CONTEXT_OBJECT_TYPES = {"models", "dimensions", "metrics", "inputs", "relations", "insights"}
+
+
+def _get_type_adapter(field_name):
+    """Get the TypeAdapter for a context object field, matching the project field type."""
+    from pydantic import TypeAdapter
+
+    if field_name == "models":
+        from visivo.models.models.fields import ModelField
+
+        return TypeAdapter(ModelField)
+    elif field_name == "dimensions":
+        from visivo.models.dimension import Dimension
+
+        return TypeAdapter(Dimension)
+    elif field_name == "metrics":
+        from visivo.models.metric import Metric
+
+        return TypeAdapter(Metric)
+    elif field_name == "inputs":
+        from visivo.models.inputs.fields import InputField
+
+        return TypeAdapter(InputField)
+    elif field_name == "relations":
+        from visivo.models.relation import Relation
+
+        return TypeAdapter(Relation)
+    elif field_name == "insights":
+        return TypeAdapter(Insight)
+    return None
+
+
+def _inject_context_objects(context_objects, preview_project):
+    """Inject context object configs (from explorer) into preview project.
+
+    Highest priority: overrides both published and cached objects.
+    """
+    if not context_objects:
+        return
+
+    for field_name, configs in context_objects.items():
+        if field_name not in CONTEXT_OBJECT_TYPES or not configs:
+            continue
+
+        adapter = _get_type_adapter(field_name)
+        if not adapter:
+            continue
+
+        obj_list = list(getattr(preview_project, field_name, None) or [])
+        new_objects = [(obj.name, obj) for obj in (adapter.validate_python(c) for c in configs)]
+        setattr(preview_project, field_name, _merge_objects_into_list(obj_list, new_objects))
 
 
 def clean_config_strings(obj):
@@ -23,21 +133,59 @@ def clean_config_strings(obj):
     return obj
 
 
-def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manager):
+def _assert_insights_present(project, insight_names):
+    """Verify every requested insight is in the merged project. Raises ValueError otherwise."""
+    project_insight_names = {i.name for i in (project.insights or [])}
+    missing = [name for name in insight_names if name not in project_insight_names]
+    if missing:
+        raise ValueError(
+            f"Preview requested for insights not present in project: {missing}. "
+            f"Available: {sorted(project_insight_names)}"
+        )
+
+
+def _read_insight_result(output_dir, run_id, insight_name):
+    """Read one insight's result file and rewrite its signed_data_file_url path segments."""
+    name_hash = alpha_hash(insight_name)
+    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
+    if not os.path.exists(insight_path):
+        raise Exception(f"Insight file not found at {insight_path} after execution")
+    with open(insight_path, "r") as f:
+        insight_data = json.load(f)
+    for file_info in insight_data.get("files", []):
+        file_path = file_info.get("signed_data_file_url", "")
+        if file_path:
+            filename = os.path.basename(file_path)
+            file_hash = filename.replace(".parquet", "")
+            file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
+    return insight_data
+
+
+def execute_preview_job(
+    job_id, insight_names, flask_app, output_dir, run_manager, context_objects=None
+):
     """
-    Execute a preview run for an insight configuration.
+    Execute a batched preview run for one or more insights.
 
     Args:
-        job_id: Unique run identifier (kept as job_id for API compatibility)
-        config: Insight configuration dict
+        job_id: Unique run identifier (also used for the filesystem run_id)
+        insight_names: List of insight names to render. The backend builds a multi-node
+            DAG filter from these names and runs them all in one invocation; shared
+            upstream work is deduplicated by project_dag.combine_dags.
         flask_app: Flask application instance with project
         output_dir: Output directory for files
         run_manager: PreviewRunManager instance
+        context_objects: Optional dict of {type: [configs]} overrides (models, insights,
+            sources, inputs, metrics, dimensions, relations). Bodies for any insights
+            in insight_names that are not already published should be sent here.
 
     Returns:
         None (updates run status via run_manager)
     """
     try:
+        if not insight_names:
+            raise ValueError("Preview job requires at least one insight name")
+
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
@@ -45,16 +193,7 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
             progress_message="Validating config",
         )
 
-        # Clean newlines and whitespace from config strings
-        config = clean_config_strings(config)
-
-        insight_adapter = TypeAdapter(Insight)
-        insight = insight_adapter.validate_python(config)
-
-        if not insight.name:
-            insight.name = f"preview_{job_id[:8]}"
-
-        run_id = f"preview-{insight.name}"
+        cleaned_context_objects = clean_config_strings(context_objects) if context_objects else {}
 
         run_manager.update_status(
             job_id,
@@ -63,34 +202,33 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
             progress_message="Preparing execution",
         )
 
-        # Create a modified project with the preview insight replacing any existing one
         from copy import deepcopy
 
         preview_project = deepcopy(flask_app.project)
 
-        # Remove existing insight with same name if it exists
-        preview_project.insights = [
-            i for i in (preview_project.insights or []) if i.name != insight.name
-        ]
+        _inject_cached_objects(flask_app, preview_project)
+        _inject_context_objects(cleaned_context_objects, preview_project)
 
-        # Add the preview insight
-        if preview_project.insights is None:
-            preview_project.insights = []
-        preview_project.insights.append(insight)
+        _assert_insights_present(preview_project, insight_names)
+
+        preview_project.invalidate_dag_cache()
+
+        run_id = f"preview-{job_id}"
+        dag_filter = ",".join(f"+{name}+" for name in insight_names)
 
         run_manager.update_status(
             job_id,
             RunStatus.RUNNING,
             progress=0.5,
-            progress_message=f"Executing query for {insight.name or 'preview'}",
+            progress_message=f"Executing preview for {len(insight_names)} insight(s)",
         )
 
         runner = FilteredRunner(
-            project=preview_project,  # Use modified project with preview insight
+            project=preview_project,
             output_dir=output_dir,
             threads=1,
             soft_failure=True,
-            dag_filter=f"+{insight.name}+",
+            dag_filter=dag_filter,
             server_url="",
             working_dir=preview_project.path or "",
             run_id=run_id,
@@ -98,38 +236,25 @@ def execute_insight_preview_job(job_id, config, flask_app, output_dir, run_manag
 
         runner.run()
 
-        name_hash = alpha_hash(insight.name)
-        insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
-        if os.path.exists(insight_path):
-            run_manager.update_status(
-                job_id,
-                RunStatus.RUNNING,
-                progress=0.9,
-                progress_message="Finalizing results",
-            )
+        run_manager.update_status(
+            job_id,
+            RunStatus.RUNNING,
+            progress=0.9,
+            progress_message="Finalizing results",
+        )
 
-            with open(insight_path, "r") as f:
-                insight_data = json.load(f)
+        results = {name: _read_insight_result(output_dir, run_id, name) for name in insight_names}
 
-            for file_info in insight_data.get("files", []):
-                file_path = file_info.get("signed_data_file_url", "")
-                if file_path:
-                    filename = os.path.basename(file_path)
-                    file_hash = filename.replace(".parquet", "")
-                    file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
-
-            run_manager.set_result(job_id, insight_data)
-            run_manager.update_status(
-                job_id,
-                RunStatus.COMPLETED,
-                progress=1.0,
-                progress_message="Preview completed successfully",
-            )
-        else:
-            raise Exception(f"Insight file not found at {insight_path} after execution")
+        run_manager.set_result(job_id, {"insights": results, "run_id": run_id})
+        run_manager.update_status(
+            job_id,
+            RunStatus.COMPLETED,
+            progress=1.0,
+            progress_message="Preview completed successfully",
+        )
 
     except ValidationError as e:
-        error_msg = f"Invalid insight configuration: {str(e)}"
+        error_msg = f"Invalid preview configuration: {str(e)}"
         run_manager.update_status(
             job_id, RunStatus.FAILED, error=error_msg, progress_message="Validation failed"
         )

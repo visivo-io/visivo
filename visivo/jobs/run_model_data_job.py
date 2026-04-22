@@ -15,6 +15,30 @@ from visivo.models.sources.source import Source
 from visivo.constants import DEFAULT_RUN_ID
 
 
+def write_parquet_from_data(
+    data: list,
+    output_dir: str,
+    name_hash: str,
+    run_id: str = DEFAULT_RUN_ID,
+) -> str:
+    """Write row data to a parquet file.
+
+    Args:
+        data: List of row dicts to write
+        output_dir: Base output directory
+        name_hash: Hash string for naming the parquet file
+        run_id: Run ID for organizing output files
+
+    Returns:
+        Path to the written parquet file
+    """
+    files_directory = f"{output_dir}/{run_id}/files"
+    os.makedirs(files_directory, exist_ok=True)
+    parquet_path = f"{files_directory}/{name_hash}.parquet"
+    pl.DataFrame(data).write_parquet(parquet_path)
+    return parquet_path
+
+
 def write_query_to_parquet(
     source: Source,
     sql: str,
@@ -37,17 +61,8 @@ def write_query_to_parquet(
     Raises:
         Exception if query execution or file writing fails
     """
-    run_output_dir = f"{output_dir}/{run_id}"
-    files_directory = f"{run_output_dir}/files"
-
     data = source.read_sql(sql)
-
-    df = pl.DataFrame(data)
-    os.makedirs(files_directory, exist_ok=True)
-    parquet_path = f"{files_directory}/{name_hash}.parquet"
-    df.write_parquet(parquet_path)
-
-    return parquet_path
+    return write_parquet_from_data(data, output_dir, name_hash, run_id)
 
 
 def execute_and_get_result(
@@ -83,12 +98,7 @@ def execute_and_get_result(
     columns = list(data[0].keys()) if data else []
 
     if output_dir and name_hash:
-        df = pl.DataFrame(data)
-        run_output_dir = f"{output_dir}/{run_id}"
-        files_directory = f"{run_output_dir}/files"
-        os.makedirs(files_directory, exist_ok=True)
-        parquet_path = f"{files_directory}/{name_hash}.parquet"
-        df.write_parquet(parquet_path)
+        write_parquet_from_data(data, output_dir, name_hash, run_id)
 
     return {
         "columns": columns,

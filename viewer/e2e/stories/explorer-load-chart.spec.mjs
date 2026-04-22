@@ -1,50 +1,39 @@
 /**
  * Story: Load Existing Chart (Design Spec Story 3)
  *
- * Validates loading an existing chart into the Explorer: model tabs populate
- * from lineage, insights populate, chart preview renders, and editing works.
- *
- * Precondition: Sandbox running on :3001/:8001 with a project that has saved charts.
- *
- * NOTE: Steps are skipped until Explorer chart-loading is implemented.
+ * Precondition: Sandbox running on :3001/:8001 with integration test project.
  */
 
 import { test, expect } from '@playwright/test';
+import { loadExplorerWithChart } from '../helpers/explorer.mjs';
 
 test.describe('Explorer Load Existing Chart', () => {
-  test('Step 1: Click chart in left nav populates model tabs', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer chart loading being implemented');
+  test.setTimeout(60000);
 
-    await page.goto('/#/explorer/new');
-    await page.waitForLoadState('networkidle');
+  test('Step 1: Click chart in left nav loads it', async ({ page }) => {
+    await loadExplorerWithChart(page, 'simple-scatter-chart');
 
-    // Click a chart in left nav Charts section
-    // VERIFY: Model tabs populate from chart lineage
-    // VERIFY: SQL editor shows first model's SQL
-    // VERIFY: Right panel shows insights from the chart
+    await expect(page.getByText('simple-scatter-chart').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('Step 2: Switch model tab updates editor', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer chart loading being implemented');
+  test('Step 2: Loaded chart has disabled save', async ({ page }) => {
+    await loadExplorerWithChart(page, 'simple-scatter-chart');
 
-    // Click second model tab
-    // VERIFY: SQL editor switches to second model's SQL
-    // VERIFY: Data table updates if query was previously run
+    await expect(page.getByRole('button', { name: 'Save to Project' })).toBeDisabled({
+      timeout: 5000,
+    });
   });
 
-  test('Step 3: Expand collapsed insight shows properties', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer insight CRUD being implemented');
+  test('Step 3: Loaded chart shows layout properties in right panel', async ({ page }) => {
+    await loadExplorerWithChart(page, 'aggregated-bar-chart');
 
-    // Click collapsed insight header
-    // VERIFY: Properties show filled values
-    // VERIFY: Other insights collapse
-  });
+    // Chart section should be visible and expanded
+    const chartSection = page.locator('[data-testid="chart-crud-section"]');
+    await expect(chartSection).toBeVisible({ timeout: 5000 });
 
-  test('Step 4: Edit insight property updates chart preview', async ({ page }) => {
-    test.skip(true, 'Depends on Explorer reactive chart preview being implemented');
-
-    // Edit an insight property value
-    // VERIFY: Chart preview updates reactively
-    // VERIFY: No console errors
+    // Layout properties should show non-zero count (chart has title, etc.)
+    // Wait for schema to load and properties to populate
+    const propCount = chartSection.locator('text=/[1-9]\\d* of \\d+ properties/');
+    await expect(propCount).toBeVisible({ timeout: 10000 });
   });
 });

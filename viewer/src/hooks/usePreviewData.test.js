@@ -93,7 +93,11 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config);
+    // New batched contract: single-insight auto-wraps into {insight_names, context_objects}
+    expect(mockStartRun).toHaveBeenCalledWith({
+      insight_names: ['test'],
+      context_objects: { insights: [config] },
+    });
   });
 
   test('triggers preview when needsInitialPreview is true and no prior preview', () => {
@@ -104,7 +108,24 @@ describe('usePreviewData', () => {
     );
 
     expect(result.current.needsPreviewRun).toBe(true);
-    expect(mockStartRun).toHaveBeenCalledWith(config);
+    expect(mockStartRun).toHaveBeenCalledWith({
+      insight_names: ['test'],
+      context_objects: { insights: [config] },
+    });
+  });
+
+  test('passes explicit requestBody when provided instead of wrapping config', () => {
+    const config = { name: 'test', props: { x: '?{col1}' } };
+    const requestBody = {
+      insight_names: ['test', 'other'],
+      context_objects: { insights: [config, { name: 'other' }] },
+    };
+
+    renderHook(() =>
+      usePreviewData('insights', config, { needsInitialPreview: true, requestBody })
+    );
+
+    expect(mockStartRun).toHaveBeenCalledWith(requestBody);
   });
 
   test('does not trigger preview when needsInitialPreview is false and no savedConfig', () => {
@@ -222,16 +243,17 @@ describe('useInsightPreviewData', () => {
     queryPropsHaveChanged.mockReturnValue(false);
     extractNonQueryProps.mockReturnValue({});
 
-    useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insightJobs')) {
-        return {};
-      }
-      return null;
-    });
-    useStore.getState = jest.fn().mockReturnValue({
+    useStore.mockStoreState = {
       insightJobs: {},
       updateInsightJob: jest.fn(),
+    };
+    useStore.mockImplementation(selector => {
+      if (typeof selector === 'function') {
+        return selector(useStore.mockStoreState);
+      }
+      return undefined;
     });
+    useStore.getState = jest.fn(() => useStore.mockStoreState);
   });
 
   test('passes null runId to useInsightsData when preview not completed', () => {
@@ -251,13 +273,14 @@ describe('useInsightPreviewData', () => {
     );
   });
 
-  test('passes preview-{name} runId when preview is completed', () => {
+  test('passes run_id from result when preview is completed', () => {
     usePreviewJob.mockReturnValue(
       makePreviewJob({
         runInstanceId: 'run-456',
         status: 'completed',
         isCompleted: true,
-        result: { files: [] },
+        // New contract: backend returns run_id in the polling result
+        result: { insights: {}, run_id: 'preview-run-456' },
       })
     );
 
@@ -268,7 +291,29 @@ describe('useInsightPreviewData', () => {
     expect(useInsightsData).toHaveBeenCalledWith(
       'proj-1',
       ['my-insight'],
-      'preview-my-insight',
+      'preview-run-456',
+      { storeKeyPrefix: '__preview__', cacheKey: 'run-456' }
+    );
+  });
+
+  test('passes null runId when result is completed but has no run_id', () => {
+    usePreviewJob.mockReturnValue(
+      makePreviewJob({
+        runInstanceId: 'run-456',
+        status: 'completed',
+        isCompleted: true,
+        result: {},
+      })
+    );
+
+    renderHook(() =>
+      useInsightPreviewData({ name: 'my-insight' }, { projectId: 'proj-1' })
+    );
+
+    expect(useInsightsData).toHaveBeenCalledWith(
+      'proj-1',
+      ['my-insight'],
+      null,
       { storeKeyPrefix: '__preview__', cacheKey: 'run-456' }
     );
   });
@@ -323,19 +368,12 @@ describe('useInsightPreviewData', () => {
   });
 
   test('returns data from store under prefixed preview key', () => {
-    const previewStoreData = {
+    useStore.mockStoreState.insightJobs = {
       '__preview__my-insight': {
         data: [{ x: 1, y: 2 }],
         type: 'scatter',
       },
     };
-
-    useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insightJobs')) {
-        return previewStoreData;
-      }
-      return null;
-    });
 
     const { result } = renderHook(() =>
       useInsightPreviewData({ name: 'my-insight' }, { projectId: 'proj' })
@@ -346,13 +384,6 @@ describe('useInsightPreviewData', () => {
   });
 
   test('returns null data when store has no preview data', () => {
-    useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insightJobs')) {
-        return {};
-      }
-      return null;
-    });
-
     const { result } = renderHook(() =>
       useInsightPreviewData({ name: 'my-insight' }, { projectId: 'proj' })
     );
@@ -362,13 +393,6 @@ describe('useInsightPreviewData', () => {
   });
 
   test('detects insight not in main store and sets needsInitialPreview', () => {
-    useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insightJobs')) {
-        return {};
-      }
-      return null;
-    });
-
     renderHook(() =>
       useInsightPreviewData({ name: 'new-insight' }, { projectId: 'proj' })
     );
@@ -377,14 +401,9 @@ describe('useInsightPreviewData', () => {
   });
 
   test('does not trigger initial preview when insight exists in main store', () => {
-    useStore.mockImplementation(selector => {
-      if (selector.toString().includes('insightJobs')) {
-        return {
-          'existing-insight': { data: [{ x: 1 }], query: 'SELECT 1' },
-        };
-      }
-      return null;
-    });
+    useStore.mockStoreState.insightJobs = {
+      'existing-insight': { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
 
     renderHook(() =>
       useInsightPreviewData({ name: 'existing-insight' }, { projectId: 'proj' })

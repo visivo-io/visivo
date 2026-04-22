@@ -159,14 +159,14 @@ class ObjectManager(ABC, Generic[T]):
             else:
                 # Compare actual values to determine if truly modified
                 published_obj = self._published_objects[name]
-                if self._objects_equal(cached_obj, published_obj):
+                if self.objects_equal(cached_obj, published_obj):
                     return ObjectStatus.PUBLISHED
                 return ObjectStatus.MODIFIED
         elif in_published:
             return ObjectStatus.PUBLISHED
         return None
 
-    def _objects_equal(self, obj1: T, obj2: T) -> bool:
+    def objects_equal(self, obj1: T, obj2: T) -> bool:
         """
         Compare two objects for equality.
 
