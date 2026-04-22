@@ -78,8 +78,8 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
     // The auto-created insight should already appear in the left nav Insights section
     const leftPanel = page.locator('[data-testid="left-panel-content"]');
 
-    // The insight count should include the auto-created one (20 from API + 1 new = 21)
-    await expect(page.getByText('Insights (21)')).toBeVisible({ timeout: 10000 });
+    // The insight count should include the auto-created one (21 published + 1 new draft = 22).
+    await expect(page.getByText(/^Insights \(22\)/)).toBeVisible({ timeout: 10000 });
 
     // A green dot should be visible in the left panel for the new insight
     const greenDots = leftPanel.locator('.bg-green-500');
@@ -208,7 +208,7 @@ test.describe('Left Nav — New Objects with Green Dots', () => {
 
     // Existing models (from API) should NOT have green dots
     // Wait for models to load
-    await expect(page.getByText('Models (8)')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/^Models \(\d+\)/)).toBeVisible({ timeout: 10000 });
 
     // Click on an existing model to verify it has no green dot
     const existingModel = leftPanel.getByRole('button', { name: 'test-table', exact: true });

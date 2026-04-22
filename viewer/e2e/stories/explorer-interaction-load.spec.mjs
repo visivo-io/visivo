@@ -98,16 +98,21 @@ test.describe('Interaction Loading — Pill Display', () => {
     // Click to open dropdown
     await dropdownBtn.click();
 
-    // Dropdown options render as buttons in an absolute-positioned menu
-    // Options are values from local_test_table.x (0-8)
-    // The dropdown menu has class "absolute z-50" containing option buttons
+    // Dropdown options render as buttons in an absolute-positioned menu.
+    // Options are values from local_test_table.x (0-8) and load asynchronously.
     const dropdownMenu = minXSection.locator('.absolute');
     await expect(dropdownMenu).toBeVisible({ timeout: 5000 });
 
-    // Find and click the option with value "1"
-    const option1 = dropdownMenu.locator('button').filter({ hasText: /^1$/ });
-    await expect(option1).toBeVisible({ timeout: 3000 });
-    await option1.click();
+    // Wait for at least one option button to appear, then pick any option that
+    // differs from the current value. Targeting a specific value like "1" is
+    // brittle — the query result ordering and which value is currently selected
+    // both vary across runs.
+    const allOptions = dropdownMenu.locator('button');
+    await expect(allOptions.first()).toBeVisible({ timeout: 5000 });
+    const trimmedBefore = (valueBefore || '').trim();
+    const differentOption = allOptions.filter({ hasNotText: new RegExp(`^${trimmedBefore}$`) }).first();
+    await expect(differentOption).toBeVisible({ timeout: 5000 });
+    await differentOption.click();
 
     // Verify the value changed
     const valueAfter = await dropdownBtn.textContent();

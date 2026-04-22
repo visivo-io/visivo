@@ -38,15 +38,12 @@ test.describe('Remove Insight Clears Inputs', () => {
     const initialInsightCount = latestBody.insight_names.length;
     expect(initialInsightCount).toBeGreaterThan(0);
 
-    // Find the remove button on an insight pill in the chart section
+    // Remove the insight from the chart section and verify the next preview
+    // POST no longer references it.
     const removeButton = page
       .locator('[data-testid="chart-insight-pill-range-slider-insight"] button')
       .first();
-    const hasRemoveButton = await removeButton.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!hasRemoveButton) {
-      test.skip(true, 'Could not find the remove-insight button in the chart section');
-      return;
-    }
+    await expect(removeButton).toBeVisible({ timeout: 5000 });
 
     latestBody = null;
     await removeButton.click();

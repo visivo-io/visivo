@@ -4,7 +4,6 @@ from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.server.views import register_views
 from visivo.logger.logger import Logger
-from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 from visivo.telemetry.middleware import init_telemetry_middleware
 from visivo.server.managers.source_manager import SourceManager
@@ -38,7 +37,6 @@ class FlaskApp:
         self._cached_defaults = None
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-        self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
         # Initialize object managers with DAG for efficient loading
         dag = project.dag()

@@ -3,7 +3,7 @@ import LeftPanel from './ExplorerLeftPanel';
 import CenterPanel from './CenterPanel';
 import ExplorerRightPanel from './ExplorerRightPanel';
 import ExplorerDndContext from './ExplorerDndContext';
-import VerticalDivider from '../explorer/VerticalDivider';
+import VerticalDivider from '../common/VerticalDivider';
 import useStore from '../../stores/store';
 import { usePanelResize } from '../../hooks/usePanelResize';
 

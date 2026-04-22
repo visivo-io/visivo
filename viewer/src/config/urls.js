@@ -18,20 +18,10 @@ const URL_PATTERNS = {
     dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png/',
 
-    worksheet: '/api/worksheet/',
-    worksheetDetail: '/api/worksheet/{id}/',
-    worksheetSession: '/api/worksheet/session/',
-    worksheetCells: '/api/worksheet/{id}/cells/',
-    worksheetCellDetail: '/api/worksheet/{worksheetId}/cells/{cellId}/',
-    worksheetCellExecute: '/api/worksheet/{worksheetId}/cells/{cellId}/execute/',
-    namedChildren: '/api/project/named_children/',
     writeChanges: '/api/project/write_changes/',
     projectFilePath: '/api/project/project_file_path/',
     sourcesMetadata: '/api/project/sources_metadata/',
     queryExecution: '/api/query/{projectId}/',
-
-    editorsInstalled: '/api/editors/installed/',
-    editorsOpen: '/api/editors/open/',
 
     // Source management endpoints
     sourcesList: '/api/sources/',
@@ -170,13 +160,6 @@ const URL_PATTERNS = {
     dashboardThumbnail: '/data/dashboards/{hash}.png',
 
     // Interactive endpoints not available in dist
-    worksheet: null,
-    worksheetDetail: null,
-    worksheetSession: null,
-    worksheetCells: null,
-    worksheetCellDetail: null,
-    worksheetCellExecute: null,
-    namedChildren: null,
     writeChanges: null,
     projectFilePath: null,
     sourcesMetadata: null,

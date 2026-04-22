@@ -34,12 +34,8 @@ class TestFlaskSourceEndpoints:
             )
             mock_serializer.return_value = mock_serializer_instance
 
-            # Mock WorksheetRepository to avoid database creation
-            with patch("visivo.server.flask_app.WorksheetRepository") as mock_worksheet_repo:
-                mock_worksheet_repo.return_value = Mock()
-
-                # Create FlaskApp instance
-                self.flask_app = FlaskApp(output_dir=self.temp_dir, project=self.project)
+            # Create FlaskApp instance
+            self.flask_app = FlaskApp(output_dir=self.temp_dir, project=self.project)
 
         # Mock the source_manager.get_sources_list() to return our sources
         self.flask_app.source_manager.get_sources_list = Mock(return_value=self.sources_list)

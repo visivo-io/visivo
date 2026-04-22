@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from '../../images/logo.png';
 import ProjectModal from './ProjectModal';
-import CreateObjectModal from '../editors/CreateObjectModal';
+import SourceEditForm from '../new-views/common/SourceEditForm';
 import Loading from '../common/Loading';
 import { faArrowRight, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -231,14 +231,33 @@ const Onboarding = () => {
           </Toast>
         </div>
       )}
-      <CreateObjectModal
-        isOpen={isCreateModalOpen}
-        onClose={handleToggleSourceModal}
-        objSelectedProperty="sources"
-        objStep="type"
-        onSubmitCallback={handleAddDataSource}
-        showFileOption={false}
-      />
+      {isCreateModalOpen && (
+        <div
+          data-testid="create-object-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <button
+              onClick={handleToggleSourceModal}
+              className="absolute right-4 top-4 z-10 rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <HiX className="h-5 w-5" />
+            </button>
+            <div className="p-6">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">Add Data Source</h2>
+              <SourceEditForm
+                isCreate
+                onClose={handleToggleSourceModal}
+                onSave={async (_type, _name, config) => {
+                  await handleAddDataSource({ config });
+                  return { success: true };
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed top-4 left-4 z-10">
         <div className="inline-flex items-center px-6 py-3 bg-white rounded-full shadow-lg border border-gray-200">

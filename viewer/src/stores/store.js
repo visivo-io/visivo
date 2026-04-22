@@ -1,12 +1,9 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-import createEditorSlice from './editorStore';
-import createExplorerSlice from './explorerStore';
 import createCommonSlice from './commonStore';
 import createProjectSlice from './projectStore';
 import createInsightJobsSlice from './insightJobsStore';
-import createWorksheetSlice from './worksheetStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
 import createModelSlice from './modelStore';
 import createDimensionSlice from './dimensionStore';
@@ -31,11 +28,8 @@ export { ObjectStatus };
 
 const useStore = create(
   devtools((...a) => ({
-    ...createEditorSlice(...a),
-    ...createExplorerSlice(...a),
     ...createProjectSlice(...a),
     ...createInsightJobsSlice(...a),
-    ...createWorksheetSlice(...a),
     ...createSourceSlice(...a),
     ...createModelSlice(...a),
     ...createDimensionSlice(...a),
