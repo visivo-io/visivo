@@ -1,0 +1,1 @@
+const n=async e=>{const t=await fetch("/api/explorer/diff/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e)});return t.status===200?await t.json():null};export{n as fetchDiff};
