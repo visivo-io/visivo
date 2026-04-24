@@ -218,6 +218,7 @@ class TestExplorerDiffViews:
         must strip it before Pydantic validation (Metric uses extra='forbid'),
         and must not count it as a diffed field. A new metric with the hint
         attached should return 'new' (not blow up, not return 'modified')."""
+
         # Simulate the real manager path: validate_object would raise if
         # parentModel were left in the config. Our side_effect raises when
         # it sees that key; returns a normal Mock otherwise.
@@ -232,9 +233,7 @@ class TestExplorerDiffViews:
         response = client.post(
             "/api/explorer/diff/",
             json={
-                "metrics": {
-                    "total_price": {"expression": "SUM(price)", "parentModel": "products"}
-                }
+                "metrics": {"total_price": {"expression": "SUM(price)", "parentModel": "products"}}
             },
             content_type="application/json",
         )
@@ -261,9 +260,7 @@ class TestExplorerDiffViews:
         response = client.post(
             "/api/explorer/diff/",
             json={
-                "metrics": {
-                    "total_price": {"expression": "SUM(price)", "parentModel": "products"}
-                }
+                "metrics": {"total_price": {"expression": "SUM(price)", "parentModel": "products"}}
             },
             content_type="application/json",
         )

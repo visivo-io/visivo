@@ -153,9 +153,7 @@ def test_new_model_with_new_nested_metric_in_same_write():
     published together, the metric must be nested under the model in the
     resulting YAML (not appended to a top-level metrics list)."""
     project_dir = temp_folder()
-    project_file = str(
-        temp_yml_file({}, name="project.yml", output_dir=project_dir)
-    )
+    project_file = str(temp_yml_file({}, name="project.yml", output_dir=project_dir))
 
     named_children = {
         # Model is processed first by ProjectWriter (dict insertion order
@@ -193,9 +191,7 @@ def test_missing_parent_model_falls_back_to_top_level():
     (e.g. because the YAML was authored unusually), it must not crash — it
     falls back to writing a top-level entry."""
     project_dir = temp_folder()
-    project_file = str(
-        temp_yml_file({}, name="project.yml", output_dir=project_dir)
-    )
+    project_file = str(temp_yml_file({}, name="project.yml", output_dir=project_dir))
 
     named_children = {
         "orphan_metric": {
