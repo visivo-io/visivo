@@ -254,6 +254,7 @@ def register_publish_views(app, flask_app, output_dir):
                         published_obj=flask_app.dimension_manager.published_objects.get(name),
                         type_key="dimensions",
                         project_file_path=flask_app.project.project_file_path,
+                        flask_app=flask_app,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -269,6 +270,7 @@ def register_publish_views(app, flask_app, output_dir):
                         published_obj=flask_app.metric_manager.published_objects.get(name),
                         type_key="metrics",
                         project_file_path=flask_app.project.project_file_path,
+                        flask_app=flask_app,
                     )
                     named_children[name] = child_info
                     published_count += 1
@@ -474,8 +476,27 @@ def register_publish_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
 
-def _build_child_info(name, obj, status, published_obj, type_key, project_file_path):
-    """Build the child info dict for ProjectWriter."""
+def _build_child_info(
+    name,
+    obj,
+    status,
+    published_obj,
+    type_key,
+    project_file_path,
+    flask_app=None,
+):
+    """Build the child info dict for ProjectWriter.
+
+    For metrics / dimensions with a `_parent_name` (i.e. scoped to a model
+    in the Explorer), the returned dict carries two extra hints:
+
+    - `parent_model`: the parent model's name, used by
+      `ProjectWriter._new()` to nest the config under the model's
+      `metrics` / `dimensions` list.
+    - `file_path` / `new_file_path`: set to the parent model's file path
+      (instead of the project file) so the new metric/dimension lands in
+      the same YAML where its parent model lives.
+    """
     # Map our ObjectStatus to ProjectWriter status strings
     status_map = {
         ObjectStatus.NEW: "New",
@@ -487,11 +508,28 @@ def _build_child_info(name, obj, status, published_obj, type_key, project_file_p
     # Fields that should not be written to YAML files (internal tracking fields)
     exclude_fields = {"path", "file_path"}
 
+    # Detect a model-scoped metric/dimension via the PrivateAttr set in the
+    # save endpoint. PrivateAttrs survive on the Pydantic instance.
+    parent_model_name = None
+    if obj is not None and type_key in ("metrics", "dimensions"):
+        parent_model_name = getattr(obj, "_parent_name", None)
+
+    parent_model_file = None
+    if parent_model_name and flask_app is not None:
+        parent_model_file = _find_parent_model_file_path(
+            parent_model_name, flask_app, project_file_path
+        )
+
     # Determine file paths
     if status == ObjectStatus.NEW:
-        # New objects go to the project file
-        file_path = project_file_path
-        new_file_path = project_file_path
+        # Nested children land in their parent model's file; unscoped new
+        # objects go to the project file.
+        if parent_model_file:
+            file_path = parent_model_file
+            new_file_path = parent_model_file
+        else:
+            file_path = project_file_path
+            new_file_path = project_file_path
         config = (
             obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
         )
@@ -508,13 +546,42 @@ def _build_child_info(name, obj, status, published_obj, type_key, project_file_p
             obj.model_dump(mode="json", exclude_none=True, exclude=exclude_fields) if obj else {}
         )
 
-    return {
+    info = {
         "status": writer_status,
         "file_path": file_path,
         "new_file_path": new_file_path,
         "type_key": type_key,
         "config": config,
     }
+    if parent_model_name:
+        info["parent_model"] = parent_model_name
+    return info
+
+
+def _find_parent_model_file_path(parent_model_name, flask_app, project_file_path):
+    """Resolve the YAML file path that should receive a new child scoped to
+    the named parent model.
+
+    Lookup order: model_manager.published_objects (existing models carry their
+    YAML path) → cached_objects (the parent may be a brand-new model being
+    published in the same pass, in which case we fall back to the project
+    file — same default as an unscoped NEW object). Returns None if no
+    parent candidate is found at all.
+    """
+    published = flask_app.model_manager.published_objects.get(parent_model_name)
+    if published is not None:
+        path = getattr(published, "file_path", None)
+        if path:
+            return path
+    cached = flask_app.model_manager.cached_objects.get(parent_model_name)
+    if cached is not None:
+        path = getattr(cached, "file_path", None)
+        if path:
+            return path
+        # Parent model is NEW in this pass — it will land in project_file_path,
+        # so the nested metric/dimension should land there too.
+        return project_file_path
+    return None
 
 
 def _get_file_path(obj, default_path):

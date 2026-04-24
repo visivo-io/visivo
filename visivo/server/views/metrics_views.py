@@ -41,16 +41,28 @@ def register_metrics_views(app, flask_app, output_dir):
 
     @app.route("/api/metrics/<metric_name>/save/", methods=["POST"])
     def save_metric(metric_name):
-        """Save a metric configuration to cache (draft state)."""
+        """Save a metric configuration to cache (draft state).
+
+        Accepts an optional `parentModel` field to scope the metric to a
+        specific model. The parent association is stored on the cached
+        Metric (PrivateAttr `_parent_name`) and used at publish time by
+        ProjectWriter to nest the metric under `model.metrics` rather
+        than writing it to a top-level `metrics:` list.
+        """
         try:
             metric_config = request.get_json(silent=True)
             if not metric_config:
                 return jsonify({"error": "Metric configuration is required"}), 400
 
+            # Extract parent-model scope (not a Pydantic field — passed separately).
+            parent_model = metric_config.pop("parentModel", None)
+
             # Ensure name matches URL parameter
             metric_config["name"] = metric_name
 
             metric = flask_app.metric_manager.save_from_config(metric_config)
+            if parent_model:
+                metric.set_parent_name(parent_model)
             status = flask_app.metric_manager.get_status(metric_name)
             return (
                 jsonify(

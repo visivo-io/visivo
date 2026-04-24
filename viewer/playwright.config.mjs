@@ -13,17 +13,34 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  // Two projects so state-mutating specs don't race with read-only specs.
-  // Read-only specs run first in parallel; state-mutating specs run afterwards.
+  // Three projects:
+  //   parallel        — read-only specs, sandbox on :3001 (integration project)
+  //   state-mutating  — in-memory save specs, sandbox on :3001, runs after parallel
+  //   publish         — file-mutating specs, isolated sandbox on :3002
+  //                     (test-projects/explorer-publish-e2e) — runs serially
+  //                     within itself but concurrently with the others.
   projects: [
     {
       name: 'parallel',
-      testIgnore: ['**/explorer-crud-save.spec.mjs'],
+      testIgnore: [
+        '**/explorer-crud-save.spec.mjs',
+        '**/explorer-publish-to-files.spec.mjs',
+      ],
     },
     {
       name: 'state-mutating',
       testMatch: ['**/explorer-crud-save.spec.mjs'],
       dependencies: ['parallel'],
+    },
+    {
+      name: 'publish',
+      testMatch: ['**/explorer-publish-to-files.spec.mjs'],
+      use: { baseURL: 'http://localhost:3002' },
+      fullyParallel: false,
+      workers: 1,
+      // Retries would run against polluted backend cache from the failed
+      // attempt, so they give no useful signal. Fail fast instead.
+      retries: 0,
     },
   ],
   // No webServer config — sandbox must be started separately

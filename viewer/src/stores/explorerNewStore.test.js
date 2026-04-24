@@ -1858,9 +1858,11 @@ describe('explorerNewStore', () => {
 
       expect(mockSaveMetric).toHaveBeenCalledWith('total', {
         expression: 'SUM(amount)',
+        parentModel: 'my_model',
       });
       expect(mockSaveDimension).toHaveBeenCalledWith('month', {
         expression: "DATE_TRUNC('month', date)",
+        parentModel: 'my_model',
       });
     });
 
@@ -1918,6 +1920,55 @@ describe('explorerNewStore', () => {
       expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
         props: { type: 'scatter', marker: { color: 'red', size: 10 }, x: 'col_a' },
       });
+    });
+
+    it('calls checkPublishStatus once on successful save so TopNav reflects pending changes', async () => {
+      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+      useStore.setState({
+        explorerModelStates: {
+          new_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+        checkPublishStatus: mockCheckPublishStatus,
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(mockCheckPublishStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT call checkPublishStatus when a save fails', async () => {
+      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+      mockSaveModel.mockRejectedValue(new Error('Network error'));
+      useStore.setState({
+        explorerModelStates: {
+          bad_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+        checkPublishStatus: mockCheckPublishStatus,
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(false);
+      expect(mockCheckPublishStatus).not.toHaveBeenCalled();
     });
   });
 

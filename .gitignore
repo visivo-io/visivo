@@ -21,6 +21,7 @@ prds/
 test-results/
 
 .sandbox/
+.sandbox-publish/
 viewer/e2e/screenshots/
 viewer/test-results/
 

@@ -92,10 +92,20 @@ def _diff_object(manager, name, config):
     Validates through Pydantic to normalize formats (ref strings, etc.),
     then compares only the fields present in the context config.
 
+    Accepts an optional `parentModel` key on the config (used for metric /
+    dimension scoping) — it's stripped before Pydantic validation since
+    `Metric`/`Dimension` use `extra="forbid"`.
+
     Returns "new", "modified", or None (unchanged).
     """
+    # Strip the frontend-only scoping field before validating so extra="forbid"
+    # doesn't reject it. We don't use parentModel in the diff itself — a change
+    # in parent scope is treated as a same-name modification or a new entry
+    # according to the manager's cache.
+    config_for_validate = {k: v for k, v in config.items() if k != "parentModel"}
+
     try:
-        config_with_name = {**config, "name": name}
+        config_with_name = {**config_for_validate, "name": name}
         context_obj = manager.validate_object(config_with_name)
     except (ValidationError, Exception) as e:
         Logger.instance().debug(f"Diff validation failed for {name}: {e}")
@@ -109,7 +119,7 @@ def _diff_object(manager, name, config):
     context_dump = _normalize_refs(context_obj.model_dump(exclude_none=True))
     existing_dump = _normalize_refs(existing.model_dump(exclude_none=True))
 
-    skip_keys = {"name", "path", "file_path"}
+    skip_keys = {"name", "path", "file_path", "parentModel"}
     config_keys = set(config.keys()) - skip_keys
 
     for key in config_keys:
