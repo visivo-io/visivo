@@ -2,6 +2,7 @@ import {
   chartDataFromInsightData,
   processInputRefsInProps,
   extractInputDependenciesFromProps,
+  unwrapIndicatorScalarProps,
 } from './Insight';
 
 const sampleInsightsData = {
@@ -459,3 +460,117 @@ describe('extractInputDependenciesFromProps', () => {
   });
 });
 /* eslint-enable no-template-curly-in-string */
+
+// ---------------------------------------------------------------------------
+// B13: indicator insights need scalar values, not arrays.
+// ---------------------------------------------------------------------------
+
+describe('unwrapIndicatorScalarProps', () => {
+  it('unwraps top-level scalar paths', () => {
+    const props = { value: [0.43] };
+    unwrapIndicatorScalarProps(props);
+    expect(props.value).toBe(0.43);
+  });
+
+  it('unwraps nested scalar paths (delta.reference)', () => {
+    const props = { delta: { reference: [100] } };
+    unwrapIndicatorScalarProps(props);
+    expect(props.delta.reference).toBe(100);
+  });
+
+  it('unwraps gauge.threshold.value', () => {
+    const props = { gauge: { threshold: { value: [0.9] } } };
+    unwrapIndicatorScalarProps(props);
+    expect(props.gauge.threshold.value).toBe(0.9);
+  });
+
+  it('unwraps numeric path segments (gauge.axis.range[0])', () => {
+    const props = { gauge: { axis: { range: [[0], [100]] } } };
+    unwrapIndicatorScalarProps(props);
+    expect(props.gauge.axis.range[0]).toBe(0);
+    expect(props.gauge.axis.range[1]).toBe(100);
+  });
+
+  it('returns null for empty arrays', () => {
+    const props = { value: [] };
+    unwrapIndicatorScalarProps(props);
+    expect(props.value).toBeNull();
+  });
+
+  it('leaves scalar values unchanged', () => {
+    const props = { value: 0.43 };
+    unwrapIndicatorScalarProps(props);
+    expect(props.value).toBe(0.43);
+  });
+
+  it('skips paths whose intermediate segments are missing', () => {
+    const props = { value: [1] };
+    // delta path doesn't exist; should not throw, value still unwrapped
+    unwrapIndicatorScalarProps(props);
+    expect(props.value).toBe(1);
+    expect(props.delta).toBeUndefined();
+  });
+
+  it('handles null/undefined input gracefully', () => {
+    expect(() => unwrapIndicatorScalarProps(null)).not.toThrow();
+    expect(() => unwrapIndicatorScalarProps(undefined)).not.toThrow();
+  });
+});
+
+describe('chartDataFromInsightData with indicator type', () => {
+  it('unwraps indicator value from array to scalar', () => {
+    const insights = {
+      ndr: {
+        type: 'indicator',
+        data: [{ v: 0.4325 }],
+        props_mapping: { 'props.value': 'v' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces.length).toBe(1);
+    expect(traces[0].value).toBe(0.4325);
+    expect(Array.isArray(traces[0].value)).toBe(false);
+  });
+
+  it('unwraps indicator delta.reference', () => {
+    const insights = {
+      ndr: {
+        type: 'indicator',
+        data: [{ v: 100, prev: 80 }],
+        props_mapping: { 'props.value': 'v', 'props.delta.reference': 'prev' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].value).toBe(100);
+    expect(traces[0].delta.reference).toBe(80);
+  });
+
+  it('keeps arrays for non-indicator types', () => {
+    const insights = {
+      bars: {
+        type: 'bar',
+        data: [{ x: 'a', y: 1 }, { x: 'b', y: 2 }],
+        props_mapping: { 'props.x': 'x', 'props.y': 'y' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual(['a', 'b']);
+    expect(traces[0].y).toEqual([1, 2]);
+  });
+
+  it('unwraps indicator scalars even when split is set', () => {
+    const insights = {
+      indicator_split: {
+        type: 'indicator',
+        split_key: 'region',
+        data: [{ v: 5, region: 'west' }, { v: 7, region: 'east' }],
+        props_mapping: { 'props.value': 'v' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces.length).toBe(2);
+    for (const trace of traces) {
+      expect(typeof trace.value).toBe('number');
+    }
+  });
+});

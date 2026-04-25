@@ -309,6 +309,59 @@ function groupDataBySplitKey(data, splitKey) {
 }
 
 /**
+ * Plotly indicator-trace prop paths that expect a scalar (number or string)
+ * rather than an array. mapQueryResultsToProps always produces arrays, so when
+ * the insight type is `indicator` we must unwrap arrays at these paths to the
+ * first element. Plotly renders `-` (placeholder) when an indicator scalar
+ * slot receives an array. See B13 in specs/plan/v1-final-bugfixes/.
+ */
+const INDICATOR_SCALAR_PATHS = [
+  'value',
+  'delta.reference',
+  'delta.relative',
+  'gauge.threshold.value',
+  'gauge.axis.range.0',
+  'gauge.axis.range.1',
+  'title.text',
+  'number.prefix',
+  'number.suffix',
+];
+
+/**
+ * Walk a dotted path on `obj` and, if the leaf value is an array, replace it
+ * with its first element (or `null` for empty arrays).
+ *
+ * Path segments may be numeric (e.g. `gauge.axis.range.0`) — those are coerced
+ * to array indices. Missing segments cause the path to be skipped silently.
+ */
+function unwrapScalarAtPath(obj, path) {
+  const parts = path.split('.');
+  let parent = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = /^\d+$/.test(parts[i]) ? Number(parts[i]) : parts[i];
+    if (parent == null || parent[key] == null) return;
+    parent = parent[key];
+  }
+  const last = parts[parts.length - 1];
+  const lastKey = /^\d+$/.test(last) ? Number(last) : last;
+  const value = parent[lastKey];
+  if (Array.isArray(value)) {
+    parent[lastKey] = value.length > 0 ? value[0] : null;
+  }
+}
+
+/**
+ * Indicator-only post-processing: collapse array-valued scalar slots to scalars.
+ * Mutates `props` in place. Safe to call on non-indicator props (no-op).
+ */
+export function unwrapIndicatorScalarProps(props) {
+  if (!props) return;
+  for (const path of INDICATOR_SCALAR_PATHS) {
+    unwrapScalarAtPath(props, path);
+  }
+}
+
+/**
  * Transform insights data into chart-ready format
  *
  * Takes the insightsData object (from Zustand store) and converts it to an array
@@ -317,6 +370,10 @@ function groupDataBySplitKey(data, splitKey) {
  *
  * Input refs in static_props (like ${input.value}) are replaced with actual values
  * if inputs are provided.
+ *
+ * For `type: indicator` traces, scalar slots (value, delta.reference,
+ * gauge.threshold.value, etc.) are unwrapped from single-element arrays to
+ * scalars so Plotly renders the value rather than the `-` placeholder.
  *
  * @param {Object} insightsData - Map of insight names to insight objects
  * @param {Object} inputs - Optional map of input names to input objects with accessor values
@@ -374,6 +431,10 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
         traceProps.sourceInsight = insightName; // Track original insight name for filtering
         traceProps.legendgroup = splitValue;
 
+        if (type === 'indicator') {
+          unwrapIndicatorScalarProps(traceProps);
+        }
+
         traces.push(traceProps);
       }
     } else {
@@ -392,6 +453,11 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
       }
 
       traceProps.name = insightName;
+
+      if (type === 'indicator') {
+        unwrapIndicatorScalarProps(traceProps);
+      }
+
       traces.push(traceProps);
     }
   }
