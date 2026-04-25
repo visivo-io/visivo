@@ -304,3 +304,88 @@ class TestNameFormatCascadeErrorHandling:
         # And the good file should still produce a migration.
         good_migrations = [m for m in migrations if str(good_path) in m.file_path]
         assert good_migrations, "good file should migrate despite broken sibling"
+
+
+# ---------------------------------------------------------------------------
+# B02: Jinja-templated names must NOT be normalised. The migrator can't
+# pre-resolve `{{ period }}` so it would otherwise rewrite a templated name
+# into a literal string, producing duplicate-name compile errors when the
+# Jinja loop runs.
+# ---------------------------------------------------------------------------
+
+
+class TestNameFormatJinjaGuard:
+    """B02 regression coverage."""
+
+    def test_unquoted_name_with_jinja_expression_skipped(self, tmp_path):
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        path = tmp_path / "models.visivo.yml"
+        path.write_text(
+            "models:\n"
+            "  - name: inbound-call-treemap-past-{{ period }}-weeks\n"
+            "    sql: SELECT 1\n"
+        )
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+
+        # Migration would have produced something like
+        # `inbound-call-treemap-past-period-weeks` if not skipped.
+        for m in migrations:
+            assert "inbound-call-treemap-past-" not in m.new_text
+
+    def test_quoted_name_with_jinja_expression_skipped(self, tmp_path):
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        path = tmp_path / "models.visivo.yml"
+        path.write_text(
+            "models:\n" '  - name: "report-{{ period }}-summary"\n' "    sql: SELECT 1\n"
+        )
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+
+        for m in migrations:
+            assert "report-period-summary" not in m.new_text
+
+    def test_jinja_statement_block_also_skipped(self, tmp_path):
+        """`{% ... %}` statement blocks should also keep the name skipped."""
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        path = tmp_path / "models.visivo.yml"
+        path.write_text(
+            "models:\n"
+            "  - name: thing-{% if cond %}a{% else %}b{% endif %}\n"
+            "    sql: SELECT 1\n"
+        )
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+        for m in migrations:
+            assert "thing-a" not in m.new_text and "thing-b" not in m.new_text
+
+    def test_trace_name_with_jinja_skipped(self, tmp_path):
+        """`trace_name: foo-{{ x }}` (used in legacy column_defs) is also a
+        Jinja-templated reference and should not be normalised."""
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        path = tmp_path / "tables.visivo.yml"
+        path.write_text(
+            "tables:\n"
+            "  - name: t\n"
+            "    column_defs:\n"
+            "      - trace_name: my-trace-{{ period }}\n"
+        )
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+        for m in migrations:
+            assert "my-trace-period" not in m.new_text
+
+    def test_non_jinja_invalid_name_still_migrates(self, tmp_path):
+        """Sanity: a normal invalid-format name (no Jinja) is still migrated."""
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        path = tmp_path / "models.visivo.yml"
+        path.write_text("models:\n  - name: My Plain Model\n    sql: SELECT 1\n")
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+        plain = [m for m in migrations if "my-plain-model" in m.new_text]
+        assert plain, "non-Jinja invalid names should still migrate"
