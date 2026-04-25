@@ -4,6 +4,7 @@ import os
 import re
 from typing import TYPE_CHECKING, List, Dict
 
+from visivo.logger.logger import Logger
 from visivo.models.deprecations.base_deprecation import (
     BaseDeprecationChecker,
     DeprecationWarning,
@@ -14,6 +15,33 @@ from visivo.utils import list_all_ymls_in_dir
 
 if TYPE_CHECKING:
     from visivo.models.project import Project
+
+
+def _read_file_safe(file_path) -> "str | None":
+    """Read a YAML file as UTF-8 with error replacement.
+
+    Returns the decoded content on success, or ``None`` if the read fails.
+    Logs a warning for any unexpected error so users can see WHICH file
+    was skipped during a migrate pass — the previous bare
+    ``except Exception: continue`` swallowed every error silently and
+    led to "migration looked complete but my refs aren't updated"
+    surprises (B03, B04).
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError) as exc:
+        Logger.instance().warn(
+            f"migrate: skipping {file_path} during name-format pass: "
+            f"{type(exc).__name__}: {exc}"
+        )
+        return None
+    except Exception as exc:  # noqa: BLE001 - log unexpected errors but keep going
+        Logger.instance().warn(
+            f"migrate: skipping {file_path} during name-format pass: "
+            f"{type(exc).__name__}: {exc}"
+        )
+        return None
 
 
 # Pattern to find name fields in YAML files
@@ -196,167 +224,155 @@ class NameFormatDeprecation(BaseDeprecationChecker):
 
         # First pass: collect all invalid names and their normalized versions
         for file_path in list_all_ymls_in_dir(working_dir):
-            try:
-                with open(file_path, "r") as f:
-                    content = f.read()
-
-                # Find unquoted name: value patterns
-                for match in NAME_FIELD_UNQUOTED_PATTERN.finditer(content):
-                    indent = match.group(1)
-                    list_prefix = match.group(2) or ""
-                    name_value = match.group(3).strip()
-
-                    if not is_valid_name(name_value):
-                        normalized = normalize_name(name_value)
-                        if normalized != name_value:
-                            name_renames[name_value] = normalized
-                            migrations.append(
-                                MigrationAction(
-                                    file_path=str(file_path),
-                                    old_text=match.group(0),
-                                    new_text=f"{indent}{list_prefix}name: {normalized}",
-                                    description=f"'{name_value}' -> '{normalized}'",
-                                )
-                            )
-
-                # Find quoted name: "value" or name: 'value' patterns
-                for match in NAME_FIELD_QUOTED_PATTERN.finditer(content):
-                    indent = match.group(1)
-                    list_prefix = match.group(2) or ""
-                    name_value = match.group(4)  # Group 3 is the quote char
-
-                    if not is_valid_name(name_value):
-                        normalized = normalize_name(name_value)
-                        if normalized != name_value:
-                            name_renames[name_value] = normalized
-                            migrations.append(
-                                MigrationAction(
-                                    file_path=str(file_path),
-                                    old_text=match.group(0),
-                                    new_text=f"{indent}{list_prefix}name: {normalized}",
-                                    description=f"'{name_value}' -> '{normalized}'",
-                                )
-                            )
-
-            except Exception:
-                # Skip files that can't be read
+            content = _read_file_safe(file_path)
+            if content is None:
                 continue
+
+            # Find unquoted name: value patterns
+            for match in NAME_FIELD_UNQUOTED_PATTERN.finditer(content):
+                indent = match.group(1)
+                list_prefix = match.group(2) or ""
+                name_value = match.group(3).strip()
+
+                if not is_valid_name(name_value):
+                    normalized = normalize_name(name_value)
+                    if normalized != name_value:
+                        name_renames[name_value] = normalized
+                        migrations.append(
+                            MigrationAction(
+                                file_path=str(file_path),
+                                old_text=match.group(0),
+                                new_text=f"{indent}{list_prefix}name: {normalized}",
+                                description=f"'{name_value}' -> '{normalized}'",
+                            )
+                        )
+
+            # Find quoted name: "value" or name: 'value' patterns
+            for match in NAME_FIELD_QUOTED_PATTERN.finditer(content):
+                indent = match.group(1)
+                list_prefix = match.group(2) or ""
+                name_value = match.group(4)  # Group 3 is the quote char
+
+                if not is_valid_name(name_value):
+                    normalized = normalize_name(name_value)
+                    if normalized != name_value:
+                        name_renames[name_value] = normalized
+                        migrations.append(
+                            MigrationAction(
+                                file_path=str(file_path),
+                                old_text=match.group(0),
+                                new_text=f"{indent}{list_prefix}name: {normalized}",
+                                description=f"'{name_value}' -> '{normalized}'",
+                            )
+                        )
 
         # Second pass: find all references to renamed items and update them
         # Also find any ref() calls with invalid names that weren't found as name: fields
         # (e.g., names defined in includes or external files)
         for file_path in list_all_ymls_in_dir(working_dir):
-            try:
-                with open(file_path, "r") as f:
-                    content = f.read()
+            content = _read_file_safe(file_path)
+            if content is None:
+                continue
 
-                # First handle known renames from name: fields
-                for old_name, new_name in name_renames.items():
-                    ref_pattern = build_ref_pattern(old_name)
-                    for match in ref_pattern.finditer(content):
-                        old_ref = match.group(0)
-                        # Convert to new refs syntax: ${refs.new_name}
-                        # Check if this ref has a property path
-                        new_ref = self._build_new_ref(old_ref, old_name, new_name)
+            # First handle known renames from name: fields
+            for old_name, new_name in name_renames.items():
+                ref_pattern = build_ref_pattern(old_name)
+                for match in ref_pattern.finditer(content):
+                    old_ref = match.group(0)
+                    # Convert to new refs syntax: ${refs.new_name}
+                    # Check if this ref has a property path
+                    new_ref = self._build_new_ref(old_ref, old_name, new_name)
+                    if new_ref and new_ref != old_ref:
+                        migrations.append(
+                            MigrationAction(
+                                file_path=str(file_path),
+                                old_text=old_ref,
+                                new_text=new_ref,
+                                description=f"ref '{old_name}' -> ref '{new_name}'",
+                            )
+                        )
+
+            # Also find any ref() calls with invalid names not in name_renames
+            # These might reference names defined in includes or external files
+            for match in REF_CALL_PATTERN.finditer(content):
+                ref_name = match.group("name").strip()
+                # Skip if already handled or if the name is valid
+                if ref_name in name_renames or is_valid_name(ref_name):
+                    continue
+
+                normalized = normalize_name(ref_name)
+                if normalized != ref_name:
+                    # Find the full ref pattern for this name
+                    ref_pattern = build_ref_pattern(ref_name)
+                    for ref_match in ref_pattern.finditer(content):
+                        old_ref = ref_match.group(0)
+                        new_ref = self._build_new_ref(old_ref, ref_name, normalized)
                         if new_ref and new_ref != old_ref:
                             migrations.append(
                                 MigrationAction(
                                     file_path=str(file_path),
                                     old_text=old_ref,
                                     new_text=new_ref,
-                                    description=f"ref '{old_name}' -> ref '{new_name}'",
+                                    description=f"ref '{ref_name}' -> ref '{normalized}'",
                                 )
                             )
-
-                # Also find any ref() calls with invalid names not in name_renames
-                # These might reference names defined in includes or external files
-                for match in REF_CALL_PATTERN.finditer(content):
-                    ref_name = match.group("name").strip()
-                    # Skip if already handled or if the name is valid
-                    if ref_name in name_renames or is_valid_name(ref_name):
-                        continue
-
-                    normalized = normalize_name(ref_name)
-                    if normalized != ref_name:
-                        # Find the full ref pattern for this name
-                        ref_pattern = build_ref_pattern(ref_name)
-                        for ref_match in ref_pattern.finditer(content):
-                            old_ref = ref_match.group(0)
-                            new_ref = self._build_new_ref(old_ref, ref_name, normalized)
-                            if new_ref and new_ref != old_ref:
-                                migrations.append(
-                                    MigrationAction(
-                                        file_path=str(file_path),
-                                        old_text=old_ref,
-                                        new_text=new_ref,
-                                        description=f"ref '{ref_name}' -> ref '{normalized}'",
-                                    )
-                                )
-                        # Add to name_renames to avoid duplicate processing
-                        name_renames[ref_name] = normalized
-
-            except Exception:
-                # Skip files that can't be read
-                continue
+                    # Add to name_renames to avoid duplicate processing
+                    name_renames[ref_name] = normalized
 
         # Third pass: update trace_name, insight_name, source_name, and alert_name fields
         # that reference renamed items
         for file_path in list_all_ymls_in_dir(working_dir):
-            try:
-                with open(file_path, "r") as f:
-                    content = f.read()
-
-                # Update trace_name fields
-                migrations.extend(
-                    self._migrate_reference_field(
-                        content,
-                        file_path,
-                        name_renames,
-                        "trace_name",
-                        TRACE_NAME_FIELD_UNQUOTED_PATTERN,
-                        TRACE_NAME_FIELD_QUOTED_PATTERN,
-                    )
-                )
-
-                # Update insight_name fields
-                migrations.extend(
-                    self._migrate_reference_field(
-                        content,
-                        file_path,
-                        name_renames,
-                        "insight_name",
-                        INSIGHT_NAME_FIELD_UNQUOTED_PATTERN,
-                        INSIGHT_NAME_FIELD_QUOTED_PATTERN,
-                    )
-                )
-
-                # Update source_name fields (used in defaults)
-                migrations.extend(
-                    self._migrate_reference_field(
-                        content,
-                        file_path,
-                        name_renames,
-                        "source_name",
-                        SOURCE_NAME_FIELD_UNQUOTED_PATTERN,
-                        SOURCE_NAME_FIELD_QUOTED_PATTERN,
-                    )
-                )
-
-                # Update alert_name fields (used in defaults)
-                migrations.extend(
-                    self._migrate_reference_field(
-                        content,
-                        file_path,
-                        name_renames,
-                        "alert_name",
-                        ALERT_NAME_FIELD_UNQUOTED_PATTERN,
-                        ALERT_NAME_FIELD_QUOTED_PATTERN,
-                    )
-                )
-
-            except Exception:
-                # Skip files that can't be read
+            content = _read_file_safe(file_path)
+            if content is None:
                 continue
+
+            # Update trace_name fields
+            migrations.extend(
+                self._migrate_reference_field(
+                    content,
+                    file_path,
+                    name_renames,
+                    "trace_name",
+                    TRACE_NAME_FIELD_UNQUOTED_PATTERN,
+                    TRACE_NAME_FIELD_QUOTED_PATTERN,
+                )
+            )
+
+            # Update insight_name fields
+            migrations.extend(
+                self._migrate_reference_field(
+                    content,
+                    file_path,
+                    name_renames,
+                    "insight_name",
+                    INSIGHT_NAME_FIELD_UNQUOTED_PATTERN,
+                    INSIGHT_NAME_FIELD_QUOTED_PATTERN,
+                )
+            )
+
+            # Update source_name fields (used in defaults)
+            migrations.extend(
+                self._migrate_reference_field(
+                    content,
+                    file_path,
+                    name_renames,
+                    "source_name",
+                    SOURCE_NAME_FIELD_UNQUOTED_PATTERN,
+                    SOURCE_NAME_FIELD_QUOTED_PATTERN,
+                )
+            )
+
+            # Update alert_name fields (used in defaults)
+            migrations.extend(
+                self._migrate_reference_field(
+                    content,
+                    file_path,
+                    name_renames,
+                    "alert_name",
+                    ALERT_NAME_FIELD_UNQUOTED_PATTERN,
+                    ALERT_NAME_FIELD_QUOTED_PATTERN,
+                )
+            )
 
         return migrations
 
