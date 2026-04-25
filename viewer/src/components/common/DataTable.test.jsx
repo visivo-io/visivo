@@ -146,4 +146,34 @@ describe('DataTable', () => {
       expect(cb).toBeChecked();
     });
   });
+
+  // B15: the root must fill its parent item div in both directions and not
+  // exceed it. Combined with the inner overflow-auto this gives wide tables
+  // a horizontal scrollbar inside the card and prevents narrow-content
+  // tables from shrinking to less than the slot width.
+  describe('B15 sizing', () => {
+    it('root has w-full and max-w-full classes (data state)', () => {
+      const { container } = render(<DataTable {...defaultProps} />);
+      // eslint-disable-next-line testing-library/no-node-access
+      const root = container.firstChild;
+      expect(root.className).toMatch(/\bw-full\b/);
+      expect(root.className).toMatch(/\bmax-w-full\b/);
+    });
+
+    it('root has w-full and max-w-full classes (loading state)', () => {
+      const { container } = render(<DataTable {...defaultProps} isLoading={true} />);
+      // eslint-disable-next-line testing-library/no-node-access
+      const root = container.firstChild;
+      expect(root.className).toMatch(/\bw-full\b/);
+      expect(root.className).toMatch(/\bmax-w-full\b/);
+    });
+
+    it('root has w-full and max-w-full classes (empty state)', () => {
+      const { container } = render(<DataTable {...defaultProps} rows={[]} />);
+      // eslint-disable-next-line testing-library/no-node-access
+      const root = container.firstChild;
+      expect(root.className).toMatch(/\bw-full\b/);
+      expect(root.className).toMatch(/\bmax-w-full\b/);
+    });
+  });
 });
