@@ -1176,3 +1176,64 @@ class TestFieldResolverFindColumnInSchema:
 
         result = resolver._find_column_in_schema(table, "nonexistent", is_quoted=True)
         assert result is None
+
+
+class TestFieldResolverB10SqlModelFallback:
+    """B10 regression coverage.
+
+    On 1.0.79, ``${ref(model).column_name}`` where ``column_name`` happened
+    to match the name of *another* SqlModel in the project (rather than a
+    declared dimension/metric) crashed ``visivo serve`` with::
+
+        AttributeError: 'SqlModel' object has no attribute 'expression'
+
+    inside ``field_resolver.py:420`` at ``field_node.expression`` — the code
+    looked up the field by name without checking that the resolved node was
+    actually a Metric or Dimension before reading ``.expression``.
+
+    The fix on current ``main`` (lines 363–367 of ``field_resolver.py``)
+    explicitly checks ``isinstance(field_node, (Metric, Dimension))`` and
+    raises ValueError otherwise, which is caught and rerouted to the
+    implicit-dimension lookup. This test pins that behavior so it can't
+    regress.
+    """
+
+    def test_ref_to_implicit_dimension_when_name_collides_with_sqlmodel(self, tmpdir):
+        """``${ref(orders).revenue}`` — where ``orders`` is one SqlModel and
+        ``revenue`` is **another** SqlModel and ``orders`` has a ``revenue``
+        column in its schema — must resolve as an implicit dimension on
+        ``orders``, not crash trying to read ``.expression`` on the
+        ``revenue`` SqlModel."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        # Two SqlModels: 'orders' (which we'll reference) and 'revenue' (whose
+        # name collides with a column inside 'orders').
+        orders = SqlModel(
+            name="orders", sql="SELECT * FROM orders_table", source="ref(test_source)"
+        )
+        revenue = SqlModel(
+            name="revenue", sql="SELECT * FROM revenue_table", source="ref(test_source)"
+        )
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders, revenue],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        # Schema for 'orders' contains a 'revenue' column.
+        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_file = schema_dir.join("schema.json")
+        schema_data = {orders.name_hash(): {"id": "INTEGER", "revenue": "DECIMAL"}}
+        schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+
+        # The resolver must NOT raise AttributeError; it must succeed and
+        # produce a qualified reference to orders.revenue (the implicit
+        # dimension), not try to dereference the 'revenue' SqlModel.
+        result = resolver.resolve("${ref(orders).revenue}")
+
+        # Should look like '"<orders_hash>"."revenue" AS "<alias_hash>"'
+        assert orders.name_hash() in result
+        assert "revenue" in result.lower()
