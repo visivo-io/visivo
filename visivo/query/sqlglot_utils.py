@@ -322,6 +322,21 @@ def identify_column_references(
     # Parse the expression (without sort order)
     parsed = parse_one(expr_sql_stripped, read=sqlglot_dialect)
 
+    # B09: collect the literal-text values of identifiers the user wrote as
+    # explicitly quoted in the source expression. These represent case the
+    # *user* chose (Lightdash etc. produce quoted-lowercase aliases like
+    # `"fact_order_x"`) and must survive the Snowflake uppercase pass below.
+    # Without this, a CTE that defines `AS "fact_order_x"` ends up referenced
+    # as `"FACT_ORDER_X"` and Snowflake errors with
+    # `invalid identifier '"fact_order_x"'`.
+    #
+    # We compare by literal text rather than object identity because
+    # ``qualify.qualify`` may rebuild parts of the AST and the original
+    # Identifier instances are not preserved in the qualified output.
+    user_quoted_identifier_names = {
+        ident.this for ident in parsed.find_all(exp.Identifier) if ident.quoted
+    }
+
     # For Snowflake, uppercase the model hash for the table reference
     # This ensures column qualifiers like "model_hash"."column" match the CTE alias casing
     # Snowflake stores unquoted identifiers as UPPERCASE, so we must use uppercase everywhere
@@ -352,8 +367,18 @@ def identify_column_references(
     # Snowflake stores unquoted column names as uppercase (X, Y), but our schema
     # uses lowercase (x, y). SQLGlot's qualify.qualify() quotes identifiers, so
     # we need to uppercase them to match Snowflake's case-sensitive quoted lookup.
+    #
+    # B09: skip identifiers whose literal text matches one the user wrote as
+    # explicitly quoted in the source expression. Those carry case the user
+    # meant (e.g. Lightdash-emitted `"fact_order_x"` aliases). Identifiers
+    # introduced by the qualifier (the model_hash table reference and any
+    # columns it added) are not in the set and still get uppercased, so the
+    # Snowflake-specific normalization for unquoted identifiers continues to
+    # work for the common case.
     if sqlglot_dialect == "snowflake":
         for identifier in first_expr.find_all(exp.Identifier):
+            if identifier.this and identifier.this in user_quoted_identifier_names:
+                continue
             if identifier.this:
                 identifier.args["this"] = identifier.this.upper()
 
