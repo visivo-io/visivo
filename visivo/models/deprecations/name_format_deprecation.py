@@ -44,6 +44,23 @@ def _read_file_safe(file_path) -> "str | None":
         return None
 
 
+# B02: detect Jinja control structures inside a name value. Names that
+# contain ``{{ ... }}`` or ``{% ... %}`` are dynamic — at runtime the
+# Jinja renderer replaces them with values that are not knowable at
+# migrate time. Normalising them as if they were literals turns
+# ``inbound-call-treemap-past-{{period}}-weeks`` into the literal
+# ``inbound-call-treemap-past-period-weeks``, which then collides three
+# times across a Jinja loop iteration and breaks compile.
+_JINJA_PRESENCE_PATTERN = re.compile(r"\{\{.*?\}\}|\{%.*?%\}", re.DOTALL)
+
+
+def _has_jinja(value: str) -> bool:
+    """Return True if ``value`` contains a Jinja expression / statement."""
+    if not value:
+        return False
+    return _JINJA_PRESENCE_PATTERN.search(value) is not None
+
+
 # Pattern to find name fields in YAML files
 # Matches: name: value (unquoted) - value must start with non-quote/non-space char
 NAME_FIELD_UNQUOTED_PATTERN = re.compile(
@@ -174,7 +191,11 @@ class NameFormatDeprecation(BaseDeprecationChecker):
             # Check if this dict has a name field
             if "name" in data:
                 name_value = data["name"]
-                if isinstance(name_value, str) and not is_valid_name(name_value):
+                if (
+                    isinstance(name_value, str)
+                    and not is_valid_name(name_value)
+                    and not _has_jinja(name_value)
+                ):
                     warnings.append(self._create_warning(name_value, f"{path}.name"))
 
             # Recurse into all values
@@ -234,6 +255,11 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                 list_prefix = match.group(2) or ""
                 name_value = match.group(3).strip()
 
+                # B02: skip names that contain Jinja — we can't normalise a
+                # template literally without breaking compile.
+                if _has_jinja(name_value):
+                    continue
+
                 if not is_valid_name(name_value):
                     normalized = normalize_name(name_value)
                     if normalized != name_value:
@@ -252,6 +278,10 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                 indent = match.group(1)
                 list_prefix = match.group(2) or ""
                 name_value = match.group(4)  # Group 3 is the quote char
+
+                # B02: skip Jinja-containing values.
+                if _has_jinja(name_value):
+                    continue
 
                 if not is_valid_name(name_value):
                     normalized = normalize_name(name_value)
@@ -298,6 +328,11 @@ class NameFormatDeprecation(BaseDeprecationChecker):
                 ref_name = match.group("name").strip()
                 # Skip if already handled or if the name is valid
                 if ref_name in name_renames or is_valid_name(ref_name):
+                    continue
+
+                # B02: a Jinja-templated ref name has no fixed string identity
+                # at migrate time. Don't try to rename it.
+                if _has_jinja(ref_name):
                     continue
 
                 normalized = normalize_name(ref_name)
@@ -407,6 +442,10 @@ class NameFormatDeprecation(BaseDeprecationChecker):
             list_prefix = match.group(2) or ""
             ref_value = match.group(3).strip()
 
+            # B02: skip Jinja-templated reference values.
+            if _has_jinja(ref_value):
+                continue
+
             # Check if this references a renamed item
             if ref_value in name_renames:
                 new_value = name_renames[ref_value]
@@ -439,6 +478,10 @@ class NameFormatDeprecation(BaseDeprecationChecker):
             indent = match.group(1)
             list_prefix = match.group(2) or ""
             ref_value = match.group(4)  # Group 3 is the quote char
+
+            # B02: skip Jinja-templated reference values.
+            if _has_jinja(ref_value):
+                continue
 
             # Check if this references a renamed item
             if ref_value in name_renames:
