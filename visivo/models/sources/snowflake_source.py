@@ -49,19 +49,19 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
     Note: Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
     """
 
-    account: Optional[str] = Field(
+    account: Optional[StringOrEnvVar] = Field(
         None,
         description="The snowflake account url. Here's how you find this: [snowflake docs](https://docs.snowflake.com/en/user-guide/admin-account-identifier).",
     )
-    warehouse: Optional[str] = Field(
+    warehouse: Optional[StringOrEnvVar] = Field(
         None,
         description="The compute warehouse that you want queries from your Visivo project to leverage.",
     )
-    role: Optional[str] = Field(
+    role: Optional[StringOrEnvVar] = Field(
         None,
         description="The access role that you want to use when running queries.",
     )
-    timezone: Optional[str] = Field(
+    timezone: Optional[StringOrEnvVar] = Field(
         None,
         description="The timezone that you want to use by default when running queries.",
     )
@@ -80,10 +80,30 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
         8, description="The pool size that is used for this connection."
     )
 
-    protocol: Optional[str] = Field(
+    protocol: Optional[StringOrEnvVar] = Field(
         None,
         description="The protocol to use for the connection.",
     )
+
+    def get_account(self) -> Optional[str]:
+        """Get the resolved account value (handles ${env.X} references)."""
+        return self._resolve_field(self.account)
+
+    def get_warehouse(self) -> Optional[str]:
+        """Get the resolved warehouse value (handles ${env.X} references)."""
+        return self._resolve_field(self.warehouse)
+
+    def get_role(self) -> Optional[str]:
+        """Get the resolved role value (handles ${env.X} references)."""
+        return self._resolve_field(self.role)
+
+    def get_timezone(self) -> Optional[str]:
+        """Get the resolved timezone value (handles ${env.X} references)."""
+        return self._resolve_field(self.timezone)
+
+    def get_protocol(self) -> Optional[str]:
+        """Get the resolved protocol value (handles ${env.X} references)."""
+        return self._resolve_field(self.protocol)
 
     def get_private_key_path(self) -> Optional[str]:
         """Get the resolved private key path value."""
@@ -130,27 +150,31 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
 
         url_attributes = {
             "user": self.get_username(),
-            "account": self.account,
+            "account": self.get_account(),
         }
 
         if not self.get_private_key_path():
             url_attributes["password"] = self.get_password()
 
         # Optional attributes where if its not set the default value is used
-        if self.timezone:
-            url_attributes["timezone"] = self.timezone
-        if self.warehouse:
-            url_attributes["warehouse"] = self.warehouse
-        if self.role:
-            url_attributes["role"] = self.role
+        timezone = self.get_timezone()
+        if timezone:
+            url_attributes["timezone"] = timezone
+        warehouse = self.get_warehouse()
+        if warehouse:
+            url_attributes["warehouse"] = warehouse
+        role = self.get_role()
+        if role:
+            url_attributes["role"] = role
 
         host = self.get_host()
         if host:
             url_attributes["host"] = host
         if self.port:
             url_attributes["port"] = self.port
-        if self.protocol:
-            url_attributes["protocol"] = self.protocol
+        protocol = self.get_protocol()
+        if protocol:
+            url_attributes["protocol"] = protocol
 
         database = self.get_database()
         if database:

@@ -292,3 +292,111 @@ class TestSnowflakeSourceGetSchema:
         # Verify metadata
         assert schema["metadata"]["default_schema"] == "EDW"
         assert schema["metadata"]["total_tables"] == 3
+
+
+class TestSnowflakeSourceEnvVarFields:
+    """Regression coverage for B05.
+
+    account/warehouse/role/timezone/protocol used to be typed Optional[str], so
+    ${env.X} references were stored verbatim and never resolved. This made
+    `visivo migrate`'s `{{ env_var('X') }}` -> ${env.X} rewrite produce a
+    broken connection.
+    """
+
+    @pytest.mark.parametrize(
+        "field_name,env_var",
+        [
+            ("account", "${env.SNOWFLAKE_ACCOUNT}"),
+            ("warehouse", "${env.SNOWFLAKE_WAREHOUSE}"),
+            ("role", "${env.SNOWFLAKE_ROLE}"),
+            ("timezone", "${env.SNOWFLAKE_TIMEZONE}"),
+            ("protocol", "${env.SNOWFLAKE_PROTOCOL}"),
+        ],
+    )
+    def test_field_accepts_env_var_template(self, field_name, env_var):
+        from visivo.models.base.env_var_string import EnvVarString
+
+        kwargs = {
+            "name": "snow",
+            "type": "snowflake",
+            "database": "DEV",
+            field_name: env_var,
+        }
+        source = SnowflakeSource(**kwargs)
+        value = getattr(source, field_name)
+        assert isinstance(
+            value, EnvVarString
+        ), f"{field_name} should parse as EnvVarString, got {type(value).__name__}"
+
+    @pytest.mark.parametrize(
+        "field_name,getter_name,env_name,resolved",
+        [
+            ("account", "get_account", "TEST_SNOW_ACCOUNT", "abc.us-east-1.aws"),
+            ("warehouse", "get_warehouse", "TEST_SNOW_WAREHOUSE", "MY_WH"),
+            ("role", "get_role", "TEST_SNOW_ROLE", "ANALYST"),
+            ("timezone", "get_timezone", "TEST_SNOW_TIMEZONE", "America/New_York"),
+            ("protocol", "get_protocol", "TEST_SNOW_PROTOCOL", "https"),
+        ],
+    )
+    def test_getter_resolves_env_var(
+        self, monkeypatch, field_name, getter_name, env_name, resolved
+    ):
+        monkeypatch.setenv(env_name, resolved)
+        kwargs = {
+            "name": "snow",
+            "type": "snowflake",
+            "database": "DEV",
+            field_name: f"${{env.{env_name}}}",
+        }
+        source = SnowflakeSource(**kwargs)
+        assert getattr(source, getter_name)() == resolved
+
+    def test_plain_string_account_still_works(self):
+        source = SnowflakeSource(
+            name="snow",
+            type="snowflake",
+            database="DEV",
+            account="ab12345.us-west-1.aws",
+        )
+        assert source.account == "ab12345.us-west-1.aws"
+        assert source.get_account() == "ab12345.us-west-1.aws"
+
+    def test_none_field_returns_none_from_getter(self):
+        source = SnowflakeSource(name="snow", type="snowflake", database="DEV")
+        assert source.get_account() is None
+        assert source.get_warehouse() is None
+        assert source.get_role() is None
+        assert source.get_timezone() is None
+        assert source.get_protocol() is None
+
+    def test_url_resolves_env_var_account(self, monkeypatch):
+        monkeypatch.setenv("URL_ACCOUNT", "abc.us-east-1.aws")
+        source = SnowflakeSource(
+            name="snow",
+            type="snowflake",
+            database="DEV",
+            account="${env.URL_ACCOUNT}",
+            username="alice",
+            password="pw",
+        )
+        url_str = str(source.url())
+        assert "abc.us-east-1.aws" in url_str
+        assert "${env." not in url_str
+
+    def test_url_resolves_env_var_warehouse_and_role(self, monkeypatch):
+        monkeypatch.setenv("WH", "MY_WH")
+        monkeypatch.setenv("RL", "MY_ROLE")
+        source = SnowflakeSource(
+            name="snow",
+            type="snowflake",
+            database="DEV",
+            account="ab1.us-east-1.aws",
+            username="u",
+            password="p",
+            warehouse="${env.WH}",
+            role="${env.RL}",
+        )
+        url_str = str(source.url())
+        assert "warehouse=MY_WH" in url_str
+        assert "role=MY_ROLE" in url_str
+        assert "${env." not in url_str
