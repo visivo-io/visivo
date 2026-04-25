@@ -41,16 +41,28 @@ def register_dimension_views(app, flask_app, output_dir):
 
     @app.route("/api/dimensions/<dimension_name>/save/", methods=["POST"])
     def save_dimension(dimension_name):
-        """Save a dimension configuration to cache (draft state)."""
+        """Save a dimension configuration to cache (draft state).
+
+        Accepts an optional `parentModel` field to scope the dimension to a
+        specific model. The parent association is stored on the cached
+        Dimension (PrivateAttr `_parent_name`) and used at publish time by
+        ProjectWriter to nest the dimension under `model.dimensions`
+        rather than writing it to a top-level `dimensions:` list.
+        """
         try:
             dimension_config = request.get_json(silent=True)
             if not dimension_config:
                 return jsonify({"error": "Dimension configuration is required"}), 400
 
+            # Extract parent-model scope (not a Pydantic field — passed separately).
+            parent_model = dimension_config.pop("parentModel", None)
+
             # Ensure name matches URL parameter
             dimension_config["name"] = dimension_name
 
             dimension = flask_app.dimension_manager.save_from_config(dimension_config)
+            if parent_model:
+                dimension.set_parent_name(parent_model)
             status = flask_app.dimension_manager.get_status(dimension_name)
             return (
                 jsonify(

@@ -1,7 +1,14 @@
 #!/bin/bash
 # Manage the isolated sandbox environment for Claude Code testing.
-# Uses port 8001 (backend) and 3001 (frontend) to avoid conflicting
-# with user's dev servers on 8000/3000.
+# Defaults to port 8001 (backend) / 3001 (frontend) pointed at
+# test-projects/integration, to avoid conflicting with user's dev
+# servers on 8000/3000.
+#
+# Env-var overrides (all optional):
+#   VISIVO_SANDBOX_BACKEND_PORT   default 8001
+#   VISIVO_SANDBOX_FRONTEND_PORT  default 3001
+#   VISIVO_SANDBOX_PROJECT_DIR    default <repo>/test-projects/integration
+#   VISIVO_SANDBOX_NAME           default "" (used as PID/log dir suffix)
 #
 # Usage:
 #   bash scripts/sandbox.sh start    — Start backend + frontend
@@ -12,14 +19,20 @@
 
 set -e
 
-BACKEND_PORT=8001
-FRONTEND_PORT=3001
+BACKEND_PORT="${VISIVO_SANDBOX_BACKEND_PORT:-8001}"
+FRONTEND_PORT="${VISIVO_SANDBOX_FRONTEND_PORT:-3001}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-INTEGRATION_DIR="$PROJECT_DIR/test-projects/integration"
+INTEGRATION_DIR="${VISIVO_SANDBOX_PROJECT_DIR:-$PROJECT_DIR/test-projects/integration}"
 VIEWER_DIR="$PROJECT_DIR/viewer"
 VENV_ACTIVATE="$PROJECT_DIR/venv12/bin/activate"
-PID_DIR="$PROJECT_DIR/.sandbox"
+# Keep PID dirs per-sandbox-name so multiple sandboxes can coexist.
+SANDBOX_NAME="${VISIVO_SANDBOX_NAME:-}"
+if [ -n "$SANDBOX_NAME" ]; then
+    PID_DIR="$PROJECT_DIR/.sandbox-$SANDBOX_NAME"
+else
+    PID_DIR="$PROJECT_DIR/.sandbox"
+fi
 
 backend_pid_file="$PID_DIR/backend.pid"
 frontend_pid_file="$PID_DIR/frontend.pid"
@@ -59,7 +72,7 @@ start_backend() {
     (
         source "$VENV_ACTIVATE"
         cd "$INTEGRATION_DIR"
-        visivo serve --port "$BACKEND_PORT" > "$PID_DIR/backend.log" 2>&1
+        STACKTRACE=true visivo serve --port "$BACKEND_PORT" > "$PID_DIR/backend.log" 2>&1
     ) &
     echo $! > "$backend_pid_file"
 
