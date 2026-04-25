@@ -170,6 +170,17 @@ class TableDeprecation(BaseDeprecationChecker):
 
         return None
 
+    # Cell-level flags inside ``column_defs`` that have no automatic
+    # equivalent in the 2.0 table widget. If any of these are present we
+    # must NOT delete the block — doing so silently drops user-visible
+    # styling (e.g. ``markdown: True`` for link rendering, ``justify`` /
+    # ``align`` per-column alignment, custom ``header_name`` overrides
+    # that aren't expressible as SQL aliases). See B06.
+    _PRESERVE_CELL_FLAGS_RE = re.compile(
+        r"^\s+(markdown|justify|align|header_name)\s*:\s*\S",
+        re.MULTILINE,
+    )
+
     def _create_remove_column_defs_migration(
         self, content: str, table_name: str
     ) -> MigrationAction:
@@ -204,6 +215,13 @@ class TableDeprecation(BaseDeprecationChecker):
 
         old_lines = lines[column_defs_start : column_defs_end + 1]
         old_text = "\n".join(old_lines)
+
+        # B06: refuse to auto-delete blocks that carry cell-level styling
+        # the 2.0 widget can't auto-recover. Surface as a deprecation
+        # warning instead so the user can address the migration manually.
+        if self._PRESERVE_CELL_FLAGS_RE.search(old_text):
+            return None
+
         new_text = ""
 
         return MigrationAction(
