@@ -16,6 +16,21 @@ def get_message_from_error(error: ValidationError, schema: Dict[str, Any]) -> st
         message = "Value does not match any of the following schemas: \n" + "\n or \n".join(
             message_parts
         )
+    elif "Additional properties are not allowed" in message or (
+        "additionalProperties" in message and "not allowed" in message
+    ):
+        # B08: the default jsonschema_rs message names a single offending
+        # property (e.g. "'file_path' was unexpected"), which is misleading
+        # when the user added a different unknown prop and just happens to
+        # see whichever key got picked first. Append a list of valid props
+        # so authors can spot typos.
+        valid = sorted((schema.get("properties") or {}).keys())
+        if valid:
+            preview = ", ".join(valid[:25])
+            ellipsis = "..." if len(valid) > 25 else ""
+            message = (
+                f"{message}\n  Valid Plotly properties for this trace type: " f"{preview}{ellipsis}"
+            )
     return message
 
 

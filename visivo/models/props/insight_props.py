@@ -11,6 +11,16 @@ from visivo.models.props.types import PropType
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
 
+#: Field names that the parser may attach to props during YAML loading
+#: but that are not valid Plotly trace properties. Strip them out of the
+#: dumped dict before running jsonschema validation, otherwise the
+#: schema's `additionalProperties: false` rejects them and produces a
+#: misleading error like "Additional properties are not allowed
+#: ('file_path' was unexpected)" when the user actually misspelled or
+#: added an unrelated prop. See B08.
+_VISIVO_INTERNAL_PROPS = {"file_path", "path"}
+
+
 class InsightProps(JsonSchemaBase):
 
     type: PropType = Field(..., description="Type of the trace")
@@ -35,6 +45,10 @@ class InsightProps(JsonSchemaBase):
 
         try:
             data_dict = self.model_dump()
+            # Drop visivo-internal metadata that the YAML parser may attach
+            # before handing the dict to the Plotly schema validator.
+            for key in _VISIVO_INTERNAL_PROPS:
+                data_dict.pop(key, None)
 
             validator.validate(data_dict)
 
