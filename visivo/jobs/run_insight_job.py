@@ -91,6 +91,10 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,
             "static_props": insight_query_info.static_props,  # Non-query props (e.g., marker.color)
+            # Per-prop slice suffix from authored ?{...}[N|a:b] forms; the
+            # viewer applies the slice to the bound array after the query
+            # column is mapped to the prop. Empty when no prop has a slice.
+            "props_slices": insight_query_info.props_slices,
             "split_key": insight_query_info.split_key,
             "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }

@@ -309,6 +309,59 @@ function groupDataBySplitKey(data, splitKey) {
 }
 
 /**
+ * Apply a Python-style slice expression like "[0]", "[-1]", "[1:5]", "[::2]",
+ * or "[0,-1]" to a JS array. Returns a scalar for single-index forms and a
+ * sub-array for slice/multi-index forms.
+ *
+ * Mirrors the schema-level grammar for ?{...}[index|slice]. Used to apply
+ * a per-prop slice surfaced via insight.props_slices after the query column
+ * has been mapped to the prop.
+ */
+export function applySliceExpression(value, sliceExpr) {
+  if (!Array.isArray(value) || !sliceExpr) return value;
+  // Strip the surrounding brackets: "[0]" -> "0", "[1:5]" -> "1:5".
+  const inner = sliceExpr.replace(/^\[|\]$/g, '').trim();
+  if (inner === '') return value;
+
+  const len = value.length;
+  const norm = i => {
+    const n = parseInt(i, 10);
+    return n < 0 ? Math.max(0, len + n) : Math.min(n, len);
+  };
+
+  // Multi-index: [a,b,c]
+  if (inner.includes(',')) {
+    const idxs = inner.split(',').map(s => s.trim());
+    return idxs.map(s => {
+      const n = parseInt(s, 10);
+      const i = n < 0 ? len + n : n;
+      return i >= 0 && i < len ? value[i] : null;
+    });
+  }
+
+  // Slice: [a:b], [a:b:c]
+  if (inner.includes(':')) {
+    const parts = inner.split(':');
+    const start = parts[0] === '' ? 0 : norm(parts[0]);
+    const stop = parts[1] === '' ? len : norm(parts[1]);
+    const step = parts.length === 3 && parts[2] !== '' ? parseInt(parts[2], 10) : 1;
+    const out = [];
+    if (step > 0) {
+      for (let i = start; i < stop; i += step) out.push(value[i]);
+    } else if (step < 0) {
+      for (let i = start; i > stop; i += step) out.push(value[i]);
+    }
+    return out;
+  }
+
+  // Single index: [0], [-1]
+  const n = parseInt(inner, 10);
+  if (Number.isNaN(n)) return value;
+  const i = n < 0 ? len + n : n;
+  return i >= 0 && i < len ? value[i] : null;
+}
+
+/**
  * Transform insights data into chart-ready format
  *
  * Takes the insightsData object (from Zustand store) and converts it to an array
@@ -317,6 +370,12 @@ function groupDataBySplitKey(data, splitKey) {
  *
  * Input refs in static_props (like ${input.value}) are replaced with actual values
  * if inputs are provided.
+ *
+ * If the insight defines `props_slices`, each entry's slice expression
+ * (e.g. `"[0]"`, `"[1:5]"`) is applied to the bound array after
+ * `mapQueryResultsToProps`. This unwraps scalars from indexed query
+ * strings (e.g. `value: ?{MAX(x)}[0]` on indicator) and produces sub-arrays
+ * from slice forms.
  *
  * @param {Object} insightsData - Map of insight names to insight objects
  * @param {Object} inputs - Optional map of input names to input objects with accessor values
@@ -334,7 +393,7 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
       continue;
     }
 
-    const { data, props_mapping, split_key, type, static_props } = insightObj;
+    const { data, props_mapping, split_key, type, static_props, props_slices } = insightObj;
 
     if (!data || data.length === 0) {
       continue;
@@ -358,6 +417,12 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
         // Map each group to props (dynamic props from query results)
         const traceProps = mapQueryResultsToProps(groupRows, props_mapping);
 
+        // Apply per-prop slice expressions surfaced by the server
+        // (?{...}[N|a:b] in the authored insight). Done after
+        // mapQueryResultsToProps because the slice operates on the
+        // full bound column for this split group.
+        applyPropsSlices(traceProps, props_slices);
+
         // Merge static props (non-query props like marker.color: ["red", "green"])
         // Static props are the base, dynamic props override them
         if (processedStaticProps) {
@@ -380,6 +445,8 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
       // No split - create single trace (existing behavior)
       const traceProps = mapQueryResultsToProps(data, props_mapping);
 
+      applyPropsSlices(traceProps, props_slices);
+
       // Merge static props (non-query props like marker.color: ["red", "green"])
       // Static props are the base, dynamic props override them
       if (processedStaticProps) {
@@ -397,6 +464,37 @@ export function chartDataFromInsightData(insightsData, inputs = {}) {
   }
 
   return traces;
+}
+
+/**
+ * Walk `props_slices` (a map of prop path -> slice expression) and, for each
+ * entry, apply the slice to the corresponding bound value in `traceProps`.
+ * Mutates `traceProps` in place. No-op when `slicesMap` is falsy or empty.
+ */
+function applyPropsSlices(traceProps, slicesMap) {
+  if (!traceProps || !slicesMap) return;
+  for (const [propPath, sliceExpr] of Object.entries(slicesMap)) {
+    if (!sliceExpr) continue;
+    // Strip the "props." prefix from path entries (the server uses
+    // "props.value" style keys) before walking the bound traceProps tree.
+    const cleanPath = propPath.startsWith('props.') ? propPath.substring(6) : propPath;
+    const parts = parsePropPath(cleanPath);
+    if (parts.length === 0) continue;
+
+    let parent = traceProps;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const k = /^\d+$/.test(parts[i]) ? Number(parts[i]) : parts[i];
+      if (parent == null || parent[k] == null) {
+        parent = null;
+        break;
+      }
+      parent = parent[k];
+    }
+    if (parent == null) continue;
+    const lastKey = parts[parts.length - 1];
+    const lastIdx = /^\d+$/.test(lastKey) ? Number(lastKey) : lastKey;
+    parent[lastIdx] = applySliceExpression(parent[lastIdx], sliceExpr);
+  }
 }
 
 /**
