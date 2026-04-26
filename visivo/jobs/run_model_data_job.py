@@ -9,10 +9,10 @@ Used by:
 
 import os
 from time import time
-import polars as pl
 
 from visivo.models.sources.source import Source
 from visivo.constants import DEFAULT_RUN_ID
+from visivo.jobs.parquet_io import write_dicts_to_parquet
 
 
 def write_parquet_from_data(
@@ -35,7 +35,7 @@ def write_parquet_from_data(
     files_directory = f"{output_dir}/{run_id}/files"
     os.makedirs(files_directory, exist_ok=True)
     parquet_path = f"{files_directory}/{name_hash}.parquet"
-    pl.DataFrame(data).write_parquet(parquet_path)
+    write_dicts_to_parquet(data, parquet_path)
     return parquet_path
 
 
