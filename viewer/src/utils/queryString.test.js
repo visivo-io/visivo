@@ -1,3 +1,9 @@
+// This file tests the regex / parser that processes user-authored query
+// strings of the form `?{${ref(model).field}}[N]`. Those literals are
+// the data under test, not template-literal mistakes, so disable the
+// `no-template-curly-in-string` rule for the whole file.
+/* eslint-disable no-template-curly-in-string */
+
 import {
   QueryString,
   isQueryStringValue,
