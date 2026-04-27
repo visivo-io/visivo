@@ -389,12 +389,18 @@ class _FakeRunner:
     """FilteredRunner stub that writes fake result files for each DAG-filter insight."""
 
     instances = []
+    # Per-class config: insights to deliberately fail (don't write JSON
+    # for them) and the captured failure message to report through
+    # `failed_job_results`. Cleared between tests.
+    fail_insights = {}
 
     def __init__(self, project, output_dir, **kwargs):
         self.project = project
         self.output_dir = output_dir
         self.dag_filter = kwargs.get("dag_filter")
         self.run_id = kwargs.get("run_id")
+        self.failed_job_results = []
+        self.successful_job_results = []
         _FakeRunner.instances.append(self)
 
     def run(self):
@@ -408,6 +414,17 @@ class _FakeRunner:
         for segment in self.dag_filter.split(","):
             segment = segment.strip().strip("+")
             if not segment:
+                continue
+            if segment in _FakeRunner.fail_insights:
+                # Simulate a soft-failed job: skip writing the JSON and
+                # capture an error result the way DagRunner would have.
+                fake_item = MagicMock()
+                fake_item.name = segment
+                fake_result = MagicMock()
+                fake_result.item = fake_item
+                fake_result.success = False
+                fake_result.message = _FakeRunner.fail_insights[segment]
+                self.failed_job_results.append(fake_result)
                 continue
             name_hash = alpha_hash(segment)
             path = os.path.join(insights_dir, f"{name_hash}.json")
@@ -429,6 +446,7 @@ def _fresh_run_manager_mock():
 class TestExecutePreviewJob:
     def setup_method(self, _):
         _FakeRunner.instances = []
+        _FakeRunner.fail_insights = {}
 
     def _patched_execute(self, **kwargs):
         return patch("visivo.server.jobs.preview_job_executor.FilteredRunner", _FakeRunner)
@@ -605,3 +623,71 @@ class TestExecutePreviewJob:
         assert set(result["insights"].keys()) == {"a", "b"}
         # Model is present in the runner's project exactly once
         assert sum(1 for m in _FakeRunner.instances[0].project.models if m.name == "shared") == 1
+
+    # ----------------------------------------------------------------
+    # Surface real upstream errors when the insight JSON is missing
+    # because of a soft-failure during the runner pass.
+    # ----------------------------------------------------------------
+
+    def test_missing_json_surfaces_runner_error_message(self, tmp_path):
+        """When the insight job soft-fails, its JSON is never written.
+        The executor should now read the runner's per-job error and
+        propagate that message to the run manager — not the generic
+        "Insight file not found" string."""
+        ins_a = InsightFactory(name="failing_insight")
+        project = _make_project(insights=[ins_a])
+        flask_app = _make_flask_app_mock(project)
+        run_manager = _fresh_run_manager_mock()
+
+        _FakeRunner.fail_insights = {
+            "failing_insight": "SQL parse error: literal '[0]' in column expression"
+        }
+
+        with self._patched_execute():
+            execute_preview_job(
+                "job-fail",
+                ["failing_insight"],
+                flask_app,
+                str(tmp_path),
+                run_manager,
+                context_objects=None,
+            )
+
+        # The executor's outer try/except sets RunStatus.FAILED with
+        # the upstream error baked into the message.
+        update_calls = run_manager.update_status.call_args_list
+        # Pull the last update; it should carry the FAILED status with
+        # the upstream error in the `error` kwarg.
+        last_kwargs = update_calls[-1].kwargs
+        assert "Preview execution failed" in last_kwargs.get("error", "")
+        assert "failing_insight" in last_kwargs["error"]
+        assert "SQL parse error" in last_kwargs["error"]
+
+    def test_missing_json_falls_back_when_no_runner_error(self, tmp_path):
+        """If the JSON is missing AND the runner has no failed_job_results
+        (an unexpected case), the generic message is still raised so
+        the user sees *something*."""
+        ins = InsightFactory(name="ghost_insight")
+        project = _make_project(insights=[ins])
+        flask_app = _make_flask_app_mock(project)
+        run_manager = _fresh_run_manager_mock()
+
+        # The fake runner skips JSON for the requested insight without
+        # capturing a failed job — simulating a runner bug.
+        class _SilentRunner(_FakeRunner):
+            def run(self):
+                # Do nothing — no JSON, no captured error.
+                pass
+
+        with patch("visivo.server.jobs.preview_job_executor.FilteredRunner", _SilentRunner):
+            execute_preview_job(
+                "job-ghost",
+                ["ghost_insight"],
+                flask_app,
+                str(tmp_path),
+                run_manager,
+                context_objects=None,
+            )
+
+        last_kwargs = run_manager.update_status.call_args_list[-1].kwargs
+        assert "Insight file not found" in last_kwargs.get("error", "")
