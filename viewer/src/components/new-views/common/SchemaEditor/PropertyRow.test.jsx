@@ -169,4 +169,210 @@ describe('PropertyRow', () => {
     render(<PropertyRow {...defaultProps} onRemove={undefined} />);
     expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
   });
+
+  // ---------------------------------------------------------------------
+  // Slice integration — body + slice round-trip via SliceBadge.
+  // ---------------------------------------------------------------------
+
+  describe('slice badge integration', () => {
+    const queryNumberSchema = {
+      // Indicator-style scalar: oneOf [query-string, number] → scalar-only
+      oneOf: [{ $ref: '#/$defs/query-string' }, { type: 'number' }],
+    };
+
+    const queryNumberOrArraySchema = {
+      // Mixed: data_array post-fix shape
+      oneOf: [
+        { $ref: '#/$defs/query-string' },
+        { type: 'number' },
+        { type: 'array', items: { type: 'number' } },
+      ],
+    };
+
+    it('renders SliceBadge alongside RefTextArea when value has a slice', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}[0]"
+        />
+      );
+      // RefTextArea receives the body only — no brackets in the chip.
+      expect(screen.getByTestId('ref-input').value).toBe('my_col');
+      // Badge shows the human-readable slice label.
+      expect(screen.getByTestId('slice-badge')).toHaveTextContent(/First \(0\)/);
+    });
+
+    it('badge label updates with the slice value', () => {
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberOrArraySchema}
+          value="?{my_col}[1:5]"
+        />
+      );
+      expect(screen.getByTestId('slice-badge')).toHaveTextContent(/Rows 1-5/);
+    });
+
+    it('editing the chip body preserves the slice in the saved value', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{old_col}[0]"
+          onChange={onChange}
+        />
+      );
+      const input = screen.getByTestId('ref-input');
+      fireEvent.change(input, { target: { value: 'new_col' } });
+      expect(onChange).toHaveBeenCalledWith('?{new_col}[0]');
+    });
+
+    it('changing the slice via the badge preserves the body', () => {
+      const onChange = jest.fn();
+      render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberOrArraySchema}
+          value="?{my_col}[0]"
+          onChange={onChange}
+        />
+      );
+      fireEvent.click(screen.getByTestId('slice-badge'));
+      fireEvent.click(screen.getByTestId('slice-option-last'));
+      expect(onChange).toHaveBeenCalledWith('?{my_col}[-1]');
+    });
+
+    it('auto-applies [0] when chip body becomes non-empty in a scalar-only slot', () => {
+      const onChange = jest.fn();
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value=""
+          onChange={onChange}
+        />
+      );
+      // Simulate the parent push of a value that arrives with a chip
+      // body but no slice (e.g., from a DnD drop).
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}"
+          onChange={onChange}
+        />
+      );
+      expect(onChange).toHaveBeenCalledWith('?{my_col}[0]');
+    });
+
+    it('does NOT auto-apply a slice on array-only slot drops', () => {
+      const onChange = jest.fn();
+      const arrayOnlySchema = {
+        oneOf: [
+          { $ref: '#/$defs/query-string' },
+          { type: 'array', items: { type: 'number' } },
+        ],
+      };
+      const { rerender } = render(
+        <PropertyRow {...defaultProps} schema={arrayOnlySchema} value="" onChange={onChange} />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={arrayOnlySchema}
+          value="?{my_col}"
+          onChange={onChange}
+        />
+      );
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('shows the SliceBanner after auto-applying default slice on scalar drop', () => {
+      const onChange = jest.fn();
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value=""
+          onChange={onChange}
+        />
+      );
+      // Step 1 — DnD drop pushes the unsliced value: PropertyRow's
+      // useEffect auto-applies [0] and turns on bannerActive.
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}"
+          onChange={onChange}
+        />
+      );
+      expect(onChange).toHaveBeenCalledWith('?{my_col}[0]');
+      // Step 2 — parent state updates, the auto-applied value flows
+      // back. Banner is now rendered.
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}[0]"
+          onChange={onChange}
+        />
+      );
+      expect(screen.getByTestId('slice-banner')).toBeInTheDocument();
+    });
+
+    it('banner dismisses on user action (First quick button)', () => {
+      const onChange = jest.fn();
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value=""
+          onChange={onChange}
+        />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}"
+          onChange={onChange}
+        />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{my_col}[0]"
+          onChange={onChange}
+        />
+      );
+      expect(screen.getByTestId('slice-banner')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('slice-banner-first'));
+      expect(screen.queryByTestId('slice-banner')).not.toBeInTheDocument();
+    });
+
+    it('clears slice when chip body becomes empty', () => {
+      const onChange = jest.fn();
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="?{old}[0]"
+          onChange={onChange}
+        />
+      );
+      // Simulate clearing the chip via the editor
+      const input = screen.getByTestId('ref-input');
+      fireEvent.change(input, { target: { value: '' } });
+      // The serialized form for body='' is '' (not '?{}[0]').
+      expect(onChange).toHaveBeenCalledWith('');
+      rerender(
+        <PropertyRow {...defaultProps} schema={queryNumberSchema} value="" onChange={onChange} />
+      );
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+  });
 });

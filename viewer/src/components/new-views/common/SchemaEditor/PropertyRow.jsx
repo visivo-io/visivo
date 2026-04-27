@@ -1,14 +1,27 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { PiTrash, PiCode, PiSliders } from 'react-icons/pi';
 import RefTextArea from '../RefTextArea';
-import { isQueryStringValue, QUERY_BRACKET_PATTERN } from '../../../../utils/queryString';
+import {
+  isQueryStringValue,
+  parseQueryString,
+  serializeQueryString,
+} from '../../../../utils/queryString';
 import { supportsQueryString, getStaticSchema } from './utils/schemaUtils';
 import { resolveFieldType } from './utils/fieldResolver';
+import { getSlotShape, menuPolicyFor } from './utils/slotShape';
 import { getFieldComponent } from './fields/fields';
+import { SliceBadge } from './SliceBadge';
+import { SliceBanner } from './SliceBanner';
 
 /**
  * PropertyRow - A single property in the schema editor with optional query-string toggle
+ *
+ * Holds `body` and `slice` as separate local state so an authored
+ * value like `?{${ref(model).field}}[0]` round-trips cleanly through
+ * the chip editor + slice badge without ever putting brackets inside
+ * the chip body. See specs/plan/v1-final-bugfixes/B13-* and
+ * `~/.claude/plans/warm-tickling-quail.md` for the design.
  *
  * @param {object} props
  * @param {string} props.path - Dot-separated property path (e.g., "marker.color")
@@ -33,6 +46,8 @@ export function PropertyRow({
   droppable = false,
 }) {
   const queryStringSupported = useMemo(() => supportsQueryString(schema), [schema]);
+  const slotShape = useMemo(() => getSlotShape(schema, defs), [schema, defs]);
+  const slotPolicy = useMemo(() => menuPolicyFor(slotShape), [slotShape]);
 
   // DnD drop target (only when droppable + query-string supported)
   const dropEnabled = droppable && queryStringSupported;
@@ -56,6 +71,41 @@ export function PropertyRow({
   const fieldType = useMemo(() => resolveFieldType(schema, defs), [schema, defs]);
   const FieldComponent = getFieldComponent(fieldType);
 
+  // Parsed body/slice from the current value. parseQueryString returns
+  // null when the value isn't `?{...}` shaped; in that case body is
+  // treated as the raw string.
+  const parsed = useMemo(() => parseQueryString(value), [value]);
+  const body = parsed ? parsed.body : (typeof value === 'string' ? value : '');
+  const slice = parsed ? parsed.slice : null;
+
+  // One-time banner state: shown when an array-producing chip is freshly
+  // dropped into a scalar-only slot AND we auto-applied the default
+  // slice. Dismissed on any banner action OR when the user opens the
+  // slice menu via the badge.
+  const [bannerActive, setBannerActive] = useState(false);
+
+  // Track previous body to detect empty→non-empty transitions (the
+  // authoring moment when the educational banner is most useful).
+  const prevBodyRef = useRef(body);
+
+  useEffect(() => {
+    const wasEmpty = !prevBodyRef.current;
+    const isNowSet = !!body;
+    if (wasEmpty && isNowSet && slotShape === 'scalar-only' && !slice) {
+      // Auto-apply the slot's default slice and surface the banner
+      // (one-time per fresh drop).
+      const def = slotPolicy.defaultSlice;
+      if (def) {
+        onChange(serializeQueryString({ body, slice: def }));
+        setBannerActive(true);
+      }
+    }
+    if (!body) {
+      setBannerActive(false);
+    }
+    prevBodyRef.current = body;
+  }, [body, slice, slotShape, slotPolicy.defaultSlice, onChange]);
+
   const handleModeChange = (newMode) => {
     setForceQueryMode(newMode === 'query');
   };
@@ -64,25 +114,45 @@ export function PropertyRow({
     onChange(newValue);
   };
 
-  // Strip ?{...} wrapper for RefTextArea display, re-wrap on change
-  const queryInnerValue = useMemo(() => {
-    if (typeof value === 'string') {
-      const match = value.match(QUERY_BRACKET_PATTERN);
-      return match ? match[1] : value;
-    }
-    return value || '';
-  }, [value]);
-
   const handleQueryChange = useCallback(
-    (newVal) => {
-      onChange(newVal ? `?{${newVal}}` : '');
+    newBody => {
+      // Preserve the slice across body edits.
+      onChange(serializeQueryString({ body: newBody, slice }));
     },
-    [onChange]
+    [onChange, slice]
   );
+
+  const handleSliceChange = useCallback(
+    newSlice => {
+      onChange(serializeQueryString({ body, slice: newSlice }));
+      setBannerActive(false);
+    },
+    [onChange, body]
+  );
+
+  const handleBannerPickFirst = () => handleSliceChange('[0]');
+  const handleBannerPickLast = () => handleSliceChange('[-1]');
+  const handleBannerPickCustom = () => {
+    // Open the menu via the badge — banner dismisses on next slice
+    // change. We can't programmatically open the badge from here
+    // without a ref dance, so just dismiss the banner; the user clicks
+    // the badge themselves (visually obvious next to the chip).
+    setBannerActive(false);
+  };
 
   const currentMode = forceQueryMode || isQueryMode ? 'query' : 'static';
 
   const isDropTarget = isOver && dropEnabled;
+
+  // Slice badge is rendered when:
+  //  - The user is in query mode AND there is a body (chip present)
+  //  - AND the slot accepts at least one slice option (any policy field
+  //    is true) — otherwise there's nothing to author and we keep the
+  //    UI minimal.
+  // Also rendered when slice is non-null (so the user can edit it) even
+  // if the policy has narrowed since (e.g., a stale value).
+  const showSliceBadge =
+    currentMode === 'query' && !!body && (slice !== null || slotShape !== 'unknown');
 
   return (
     <div
@@ -155,15 +225,28 @@ export function PropertyRow({
       {/* Field input */}
       <div>
         {currentMode === 'query' || (queryStringSupported && !staticSchema) ? (
-          <RefTextArea
-            value={queryInnerValue}
-            onChange={handleQueryChange}
-            label=""
-            rows={2}
-            helperText={description}
-            disabled={disabled}
-            allowedTypes={['model', 'dimension', 'metric', 'input']}
-          />
+          <div className="flex items-start gap-1.5">
+            <div className="flex-1 min-w-0">
+              <RefTextArea
+                value={body}
+                onChange={handleQueryChange}
+                label=""
+                rows={2}
+                helperText={description}
+                disabled={disabled}
+                allowedTypes={['model', 'dimension', 'metric', 'input']}
+              />
+            </div>
+            {showSliceBadge && (
+              <div className="flex-shrink-0 mt-1">
+                <SliceBadge
+                  slice={slice}
+                  onChange={handleSliceChange}
+                  slotShape={slotShape}
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <FieldComponent
             value={value}
@@ -173,6 +256,15 @@ export function PropertyRow({
             label=""
             description={description}
             disabled={disabled}
+          />
+        )}
+
+        {bannerActive && currentMode === 'query' && (
+          <SliceBanner
+            onPickFirst={handleBannerPickFirst}
+            onPickLast={handleBannerPickLast}
+            onPickCustom={handleBannerPickCustom}
+            onDismiss={() => setBannerActive(false)}
           />
         )}
       </div>
