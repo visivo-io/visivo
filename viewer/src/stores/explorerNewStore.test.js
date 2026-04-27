@@ -67,6 +67,11 @@ jest.mock('../api/dimensions', () => ({
 jest.mock('../api/explorer', () => ({
   fetchDiff: jest.fn().mockResolvedValue({}),
 }));
+jest.mock('../api/publish', () => ({
+  getPublishStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
+  getPendingChanges: jest.fn().mockResolvedValue({ pending: [] }),
+  publishChanges: jest.fn().mockResolvedValue({}),
+}));
 
 // Helper to reset all explorer new state
 const resetState = () => {
