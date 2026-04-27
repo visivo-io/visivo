@@ -100,9 +100,6 @@ export const fetchInputJobs = async (projectId, names, retries = 3, retryDelay =
   throw new Error(`Failed to fetch input jobs after ${retries} attempts: ${lastError.message}`);
 };
 
-// Backward compatibility alias
-export const fetchInputs = fetchInputJobs;
-
 /**
  * Fetch the URL for input job options JSON file
  *
@@ -116,9 +113,6 @@ export const fetchInputJobOptions = async (projectId, inputHash) => {
   const url = getUrl('inputJobData', { hash: inputHash });
   return url;
 };
-
-// Backward compatibility alias
-export const fetchInputOptions = fetchInputJobOptions;
 
 /**
  * Input job metadata structure (new parquet-based format)
@@ -151,6 +145,3 @@ export const loadInputJobData = async url => {
   const data = await response.json();
   return data;
 };
-
-// Backward compatibility alias
-export const loadInputData = loadInputJobData;

@@ -80,9 +80,6 @@ export function useFetchInsightJobs() {
   return fetchInsightJobs;
 }
 
-// Backward compatibility alias
-export const useFetchInsights = useFetchInsightJobs;
-
 /**
  * Hook to get the fetchDashboard function
  * @returns {Function} fetchDashboard function
@@ -101,9 +98,6 @@ export function useFetchInputJobOptions() {
   return fetchInputJobOptions;
 }
 
-// Backward compatibility alias
-export const useFetchInputOptions = useFetchInputJobOptions;
-
 /**
  * Hook to get the fetchInputJobs function
  * @returns {Function} fetchInputJobs function
@@ -112,6 +106,3 @@ export function useFetchInputJobs() {
   const { fetchInputJobs } = useQueries();
   return fetchInputJobs;
 }
-
-// Backward compatibility alias
-export const useFetchInputs = useFetchInputJobs;

@@ -9,13 +9,21 @@ import { DuckDBProvider } from './contexts/DuckDBContext';
 
 const queryClient = new QueryClient();
 
-export default function DistProviders({ fetchTraces, fetchInsights, fetchDashboard }) {
+export default function DistProviders({
+  fetchTraces,
+  fetchInsightJobs,
+  fetchDashboard,
+  fetchInputJobs,
+  fetchInputJobOptions,
+}) {
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider
         fetchTraces={fetchTraces}
-        fetchInsights={fetchInsights}
+        fetchInsightJobs={fetchInsightJobs}
         fetchDashboard={fetchDashboard}
+        fetchInputJobs={fetchInputJobs}
+        fetchInputJobOptions={fetchInputJobOptions}
       >
         <URLProvider urlConfig={distURLConfig}>
           <DuckDBProvider>
