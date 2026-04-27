@@ -101,14 +101,28 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
 
   const isCurrent = expr => slice === expr;
 
+  // Position the menu beneath the trigger, but clamp so it doesn't
+  // overflow the right or bottom of the viewport. The menu's
+  // intrinsic width is set by the w-56 utility (224px). Use 240 as
+  // the budgeted width to include padding/border.
+  const MENU_WIDTH = 240;
+  const MENU_HEIGHT = 280;
+  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const preferredLeft = rect.left;
+  const left = Math.max(8, Math.min(preferredLeft, viewportWidth - MENU_WIDTH - 8));
+  const preferredTop = rect.bottom + 4;
+  const flipsAbove = preferredTop + MENU_HEIGHT > viewportHeight - 8;
+  const top = flipsAbove ? Math.max(8, rect.top - MENU_HEIGHT - 4) : preferredTop;
+
   return createPortal(
     <div
       ref={containerRef}
-      className="fixed bg-white border border-gray-200 rounded-md shadow-lg w-64 py-1 text-sm"
+      className="fixed bg-white border border-secondary-200 rounded-lg shadow-xl w-56 py-1 text-xs text-secondary-700"
       style={{
         zIndex: 9999,
-        top: rect.bottom + 4,
-        left: rect.left,
+        top,
+        left,
       }}
       data-testid="slice-menu"
       role="menu"
@@ -141,7 +155,7 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
         testId="slice-option-at-row"
       />
       {showAtRow && policy.atRow && (
-        <div className="px-3 py-1.5 flex gap-1 items-center">
+        <div className="px-3 py-1.5 flex gap-1.5 items-center bg-secondary-50">
           <input
             type="number"
             value={atRowValue}
@@ -149,7 +163,7 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
             onKeyDown={e => {
               if (e.key === 'Enter') commitAtRow();
             }}
-            className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
+            className="flex-1 min-w-0 border border-secondary-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400"
             placeholder="row index"
             data-testid="slice-at-row-input"
             // eslint-disable-next-line jsx-a11y/no-autofocus
@@ -158,7 +172,7 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
           <button
             type="button"
             onClick={commitAtRow}
-            className="text-xs text-primary-600 hover:text-primary-800 px-2"
+            className="text-xs font-medium text-primary-600 hover:text-primary-800 px-2 py-1 rounded hover:bg-primary-50"
             data-testid="slice-at-row-apply"
           >
             Apply
@@ -180,16 +194,16 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
         testId="slice-option-range"
       />
       {showRange && policy.range && (
-        <div className="px-3 py-1.5 flex gap-1 items-center">
+        <div className="px-3 py-1.5 flex gap-1.5 items-center bg-secondary-50">
           <input
             type="number"
             value={rangeStart}
             onChange={e => setRangeStart(e.target.value)}
-            className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+            className="w-14 min-w-0 border border-secondary-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400"
             placeholder="start"
             data-testid="slice-range-start"
           />
-          <span className="text-gray-500 text-xs">to</span>
+          <span className="text-secondary-500 text-xs">to</span>
           <input
             type="number"
             value={rangeEnd}
@@ -197,14 +211,14 @@ export function SliceMenu({ anchorEl, open, onClose, slice, onChange, slotShape 
             onKeyDown={e => {
               if (e.key === 'Enter') commitRange();
             }}
-            className="w-16 border border-gray-300 rounded px-2 py-1 text-xs"
+            className="w-14 min-w-0 border border-secondary-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400"
             placeholder="end"
             data-testid="slice-range-end"
           />
           <button
             type="button"
             onClick={commitRange}
-            className="text-xs text-primary-600 hover:text-primary-800 px-2"
+            className="text-xs font-medium text-primary-600 hover:text-primary-800 px-2 py-1 rounded hover:bg-primary-50"
             data-testid="slice-range-apply"
           >
             Apply
@@ -235,25 +249,25 @@ function MenuRow({ label, selected, disabled, disabledReason, onClick, testId })
       title={disabled ? disabledReason : undefined}
       onClick={disabled ? undefined : onClick}
       data-testid={testId}
-      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 ${
+      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
         disabled
-          ? 'text-gray-400 cursor-not-allowed'
-          : 'hover:bg-gray-100 text-gray-700'
-      } ${selected ? 'font-medium bg-gray-50' : ''}`}
+          ? 'text-secondary-400 cursor-not-allowed'
+          : 'hover:bg-primary-50 text-secondary-700'
+      } ${selected ? 'font-medium bg-primary-50' : ''}`}
     >
       <span
-        className={`w-3 h-3 inline-block rounded-full border ${
-          selected ? 'border-primary-500 bg-primary-500' : 'border-gray-300'
+        className={`w-2.5 h-2.5 inline-block rounded-full border-2 flex-shrink-0 ${
+          selected ? 'border-primary-500 bg-primary-500' : 'border-secondary-300'
         }`}
         aria-hidden="true"
       />
-      {label}
+      <span className="truncate">{label}</span>
     </button>
   );
 }
 
 function Divider() {
-  return <div className="my-1 border-t border-gray-100" aria-hidden="true" />;
+  return <div className="my-1 border-t border-secondary-100" aria-hidden="true" />;
 }
 
 export default SliceMenu;

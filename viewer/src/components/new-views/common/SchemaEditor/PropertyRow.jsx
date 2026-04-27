@@ -72,9 +72,11 @@ export function PropertyRow({
   const FieldComponent = getFieldComponent(fieldType);
 
   // Parsed body/slice from the current value. parseQueryString returns
-  // null when the value isn't `?{...}` shaped; in that case body is
-  // treated as the raw string.
+  // null when the value isn't `?{...}` shaped; in that case the value
+  // is a static primitive (an enum pick like "number", a typed color
+  // hex, etc.) and should NOT participate in the slice flow at all.
   const parsed = useMemo(() => parseQueryString(value), [value]);
+  const isQueryFormValue = parsed !== null;
   const body = parsed ? parsed.body : (typeof value === 'string' ? value : '');
   const slice = parsed ? parsed.slice : null;
 
@@ -84,14 +86,16 @@ export function PropertyRow({
   // slice menu via the badge.
   const [bannerActive, setBannerActive] = useState(false);
 
-  // Track previous body to detect empty→non-empty transitions (the
-  // authoring moment when the educational banner is most useful).
-  const prevBodyRef = useRef(body);
+  // Track whether the prior value was a `?{...}` query-string form.
+  // The default slice + banner only fire on the transition from
+  // non-query (empty / static / chip-less) to query (chip dropped or
+  // a query-string typed). Static primitives like clicking "number" in
+  // a flag-string enum must NOT trip this.
+  const prevWasQueryRef = useRef(isQueryFormValue);
 
   useEffect(() => {
-    const wasEmpty = !prevBodyRef.current;
-    const isNowSet = !!body;
-    if (wasEmpty && isNowSet && slotShape === 'scalar-only' && !slice) {
+    const justBecameQuery = !prevWasQueryRef.current && isQueryFormValue;
+    if (justBecameQuery && body && slotShape === 'scalar-only' && !slice) {
       // Auto-apply the slot's default slice and surface the banner
       // (one-time per fresh drop).
       const def = slotPolicy.defaultSlice;
@@ -100,11 +104,20 @@ export function PropertyRow({
         setBannerActive(true);
       }
     }
-    if (!body) {
+    // Banner is for query-form values only. If the value drops back to
+    // a non-query primitive (or empty), dismiss it.
+    if (!isQueryFormValue || !body) {
       setBannerActive(false);
     }
-    prevBodyRef.current = body;
-  }, [body, slice, slotShape, slotPolicy.defaultSlice, onChange]);
+    prevWasQueryRef.current = isQueryFormValue;
+  }, [
+    isQueryFormValue,
+    body,
+    slice,
+    slotShape,
+    slotPolicy.defaultSlice,
+    onChange,
+  ]);
 
   const handleModeChange = (newMode) => {
     setForceQueryMode(newMode === 'query');
@@ -144,15 +157,20 @@ export function PropertyRow({
 
   const isDropTarget = isOver && dropEnabled;
 
-  // Slice badge is rendered when:
-  //  - The user is in query mode AND there is a body (chip present)
-  //  - AND the slot accepts at least one slice option (any policy field
-  //    is true) — otherwise there's nothing to author and we keep the
-  //    UI minimal.
-  // Also rendered when slice is non-null (so the user can edit it) even
-  // if the policy has narrowed since (e.g., a stale value).
+  // Slice badge is rendered when ALL of:
+  //  - The current value is a `?{...}` query-string (a chip is present
+  //    or the user is mid-typing a query). Static primitives never
+  //    show the badge.
+  //  - The user is in query mode (the chip editor is the active widget).
+  //  - The slot is one we can produce labels for. Unknown slots stay
+  //    bare so we don't show a slicing UI for things we don't classify.
+  // We also keep the badge visible when a slice is already authored
+  // even if the body is empty, so the user can clear it.
   const showSliceBadge =
-    currentMode === 'query' && !!body && (slice !== null || slotShape !== 'unknown');
+    currentMode === 'query' &&
+    isQueryFormValue &&
+    (!!body || !!slice) &&
+    slotShape !== 'unknown';
 
   return (
     <div
@@ -225,8 +243,11 @@ export function PropertyRow({
       {/* Field input */}
       <div>
         {currentMode === 'query' || (queryStringSupported && !staticSchema) ? (
-          <div className="flex items-start gap-1.5">
-            <div className="flex-1 min-w-0">
+          // flex-wrap so the slice badge drops to a new line in narrow
+          // property panels (the right-side editor is ~300px in many
+          // layouts) instead of overflowing past the panel edge.
+          <div className="flex items-start gap-1.5 flex-wrap">
+            <div className="flex-1 min-w-[180px]">
               <RefTextArea
                 value={body}
                 onChange={handleQueryChange}

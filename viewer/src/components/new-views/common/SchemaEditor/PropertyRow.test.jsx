@@ -267,6 +267,32 @@ describe('PropertyRow', () => {
       expect(onChange).toHaveBeenCalledWith('?{my_col}[0]');
     });
 
+    it('does NOT auto-apply a slice on static primitive (enum / flag pick)', () => {
+      // Regression: clicking a flag-string pill (e.g. mode = "number")
+      // pushes a STATIC primitive value, not a query-string. The slice
+      // flow must not engage — no banner, no badge, no rewrite.
+      const onChange = jest.fn();
+      const { rerender } = render(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value=""
+          onChange={onChange}
+        />
+      );
+      rerender(
+        <PropertyRow
+          {...defaultProps}
+          schema={queryNumberSchema}
+          value="number"
+          onChange={onChange}
+        />
+      );
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('slice-banner')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('slice-badge')).not.toBeInTheDocument();
+    });
+
     it('does NOT auto-apply a slice on array-only slot drops', () => {
       const onChange = jest.fn();
       const arrayOnlySchema = {

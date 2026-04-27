@@ -31,7 +31,7 @@ export function SliceBadge({ slice, onChange, slotShape = 'unknown', testId = 's
         type="button"
         ref={buttonRef}
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-white text-secondary-700 hover:bg-secondary-50 border border-secondary-300 transition-colors whitespace-nowrap"
         data-testid={testId}
         aria-label="Edit slice"
         aria-haspopup="menu"
