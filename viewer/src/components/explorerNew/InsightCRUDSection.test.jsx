@@ -1,9 +1,17 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightCRUDSection from './InsightCRUDSection';
 import useStore from '../../stores/store';
+
+const renderAsync = async (ui) => {
+  let view;
+  await act(async () => {
+    view = render(ui);
+  });
+  return view;
+};
 
 jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange, droppable }) => {
@@ -57,8 +65,8 @@ describe('InsightCRUDSection', () => {
     setupStore();
   });
 
-  it('renders insight name with purple styling', () => {
-    render(
+  it('renders insight name with purple styling', async () => {
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -69,8 +77,8 @@ describe('InsightCRUDSection', () => {
     expect(header.className).toContain('border-purple');
   });
 
-  it('renders type selector dropdown with CHART_TYPES', () => {
-    render(
+  it('renders type selector dropdown with CHART_TYPES', async () => {
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -85,11 +93,11 @@ describe('InsightCRUDSection', () => {
     expect(options[2]).toHaveValue('pie');
   });
 
-  it('changing type calls setInsightType', () => {
+  it('changing type calls setInsightType', async () => {
     const setInsightType = jest.fn();
     useStore.setState({ setInsightType });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -99,8 +107,8 @@ describe('InsightCRUDSection', () => {
     expect(setInsightType).toHaveBeenCalledWith('test_insight', 'bar');
   });
 
-  it('renders SchemaEditor with droppable=true when expanded', () => {
-    render(
+  it('renders SchemaEditor with droppable=true when expanded', async () => {
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -109,8 +117,8 @@ describe('InsightCRUDSection', () => {
     expect(schemaEditor).toHaveAttribute('data-droppable', 'true');
   });
 
-  it('does not render SchemaEditor when collapsed', () => {
-    render(
+  it('does not render SchemaEditor when collapsed', async () => {
+    await renderAsync(
       <InsightCRUDSection
         insightName="test_insight"
         isExpanded={false}
@@ -121,10 +129,10 @@ describe('InsightCRUDSection', () => {
     expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
   });
 
-  it('collapse/expand toggle works', () => {
+  it('collapse/expand toggle works', async () => {
     const onToggleExpand = jest.fn();
 
-    render(
+    await renderAsync(
       <InsightCRUDSection
         insightName="test_insight"
         isExpanded={true}
@@ -138,11 +146,11 @@ describe('InsightCRUDSection', () => {
     expect(onToggleExpand).toHaveBeenCalled();
   });
 
-  it('remove button calls removeInsightFromChart', () => {
+  it('remove button calls removeInsightFromChart', async () => {
     const removeInsightFromChart = jest.fn();
     useStore.setState({ removeInsightFromChart });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -152,9 +160,9 @@ describe('InsightCRUDSection', () => {
     expect(removeInsightFromChart).toHaveBeenCalledWith('test_insight');
   });
 
-  it('status dot renders green for new insight', () => {
+  it('status dot renders green for new insight', async () => {
     useStore.setState({ explorerDiffResult: { insights: { test_insight: 'new' } } });
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -163,7 +171,7 @@ describe('InsightCRUDSection', () => {
     expect(statusDot.className).toContain('bg-green-500');
   });
 
-  it('does not render status dot when not new and unchanged', () => {
+  it('does not render status dot when not new and unchanged', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -174,14 +182,14 @@ describe('InsightCRUDSection', () => {
       explorerDiffResult: { insights: { test_insight: null } },
     });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
     expect(screen.queryByTestId('insight-status-dot-test_insight')).not.toBeInTheDocument();
   });
 
-  it('shows amber status dot when insight is modified', () => {
+  it('shows amber status dot when insight is modified', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -193,7 +201,7 @@ describe('InsightCRUDSection', () => {
       explorerDiffResult: { insights: { test_insight: 'modified' } },
     });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -202,15 +210,15 @@ describe('InsightCRUDSection', () => {
     expect(dot.className).toContain('bg-amber-500');
   });
 
-  it('renders interactions section with add button when expanded', () => {
-    render(
+  it('renders interactions section with add button when expanded', async () => {
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
     expect(screen.getByTestId('insight-add-interaction-test_insight')).toBeInTheDocument();
   });
 
-  it('renders existing interactions', () => {
+  it('renders existing interactions', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -223,7 +231,7 @@ describe('InsightCRUDSection', () => {
       },
     });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -231,11 +239,11 @@ describe('InsightCRUDSection', () => {
     expect(interactions.length).toBe(2);
   });
 
-  it('add interaction button calls addInsightInteraction', () => {
+  it('add interaction button calls addInsightInteraction', async () => {
     const addInsightInteraction = jest.fn();
     useStore.setState({ addInsightInteraction });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -246,7 +254,7 @@ describe('InsightCRUDSection', () => {
     });
   });
 
-  it('remove interaction button calls removeInsightInteraction', () => {
+  it('remove interaction button calls removeInsightInteraction', async () => {
     const removeInsightInteraction = jest.fn();
     useStore.setState({
       removeInsightInteraction,
@@ -258,7 +266,7 @@ describe('InsightCRUDSection', () => {
       },
     });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
@@ -267,11 +275,11 @@ describe('InsightCRUDSection', () => {
     expect(removeInsightInteraction).toHaveBeenCalledWith('test_insight', 0);
   });
 
-  it('clicking header sets active insight', () => {
+  it('clicking header sets active insight', async () => {
     const setActiveInsight = jest.fn();
     useStore.setState({ setActiveInsight });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection
         insightName="test_insight"
         isExpanded={false}
@@ -285,12 +293,12 @@ describe('InsightCRUDSection', () => {
     expect(setActiveInsight).toHaveBeenCalledWith('test_insight');
   });
 
-  it('renders nothing when insight state does not exist', () => {
+  it('renders nothing when insight state does not exist', async () => {
     useStore.setState({
       explorerInsightStates: {},
     });
 
-    render(
+    await renderAsync(
       <InsightCRUDSection
         insightName="nonexistent"
         isExpanded={true}

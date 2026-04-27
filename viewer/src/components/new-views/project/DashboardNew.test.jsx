@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { futureFlags } from '../../../router-config';
 import DashboardNew from './DashboardNew';
 import useStore from '../../../stores/store';
 
@@ -122,7 +123,7 @@ describe('DashboardNew', () => {
     });
 
     render(
-      <BrowserRouter>
+      <BrowserRouter future={futureFlags}>
         <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
@@ -149,7 +150,7 @@ describe('DashboardNew', () => {
     });
 
     render(
-      <BrowserRouter>
+      <BrowserRouter future={futureFlags}>
         <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
@@ -159,7 +160,7 @@ describe('DashboardNew', () => {
 
   it('renders chart when found in store', () => {
     render(
-      <BrowserRouter>
+      <BrowserRouter future={futureFlags}>
         <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
@@ -186,7 +187,7 @@ describe('DashboardNew', () => {
     });
 
     render(
-      <BrowserRouter>
+      <BrowserRouter future={futureFlags}>
         <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );
@@ -217,7 +218,7 @@ describe('DashboardNew', () => {
     });
 
     render(
-      <BrowserRouter>
+      <BrowserRouter future={futureFlags}>
         <DashboardNew project={mockProject} dashboardName={dashboardName} />
       </BrowserRouter>
     );

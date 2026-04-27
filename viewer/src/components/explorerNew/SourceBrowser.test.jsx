@@ -345,6 +345,9 @@ describe('SourceBrowser', () => {
   });
 
   it('error messages are collapsed by default', async () => {
+    // Production code logs to console.error on schema-generation failure (SourceBrowser.jsx).
+    // Suppress the expected log to keep test output clean.
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const sourcesWithError = [
       { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
     ];
@@ -374,9 +377,11 @@ describe('SourceBrowser', () => {
       'data-error-collapsed',
       'true'
     );
+    errorSpy.mockRestore();
   });
 
   it('clicking an errored source toggles error visibility', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const sourcesWithError = [
       { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
     ];
@@ -399,6 +404,7 @@ describe('SourceBrowser', () => {
     await waitFor(() => {
       expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute('data-error');
     });
+    errorSpy.mockRestore();
 
     // Error collapsed by default
     expect(screen.getByTestId('tree-node-source-broken_db')).toHaveAttribute(
