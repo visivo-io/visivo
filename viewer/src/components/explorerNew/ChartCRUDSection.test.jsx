@@ -1,17 +1,14 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { DndContext } from '@dnd-kit/core';
 import ChartCRUDSection from './ChartCRUDSection';
 import useStore from '../../stores/store';
 
-const renderInDnd = async (ui) => {
-  let view;
-  await act(async () => {
-    view = render(<DndContext>{ui}</DndContext>);
-  });
-  return view;
-};
+// Each test below uses `await screen.findBy*` for its first DOM lookup so the
+// component's async useEffect (getSchema -> setLayoutSchema) is flushed inside
+// an act() scope before assertions, eliminating "not wrapped in act" warnings.
+const renderInDnd = (ui) => render(<DndContext>{ui}</DndContext>);
 
 jest.mock('../new-views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({
@@ -91,121 +88,125 @@ describe('ChartCRUDSection', () => {
   });
 
   it('renders chart name in header', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    // Chart name is now always rendered as an input (disabled when loaded,
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    // Chart name is always rendered as an input (disabled when loaded,
     // editable otherwise). Assert by value rather than text content.
-    expect(screen.getByDisplayValue('test_chart')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('test_chart')).toBeInTheDocument();
   });
 
   it('chart name input is editable when chart is new (not loaded)', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    const nameEl = screen.getByTestId('chart-name-input');
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const nameEl = await screen.findByTestId('chart-name-input');
     expect(nameEl.tagName).toBe('INPUT');
     expect(nameEl).not.toBeDisabled();
   });
 
   it('chart name input is disabled when chart is loaded from cache', async () => {
     useStore.setState({ charts: [{ name: 'test_chart' }] });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    const nameEl = screen.getByTestId('chart-name-input');
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const nameEl = await screen.findByTestId('chart-name-input');
     expect(nameEl.tagName).toBe('INPUT');
     expect(nameEl).toBeDisabled();
   });
 
   it('renders insight list with pills', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(screen.getByTestId('chart-insight-pill-insight_1')).toBeInTheDocument();
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    expect(await screen.findByTestId('chart-insight-pill-insight_1')).toBeInTheDocument();
     expect(screen.getByTestId('chart-insight-pill-insight_2')).toBeInTheDocument();
   });
 
   it('active insight is highlighted', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    const activePill = screen.getByTestId('embedded-pill-insight-insight_1');
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    const activePill = await screen.findByTestId('embedded-pill-insight-insight_1');
     expect(activePill.dataset.active).toBe('true');
   });
 
   it('remove button on pill calls removeInsightFromChart', async () => {
     const removeInsightFromChart = jest.fn();
     useStore.setState({ removeInsightFromChart });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(screen.getByTestId('embedded-pill-remove-insight_2'));
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    fireEvent.click(await screen.findByTestId('embedded-pill-remove-insight_2'));
     expect(removeInsightFromChart).toHaveBeenCalledWith('insight_2');
   });
 
   it('add insight button calls createInsight', async () => {
     const createInsight = jest.fn();
     useStore.setState({ createInsight });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(screen.getByTestId('chart-add-insight'));
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    fireEvent.click(await screen.findByTestId('chart-add-insight'));
     expect(createInsight).toHaveBeenCalled();
   });
 
   it('renders layout SchemaEditor when expanded', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(screen.getByTestId('chart-schema-editor')).toBeInTheDocument();
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    expect(await screen.findByTestId('chart-schema-editor')).toBeInTheDocument();
   });
 
   it('does not render SchemaEditor when collapsed', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+    renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+    // Wait for the always-rendered chart name input so the schema-fetch
+    // effect settles before we assert the absence of the schema editor.
+    await screen.findByDisplayValue('test_chart');
     expect(screen.queryByTestId('chart-schema-editor')).not.toBeInTheDocument();
   });
 
   it('chart name is always visible in header even when collapsed', async () => {
-    await renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
-    expect(screen.getByDisplayValue('test_chart')).toBeInTheDocument();
+    renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+    expect(await screen.findByDisplayValue('test_chart')).toBeInTheDocument();
   });
 
   it('collapse/expand toggle works', async () => {
     const onToggleExpand = jest.fn();
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={onToggleExpand} />);
-    fireEvent.click(screen.getByTestId('chart-toggle'));
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={onToggleExpand} />);
+    fireEvent.click(await screen.findByTestId('chart-toggle'));
     expect(onToggleExpand).toHaveBeenCalled();
   });
 
   it('close button calls closeChart', async () => {
     const closeChart = jest.fn();
     useStore.setState({ closeChart });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(screen.getByTestId('chart-close'));
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    fireEvent.click(await screen.findByTestId('chart-close'));
     expect(closeChart).toHaveBeenCalled();
   });
 
   it('clicking an insight pill calls setActiveInsight', async () => {
     const setActiveInsight = jest.fn();
     useStore.setState({ setActiveInsight });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    fireEvent.click(screen.getByTestId('embedded-pill-insight-insight_2'));
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    fireEvent.click(await screen.findByTestId('embedded-pill-insight-insight_2'));
     expect(setActiveInsight).toHaveBeenCalledWith('insight_2');
   });
 
   it('renders empty insights message when no insights', async () => {
     useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-    await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-    expect(screen.getByText(/no insights/i)).toBeInTheDocument();
+    renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+    expect(await screen.findByText(/no insights/i)).toBeInTheDocument();
   });
 
   describe('insight drop zone', () => {
     it('renders the drop zone with correct test id when expanded', async () => {
-      await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(screen.getByTestId('chart-insight-drop-zone')).toBeInTheDocument();
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      expect(await screen.findByTestId('chart-insight-drop-zone')).toBeInTheDocument();
     });
 
     it('does not render the drop zone when collapsed', async () => {
-      await renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+      renderInDnd(<ChartCRUDSection isExpanded={false} onToggleExpand={jest.fn()} />);
+      await screen.findByDisplayValue('test_chart');
       expect(screen.queryByTestId('chart-insight-drop-zone')).not.toBeInTheDocument();
     });
 
     it('drop zone wraps the insights list and add button', async () => {
-      await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      const dropZone = screen.getByTestId('chart-insight-drop-zone');
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const dropZone = await screen.findByTestId('chart-insight-drop-zone');
       expect(dropZone).toContainElement(screen.getByTestId('chart-add-insight'));
       expect(dropZone).toContainElement(screen.getByTestId('chart-insight-pill-insight_1'));
     });
 
     it('drop zone shows updated empty hint with drag instruction', async () => {
       useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
-      await renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
-      expect(screen.getByText(/drag from left nav/i)).toBeInTheDocument();
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      expect(await screen.findByText(/drag from left nav/i)).toBeInTheDocument();
     });
   });
 });

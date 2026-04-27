@@ -1,7 +1,34 @@
 /* eslint-disable no-template-curly-in-string */
+import useStore from './store';
+import { saveModel } from '../api/models';
+import { saveInsight } from '../api/insights';
+import { saveChart } from '../api/charts';
+import { saveMetric } from '../api/metrics';
+import { saveDimension } from '../api/dimensions';
+import {
+  expandDotNotationProps,
+  selectActiveModelState,
+  selectActiveModelSql,
+  selectActiveModelSourceName,
+  selectActiveModelQueryResult,
+  selectActiveModelQueryError,
+  selectActiveModelComputedColumns,
+  selectActiveModelEnrichedResult,
+  selectActiveInsightConfig,
+  selectModelStatus,
+  selectInsightStatus,
+  selectHasModifications,
+  selectDerivedInputNames,
+  assertNameUnique,
+  getAllKnownNames,
+  NameCollisionError,
+} from './explorerNewStore';
+
 // Mock API modules so saveExplorerObjects + post-save fetches don't hit the network.
 // Without this, the post-save Promise.all (fetchInsights/Models/Charts/Metrics/Dimensions)
 // triggers real fetch() calls in jsdom and floods the test output with AggregateError.
+// jest.mock calls are hoisted above imports by babel-plugin-jest-hoist, so placing
+// them after imports keeps eslint's import/first happy without changing runtime order.
 jest.mock('../api/models', () => ({
   saveModel: jest.fn().mockResolvedValue({ success: true }),
   fetchAllModels: jest.fn().mockResolvedValue({ models: [] }),
@@ -40,31 +67,6 @@ jest.mock('../api/dimensions', () => ({
 jest.mock('../api/explorer', () => ({
   fetchDiff: jest.fn().mockResolvedValue({}),
 }));
-
-import useStore from './store';
-import { saveModel } from '../api/models';
-import { saveInsight } from '../api/insights';
-import { saveChart } from '../api/charts';
-import { saveMetric } from '../api/metrics';
-import { saveDimension } from '../api/dimensions';
-import {
-  expandDotNotationProps,
-  selectActiveModelState,
-  selectActiveModelSql,
-  selectActiveModelSourceName,
-  selectActiveModelQueryResult,
-  selectActiveModelQueryError,
-  selectActiveModelComputedColumns,
-  selectActiveModelEnrichedResult,
-  selectActiveInsightConfig,
-  selectModelStatus,
-  selectInsightStatus,
-  selectHasModifications,
-  selectDerivedInputNames,
-  assertNameUnique,
-  getAllKnownNames,
-  NameCollisionError,
-} from './explorerNewStore';
 
 // Helper to reset all explorer new state
 const resetState = () => {
