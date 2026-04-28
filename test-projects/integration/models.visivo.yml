@@ -124,3 +124,6 @@ models:
         CAST((i * 3 % 40) + 5 AS INTEGER) AS units_sold,
         ROUND(10 + (i * 13 % 30) + ((i * 7 % 20) * 0.5), 2) AS cost
       FROM generate_series(0, 99) AS t(i)
+
+  - name: nested-and-name
+    sql: "SELECT x, y*3 as y FROM test_table"

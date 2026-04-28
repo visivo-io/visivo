@@ -2,7 +2,6 @@ name: project
 
 includes:
   - path: models.visivo.yml
-  - path: traces.visivo.yml
   - path: insights.visivo.yml
   - path: visivo-io/example-include.git@main
 
@@ -244,10 +243,10 @@ sources:
 
 charts:
   - name: indicator_chart
-    traces:
+    insights:
       - ${ref(indicator-trace)}
   - name: surface-chart
-    traces:
+    insights:
       - ${ref(surface-trace)}
     layout:
       title:
@@ -733,16 +732,16 @@ dashboards:
             table:
               name: awesome-table
               column_defs:
-                - trace_name: fibonacci-waterfall
+                - insight_name: fibonacci-waterfall
                   columns:
-                    - key: "columns.x_data"
-                    - key: "columns.y_data"
+                    - key: "props.x"
+                      header: "category"
+                    - key: "props.y"
                       header: "y amount"
                       aggregation: "sum"
-                    - key: "columns.measure"
+                    - key: "props.measure"
                     - key: "props.text"
-              traces:
-                - ${ref(fibonacci-waterfall)}
+              data: ${ref(fibonacci-waterfall)}
               rows_per_page: 1000
           - width: 2
             chart: ${ ref(indicator_chart) }
@@ -751,18 +750,14 @@ dashboards:
           - table:
               name: awesome-table-2
               column_defs:
-                - trace_name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
+                - insight_name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
                   columns:
-                    - key: "columns.vanilla_text"
-                    - key: "columns.markdown"
+                    - key: "props.x"
+                      header: "vanilla_text"
+                    - key: "props.y"
                       header: "Markdown"
                       markdown: true
-              traces:
-                - model: ${ ref(markdown-table-base) }
-                  name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
-                  columns:
-                    vanilla_text: vanilla_text
-                    markdown: markdown
+              data: ${ref(markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters)}
 
   - name: simple-dashboard
     level: 0
@@ -775,7 +770,7 @@ dashboards:
           - width: 9
             chart:
               name: a-very-fibonacci-waterfall
-              traces:
+              insights:
                 - ${ref(fibonacci-waterfall)}
                 - ${ref(example-indicator)}
               layout:
@@ -785,7 +780,7 @@ dashboards:
           - width: 2
             chart:
               name: aggregated-fib
-              traces:
+              insights:
                 - ${ref(aggregated-line)}
               layout:
                 title:
@@ -801,7 +796,7 @@ dashboards:
           - width: 3
             chart:
               name: fibonacci-plane
-              traces:
+              insights:
                 - ${ref(3d-line-one)}
                 - ${ref(3d-line-two)}
               layout:
@@ -816,7 +811,7 @@ dashboards:
           - width: 4
             chart:
               name: fibonacci
-              traces:
+              insights:
                 - ${ref(simple-line)}
               layout:
                 title:
@@ -831,24 +826,17 @@ dashboards:
           - width: 3
             chart:
               name: fibonacci-times-2
-              traces:
+              insights:
                 - name: double-simple-line
-                  #cohort_on: "?{'Fibonacci times 2'}"
-                  model:
-                    name: nested-and-name
-                    sql: "SELECT x, y*3 as y FROM test_table"
                   props:
                     type: scatter
-                    x: ?{x}
-                    y: ?{y}
+                    x: ?{${ref(nested-and-name).x}}
+                    y: ?{${ref(nested-and-name).y}}
                     line:
                       shape: spline
                       color: "#4F494C"
-                  order_by:
-                    - ?{x asc}
-                  tests:
-                    - assertions:
-                        - ">{ ${ref(double-simple-line).props.x[2]} == 3 }"
+                  interactions:
+                    - sort: ?{${ref(nested-and-name).x} ASC}
                 - ${ref(simple-line)}
               layout:
                 title:
@@ -870,7 +858,7 @@ dashboards:
           - width: 2
             chart:
               name: funnel-chart
-              traces:
+              insights:
                 - ${ref(funnel-trace)}
               layout:
                 title:
@@ -880,7 +868,6 @@ dashboards:
           - chart: ${ ref(surface-chart) }
 tables:
   - name: new_table
-    traces: []
     rows_per_page: 25
     columns:
       - ${ref(sales_data).region}

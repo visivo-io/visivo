@@ -298,3 +298,125 @@ insights:
       x: ?{${ref(daily_metrics).category}}
       y: ?{${ref(daily_metrics).value}}
       text: ?{${ref(daily_metrics).day_num}}
+
+  # ===== MIGRATED FROM traces.visivo.yml =====
+
+  - name: example-indicator
+    props:
+      type: indicator
+      value: ?{${ref(csv).x}}
+      delta:
+        reference: ?{${ref(csv).x}}
+
+  - name: surface-trace
+    props:
+      type: surface
+      z:
+        - ?{${ref(local_test_table).x}*${ref(local_test_table).x}+30}
+        - ?{${ref(local_test_table).y}*${ref(local_test_table).y}+30}
+        - ?{${ref(local_test_table).x}*${ref(local_test_table).y}*${ref(local_test_table).y}+40}
+
+  - name: indicator-trace
+    props:
+      type: "indicator"
+      mode: "number+delta"
+      value: ?{${ref(csv).y}}
+      number:
+        prefix: "$"
+      delta:
+        position: "top"
+        reference: 320
+      domain:
+        x: [0, 1]
+        y: [0, 1]
+
+  - name: funnel-trace
+    props:
+      type: funnel
+      y: ?{ 'Position:' || ${ref(test-table).x}}
+      x: ?{${ref(test-table).y}}
+      textinfo: "percent initial"
+      marker:
+        color: ?{ case when ${ref(test-table).y} >= 12 then '#713B57' else 'grey' end }
+        opacity: .2
+      textfont:
+        color: "white"
+        family: "Gravitas One"
+        size: 38
+      connector:
+        fillcolor: "#edbdb5"
+    interactions:
+      - sort: ?{${ref(test-table).x} DESC}
+
+  - name: aggregated-line
+    props:
+      type: bar
+      x: ?{ CASE WHEN ${ref(test-table).x} <= 3 THEN 'less' else 'More' END }
+      y: ?{ avg(${ref(test-table).y}) }
+      marker:
+        color: ["rgb(142,124,195)", "rgba(204,204,204,1)"]
+        line:
+          color: ?{CASE WHEN ${ref(test-table).x} <= 3 THEN '#D25946' else '#191D33' END}
+          width: 2.5
+        pattern:
+          shape: ["/", ""]
+
+  - name: simple-line
+    props:
+      type: bar
+      x: ?{${ref(join_table).x}}
+      y: ?{${ref(join_table).y}}
+      marker:
+        color: ?{ case when ${ref(join_table).x} >= 5 then '#713B57' else 'grey' end }
+        pattern:
+          shape: ?{ case when ${ref(join_table).x} = 5 then '/' when ${ref(join_table).x} = 6 THEN 'x' else '' end }
+        line:
+          width: ?{ Case when ${ref(join_table).x} in (5,6) then 2.5 else null end}
+    interactions:
+      - split: ?{ CASE WHEN ${ref(join_table).y} >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
+
+  - name: 3d-line-one
+    props:
+      type: scatter3d
+      x: ?{${ref(test-table).x}}
+      y: ?{${ref(test-table).y}}
+      z: ?{ -2*(${ref(test-table).x}/16)*${ref(test-table).x} + ${ref(test-table).x} + ${ref(test-table).y}*(${ref(test-table).y}-3)}
+    interactions:
+      - sort: ?{${ref(test-table).x} ASC}
+
+  - name: 3d-line-two
+    props:
+      type: scatter3d
+      x: ?{${ref(test-table).x}}
+      y: ?{${ref(test-table).y}}
+      z: ?{ (-3*(${ref(test-table).x}/16)* 0.5*${ref(test-table).x} + ${ref(test-table).x} + ${ref(test-table).y}*(${ref(test-table).y}+2))+8 +3*${ref(test-table).x} - 7*${ref(test-table).y}}
+    interactions:
+      - sort: ?{${ref(test-table).x} ASC}
+      - filter: ?{${ref(test-table).x}>1}
+
+  - name: fibonacci-waterfall
+    props:
+      type: waterfall
+      base: 0
+      measure: ?{${ref(waterfall_model).waterfall}}
+      x: ?{${ref(waterfall_model).category}}
+      y: ?{try_cast( replace(${ref(waterfall_model).thousands_dollars}, ',', '') as float ) * try_cast(${ref(waterfall_model).sign} as float)}
+      text: ?{ cast(${ref(waterfall_model).thousands_dollars} as text) }
+      increasing:
+        marker:
+          color: "#b97a9b"
+      decreasing:
+        marker:
+          color: "#edbdb5"
+    interactions:
+      - split: ?{${ref(waterfall_model).year}}
+      - sort: ?{${ref(waterfall_model).row} ASC}
+      - filter: ?{ ${ref(waterfall_model).waterfall} is not null }
+      - filter: ?{ ${ref(waterfall_model).category} not in ('Earnings From Continuing Operations') }
+      - filter: ?{ ${ref(waterfall_model).year} in ('Sep 2023', 'Sep 2022') }
+
+  - name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
+    props:
+      type: scatter
+      x: ?{${ref(markdown-table-base).vanilla_text}}
+      y: ?{${ref(markdown-table-base).markdown}}

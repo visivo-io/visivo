@@ -1,5 +1,5 @@
 includes:
   - path: models.visivo.yml
-  - path: traces.visivo.yml
+  - path: insights.visivo.yml
   - path: charts.visivo.yml
   - path: dashboards.visivo.yml
