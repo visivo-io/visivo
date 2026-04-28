@@ -14,24 +14,265 @@ models:
         H,8
         I,9
         J,10
-# {% set palettes = ["Warm Earth Tones", "Sunset Over Water", "Muted Vintage", "Retro Pop", "Forest Nightfall", "Desert Sunrise", "Urban Dusk", "Botanical Garden", "Autumn Ember", "Coastal Breeze", "Muted Vintage II", "Muted Rosewood", "Muted Classic", "Vintage Pastel", "Classic Faded","Spring Blossom", "Mint Dream", "Soft Sunset", "Lavender Fields", "Summer Breeze","Mint Dream Contrast", "Mint Dream Dark", "Mint Dream Deep", "Mint Dream Bold", "High Contrast", "High Contrast Earth"] %}
 charts:
-  # {% for palette in palettes %}
-  - name: "{{ palette }}"
+  - name: warm-earth-tones
     layout:
-      colorway: "{{ palette }}"
+      colorway: "Warm Earth Tones"
       title:
-        text: "'{{ palette }}' Palette"
-      xaxis:
-        showgrid: false
-        showticklabels: false
-      yaxis:
-        title:
-          text: "Order"
-        dtick: 1
+        text: "'Warm Earth Tones' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
       showlegend: false
-  # {% endfor %}
-
+    insights:
+      - ${ref(color-palette-example)}
+  - name: sunset-over-water
+    layout:
+      colorway: "Sunset Over Water"
+      title:
+        text: "'Sunset Over Water' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: muted-vintage
+    layout:
+      colorway: "Muted Vintage"
+      title:
+        text: "'Muted Vintage' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: retro-pop
+    layout:
+      colorway: "Retro Pop"
+      title:
+        text: "'Retro Pop' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: forest-nightfall
+    layout:
+      colorway: "Forest Nightfall"
+      title:
+        text: "'Forest Nightfall' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: desert-sunrise
+    layout:
+      colorway: "Desert Sunrise"
+      title:
+        text: "'Desert Sunrise' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: urban-dusk
+    layout:
+      colorway: "Urban Dusk"
+      title:
+        text: "'Urban Dusk' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: botanical-garden
+    layout:
+      colorway: "Botanical Garden"
+      title:
+        text: "'Botanical Garden' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: autumn-ember
+    layout:
+      colorway: "Autumn Ember"
+      title:
+        text: "'Autumn Ember' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: coastal-breeze
+    layout:
+      colorway: "Coastal Breeze"
+      title:
+        text: "'Coastal Breeze' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: muted-vintage-ii
+    layout:
+      colorway: "Muted Vintage II"
+      title:
+        text: "'Muted Vintage II' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: muted-rosewood
+    layout:
+      colorway: "Muted Rosewood"
+      title:
+        text: "'Muted Rosewood' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: muted-classic
+    layout:
+      colorway: "Muted Classic"
+      title:
+        text: "'Muted Classic' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: vintage-pastel
+    layout:
+      colorway: "Vintage Pastel"
+      title:
+        text: "'Vintage Pastel' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: classic-faded
+    layout:
+      colorway: "Classic Faded"
+      title:
+        text: "'Classic Faded' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: spring-blossom
+    layout:
+      colorway: "Spring Blossom"
+      title:
+        text: "'Spring Blossom' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: mint-dream
+    layout:
+      colorway: "Mint Dream"
+      title:
+        text: "'Mint Dream' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: soft-sunset
+    layout:
+      colorway: "Soft Sunset"
+      title:
+        text: "'Soft Sunset' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: lavender-fields
+    layout:
+      colorway: "Lavender Fields"
+      title:
+        text: "'Lavender Fields' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: summer-breeze
+    layout:
+      colorway: "Summer Breeze"
+      title:
+        text: "'Summer Breeze' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: mint-dream-contrast
+    layout:
+      colorway: "Mint Dream Contrast"
+      title:
+        text: "'Mint Dream Contrast' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: mint-dream-dark
+    layout:
+      colorway: "Mint Dream Dark"
+      title:
+        text: "'Mint Dream Dark' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: mint-dream-deep
+    layout:
+      colorway: "Mint Dream Deep"
+      title:
+        text: "'Mint Dream Deep' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: mint-dream-bold
+    layout:
+      colorway: "Mint Dream Bold"
+      title:
+        text: "'Mint Dream Bold' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: high-contrast
+    layout:
+      colorway: "High Contrast"
+      title:
+        text: "'High Contrast' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
+    insights:
+      - ${ref(color-palette-example)}
+  - name: high-contrast-earth
+    layout:
+      colorway: "High Contrast Earth"
+      title:
+        text: "'High Contrast Earth' Palette"
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
+      showlegend: false
     insights:
       - ${ref(color-palette-example)}
   - name: custom-colors-example
@@ -39,15 +280,9 @@ charts:
       colorway: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#808000"]
       title:
         text: Custom Color Palette
-      xaxis:
-        showgrid: false
-        showticklabels: false
-      yaxis:
-        title:
-          text: "Order"
-        dtick: 1
+      xaxis: { showgrid: false, showticklabels: false }
+      yaxis: { title: { text: "Order" }, dtick: 1 }
       showlegend: false
-
     insights:
       - ${ref(color-palette-example)}
 dashboards:
@@ -62,6 +297,58 @@ dashboards:
 
                 This dashboard demonstrates the various predefined color palettes available in Visivo,
                 as well as how to use custom color palettes.
+      - height: medium
+        items:
+          - chart: ${ref(warm-earth-tones)}
+          - chart: ${ref(sunset-over-water)}
+      - height: medium
+        items:
+          - chart: ${ref(muted-vintage)}
+          - chart: ${ref(retro-pop)}
+      - height: medium
+        items:
+          - chart: ${ref(forest-nightfall)}
+          - chart: ${ref(desert-sunrise)}
+      - height: medium
+        items:
+          - chart: ${ref(urban-dusk)}
+          - chart: ${ref(botanical-garden)}
+      - height: medium
+        items:
+          - chart: ${ref(autumn-ember)}
+          - chart: ${ref(coastal-breeze)}
+      - height: medium
+        items:
+          - chart: ${ref(muted-vintage-ii)}
+          - chart: ${ref(muted-rosewood)}
+      - height: medium
+        items:
+          - chart: ${ref(muted-classic)}
+          - chart: ${ref(vintage-pastel)}
+      - height: medium
+        items:
+          - chart: ${ref(classic-faded)}
+          - chart: ${ref(spring-blossom)}
+      - height: medium
+        items:
+          - chart: ${ref(mint-dream)}
+          - chart: ${ref(soft-sunset)}
+      - height: medium
+        items:
+          - chart: ${ref(lavender-fields)}
+          - chart: ${ref(summer-breeze)}
+      - height: medium
+        items:
+          - chart: ${ref(mint-dream-contrast)}
+          - chart: ${ref(mint-dream-dark)}
+      - height: medium
+        items:
+          - chart: ${ref(mint-dream-deep)}
+          - chart: ${ref(mint-dream-bold)}
+      - height: medium
+        items:
+          - chart: ${ref(high-contrast)}
+          - chart: ${ref(high-contrast-earth)}
       - height: medium
         items:
           - chart: ${ref(custom-colors-example)}
@@ -82,6 +369,5 @@ insights:
       y: ?{${ref(layout-data).value}}
       hovertemplate: "%{fullData.marker.color}<extra></extra>"
       orientation: h
-
     interactions:
       - split: ?{${ref(layout-data).category}}
