@@ -1,11 +1,12 @@
-import { renderHook, act } from '@testing-library/react';
-import { usePreviewData, useInsightPreviewData } from './usePreviewData';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { usePreviewData, useInsightPreviewData, useChartPreviewJob } from './usePreviewData';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import {
   queryPropsHaveChanged,
   hashQueryProps,
   extractNonQueryProps,
+  extractQueryAffectingProps,
 } from '../utils/queryPropertyDetection';
 import useStore from '../stores/store';
 
@@ -410,5 +411,212 @@ describe('useInsightPreviewData', () => {
     );
 
     expect(mockStartRun).not.toHaveBeenCalled();
+  });
+});
+
+describe('useChartPreviewJob — runHash gating', () => {
+  let mockStartRun;
+  let mockResetRun;
+
+  const makePreviewJob = (overrides = {}) => ({
+    runInstanceId: null,
+    status: null,
+    progress: 0,
+    progressMessage: '',
+    result: null,
+    error: null,
+    isRunning: false,
+    isCompleted: false,
+    isFailed: false,
+    startRun: mockStartRun,
+    resetRun: mockResetRun,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Pending promise so .then() never fires — keeps the
+    // post-resolve state update outside the test's render cycle and
+    // avoids React act warnings without needing explicit act wrappers.
+    mockStartRun = jest.fn().mockReturnValue(pendingPromise());
+    mockResetRun = jest.fn();
+
+    usePreviewJob.mockReturnValue(makePreviewJob());
+
+    useInsightsData.mockReturnValue({
+      insights: {},
+      insightsData: {},
+      isInsightsLoading: false,
+      hasAllInsightData: false,
+      error: null,
+    });
+
+    // The hook depends on the real extractor logic to decide what
+    // counts as query-affecting; mocking it away would defeat the
+    // gating test. Provide a thin stand-in that mirrors the real
+    // implementation just enough for the cases below.
+    extractQueryAffectingProps.mockImplementation(props => {
+      if (!props || typeof props !== 'object') return {};
+      const out = {};
+      for (const [k, v] of Object.entries(props)) {
+        if (typeof v === 'string' && /\?\{/.test(v)) out[k] = v;
+      }
+      return out;
+    });
+    extractNonQueryProps.mockImplementation(props => {
+      if (!props || typeof props !== 'object') return {};
+      const out = {};
+      for (const [k, v] of Object.entries(props)) {
+        if (!(typeof v === 'string' && /\?\{/.test(v))) out[k] = v;
+      }
+      return out;
+    });
+
+    useStore.mockStoreState = {
+      insightJobs: {},
+      updateInsightJob: jest.fn(),
+    };
+    useStore.mockImplementation(selector => {
+      if (typeof selector === 'function') {
+        return selector(useStore.mockStoreState);
+      }
+      return undefined;
+    });
+    useStore.getState = jest.fn(() => useStore.mockStoreState);
+  });
+
+  const buildRequest = (props = { type: 'indicator', value: '?{MAX(x)}', mode: 'number' }) => ({
+    insight_names: ['ind'],
+    context_objects: {
+      insights: [{ name: 'ind', props }],
+    },
+  });
+
+  // Note on the gating mechanism: with pendingPromise(), startRun()
+  // never resolves, so lastFiredHash never advances past null. The
+  // skip path is instead enforced by `fireRef.current` (set true
+  // before startRun, never cleared because .finally never fires).
+  // That single-flight guard is what stops the second startRun call
+  // for static-only changes. The check below verifies that.
+
+  test('fires startRun on first request', () => {
+    renderHook(() => useChartPreviewJob(buildRequest(), { projectId: 'p' }));
+    expect(mockStartRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('does NOT re-fire startRun when only a static prop changes', () => {
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+    expect(mockStartRun).toHaveBeenCalledTimes(1);
+
+    rerender({ req: buildRequest({ type: 'indicator', value: '?{MAX(x)}', mode: 'delta' }) });
+    expect(mockStartRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('re-fires startRun when a query-string prop changes', async () => {
+    // For runHash to advance after the first call, lastFiredHash
+    // needs to flip — give the first startRun a resolving promise
+    // so the .then handler runs and clears fireRef + advances state.
+    // Subsequent calls keep using the pending default from beforeEach.
+    mockStartRun.mockReturnValueOnce(Promise.resolve('run-1'));
+
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(1));
+
+    rerender({ req: buildRequest({ type: 'indicator', value: '?{MIN(x)}', mode: 'number' }) });
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(2));
+  });
+
+  test('re-fires startRun when type changes', async () => {
+    mockStartRun.mockReturnValueOnce(Promise.resolve('run-1'));
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(1));
+
+    rerender({ req: buildRequest({ type: 'scatter', value: '?{MAX(x)}', mode: 'number' }) });
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(2));
+  });
+
+  test('re-fires startRun when interactions change', async () => {
+    mockStartRun.mockReturnValueOnce(Promise.resolve('run-1'));
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(1));
+
+    const withInteraction = {
+      insight_names: ['ind'],
+      context_objects: {
+        insights: [
+          {
+            name: 'ind',
+            props: { type: 'indicator', value: '?{MAX(x)}', mode: 'number' },
+            interactions: [{ filter: '?{x > 0}' }],
+          },
+        ],
+      },
+    };
+    rerender({ req: withInteraction });
+    await waitFor(() => expect(mockStartRun).toHaveBeenCalledTimes(2));
+  });
+
+  test('after first run completes, static-only change patches insightJobs locally', () => {
+    // Seed insightJobs so the local-update branch has something to
+    // patch when hasCompletedFirstRun flips true.
+    useStore.mockStoreState.insightJobs = {
+      __preview__ind: {
+        data: [{ x: 1 }],
+        type: 'indicator',
+        static_props: { mode: 'number' },
+      },
+    };
+
+    let isCompleted = false;
+    usePreviewJob.mockImplementation(() =>
+      makePreviewJob({ isCompleted, status: isCompleted ? 'completed' : null })
+    );
+
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+
+    // Flip the mocked job to completed and re-render to flush the
+    // hasCompletedFirstRun effect.
+    isCompleted = true;
+    rerender({ req: buildRequest() });
+
+    // Static-only change: mode flips number → delta. Must not fire
+    // a new run, but should patch insightJobs locally.
+    rerender({ req: buildRequest({ type: 'indicator', value: '?{MAX(x)}', mode: 'delta' }) });
+
+    expect(mockStartRun).toHaveBeenCalledTimes(1);
+    expect(useStore.mockStoreState.updateInsightJob).toHaveBeenCalledWith(
+      '__preview__ind',
+      expect.objectContaining({
+        static_props: expect.objectContaining({ mode: 'delta' }),
+      })
+    );
+  });
+
+  test('does not patch locally before first run completes', () => {
+    // hasCompletedFirstRun stays false (preview job never reports
+    // completion), so the local-update path is gated off.
+    const { rerender } = renderHook(
+      ({ req }) => useChartPreviewJob(req, { projectId: 'p' }),
+      { initialProps: { req: buildRequest() } }
+    );
+
+    rerender({ req: buildRequest({ type: 'indicator', value: '?{MAX(x)}', mode: 'delta' }) });
+    expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
   });
 });
