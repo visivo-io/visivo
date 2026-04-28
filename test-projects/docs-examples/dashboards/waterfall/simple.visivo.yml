@@ -9,20 +9,19 @@ models:
         2,Decrease B,-150
         3,Increase C,300
         4,Ending,1350
-traces:
-  - name: Simple Waterfall Plot
-    model: ${ref(waterfall-data)}
-    props:
-      type: waterfall
-      x: ?{label}
-      y: ?{value}
-      measure: ["initial", "relative", "relative", "relative", "total"]
-    order_by:
-      - ?{ idx asc}
 charts:
   - name: Simple Waterfall Chart
-    traces:
-      - ${ref(Simple Waterfall Plot)}
     layout:
       title:
         text: Simple Waterfall Plot<br><sub>Sequential Changes in Value</sub>
+    insights:
+      - ${ref(Simple Waterfall Plot)}
+insights:
+  - name: Simple Waterfall Plot
+    props:
+      type: waterfall
+      x: ?{${ref(waterfall-data).label}}
+      y: ?{${ref(waterfall-data).value}}
+      measure: ["initial", "relative", "relative", "relative", "total"]
+    interactions:
+      - sort: ?{ ${ref(waterfall-data).idx} ASC}

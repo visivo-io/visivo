@@ -10,28 +10,8 @@ models:
         6,6,5,5,-5,0,7.07
         8,8,8,0,0,5,5.00
 
-traces:
-  - name: Wind Direction Cone Plot Trace
-    model: ${ref(wind-data-cone)}
-    props:
-      type: cone
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      u: ?{u}
-      v: ?{v}
-      w: ?{w}
-      colorscale: "Viridis"
-      colorbar:
-        title:
-          text: "Wind Speed (m/s)"
-      hoverinfo: "text"
-      text: ?{speed}
-
 charts:
   - name: Wind Direction Cone Plot
-    traces:
-      - ${ref(Wind Direction Cone Plot Trace)}
     layout:
       title:
         text: Wind Direction and Speed
@@ -46,3 +26,22 @@ charts:
         r: 0
         t: 40
         b: 90
+    insights:
+      - ${ref(Wind Direction Cone Plot Trace)}
+insights:
+  - name: Wind Direction Cone Plot Trace
+    props:
+      type: cone
+      x: ?{${ref(wind-data-cone).x}}
+      y: ?{${ref(wind-data-cone).y}}
+      z: ?{${ref(wind-data-cone).z}}
+      u: ?{${ref(wind-data-cone).u}}
+      v: ?{${ref(wind-data-cone).v}}
+      w: ?{${ref(wind-data-cone).w}}
+      colorscale: "Viridis"
+      colorbar:
+        title:
+          text: "Wind Speed (m/s)"
+      hoverinfo: "text"
+      text: ?{${ref(wind-data-cone).speed}}
+

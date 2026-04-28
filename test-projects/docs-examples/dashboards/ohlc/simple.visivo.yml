@@ -9,26 +9,8 @@ models:
         2023-01-03,107,110,105,109
         2023-01-04,109,112,107,111
         2023-01-05,111,114,110,113
-traces:
-  - name: Simple OHLC Plot
-    model: ${ref(ohlc-data)}
-    props:
-      type: ohlc
-      x: ?{date}
-      open: ?{open}
-      high: ?{high}
-      low: ?{low}
-      close: ?{close}
-      increasing:
-        line:
-          color: "#17becf"
-      decreasing:
-        line:
-          color: "#ff7f0e"
 charts:
   - name: Simple OHLC Chart
-    traces:
-      - ${ref(Simple OHLC Plot)}
     layout:
       title:
         text: Simple OHLC Chart<br><sub>Stock Price Movements Over Time</sub>
@@ -37,4 +19,21 @@ charts:
           text: "Date"
       yaxis:
         title:
-          text: "Price" 
+          text: "Price"
+    insights:
+      - ${ref(Simple OHLC Plot)}
+insights:
+  - name: Simple OHLC Plot
+    props:
+      type: ohlc
+      x: ?{date}
+      open: ?{${ref(ohlc-data).open}}
+      high: ?{${ref(ohlc-data).high}}
+      low: ?{${ref(ohlc-data).low}}
+      close: ?{${ref(ohlc-data).close}}
+      increasing:
+        line:
+          color: "#17becf"
+      decreasing:
+        line:
+          color: "#ff7f0e"

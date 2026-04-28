@@ -9,25 +9,24 @@ models:
         3,4,5,A
         4,5,6,B
         5,6,7,A
-traces:
+charts:
+  - name: Splom Chart with Custom Colors
+    layout:
+      title:
+        text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>
+    insights:
+      - ${ref(Splom Plot with Custom Colors)}
+insights:
   - name: Splom Plot with Custom Colors
-    model: ${ref(splom-data-colors)}
     props:
       type: splom
       dimensions:
         - label: "Variable 1"
-          values: ?{var1}
+          values: ?{${ref(splom-data-colors).var1}}
         - label: "Variable 2"
-          values: ?{var2}
+          values: ?{${ref(splom-data-colors).var2}}
         - label: "Variable 3"
-          values: ?{var3}
+          values: ?{${ref(splom-data-colors).var3}}
       marker:
-        color: ?{case when category = 'A' THEN 'red' else 'green' end}
+        color: ?{case when ${ref(splom-data-colors).category} = 'A' THEN 'red' else 'green' end}
         size: 20
-charts:
-  - name: Splom Chart with Custom Colors
-    traces:
-      - ${ref(Splom Plot with Custom Colors)}
-    layout:
-      title:
-        text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>

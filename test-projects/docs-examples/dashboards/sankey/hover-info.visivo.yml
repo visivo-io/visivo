@@ -8,22 +8,21 @@ models:
         0,2,10
         1,3,15
         2,3,5
-traces:
+charts:
+  - name: Hover Info Sankey Chart
+    layout:
+      title:
+        text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub>
+    insights:
+      - ${ref(Sankey Diagram with Hover Information)}
+insights:
   - name: Sankey Diagram with Hover Information
-    model: ${ref(sankey-data-hover)}
     props:
       type: sankey
       node:
         label: ["P", "Q", "R", "S"]
       link:
-        source: ?{source}
-        target: ?{target}
-        value: ?{value}
+        source: ?{${ref(sankey-data-hover).source}}
+        target: ?{${ref(sankey-data-hover).target}}
+        value: ?{${ref(sankey-data-hover).value}}
         hoverinfo: "all"
-charts:
-  - name: Hover Info Sankey Chart
-    traces:
-      - ${ref(Sankey Diagram with Hover Information)}
-    layout:
-      title:
-        text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub>

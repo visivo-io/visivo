@@ -9,18 +9,17 @@ models:
         3,15
         4,25
         5,30
-traces:
-  - name: Simple Scattergl Plot
-    model: ${ref(scattergl-data)}
-    props:
-      type: scattergl
-      x: ?{x}
-      y: ?{y}
-      mode: "markers"
 charts:
   - name: Simple Scattergl Chart
-    traces:
-      - ${ref(Simple Scattergl Plot)}
     layout:
       title:
-        text: Simple Scattergl Plot<br><sub>High-Performance Scatter Plot with WebGL</sub> 
+        text: Simple Scattergl Plot<br><sub>High-Performance Scatter Plot with WebGL</sub>
+    insights:
+      - ${ref(Simple Scattergl Plot)}
+insights:
+  - name: Simple Scattergl Plot
+    props:
+      type: scattergl
+      x: ?{${ref(scattergl-data).x}}
+      y: ?{${ref(scattergl-data).y}}
+      mode: "markers"

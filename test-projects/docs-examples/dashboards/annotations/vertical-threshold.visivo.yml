@@ -10,23 +10,8 @@ models:
         4,6
         5,10
 
-traces:
-  - name: vertical_line_trace
-    model: ${ref(vertical_threshold_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: lines
-      line:
-        color: green
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Vertical Threshold Example
-    traces:
-      - ${ ref(vertical_line_trace) }
     layout:
       title:
         text: Vertical Threshold Line Example
@@ -40,3 +25,16 @@ charts:
             color: orange
             width: 2
             dash: dot
+    insights:
+      - ${ ref(vertical_line_trace) }
+insights:
+  - name: vertical_line_trace
+    props:
+      type: scatter
+      x: ?{${ref(vertical_threshold_data).x}}
+      y: ?{${ref(vertical_threshold_data).y}}
+      mode: lines
+      line:
+        color: green
+    interactions:
+      - sort: ?{ ${ref(vertical_threshold_data).x} ASC }

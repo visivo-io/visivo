@@ -4,19 +4,8 @@ models:
       - curl
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-traces:
-  - name: Proclamations Box Plot
-    model: ${ref(monty-python-quest-proclamations)}
-    cohort_on: "person"
-    props:
-      type: box
-      y: ?{proclamations_made}
-      x: ?{enemy_encountered}
-
 charts:
   - name: Proclamations Box Plot with Outliers
-    traces:
-      - ${ref(Proclamations Box Plot)}
     layout:
       title:
         text: Cohorted Box Plot<br><sub>Proclamations Made Across Quests by Enemy</sub>
@@ -27,3 +16,14 @@ charts:
       yaxis:
         title:
           text: "Proclamations Made"
+    insights:
+      - ${ref(Proclamations Box Plot)}
+insights:
+  - name: Proclamations Box Plot
+    props:
+      type: box
+      y: ?{${ref(monty-python-quest-proclamations).proclamations_made}}
+      x: ?{${ref(monty-python-quest-proclamations).enemy_encountered}}
+
+    interactions:
+      - split: ?{${ref(monty-python-quest-proclamations).person}}

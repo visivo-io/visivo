@@ -4,21 +4,20 @@ models:
       - curl
       - -sL
       - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
-traces:
-  - name: Simple Streamtube Plot
-    model: ${ref(streamtube-data)}
-    props:
-      type: streamtube
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      u: ?{u}
-      v: ?{v}
-      w: ?{w}
 charts:
   - name: Simple Streamtube Chart
-    traces:
-      - ${ref(Simple Streamtube Plot)}
     layout:
       title:
-        text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub> 
+        text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub>
+    insights:
+      - ${ref(Simple Streamtube Plot)}
+insights:
+  - name: Simple Streamtube Plot
+    props:
+      type: streamtube
+      x: ?{${ref(streamtube-data).x}}
+      y: ?{${ref(streamtube-data).y}}
+      z: ?{${ref(streamtube-data).z}}
+      u: ?{${ref(streamtube-data).u}}
+      v: ?{${ref(streamtube-data).v}}
+      w: ?{${ref(streamtube-data).w}}

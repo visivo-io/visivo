@@ -16,26 +16,25 @@ models:
         Interest,2200,Product C
         Consideration,900,Product C
         Purchase,300,Product C
-traces:
-  - name: Cohort Funnel Chart
-    model: ${ref(funnel-data-cohorts)}
-    cohort_on: product
-    props:
-      type: funnel
-      y: ?{stage}
-      x: ?{value}
-      textinfo: "value+percent previous"
-      marker:
-        colorscale: "Viridis"
-    order_by:
-      - ?{ product }
-      - ?{ value desc}
 charts:
   - name: Funnel Chart with Cohorts
-    traces:
-      - ${ref(Cohort Funnel Chart)}
     layout:
       title:
         text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>
       margin:
         l: 100
+    insights:
+      - ${ref(Cohort Funnel Chart)}
+insights:
+  - name: Cohort Funnel Chart
+    props:
+      type: funnel
+      y: ?{${ref(funnel-data-cohorts).stage}}
+      x: ?{${ref(funnel-data-cohorts).value}}
+      textinfo: "value+percent previous"
+      marker:
+        colorscale: "Viridis"
+    interactions:
+      - split: ?{${ref(funnel-data-cohorts).product}}
+      - sort: ?{ ${ref(funnel-data-cohorts).product} }
+      - sort: ?{ ${ref(funnel-data-cohorts).value} DESC}

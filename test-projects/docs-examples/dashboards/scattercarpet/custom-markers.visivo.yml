@@ -26,14 +26,21 @@ models:
         5,1.5,20,#2ca02c
         6,2.5,25,#d62728
         5,2,30,#9467bd
-traces:
+charts:
+  - name: Scattercarpet Chart with Custom Markers
+    layout:
+      title:
+        text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub>
+    insights:
+      - ${ref(Carpet Grid Markers)}
+      - ${ref(Scattercarpet Plot with Custom Markers)}
+insights:
   - name: Carpet Grid Markers
-    model: ${ref(carpet-grid-markers)}
     props:
       type: carpet
-      a: ?{a}
-      b: ?{b}
-      y: ?{y}
+      a: ?{${ref(carpet-grid-markers).a}}
+      b: ?{${ref(carpet-grid-markers).b}}
+      y: ?{${ref(carpet-grid-markers).y}}
       aaxis:
         tickprefix: 'a = '
         ticksuffix: 'm'
@@ -45,20 +52,11 @@ traces:
         smoothing: 1
         minorgridcount: 9
   - name: Scattercarpet Plot with Custom Markers
-    model: ${ref(scattercarpet-data-custom)}
     props:
       type: scattercarpet
-      a: ?{a}
-      b: ?{b}
+      a: ?{${ref(scattercarpet-data-custom).a}}
+      b: ?{${ref(scattercarpet-data-custom).b}}
       mode: "markers"
       marker:
-        size: ?{size}
-        color: ?{color}
-charts:
-  - name: Scattercarpet Chart with Custom Markers
-    traces:
-      - ${ref(Carpet Grid Markers)}
-      - ${ref(Scattercarpet Plot with Custom Markers)}
-    layout:
-      title:
-        text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub> 
+        size: ?{${ref(scattercarpet-data-custom).size}}
+        color: ?{${ref(scattercarpet-data-custom).color}}

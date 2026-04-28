@@ -9,25 +9,24 @@ models:
         2,2,1,0,0,3,1,#2ca02c
         3,0,2,1,1,2,3,#9467bd
 
-traces:
-  - name: Simple Mesh3D Plot
-    model: ${ref(mesh3d-data)}
-    props:
-      type: mesh3d
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      i: ?{i}
-      j: ?{j}
-      k: ?{k}
-      facecolor: ?{color}
-      opacity: 0.7
-    order_by:
-      - ?{ idx asc}
 charts:
   - name: Simple Mesh3D Chart
-    traces:
-      - ${ref(Simple Mesh3D Plot)}
     layout:
       title:
         text: Simple Mesh3D Plot<br><sub>3D Mesh Surface Visualization</sub>
+    insights:
+      - ${ref(Simple Mesh3D Plot)}
+insights:
+  - name: Simple Mesh3D Plot
+    props:
+      type: mesh3d
+      x: ?{${ref(mesh3d-data).x}}
+      y: ?{${ref(mesh3d-data).y}}
+      z: ?{${ref(mesh3d-data).z}}
+      i: ?{${ref(mesh3d-data).i}}
+      j: ?{${ref(mesh3d-data).j}}
+      k: ?{${ref(mesh3d-data).k}}
+      facecolor: ?{${ref(mesh3d-data).color}}
+      opacity: 0.7
+    interactions:
+      - sort: ?{ ${ref(mesh3d-data).idx} ASC}

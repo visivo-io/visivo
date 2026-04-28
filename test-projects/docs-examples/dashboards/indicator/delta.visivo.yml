@@ -8,23 +8,20 @@ models:
         2,75
         1,65
         0,55
-traces:
-  - name: Delta Indicator with Comparison
-    model: ${ref(indicator-data-delta)}
-    columns:
-      val: value
-    props:
-      type: indicator
-      mode: "number+delta"
-      value: column(val)[0]
-      delta:
-        reference: column(val)[1]
-    order_by:
-      - ?{ sort desc}
 charts:
   - name: Delta Indicator with Comparison Chart
-    traces:
-      - ${ref(Delta Indicator with Comparison)}
     layout:
       title:
         text: Delta Indicator with Comparison<br><sub>Showing Change from Previous Value</sub>
+    insights:
+      - ${ref(Delta Indicator with Comparison)}
+insights:
+  - name: Delta Indicator with Comparison
+    props:
+      type: indicator
+      mode: "number+delta"
+      value: ?{${ref(indicator-data-delta).value}}
+      delta:
+        reference: ?{${ref(indicator-data-delta).value}}
+    interactions:
+      - sort: ?{ ${ref(indicator-data-delta).sort} DESC}

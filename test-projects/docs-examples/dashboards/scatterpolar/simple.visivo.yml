@@ -9,18 +9,17 @@ models:
         90,30
         135,25
         180,15
-traces:
-  - name: Simple Scatterpolar Plot
-    model: ${ref(scatterpolar-data)}
-    props:
-      type: scatterpolar
-      theta: ?{theta}
-      r: ?{r}
-      mode: "markers"
 charts:
   - name: Simple Scatterpolar Chart
-    traces:
-      - ${ref(Simple Scatterpolar Plot)}
     layout:
       title:
-        text: Simple Scatterpolar Plot<br><sub>Polar Data Points</sub> 
+        text: Simple Scatterpolar Plot<br><sub>Polar Data Points</sub>
+    insights:
+      - ${ref(Simple Scatterpolar Plot)}
+insights:
+  - name: Simple Scatterpolar Plot
+    props:
+      type: scatterpolar
+      theta: ?{${ref(scatterpolar-data).theta}}
+      r: ?{${ref(scatterpolar-data).r}}
+      mode: "markers"

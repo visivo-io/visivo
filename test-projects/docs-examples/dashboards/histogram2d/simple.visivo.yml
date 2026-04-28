@@ -13,18 +13,8 @@ models:
         4,4
         5,6
         4,2
-traces:
-  - name: Simple 2D Histogram Plot
-    model: ${ref(histogram2d-data)}
-    props:
-      type: histogram2d
-      x: ?{x}
-      y: ?{y}
-      colorscale: "Viridis"
 charts:
   - name: Simple 2D Histogram Chart
-    traces:
-      - ${ref(Simple 2D Histogram Plot)}
     layout:
       title:
         text: Simple 2D Histogram<br><sub>Data Distribution Across Two Dimensions</sub>
@@ -33,4 +23,13 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(Simple 2D Histogram Plot)}
+insights:
+  - name: Simple 2D Histogram Plot
+    props:
+      type: histogram2d
+      x: ?{${ref(histogram2d-data).x}}
+      y: ?{${ref(histogram2d-data).y}}
+      colorscale: "Viridis"

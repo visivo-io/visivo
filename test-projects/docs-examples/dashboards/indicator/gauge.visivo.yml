@@ -5,24 +5,21 @@ models:
       - |
         value
         65
-traces:
+charts:
+  - name: Gauge Indicator Chart
+    layout:
+      title:
+        text: Gauge Indicator<br><sub>Progress Towards a Target</sub>
+    insights:
+      - ${ref(Gauge Indicator)}
+insights:
   - name: Gauge Indicator
-    model: ${ref(indicator-data-gauge)}
-    columns: 
-      val: value
     props:
       type: indicator
       mode: "gauge+number"
-      value: column(val)[0]
+      value: ?{${ref(indicator-data-gauge).value}}
       gauge:
         axis:
           range: [0, 100]
         bar:
           color: "#17becf"
-charts:
-  - name: Gauge Indicator Chart
-    traces:
-      - ${ref(Gauge Indicator)}
-    layout:
-      title:
-        text: Gauge Indicator<br><sub>Progress Towards a Target</sub>

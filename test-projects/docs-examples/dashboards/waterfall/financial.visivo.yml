@@ -10,29 +10,8 @@ models:
         3,Q3,H2,-150,relative
         4,Q4,H2,300,relative
         5,Gross Profit,FY2024,0,total
-traces:
-  - name: Waterfall Plot with Connectors
-    model: ${ref(waterfall-data-connectors)}
-    props:
-      type: waterfall
-      x:
-        - ?{half}
-        - ?{quarter}
-      y: ?{value}
-      measure: ?{mode}
-      hovertemplate: "%{x}: %{y:$.2f}"
-      texttemplate: "%{delta:$.2f}"
-      textposition: "outside"
-      connector:
-        line:
-          color: "orange"
-          width: 5
-    order_by:
-      - ?{ idx asc}
 charts:
   - name: Waterfall Chart with Connectors
-    traces:
-      - ${ref(Waterfall Plot with Connectors)}
     layout:
       title:
         text: Financial Waterfall
@@ -44,3 +23,23 @@ charts:
         tickprefix: "$"
         title:
           text: "Millions ($)"
+    insights:
+      - ${ref(Waterfall Plot with Connectors)}
+insights:
+  - name: Waterfall Plot with Connectors
+    props:
+      type: waterfall
+      x:
+        - ?{${ref(waterfall-data-connectors).half}}
+        - ?{${ref(waterfall-data-connectors).quarter}}
+      y: ?{${ref(waterfall-data-connectors).value}}
+      measure: ?{${ref(waterfall-data-connectors).mode}}
+      hovertemplate: "%{x}: %{y:$.2f}"
+      texttemplate: "%{delta:$.2f}"
+      textposition: "outside"
+      connector:
+        line:
+          color: "orange"
+          width: 5
+    interactions:
+      - sort: ?{ ${ref(waterfall-data-connectors).idx} ASC}

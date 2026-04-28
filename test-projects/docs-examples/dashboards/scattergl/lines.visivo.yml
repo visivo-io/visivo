@@ -9,18 +9,17 @@ models:
         3,8
         4,15
         5,12
-traces:
-  - name: Scattergl Plot with Lines
-    model: ${ref(scattergl-data-lines)}
-    props:
-      type: scattergl
-      x: ?{x}
-      y: ?{y}
-      mode: "lines+markers"
 charts:
   - name: Scattergl Chart with Lines
-    traces:
-      - ${ref(Scattergl Plot with Lines)}
     layout:
       title:
-        text: Scattergl Plot with Lines<br><sub>Connecting Data Points with WebGL</sub> 
+        text: Scattergl Plot with Lines<br><sub>Connecting Data Points with WebGL</sub>
+    insights:
+      - ${ref(Scattergl Plot with Lines)}
+insights:
+  - name: Scattergl Plot with Lines
+    props:
+      type: scattergl
+      x: ?{${ref(scattergl-data-lines).x}}
+      y: ?{${ref(scattergl-data-lines).y}}
+      mode: "lines+markers"

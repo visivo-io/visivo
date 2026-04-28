@@ -13,24 +13,23 @@ models:
         6,1,0,0,7
         7,1,1,0,8
 
-traces:
-  - name: Simple Isosurface Plot Trace
-    model: ${ref(isosurface-data-simple)}
-    props:
-      type: isosurface
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      value: ?{value}
-      isomin: 2
-      isomax: 6
-      colorscale: "Reds"
-    order_by:
-      - ?{ idx asc }
 charts:
   - name: Simple Isosurface Chart
-    traces:
-      - ${ref(Simple Isosurface Plot Trace)}
     layout:
       title:
         text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
+    insights:
+      - ${ref(Simple Isosurface Plot Trace)}
+insights:
+  - name: Simple Isosurface Plot Trace
+    props:
+      type: isosurface
+      x: ?{${ref(isosurface-data-simple).x}}
+      y: ?{${ref(isosurface-data-simple).y}}
+      z: ?{${ref(isosurface-data-simple).z}}
+      value: ?{${ref(isosurface-data-simple).value}}
+      isomin: 2
+      isomax: 6
+      colorscale: "Reds"
+    interactions:
+      - sort: ?{ ${ref(isosurface-data-simple).idx} ASC }

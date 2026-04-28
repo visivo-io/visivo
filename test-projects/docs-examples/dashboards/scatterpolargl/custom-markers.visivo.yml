@@ -9,21 +9,20 @@ models:
         90,20,20,#2ca02c
         135,10,25,#d62728
         180,25,30,#9467bd
-traces:
-  - name: Scatterpolargl Plot with Custom Markers
-    model: ${ref(scatterpolargl-data-custom)}
-    props:
-      type: scatterpolargl
-      theta: ?{theta}
-      r: ?{r}
-      mode: "markers"
-      marker:
-        size: ?{size}
-        color: ?{color}
 charts:
   - name: Scatterpolargl Chart with Custom Markers
-    traces:
-      - ${ref(Scatterpolargl Plot with Custom Markers)}
     layout:
       title:
-        text: Scatterpolargl Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub> 
+        text: Scatterpolargl Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub>
+    insights:
+      - ${ref(Scatterpolargl Plot with Custom Markers)}
+insights:
+  - name: Scatterpolargl Plot with Custom Markers
+    props:
+      type: scatterpolargl
+      theta: ?{${ref(scatterpolargl-data-custom).theta}}
+      r: ?{${ref(scatterpolargl-data-custom).r}}
+      mode: "markers"
+      marker:
+        size: ?{${ref(scatterpolargl-data-custom).size}}
+        color: ?{${ref(scatterpolargl-data-custom).color}}

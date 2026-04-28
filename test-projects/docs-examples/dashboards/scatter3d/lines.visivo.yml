@@ -9,19 +9,18 @@ models:
         3,8,10
         4,15,18
         5,12,17
-traces:
-  - name: Scatter3D Plot with Lines
-    model: ${ref(scatter3d-data-lines)}
-    props:
-      type: scatter3d
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      mode: "lines+markers"
 charts:
   - name: Scatter3D Chart with Lines
-    traces:
-      - ${ref(Scatter3D Plot with Lines)}
     layout:
       title:
-        text: Scatter3D Plot with Lines<br><sub>Connecting Data Points with Lines</sub> 
+        text: Scatter3D Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
+    insights:
+      - ${ref(Scatter3D Plot with Lines)}
+insights:
+  - name: Scatter3D Plot with Lines
+    props:
+      type: scatter3d
+      x: ?{${ref(scatter3d-data-lines).x}}
+      y: ?{${ref(scatter3d-data-lines).y}}
+      z: ?{${ref(scatter3d-data-lines).z}}
+      mode: "lines+markers"

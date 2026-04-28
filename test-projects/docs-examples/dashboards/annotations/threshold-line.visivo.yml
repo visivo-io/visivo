@@ -10,23 +10,8 @@ models:
         4,10
         5,12
 
-traces:
-  - name: line_trace
-    model: ${ref(line_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: lines
-      line:
-        color: blue
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Threshold Line Example
-    traces:
-      - ${ref(line_trace)}
     layout:
       title:
         text: Threshold Line Example
@@ -40,3 +25,16 @@ charts:
             color: red
             width: 2
             dash: dash
+    insights:
+      - ${ref(line_trace)}
+insights:
+  - name: line_trace
+    props:
+      type: scatter
+      x: ?{${ref(line_data).x}}
+      y: ?{${ref(line_data).y}}
+      mode: lines
+      line:
+        color: blue
+    interactions:
+      - sort: ?{ ${ref(line_data).x} ASC }

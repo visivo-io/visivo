@@ -15,22 +15,9 @@ models:
         I,9
         J,10
 # {% set palettes = ["Warm Earth Tones", "Sunset Over Water", "Muted Vintage", "Retro Pop", "Forest Nightfall", "Desert Sunrise", "Urban Dusk", "Botanical Garden", "Autumn Ember", "Coastal Breeze", "Muted Vintage II", "Muted Rosewood", "Muted Classic", "Vintage Pastel", "Classic Faded","Spring Blossom", "Mint Dream", "Soft Sunset", "Lavender Fields", "Summer Breeze","Mint Dream Contrast", "Mint Dream Dark", "Mint Dream Deep", "Mint Dream Bold", "High Contrast", "High Contrast Earth"] %}
-traces:
-  - name: Color Palette Example
-    model: ${ref(layout-data)}
-    cohort_on: category
-    props:
-      type: bar
-      x: ?{ 1 }
-      y: ?{value}
-      hovertemplate: "%{fullData.marker.color}<extra></extra>"
-      orientation: h
-
 charts:
   # {% for palette in palettes %}
   - name: "{{ palette }}"
-    traces:
-      - ${ref(Color Palette Example)}
     layout:
       colorway: "{{ palette }}"
       title:
@@ -45,23 +32,11 @@ charts:
       showlegend: false
   # {% endfor %}
 
-  - name: Custom Colors Example
-    traces:
+    insights:
       - ${ref(Color Palette Example)}
+  - name: Custom Colors Example
     layout:
-      colorway:
-        [
-          "#FF0000",
-          "#00FF00",
-          "#0000FF",
-          "#FFFF00",
-          "#FF00FF",
-          "#00FFFF",
-          "#800000",
-          "#008000",
-          "#000080",
-          "#808000",
-        ]
+      colorway: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#808000"]
       title:
         text: Custom Color Palette
       xaxis:
@@ -73,6 +48,8 @@ charts:
         dtick: 1
       showlegend: false
 
+    insights:
+      - ${ref(Color Palette Example)}
 dashboards:
   - name: Color Palettes in Visivo
     level: 0
@@ -102,3 +79,14 @@ dashboards:
               layout:
                 colorway: ['#FF0000', '#00FF00', '#0000FF', ...]
               ```
+insights:
+  - name: Color Palette Example
+    props:
+      type: bar
+      x: ?{ 1 }
+      y: ?{${ref(layout-data).value}}
+      hovertemplate: "%{fullData.marker.color}<extra></extra>"
+      orientation: h
+
+    interactions:
+      - split: ?{${ref(layout-data).category}}

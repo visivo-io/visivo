@@ -9,20 +9,19 @@ models:
         -120,47
         -100,35
         -90,30
-traces:
-  - name: Scattergeo Plot with Lines
-    model: ${ref(scattergeo-data-lines)}
-    props:
-      type: scattergeo
-      lon: ?{lon}
-      lat: ?{lat}
-      mode: "lines+markers"
 charts:
   - name: Scattergeo Chart with Lines
-    traces:
-      - ${ref(Scattergeo Plot with Lines)}
     layout:
       title:
         text: Scattergeo Plot with Lines<br><sub>Connecting Geographic Points</sub>
       geo:
-        scope: "world" 
+        scope: "world"
+    insights:
+      - ${ref(Scattergeo Plot with Lines)}
+insights:
+  - name: Scattergeo Plot with Lines
+    props:
+      type: scattergeo
+      lon: ?{${ref(scattergeo-data-lines).lon}}
+      lat: ?{${ref(scattergeo-data-lines).lat}}
+      mode: "lines+markers"

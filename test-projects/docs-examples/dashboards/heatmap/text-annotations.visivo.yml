@@ -12,23 +12,8 @@ models:
         Q2,2020,350
         Q3,2020,400
         Q4,2020,450
-traces:
-  - name: Heatmap with Text Annotations
-    model: ${ref(heatmap-data-annotations)}
-    props:
-      type: heatmap
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      text: ?{z}
-      texttemplate: "%{text}"
-      textfont:
-        size: 12
-      colorscale: "Blues"
 charts:
   - name: Heatmap Chart with Text Annotations
-    traces:
-      - ${ref(Heatmap with Text Annotations)}
     layout:
       title:
         text: Heatmap with Text Annotations<br><sub>Data Values Displayed on Each Cell</sub>
@@ -38,3 +23,17 @@ charts:
       yaxis:
         title:
           text: "Year"
+    insights:
+      - ${ref(Heatmap with Text Annotations)}
+insights:
+  - name: Heatmap with Text Annotations
+    props:
+      type: heatmap
+      x: ?{${ref(heatmap-data-annotations).x}}
+      y: ?{${ref(heatmap-data-annotations).y}}
+      z: ?{${ref(heatmap-data-annotations).z}}
+      text: ?{${ref(heatmap-data-annotations).z}}
+      texttemplate: "%{text}"
+      textfont:
+        size: 12
+      colorscale: "Blues"

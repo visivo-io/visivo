@@ -10,22 +10,21 @@ models:
         D,A,20
         E,B,25
         F,B,15
-traces:
+charts:
+  - name: Icicle Plot with Depth Limiting
+    layout:
+      title:
+        text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>
+    insights:
+      - ${ref(Icicle Plot with Depth Limiting Trace)}
+insights:
   - name: Icicle Plot with Depth Limiting Trace
-    model: ${ref(icicle-data-depth)}
     props:
       type: icicle
-      labels: ?{category}
-      parents: ?{parent}
-      values: ?{value}
+      labels: ?{${ref(icicle-data-depth).category}}
+      parents: ?{${ref(icicle-data-depth).parent}}
+      values: ?{${ref(icicle-data-depth).value}}
       maxdepth: 2
       branchvalues: "total"
       marker:
         colorscale: "YlOrRd"
-charts:
-  - name: Icicle Plot with Depth Limiting
-    traces:
-      - ${ref(Icicle Plot with Depth Limiting Trace)}
-    layout:
-      title:
-        text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>

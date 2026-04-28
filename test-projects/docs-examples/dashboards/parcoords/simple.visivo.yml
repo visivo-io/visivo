@@ -7,25 +7,24 @@ models:
         1,4,7
         2,5,8
         3,6,9
-traces:
+charts:
+  - name: Simple Parcoords Chart
+    layout:
+      title:
+        text: Simple Parcoords Plot<br><sub>Parallel Coordinates with Three Variables</sub>
+    insights:
+      - ${ref(Simple Parcoords Plot)}
+insights:
   - name: Simple Parcoords Plot
-    model: ${ref(parcoords-data)}
     props:
       type: parcoords
       dimensions:
         - label: "Variable 1"
-          values: ?{variable_1}
+          values: ?{${ref(parcoords-data).variable_1}}
         - label: "Variable 2"
-          values: ?{variable_2}
+          values: ?{${ref(parcoords-data).variable_2}}
         - label: "Variable 3"
-          values: ?{variable_3}
+          values: ?{${ref(parcoords-data).variable_3}}
       line:
-        color: ?{variable_3}
+        color: ?{${ref(parcoords-data).variable_3}}
         colorscale: "Viridis"
-charts:
-  - name: Simple Parcoords Chart
-    traces:
-      - ${ref(Simple Parcoords Plot)}
-    layout:
-      title:
-        text: Simple Parcoords Plot<br><sub>Parallel Coordinates with Three Variables</sub> 

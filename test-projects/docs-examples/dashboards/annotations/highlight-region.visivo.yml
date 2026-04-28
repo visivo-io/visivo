@@ -10,23 +10,8 @@ models:
         4,5
         5,6
 
-traces:
-  - name: scatter_trace
-    model: ${ref(scatter_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: markers
-      marker:
-        color: blue
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Highlight Region Example
-    traces:
-      - ${ref(scatter_trace)}
     layout:
       title:
         text: Highlighted Region in Scatter Plot
@@ -40,3 +25,16 @@ charts:
             color: rgba(255, 0, 0, 1)
             width: 2
           fillcolor: rgba(255, 0, 0, 0.2)
+    insights:
+      - ${ref(scatter_trace)}
+insights:
+  - name: scatter_trace
+    props:
+      type: scatter
+      x: ?{${ref(scatter_data).x}}
+      y: ?{${ref(scatter_data).y}}
+      mode: markers
+      marker:
+        color: blue
+    interactions:
+      - sort: ?{ ${ref(scatter_data).x} ASC }

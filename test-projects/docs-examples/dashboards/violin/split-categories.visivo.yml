@@ -19,33 +19,30 @@ models:
         B,Y,6
         B,Y,5
         B,X,28
-traces:
-  - name: Violin Plot Category X
-    model: ${ref(violin-data-split)}
-    cohort_on: sub_category
-    props:
-      type: violin
-      side: positive
-      x: ?{category}
-      y: ?{value}
-    filters:
-      - ?{ sub_category = 'X'}
-  - name: Violin Plot Category Y
-    model: ${ref(violin-data-split)}
-    cohort_on: sub_category
-    props:
-      type: violin
-      side: negative
-      x: ?{category}
-      y: ?{value}
-    filters:
-      - ?{ sub_category = 'Y'}
-
 charts:
   - name: Violin Chart with Split Categories
-    traces:
-      - ${ref(Violin Plot Category Y)}
-      - ${ref(Violin Plot Category X)}
     layout:
       title:
         text: Violin Plot with Split Categories<br><sub>Split Violin Plot for Different Subcategories</sub>
+    insights:
+      - ${ref(Violin Plot Category Y)}
+      - ${ref(Violin Plot Category X)}
+insights:
+  - name: Violin Plot Category X
+    props:
+      type: violin
+      side: positive
+      x: ?{${ref(violin-data-split).category}}
+      y: ?{${ref(violin-data-split).value}}
+    interactions:
+      - split: ?{${ref(violin-data-split).sub_category}}
+      - filter: ?{ ${ref(violin-data-split).sub_category} = 'X'}
+  - name: Violin Plot Category Y
+    props:
+      type: violin
+      side: negative
+      x: ?{${ref(violin-data-split).category}}
+      y: ?{${ref(violin-data-split).value}}
+    interactions:
+      - split: ?{${ref(violin-data-split).sub_category}}
+      - filter: ?{ ${ref(violin-data-split).sub_category} = 'Y'}

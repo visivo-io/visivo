@@ -9,19 +9,18 @@ models:
         3,15,30
         4,25,35
         5,30,40
-traces:
-  - name: Simple Scatter3D Plot
-    model: ${ref(scatter3d-data)}
-    props:
-      type: scatter3d
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      mode: "markers"
 charts:
   - name: Simple Scatter3D Chart
-    traces:
-      - ${ref(Simple Scatter3D Plot)}
     layout:
       title:
-        text: Simple Scatter3D Plot<br><sub>3D Data Points</sub> 
+        text: Simple Scatter3D Plot<br><sub>3D Data Points</sub>
+    insights:
+      - ${ref(Simple Scatter3D Plot)}
+insights:
+  - name: Simple Scatter3D Plot
+    props:
+      type: scatter3d
+      x: ?{${ref(scatter3d-data).x}}
+      y: ?{${ref(scatter3d-data).y}}
+      z: ?{${ref(scatter3d-data).z}}
+      mode: "markers"

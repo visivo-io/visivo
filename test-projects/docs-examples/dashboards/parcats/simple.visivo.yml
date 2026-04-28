@@ -8,23 +8,22 @@ models:
         A,Y,20
         B,X,25
         B,Y,25
-traces:
+charts:
+  - name: Simple Parcats Chart
+    layout:
+      title:
+        text: Simple Parcats Chart<br><sub>Parallel Categories Diagram</sub>
+    insights:
+      - ${ref(Simple Parcats Plot)}
+insights:
   - name: Simple Parcats Plot
-    model: ${ref(parcats-data)}
     props:
       type: parcats
       dimensions:
         - label: "Category 1"
-          values: ?{category_1}
+          values: ?{${ref(parcats-data).category_1}}
         - label: "Category 2"
-          values: ?{category_2}
+          values: ?{${ref(parcats-data).category_2}}
       line:
-        color: ?{value}
+        color: ?{${ref(parcats-data).value}}
         colorscale: "Viridis"
-charts:
-  - name: Simple Parcats Chart
-    traces:
-      - ${ref(Simple Parcats Plot)}
-    layout:
-      title:
-        text: Simple Parcats Chart<br><sub>Parallel Categories Diagram</sub> 

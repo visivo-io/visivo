@@ -10,23 +10,8 @@ models:
         4,8
         5,10
 
-traces:
-  - name: region_emoji_trace
-    model: ${ref(region_emoji_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: lines+markers
-      line:
-        color: purple
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Emoji Region Example
-    traces:
-      - ${ref(region_emoji_trace)}
     layout:
       title:
         text: Region with Emoji Annotations
@@ -51,3 +36,16 @@ charts:
           ay: -40
           font:
             size: 16
+    insights:
+      - ${ref(region_emoji_trace)}
+insights:
+  - name: region_emoji_trace
+    props:
+      type: scatter
+      x: ?{${ref(region_emoji_data).x}}
+      y: ?{${ref(region_emoji_data).y}}
+      mode: lines+markers
+      line:
+        color: purple
+    interactions:
+      - sort: ?{ ${ref(region_emoji_data).x} ASC }

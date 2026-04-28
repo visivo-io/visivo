@@ -13,30 +13,8 @@ models:
         0,2,8,9,35
         1,2,9,10,40
         2,2,10,11,45
-traces:
-  - name: Carpet Plot Filled
-    model: ${ref(contourcarpet-data-filled)}
-    props:
-      type: carpet
-      a: ?{a}
-      b: ?{b}
-      x: ?{x}
-      y: ?{y}
-  - name: Filled Contourcarpet Plot
-    model: ${ref(contourcarpet-data-filled)}
-    props:
-      type: contourcarpet
-      carpet: ${ref(Carpet Plot Filled)}
-      z: ?{z}
-      colorscale: "Earth"
-      contours:
-        coloring: "fill"
-        showlines: true
 charts:
   - name: Filled Contourcarpet Chart
-    traces:
-      - ${ref(Filled Contourcarpet Plot)}
-      - ${ref(Carpet Plot Filled)}
     layout:
       title:
         text: Filled Contourcarpet Plot<br><sub>Filled Contour Plot over a Carpet</sub>
@@ -45,4 +23,24 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(Filled Contourcarpet Plot)}
+      - ${ref(Carpet Plot Filled)}
+insights:
+  - name: Carpet Plot Filled
+    props:
+      type: carpet
+      a: ?{${ref(contourcarpet-data-filled).a}}
+      b: ?{${ref(contourcarpet-data-filled).b}}
+      x: ?{${ref(contourcarpet-data-filled).x}}
+      y: ?{${ref(contourcarpet-data-filled).y}}
+  - name: Filled Contourcarpet Plot
+    props:
+      type: contourcarpet
+      carpet: ${ref(Carpet Plot Filled)}
+      z: ?{${ref(contourcarpet-data-filled).z}}
+      colorscale: "Earth"
+      contours:
+        coloring: "fill"
+        showlines: true

@@ -10,23 +10,8 @@ models:
         4,5
         5,6
 
-traces:
-  - name: scatter_trace_region_annotation
-    model: ${ref(scatter_data_region_annotation)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: markers
-      marker:
-        color: purple
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Region with Annotation Example
-    traces:
-      - ${ref(scatter_trace_region_annotation)}
     layout:
       title:
         text: Highlighted Region with Annotation
@@ -51,3 +36,16 @@ charts:
           font:
             size: 12
             color: black
+    insights:
+      - ${ref(scatter_trace_region_annotation)}
+insights:
+  - name: scatter_trace_region_annotation
+    props:
+      type: scatter
+      x: ?{${ref(scatter_data_region_annotation).x}}
+      y: ?{${ref(scatter_data_region_annotation).y}}
+      mode: markers
+      marker:
+        color: purple
+    interactions:
+      - sort: ?{ ${ref(scatter_data_region_annotation).x} ASC }

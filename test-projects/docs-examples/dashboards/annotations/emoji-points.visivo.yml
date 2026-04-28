@@ -10,23 +10,8 @@ models:
         4,6
         5,10
 
-traces:
-  - name: emoji_trace
-    model: ${ref(emoji_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: markers
-      marker:
-        color: green
-    order_by:
-      - ?{ x asc }
-
 charts:
   - name: Emoji Points Example
-    traces:
-      - ${ref(emoji_trace)}
     layout:
       title:
         text: Data Points with Emoji Annotations
@@ -51,3 +36,16 @@ charts:
           ay: 30
           font:
             size: 16
+    insights:
+      - ${ref(emoji_trace)}
+insights:
+  - name: emoji_trace
+    props:
+      type: scatter
+      x: ?{${ref(emoji_data).x}}
+      y: ?{${ref(emoji_data).y}}
+      mode: markers
+      marker:
+        color: green
+    interactions:
+      - sort: ?{ ${ref(emoji_data).x} ASC }

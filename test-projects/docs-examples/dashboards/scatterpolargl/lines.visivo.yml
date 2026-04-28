@@ -9,18 +9,17 @@ models:
         90,20
         135,10
         180,25
-traces:
-  - name: Scatterpolargl Plot with Lines
-    model: ${ref(scatterpolargl-data-lines)}
-    props:
-      type: scatterpolargl
-      theta: ?{theta}
-      r: ?{r}
-      mode: "lines+markers"
 charts:
   - name: Scatterpolargl Chart with Lines
-    traces:
-      - ${ref(Scatterpolargl Plot with Lines)}
     layout:
       title:
-        text: Scatterpolargl Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub> 
+        text: Scatterpolargl Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub>
+    insights:
+      - ${ref(Scatterpolargl Plot with Lines)}
+insights:
+  - name: Scatterpolargl Plot with Lines
+    props:
+      type: scatterpolargl
+      theta: ?{${ref(scatterpolargl-data-lines).theta}}
+      r: ?{${ref(scatterpolargl-data-lines).r}}
+      mode: "lines+markers"

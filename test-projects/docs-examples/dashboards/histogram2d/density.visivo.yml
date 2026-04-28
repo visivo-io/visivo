@@ -13,19 +13,8 @@ models:
         5,4
         4,1
         5,2
-traces:
-  - name: 2D Histogram with Density Mode
-    model: ${ref(histogram2d-data-density)}
-    props:
-      type: histogram2d
-      x: ?{x}
-      y: ?{y}
-      histnorm: "density"
-      colorscale: "Jet"
 charts:
   - name: 2D Histogram with Density Mode Chart
-    traces:
-      - ${ref(2D Histogram with Density Mode)}
     layout:
       title:
         text: 2D Histogram with Density Mode<br><sub>Density Distribution of Data</sub>
@@ -34,4 +23,14 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(2D Histogram with Density Mode)}
+insights:
+  - name: 2D Histogram with Density Mode
+    props:
+      type: histogram2d
+      x: ?{${ref(histogram2d-data-density).x}}
+      y: ?{${ref(histogram2d-data-density).y}}
+      histnorm: "density"
+      colorscale: "Jet"

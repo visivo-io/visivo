@@ -9,26 +9,8 @@ models:
         2024-01-03,104,110,100,108
         2024-01-04,108,112,101,107
         2024-01-05,107,109,98,103
-traces:
-  - name: Colored Candlestick Plot
-    model: ${ref(stock-data-colored)}
-    props:
-      type: candlestick
-      x: ?{date}
-      open: ?{open}
-      high: ?{open}
-      low: ?{high}
-      close: ?{close}
-      increasing:
-        line:
-          color: "#17becf"
-      decreasing:
-        line:
-          color: "#d62728"
 charts:
   - name: Candlestick with Custom Colors
-    traces:
-      - ${ref(Colored Candlestick Plot)}
     layout:
       title:
         text: Colored Candlestick Chart<br><sub>Stock Price Movements with Custom Colors</sub>
@@ -38,3 +20,20 @@ charts:
       yaxis:
         title:
           text: "Price (USD)"
+    insights:
+      - ${ref(Colored Candlestick Plot)}
+insights:
+  - name: Colored Candlestick Plot
+    props:
+      type: candlestick
+      x: ?{date}
+      open: ?{${ref(stock-data-colored).open}}
+      high: ?{${ref(stock-data-colored).open}}
+      low: ?{${ref(stock-data-colored).high}}
+      close: ?{${ref(stock-data-colored).close}}
+      increasing:
+        line:
+          color: "#17becf"
+      decreasing:
+        line:
+          color: "#d62728"

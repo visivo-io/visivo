@@ -11,22 +11,21 @@ models:
         D,A,10,5
         E,A,20,6
         F,B,10,7
-traces:
-  - name: Sunburst Plot with Custom Sizes
-    model: ${ref(sunburst-data-sizes)}
-    props:
-      type: sunburst
-      labels: ?{labels}
-      parents: ?{parents}
-      values: ?{"values"}
-      marker:
-        line:
-          width: ?{size}
-          color: black
 charts:
   - name: Sunburst Chart with Custom Sizes
-    traces:
-      - ${ref(Sunburst Plot with Custom Sizes)}
     layout:
       title:
         text: Sunburst Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>
+    insights:
+      - ${ref(Sunburst Plot with Custom Sizes)}
+insights:
+  - name: Sunburst Plot with Custom Sizes
+    props:
+      type: sunburst
+      labels: ?{${ref(sunburst-data-sizes).labels}}
+      parents: ?{${ref(sunburst-data-sizes).parents}}
+      values: ?{"values"}
+      marker:
+        line:
+          width: ?{${ref(sunburst-data-sizes).size}}
+          color: black

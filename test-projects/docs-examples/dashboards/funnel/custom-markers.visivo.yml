@@ -9,26 +9,25 @@ models:
         SQL,600,"#2ca02c"
         Proposal,300,"#d62728"
         Won,100,"#9467bd"
-traces:
-  - name: Custom Markers Funnel Chart
-    model: ${ref(funnel-data-custom)}
-    props:
-      type: funnel
-      y: ?{stage}
-      x: ?{value}
-      marker:
-        color: ?{color}
-      textinfo: "value+percent total"
-      orientation: h
-    order_by:
-      - ?{value desc}
 charts:
   - name: Funnel Chart with Custom Markers
-    traces:
-      - ${ref(Custom Markers Funnel Chart)}
     layout:
       title:
         text: Funnel Chart with Custom Markers<br><sub>Stages of the Sales Funnel</sub>
       xaxis:
         title:
           text: "Stage"
+    insights:
+      - ${ref(Custom Markers Funnel Chart)}
+insights:
+  - name: Custom Markers Funnel Chart
+    props:
+      type: funnel
+      y: ?{${ref(funnel-data-custom).stage}}
+      x: ?{${ref(funnel-data-custom).value}}
+      marker:
+        color: ?{${ref(funnel-data-custom).color}}
+      textinfo: "value+percent total"
+      orientation: h
+    interactions:
+      - sort: ?{${ref(funnel-data-custom).value} DESC}

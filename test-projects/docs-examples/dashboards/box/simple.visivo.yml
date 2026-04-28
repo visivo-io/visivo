@@ -14,20 +14,8 @@ models:
         B,31
         B,25
         B,29
-traces:
-  - name: Sample Box Plot
-    model: ${ref(sample-data)}
-    props:
-      type: box
-      x: ?{category}
-      y: ?{value}
-      boxpoints: "all"
-      jitter: 1
-      pointpos: -1.1
 charts:
   - name: Sample Box Plot Chart
-    traces:
-      - ${ref(Sample Box Plot)}
     layout:
       title:
         text: Simple Box Plot<br><sub>Distribution of Values by Category</sub>
@@ -37,3 +25,14 @@ charts:
       yaxis:
         title:
           text: "Value"
+    insights:
+      - ${ref(Sample Box Plot)}
+insights:
+  - name: Sample Box Plot
+    props:
+      type: box
+      x: ?{${ref(sample-data).category}}
+      y: ?{${ref(sample-data).value}}
+      boxpoints: "all"
+      jitter: 1
+      pointpos: -1.1
