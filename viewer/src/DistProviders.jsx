@@ -14,7 +14,6 @@ export default function DistProviders({
   fetchInsightJobs,
   fetchDashboard,
   fetchInputJobs,
-  fetchInputJobOptions,
 }) {
   return (
     <QueryClientProvider client={queryClient}>
@@ -23,7 +22,6 @@ export default function DistProviders({
         fetchInsightJobs={fetchInsightJobs}
         fetchDashboard={fetchDashboard}
         fetchInputJobs={fetchInputJobs}
-        fetchInputJobOptions={fetchInputJobOptions}
       >
         <URLProvider urlConfig={distURLConfig}>
           <DuckDBProvider>

@@ -15,7 +15,6 @@ export default function LocalProviders({
   fetchInsightJobs,
   fetchDashboard,
   fetchInputJobs,
-  fetchInputJobOptions,
 }) {
   return (
     <QueryClientProvider client={queryClient}>
@@ -24,7 +23,6 @@ export default function LocalProviders({
         fetchInsightJobs={fetchInsightJobs}
         fetchDashboard={fetchDashboard}
         fetchInputJobs={fetchInputJobs}
-        fetchInputJobOptions={fetchInputJobOptions}
       >
         <URLProvider urlConfig={localURLConfig}>
           <StoreProvider>
