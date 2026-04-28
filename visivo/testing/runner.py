@@ -4,7 +4,6 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.project import Project
 from visivo.models.test import Test
-from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
 from visivo.models.destinations.destination import Destination
 from typing import Any, List

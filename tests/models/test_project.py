@@ -3,7 +3,7 @@ from visivo.models.item import Item
 from pydantic import HttpUrl
 from tests.factories.model_factories import (
     AlertFactory,
-    TraceFactory,
+    InsightFactory,
     SourceFactory,
     ChartFactory,
     DashboardFactory,
@@ -24,17 +24,17 @@ def test_Project_simple_data():
 def test_Project_dashboard_parsing():
     external_dashboard = ExternalDashboardFactory(href="https://example.com")
 
-    ref = "ref(trace_name)"
-    chart = ChartFactory(traces=[ref])
+    ref = "ref(insight_name)"
+    chart = ChartFactory(insights=[ref])
     source = SourceFactory()
     item = Item(chart=chart)
-    trace = TraceFactory(name="trace_name")
+    insight = InsightFactory(name="insight_name")
     row = RowFactory(items=[item])
     dashboard = DashboardFactory(rows=[row])
 
     data = {
         "name": "development",
-        "traces": [trace],
+        "insights": [insight],
         "dashboards": [external_dashboard, dashboard],
         "sources": [source],
     }
@@ -46,13 +46,13 @@ def test_Project_dashboard_parsing():
     assert not (hasattr(project.dashboards[0], "rows"))
 
 
-def test_Project_validate_project_trace_refs():
-    ref = "ref(trace_name)"
-    chart = ChartFactory(traces=[ref])
+def test_Project_validate_project_insight_refs():
+    ref = "ref(insight_name)"
+    chart = ChartFactory(insights=[ref])
     item = Item(chart=chart)
     row = RowFactory(items=[item])
     dashboard = DashboardFactory(rows=[row])
-    data = {"name": "development", "traces": [], "dashboards": [dashboard]}
+    data = {"name": "development", "insights": [], "dashboards": [dashboard]}
 
     with pytest.raises(ValidationError) as exc_info:
         Project(**data)
@@ -60,27 +60,27 @@ def test_Project_validate_project_trace_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
+        == f'The reference "ref(insight_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
-    trace = TraceFactory(name="trace_name")
+    insight = InsightFactory(name="insight_name")
     source = SourceFactory()
     data = {
         "name": "development",
-        "traces": [trace],
+        "insights": [insight],
         "dashboards": [dashboard],
         "sources": [source],
     }
     project = Project(**data)
-    assert project.traces[0].name == "trace_name"
-    assert project.dashboards[0].rows[0].items[0].chart.traces[0] == "ref(trace_name)"
+    assert project.insights[0].name == "insight_name"
+    assert project.dashboards[0].rows[0].items[0].chart.insights[0] == "ref(insight_name)"
 
 
 def test_Project_validate_chart_refs():
-    ref = "ref(trace_name)"
-    chart = ChartFactory(traces=[ref])
-    data = {"name": "development", "traces": [], "charts": [chart], "dashboards": []}
+    ref = "ref(insight_name)"
+    chart = ChartFactory(insights=[ref])
+    data = {"name": "development", "insights": [], "charts": [chart], "dashboards": []}
 
     with pytest.raises(ValidationError) as exc_info:
         Project(**data)
@@ -88,28 +88,27 @@ def test_Project_validate_chart_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
+        == f'The reference "ref(insight_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
-    trace = TraceFactory(name="trace_name")
+    insight = InsightFactory(name="insight_name")
     source = SourceFactory()
     data = {
         "name": "development",
-        "traces": [trace],
+        "insights": [insight],
         "charts": [chart],
         "sources": [source],
         "dashboards": [],
     }
     project = Project(**data)
-    assert project.traces[0].name == "trace_name"
-    assert project.charts[0].traces[0] == "ref(trace_name)"
+    assert project.insights[0].name == "insight_name"
+    assert project.charts[0].insights[0] == "ref(insight_name)"
 
 
 def test_Project_validate_dashboard_names():
     data = {
         "name": "development",
-        "traces": [],
         "charts": [],
         "dashboards": [{"name": "dashboard"}, {"name": "dashboard"}],
     }
@@ -123,11 +122,10 @@ def test_Project_validate_dashboard_names():
 
 
 def test_Project_validate_chart_names():
-    chart_orig = ChartFactory(traces=[])
-    chart_dup = ChartFactory(name=chart_orig.name, traces=[])
+    chart_orig = ChartFactory()
+    chart_dup = ChartFactory(name=chart_orig.name)
     data = {
         "name": "development",
-        "traces": [],
         "charts": [chart_orig, chart_dup],
         "dashboards": [],
     }
@@ -140,15 +138,15 @@ def test_Project_validate_chart_names():
     assert error["type"] == "value_error"
 
 
-def test_Project_validate_trace_names():
-    trace_orig = TraceFactory()
-    trace_dup = TraceFactory(name=trace_orig.name)
+def test_Project_validate_insight_names():
+    insight_orig = InsightFactory()
+    insight_dup = InsightFactory(name=insight_orig.name)
     source = SourceFactory(name="source")
     data = {
         "name": "development",
         "defaults": {"source_name": "source"},
         "sources": [source],
-        "traces": [trace_orig, trace_dup],
+        "insights": [insight_orig, insight_dup],
         "charts": [],
         "dashboards": [],
     }
@@ -157,7 +155,7 @@ def test_Project_validate_trace_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"Value error, Trace name 'trace' is not unique in the project"
+    assert error["msg"] == f"Value error, Insight name 'insight' is not unique in the project"
     assert error["type"] == "value_error"
 
 
@@ -198,7 +196,7 @@ def test_Project_validate_default_alerts_exists():
     Project(**data)
 
 
-def test_Project_validate_default_source_does_not_exists():
+def test_Project_validate_default_alert_does_not_exists():
     alert = SourceFactory()
     data = {
         "name": "development",
@@ -210,23 +208,6 @@ def test_Project_validate_default_source_does_not_exists():
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"Value error, default alert '{alert.name}' does not exist"
-    assert error["type"] == "value_error"
-
-
-def test_Project_validate_table_single():
-    source = SourceFactory()
-    data = {
-        "name": "development",
-        "tables": [{"name": "Table", "selector": {"name": "selector", "type": "multiple"}}],
-    }
-    with pytest.raises(ValidationError) as exc_info:
-        Project(**data)
-
-    error = exc_info.value.errors()[0]
-    assert (
-        error["msg"]
-        == f"Value error, Table with name 'Table' has a selector with a 'multiple' type.  This is not permitted."
-    )
     assert error["type"] == "value_error"
 
 
@@ -261,33 +242,31 @@ def test_set_paths_on_models():
 def test_get_child_objects():
     project_children_fields = Project.get_child_objects()
     assert "dashboards" in project_children_fields
-    assert "traces" in project_children_fields
+    assert "insights" in project_children_fields
     assert "charts" in project_children_fields
     assert "tables" in project_children_fields
     assert "models" in project_children_fields
-    assert "traces" in project_children_fields
-    assert "tables" in project_children_fields
 
 
 def test_named_child_nodes():
-    ref = "ref(trace_name)"
-    chart = ChartFactory(traces=[ref])
+    ref = "ref(insight_name)"
+    chart = ChartFactory(insights=[ref])
     source = SourceFactory()
     item = Item(chart=chart)
-    trace = TraceFactory(name="trace_name")
+    insight = InsightFactory(name="insight_name")
     row = RowFactory(items=[item])
     dashboard = DashboardFactory(rows=[row])
 
     data = {
         "name": "development",
-        "traces": [trace],
+        "insights": [insight],
         "dashboards": [dashboard],
         "sources": [source],
     }
     project = Project(**data)
     named_nodes = project.named_child_nodes()
 
-    assert len(named_nodes) == 7
-    assert trace.name in named_nodes.keys()
+    assert len(named_nodes) == 5
+    assert insight.name in named_nodes.keys()
     assert dashboard.name in named_nodes.keys()
     assert source.name in named_nodes.keys()

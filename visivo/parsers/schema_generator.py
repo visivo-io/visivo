@@ -41,17 +41,12 @@ def generate_schema():
     for prop_type, schema in prop_type_schemas.items():
         project_schema["$defs"][prop_type] = schema
 
-    project_schema["$defs"]["Trace"]["properties"]["props"] = {
-        "oneOf": [{"$ref": f"#/$defs/{trace_type}"} for trace_type in prop_type_schemas.keys()]
-    }
-
     project_schema["$defs"]["Insight"]["properties"]["props"] = {
         "oneOf": [{"$ref": f"#/$defs/{insight_type}"} for insight_type in prop_type_schemas.keys()]
     }
 
     layout_schema = json.loads(files("visivo.schema").joinpath("layout.schema.json").read_text())
     project_schema["$defs"]["Layout"] = layout_schema
-    project_schema["$defs"]["Trace"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
     project_schema["$defs"]["Insight"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
 
     # Move nested $defs to top level

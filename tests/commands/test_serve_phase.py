@@ -2,16 +2,11 @@ import os
 import pytest
 from tests.factories.model_factories import (
     ProjectFactory,
-    DashboardFactory,
-    TraceFactory,
 )
-from tests.support.utils import temp_file, temp_folder
+from tests.support.utils import temp_folder
 from visivo.commands.serve_phase import serve_phase
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
-import json
-
-TRACE_NAME = "test_trace"
 
 
 def get_test_port():
@@ -39,14 +34,12 @@ def output_dir():
 def setup_project_with_data(output_dir):
     project = ProjectFactory()
 
-    # Create SQLite database
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
     return project
 
 
 def test_serve_phase_creates_server(test_project, output_dir, server_url):
-    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
     server, _, _ = serve_phase(
@@ -63,10 +56,8 @@ def test_serve_phase_creates_server(test_project, output_dir, server_url):
 
 
 def test_serve_phase_handles_dbt_ignore_patterns(test_project, output_dir, server_url):
-    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Set up a mock dbt configuration
     test_project.dbt = type(
         "MockDbt",
         (),

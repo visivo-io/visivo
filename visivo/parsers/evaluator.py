@@ -70,7 +70,10 @@ def evaluate_expression(
                 return value
             return get_object_from_node(value, next_index, nodes)
         elif isinstance(node, ast.Attribute):
-            if current_object.__class__.__name__ == "Trace" and node.attr in TRACE_DATA_NODES:
+            if (
+                current_object.__class__.__name__ in ("Trace", "Insight")
+                and node.attr in TRACE_DATA_NODES
+            ):
                 trace_data = get_object_from_data(current_object)
                 current_object = merge_dicts(current_object.model_dump(), trace_data)
             if isinstance(current_object, dict):

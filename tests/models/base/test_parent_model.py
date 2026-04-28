@@ -1,34 +1,34 @@
 from visivo.models.base.parent_model import ParentModel
-from tests.factories.model_factories import TraceFactory
+from tests.factories.model_factories import InsightFactory
 
 
-def test_Project_filter_trace():
-    traces = []
-    assert ParentModel.filtered(pattern="trace", objects=traces) == []
+def test_Project_filter_insight():
+    insights = []
+    assert ParentModel.filtered(pattern="insight", objects=insights) == []
 
-    cat_trace = TraceFactory(name="cat")
-    bobcat_trace = TraceFactory(name="bobcat")
-    traces = [cat_trace, bobcat_trace]
-    assert ParentModel.filtered(pattern="cat", objects=traces) == [
-        cat_trace,
-        bobcat_trace,
+    cat_insight = InsightFactory(name="cat")
+    bobcat_insight = InsightFactory(name="bobcat")
+    insights = [cat_insight, bobcat_insight]
+    assert ParentModel.filtered(pattern="cat", objects=insights) == [
+        cat_insight,
+        bobcat_insight,
     ]
 
-    cat_trace = TraceFactory(name="cat")
-    bobcat_trace = TraceFactory(name="bobcat")
-    traces = [cat_trace, bobcat_trace]
-    assert ParentModel.filtered(pattern="^cat", objects=traces) == [cat_trace]
-    assert ParentModel.filtered(pattern="trace", objects=traces) == []
+    cat_insight = InsightFactory(name="cat")
+    bobcat_insight = InsightFactory(name="bobcat")
+    insights = [cat_insight, bobcat_insight]
+    assert ParentModel.filtered(pattern="^cat", objects=insights) == [cat_insight]
+    assert ParentModel.filtered(pattern="insight", objects=insights) == []
 
-    cat_trace = TraceFactory(name="cat")
-    bobcat_trace = TraceFactory(name="bobcat")
-    traces = [cat_trace, bobcat_trace]
-    assert ParentModel.filtered(pattern="cat", objects=traces) == [
-        cat_trace,
-        bobcat_trace,
+    cat_insight = InsightFactory(name="cat")
+    bobcat_insight = InsightFactory(name="bobcat")
+    insights = [cat_insight, bobcat_insight]
+    assert ParentModel.filtered(pattern="cat", objects=insights) == [
+        cat_insight,
+        bobcat_insight,
     ]
 
-    cat_trace = TraceFactory(name="cat")
-    bobcat_trace = TraceFactory(name="bobcat")
-    traces = [cat_trace, bobcat_trace]
-    assert ParentModel.filtered(pattern="^cat", objects=traces) == [cat_trace]
+    cat_insight = InsightFactory(name="cat")
+    bobcat_insight = InsightFactory(name="bobcat")
+    insights = [cat_insight, bobcat_insight]
+    assert ParentModel.filtered(pattern="^cat", objects=insights) == [cat_insight]

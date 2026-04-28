@@ -1,19 +1,16 @@
-from typing import List, Optional, TYPE_CHECKING, TypeAlias
+from typing import List, Optional, TypeAlias
 from pydantic import Field
 
-from visivo.models.base.selector_model import SelectorModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.props.layout import Layout
-from visivo.models.trace import Trace
 from visivo.models.insight import Insight
 
-TraceRef: TypeAlias = generate_ref_field(Trace)
 InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
-class Chart(SelectorModel, NamedModel, ParentModel):
+class Chart(NamedModel, ParentModel):
     """
     ## Overview
     Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
@@ -207,12 +204,8 @@ class Chart(SelectorModel, NamedModel, ParentModel):
 
     def child_items(self):
         """Return child items for DAG construction"""
-        return self.traces + self.insights + [self.selector]
+        return self.insights
 
-    traces: List[TraceRef] = Field(
-        [],
-        description="A list of traces either written in line in the chart or called using the ${ ref() } function.",
-    )
     insights: List[InsightRef] = Field(
         [],
         description="A list of insights either written in line in the chart or called using the ${ ref() } function.",

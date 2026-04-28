@@ -3,7 +3,6 @@ import { devtools, persist } from 'zustand/middleware';
 
 import createCommonSlice from './commonStore';
 import createProjectSlice from './projectStore';
-import createSelectorSlice from './selectorStore';
 import createInsightJobsSlice from './insightJobsStore';
 import createSourceSlice, { ObjectStatus } from './sourceStore';
 import createModelSlice from './modelStore';
@@ -30,7 +29,6 @@ export { ObjectStatus };
 const useStore = create(
   devtools((...a) => ({
     ...createProjectSlice(...a),
-    ...createSelectorSlice(...a),
     ...createInsightJobsSlice(...a),
     ...createSourceSlice(...a),
     ...createModelSlice(...a),

@@ -1,18 +1,14 @@
 import React, { createContext, useContext } from 'react';
-import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
 import { fetchInsightJobs as defaultFetchInsightJobs } from '../api/insightJobs';
 import { fetchInputJobs as defaultFetchInputJobs } from '../api/inputJobs';
 
-// Default query functions
 const defaultQueries = {
-  fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
   fetchInsightJobs: defaultFetchInsightJobs,
   fetchInputJobs: defaultFetchInputJobs,
 };
 
-// Create context
 const QueryContext = createContext(defaultQueries);
 
 /**
@@ -20,21 +16,18 @@ const QueryContext = createContext(defaultQueries);
  * Allows the host application to inject authenticated API functions
  *
  * @param {Object} props
- * @param {Function} props.fetchTraces - Custom traces fetch function
  * @param {Function} props.fetchInsightJobs - Custom insight jobs fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
  * @param {Function} props.fetchInputJobs - Custom input jobs metadata fetch function
  * @param {ReactNode} props.children
  */
 export function QueryProvider({
-  fetchTraces,
   fetchInsightJobs,
   fetchDashboard,
   fetchInputJobs,
   children,
 }) {
   const queries = {
-    fetchTraces: fetchTraces || defaultFetchTraces,
     fetchInsightJobs: fetchInsightJobs || defaultFetchInsightJobs,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
     fetchInputJobs: fetchInputJobs || defaultFetchInputJobs,
@@ -45,7 +38,7 @@ export function QueryProvider({
 
 /**
  * Hook to access query functions
- * @returns {Object} Object containing fetchTraces, fetchInsightJobs, fetchDashboard, and fetchInputJobs functions
+ * @returns {Object} Object containing fetchInsightJobs, fetchDashboard, and fetchInputJobs functions
  */
 export function useQueries() {
   const context = useContext(QueryContext);
@@ -55,19 +48,6 @@ export function useQueries() {
   return context;
 }
 
-/**
- * Hook to get the fetchTraces function
- * @returns {Function} fetchTraces function
- */
-export function useFetchTraces() {
-  const { fetchTraces } = useQueries();
-  return fetchTraces;
-}
-
-/**
- * Hook to get the fetchInsightJobs function
- * @returns {Function} fetchInsightJobs function
- */
 export function useFetchInsightJobs() {
   const { fetchInsightJobs } = useQueries();
   return fetchInsightJobs;

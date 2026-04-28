@@ -13,7 +13,7 @@ class Dashboard(BaseDashboard, ParentModel):
 
         By leveraging [`visivo serve`](./../../../cli/#serve) while building you can quickly optimize your layout. Simply re-size your row heights and item widths, save the file and quickly see the new layout of your dashboard on localhost:8000.
 
-    Within the [rows](./Row/) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as [items](./Row/Item/).
+    Within the [rows](./Row/) you are able to organize and display `charts`, `tables` and `markdown` from your project as [items](./Row/Item/).
 
     <div class="grid" markdown>
 
@@ -38,8 +38,6 @@ class Dashboard(BaseDashboard, ParentModel):
                     markdown: ...
               - height: small
                 items:
-                  - width: 2
-                    selector: ...
                   - chart: ...
                   - chart: ...
                   - width: 2

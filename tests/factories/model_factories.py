@@ -1,3 +1,5 @@
+import re
+
 import factory
 from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
@@ -5,15 +7,12 @@ from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.props.trace_props import TraceProps
 from visivo.models.props.insight_props import InsightProps
-from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.redshift_source import RedshiftSource
 from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.test import Test
-from visivo.models.trace import Trace
 from visivo.models.insight import Insight
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -69,7 +68,6 @@ class MultiSelectInputFactory(factory.Factory):
         )
 
 
-# Alias for backward compatibility
 InputFactory = SingleSelectInputFactory
 
 
@@ -169,15 +167,6 @@ class SourceFactory(factory.Factory):
     type = "sqlite"
 
 
-class ScatterTracePropsFactory(factory.Factory):
-    class Meta:
-        model = TraceProps
-
-    type = "scatter"
-    x = "?{x}"
-    y = "?{y}"
-
-
 class InsightPropsFactory(factory.Factory):
     class Meta:
         model = InsightProps
@@ -185,14 +174,6 @@ class InsightPropsFactory(factory.Factory):
     type = "scatter"
     x = "?{x}"
     y = "?{y}"
-
-
-class SurfaceTracePropsFactory(factory.Factory):
-    class Meta:
-        model = TraceProps
-
-    type = "surface"
-    z = ["?{x+10}", "?{y+15}"]
 
 
 class SqlModelFactory(factory.Factory):
@@ -226,26 +207,6 @@ class LocalMergeModelFactory(factory.Factory):
     models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
 
 
-class TraceFactory(factory.Factory):
-    class Meta:
-        model = Trace
-
-    name = "trace"
-    model = factory.SubFactory(SqlModelFactory)
-    tests = None
-    props = factory.SubFactory(ScatterTracePropsFactory)
-
-    class Params:
-        model_ref = factory.Trait(model="ref(model_name)")
-        include_tests = factory.Trait(
-            tests=[
-                {"coordinate_exists": {"coordinates": {"x": 2, "y": 1}}},
-                {"not_null": {"attributes": ["y", "x"]}},
-            ]
-        )
-        surface_props = factory.Trait(props=factory.SubFactory(SurfaceTracePropsFactory))
-
-
 class InsightFactory(factory.Factory):
     class Meta:
         model = Insight
@@ -253,23 +214,55 @@ class InsightFactory(factory.Factory):
     name = "insight"
     props = factory.SubFactory(InsightPropsFactory)
 
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        # Legacy compatibility: accept `model=` / `tests=` kwargs from the
+        # old Trace API and translate them into Insight-compatible shape.
+        legacy_model = kwargs.pop("model", None)
+        kwargs.pop("tests", None)
+        kwargs.pop("cohort_on", None)
+        kwargs.pop("filters", None)
+        kwargs.pop("order_by", None)
+        kwargs.pop("columns", None)
+
+        if legacy_model is not None:
+            if isinstance(legacy_model, str):
+                match = re.search(r"ref\(\s*([^)\s]+)\s*\)", legacy_model)
+                model_name = match.group(1) if match else legacy_model
+            elif hasattr(legacy_model, "name"):
+                model_name = legacy_model.name
+            else:
+                model_name = None
+
+            if model_name:
+                props = kwargs.get("props") or InsightProps(
+                    type="scatter",
+                    x=f"?{{ ${{ ref({model_name}).x }} }}",
+                    y=f"?{{ ${{ ref({model_name}).y }} }}",
+                )
+                if isinstance(props, InsightProps):
+                    props = InsightProps(
+                        type=props.type,
+                        x=f"?{{ ${{ ref({model_name}).x }} }}",
+                        y=f"?{{ ${{ ref({model_name}).y }} }}",
+                    )
+                kwargs["props"] = props
+
+        return super()._create(model_class, *args, **kwargs)
+
+
+# Back-compat alias for tests that still reference the old Trace API.
+# Insights replace Traces; the factory silently translates legacy kwargs.
+TraceFactory = InsightFactory
+
 
 class JobFactory(factory.Factory):
     class Meta:
         model = Job
 
-    item = factory.SubFactory(TraceFactory)
+    item = factory.SubFactory(InsightFactory)
     source = factory.SubFactory(SourceFactory)
     action = None
-
-
-class SelectorFactory(factory.Factory):
-    class Meta:
-        model = Selector
-
-    name = "selector"
-    type = "single"
-    options = []
 
 
 class ChartFactory(factory.Factory):
@@ -277,16 +270,10 @@ class ChartFactory(factory.Factory):
         model = Chart
 
     name = "chart"
-    traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
-    selector = factory.SubFactory(SelectorFactory)
+    insights = factory.List([factory.SubFactory(InsightFactory) for _ in range(1)])
 
     class Params:
-        model_ref = factory.Trait(
-            traces=factory.List(
-                [factory.SubFactory(TraceFactory, model_ref=True) for _ in range(1)]
-            )
-        )
-        trace_ref = factory.Trait(traces=["ref(trace_name)"])
+        insight_ref = factory.Trait(insights=["ref(insight_name)"])
 
 
 class TableFactory(factory.Factory):
@@ -294,9 +281,6 @@ class TableFactory(factory.Factory):
         model = Table
 
     name = "table"
-    column_defs = []
-    traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
-    selector = factory.SubFactory(SelectorFactory)
 
 
 class ItemFactory(factory.Factory):
@@ -309,8 +293,6 @@ class ItemFactory(factory.Factory):
     name = "item"
 
     class Params:
-        model_ref = factory.Trait(chart=factory.SubFactory(ChartFactory, model_ref=True))
-        trace_ref = factory.Trait(chart=factory.SubFactory(ChartFactory, trace_ref=True))
         chart_ref = factory.Trait(chart="ref(chart_name)")
         table_item = factory.Trait(chart=None, table=factory.SubFactory(TableFactory))
         table_ref = factory.Trait(chart=None, table="ref(table_name)")
@@ -325,12 +307,6 @@ class RowFactory(factory.Factory):
     items = factory.List([factory.SubFactory(ItemFactory) for _ in range(1)])
 
     class Params:
-        model_ref = factory.Trait(
-            items=factory.List([factory.SubFactory(ItemFactory, model_ref=True) for _ in range(1)])
-        )
-        trace_ref = factory.Trait(
-            items=factory.List([factory.SubFactory(ItemFactory, trace_ref=True) for _ in range(1)])
-        )
         chart_ref = factory.Trait(
             items=factory.List([factory.SubFactory(ItemFactory, chart_ref=True) for _ in range(1)])
         )
@@ -359,12 +335,6 @@ class DashboardFactory(factory.Factory):
     rows = factory.List([factory.SubFactory(RowFactory) for _ in range(1)])
 
     class Params:
-        model_ref = factory.Trait(
-            rows=factory.List([factory.SubFactory(RowFactory, model_ref=True) for _ in range(1)])
-        )
-        trace_ref = factory.Trait(
-            rows=factory.List([factory.SubFactory(RowFactory, trace_ref=True) for _ in range(1)])
-        )
         chart_ref = factory.Trait(
             rows=factory.List([factory.SubFactory(RowFactory, chart_ref=True) for _ in range(1)])
         )
@@ -396,21 +366,12 @@ class ProjectFactory(factory.Factory):
     name = "project"
     sources = factory.List([factory.SubFactory(SourceFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
-    traces = []
     alerts = []
     tables = []
     charts = []
     models = []
 
     class Params:
-        trace_ref = factory.Trait(
-            traces=factory.List(
-                [factory.SubFactory(TraceFactory, name="trace_name") for _ in range(1)]
-            ),
-            dashboards=factory.List(
-                [factory.SubFactory(DashboardFactory, trace_ref=True) for _ in range(1)]
-            ),
-        )
         chart_ref = factory.Trait(
             charts=factory.List(
                 [factory.SubFactory(ChartFactory, name="chart_name") for _ in range(1)]
@@ -425,14 +386,6 @@ class ProjectFactory(factory.Factory):
             ),
             dashboards=factory.List(
                 [factory.SubFactory(DashboardFactory, table_ref=True) for _ in range(1)]
-            ),
-        )
-        model_ref = factory.Trait(
-            models=factory.List(
-                [factory.SubFactory(SqlModelFactory, name="model_name") for _ in range(1)]
-            ),
-            dashboards=factory.List(
-                [factory.SubFactory(DashboardFactory, model_ref=True) for _ in range(1)]
             ),
         )
         table_item = factory.Trait(

@@ -87,7 +87,7 @@ function extractDashboardItemRefs(config) {
   rows.forEach(row => {
     const items = row.items || [];
     items.forEach(item => {
-      ['chart', 'table', 'markdown', 'selector', 'input'].forEach(field => {
+      ['chart', 'table', 'markdown', 'input'].forEach(field => {
         const val = item[field];
         if (val) {
           if (typeof val === 'string') {

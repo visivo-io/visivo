@@ -89,14 +89,14 @@ const getProject = items => {
 
 const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
 const mockProject = project;
-const fetchTraces = jest.fn();
+const fetchInsights = jest.fn();
 
 describe('Project Component', () => {
   test('renders dashboard overview without dashboard name param', async () => {
     const routes = [
       {
         path: '/:dashboardName?',
-        element: <Project project={mockProject} dashboardName={null} fetchTraces={fetchTraces} />,
+        element: <Project project={mockProject} dashboardName={null} fetchInsights={fetchInsights} />,
       },
     ];
 
@@ -122,7 +122,7 @@ describe('Project Component', () => {
       {
         path: '/:dashboardName?',
         element: (
-          <Project project={mockProject} dashboardName="dashboard" fetchTraces={fetchTraces} />
+          <Project project={mockProject} dashboardName="dashboard" fetchInsights={fetchInsights} />
         ),
       },
     ];

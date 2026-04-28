@@ -8,7 +8,7 @@ from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
 from click.testing import CliRunner
 from tests.support.utils import temp_yml_file, temp_folder
-from tests.factories.model_factories import ProjectFactory, DashboardFactory, TraceFactory
+from tests.factories.model_factories import ProjectFactory
 from visivo.commands.serve import serve
 from visivo.server.hot_reload_server import HotReloadServer
 import pytest
@@ -32,28 +32,10 @@ def output_dir():
     return temp_folder()
 
 
-@pytest.fixture
-def setup_project_with_data(output_dir):
-    # Create a project with a trace that will query the SQLite database
-    project = ProjectFactory()
-    trace = TraceFactory(name="test_trace")
-    project.traces.append(trace)
-
-    # Create the SQLite database
-    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-
-    # Create project.json
-    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
-    working_dir = os.path.dirname(tmp)
-
-    return project, working_dir
-
-
 def test_serve(output_dir):
     project = ProjectFactory()
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    # Create project.json
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, "project.json"), "w") as f:
         json.dump(json.loads(project.model_dump_json()), f)
@@ -74,7 +56,6 @@ def test_serve(output_dir):
         server_url=server_url,
     )
 
-    # Test the Flask app directly
     client = server.app.test_client()
     response = client.get("/api/project/")
     response_json = json.loads(response.data)
@@ -86,7 +67,6 @@ def test_serve(output_dir):
 
 
 def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
-    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
     port = get_test_port()

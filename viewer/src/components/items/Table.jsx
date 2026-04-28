@@ -4,11 +4,6 @@ import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import PivotableTable from './PivotableTable';
 import {
-  tableDataFromCohortData,
-  tableColumnsWithDot,
-  tableColumnsWithUnderscores,
-} from '../../models/Table';
-import {
   createTheme,
   ThemeProvider,
   Box,
@@ -20,9 +15,7 @@ import {
   TextField,
   InputAdornment,
 } from '@mui/material';
-import { useTracesData } from '../../hooks/useTracesData';
 import { ItemContainer } from './ItemContainer';
-import CohortSelect from '../select/CohortSelect';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -49,20 +42,17 @@ import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
-const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }) => {
-  const isDirectQueryResult = table.traces[0]?.data !== undefined;
+const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const isModelData = table.data && (table.data.sql || table.data.args || table.data.models);
 
-  // Support 'data' field - can reference insight or model
   const dataName = useMemo(() => {
     if (table.data) {
       if (typeof table.data === 'object' && table.data.name) return table.data.name;
       if (typeof table.data === 'string') return parseRefValue(table.data);
     }
-    // For pivot/column-select tables, extract the first ref name from columns/rows/values
     const refStrings = [
       ...(table.columns || []),
       ...(table.rows || []),
@@ -72,28 +62,16 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     return names.length > 0 ? names[0] : null;
   }, [table.data, table.columns, table.rows, table.values]);
 
-  // Memoize trace names to prevent array recreation
-  const traceNames = useMemo(() => {
-    if (isDirectQueryResult) return [];
-    return table.traces.map(trace => trace.name);
-  }, [table.traces, isDirectQueryResult]);
-
-  // Viewport-based loading: Only fetch data when shouldLoad is true
-  const tracesData = useTracesData(projectId, shouldLoad ? traceNames : []);
-
   const isPivotableTable = !!dataName;
 
-  // Read data from the appropriate store based on data type
   const sourceData = useStore(
     useShallow(state => {
       if (!dataName) return null;
       if (isModelData) return state.modelJobs?.[dataName] || null;
-      // Check insightJobs first, fall back to modelJobs for model-backed pivot tables
       return state.insightJobs[dataName] || state.modelJobs?.[dataName] || null;
     })
   );
 
-  const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [searchIsVisible, setSearchIsVisible] = useState(false);
@@ -106,59 +84,13 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     useKeysAsHeaders: true,
   });
 
-  useEffect(() => {
-    if (selectedTableCohort && tracesData) {
-      // Handle trace-based queries
-      setColumns(
-        tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName)
-      );
-    } else if (isDirectQueryResult) {
-      // Handle direct query results
-      const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(key => ({
-        id: key, // Unique identifier for the column
-        header: key, // Display name
-        accessorKey: key.replace(/\./g, '___'), // Replace dots with a safe separator
-        enableGrouping: false, // Disable grouping for these columns
-        markdown: false,
-      }));
-      setColumns(directQueryColumns);
-    }
-  }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
-
-  useEffect(() => {
-    if (selectedTableCohort && columns) {
-      // Handle trace-based queries
-      setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
-    } else if (isDirectQueryResult) {
-      // Handle direct query results
-      setTableData(
-        table.traces[0].data.map((row, index) => {
-          const transformedRow = {};
-          Object.entries(row).forEach(([key, value]) => {
-            // Replace dots with underscores in the keys
-            transformedRow[key.replace(/\./g, '___')] = value;
-          });
-          return {
-            id: index,
-            ...transformedRow,
-          };
-        })
-      );
-    }
-  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
-
-  // Helper: Format column header from key name
   const formatColumnHeader = key => {
-    // Remove hash suffixes (e.g., "revenue_hash_abc123" → "revenue")
     const cleanKey = key.replace(/_hash_[a-f0-9]+$/i, '');
-
-    // Convert snake_case to Title Case
     return cleanKey
       .replace(/_/g, ' ')
       .replace(/\b\w/g, char => char.toUpperCase());
   };
 
-  // Handle 'data' field (auto-generate columns from data)
   useEffect(() => {
     if (!dataName || !sourceData) return;
 
@@ -171,12 +103,9 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
 
     const firstRow = data[0];
 
-    // Build reverse mapping from hashed column name → display name using props_mapping
-    // props_mapping is like {"props.x": "hashed_col", "props.y": "other_hash"}
     const reverseMapping = {};
     if (sourceData.props_mapping) {
       for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
-        // Extract display name from prop path: "props.x" → "X", "props.marker.size" → "Marker Size"
         const displayName = propPath
           .replace(/^props\./, '')
           .replace(/\./g, ' ')
@@ -213,11 +142,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     const url = URL.createObjectURL(csvBlob);
     const link = document.createElement('a');
     link.href = url;
-
-    const cohortName = selectedTableCohort?.cohortName || 'cohort';
-    const traceName = selectedTableCohort?.traceName || 'trace';
-
-    link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
+    link.setAttribute('download', `${table.name}.csv`);
 
     document.body.appendChild(link);
     link.click();
@@ -233,7 +158,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
   const toggleSearch = () => setSearchIsVisible(!searchIsVisible);
 
   const useTable = useMaterialReactTable({
-    columns: tableColumnsWithUnderscores(columns).map(column => ({
+    columns: columns.map(column => ({
       ...column,
       Cell: ({ cell }) => {
         const value = cell.getValue();
@@ -279,9 +204,7 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     },
   });
 
-  // Viewport-based loading: Show loading if not yet visible (shouldLoad=false)
-  // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!shouldLoad || (!isDirectQueryResult && !isPivotableTable && !tracesData)) {
+  if (!shouldLoad) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
@@ -289,7 +212,6 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  // Route to PivotableTable component for data-backed tables
   if (dataName && sourceData) {
     return (
       <PivotableTable
@@ -308,18 +230,6 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
       info: { main: 'rgb(79, 73, 76)' },
     },
   });
-
-  const onSelectedCohortChange = changedSelectedTracesData => {
-    const traceName = Object.keys(changedSelectedTracesData)[0];
-    if (traceName) {
-      const cohortName = Object.keys(changedSelectedTracesData[traceName])[0];
-      setSelectedTableCohort({
-        traceName,
-        data: changedSelectedTracesData[traceName][cohortName],
-        cohortName,
-      });
-    }
-  };
 
   /* eslint-disable react/jsx-pascal-case */
   return (
@@ -418,16 +328,6 @@ const Table = ({ table, projectId, itemWidth, height, width, shouldLoad = true }
                   <ShareIcon fontSize="medium" />
                 </Tooltip>
               </Button>
-
-              {!isDirectQueryResult && !isPivotableTable && tracesData && (
-                <CohortSelect
-                  tracesData={tracesData}
-                  onChange={onSelectedCohortChange}
-                  selector={table.selector}
-                  parentName={table.name}
-                  parentType="table"
-                />
-              )}
             </Box>
             {searchIsVisible && isMobile ? (
               <Box sx={{ display: 'flex', width: '100%', minWidth: 0, flexBasis: '100%' }}>

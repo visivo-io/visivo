@@ -2,24 +2,20 @@ from visivo.models.base.context_string import ContextString
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.models.model import Model
 from visivo.models.row import Row
-from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
-from visivo.models.test import Test
-from visivo.models.trace import Trace
+from visivo.models.insight import Insight
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from tests.factories.model_factories import (
     ChartFactory,
     DefaultsFactory,
+    InsightFactory,
     ItemFactory,
-    SelectorFactory,
     SqlModelFactory,
     SourceFactory,
     DashboardFactory,
     RowFactory,
     ProjectFactory,
-    TestFactory,
-    TraceFactory,
 )
 import pytest
 import networkx
@@ -31,19 +27,10 @@ def test_simple_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [
-        project.dashboards[0].rows[0].items[0].chart.traces[0]
+    assert len(project.descendants()) == 7
+    assert project.descendants_of_type(type=Insight) == [
+        project.dashboards[0].rows[0].items[0].chart.insights[0]
     ]
-
-
-def test_ref_trace_Project_dag():
-    project = ProjectFactory(trace_ref=True)
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [project.traces[0]]
 
 
 def test_ref_chart_Project_dag():
@@ -51,10 +38,9 @@ def test_ref_chart_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [project.charts[0].traces[0]]
+    assert len(project.descendants()) == 7
+    assert project.descendants_of_type(type=Insight) == [project.charts[0].insights[0]]
     assert project.descendants_of_type(type=Chart) == [project.charts[0]]
-    assert project.descendants_of_type(type=Selector) == [project.charts[0].selector]
 
 
 def test_ref_table_Project_dag():
@@ -62,127 +48,17 @@ def test_ref_table_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
+    descendants = project.descendants()
+    assert networkx.is_directed_acyclic_graph(dag)
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
-    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
-
-
-def test_context_model_Project_dag():
-    project = ProjectFactory(model_ref=True)
-    model = project.models[0]
-    model.path = "project.models[0]"
-    trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
-    trace.model = ContextString("${ project.models[0] }")
-
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert model in trace.descendants_of_type(type=Model, dag=dag)
-
-
-def test_context_source_Project_dag():
-    project = ProjectFactory()
-    source = project.sources[0]
-    source.path = "project.sources[0]"
-    model = project.dashboards[0].rows[0].items[0].chart.traces[0].model
-    model.source = ContextString("${ project.sources[0] }")
-
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert source in model.descendants_of_type(type=Source, dag=dag)
-
-
-def test_ref_selector_Project_dag_has_one_selector():
-    project = ProjectFactory(table_ref=True)
-    item = ItemFactory()
-    item.chart.selector = "ref(selector)"
-    item.chart.traces[0].name = "trace 2"
-    project.dashboards[0].rows[0].items = [item]
-
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 11
-    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
-    assert set(project.descendants_of_type(type=Trace)) == {
-        project.tables[0].traces[0],
-        item.chart.traces[0],
-    }
-    assert project.descendants_of_type(type=Table) == [project.tables[0]]
-    assert project.descendants_of_type(type=Chart) == [item.chart]
-
-
-def test_ref_selector_item_Project_dag():
-    project = ProjectFactory(table_ref=True)
-    item = ItemFactory()
-    item.chart.selector = "ref(selector)"
-    item.chart.traces[0].name = "trace 2"
-    project.dashboards[0].rows[0].items = [item]
-    project.tables[0].selector = "ref(selector)"
-    selector = SelectorFactory()
-    project.selectors = [selector]
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 11
-    assert project.descendants_of_type(type=Selector) == project.selectors
-    assert set(project.descendants_of_type(type=Trace)) == {
-        project.tables[0].traces[0],
-        item.chart.traces[0],
-    }
-    assert project.descendants_of_type(type=Table) == [project.tables[0]]
-    assert project.descendants_of_type(type=Chart) == [project.dashboards[0].rows[0].items[0].chart]
-
-
-def test_ref_selector_row_item_Project_dag():
-    row = RowFactory()
-    selector = SelectorFactory(name="row selector", options=["ref(row)"])
-    project = ProjectFactory(selectors=[selector])
-    project.dashboards[0].rows = [row]
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 10
-    assert selector in project.descendants_of_type(type=Selector)
-
-
-def test_context_selector_row_item_Project_dag():
-    row = RowFactory()
-    selector = SelectorFactory(name="row selector", options=["${ref(row)}"])
-    project = ProjectFactory(selectors=[selector])
-    project.dashboards[0].rows = [row]
-    # Invalidate cached DAG since we modified the project after construction
-    project.invalidate_dag_cache()
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 10
-    assert selector in project.descendants_of_type(type=Selector)
-    assert row in selector.descendants_of_type(type=Row, dag=dag)
 
 
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
     project.dashboards[0].rows[0].items[0].name = "item"
-    # Invalidate cached DAG since we modified the project after construction
     project.invalidate_dag_cache()
 
     with pytest.raises(ValueError) as exc_info:
-        # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
     assert 'The reference "ref(table_name)" on item "item" does not point to an object.' in str(
@@ -208,7 +84,6 @@ def test_sub_dag_including_dashboard_name_Project_dag():
     dashboard = project.dashboards[0]
     additional_dashboard = DashboardFactory(name="Other Dashboard", rows=[])
     project.dashboards.append(additional_dashboard)
-    # Invalidate cached DAG since we modified the project after construction
     project.invalidate_dag_cache()
 
     included_nodes = project.nodes_including_named_node_in_graph(name=dashboard.name)
@@ -217,7 +92,7 @@ def test_sub_dag_including_dashboard_name_Project_dag():
     assert additional_dashboard not in included_nodes
 
 
-def test_trace_with_default_source_Project_dag():
+def test_model_with_default_source_Project_dag():
     model = SqlModelFactory(source=None)
     source = SourceFactory()
     project = ProjectFactory(
@@ -235,45 +110,29 @@ def test_trace_with_default_source_Project_dag():
 
 
 def test_dag_with_context_string():
-    trace = TraceFactory()
+    insight = InsightFactory()
     dashboard = DashboardFactory()
-    dashboard.rows[0].items[0].chart.traces[0] = ContextString("${ project.traces[0] }")
-    trace.path = "project.traces[0]"
+    dashboard.rows[0].items[0].chart.insights[0] = ContextString("${ project.insights[0] }")
+    insight.path = "project.insights[0]"
     project = ProjectFactory(
-        traces=[trace],
+        insights=[insight],
         dashboards=[dashboard],
     )
 
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [project.traces[0]]
+    assert project.descendants_of_type(type=Insight) == [project.insights[0]]
 
 
 def test_circular_references_Project_dag():
-    trace = TraceFactory(name="circular_trace")
-    trace.model = ContextString("${ project }")
+    insight = InsightFactory(name="circular_insight")
+    insight.props.x = "?{ ${ref(circular_insight).x} }"
 
     with pytest.raises(ValueError) as exc_info:
-        ProjectFactory(traces=[trace], dashboards=[])
+        ProjectFactory(insights=[insight], dashboards=[])
 
     assert "Project contains a circular reference: " in str(exc_info.value)
-
-
-def test_trace_with_test_Project_dag():
-    test = TestFactory()
-    trace = TraceFactory(tests=[test])
-    project = ProjectFactory(
-        traces=[trace],
-        dashboards=[],
-    )
-
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 5
-    assert project.descendants_of_type(type=Test) == [test]
 
 
 def test_filter_dag():
@@ -357,10 +216,10 @@ def test_get_diff_dag_filter():
     diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
     assert diff_filter == ""
 
-    new_project.dashboards[0].rows[0].items[0].chart.traces[0].model.sql = "updated sql"
+    new_project.dashboards[0].rows[0].items[0].chart.insights[0].props.x = "?{updated_field}"
     project_dag = new_project.dag()
     diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
-    assert diff_filter == "dashboard+,row+,item+,chart+,trace+,model+"
+    assert diff_filter == "dashboard+,row+,item+,chart+,insight+"
 
 
 def test_get_descendant_by_name_single_node():
@@ -368,7 +227,6 @@ def test_get_descendant_by_name_single_node():
     project = ProjectFactory()
     dag = project.dag()
 
-    # Should find the single dashboard
     dashboard = dag.get_descendant_by_name("dashboard")
     assert dashboard == project.dashboards[0]
 
@@ -378,9 +236,8 @@ def test_get_descendant_by_name_with_from_node():
     project = ProjectFactory()
     dag = project.dag()
 
-    # Should find the trace from the dashboard
-    trace = dag.get_descendant_by_name("trace", from_node=project.dashboards[0])
-    assert trace == project.dashboards[0].rows[0].items[0].chart.traces[0]
+    insight = dag.get_descendant_by_name("insight", from_node=project.dashboards[0])
+    assert insight == project.dashboards[0].rows[0].items[0].chart.insights[0]
 
 
 def test_get_descendant_by_name_not_found():
@@ -397,11 +254,10 @@ def test_get_descendant_by_name_not_found():
 def test_get_descendant_by_name_not_found_from_node():
     """Test that ValueError is raised when no descendant is found from a node."""
     project = ProjectFactory()
-    model = project.dashboards[0].rows[0].items[0].chart.traces[0].model
+    insight = project.dashboards[0].rows[0].items[0].chart.insights[0]
     dag = project.dag()
 
-    # Model has no descendants with name "dashboard"
     with pytest.raises(ValueError) as exc_info:
-        dag.get_descendant_by_name("dashboard", from_node=model)
+        dag.get_descendant_by_name("dashboard", from_node=insight)
 
     assert "No descendant found with name 'dashboard'" in str(exc_info.value)
