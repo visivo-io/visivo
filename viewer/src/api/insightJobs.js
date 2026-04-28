@@ -135,6 +135,3 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
 
   throw new Error(`Failed to fetch insight jobs after ${retries} attempts: ${lastError.message}`);
 };
-
-// Backward compatibility alias
-export const fetchInsights = fetchInsightJobs;

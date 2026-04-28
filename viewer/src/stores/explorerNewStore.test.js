@@ -1,5 +1,10 @@
 /* eslint-disable no-template-curly-in-string */
 import useStore from './store';
+import { saveModel } from '../api/models';
+import { saveInsight } from '../api/insights';
+import { saveChart } from '../api/charts';
+import { saveMetric } from '../api/metrics';
+import { saveDimension } from '../api/dimensions';
 import {
   expandDotNotationProps,
   selectActiveModelState,
@@ -18,6 +23,55 @@ import {
   getAllKnownNames,
   NameCollisionError,
 } from './explorerNewStore';
+
+// Mock API modules so saveExplorerObjects + post-save fetches don't hit the network.
+// Without this, the post-save Promise.all (fetchInsights/Models/Charts/Metrics/Dimensions)
+// triggers real fetch() calls in jsdom and floods the test output with AggregateError.
+// jest.mock calls are hoisted above imports by babel-plugin-jest-hoist, so placing
+// them after imports keeps eslint's import/first happy without changing runtime order.
+jest.mock('../api/models', () => ({
+  saveModel: jest.fn().mockResolvedValue({ success: true }),
+  fetchAllModels: jest.fn().mockResolvedValue({ models: [] }),
+  fetchModel: jest.fn().mockResolvedValue(null),
+  deleteModel: jest.fn().mockResolvedValue({}),
+  validateModel: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/insights', () => ({
+  saveInsight: jest.fn().mockResolvedValue({ success: true }),
+  fetchAllInsights: jest.fn().mockResolvedValue({ insights: [] }),
+  fetchInsight: jest.fn().mockResolvedValue(null),
+  deleteInsight: jest.fn().mockResolvedValue({}),
+  validateInsight: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/charts', () => ({
+  saveChart: jest.fn().mockResolvedValue({ success: true }),
+  fetchAllCharts: jest.fn().mockResolvedValue({ charts: [] }),
+  fetchChart: jest.fn().mockResolvedValue(null),
+  deleteChart: jest.fn().mockResolvedValue({}),
+  validateChart: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/metrics', () => ({
+  saveMetric: jest.fn().mockResolvedValue({ success: true }),
+  fetchAllMetrics: jest.fn().mockResolvedValue({ metrics: [] }),
+  fetchMetric: jest.fn().mockResolvedValue(null),
+  deleteMetric: jest.fn().mockResolvedValue({}),
+  validateMetric: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/dimensions', () => ({
+  saveDimension: jest.fn().mockResolvedValue({ success: true }),
+  fetchAllDimensions: jest.fn().mockResolvedValue({ dimensions: [] }),
+  fetchDimension: jest.fn().mockResolvedValue(null),
+  deleteDimension: jest.fn().mockResolvedValue({}),
+  validateDimension: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/explorer', () => ({
+  fetchDiff: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('../api/publish', () => ({
+  getPublishStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
+  getPendingChanges: jest.fn().mockResolvedValue({ pending: [] }),
+  publishChanges: jest.fn().mockResolvedValue({}),
+}));
 
 // Helper to reset all explorer new state
 const resetState = () => {
@@ -1715,22 +1769,18 @@ describe('explorerNewStore', () => {
   // saveExplorerObjects
   // ====================================================================
   describe('saveExplorerObjects', () => {
-    let mockSaveModel, mockSaveInsight, mockSaveChart, mockSaveMetric, mockSaveDimension;
+    const mockSaveModel = saveModel;
+    const mockSaveInsight = saveInsight;
+    const mockSaveChart = saveChart;
+    const mockSaveMetric = saveMetric;
+    const mockSaveDimension = saveDimension;
 
     beforeEach(() => {
-      mockSaveModel = jest.fn().mockResolvedValue({ success: true });
-      mockSaveInsight = jest.fn().mockResolvedValue({ success: true });
-      mockSaveChart = jest.fn().mockResolvedValue({ success: true });
-      mockSaveMetric = jest.fn().mockResolvedValue({ success: true });
-      mockSaveDimension = jest.fn().mockResolvedValue({ success: true });
-
-      jest.mock('../api/models', () => ({ saveModel: (...args) => mockSaveModel(...args) }));
-      jest.mock('../api/insights', () => ({ saveInsight: (...args) => mockSaveInsight(...args) }));
-      jest.mock('../api/charts', () => ({ saveChart: (...args) => mockSaveChart(...args) }));
-      jest.mock('../api/metrics', () => ({ saveMetric: (...args) => mockSaveMetric(...args) }));
-      jest.mock('../api/dimensions', () => ({
-        saveDimension: (...args) => mockSaveDimension(...args),
-      }));
+      mockSaveModel.mockResolvedValue({ success: true });
+      mockSaveInsight.mockResolvedValue({ success: true });
+      mockSaveChart.mockResolvedValue({ success: true });
+      mockSaveMetric.mockResolvedValue({ success: true });
+      mockSaveDimension.mockResolvedValue({ success: true });
     });
 
     afterEach(() => {
@@ -1858,9 +1908,11 @@ describe('explorerNewStore', () => {
 
       expect(mockSaveMetric).toHaveBeenCalledWith('total', {
         expression: 'SUM(amount)',
+        parentModel: 'my_model',
       });
       expect(mockSaveDimension).toHaveBeenCalledWith('month', {
         expression: "DATE_TRUNC('month', date)",
+        parentModel: 'my_model',
       });
     });
 
@@ -1918,6 +1970,55 @@ describe('explorerNewStore', () => {
       expect(mockSaveInsight).toHaveBeenCalledWith('dot_insight', {
         props: { type: 'scatter', marker: { color: 'red', size: 10 }, x: 'col_a' },
       });
+    });
+
+    it('calls checkPublishStatus once on successful save so TopNav reflects pending changes', async () => {
+      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+      useStore.setState({
+        explorerModelStates: {
+          new_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+        checkPublishStatus: mockCheckPublishStatus,
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(true);
+      expect(mockCheckPublishStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT call checkPublishStatus when a save fails', async () => {
+      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+      mockSaveModel.mockRejectedValue(new Error('Network error'));
+      useStore.setState({
+        explorerModelStates: {
+          bad_model: {
+            sql: 'SELECT 1',
+            sourceName: 'pg',
+            computedColumns: [],
+            isNew: true,
+          },
+        },
+        explorerInsightStates: {},
+        explorerChartName: null,
+        explorerChartLayout: {},
+        explorerChartInsightNames: [],
+        checkPublishStatus: mockCheckPublishStatus,
+      });
+
+      const result = await useStore.getState().saveExplorerObjects();
+
+      expect(result.success).toBe(false);
+      expect(mockCheckPublishStatus).not.toHaveBeenCalled();
     });
   });
 

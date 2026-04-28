@@ -51,6 +51,87 @@ def test_list_all_ymls_in_dir():
     assert all([file in yaml_list for file in expected_yaml_list])
 
 
+def _seed_project_tree(tmp_path, files):
+    """Helper for the scope tests: create files inside tmp_path."""
+    for relative in files:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("name: foo\n")
+
+
+def test_list_all_ymls_in_dir_excludes_dot_dirs(tmp_path):
+    _seed_project_tree(
+        tmp_path,
+        [
+            "project.visivo.yml",
+            ".git/config.yml",
+            ".github/workflows/ci.yml",
+            ".rwx/ci.yml",
+            ".venv/lib/python3.12/site-packages/some_pkg/data.yml",
+            ".pytest_cache/v/cache/foo.yml",
+        ],
+    )
+    found = {str(p.relative_to(tmp_path)) for p in list_all_ymls_in_dir(tmp_path)}
+    assert found == {"project.visivo.yml"}
+
+
+def test_list_all_ymls_in_dir_excludes_node_modules(tmp_path):
+    _seed_project_tree(
+        tmp_path,
+        ["project.visivo.yml", "node_modules/some-pkg/config.yml"],
+    )
+    found = {str(p.relative_to(tmp_path)) for p in list_all_ymls_in_dir(tmp_path)}
+    assert found == {"project.visivo.yml"}
+
+
+def test_list_all_ymls_in_dir_excludes_dbt_packages(tmp_path):
+    _seed_project_tree(
+        tmp_path,
+        [
+            "project.visivo.yml",
+            "dbt_packages/dbt_utils/dbt_project.yml",
+            "dbt_packages/dbt_utils/models/foo.yml",
+        ],
+    )
+    found = {str(p.relative_to(tmp_path)) for p in list_all_ymls_in_dir(tmp_path)}
+    assert found == {"project.visivo.yml"}
+
+
+def test_list_all_ymls_in_dir_excludes_build_output(tmp_path):
+    _seed_project_tree(
+        tmp_path,
+        [
+            "project.visivo.yml",
+            "target/run/foo.yml",
+            "build/something.yml",
+            "dist/dist.yml",
+            "venv/lib/x.yml",
+            "__pycache__/cached.yml",
+        ],
+    )
+    found = {str(p.relative_to(tmp_path)) for p in list_all_ymls_in_dir(tmp_path)}
+    assert found == {"project.visivo.yml"}
+
+
+def test_list_all_ymls_in_dir_includes_nested_project_files(tmp_path):
+    _seed_project_tree(
+        tmp_path,
+        [
+            "project.visivo.yml",
+            "dashboards/sales.visivo.yml",
+            "models/orders/calls.yml",
+            "includes/shared.yaml",
+        ],
+    )
+    found = {str(p.relative_to(tmp_path)) for p in list_all_ymls_in_dir(tmp_path)}
+    assert found == {
+        "project.visivo.yml",
+        "dashboards/sales.visivo.yml",
+        "models/orders/calls.yml",
+        "includes/shared.yaml",
+    }
+
+
 def test_extract_value_from_function():
     function_string = "test(args)"
     argument = extract_value_from_function(function_string, "test")

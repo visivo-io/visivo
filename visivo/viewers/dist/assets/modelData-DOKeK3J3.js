@@ -1,0 +1,1 @@
+import{i as t,g as s}from"./index-z-C-kC6i.js";const r=async e=>{if(!t("modelData"))return{available:!1};const a=await fetch(s("modelData",{name:e}));return a.status===200?await a.json():{available:!1}};export{r as fetchModelData};

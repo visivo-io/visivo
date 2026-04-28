@@ -70,10 +70,37 @@ def yml_to_dict(relative_path):
         return dict(yaml_dict)
 
 
+# Directories that should never be scanned for project YAML.
+# Hidden dot-dirs (.git, .venv, .github, .rwx, .pytest_cache, ...) are excluded
+# by a separate startswith(".") check.
+_EXCLUDED_DIR_NAMES = {
+    "node_modules",
+    "dbt_packages",
+    "target",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+}
+
+
 def list_all_ymls_in_dir(path):
+    """List YAML files under `path`, excluding directories that should never
+    contain Visivo project files (hidden dot-dirs, vendored deps, build output).
+
+    The previous implementation used unconditional ``rglob`` which could rewrite
+    files in ``.venv/``, ``dbt_packages/``, ``.github/workflows/``, and other
+    locations that happen to contain ``.yml`` files but are not part of any
+    Visivo project. See ``specs/plan/v1-final-bugfixes/B01-migrate-scope-rglob.md``.
+    """
     dir_path = Path(path)
-    file_paths = list(dir_path.rglob("*.yml")) + list(dir_path.rglob("*.yaml"))
-    file_paths = [p for p in file_paths if os.path.isfile(p)]
+    file_paths = []
+    for root, dirs, filenames in os.walk(dir_path):
+        # Modify dirs in-place so os.walk doesn't descend into excluded dirs.
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in _EXCLUDED_DIR_NAMES]
+        for filename in filenames:
+            if filename.endswith((".yml", ".yaml")):
+                file_paths.append(Path(root) / filename)
     return file_paths
 
 

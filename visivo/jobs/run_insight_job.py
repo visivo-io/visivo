@@ -65,14 +65,13 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
         insights_directory = f"{run_output_dir}/insights"
 
         if insight_query_info.pre_query:
-            import polars as pl
+            from visivo.jobs.parquet_io import write_dicts_to_parquet
 
             data = source.read_sql(insight_query_info.pre_query)
             os.makedirs(files_directory, exist_ok=True)
             # Use name_hash for file naming within the run directory
             parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
-            df = pl.DataFrame(data)
-            df.write_parquet(parquet_path)
+            write_dicts_to_parquet(data, parquet_path)
             files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
         else:
             models = insight.get_all_dependent_models(dag=dag)

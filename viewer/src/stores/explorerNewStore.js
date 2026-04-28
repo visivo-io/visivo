@@ -1383,12 +1383,14 @@ const createExplorerNewSlice = (set, get) => ({
       };
     }
 
-    // Build metrics/dimensions from computed columns — only send expression
+    // Build metrics/dimensions from computed columns, carrying the parent
+    // model scope so the backend can nest them under the right model at
+    // publish time.
     const metricConfigs = {};
     const dimensionConfigs = {};
-    for (const [, ms] of Object.entries(state.explorerModelStates)) {
+    for (const [modelName, ms] of Object.entries(state.explorerModelStates)) {
       for (const cc of ms.computedColumns || []) {
-        const entry = { expression: cc.expression };
+        const entry = { expression: cc.expression, parentModel: modelName };
         if (cc.type === 'metric') metricConfigs[cc.name] = entry;
         else dimensionConfigs[cc.name] = entry;
       }
@@ -1415,31 +1417,52 @@ const createExplorerNewSlice = (set, get) => ({
     const state = get();
     const errors = [];
 
-    // Save models
+    // Save models and their model-scoped computed columns.
+    //
+    // The backend diff endpoint returns null for unchanged models, which
+    // lets us skip an unchanged `saveModel` POST. BUT the user may have
+    // added a brand-new computed column to an otherwise-unchanged model —
+    // that column still needs to be saved (with parentModel set) so the
+    // publish step nests it under the existing model in YAML. We therefore
+    // check the diff for each computed column individually rather than
+    // short-circuiting the whole model's iteration.
     const diff = state.explorerDiffResult || {};
     for (const [name, ms] of Object.entries(state.explorerModelStates)) {
-      // Skip unchanged models (diff result is null)
-      if (diff.models && diff.models[name] === null) continue;
-      if (!ms.sql) continue;
-      try {
-        const { saveModel } = await import('../api/models');
-        await saveModel(name, {
-          sql: ms.sql,
-          source: ms.sourceName ? `ref(${ms.sourceName})` : undefined,
-        });
-      } catch (err) {
-        errors.push({ name, type: 'model', error: err.message });
+      const modelChanged = !(diff.models && diff.models[name] === null);
+      if (modelChanged && ms.sql) {
+        try {
+          const { saveModel } = await import('../api/models');
+          await saveModel(name, {
+            sql: ms.sql,
+            source: ms.sourceName ? `ref(${ms.sourceName})` : undefined,
+          });
+        } catch (err) {
+          errors.push({ name, type: 'model', error: err.message });
+        }
       }
 
-      // Save computed columns as metrics/dimensions
+      // Save computed columns as metrics/dimensions, scoped to this model.
+      // parentModel is consumed by the backend save endpoints to set the
+      // Pydantic PrivateAttr `_parent_name` so ProjectWriter nests them
+      // under the model on publish instead of writing to top-level lists.
+      // Skip individual columns whose diff status is null (unchanged) to
+      // avoid re-saving pre-existing metrics/dimensions on every save.
       for (const cc of ms.computedColumns) {
+        const diffBucket = cc.type === 'metric' ? diff.metrics : diff.dimensions;
+        if (diffBucket && diffBucket[cc.name] === null) continue;
         try {
           if (cc.type === 'metric') {
             const { saveMetric } = await import('../api/metrics');
-            await saveMetric(cc.name, { expression: cc.expression });
+            await saveMetric(cc.name, {
+              expression: cc.expression,
+              parentModel: name,
+            });
           } else {
             const { saveDimension } = await import('../api/dimensions');
-            await saveDimension(cc.name, { expression: cc.expression });
+            await saveDimension(cc.name, {
+              expression: cc.expression,
+              parentModel: name,
+            });
           }
         } catch (err) {
           errors.push({ name: cc.name, type: cc.type, error: err.message });
@@ -1507,6 +1530,10 @@ const createExplorerNewSlice = (set, get) => ({
         ]);
         // Re-run diff to update status dots
         await get().fetchExplorerDiff();
+        // Sync the TopNav Publish-button state: save just added draft
+        // changes to the backend, so hasUnpublishedChanges should flip true
+        // without forcing the user to refresh the page.
+        await get().checkPublishStatus?.();
       } catch {
         // Cache refresh is best-effort — save already succeeded
       }

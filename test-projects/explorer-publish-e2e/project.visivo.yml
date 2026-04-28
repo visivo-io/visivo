@@ -1,0 +1,33 @@
+name: explorer-publish-e2e
+
+includes:
+  - path: models.visivo.yml
+
+defaults:
+  source_name: local-duckdb
+
+sources:
+  - name: local-duckdb
+    database: test.duckdb
+    type: duckdb
+
+insights:
+  - name: baseline-insight
+    props:
+      type: scatter
+      x: ?{${ref(products).id}}
+      y: ?{${ref(products).price}}
+
+charts:
+  - name: baseline-chart
+    insights:
+      - ${ref(baseline-insight)}
+
+dashboards:
+  - name: baseline-dashboard
+    level: 0
+    rows:
+      - height: medium
+        items:
+          - width: 12
+            chart: ${ref(baseline-chart)}

@@ -1,0 +1,23 @@
+models:
+  - name: products
+    sql: |
+      SELECT
+        i AS id,
+        'Product ' || i AS name,
+        (100 + i * 10) AS price,
+        CASE WHEN i % 3 = 0 THEN 'electronics' ELSE 'other' END AS category
+      FROM generate_series(1, 20) AS t(i)
+    metrics:
+      - name: avg_price
+        expression: "AVG(price)"
+    dimensions:
+      - name: price_rounded
+        expression: "ROUND(price, 0)"
+
+  - name: orders
+    sql: |
+      SELECT
+        i AS id,
+        (i % 20 + 1) AS product_id,
+        (i * 2) AS quantity
+      FROM generate_series(1, 50) AS t(i)

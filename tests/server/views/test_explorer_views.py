@@ -212,3 +212,58 @@ class TestExplorerDiffViews:
         elapsed_ms = (time.time() - start) * 1000
         assert response.status_code == 200
         assert elapsed_ms < 70, f"Diff took {elapsed_ms:.1f}ms, expected < 70ms"
+
+    def test_diff_strips_parentModel_before_pydantic_validation(self, client, app):
+        """parentModel is a frontend-only scoping hint. The diff endpoint
+        must strip it before Pydantic validation (Metric uses extra='forbid'),
+        and must not count it as a diffed field. A new metric with the hint
+        attached should return 'new' (not blow up, not return 'modified')."""
+
+        # Simulate the real manager path: validate_object would raise if
+        # parentModel were left in the config. Our side_effect raises when
+        # it sees that key; returns a normal Mock otherwise.
+        def validate(config):
+            if "parentModel" in config:
+                raise ValueError("Metric should not receive parentModel")
+            return Mock(model_dump=Mock(return_value=config))
+
+        app.flask_app.metric_manager.validate_object = Mock(side_effect=validate)
+        app.flask_app.metric_manager.get = Mock(return_value=None)
+
+        response = client.post(
+            "/api/explorer/diff/",
+            json={
+                "metrics": {"total_price": {"expression": "SUM(price)", "parentModel": "products"}}
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        # "new" because manager.get() returned None. Critically not "modified"
+        # (which is what validate-raises produces) — the strip must happen.
+        assert data["metrics"]["total_price"] == "new"
+
+    def test_diff_ignores_parentModel_when_comparing_fields(self, client, app):
+        """parentModel changes alone must not flip an unchanged metric to
+        'modified' — only real Pydantic fields (expression, etc.) count."""
+        published = Mock()
+        published.model_dump = Mock(
+            return_value={"name": "total_price", "expression": "SUM(price)"}
+        )
+        app.flask_app.metric_manager.get = Mock(return_value=published)
+        app.flask_app.metric_manager.validate_object = Mock(
+            return_value=Mock(
+                model_dump=Mock(return_value={"name": "total_price", "expression": "SUM(price)"})
+            )
+        )
+
+        response = client.post(
+            "/api/explorer/diff/",
+            json={
+                "metrics": {"total_price": {"expression": "SUM(price)", "parentModel": "products"}}
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["metrics"]["total_price"] is None

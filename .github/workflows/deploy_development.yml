@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Trigger Core Deployment
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
           repository: visivo-io/core

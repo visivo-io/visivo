@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightCRUDSection from './InsightCRUDSection';
 import useStore from '../../stores/store';
@@ -57,25 +57,30 @@ describe('InsightCRUDSection', () => {
     setupStore();
   });
 
-  it('renders insight name with purple styling', () => {
+  // Each test uses `await screen.findBy*` for its first DOM lookup so the
+  // component's async useEffect (getSchema -> setSchema) is flushed inside
+  // an act() scope before assertions. findBy* succeeds immediately when the
+  // element is already in the DOM, but the await still drains pending React
+  // updates within act, eliminating "not wrapped in act" warnings.
+
+  it('renders insight name with purple styling', async () => {
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    expect(screen.getByText('test_insight')).toBeInTheDocument();
+    expect(await screen.findByText('test_insight')).toBeInTheDocument();
     const section = screen.getByTestId('insight-crud-section-test_insight');
     expect(section).toBeInTheDocument();
     const header = screen.getByTestId('insight-header-test_insight');
     expect(header.className).toContain('border-purple');
   });
 
-  it('renders type selector dropdown with CHART_TYPES', () => {
+  it('renders type selector dropdown with CHART_TYPES', async () => {
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const select = screen.getByTestId('insight-type-select-test_insight');
-    expect(select).toBeInTheDocument();
+    const select = await screen.findByTestId('insight-type-select-test_insight');
     expect(select.value).toBe('scatter');
 
     const options = within(select).getAllByRole('option');
@@ -85,7 +90,7 @@ describe('InsightCRUDSection', () => {
     expect(options[2]).toHaveValue('pie');
   });
 
-  it('changing type calls setInsightType', () => {
+  it('changing type calls setInsightType', async () => {
     const setInsightType = jest.fn();
     useStore.setState({ setInsightType });
 
@@ -93,23 +98,22 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const select = screen.getByTestId('insight-type-select-test_insight');
+    const select = await screen.findByTestId('insight-type-select-test_insight');
     fireEvent.change(select, { target: { value: 'bar' } });
 
     expect(setInsightType).toHaveBeenCalledWith('test_insight', 'bar');
   });
 
-  it('renders SchemaEditor with droppable=true when expanded', () => {
+  it('renders SchemaEditor with droppable=true when expanded', async () => {
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const schemaEditor = screen.getByTestId('schema-editor');
-    expect(schemaEditor).toBeInTheDocument();
+    const schemaEditor = await screen.findByTestId('schema-editor');
     expect(schemaEditor).toHaveAttribute('data-droppable', 'true');
   });
 
-  it('does not render SchemaEditor when collapsed', () => {
+  it('does not render SchemaEditor when collapsed', async () => {
     render(
       <InsightCRUDSection
         insightName="test_insight"
@@ -118,10 +122,13 @@ describe('InsightCRUDSection', () => {
       />
     );
 
+    // Wait for the always-rendered header so the schema-fetch effect settles
+    // before we assert the absence of the schema editor.
+    await screen.findByTestId('insight-header-test_insight');
     expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
   });
 
-  it('collapse/expand toggle works', () => {
+  it('collapse/expand toggle works', async () => {
     const onToggleExpand = jest.fn();
 
     render(
@@ -132,13 +139,13 @@ describe('InsightCRUDSection', () => {
       />
     );
 
-    const toggleButton = screen.getByTestId('insight-toggle-test_insight');
+    const toggleButton = await screen.findByTestId('insight-toggle-test_insight');
     fireEvent.click(toggleButton);
 
     expect(onToggleExpand).toHaveBeenCalled();
   });
 
-  it('remove button calls removeInsightFromChart', () => {
+  it('remove button calls removeInsightFromChart', async () => {
     const removeInsightFromChart = jest.fn();
     useStore.setState({ removeInsightFromChart });
 
@@ -146,24 +153,23 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const removeButton = screen.getByTestId('insight-remove-test_insight');
+    const removeButton = await screen.findByTestId('insight-remove-test_insight');
     fireEvent.click(removeButton);
 
     expect(removeInsightFromChart).toHaveBeenCalledWith('test_insight');
   });
 
-  it('status dot renders green for new insight', () => {
+  it('status dot renders green for new insight', async () => {
     useStore.setState({ explorerDiffResult: { insights: { test_insight: 'new' } } });
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const statusDot = screen.getByTestId('insight-status-dot-test_insight');
-    expect(statusDot).toBeInTheDocument();
+    const statusDot = await screen.findByTestId('insight-status-dot-test_insight');
     expect(statusDot.className).toContain('bg-green-500');
   });
 
-  it('does not render status dot when not new and unchanged', () => {
+  it('does not render status dot when not new and unchanged', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -178,10 +184,11 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
+    await screen.findByTestId('insight-header-test_insight');
     expect(screen.queryByTestId('insight-status-dot-test_insight')).not.toBeInTheDocument();
   });
 
-  it('shows amber status dot when insight is modified', () => {
+  it('shows amber status dot when insight is modified', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -197,20 +204,19 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const dot = screen.getByTestId('insight-status-dot-test_insight');
-    expect(dot).toBeInTheDocument();
+    const dot = await screen.findByTestId('insight-status-dot-test_insight');
     expect(dot.className).toContain('bg-amber-500');
   });
 
-  it('renders interactions section with add button when expanded', () => {
+  it('renders interactions section with add button when expanded', async () => {
     render(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    expect(screen.getByTestId('insight-add-interaction-test_insight')).toBeInTheDocument();
+    expect(await screen.findByTestId('insight-add-interaction-test_insight')).toBeInTheDocument();
   });
 
-  it('renders existing interactions', () => {
+  it('renders existing interactions', async () => {
     useStore.setState({
       explorerInsightStates: {
         test_insight: {
@@ -227,11 +233,12 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
+    await screen.findByTestId('insight-interaction-0');
     const interactions = screen.getAllByTestId(/^insight-interaction-/);
     expect(interactions.length).toBe(2);
   });
 
-  it('add interaction button calls addInsightInteraction', () => {
+  it('add interaction button calls addInsightInteraction', async () => {
     const addInsightInteraction = jest.fn();
     useStore.setState({ addInsightInteraction });
 
@@ -239,14 +246,14 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    fireEvent.click(screen.getByTestId('insight-add-interaction-test_insight'));
+    fireEvent.click(await screen.findByTestId('insight-add-interaction-test_insight'));
     expect(addInsightInteraction).toHaveBeenCalledWith('test_insight', {
       type: 'filter',
       value: '',
     });
   });
 
-  it('remove interaction button calls removeInsightInteraction', () => {
+  it('remove interaction button calls removeInsightInteraction', async () => {
     const removeInsightInteraction = jest.fn();
     useStore.setState({
       removeInsightInteraction,
@@ -262,12 +269,12 @@ describe('InsightCRUDSection', () => {
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const removeBtn = screen.getByTestId('insight-remove-interaction-0');
+    const removeBtn = await screen.findByTestId('insight-remove-interaction-0');
     fireEvent.click(removeBtn);
     expect(removeInsightInteraction).toHaveBeenCalledWith('test_insight', 0);
   });
 
-  it('clicking header sets active insight', () => {
+  it('clicking header sets active insight', async () => {
     const setActiveInsight = jest.fn();
     useStore.setState({ setActiveInsight });
 
@@ -279,13 +286,13 @@ describe('InsightCRUDSection', () => {
       />
     );
 
-    const header = screen.getByTestId('insight-header-test_insight');
+    const header = await screen.findByTestId('insight-header-test_insight');
     fireEvent.click(header);
 
     expect(setActiveInsight).toHaveBeenCalledWith('test_insight');
   });
 
-  it('renders nothing when insight state does not exist', () => {
+  it('renders nothing when insight state does not exist', async () => {
     useStore.setState({
       explorerInsightStates: {},
     });
@@ -298,6 +305,10 @@ describe('InsightCRUDSection', () => {
       />
     );
 
-    expect(screen.queryByTestId('insight-crud-section-nonexistent')).not.toBeInTheDocument();
+    // Component returns null, so there's no element to findBy. waitFor wraps
+    // the assertion in act() and lets the schema-fetch effect settle.
+    await waitFor(() => {
+      expect(screen.queryByTestId('insight-crud-section-nonexistent')).not.toBeInTheDocument();
+    });
   });
 });

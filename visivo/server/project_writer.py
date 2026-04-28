@@ -122,6 +122,21 @@ class ProjectWriter:
         child_dict = self._get_named_child_config(child_name)
         file_path = self.named_children[child_name]["new_file_path"]
         type_key = self.named_children[child_name]["type_key"]
+        parent_model = self.named_children[child_name].get("parent_model")
+
+        # Model-scoped metrics / dimensions nest under `model.metrics` or
+        # `model.dimensions` rather than writing to the top-level list.
+        # (Out of scope for this path: relocating an existing top-level
+        # metric under a model, or vice versa — handled by _move().)
+        if parent_model and type_key in ("metrics", "dimensions"):
+            parent_list = self.files_to_write[file_path].get("models")
+            if parent_list:
+                for model_entry in parent_list:
+                    if isinstance(model_entry, dict) and model_entry.get("name") == parent_model:
+                        if model_entry.get(type_key) is None:
+                            model_entry[type_key] = []
+                        model_entry[type_key].append(child_dict)
+                        return
 
         if self.files_to_write[file_path].get(type_key) is None:
             self.files_to_write[file_path][type_key] = []

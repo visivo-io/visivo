@@ -14,18 +14,43 @@ import { TextDecoder, TextEncoder } from 'util';
 // This polyfill ensures react-cool-dimensions works properly in tests
 // Mock console.error to suppress react-cool-dimensions warnings in tests
 const originalError = console.error;
+const originalWarn = console.warn;
+
+const isIgnoredErrorArg = (arg) =>
+  arg?.includes?.("react-cool-dimensions: the browser doesn't support Resize Observer") ||
+  arg?.message?.includes?.('Not implemented: navigation') ||
+  arg?.toString?.()?.includes?.('Not implemented: navigation');
+
+// Track unexpected console output per test so we can fail the test in afterEach.
+// Tests that *intentionally* exercise an error path should silence the expected
+// log via jest.spyOn(console, 'error').mockImplementation(() => {}) (and likewise
+// for console.warn) so it isn't counted here.
+let consoleCalls = [];
+
 console.error = (...args) => {
-  if (args[0]?.includes?.("react-cool-dimensions: the browser doesn't support Resize Observer")) {
-    return;
-  }
-  if (
-    args[0]?.message?.includes?.('Not implemented: navigation') ||
-    args[0]?.toString?.()?.includes?.('Not implemented: navigation')
-  ) {
-    return;
-  }
+  if (isIgnoredErrorArg(args[0])) return;
+  consoleCalls.push({ method: 'error', args });
   originalError(...args);
 };
+
+console.warn = (...args) => {
+  consoleCalls.push({ method: 'warn', args });
+  originalWarn(...args);
+};
+
+afterEach(() => {
+  const calls = consoleCalls;
+  consoleCalls = [];
+  if (calls.length > 0) {
+    const summary = calls
+      .map(({ method, args }) => `console.${method}: ${args.map((a) => (a?.message || String(a))).join(' ')}`)
+      .join('\n');
+    throw new Error(
+      `Test produced ${calls.length} unexpected console call(s):\n${summary}\n` +
+        `If the call is expected, silence it via jest.spyOn(console, '${calls[0].method}').mockImplementation(() => {}).`
+    );
+  }
+});
 
 window.URL.createObjectURL = function () {};
 
