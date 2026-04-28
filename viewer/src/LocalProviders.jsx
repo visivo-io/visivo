@@ -12,17 +12,17 @@ const queryClient = new QueryClient();
 
 export default function LocalProviders({
   fetchTraces,
-  fetchInsights,
+  fetchInsightJobs,
   fetchDashboard,
-  fetchInputOptions,
+  fetchInputJobs,
 }) {
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider
         fetchTraces={fetchTraces}
-        fetchInsights={fetchInsights}
+        fetchInsightJobs={fetchInsightJobs}
         fetchDashboard={fetchDashboard}
-        fetchInputOptions={fetchInputOptions}
+        fetchInputJobs={fetchInputJobs}
       >
         <URLProvider urlConfig={localURLConfig}>
           <StoreProvider>

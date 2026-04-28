@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useFetchInputs } from '../contexts/QueryContext';
+import { useFetchInputJobs } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
 import useStore from '../stores/store';
@@ -182,7 +182,7 @@ const loadExtractComputeInput = async (db, inputData) => {
  */
 export const useInputsData = (projectId, inputNames) => {
   const db = useDuckDB();
-  const fetchInputs = useFetchInputs();
+  const fetchInputJobs = useFetchInputJobs();
   const setInputJobOptions = useStore(state => state.setInputJobOptions);
   const setDefaultInputJobValues = useStore(state => state.setDefaultInputJobValues);
   const setInputJobData = useStore(state => state.setInputJobData);
@@ -210,7 +210,7 @@ export const useInputsData = (projectId, inputNames) => {
     }
 
     // Step 1: Fetch input metadata from API (single batch call)
-    const inputs = await fetchInputs(projectId, unloadedInputNames);
+    const inputs = await fetchInputJobs(projectId, unloadedInputNames);
 
     if (!inputs?.length) {
       return { processed: [] };
@@ -237,7 +237,7 @@ export const useInputsData = (projectId, inputNames) => {
     });
 
     return { processed };
-  }, [db, projectId, unloadedInputNames, fetchInputs]);
+  }, [db, projectId, unloadedInputNames, fetchInputJobs]);
 
   // React Query for data fetching
   const { data, isLoading, error } = useQuery({
