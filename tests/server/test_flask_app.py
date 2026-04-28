@@ -45,8 +45,6 @@ def client(app):
     return app.test_client()
 
 
-
-
 def test_missing_project_name(client):
     """Test POST /api/project/init when project name is missing."""
     res = client.post("/api/project/init/", json={"project_dir": "/tmp/somepath"})
