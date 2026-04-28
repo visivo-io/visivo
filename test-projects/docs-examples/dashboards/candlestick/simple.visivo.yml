@@ -10,7 +10,7 @@ models:
         2024-01-04,108,112,101,107
         2024-01-05,107,109,98,103
 charts:
-  - name: Simple Candlestick Chart
+  - name: simple-candlestick-chart
     layout:
       title:
         text: Simple Candlestick Chart<br><sub>Stock Price Movements</sub>
@@ -23,9 +23,9 @@ charts:
         title:
           text: "Price (USD)"
     insights:
-      - ${ref(Simple Candlestick Plot)}
+      - ${ref(simple-candlestick-plot)}
 insights:
-  - name: Simple Candlestick Plot
+  - name: simple-candlestick-plot
     props:
       type: candlestick
       x: ?{date}

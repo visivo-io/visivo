@@ -10,14 +10,14 @@ models:
         Decision,700,"#d62728"
         Purchase,300,"#9467bd"
 charts:
-  - name: Funnelarea Chart with Custom Colors
+  - name: funnelarea-chart-with-custom-colors
     layout:
       title:
         text: Funnelarea Chart with Custom Colors<br><sub>User Journey</sub>
     insights:
-      - ${ref(Custom Colors Funnelarea Plot)}
+      - ${ref(custom-colors-funnelarea-plot)}
 insights:
-  - name: Custom Colors Funnelarea Plot
+  - name: custom-colors-funnelarea-plot
     props:
       type: funnelarea
       labels: ?{${ref(funnelarea-data-custom).stage}}

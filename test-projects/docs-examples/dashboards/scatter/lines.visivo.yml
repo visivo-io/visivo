@@ -10,7 +10,7 @@ models:
         4,15
         5,12
 charts:
-  - name: Scatter Chart with Lines
+  - name: scatter-chart-with-lines
     layout:
       title:
         text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
@@ -18,10 +18,10 @@ charts:
         orientation: h
       colorway: "High Contrast"
     insights:
-      - ${ref(Markers and Line)}
-      - ${ref(Spline No Markers)}
+      - ${ref(markers-and-line)}
+      - ${ref(spline-no-markers)}
 insights:
-  - name: Markers and Line
+  - name: markers-and-line
     props:
       type: scatter
       x: ?{${ref(scatter-data-lines).x}}
@@ -29,7 +29,7 @@ insights:
       mode: "lines+markers"
     interactions:
       - sort: ?{${ref(scatter-data-lines).x} ASC}
-  - name: Spline No Markers
+  - name: spline-no-markers
     props:
       type: scatter
       x: ?{${ref(scatter-data-lines).x}+3 - (${ref(scatter-data-lines).x}*${ref(scatter-data-lines).x})/3}

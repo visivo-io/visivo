@@ -11,7 +11,7 @@ models:
         5,10
 
 charts:
-  - name: Emoji Region Example
+  - name: emoji-region-example
     layout:
       title:
         text: Region with Emoji Annotations

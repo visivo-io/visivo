@@ -20,15 +20,15 @@ models:
         B,Y,5
         B,X,28
 charts:
-  - name: Violin Chart with Split Categories
+  - name: violin-chart-with-split-categories
     layout:
       title:
         text: Violin Plot with Split Categories<br><sub>Split Violin Plot for Different Subcategories</sub>
     insights:
-      - ${ref(Violin Plot Category Y)}
-      - ${ref(Violin Plot Category X)}
+      - ${ref(violin-plot-category-y)}
+      - ${ref(violin-plot-category-x)}
 insights:
-  - name: Violin Plot Category X
+  - name: violin-plot-category-x
     props:
       type: violin
       side: positive
@@ -37,7 +37,7 @@ insights:
     interactions:
       - split: ?{${ref(violin-data-split).sub_category}}
       - filter: ?{ ${ref(violin-data-split).sub_category} = 'X'}
-  - name: Violin Plot Category Y
+  - name: violin-plot-category-y
     props:
       type: violin
       side: negative

@@ -3,7 +3,7 @@ includes:
   - path: "monty-python-simple.visivo.yml"
   - path: "proclamations.visivo.yml"
 dashboards:
-  - name: "Box"
+  - name: box
     level: 1
     tags: 
       - "Trace Prop"
@@ -11,14 +11,17 @@ dashboards:
     rows: 
       - height: compact 
         items:
-          - markdown: "# Box"
-          - markdown: ""
+          - markdown:
+              content: "# Box"
+          - markdown:
+              content: ""
             width: 5 
       - height: medium 
         items: 
-          - chart: ${ref(Sample Box Plot Chart)}
-          - chart: ${ref(Rewards Distribution Box Plot)}
+          - chart: ${ref(sample-box-plot-chart)}
+          - chart: ${ref(rewards-distribution-box-plot)}
       - height: medium
         items:
-          - chart: ${ref(Proclamations Box Plot with Outliers)}
-          - markdown: ''
+          - chart: ${ref(proclamations-box-plot-with-outliers)}
+          - markdown:
+              content: ''

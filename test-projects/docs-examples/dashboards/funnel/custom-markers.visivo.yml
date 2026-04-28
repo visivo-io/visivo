@@ -10,7 +10,7 @@ models:
         Proposal,300,"#d62728"
         Won,100,"#9467bd"
 charts:
-  - name: Funnel Chart with Custom Markers
+  - name: funnel-chart-with-custom-markers
     layout:
       title:
         text: Funnel Chart with Custom Markers<br><sub>Stages of the Sales Funnel</sub>
@@ -18,9 +18,9 @@ charts:
         title:
           text: "Stage"
     insights:
-      - ${ref(Custom Markers Funnel Chart)}
+      - ${ref(custom-markers-funnel-chart)}
 insights:
-  - name: Custom Markers Funnel Chart
+  - name: custom-markers-funnel-chart
     props:
       type: funnel
       y: ?{${ref(funnel-data-custom).stage}}

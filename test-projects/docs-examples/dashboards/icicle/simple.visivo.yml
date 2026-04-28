@@ -11,14 +11,14 @@ models:
         E,B,25
         F,B,15
 charts:
-  - name: Simple Icicle Chart
+  - name: simple-icicle-chart
     layout:
       title:
         text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>
     insights:
-      - ${ref(Simple Icicle Plot)}
+      - ${ref(simple-icicle-plot)}
 insights:
-  - name: Simple Icicle Plot
+  - name: simple-icicle-plot
     props:
       type: icicle
       labels: ?{${ref(icicle-data).category}}

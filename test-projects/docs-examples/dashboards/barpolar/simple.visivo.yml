@@ -13,7 +13,7 @@ models:
         270,7
         315,3
 charts:
-  - name: Activity Level Polar Chart
+  - name: activity-level-polar-chart
     layout:
       polar:
         radialaxis:
@@ -30,9 +30,9 @@ charts:
       title:
         text: Simple Barpolar Chart<br><sub>Activity Level by Direction</sub>
     insights:
-      - ${ref(Activity Level by Direction)}
+      - ${ref(activity-level-by-direction)}
 insights:
-  - name: Activity Level by Direction
+  - name: activity-level-by-direction
     props:
       type: barpolar
       r: ?{${ref(activity-data).activity_level}}

@@ -10,14 +10,14 @@ models:
         4,15,18
         5,12,17
 charts:
-  - name: Scatter3D Chart with Lines
+  - name: scatter3d-chart-with-lines
     layout:
       title:
         text: Scatter3D Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
     insights:
-      - ${ref(Scatter3D Plot with Lines)}
+      - ${ref(scatter3d-plot-with-lines)}
 insights:
-  - name: Scatter3D Plot with Lines
+  - name: scatter3d-plot-with-lines
     props:
       type: scatter3d
       x: ?{${ref(scatter3d-data-lines).x}}

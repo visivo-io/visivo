@@ -10,7 +10,7 @@ models:
         4,8,5,6
         5,9,6,7
 charts:
-  - name: Simple Carpet Chart
+  - name: simple-carpet-chart
     layout:
       title:
         text: Carpet Plot with Custom Axes<br><sub>With Customized A and B Axes</sub>
@@ -26,9 +26,9 @@ charts:
         l: 70
         t: 50
     insights:
-      - ${ref(Carpet Plot with Custom Axes)}
+      - ${ref(carpet-plot-with-custom-axes)}
 insights:
-  - name: Carpet Plot with Custom Axes
+  - name: carpet-plot-with-custom-axes
     props:
       type: carpet
       a: ?{${ref(carpet-data-axes).a}}

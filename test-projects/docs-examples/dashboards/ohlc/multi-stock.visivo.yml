@@ -11,7 +11,7 @@ models:
         MSFT,2023-03-02,252,258,250,256
         MSFT,2023-03-03,256,260,254,259
 charts:
-  - name: OHLC Chart with Multiple Stocks
+  - name: ohlc-chart-with-multiple-stocks
     layout:
       title:
         text: OHLC Chart with Multiple Stocks<br><sub>Comparing AAPL and MSFT Stock Prices</sub>
@@ -22,10 +22,10 @@ charts:
         title:
           text: "Price"
     insights:
-      - ${ref(OHLC Plot for AAPL)}
-      - ${ref(OHLC Plot for MSFT)}
+      - ${ref(ohlc-plot-for-aapl)}
+      - ${ref(ohlc-plot-for-msft)}
 insights:
-  - name: OHLC Plot for AAPL
+  - name: ohlc-plot-for-aapl
     props:
       type: ohlc
       x: ?{date}
@@ -41,7 +41,7 @@ insights:
           color: "#ff7f0e"
     interactions:
       - filter: ?{${ref(ohlc-data-multi).stock} = 'AAPL'}
-  - name: OHLC Plot for MSFT
+  - name: ohlc-plot-for-msft
     props:
       type: ohlc
       x: ?{date}

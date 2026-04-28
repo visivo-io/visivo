@@ -10,14 +10,14 @@ models:
         135,25
         180,15
 charts:
-  - name: Simple Scatterpolar Chart
+  - name: simple-scatterpolar-chart
     layout:
       title:
         text: Simple Scatterpolar Plot<br><sub>Polar Data Points</sub>
     insights:
-      - ${ref(Simple Scatterpolar Plot)}
+      - ${ref(simple-scatterpolar-plot)}
 insights:
-  - name: Simple Scatterpolar Plot
+  - name: simple-scatterpolar-plot
     props:
       type: scatterpolar
       theta: ?{${ref(scatterpolar-data).theta}}

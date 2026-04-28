@@ -11,7 +11,7 @@ models:
         5,12
 
 charts:
-  - name: Threshold Line Example
+  - name: threshold-line-example
     layout:
       title:
         text: Threshold Line Example

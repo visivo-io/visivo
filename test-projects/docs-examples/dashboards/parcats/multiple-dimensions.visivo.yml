@@ -9,14 +9,14 @@ models:
         B,X,Alpha,25
         B,Y,Gamma,25
 charts:
-  - name: Parcats Chart with Multiple Dimensions
+  - name: parcats-chart-with-multiple-dimensions
     layout:
       title:
         text: Parcats Chart with Multiple Dimensions<br><sub>Flow Across Three Categories</sub>
     insights:
-      - ${ref(Parcats Plot with Multiple Dimensions)}
+      - ${ref(parcats-plot-with-multiple-dimensions)}
 insights:
-  - name: Parcats Plot with Multiple Dimensions
+  - name: parcats-plot-with-multiple-dimensions
     props:
       type: parcats
       dimensions:

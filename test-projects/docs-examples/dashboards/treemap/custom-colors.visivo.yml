@@ -12,14 +12,14 @@ models:
         E,A,20,#8c564b
         F,B,10,#e377c2
 charts:
-  - name: Treemap Chart with Custom Colors
+  - name: treemap-chart-with-custom-colors
     layout:
       title:
         text: Treemap Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
     insights:
-      - ${ref(Treemap Plot with Custom Colors)}
+      - ${ref(treemap-plot-with-custom-colors)}
 insights:
-  - name: Treemap Plot with Custom Colors
+  - name: treemap-plot-with-custom-colors
     props:
       type: treemap
       labels: ?{${ref(treemap-data-colors).labels}}

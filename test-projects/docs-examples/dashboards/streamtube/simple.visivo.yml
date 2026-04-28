@@ -5,14 +5,14 @@ models:
       - -sL
       - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
 charts:
-  - name: Simple Streamtube Chart
+  - name: simple-streamtube-chart
     layout:
       title:
         text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub>
     insights:
-      - ${ref(Simple Streamtube Plot)}
+      - ${ref(simple-streamtube-plot)}
 insights:
-  - name: Simple Streamtube Plot
+  - name: simple-streamtube-plot
     props:
       type: streamtube
       x: ?{${ref(streamtube-data).x}}

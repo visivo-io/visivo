@@ -4,21 +4,24 @@ includes:
   - path: "custom-sizes.visivo.yml"
 
 dashboards:
-  - name: "Splom"
+  - name: splom
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Splom"
-          - markdown: ""
+          - markdown:
+              content: "# Splom"
+          - markdown:
+              content: ""
             width: 5
       - height: xlarge
         items:
-          - chart: ${ref(Simple Splom Chart)}
-          - chart: ${ref(Splom Chart with Custom Colors)}
+          - chart: ${ref(simple-splom-chart)}
+          - chart: ${ref(splom-chart-with-custom-colors)}
       - height: large
         items:
-          - chart: ${ref(Splom Chart with Custom Sizes)}
-          - markdown: ""
+          - chart: ${ref(splom-chart-with-custom-sizes)}
+          - markdown:
+              content: ""

@@ -2,17 +2,20 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Choropleth"
+  - name: choropleth
     level: 1
     tags:
       - "Trace Prop"
     rows: 
       - height: compact 
         items:
-          - markdown: "# Choropleth"
-          - markdown: ""
+          - markdown:
+              content: "# Choropleth"
+          - markdown:
+              content: ""
             width: 5 
       - height: medium 
         items: 
-          - chart: ${ref(Simple Choropleth Map)}
-          - markdown: ""
+          - chart: ${ref(simple-choropleth-map)}
+          - markdown:
+              content: ""

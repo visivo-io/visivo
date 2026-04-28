@@ -10,16 +10,16 @@ models:
         -100,35
         -90,30
 charts:
-  - name: Scattergeo Chart with Lines
+  - name: scattergeo-chart-with-lines
     layout:
       title:
         text: Scattergeo Plot with Lines<br><sub>Connecting Geographic Points</sub>
       geo:
         scope: "world"
     insights:
-      - ${ref(Scattergeo Plot with Lines)}
+      - ${ref(scattergeo-plot-with-lines)}
 insights:
-  - name: Scattergeo Plot with Lines
+  - name: scattergeo-plot-with-lines
     props:
       type: scattergeo
       lon: ?{${ref(scattergeo-data-lines).lon}}

@@ -28,7 +28,7 @@ models:
         3
         4
 charts:
-  - name: Horizontal Histogram Chart
+  - name: horizontal-histogram-chart
     layout:
       title:
         text: Horizontal Histogram Plot<br><sub>Data Distribution in a Horizontal Format</sub>
@@ -40,9 +40,9 @@ charts:
           text: "Count"
       bargap: 0.05
     insights:
-      - ${ref(Horizontal Histogram Plot)}
+      - ${ref(horizontal-histogram-plot)}
 insights:
-  - name: Horizontal Histogram Plot
+  - name: horizontal-histogram-plot
     props:
       type: histogram
       y: ?{${ref(histogram-data-horizontal).value}}

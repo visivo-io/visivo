@@ -10,16 +10,16 @@ models:
         -100,35,25,#d62728
         -90,30,30,#9467bd
 charts:
-  - name: Scattergeo Chart with Custom Markers
+  - name: scattergeo-chart-with-custom-markers
     layout:
       title:
         text: Scattergeo Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>
       geo:
         scope: "north america"
     insights:
-      - ${ref(Scattergeo Plot with Custom Markers)}
+      - ${ref(scattergeo-plot-with-custom-markers)}
 insights:
-  - name: Scattergeo Plot with Custom Markers
+  - name: scattergeo-plot-with-custom-markers
     props:
       type: scattergeo
       lon: ?{${ref(scattergeo-data-custom).lon}}

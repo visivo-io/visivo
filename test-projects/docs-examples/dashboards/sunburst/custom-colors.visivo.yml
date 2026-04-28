@@ -12,14 +12,14 @@ models:
         E,A,20,#8c564b
         F,B,10,#e377c2
 charts:
-  - name: Sunburst Chart with Custom Colors
+  - name: sunburst-chart-with-custom-colors
     layout:
       title:
         text: Sunburst Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
     insights:
-      - ${ref(Sunburst Plot with Custom Colors)}
+      - ${ref(sunburst-plot-with-custom-colors)}
 insights:
-  - name: Sunburst Plot with Custom Colors
+  - name: sunburst-plot-with-custom-colors
     props:
       type: sunburst
       labels: ?{${ref(sunburst-data-colors).labels}}

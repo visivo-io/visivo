@@ -4,21 +4,24 @@ includes:
   - path: "financial.visivo.yml"
 
 dashboards:
-  - name: "Waterfall"
+  - name: waterfall
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Waterfall"
-          - markdown: ""
+          - markdown:
+              content: "# Waterfall"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Waterfall Chart)}
-          - chart: ${ref(Waterfall Chart with Custom Colors)}
+          - chart: ${ref(simple-waterfall-chart)}
+          - chart: ${ref(waterfall-chart-with-custom-colors)}
       - height: medium
         items:
-          - chart: ${ref(Waterfall Chart with Connectors)}
-          - markdown: ""
+          - chart: ${ref(waterfall-chart-with-connectors)}
+          - markdown:
+              content: ""

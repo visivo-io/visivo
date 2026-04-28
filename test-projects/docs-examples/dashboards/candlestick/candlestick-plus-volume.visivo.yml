@@ -10,7 +10,7 @@ models:
         2024-01-04,108,112,101,107,1100000
         2024-01-05,107,109,98,103,1300000
 charts:
-  - name: Candlestick Chart with Volume
+  - name: candlestick-chart-with-volume
     layout:
       showlegend: false
 
@@ -32,10 +32,10 @@ charts:
         side: "right"
         range: [0, 10000000]
     insights:
-      - ${ref(Candlestick Plot with Volume)}
-      - ${ref(Volume Trace)}
+      - ${ref(candlestick-plot-with-volume)}
+      - ${ref(volume-trace)}
 insights:
-  - name: Candlestick Plot with Volume
+  - name: candlestick-plot-with-volume
     props:
       type: candlestick
       x: ?{date}
@@ -43,7 +43,7 @@ insights:
       high: ?{${ref(stock-data-with-volume).high}}
       low: ?{${ref(stock-data-with-volume).low}}
       close: ?{${ref(stock-data-with-volume).close}}
-  - name: Volume Trace
+  - name: volume-trace
     props:
       type: bar
       x: ?{date}

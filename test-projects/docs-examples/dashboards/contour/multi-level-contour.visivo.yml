@@ -20,7 +20,7 @@ models:
         1,0,5
         2,0,6
 charts:
-  - name: Contour Chart with Multiple Levels
+  - name: contour-chart-with-multiple-levels
     layout:
       title:
         text: Contour Plot with Multiple Levels<br><sub>Custom Contour Levels</sub>
@@ -31,9 +31,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Contour Plot with Multiple Levels)}
+      - ${ref(contour-plot-with-multiple-levels)}
 insights:
-  - name: Contour Plot with Multiple Levels
+  - name: contour-plot-with-multiple-levels
     props:
       type: contour
       x: ?{${ref(contour-data-multi).x}}

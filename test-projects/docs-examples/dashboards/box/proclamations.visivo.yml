@@ -5,7 +5,7 @@ models:
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 charts:
-  - name: Proclamations Box Plot with Outliers
+  - name: proclamations-box-plot-with-outliers
     layout:
       title:
         text: Cohorted Box Plot<br><sub>Proclamations Made Across Quests by Enemy</sub>
@@ -17,9 +17,9 @@ charts:
         title:
           text: "Proclamations Made"
     insights:
-      - ${ref(Proclamations Box Plot)}
+      - ${ref(proclamations-box-plot)}
 insights:
-  - name: Proclamations Box Plot
+  - name: proclamations-box-plot
     props:
       type: box
       y: ?{${ref(monty-python-quest-proclamations).proclamations_made}}

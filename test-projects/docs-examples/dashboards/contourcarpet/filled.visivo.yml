@@ -14,7 +14,7 @@ models:
         1,2,9,10,40
         2,2,10,11,45
 charts:
-  - name: Filled Contourcarpet Chart
+  - name: filled-contourcarpet-chart
     layout:
       title:
         text: Filled Contourcarpet Plot<br><sub>Filled Contour Plot over a Carpet</sub>
@@ -25,20 +25,20 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Filled Contourcarpet Plot)}
-      - ${ref(Carpet Plot Filled)}
+      - ${ref(filled-contourcarpet-plot)}
+      - ${ref(carpet-plot-filled)}
 insights:
-  - name: Carpet Plot Filled
+  - name: carpet-plot-filled
     props:
       type: carpet
       a: ?{${ref(contourcarpet-data-filled).a}}
       b: ?{${ref(contourcarpet-data-filled).b}}
       x: ?{${ref(contourcarpet-data-filled).x}}
       y: ?{${ref(contourcarpet-data-filled).y}}
-  - name: Filled Contourcarpet Plot
+  - name: filled-contourcarpet-plot
     props:
       type: contourcarpet
-      carpet: ${ref(Carpet Plot Filled)}
+      carpet: ${ref(carpet-plot-filled)}
       z: ?{${ref(contourcarpet-data-filled).z}}
       colorscale: "Earth"
       contours:

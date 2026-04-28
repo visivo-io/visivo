@@ -10,7 +10,7 @@ models:
         Proposals,200
         Closed Deals,100
 charts:
-  - name: Simple Funnel Chart
+  - name: simple-funnel-chart
     layout:
       title:
         text: Simple Funnel Chart<br><sub>Sales Funnel from Leads to Closed Deals</sub>
@@ -20,9 +20,9 @@ charts:
       margin:
         l: 100
     insights:
-      - ${ref(Simple Funnel Plot)}
+      - ${ref(simple-funnel-plot)}
 insights:
-  - name: Simple Funnel Plot
+  - name: simple-funnel-plot
     props:
       type: funnel
       y: ?{${ref(funnel-data).stage}}

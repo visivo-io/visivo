@@ -10,14 +10,14 @@ models:
         135,10
         180,25
 charts:
-  - name: Scatterpolargl Chart with Lines
+  - name: scatterpolargl-chart-with-lines
     layout:
       title:
         text: Scatterpolargl Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub>
     insights:
-      - ${ref(Scatterpolargl Plot with Lines)}
+      - ${ref(scatterpolargl-plot-with-lines)}
 insights:
-  - name: Scatterpolargl Plot with Lines
+  - name: scatterpolargl-plot-with-lines
     props:
       type: scatterpolargl
       theta: ?{${ref(scatterpolargl-data-lines).theta}}

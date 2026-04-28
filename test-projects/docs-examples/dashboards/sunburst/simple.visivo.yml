@@ -12,14 +12,14 @@ models:
         E,A,20
         F,B,10
 charts:
-  - name: Simple Sunburst Chart
+  - name: simple-sunburst-chart
     layout:
       title:
         text: Simple Sunburst Chart<br><sub>Hierarchical Data Visualization</sub>
     insights:
-      - ${ref(Simple Sunburst Plot)}
+      - ${ref(simple-sunburst-plot)}
 insights:
-  - name: Simple Sunburst Plot
+  - name: simple-sunburst-plot
     props:
       type: sunburst
       labels: ?{${ref(sunburst-data).labels}}

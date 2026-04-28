@@ -11,7 +11,7 @@ includes:
   - path: "emoji-region.visivo.yml"
 
 dashboards:
-  - name: "Annotation and Shapes"
+  - name: annotation-and-shapes
     description: "Examples of how you may use annotations and shapes to enahnce your charts"
     tags: 
       - "chart feature"
@@ -20,25 +20,26 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: "# Shapes and Annotations"
-            align: left
+          - markdown:
+              content: "# Shapes and Annotations"
+              align: left
       - height: medium
         items:
-          - chart: ${ref(Highlight Region Example)}
-          - chart: ${ref(Multiple Regions Example)}
+          - chart: ${ref(highlight-region-example)}
+          - chart: ${ref(multiple-regions-example)}
       - height: medium
         items:
-          - chart: ${ref(Region with Annotation Example)}
-          - chart: ${ref(Threshold Line Example)}
+          - chart: ${ref(region-with-annotation-example)}
+          - chart: ${ref(threshold-line-example)}
       - height: medium
         items:
-          - chart: ${ref(Vertical Threshold Example)}
-          - chart: ${ref(Threshold with Annotation Example)}
+          - chart: ${ref(vertical-threshold-example)}
+          - chart: ${ref(threshold-with-annotation-example)}
       - height: medium
         items:
-          - chart: ${ref(Point Annotations Example)}
-          - chart: ${ref(Emoji Points Example)}
+          - chart: ${ref(point-annotations-example)}
+          - chart: ${ref(emoji-points-example)}
       - height: medium
         items:
-          - chart: ${ref(Emoji Threshold Example)}
-          - chart: ${ref(Emoji Region Example)}
+          - chart: ${ref(emoji-threshold-example)}
+          - chart: ${ref(emoji-region-example)}

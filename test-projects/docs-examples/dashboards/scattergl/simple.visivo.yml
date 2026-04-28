@@ -10,14 +10,14 @@ models:
         4,25
         5,30
 charts:
-  - name: Simple Scattergl Chart
+  - name: simple-scattergl-chart
     layout:
       title:
         text: Simple Scattergl Plot<br><sub>High-Performance Scatter Plot with WebGL</sub>
     insights:
-      - ${ref(Simple Scattergl Plot)}
+      - ${ref(simple-scattergl-plot)}
 insights:
-  - name: Simple Scattergl Plot
+  - name: simple-scattergl-plot
     props:
       type: scattergl
       x: ?{${ref(scattergl-data).x}}

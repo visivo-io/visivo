@@ -26,15 +26,15 @@ models:
         5,1.5,30
         6,2.5,40
 charts:
-  - name: Simple Scattercarpet Chart
+  - name: simple-scattercarpet-chart
     layout:
       title:
         text: Simple Scattercarpet Plot<br><sub>2D Data Points on Carpet Axis</sub>
     insights:
-      - ${ref(Carpet Grid)}
-      - ${ref(Simple Scattercarpet Plot)}
+      - ${ref(carpet-grid-trace)}
+      - ${ref(simple-scattercarpet-plot-trace)}
 insights:
-  - name: Carpet Grid
+  - name: carpet-grid-trace
     props:
       type: carpet
       a: ?{${ref(carpet-grid).a}}
@@ -50,7 +50,7 @@ insights:
         ticksuffix: 'Pa'
         smoothing: 1
         minorgridcount: 9
-  - name: Simple Scattercarpet Plot
+  - name: simple-scattercarpet-plot-trace
     props:
       type: scattercarpet
       a: ?{${ref(scattercarpet-data).a}}

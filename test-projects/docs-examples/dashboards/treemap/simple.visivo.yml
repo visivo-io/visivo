@@ -12,14 +12,14 @@ models:
         E,A,20
         F,B,10
 charts:
-  - name: Simple Treemap Chart
+  - name: simple-treemap-chart
     layout:
       title:
         text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>
     insights:
-      - ${ref(Simple Treemap Plot)}
+      - ${ref(simple-treemap-plot)}
 insights:
-  - name: Simple Treemap Plot
+  - name: simple-treemap-plot
     props:
       type: treemap
       labels: ?{${ref(treemap-data).labels}}

@@ -12,14 +12,14 @@ models:
         6,9
         7,11
 charts:
-  - name: Area Plot Chart
+  - name: area-plot-chart
     layout:
       title:
         text: Area Plot<br><sub>Filled Area Under the Line</sub>
     insights:
-      - ${ref(Area Plot)}
+      - ${ref(area-plot)}
 insights:
-  - name: Area Plot
+  - name: area-plot
     props:
       type: scatter
       x: ?{${ref(area-plot-data).x}}

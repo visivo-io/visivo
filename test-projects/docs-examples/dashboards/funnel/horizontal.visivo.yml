@@ -9,7 +9,7 @@ models:
         Consideration,1500
         Conversion,700
 charts:
-  - name: Horizontal Funnel Chart
+  - name: horizontal-funnel-chart
     layout:
       title:
         text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>
@@ -17,9 +17,9 @@ charts:
         title:
           text: "Stage"
     insights:
-      - ${ref(Horizontal Funnel Chart Trace)}
+      - ${ref(horizontal-funnel-chart-trace)}
 insights:
-  - name: Horizontal Funnel Chart Trace
+  - name: horizontal-funnel-chart-trace
     props:
       type: funnel
       orientation: v

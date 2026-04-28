@@ -15,14 +15,14 @@ models:
         H,C,15
         I,C,15
 charts:
-  - name: Treemap Chart with Custom Tiling
+  - name: treemap-chart-with-custom-tiling
     layout:
       title:
         text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>
     insights:
-      - ${ref(Treemap Plot with Custom Tiling)}
+      - ${ref(treemap-plot-with-custom-tiling)}
 insights:
-  - name: Treemap Plot with Custom Tiling
+  - name: treemap-plot-with-custom-tiling
     props:
       type: treemap
       labels: ?{${ref(treemap-data-tiling).labels}}

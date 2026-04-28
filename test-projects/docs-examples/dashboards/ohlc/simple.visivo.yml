@@ -10,7 +10,7 @@ models:
         2023-01-04,109,112,107,111
         2023-01-05,111,114,110,113
 charts:
-  - name: Simple OHLC Chart
+  - name: simple-ohlc-chart
     layout:
       title:
         text: Simple OHLC Chart<br><sub>Stock Price Movements Over Time</sub>
@@ -21,9 +21,9 @@ charts:
         title:
           text: "Price"
     insights:
-      - ${ref(Simple OHLC Plot)}
+      - ${ref(simple-ohlc-plot)}
 insights:
-  - name: Simple OHLC Plot
+  - name: simple-ohlc-plot
     props:
       type: ohlc
       x: ?{date}

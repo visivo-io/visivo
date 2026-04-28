@@ -9,7 +9,7 @@ models:
         Bug Fix,2024-02-12,2024-02-18
 
 insights:
-  - name: Bar Project Durations
+  - name: bar-project-durations
     props:
       type: bar
       x: ?{${ref(projects-gantt)}.finish_date }
@@ -20,7 +20,7 @@ insights:
       - sort: ?{${ref(projects-gantt)}.project ASC}
 
 charts:
-  - name: Project Durations Gantt Chart
+  - name: project-durations-gantt-chart
     layout:
       title:
         text: Project Duration Gantt Chart<br><sub>Visualizing the duration of each project over time</sub>
@@ -29,4 +29,4 @@ charts:
         l: 130
       showlegend: false
     insights:
-      - ${ref(Bar Project Durations)}
+      - ${ref(bar-project-durations)}

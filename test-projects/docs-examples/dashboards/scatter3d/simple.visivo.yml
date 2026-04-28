@@ -10,14 +10,14 @@ models:
         4,25,35
         5,30,40
 charts:
-  - name: Simple Scatter3D Chart
+  - name: simple-scatter3d-chart
     layout:
       title:
         text: Simple Scatter3D Plot<br><sub>3D Data Points</sub>
     insights:
-      - ${ref(Simple Scatter3D Plot)}
+      - ${ref(simple-scatter3d-plot)}
 insights:
-  - name: Simple Scatter3D Plot
+  - name: simple-scatter3d-plot
     props:
       type: scatter3d
       x: ?{${ref(scatter3d-data).x}}

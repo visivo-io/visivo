@@ -9,14 +9,14 @@ models:
         0.7,0.6
         1.0,0.8
 charts:
-  - name: Scattersmith Chart with Lines
+  - name: scattersmith-chart-with-lines
     layout:
       title:
         text: Scattersmith Plot with Lines<br><sub>Connecting Data Points on Smith Chart</sub>
     insights:
-      - ${ref(Scattersmith Plot with Lines)}
+      - ${ref(scattersmith-plot-with-lines)}
 insights:
-  - name: Scattersmith Plot with Lines
+  - name: scattersmith-plot-with-lines
     props:
       type: scattersmith
       real: ?{real}

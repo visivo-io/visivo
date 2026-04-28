@@ -33,8 +33,8 @@ charts:
   # {% endfor %}
 
     insights:
-      - ${ref(Color Palette Example)}
-  - name: Custom Colors Example
+      - ${ref(color-palette-example)}
+  - name: custom-colors-example
     layout:
       colorway: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#808000"]
       title:
@@ -49,38 +49,33 @@ charts:
       showlegend: false
 
     insights:
-      - ${ref(Color Palette Example)}
+      - ${ref(color-palette-example)}
 dashboards:
-  - name: Color Palettes in Visivo
+  - name: color-palettes-in-visivo
     level: 0
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Color Palettes in Visivo
+          - markdown:
+              content: |
+                # Color Palettes in Visivo
 
-              This dashboard demonstrates the various predefined color palettes available in Visivo,
-              as well as how to use custom color palettes.
-      # {% for palette in palettes %}
-      # {% if loop.index0 % 2 == 0 %}
+                This dashboard demonstrates the various predefined color palettes available in Visivo,
+                as well as how to use custom color palettes.
       - height: medium
         items:
-          # {% endif %}
-          - chart: ${ref({{ palette }})}
-      # {% endfor %}
-      - height: medium
-        items:
-          - chart: ${ref(Custom Colors Example)}
-          - markdown: |
-              ### Using Custom Color Palettes
+          - chart: ${ref(custom-colors-example)}
+          - markdown:
+              content: |
+                ### Using Custom Color Palettes
 
-              You can define your own color palettes using a list of hex color codes:
-              ```yaml
-              layout:
-                colorway: ['#FF0000', '#00FF00', '#0000FF', ...]
-              ```
+                You can define your own color palettes using a list of hex color codes:
+                ```yaml
+                layout:
+                  colorway: ['#FF0000', '#00FF00', '#0000FF', ...]
+                ```
 insights:
-  - name: Color Palette Example
+  - name: color-palette-example
     props:
       type: bar
       x: ?{ 1 }

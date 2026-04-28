@@ -27,15 +27,15 @@ models:
         6,2.5,18
         5,2,17
 charts:
-  - name: Scattercarpet Chart with Lines
+  - name: scattercarpet-chart-with-lines
     layout:
       title:
         text: Scattercarpet Plot with Lines<br><sub>Connecting Data Points on Carpet Axis</sub>
     insights:
-      - ${ref(Carpet Grid Lines)}
-      - ${ref(Scattercarpet Plot with Lines)}
+      - ${ref(carpet-grid-lines-trace)}
+      - ${ref(scattercarpet-plot-with-lines-trace)}
 insights:
-  - name: Carpet Grid Lines
+  - name: carpet-grid-lines-trace
     props:
       type: carpet
       a: ?{${ref(carpet-grid-lines).a}}
@@ -51,7 +51,7 @@ insights:
         ticksuffix: 'Pa'
         smoothing: 1
         minorgridcount: 9
-  - name: Scattercarpet Plot with Lines
+  - name: scattercarpet-plot-with-lines-trace
     props:
       type: scattercarpet
       a: ?{${ref(scattercarpet-data-lines).a}}

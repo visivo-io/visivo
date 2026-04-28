@@ -10,16 +10,16 @@ models:
         -100,35
         -90,30
 charts:
-  - name: Simple Scattergeo Chart
+  - name: simple-scattergeo-chart
     layout:
       title:
         text: Simple Scattergeo Plot<br><sub>Geographical Data Points</sub>
       geo:
         scope: "usa"
     insights:
-      - ${ref(Simple Scattergeo Plot)}
+      - ${ref(simple-scattergeo-plot)}
 insights:
-  - name: Simple Scattergeo Plot
+  - name: simple-scattergeo-plot
     props:
       type: scattergeo
       lon: ?{${ref(scattergeo-data).lon}}

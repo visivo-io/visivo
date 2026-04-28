@@ -9,14 +9,14 @@ models:
         Proposals,250
         Won,100
 charts:
-  - name: Funnelarea Chart with Hover Info
+  - name: funnelarea-chart-with-hover-info
     layout:
       title:
         text: Funnelarea Chart with Hover Info<br><sub>Sales Funnel with Hover Details</sub>
     insights:
-      - ${ref(Funnelarea Plot with Hover Info)}
+      - ${ref(funnelarea-plot-with-hover-info)}
 insights:
-  - name: Funnelarea Plot with Hover Info
+  - name: funnelarea-plot-with-hover-info
     props:
       type: funnelarea
       labels: ?{${ref(funnelarea-data-hover).stage}}

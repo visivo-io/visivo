@@ -6,14 +6,14 @@ models:
         value
         65
 charts:
-  - name: Gauge Indicator Chart
+  - name: gauge-indicator-chart
     layout:
       title:
         text: Gauge Indicator<br><sub>Progress Towards a Target</sub>
     insights:
-      - ${ref(Gauge Indicator)}
+      - ${ref(gauge-indicator)}
 insights:
-  - name: Gauge Indicator
+  - name: gauge-indicator
     props:
       type: indicator
       mode: "gauge+number"

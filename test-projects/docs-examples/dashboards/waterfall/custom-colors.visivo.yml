@@ -10,14 +10,14 @@ models:
         3,Increase C,300,#ff7f0e
         4,Ending,1350,#9467bd
 charts:
-  - name: Waterfall Chart with Custom Colors
+  - name: waterfall-chart-with-custom-colors
     layout:
       title:
         text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
     insights:
-      - ${ref(Waterfall Plot with Custom Colors)}
+      - ${ref(waterfall-plot-with-custom-colors)}
 insights:
-  - name: Waterfall Plot with Custom Colors
+  - name: waterfall-plot-with-custom-colors
     props:
       type: waterfall
       x: ?{${ref(waterfall-data-colors).label}}

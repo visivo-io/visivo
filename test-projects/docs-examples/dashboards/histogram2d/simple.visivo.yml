@@ -14,7 +14,7 @@ models:
         5,6
         4,2
 charts:
-  - name: Simple 2D Histogram Chart
+  - name: simple-2d-histogram-chart
     layout:
       title:
         text: Simple 2D Histogram<br><sub>Data Distribution Across Two Dimensions</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Simple 2D Histogram Plot)}
+      - ${ref(simple-2d-histogram-plot)}
 insights:
-  - name: Simple 2D Histogram Plot
+  - name: simple-2d-histogram-plot
     props:
       type: histogram2d
       x: ?{${ref(histogram2d-data).x}}

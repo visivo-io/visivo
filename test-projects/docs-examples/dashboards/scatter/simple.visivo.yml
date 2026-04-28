@@ -16,14 +16,14 @@ models:
         5.5,15
 
 charts:
-  - name: Simple Scatter Chart
+  - name: simple-scatter-chart
     layout:
       title:
         text: Simple Scatter Plot<br><sub>2D Data Points</sub>
     insights:
-      - ${ref(Simple Scatter Plot)}
+      - ${ref(simple-scatter-plot)}
 insights:
-  - name: Simple Scatter Plot
+  - name: simple-scatter-plot
     props:
       type: scatter
       x: ?{${ref(scatter-data).x}}

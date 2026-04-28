@@ -8,14 +8,14 @@ models:
         2,3,4
         3,4,5
 charts:
-  - name: Parcoords Chart with Custom Colorscale
+  - name: parcoords-chart-with-custom-colorscale
     layout:
       title:
         text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub>
     insights:
-      - ${ref(Parcoords Plot with Custom Colorscale)}
+      - ${ref(parcoords-plot-with-custom-colorscale)}
 insights:
-  - name: Parcoords Plot with Custom Colorscale
+  - name: parcoords-plot-with-custom-colorscale
     props:
       type: parcoords
       dimensions:

@@ -27,15 +27,15 @@ models:
         6,2.5,25,#d62728
         5,2,30,#9467bd
 charts:
-  - name: Scattercarpet Chart with Custom Markers
+  - name: scattercarpet-chart-with-custom-markers
     layout:
       title:
         text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub>
     insights:
-      - ${ref(Carpet Grid Markers)}
-      - ${ref(Scattercarpet Plot with Custom Markers)}
+      - ${ref(carpet-grid-markers-trace)}
+      - ${ref(scattercarpet-plot-with-custom-markers-trace)}
 insights:
-  - name: Carpet Grid Markers
+  - name: carpet-grid-markers-trace
     props:
       type: carpet
       a: ?{${ref(carpet-grid-markers).a}}
@@ -51,7 +51,7 @@ insights:
         ticksuffix: 'Pa'
         smoothing: 1
         minorgridcount: 9
-  - name: Scattercarpet Plot with Custom Markers
+  - name: scattercarpet-plot-with-custom-markers-trace
     props:
       type: scattercarpet
       a: ?{${ref(scattercarpet-data-custom).a}}

@@ -5,14 +5,14 @@ models:
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
 charts:
-  - name: Simple Splom Chart
+  - name: simple-splom-chart
     layout:
       title:
         text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>
     insights:
-      - ${ref(Simple Splom Plot)}
+      - ${ref(simple-splom-plot)}
 insights:
-  - name: Simple Splom Plot
+  - name: simple-splom-plot
     props:
       type: splom
       dimensions:

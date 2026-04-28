@@ -10,14 +10,14 @@ models:
         3,0,2,1,1,2,3,#9467bd
 
 charts:
-  - name: Simple Mesh3D Chart
+  - name: simple-mesh3d-chart
     layout:
       title:
         text: Simple Mesh3D Plot<br><sub>3D Mesh Surface Visualization</sub>
     insights:
-      - ${ref(Simple Mesh3D Plot)}
+      - ${ref(simple-mesh3d-plot)}
 insights:
-  - name: Simple Mesh3D Plot
+  - name: simple-mesh3d-plot
     props:
       type: mesh3d
       x: ?{${ref(mesh3d-data).x}}

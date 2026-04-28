@@ -8,14 +8,14 @@ models:
         10,20,25
         15,30,35
 charts:
-  - name: Parcoords Chart with Custom Ranges
+  - name: parcoords-chart-with-custom-ranges
     layout:
       title:
         text: Parcoords Plot with Custom Ranges<br><sub>Custom Ranges for Each Variable</sub>
     insights:
-      - ${ref(Parcoords Plot with Custom Ranges)}
+      - ${ref(parcoords-plot-with-custom-ranges)}
 insights:
-  - name: Parcoords Plot with Custom Ranges
+  - name: parcoords-plot-with-custom-ranges
     props:
       type: parcoords
       dimensions:

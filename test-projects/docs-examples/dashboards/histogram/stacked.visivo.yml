@@ -14,7 +14,7 @@ models:
         B,5
         B,6
 charts:
-  - name: Stacked Histogram Chart
+  - name: stacked-histogram-chart
     layout:
       title:
         text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>
@@ -27,9 +27,9 @@ charts:
       barmode: "stack"
       bargap: .05
     insights:
-      - ${ref(Histogram Groups)}
+      - ${ref(histogram-groups)}
 insights:
-  - name: Histogram Groups
+  - name: histogram-groups
     props:
       type: histogram
       x: ?{${ref(histogram-data-stacked).value}}

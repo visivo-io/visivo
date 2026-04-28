@@ -10,7 +10,7 @@ sources:
     type: sqlite
     database: database
 charts:
-  - name: Simple Numeric Indicator Chart
+  - name: simple-numeric-indicator-chart
     layout:
       title:
         text: Simple Numeric Indicator<br><sub>Displaying a Single Value</sub>
@@ -19,9 +19,9 @@ charts:
         r: 0
         b: 50
     insights:
-      - ${ref(Simple Numeric Indicator)}
+      - ${ref(simple-numeric-indicator)}
 insights:
-  - name: Simple Numeric Indicator
+  - name: simple-numeric-indicator
     props:
       type: indicator
       mode: "number"

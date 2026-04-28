@@ -15,7 +15,7 @@ models:
         20
         10
 charts:
-  - name: Simple Histogram Chart
+  - name: simple-histogram-chart
     layout:
       title:
         text: Simple Histogram Plot<br><sub>Data Distribution Across Bins</sub>
@@ -27,9 +27,9 @@ charts:
           text: "Count"
       bargap: 0.05
     insights:
-      - ${ref(Simple Histogram Plot)}
+      - ${ref(simple-histogram-plot)}
 insights:
-  - name: Simple Histogram Plot
+  - name: simple-histogram-plot
     props:
       type: histogram
       x: ?{${ref(histogram-data).value}}

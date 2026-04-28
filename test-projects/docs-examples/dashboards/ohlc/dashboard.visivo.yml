@@ -4,20 +4,22 @@ includes:
   - path: "multi-stock.visivo.yml"
 
 dashboards:
-  - name: "OHLC"
+  - name: ohlc
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# OHLC"
-          - markdown: ""
+          - markdown:
+              content: "# OHLC"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple OHLC Chart)}
-          - chart: ${ref(OHLC Chart with Custom Width)}
+          - chart: ${ref(simple-ohlc-chart)}
+          - chart: ${ref(ohlc-chart-with-custom-width)}
       - height: medium
         items:
-          - chart: ${ref(OHLC Chart with Multiple Stocks)} 
+          - chart: ${ref(ohlc-chart-with-multiple-stocks)} 

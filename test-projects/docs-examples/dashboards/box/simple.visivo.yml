@@ -15,7 +15,7 @@ models:
         B,25
         B,29
 charts:
-  - name: Sample Box Plot Chart
+  - name: sample-box-plot-chart
     layout:
       title:
         text: Simple Box Plot<br><sub>Distribution of Values by Category</sub>
@@ -26,9 +26,9 @@ charts:
         title:
           text: "Value"
     insights:
-      - ${ref(Sample Box Plot)}
+      - ${ref(sample-box-plot)}
 insights:
-  - name: Sample Box Plot
+  - name: sample-box-plot
     props:
       type: box
       x: ?{${ref(sample-data).category}}

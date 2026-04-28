@@ -2,15 +2,15 @@ path: project
 name: docs-examples
 
 dashboards:
-  - name: "Monty Python Quests"
+  - name: monty-python-quests-source
     level: 0
-    tags: 
+    tags:
       - "Staging Data"
     href: "https://docs.google.com/spreadsheets/d/1qYwJuOCGw7AoiK5i2LOBABiSuO_w7g_PN0FKd0FkGeg/edit?gid=0#gid=0"
 
    
 defaults:
-  source_name: Example Source
+  source_name: example-source
   levels:
     - title: Chart Configuration
       description: Visuals that illustrate chart based configuration.
@@ -19,7 +19,7 @@ defaults:
 includes:
   - path: dashboards/includes.visivo.yml
 sources:
-- name: Example Source
+- name: example-source
   database: local.db
   type: sqlite
 

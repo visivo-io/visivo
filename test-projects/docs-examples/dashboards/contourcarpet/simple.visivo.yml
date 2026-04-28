@@ -14,7 +14,7 @@ models:
         2,3,9,10,45
         3,3,10,11,50
 charts:
-  - name: Simple Contourcarpet Chart
+  - name: simple-contourcarpet-chart
     layout:
       title:
         text: Simple Contourcarpet Plot<br><sub>Contour Plot over a Carpet</sub>
@@ -25,19 +25,19 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Simple Contourcarpet Plot)}
-      - ${ref(Carpet Plot)}
+      - ${ref(simple-contourcarpet-plot)}
+      - ${ref(carpet-plot)}
 insights:
-  - name: Carpet Plot
+  - name: carpet-plot
     props:
       type: carpet
       a: ?{${ref(contourcarpet-data).a}}
       b: ?{${ref(contourcarpet-data).b}}
       x: ?{${ref(contourcarpet-data).x}}
       y: ?{${ref(contourcarpet-data).y}}
-  - name: Simple Contourcarpet Plot
+  - name: simple-contourcarpet-plot
     props:
       type: contourcarpet
-      carpet: ${ref(Carpet Plot)}
+      carpet: ${ref(carpet-plot)}
       z: ?{${ref(contourcarpet-data).z}}
       colorscale: "Viridis"

@@ -10,14 +10,14 @@ models:
         Proposals,200
         Closed Deals,100
 charts:
-  - name: Simple Funnelarea Chart
+  - name: simple-funnelarea-chart
     layout:
       title:
         text: Simple Funnelarea Chart<br><sub>Proportional Sales Funnel</sub>
     insights:
-      - ${ref(Simple Funnelarea Plot)}
+      - ${ref(simple-funnelarea-plot)}
 insights:
-  - name: Simple Funnelarea Plot
+  - name: simple-funnelarea-plot
     props:
       type: funnelarea
       labels: ?{${ref(funnelarea-data).stage}}

@@ -11,14 +11,14 @@ models:
         E,B,25,"#9467bd"
         F,B,15,"#8c564b"
 charts:
-  - name: Custom Colors Icicle Chart
+  - name: custom-colors-icicle-chart
     layout:
       title:
         text: Icicle Plot with Custom Colors<br><sub>Custom Coloring for Branches</sub>
     insights:
-      - ${ref(Custom Colors Icicle Plot)}
+      - ${ref(custom-colors-icicle-plot)}
 insights:
-  - name: Custom Colors Icicle Plot
+  - name: custom-colors-icicle-plot
     props:
       type: icicle
       labels: ?{${ref(icicle-data-custom).category}}

@@ -6,7 +6,7 @@ models:
         z
         [[1,0,0,1],[0,1,1,0],[0,0,1,1]]
 charts:
-  - name: Image Plot with Axis Annotations
+  - name: image-plot-with-axis-annotations
     layout:
       title:
         text: Image Plot with Axis Annotations<br><sub>Image with Axes</sub>
@@ -17,9 +17,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Image Plot with Axis Annotations Trace)}
+      - ${ref(image-plot-with-axis-annotations-trace)}
 insights:
-  - name: Image Plot with Axis Annotations Trace
+  - name: image-plot-with-axis-annotations-trace
     props:
       type: image
       z: ?{${ref(image-data-annotated).z}}

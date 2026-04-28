@@ -11,7 +11,7 @@ models:
         5,10
 
 charts:
-  - name: Vertical Threshold Example
+  - name: vertical-threshold-example
     layout:
       title:
         text: Vertical Threshold Line Example

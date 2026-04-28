@@ -10,14 +10,14 @@ models:
         4,5,6,B
         5,6,7,A
 charts:
-  - name: Splom Chart with Custom Colors
+  - name: splom-chart-with-custom-colors
     layout:
       title:
         text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>
     insights:
-      - ${ref(Splom Plot with Custom Colors)}
+      - ${ref(splom-plot-with-custom-colors)}
 insights:
-  - name: Splom Plot with Custom Colors
+  - name: splom-plot-with-custom-colors
     props:
       type: splom
       dimensions:

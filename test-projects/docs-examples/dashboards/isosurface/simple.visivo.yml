@@ -14,14 +14,14 @@ models:
         7,1,1,0,8
 
 charts:
-  - name: Simple Isosurface Chart
+  - name: simple-isosurface-chart
     layout:
       title:
         text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
     insights:
-      - ${ref(Simple Isosurface Plot Trace)}
+      - ${ref(simple-isosurface-plot-trace)}
 insights:
-  - name: Simple Isosurface Plot Trace
+  - name: simple-isosurface-plot-trace
     props:
       type: isosurface
       x: ?{${ref(isosurface-data-simple).x}}

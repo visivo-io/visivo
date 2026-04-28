@@ -11,7 +11,7 @@ models:
         240,2,7
         300,3,5
 charts:
-  - name: Custom Radial Barpolar Chart
+  - name: custom-radial-barpolar-chart
     layout:
       polar:
         radialaxis:
@@ -23,9 +23,9 @@ charts:
       title:
         text: Polar Bar with Custom Radial Range<br><sub>Bars Starting and Ending at Custom Radial Positions</sub>
     insights:
-      - ${ref(Custom Radial Barpolar)}
+      - ${ref(custom-radial-barpolar)}
 insights:
-  - name: Custom Radial Barpolar
+  - name: custom-radial-barpolar
     props:
       type: barpolar
       theta: ?{${ref(custom-radial-data).direction}}

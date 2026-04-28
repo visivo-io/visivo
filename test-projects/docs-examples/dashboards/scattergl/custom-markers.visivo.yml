@@ -10,14 +10,14 @@ models:
         4,15,25,#d62728
         5,12,30,#9467bd
 charts:
-  - name: Scattergl Chart with Custom Markers
+  - name: scattergl-chart-with-custom-markers
     layout:
       title:
         text: Scattergl Plot with Custom Markers<br><sub>Custom Sizes and Colors for WebGL Data Points</sub>
     insights:
-      - ${ref(Scattergl Plot with Custom Markers)}
+      - ${ref(scattergl-plot-with-custom-markers)}
 insights:
-  - name: Scattergl Plot with Custom Markers
+  - name: scattergl-plot-with-custom-markers
     props:
       type: scattergl
       x: ?{${ref(scattergl-data-custom).x}}

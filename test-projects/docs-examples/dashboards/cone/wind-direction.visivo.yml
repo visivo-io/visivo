@@ -11,7 +11,7 @@ models:
         8,8,8,0,0,5,5.00
 
 charts:
-  - name: Wind Direction Cone Plot
+  - name: wind-direction-cone-plot
     layout:
       title:
         text: Wind Direction and Speed
@@ -27,9 +27,9 @@ charts:
         t: 40
         b: 90
     insights:
-      - ${ref(Wind Direction Cone Plot Trace)}
+      - ${ref(wind-direction-cone-plot-trace)}
 insights:
-  - name: Wind Direction Cone Plot Trace
+  - name: wind-direction-cone-plot-trace
     props:
       type: cone
       x: ?{${ref(wind-data-cone).x}}

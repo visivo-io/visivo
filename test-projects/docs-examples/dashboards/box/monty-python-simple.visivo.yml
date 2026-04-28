@@ -5,7 +5,7 @@ models:
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 charts:
-  - name: Rewards Distribution Box Plot
+  - name: rewards-distribution-box-plot
     layout:
       title:
         text: Horizontal Box Plot<br><sub>GBP Rewards Earned Across Quests</sub>
@@ -13,9 +13,9 @@ charts:
         title:
           text: "Reward (GBP)"
     insights:
-      - ${ref(Rewards Distribution by Quest)}
+      - ${ref(rewards-distribution-by-quest)}
 insights:
-  - name: Rewards Distribution by Quest
+  - name: rewards-distribution-by-quest
     props:
       type: box
       y: ?{${ref(monty-python-quest-data-unique).person}}

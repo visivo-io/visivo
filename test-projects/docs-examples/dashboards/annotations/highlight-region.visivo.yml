@@ -11,7 +11,7 @@ models:
         5,6
 
 charts:
-  - name: Highlight Region Example
+  - name: highlight-region-example
     layout:
       title:
         text: Highlighted Region in Scatter Plot

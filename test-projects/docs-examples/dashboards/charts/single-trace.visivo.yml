@@ -1,24 +1,24 @@
 models:
-  - name: Array of Numbers
+  - name: array-of-numbers
     args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
 charts:
-  - name: Single Trace Chart
+  - name: single-trace-chart
     layout:
       title:
         text: "Single Trace"
     insights:
-      - ${ref(Simple Scatter)}
+      - ${ref(simple-scatter)}
 insights:
-  - name: Simple Scatter
+  - name: simple-scatter
     props:
       type: scatter
-      x: ?{ ln(${ref(Array of Numbers).numbers_column}) }
-      y: ?{ ${ref(Array of Numbers).numbers_column} }
+      x: ?{ ln(${ref(array-of-numbers).numbers_column}) }
+      y: ?{ ${ref(array-of-numbers).numbers_column} }
       mode: markers
       marker:
-        size: ?{ abs(sin(exp(${ref(Array of Numbers).numbers_column}) - 5)*100) }
-        opacity: ?{ abs(cos(exp(${ref(Array of Numbers).numbers_column}) - 5)*100)/100 }
+        size: ?{ abs(sin(exp(${ref(array-of-numbers).numbers_column}) - 5)*100) }
+        opacity: ?{ abs(cos(exp(${ref(array-of-numbers).numbers_column}) - 5)*100)/100 }
     interactions:
-      - sort: ?{ ${ref(Array of Numbers).numbers_column} }
-      - filter: ?{ ${ref(Array of Numbers).numbers_column} < 400 }
+      - sort: ?{ ${ref(array-of-numbers).numbers_column} }
+      - filter: ?{ ${ref(array-of-numbers).numbers_column} < 400 }

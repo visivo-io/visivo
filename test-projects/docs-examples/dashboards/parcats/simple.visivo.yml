@@ -9,14 +9,14 @@ models:
         B,X,25
         B,Y,25
 charts:
-  - name: Simple Parcats Chart
+  - name: simple-parcats-chart
     layout:
       title:
         text: Simple Parcats Chart<br><sub>Parallel Categories Diagram</sub>
     insights:
-      - ${ref(Simple Parcats Plot)}
+      - ${ref(simple-parcats-plot)}
 insights:
-  - name: Simple Parcats Plot
+  - name: simple-parcats-plot
     props:
       type: parcats
       dimensions:

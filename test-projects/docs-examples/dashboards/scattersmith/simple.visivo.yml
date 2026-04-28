@@ -9,14 +9,14 @@ models:
         1.0,0.5
         1.2,0.7
 charts:
-  - name: Simple Scattersmith Chart
+  - name: simple-scattersmith-chart
     layout:
       title:
         text: Simple Scattersmith Plot<br><sub>Data Points on Smith Chart</sub>
     insights:
-      - ${ref(Simple Scattersmith Plot)}
+      - ${ref(simple-scattersmith-plot)}
 insights:
-  - name: Simple Scattersmith Plot
+  - name: simple-scattersmith-plot
     props:
       type: scattersmith
       real: ?{real}

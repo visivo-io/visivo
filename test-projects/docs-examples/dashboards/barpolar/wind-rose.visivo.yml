@@ -29,7 +29,7 @@ models:
         8,NW,1-2 m/s,5
         8,NW,2-3 m/s,3
 charts:
-  - name: Wind Rose Chart
+  - name: wind-rose-chart
     layout:
       polar:
         radialaxis:
@@ -48,9 +48,9 @@ charts:
       title:
         text: Wind Rose Chart<br><sub>Wind Speed Distribution by Direction</sub>
     insights:
-      - ${ref(Wind Rose)}
+      - ${ref(wind-rose)}
 insights:
-  - name: Wind Rose
+  - name: wind-rose
     props:
       type: barpolar
       r: ?{${ref(wind-data).count}}

@@ -14,7 +14,7 @@ models:
         C,2,40
         C,3,45
 charts:
-  - name: Simple Heatmap Chart
+  - name: simple-heatmap-chart
     layout:
       title:
         text: Simple Heatmap Plot<br><sub>Data Visualization on a 2D Grid</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Simple Heatmap Plot)}
+      - ${ref(simple-heatmap-plot)}
 insights:
-  - name: Simple Heatmap Plot
+  - name: simple-heatmap-plot
     props:
       type: heatmap
       x: ?{${ref(heatmap-data).x}}

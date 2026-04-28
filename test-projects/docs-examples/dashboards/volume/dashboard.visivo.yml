@@ -2,17 +2,20 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Volume"
+  - name: volume
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Volume"
-          - markdown: ""
+          - markdown:
+              content: "# Volume"
+          - markdown:
+              content: ""
             width: 5
       - height: large
         items:
-          - chart: ${ref(Simple Volume Chart)}
-          - markdown: ""
+          - chart: ${ref(simple-volume-chart)}
+          - markdown:
+              content: ""

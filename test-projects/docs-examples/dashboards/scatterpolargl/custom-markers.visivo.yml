@@ -10,14 +10,14 @@ models:
         135,10,25,#d62728
         180,25,30,#9467bd
 charts:
-  - name: Scatterpolargl Chart with Custom Markers
+  - name: scatterpolargl-chart-with-custom-markers
     layout:
       title:
         text: Scatterpolargl Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub>
     insights:
-      - ${ref(Scatterpolargl Plot with Custom Markers)}
+      - ${ref(scatterpolargl-plot-with-custom-markers)}
 insights:
-  - name: Scatterpolargl Plot with Custom Markers
+  - name: scatterpolargl-plot-with-custom-markers
     props:
       type: scatterpolargl
       theta: ?{${ref(scatterpolargl-data-custom).theta}}

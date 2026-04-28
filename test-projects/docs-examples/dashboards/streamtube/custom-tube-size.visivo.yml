@@ -1,12 +1,12 @@
 charts:
-  - name: Streamtube Chart with Custom Tube Sizes
+  - name: streamtube-chart-with-custom-tube-sizes
     layout:
       title:
         text: Streamtube Plot with Custom Tube Sizes<br><sub>Vector Magnitude Represented by Tube Size</sub>
     insights:
-      - ${ref(Streamtube Plot with Custom Tube Sizes)}
+      - ${ref(streamtube-plot-with-custom-tube-sizes)}
 insights:
-  - name: Streamtube Plot with Custom Tube Sizes
+  - name: streamtube-plot-with-custom-tube-sizes
     props:
       type: streamtube
       x: ?{${ref(streamtube-data).x}}

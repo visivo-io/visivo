@@ -11,7 +11,7 @@ models:
         4,Q4,H2,300,relative
         5,Gross Profit,FY2024,0,total
 charts:
-  - name: Waterfall Chart with Connectors
+  - name: waterfall-chart-with-connectors
     layout:
       title:
         text: Financial Waterfall
@@ -24,9 +24,9 @@ charts:
         title:
           text: "Millions ($)"
     insights:
-      - ${ref(Waterfall Plot with Connectors)}
+      - ${ref(waterfall-plot-with-connectors)}
 insights:
-  - name: Waterfall Plot with Connectors
+  - name: waterfall-plot-with-connectors
     props:
       type: waterfall
       x:

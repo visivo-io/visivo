@@ -10,14 +10,14 @@ models:
         3,Increase C,300
         4,Ending,1350
 charts:
-  - name: Simple Waterfall Chart
+  - name: simple-waterfall-chart
     layout:
       title:
         text: Simple Waterfall Plot<br><sub>Sequential Changes in Value</sub>
     insights:
-      - ${ref(Simple Waterfall Plot)}
+      - ${ref(simple-waterfall-plot)}
 insights:
-  - name: Simple Waterfall Plot
+  - name: simple-waterfall-plot
     props:
       type: waterfall
       x: ?{${ref(waterfall-data).label}}

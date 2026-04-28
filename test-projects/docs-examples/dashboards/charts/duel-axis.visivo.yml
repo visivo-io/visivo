@@ -1,9 +1,9 @@
 models:
-  - name: Series of Numbers
+  - name: series-of-numbers
     args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
 charts:
-  - name: Duel Axis
+  - name: duel-axis
     layout:
       title:
         text: "Dual Axis"
@@ -26,22 +26,22 @@ charts:
         anchor: "y"
         showgrid: false
     insights:
-      - ${ref(Yaxis2 Trace)}
-      - ${ref(Yaxis Trace)}
+      - ${ref(yaxis2-trace)}
+      - ${ref(yaxis-trace)}
 insights:
-  - name: Yaxis Trace
+  - name: yaxis-trace
     props:
       type: bar
-      y: ?{${ref(Series of Numbers).numbers_column}}
+      y: ?{${ref(series-of-numbers).numbers_column}}
       marker:
         color: "#713B57"
         opacity: .7
     interactions:
-      - sort: ?{${ref(Series of Numbers).numbers_column}}
-  - name: Yaxis2 Trace
+      - sort: ?{${ref(series-of-numbers).numbers_column}}
+  - name: yaxis2-trace
     props:
       type: scatter
-      y: ?{ (500 -  ${ref(Series of Numbers).numbers_column}) }
+      y: ?{ (500 -  ${ref(series-of-numbers).numbers_column}) }
       yaxis: "y2"
       line:
         shape: spline
@@ -49,4 +49,4 @@ insights:
         color: orange
 
     interactions:
-      - sort: ?{${ref(Series of Numbers).numbers_column}}
+      - sort: ?{${ref(series-of-numbers).numbers_column}}

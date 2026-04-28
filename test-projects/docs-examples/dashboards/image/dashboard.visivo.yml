@@ -4,18 +4,21 @@ includes:
   - path: "annotated.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Image"
+  - name: trace-props-examples-image
     rows:
       - height: compact
         items:
-          - markdown: "# Image"
-          - markdown: ""
+          - markdown:
+              content: "# Image"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Image Chart)}
-          - chart: ${ref(Image Plot with Custom Colorscale)}
+          - chart: ${ref(simple-image-chart)}
+          - chart: ${ref(image-plot-with-custom-colorscale)}
       - height: medium
         items:
-          - chart: ${ref(Image Plot with Axis Annotations)}
-          - markdown: ""
+          - chart: ${ref(image-plot-with-axis-annotations)}
+          - markdown:
+              content: ""

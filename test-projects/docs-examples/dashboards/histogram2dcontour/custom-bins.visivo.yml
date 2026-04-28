@@ -14,7 +14,7 @@ models:
         4,3
         5,4
 charts:
-  - name: 2D Contour Histogram with Custom Bins Chart
+  - name: 2d-contour-histogram-with-custom-bins-chart
     layout:
       title:
         text: 2D Contour Histogram with Custom Bins<br><sub>Custom Bin Sizes for X and Y</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(2D Contour Histogram with Custom Bins)}
+      - ${ref(2d-contour-histogram-with-custom-bins)}
 insights:
-  - name: 2D Contour Histogram with Custom Bins
+  - name: 2d-contour-histogram-with-custom-bins
     props:
       type: histogram2dcontour
       x: ?{${ref(histogram2dcontour-data-bins).x}}

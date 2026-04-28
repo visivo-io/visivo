@@ -14,7 +14,7 @@ models:
         1,2,5
         2,2,10
 charts:
-  - name: Filled Contour Chart
+  - name: filled-contour-chart
     layout:
       title:
         text: Filled Contour Plot<br><sub>Contour Plot with Filled Levels</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Filled Contour Plot)}
+      - ${ref(filled-contour-plot)}
 insights:
-  - name: Filled Contour Plot
+  - name: filled-contour-plot
     props:
       type: contour
       x: ?{${ref(contour-data-filled).x}}

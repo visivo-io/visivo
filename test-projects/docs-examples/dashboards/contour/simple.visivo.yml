@@ -30,7 +30,7 @@ models:
         4,5,25
         5,5,30
 charts:
-  - name: Simple Contour Chart
+  - name: simple-contour-chart
     layout:
       title:
         text: Simple Contour Plot<br><sub>Contour Plot Based on Z Values</sub>
@@ -41,9 +41,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Simple Contour Plot)}
+      - ${ref(simple-contour-plot)}
 insights:
-  - name: Simple Contour Plot
+  - name: simple-contour-plot
     props:
       type: contour
       z:

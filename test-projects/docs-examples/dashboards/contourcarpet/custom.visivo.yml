@@ -14,7 +14,7 @@ models:
         1,2,8,8,80
         2,2,9,9,90
 charts:
-  - name: Custom Contourcarpet Chart
+  - name: custom-contourcarpet-chart
     layout:
       title:
         text: Custom Contourcarpet Plot<br><sub>Customized Contour Levels on a Carpet</sub>
@@ -25,20 +25,20 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(Custom Contourcarpet Plot)}
-      - ${ref(Carpet Plot Custom)}
+      - ${ref(custom-contourcarpet-plot)}
+      - ${ref(carpet-plot-custom)}
 insights:
-  - name: Carpet Plot Custom
+  - name: carpet-plot-custom
     props:
       type: carpet
       a: ?{${ref(contourcarpet-data-custom).a}}
       b: ?{${ref(contourcarpet-data-custom).b}}
       x: ?{${ref(contourcarpet-data-custom).x}}
       y: ?{${ref(contourcarpet-data-custom).y}}
-  - name: Custom Contourcarpet Plot
+  - name: custom-contourcarpet-plot
     props:
       type: contourcarpet
-      carpet: ${ref(Carpet Plot Custom)}
+      carpet: ${ref(carpet-plot-custom)}
       z: ?{${ref(contourcarpet-data-custom).z}}
       colorscale: "Jet"
       contours:

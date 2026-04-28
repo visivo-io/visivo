@@ -14,7 +14,7 @@ models:
         5,9
         4,4
 charts:
-  - name: 2D Histogram with Custom Bins Chart
+  - name: 2d-histogram-with-custom-bins-chart
     layout:
       title:
         text: 2D Histogram with Custom Bins<br><sub>Custom Binning Along X and Y Axes</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(2D Histogram with Custom Bins)}
+      - ${ref(2d-histogram-with-custom-bins)}
 insights:
-  - name: 2D Histogram with Custom Bins
+  - name: 2d-histogram-with-custom-bins
     props:
       type: histogram2d
       x: ?{${ref(histogram2d-data-bins).x}}

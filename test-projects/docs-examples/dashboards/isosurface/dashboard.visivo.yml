@@ -3,17 +3,19 @@ includes:
   - path: "complex-with-slice.visivo.yml"
 
 dashboards:
-  - name: "Isosurface"
+  - name: isosurface
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Isosurface"
-          - markdown: ""
+          - markdown:
+              content: "# Isosurface"
+          - markdown:
+              content: ""
             width: 5
       - height: large
         items:
-          - chart: ${ref(Complex With Slice Isosurface Chart)}
-          - chart: ${ref(Simple Isosurface Chart)}
+          - chart: ${ref(complex-with-slice-isosurface-chart)}
+          - chart: ${ref(simple-isosurface-chart)}

@@ -14,7 +14,7 @@ models:
         4,1
         5,2
 charts:
-  - name: 2D Histogram with Density Mode Chart
+  - name: 2d-histogram-with-density-mode-chart
     layout:
       title:
         text: 2D Histogram with Density Mode<br><sub>Density Distribution of Data</sub>
@@ -25,9 +25,9 @@ charts:
         title:
           text: "Y Axis"
     insights:
-      - ${ref(2D Histogram with Density Mode)}
+      - ${ref(2d-histogram-with-density-mode)}
 insights:
-  - name: 2D Histogram with Density Mode
+  - name: 2d-histogram-with-density-mode
     props:
       type: histogram2d
       x: ?{${ref(histogram2d-data-density).x}}

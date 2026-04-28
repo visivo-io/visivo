@@ -11,7 +11,7 @@ models:
         5,15
 
 charts:
-  - name: Threshold with Annotation Example
+  - name: threshold-with-annotation-example
     layout:
       title:
         text: Threshold with Annotation

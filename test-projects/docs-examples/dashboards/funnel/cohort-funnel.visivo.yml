@@ -17,16 +17,16 @@ models:
         Consideration,900,Product C
         Purchase,300,Product C
 charts:
-  - name: Funnel Chart with Cohorts
+  - name: funnel-chart-with-cohorts
     layout:
       title:
         text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>
       margin:
         l: 100
     insights:
-      - ${ref(Cohort Funnel Chart)}
+      - ${ref(cohort-funnel-chart)}
 insights:
-  - name: Cohort Funnel Chart
+  - name: cohort-funnel-chart
     props:
       type: funnel
       y: ?{${ref(funnel-data-cohorts).stage}}

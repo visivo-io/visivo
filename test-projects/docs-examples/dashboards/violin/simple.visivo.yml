@@ -11,14 +11,14 @@ models:
         B,35
         B,28
 charts:
-  - name: Simple Violin Chart
+  - name: simple-violin-chart
     layout:
       title:
         text: Simple Violin Plot<br><sub>Distribution of Values by Category</sub>
     insights:
-      - ${ref(Simple Violin Plot)}
+      - ${ref(simple-violin-plot)}
 insights:
-  - name: Simple Violin Plot
+  - name: simple-violin-plot
     props:
       type: violin
       x: ?{${ref(violin-data).category}}

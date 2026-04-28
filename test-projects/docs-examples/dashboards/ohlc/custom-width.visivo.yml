@@ -10,7 +10,7 @@ models:
         2023-02-04,209,212,207,211
         2023-02-05,211,214,210,213
 charts:
-  - name: OHLC Chart with Custom Width
+  - name: ohlc-chart-with-custom-width
     layout:
       title:
         text: OHLC Plot with Custom Width<br><sub>Stock Prices with Custom Bar Width</sub>
@@ -21,9 +21,9 @@ charts:
         title:
           text: "Price"
     insights:
-      - ${ref(OHLC Plot with Custom Width)}
+      - ${ref(ohlc-plot-with-custom-width)}
 insights:
-  - name: OHLC Plot with Custom Width
+  - name: ohlc-plot-with-custom-width
     props:
       type: ohlc
       x: ?{date}

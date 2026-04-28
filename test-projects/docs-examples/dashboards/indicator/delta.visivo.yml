@@ -9,14 +9,14 @@ models:
         1,65
         0,55
 charts:
-  - name: Delta Indicator with Comparison Chart
+  - name: delta-indicator-with-comparison-chart
     layout:
       title:
         text: Delta Indicator with Comparison<br><sub>Showing Change from Previous Value</sub>
     insights:
-      - ${ref(Delta Indicator with Comparison)}
+      - ${ref(delta-indicator-with-comparison)}
 insights:
-  - name: Delta Indicator with Comparison
+  - name: delta-indicator-with-comparison
     props:
       type: indicator
       mode: "number+delta"

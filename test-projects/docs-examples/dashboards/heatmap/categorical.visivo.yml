@@ -14,7 +14,7 @@ models:
         High,B,0.8
         High,C,0.9
 charts:
-  - name: Heatmap Chart with Categorical Axis
+  - name: heatmap-chart-with-categorical-axis
     layout:
       title:
         text: Heatmap Chart with Categorical Axis<br><sub>Categorical Data</sub>
@@ -27,9 +27,9 @@ charts:
           text: "Category"
         type: "category"
     insights:
-      - ${ref(Heatmap with Custom Colorscale)}
+      - ${ref(heatmap-with-custom-colorscale)}
 insights:
-  - name: Heatmap with Custom Colorscale
+  - name: heatmap-with-custom-colorscale
     props:
       type: heatmap
       x: ?{${ref(heatmap-data-custom).x}}

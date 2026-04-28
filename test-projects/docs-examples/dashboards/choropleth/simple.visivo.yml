@@ -14,7 +14,7 @@ models:
         IND,450
         COD,48
 charts:
-  - name: Simple Choropleth Map
+  - name: simple-choropleth-map
     layout:
       title:
         text: Population Density by Country<br><sub>Data in Persons per Square Kilometer</sub>
@@ -23,9 +23,9 @@ charts:
         projection:
           type: "natural earth"
     insights:
-      - ${ref(Simple Choropleth Map Trace)}
+      - ${ref(simple-choropleth-map-trace)}
 insights:
-  - name: Simple Choropleth Map Trace
+  - name: simple-choropleth-map-trace
     props:
       type: choropleth
       locations: ?{${ref(country-population-data).country}}

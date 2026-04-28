@@ -4,21 +4,24 @@ includes:
   - path: "split-categories.visivo.yml"
 
 dashboards:
-  - name: "Violin"
+  - name: violin
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Violin"
-          - markdown: ""
+          - markdown:
+              content: "# Violin"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Violin Chart)}
-          - chart: ${ref(Violin Chart with Box)}
+          - chart: ${ref(simple-violin-chart)}
+          - chart: ${ref(violin-chart-with-box)}
       - height: medium
         items:
-          - chart: ${ref(Violin Chart with Split Categories)}
-          - markdown: ""
+          - chart: ${ref(violin-chart-with-split-categories)}
+          - markdown:
+              content: ""

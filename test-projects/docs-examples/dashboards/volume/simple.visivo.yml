@@ -13,14 +13,14 @@ models:
         6,1,0,0,7
         7,1,1,0,8
 charts:
-  - name: Simple Volume Chart
+  - name: simple-volume-chart
     layout:
       title:
         text: Simple Volume Plot<br><sub>3D Volumetric Data</sub>
     insights:
-      - ${ref(Simple Volume Plot)}
+      - ${ref(simple-volume-plot)}
 insights:
-  - name: Simple Volume Plot
+  - name: simple-volume-plot
     props:
       type: volume
       x: ?{${ref(volume-data).x}}

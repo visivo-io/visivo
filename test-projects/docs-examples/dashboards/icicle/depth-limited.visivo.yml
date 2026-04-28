@@ -11,14 +11,14 @@ models:
         E,B,25
         F,B,15
 charts:
-  - name: Icicle Plot with Depth Limiting
+  - name: icicle-plot-with-depth-limiting
     layout:
       title:
         text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>
     insights:
-      - ${ref(Icicle Plot with Depth Limiting Trace)}
+      - ${ref(icicle-plot-with-depth-limiting-trace)}
 insights:
-  - name: Icicle Plot with Depth Limiting Trace
+  - name: icicle-plot-with-depth-limiting-trace
     props:
       type: icicle
       labels: ?{${ref(icicle-data-depth).category}}

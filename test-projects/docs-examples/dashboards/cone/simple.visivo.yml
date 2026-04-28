@@ -14,7 +14,7 @@ models:
         1,1,1,-1,-1,-1
 
 charts:
-  - name: Simple Cone Plot
+  - name: simple-cone-plot
     layout:
       title:
         text: Simple 3D Vector Field
@@ -25,9 +25,9 @@ charts:
             y: 1.5
             z: 1.5
     insights:
-      - ${ref(Simple Cone Plot Trace)}
+      - ${ref(simple-cone-plot-trace)}
 insights:
-  - name: Simple Cone Plot Trace
+  - name: simple-cone-plot-trace
     props:
       type: cone
       x: ?{${ref(vector-field-data).x}}

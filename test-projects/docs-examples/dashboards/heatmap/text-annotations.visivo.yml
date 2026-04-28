@@ -13,7 +13,7 @@ models:
         Q3,2020,400
         Q4,2020,450
 charts:
-  - name: Heatmap Chart with Text Annotations
+  - name: heatmap-chart-with-text-annotations
     layout:
       title:
         text: Heatmap with Text Annotations<br><sub>Data Values Displayed on Each Cell</sub>
@@ -24,9 +24,9 @@ charts:
         title:
           text: "Year"
     insights:
-      - ${ref(Heatmap with Text Annotations)}
+      - ${ref(heatmap-with-text-annotations)}
 insights:
-  - name: Heatmap with Text Annotations
+  - name: heatmap-with-text-annotations
     props:
       type: heatmap
       x: ?{${ref(heatmap-data-annotations).x}}

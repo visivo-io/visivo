@@ -9,14 +9,14 @@ models:
         1.0,0.5,20,#2ca02c
         1.2,0.7,25,#d62728
 charts:
-  - name: Scattersmith Chart with Custom Markers
+  - name: scattersmith-chart-with-custom-markers
     layout:
       title:
         text: Scattersmith Plot with Custom Markers<br><sub>Custom Sizes and Colors for Smith Chart Data Points</sub>
     insights:
-      - ${ref(Scattersmith Plot with Custom Markers)}
+      - ${ref(scattersmith-plot-with-custom-markers)}
 insights:
-  - name: Scattersmith Plot with Custom Markers
+  - name: scattersmith-plot-with-custom-markers
     props:
       type: scattersmith
       real: ?{real}

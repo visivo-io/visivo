@@ -8,14 +8,14 @@ models:
         2,5,8
         3,6,9
 charts:
-  - name: Simple Parcoords Chart
+  - name: simple-parcoords-chart
     layout:
       title:
         text: Simple Parcoords Plot<br><sub>Parallel Coordinates with Three Variables</sub>
     insights:
-      - ${ref(Simple Parcoords Plot)}
+      - ${ref(simple-parcoords-plot)}
 insights:
-  - name: Simple Parcoords Plot
+  - name: simple-parcoords-plot
     props:
       type: parcoords
       dimensions:

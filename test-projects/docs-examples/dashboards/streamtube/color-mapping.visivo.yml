@@ -1,12 +1,12 @@
 charts:
-  - name: Streamtube Chart with Color Mapping
+  - name: streamtube-chart-with-color-mapping
     layout:
       title:
         text: Streamtube Plot with Color Mapping<br><sub>Vector Magnitude Represented by Color</sub>
     insights:
-      - ${ref(Streamtube Plot with Color Mapping)}
+      - ${ref(streamtube-plot-with-color-mapping)}
 insights:
-  - name: Streamtube Plot with Color Mapping
+  - name: streamtube-plot-with-color-mapping
     props:
       type: streamtube
       x: ?{${ref(streamtube-data).x}}

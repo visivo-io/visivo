@@ -11,7 +11,7 @@ models:
         5,8
 
 charts:
-  - name: Emoji Threshold Example
+  - name: emoji-threshold-example
     layout:
       title:
         text: Threshold Line with Emoji Warning

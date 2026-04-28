@@ -11,7 +11,7 @@ models:
         5,10
 
 charts:
-  - name: Emoji Points Example
+  - name: emoji-points-example
     layout:
       title:
         text: Data Points with Emoji Annotations

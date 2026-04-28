@@ -12,14 +12,14 @@ models:
         E,A,20,6
         F,B,10,7
 charts:
-  - name: Sunburst Chart with Custom Sizes
+  - name: sunburst-chart-with-custom-sizes
     layout:
       title:
         text: Sunburst Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>
     insights:
-      - ${ref(Sunburst Plot with Custom Sizes)}
+      - ${ref(sunburst-plot-with-custom-sizes)}
 insights:
-  - name: Sunburst Plot with Custom Sizes
+  - name: sunburst-plot-with-custom-sizes
     props:
       type: sunburst
       labels: ?{${ref(sunburst-data-sizes).labels}}

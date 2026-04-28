@@ -4,7 +4,7 @@ includes:
   - path: custom-tube-size.visivo.yml
 
 dashboards:
-  - name: Streamtube Dashboard
+  - name: streamtube-dashboard
     level: 1
     tags:
       - streamtube
@@ -13,14 +13,15 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Streamtube Dashboard
+          - markdown:
+              content: |
+                # Streamtube Dashboard
 
-              This dashboard demonstrates different ways to create 3D streamtube plots using the `streamtube` trace type.
+                This dashboard demonstrates different ways to create 3D streamtube plots using the `streamtube` trace type.
       - height: medium
         items:
-          - chart: ${ref(Simple Streamtube Chart)}
-          - chart: ${ref(Streamtube Chart with Color Mapping)}
+          - chart: ${ref(simple-streamtube-chart)}
+          - chart: ${ref(streamtube-chart-with-color-mapping)}
       - height: medium
         items:
-          - chart: ${ref(Streamtube Chart with Custom Tube Sizes)} 
+          - chart: ${ref(streamtube-chart-with-custom-tube-sizes)} 

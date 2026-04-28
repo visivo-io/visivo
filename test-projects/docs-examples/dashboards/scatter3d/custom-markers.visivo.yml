@@ -10,14 +10,14 @@ models:
         4,15,18,30,#d62728
         5,12,20,35,#9467bd
 charts:
-  - name: Scatter3D Chart with Custom Markers
+  - name: scatter3d-chart-with-custom-markers
     layout:
       title:
         text: Scatter3D Plot with Custom Markers<br><sub>Custom Sizes and Colors for 3D Data Points</sub>
     insights:
-      - ${ref(Scatter3D Plot with Custom Markers)}
+      - ${ref(scatter3d-plot-with-custom-markers)}
 insights:
-  - name: Scatter3D Plot with Custom Markers
+  - name: scatter3d-plot-with-custom-markers
     props:
       type: scatter3d
       x: ?{${ref(scatter3d-data-custom).x}}
