@@ -26,6 +26,10 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 INTEGRATION_DIR="${VISIVO_SANDBOX_PROJECT_DIR:-$PROJECT_DIR/test-projects/integration}"
 VIEWER_DIR="$PROJECT_DIR/viewer"
 VENV_ACTIVATE="$PROJECT_DIR/venv12/bin/activate"
+# Fall back to poetry's .venv if venv12 isn't present.
+if [ ! -f "$VENV_ACTIVATE" ] && [ -f "$PROJECT_DIR/.venv/bin/activate" ]; then
+    VENV_ACTIVATE="$PROJECT_DIR/.venv/bin/activate"
+fi
 # Keep PID dirs per-sandbox-name so multiple sandboxes can coexist.
 SANDBOX_NAME="${VISIVO_SANDBOX_NAME:-}"
 if [ -n "$SANDBOX_NAME" ]; then

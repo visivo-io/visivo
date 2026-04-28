@@ -9,8 +9,10 @@ sources:
   - name: Example Target
     database: local.db
     type: sqlite
-models: []
-traces: []
+models:
+  - name: Example Model
+    sql: select * from test_table
+insights: []
 tables: []
 charts: []
 dashboards:
@@ -21,12 +23,9 @@ dashboards:
           - width: 1
             chart:
               name: Example Chart
-              traces:
+              insights:
                 - name: Example Trace
-                  model:
-                    name: Example Model
-                    sql: select * from test_table
                   props:
                     type: scatter
-                    x: ?{x}
-                 ?{y}ery(y)
+                    x: ?{${ref(Example Model).x}}
+                    y: ?{${ref(Example Model).y}}
