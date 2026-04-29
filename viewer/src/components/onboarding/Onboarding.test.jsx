@@ -28,12 +28,15 @@ jest.mock('./FeatureCard', () => () => <div data-testid="feature-card">FeatureCa
 // Mock the store values that the component uses
 const mockStoreValues = {
   isNewProject: true,
+  isOnboardingRequested: true,
   isOnBoardingLoading: false,
   project: {
     project_json: {
       project_dir: '/test/project',
     },
   },
+  fetchProject: jest.fn(),
+  markOnboardingCompleted: jest.fn(),
 };
 
 beforeEach(() => {
@@ -83,17 +86,47 @@ test("handles 'Import Example' click", async () => {
   });
 });
 
-test('redirects if not a new project', () => {
+test('redirects if not a new project and onboarding not requested', () => {
   // Override the mock for this specific test
   useStore.mockImplementation(selector => {
     return selector({
       ...mockStoreValues,
       isNewProject: false,
+      isOnboardingRequested: false,
     });
   });
 
   render(<Onboarding />);
   expect(screen.getByTestId('navigate')).toBeInTheDocument();
+});
+
+test('does not redirect when onboarding is requested via URL', () => {
+  // isNewProject false but isOnboardingRequested true keeps user on /onboarding
+  useStore.mockImplementation(selector => {
+    return selector({
+      ...mockStoreValues,
+      isNewProject: false,
+      isOnboardingRequested: true,
+    });
+  });
+
+  render(<Onboarding />);
+  expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+});
+
+test('Skip onboarding button calls markOnboardingCompleted', () => {
+  const markCompleted = jest.fn();
+  useStore.mockImplementation(selector =>
+    selector({
+      ...mockStoreValues,
+      markOnboardingCompleted: markCompleted,
+    })
+  );
+
+  render(<Onboarding />);
+  const skipButton = screen.getByTestId('skip-onboarding-button');
+  fireEvent.click(skipButton);
+  expect(markCompleted).toHaveBeenCalled();
 });
 
 test('shows loading spinner while onboarding is loading', () => {

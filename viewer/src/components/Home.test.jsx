@@ -16,37 +16,66 @@ const loadError = () => {
   return { message: 'Error Message' };
 };
 
-const routes = [
-  {
-    path: '/',
-    element: <Home />,
-    loader: loadError,
-  },
-];
+const buildRouter = () =>
+  createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: <Home />,
+        loader: loadError,
+      },
+      {
+        path: '/onboarding',
+        element: <div data-testid="onboarding-route">Onboarding here</div>,
+      },
+    ],
+    {
+      initialEntries: ['/'],
+      initialIndex: 0,
+      future: futureFlags,
+    }
+  );
 
-const router = createMemoryRouter(routes, {
-  initialEntries: ['/'],
-  initialIndex: 0,
-  future: futureFlags,
-});
-
-test('renders error message', async () => {
+const renderWithStore = storeState => {
   useStore.mockImplementation(cb =>
     cb({
       isNewProject: false,
+      isOnboardingRequested: false,
       hasUnpublishedChanges: false,
       checkPublishStatus: jest.fn(),
       openPublishModal: jest.fn(),
+      ...storeState,
     })
   );
 
-  render(
+  return render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} future={futureFlags} />
+      <RouterProvider router={buildRouter()} future={futureFlags} />
     </QueryClientProvider>
   );
+};
+
+test('renders error message', async () => {
+  renderWithStore({ isNewProject: false, isOnboardingRequested: false });
 
   await waitFor(() => {
     expect(screen.getByText('Error Message')).toBeInTheDocument();
+  });
+});
+
+test('redirects to /onboarding when isOnboardingRequested is true', async () => {
+  renderWithStore({ isNewProject: false, isOnboardingRequested: true });
+
+  await waitFor(() => {
+    expect(screen.getByTestId('onboarding-route')).toBeInTheDocument();
+  });
+});
+
+test('does not redirect when isOnboardingRequested is false', async () => {
+  renderWithStore({ isNewProject: false, isOnboardingRequested: false });
+
+  // Should NOT navigate to onboarding; the home page renders instead.
+  await waitFor(() => {
+    expect(screen.queryByTestId('onboarding-route')).not.toBeInTheDocument();
   });
 });
