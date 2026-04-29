@@ -120,28 +120,26 @@ const SOURCE_SCHEMAS = {
       },
     ],
   },
-  trino: {
-    fields: [
-      { name: 'host', label: 'Host', type: 'text', required: true },
-      { name: 'port', label: 'Port', type: 'number', default: 8080 },
-      { name: 'database', label: 'Catalog', type: 'text', required: true },
-      { name: 'username', label: 'Username', type: 'text' },
-      { name: 'db_schema', label: 'Schema', type: 'text' },
-    ],
-  },
-  databricks: {
+  redshift: {
+    // Matches backend Pydantic model RedshiftSource
+    // (visivo/visivo/models/sources/redshift_source.py)
     fields: [
       {
         name: 'host',
         label: 'Host',
         type: 'text',
         required: true,
-        placeholder: 'adb-xxx.azuredatabricks.net',
+        placeholder: 'cluster.region.redshift.amazonaws.com',
       },
-      { name: 'http_path', label: 'HTTP Path', type: 'text', required: true },
-      { name: 'database', label: 'Database/Catalog', type: 'text', required: true },
-      { name: 'access_token', label: 'Access Token', type: 'password', required: true },
-      { name: 'db_schema', label: 'Schema', type: 'text' },
+      { name: 'port', label: 'Port', type: 'number', default: 5439 },
+      { name: 'database', label: 'Database', type: 'text', required: true },
+      { name: 'username', label: 'Username', type: 'text', required: true },
+      { name: 'password', label: 'Password', type: 'password' },
+      { name: 'db_schema', label: 'Schema', type: 'text', placeholder: 'public' },
+      { name: 'cluster_identifier', label: 'Cluster Identifier (IAM)', type: 'text' },
+      { name: 'region', label: 'AWS Region (IAM)', type: 'text', placeholder: 'us-east-1' },
+      { name: 'iam', label: 'Use IAM Auth', type: 'checkbox' },
+      { name: 'ssl', label: 'Use SSL', type: 'checkbox', default: true },
     ],
   },
 };
@@ -197,63 +195,91 @@ const SourceFormGenerator = ({ sourceType, values, onChange, errors = {} }) => {
 
   return (
     <div className="space-y-4">
-      {schema.fields.map(field => (
-        <div key={field.name} className="relative">
-          <input
-            type={getInputType(field)}
-            id={field.name}
-            name={field.name}
-            value={values[field.name] ?? field.default ?? ''}
-            onChange={e => {
-              const val =
-                field.type === 'number'
-                  ? e.target.value
-                    ? Number(e.target.value)
-                    : ''
-                  : e.target.value;
-              handleFieldChange(field.name, val);
-            }}
-            placeholder={field.placeholder || ''}
-            className={`
-              block w-full px-3 py-2.5 text-sm text-gray-900
-              bg-white rounded-md border appearance-none
-              focus:outline-none focus:ring-2 focus:border-primary-500
-              peer placeholder-transparent
-              ${field.type === 'password' ? 'pr-10' : ''}
-              ${
-                errors[field.name]
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-primary-500'
-              }
-            `}
-          />
-          {field.type === 'password' && (
-            <button
-              type="button"
-              onClick={() => toggleFieldVisibility(field.name)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-              title={visibleFields[field.name] ? 'Hide' : 'Show'}
+      {schema.fields.map(field => {
+        if (field.type === 'checkbox') {
+          const isChecked =
+            values[field.name] === undefined ? !!field.default : !!values[field.name];
+          return (
+            <div key={field.name} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id={field.name}
+                name={field.name}
+                checked={isChecked}
+                onChange={e => handleFieldChange(field.name, e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor={field.name} className="text-sm text-gray-700 select-none">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              {errors[field.name] && (
+                <p className="ml-2 text-xs text-red-500">{errors[field.name]}</p>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div key={field.name} className="relative">
+            <input
+              type={getInputType(field)}
+              id={field.name}
+              name={field.name}
+              value={values[field.name] ?? field.default ?? ''}
+              onChange={e => {
+                const val =
+                  field.type === 'number'
+                    ? e.target.value
+                      ? Number(e.target.value)
+                      : ''
+                    : e.target.value;
+                handleFieldChange(field.name, val);
+              }}
+              placeholder={field.placeholder || ''}
+              className={`
+                block w-full px-3 py-2.5 text-sm text-gray-900
+                bg-white rounded-md border appearance-none
+                focus:outline-none focus:ring-2 focus:border-primary-500
+                peer placeholder-transparent
+                ${field.type === 'password' ? 'pr-10' : ''}
+                ${
+                  errors[field.name]
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-primary-500'
+                }
+              `}
+            />
+            {field.type === 'password' && (
+              <button
+                type="button"
+                onClick={() => toggleFieldVisibility(field.name)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                title={visibleFields[field.name] ? 'Hide' : 'Show'}
+              >
+                {visibleFields[field.name] ? <EyeSlashIcon /> : <EyeIcon />}
+              </button>
+            )}
+            <label
+              htmlFor={field.name}
+              className={`
+                absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                bg-white px-1 left-2
+                peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
+                peer-placeholder-shown:top-1/2
+                peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
+                ${errors[field.name] ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
+              `}
             >
-              {visibleFields[field.name] ? <EyeSlashIcon /> : <EyeIcon />}
-            </button>
-          )}
-          <label
-            htmlFor={field.name}
-            className={`
-              absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-              bg-white px-1 left-2
-              peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-              peer-placeholder-shown:top-1/2
-              peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4
-              ${errors[field.name] ? 'text-red-500' : 'text-gray-500 peer-focus:text-primary-500'}
-            `}
-          >
-            {field.label}
-            {field.required && <span className="text-red-500 ml-0.5">*</span>}
-          </label>
-          {errors[field.name] && <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>}
-        </div>
-      ))}
+              {field.label}
+              {field.required && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            {errors[field.name] && (
+              <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

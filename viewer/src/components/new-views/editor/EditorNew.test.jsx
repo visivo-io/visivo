@@ -7,6 +7,17 @@ import useStore from '../../../stores/store';
 // Mock the store
 jest.mock('../../../stores/store');
 
+// Mock the shared source-modal store hook
+const mockOpenSourceModal = jest.fn();
+const mockCloseSourceModal = jest.fn();
+jest.mock('../../../stores/sourceModalStore', () => ({
+  useSourceCreationModal: () => ({
+    isOpen: false,
+    open: mockOpenSourceModal,
+    close: mockCloseSourceModal,
+  }),
+}));
+
 // Mock Material UI icons used in child components
 jest.mock('@mui/icons-material/Storage', () => () => <span data-testid="storage-icon" />);
 jest.mock('@mui/icons-material/TableChart', () => () => <span data-testid="table-icon" />);
@@ -331,5 +342,22 @@ describe('EditorNew', () => {
     // Check that the counts are displayed (Sources (2) and Models (1))
     expect(screen.getByText('Sources (2)')).toBeInTheDocument();
     expect(screen.getByText('Models (1)')).toBeInTheDocument();
+  });
+
+  it('opens shared SourceCreationModal when FAB → Source is selected', async () => {
+    render(<EditorNew />);
+
+    // FAB is the floating button at the bottom-right; aria title is the
+    // initial "Create new object" tooltip
+    const fab = screen.getByTitle('Create new object');
+    fireEvent.click(fab);
+
+    // Click the "Source" option in the create menu
+    const sourceOption = screen.getByRole('button', { name: /^Source$/ });
+    fireEvent.click(sourceOption);
+
+    expect(mockOpenSourceModal).toHaveBeenCalled();
+    // Should NOT route through the in-Editor edit panel
+    expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
   });
 });
