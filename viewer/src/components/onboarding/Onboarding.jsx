@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import logo from '../../images/logo.png';
 import ProjectModal from './ProjectModal';
-import SourceEditForm from '../new-views/common/SourceEditForm';
 import Loading from '../common/Loading';
 import { faArrowRight, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useStore from '../../stores/store';
+import { useSourceCreationModal } from '../../stores/sourceModalStore';
 import { Navigate } from 'react-router-dom';
 import FeatureCard from './FeatureCard';
 import { Toast } from 'flowbite-react';
@@ -23,7 +23,6 @@ const Onboarding = () => {
   const [projectName, setProjectName] = useState('');
   const [showNameModal, setShowNameModal] = useState(false);
   const [tempProjectName, setTempProjectName] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('Creating project ...');
   const [loadingAction, setLoadingAction] = useState('');
@@ -36,6 +35,9 @@ const Onboarding = () => {
   const project = useStore(state => state.project);
   const fetchProject = useStore(state => state.fetchProject);
   const projectDir = project?.project_json?.project_dir ?? '';
+
+  // Shared, app-level source-creation modal (rendered in LocalProviders).
+  const { open: openSourceCreationModal } = useSourceCreationModal();
 
   useEffect(() => {
     if (!projectName) {
@@ -63,10 +65,6 @@ const Onboarding = () => {
       setProjectName(trimmedName);
       setShowNameModal(false);
     }
-  };
-
-  const handleToggleSourceModal = () => {
-    setIsCreateModalOpen(prev => !prev);
   };
 
   const safeAppend = (key, value, formData) => {
@@ -145,38 +143,47 @@ const Onboarding = () => {
     return data;
   };
 
-  const handleAddDataSource = async data => {
-    const { config } = data;
-    setLoadingAction(ACTIONS.DATA_SOURCE);
-    setIsLoading(true);
+  const handleAddDataSource = useCallback(
+    async (_type, _name, config) => {
+      setLoadingAction(ACTIONS.DATA_SOURCE);
+      setIsLoading(true);
 
-    try {
-      setLoadingText('Connecting source...');
-      const source = await createSource(config);
+      try {
+        setLoadingText('Connecting source...');
+        const source = await createSource(config);
 
-      let dashboard = null;
+        let dashboard = null;
 
-      if (config?.file) {
-        setLoadingText('Uploading file...');
-        dashboard = await uploadSourceFile(config);
+        if (config?.file) {
+          setLoadingText('Uploading file...');
+          dashboard = await uploadSourceFile(config);
+        }
+
+        setLoadingText('Finalizing project...');
+        await finalizeProject(config, source, dashboard);
+
+        setLoadingText('Preparing dashboards...');
+        // Refresh the project state so isNewProject triggers the redirect away
+        // from /onboarding once the modal closes.
+        await fetchProject();
+
+        setIsLoading(false);
+        return { success: true };
+      } catch (err) {
+        const message = err?.message ?? 'An unexpected error occurred.';
+        setErrorMessage(message);
+        setShowErrorToast(true);
+        setIsLoading(false);
+        return { success: false, error: message };
       }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectName, projectDir, fetchProject]
+  );
 
-      setLoadingText('Finalizing project...');
-      await finalizeProject(config, source, dashboard);
-
-      setLoadingText('Preparing dashboards...');
-      // Refresh the project state to update isNewProject which will trigger navigation
-      await fetchProject();
-
-      // Loading will be hidden by the navigation that happens when isNewProject becomes false
-      setIsLoading(false);
-    } catch (err) {
-      const message = err?.message ?? 'An unexpected error occurred.';
-      setErrorMessage(message);
-      setShowErrorToast(true);
-      setIsLoading(false);
-    }
-  };
+  const handleOpenSourceModal = useCallback(() => {
+    openSourceCreationModal({ onSave: handleAddDataSource });
+  }, [openSourceCreationModal, handleAddDataSource]);
 
   const handleLoadExample = async (exampleType = selectedExample) => {
     setLoadingAction(exampleType);
@@ -231,34 +238,6 @@ const Onboarding = () => {
           </Toast>
         </div>
       )}
-      {isCreateModalOpen && (
-        <div
-          data-testid="create-object-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-        >
-          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <button
-              onClick={handleToggleSourceModal}
-              className="absolute right-4 top-4 z-10 rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Close"
-            >
-              <HiX className="h-5 w-5" />
-            </button>
-            <div className="p-6">
-              <h2 className="mb-4 text-xl font-semibold text-gray-900">Add Data Source</h2>
-              <SourceEditForm
-                isCreate
-                onClose={handleToggleSourceModal}
-                onSave={async (_type, _name, config) => {
-                  await handleAddDataSource({ config });
-                  return { success: true };
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="fixed top-4 left-4 z-10">
         <div className="inline-flex items-center px-6 py-3 bg-white rounded-full shadow-lg border border-gray-200">
           <div className="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse" />
@@ -418,7 +397,7 @@ const Onboarding = () => {
 
             <div className="flex justify-center">
               <button
-                onClick={handleToggleSourceModal}
+                onClick={handleOpenSourceModal}
                 className="px-12 py-3 text-lg font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
                 disabled={isLoading}
               >
