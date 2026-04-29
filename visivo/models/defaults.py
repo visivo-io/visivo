@@ -72,6 +72,15 @@ class Defaults(BaseModel):
         "When set to false, no telemetry data will be sent. "
         "Can also be disabled globally via VISIVO_TELEMETRY_DISABLED environment variable.",
     )
+    draft_mode_enabled: Optional[bool] = Field(
+        None,
+        description="When true, edits made in the viewer go to a draft cache; "
+        "explicit Publish is required to write YAML. When false (default for new projects), "
+        "edits write directly to YAML on save. When None (default), the value is "
+        "auto-derived from project state: fresh projects with no models, insights, "
+        "or dashboards default to immediate-write (False); projects with content "
+        "default to draft mode (True).",
+    )
 
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))
