@@ -47,19 +47,97 @@ def get_env_content_for_example_type(example_type: str) -> str:
             return "# Add any required environment variables here"
 
 
+SCAFFOLD_TEMPLATE = """\
+# Visivo project file. Edit this directly or use `visivo serve` to author in the browser.
+name: {project_name}
+
+sources:
+  # A Source is where your data lives - a database or file.
+  # Uncomment and edit, or use the in-browser wizard.
+  #
+  # - name: my_db
+  #   type: sqlite
+  #   database: /path/to/file.db
+
+models:
+  # A Model is a SQL query saved against a Source.
+  #
+  # - name: monthly_revenue
+  #   source: ${{ref(my_db)}}
+  #   sql: |
+  #     SELECT date_trunc('month', order_date) AS month,
+  #            SUM(amount) AS revenue
+  #     FROM orders
+  #     GROUP BY 1
+
+insights:
+  # An Insight is a chart configured against a Model.
+  #
+  # - name: revenue_by_month
+  #   props:
+  #     type: bar
+  #     x: ?{{ ${{ref(monthly_revenue).month}} }}
+  #     y: ?{{ ${{ref(monthly_revenue).revenue}} }}
+
+dashboards:
+  # A Dashboard arranges Insights into a layout.
+  #
+  # - name: my_dashboard
+  #   rows:
+  #     - height: medium
+  #       items:
+  #         - width: 1
+  #           insight: ${{ref(revenue_by_month)}}
+"""
+
+GITIGNORE_CONTENT = """\
+target/
+.visivo/
+.env
+*.duckdb
+.DS_Store
+"""
+
+ENV_EXAMPLE_CONTENT = """\
+# Put data-source secrets here. Reference in YAML as ${ env_var('NAME') }.
+"""
+
+
+def _write_if_missing(path: str, content: str) -> bool:
+    """Write file at path with given content only if path does not exist.
+
+    Returns True if file was written, False if it already existed.
+    """
+    if os.path.exists(path):
+        return False
+    with open(path, "w") as fp:
+        fp.write(content)
+    return True
+
+
 def create_basic_project(project_name: str, project_dir: str = "."):
     """Create a basic empty project with just name and structure."""
     Logger.instance().success(f"Initializing project '{project_name}' in {project_dir}")
 
-    # Create basic project structure
-    project = Project(name=project_name)
+    # Ensure project_dir exists
+    os.makedirs(project_dir, exist_ok=True)
 
-    # Write project file
+    # Write project file with scaffolded YAML (commented examples)
     project_file_path = os.path.join(project_dir, "project.visivo.yml")
     with open(project_file_path, "w") as fp:
-        fp.write(yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False))
+        fp.write(SCAFFOLD_TEMPLATE.format(project_name=project_name))
 
     Logger.instance().success(f"Created project file: {project_file_path}")
+
+    # Write sibling files (only if they don't already exist)
+    gitignore_path = os.path.join(project_dir, ".gitignore")
+    if _write_if_missing(gitignore_path, GITIGNORE_CONTENT):
+        Logger.instance().success(f"Created .gitignore: {gitignore_path}")
+
+    env_example_path = os.path.join(project_dir, ".env.example")
+    if _write_if_missing(env_example_path, ENV_EXAMPLE_CONTENT):
+        Logger.instance().success(f"Created .env.example: {env_example_path}")
+
     return project_file_path
 
 
