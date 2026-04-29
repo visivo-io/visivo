@@ -32,9 +32,11 @@ const Onboarding = () => {
   const [selectedExample] = useState(ACTIONS.GITHUB_RELEASE);
 
   const isNewProject = useStore(state => state.isNewProject);
+  const isOnboardingRequested = useStore(state => state.isOnboardingRequested);
   const isOnBoardingLoading = useStore(state => state.isOnBoardingLoading);
   const project = useStore(state => state.project);
   const fetchProject = useStore(state => state.fetchProject);
+  const markOnboardingCompleted = useStore(state => state.markOnboardingCompleted);
   const projectDir = project?.project_json?.project_dir ?? '';
 
   useEffect(() => {
@@ -168,6 +170,9 @@ const Onboarding = () => {
       // Refresh the project state to update isNewProject which will trigger navigation
       await fetchProject();
 
+      // Mark onboarding as completed so we don't bounce back here next visit
+      markOnboardingCompleted();
+
       // Loading will be hidden by the navigation that happens when isNewProject becomes false
       setIsLoading(false);
     } catch (err) {
@@ -200,8 +205,14 @@ const Onboarding = () => {
       setShowErrorToast(true);
       closeLoading();
     } else {
+      // Mark onboarding as completed so future visits don't redirect here
+      markOnboardingCompleted();
       setLoadingText('Preparing project ...');
     }
+  };
+
+  const handleSkipOnboarding = () => {
+    markOnboardingCompleted();
   };
 
   const isLoadingAction = action => isLoading && loadingAction === action;
@@ -214,7 +225,7 @@ const Onboarding = () => {
     );
   }
 
-  if (!isNewProject) return <Navigate to="/" replace />;
+  if (!isNewProject && !isOnboardingRequested) return <Navigate to="/" replace />;
 
   return (
     <>
@@ -439,6 +450,17 @@ const Onboarding = () => {
 
         {/* Feature Cards */}
         <FeatureCard />
+
+        <div className="w-full flex justify-center mt-2 mb-6">
+          <button
+            type="button"
+            onClick={handleSkipOnboarding}
+            className="text-sm text-gray-600 hover:text-gray-900 underline"
+            data-testid="skip-onboarding-button"
+          >
+            Skip onboarding
+          </button>
+        </div>
       </div>
 
       {showNameModal && (
