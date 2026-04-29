@@ -3,6 +3,7 @@ import Breadcrumbs from './common/Breadcrumbs';
 import ProjectHistory from './project/ProjectHistory';
 import { useLoaderData } from 'react-router-dom';
 import Error from './styled/Error';
+import CompileErrorBanner from './common/CompileErrorBanner';
 import TopNav from './common/TopNav';
 import { HiTemplate } from 'react-icons/hi';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
@@ -122,6 +123,7 @@ const Home = () => {
           </div>
         )}
         {error && error.message && <Error>{error.message}</Error>}
+        <CompileErrorBanner />
         {isRoot ? renderNavigationCards() : <Outlet />}
       </div>
     </div>
