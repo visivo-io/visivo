@@ -1,5 +1,5 @@
-from typing import Optional, List, Set
-from pydantic import Field
+from typing import Optional, List, Set, Any
+from pydantic import Field, model_validator
 from visivo.models.base.project_dag import ProjectDag
 from visivo.models.interaction import InsightInteraction
 from visivo.models.props.insight_props import InsightProps
@@ -11,6 +11,47 @@ from visivo.query.insight.insight_query_info import InsightQueryInfo
 from visivo.models.dag import all_descendants_of_type
 from visivo.jobs.utils import get_source_for_model
 from visivo.logger.logger import Logger
+
+INSIGHT_DOCS_URL = "https://docs.visivo.io/reference/configuration/Insight/"
+
+# Common new-user mistakes: top-level fields that belong inside `props` (or aren't
+# Insight fields at all). We intercept these before Pydantic emits its generic
+# "Extra inputs are not permitted" error.
+_INSIGHT_TOP_LEVEL_MISPLACED_FIELDS = {
+    "model": (
+        "`model` is not a field on Insight. Reference your model from inside `props`, "
+        "e.g. `props.x: ?{ ${ref(my_model).column} }`. "
+        f"See {INSIGHT_DOCS_URL}."
+    ),
+    "type": ("`type` belongs inside `props`, e.g. `props.type: bar`. " f"See {INSIGHT_DOCS_URL}."),
+    "x": (
+        "`x` belongs inside `props`, e.g. `props.x: ?{ column_name }`. " f"See {INSIGHT_DOCS_URL}."
+    ),
+    "y": (
+        "`y` belongs inside `props`, e.g. `props.y: ?{ column_name }`. " f"See {INSIGHT_DOCS_URL}."
+    ),
+    "columns": (
+        "`columns` is not a field on Insight. Define your aggregations inline in "
+        "`props` query strings, e.g. `props.y: ?{ sum(amount) }`. "
+        f"See {INSIGHT_DOCS_URL}."
+    ),
+    "filters": (
+        "`filters` is not a top-level field on Insight. Use the `interactions` "
+        "list with a `filter` entry, e.g. "
+        "`interactions: [ {filter: ?{ amount > 0 }} ]`. "
+        f"See {INSIGHT_DOCS_URL}."
+    ),
+    "cohort_on": (
+        "`cohort_on` is from the legacy Trace API. Use `interactions` with a "
+        "`split` entry instead, e.g. `interactions: [ {split: ?{ region }} ]`. "
+        f"See {INSIGHT_DOCS_URL}."
+    ),
+}
+
+_AVAILABLE_PROP_TYPES = (
+    "bar, scatter, line, pie, area, indicator, heatmap, histogram, "
+    "box, violin, table, treemap, sunburst, waterfall, funnel"
+)
 
 
 class Insight(NamedModel, ParentModel):
@@ -88,6 +129,35 @@ class Insight(NamedModel, ParentModel):
         None,
         description="Leverage Inputs to create client-side interactions that will be applied to the insight data.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_misplaced_top_level_fields(cls, data: Any) -> Any:
+        """Catch the most common new-user mistakes before Pydantic's generic
+        ``extra='forbid'`` error fires.
+
+        Examples we hand-curate:
+        - ``model:`` at the top level (belongs inside ``props`` references)
+        - ``type:`` at the top level (belongs inside ``props.type``)
+        - Legacy Trace fields like ``columns``, ``filters``, ``cohort_on``
+        """
+        if not isinstance(data, dict):
+            return data
+
+        for field, message in _INSIGHT_TOP_LEVEL_MISPLACED_FIELDS.items():
+            if field in data:
+                raise ValueError(message)
+
+        # Augment the missing-props.type error with a list of valid types so users
+        # don't have to dig through docs to find a working value.
+        props = data.get("props")
+        if isinstance(props, dict) and "type" not in props:
+            raise ValueError(
+                f"`props.type` is required. Available chart types: "
+                f"{_AVAILABLE_PROP_TYPES}. See {INSIGHT_DOCS_URL}."
+            )
+
+        return data
 
     def child_items(self):
         """Return child items for DAG construction.
