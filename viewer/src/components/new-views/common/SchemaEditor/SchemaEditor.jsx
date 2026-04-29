@@ -19,6 +19,11 @@ import {
  * @param {Array<string>} props.initiallyExpanded - Properties to show by default
  * @param {boolean} props.disabled - Whether the editor is disabled
  * @param {boolean} props.droppable - Whether property rows support DnD drops
+ * @param {Array<string>|null} props.filterToKeys - When non-empty, restricts the
+ *   visible/pickable property list to these dot-notation paths. When null or
+ *   undefined, shows all properties (current behavior).
+ * @param {boolean} props.hidePropertyCount - When true, suppresses the built-in
+ *   "X of Y properties" summary (caller is rendering its own count UI).
  */
 export function SchemaEditor({
   schema,
@@ -28,6 +33,8 @@ export function SchemaEditor({
   initiallyExpanded = [],
   disabled = false,
   droppable = false,
+  filterToKeys = null,
+  hidePropertyCount = false,
 }) {
   const [addedProperties, setAddedProperties] = useState(() => new Set(initiallyExpanded));
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
@@ -37,8 +44,15 @@ export function SchemaEditor({
   const allProperties = useMemo(() => {
     if (!schema) return [];
     const flattened = flattenSchemaProperties(schema, '', defs);
-    return flattened.filter(prop => !excludeProperties.includes(prop.path.split('.')[0]));
-  }, [schema, defs, excludeProperties]);
+    const afterExcludes = flattened.filter(
+      prop => !excludeProperties.includes(prop.path.split('.')[0])
+    );
+    if (Array.isArray(filterToKeys) && filterToKeys.length > 0) {
+      const allowed = new Set(filterToKeys);
+      return afterExcludes.filter(prop => allowed.has(prop.path));
+    }
+    return afterExcludes;
+  }, [schema, defs, excludeProperties, filterToKeys]);
 
   const displayedProperties = useMemo(() => {
     return allProperties.filter(prop => addedProperties.has(prop.path));
@@ -145,9 +159,11 @@ export function SchemaEditor({
           {showPropertyPicker ? 'Hide Properties' : 'Add Properties'}
         </button>
 
-        <span className="ml-auto text-xs text-gray-500">
-          {displayedProperties.length} of {allProperties.length} properties
-        </span>
+        {!hidePropertyCount && (
+          <span className="ml-auto text-xs text-gray-500">
+            {displayedProperties.length} of {allProperties.length} properties
+          </span>
+        )}
       </div>
 
       {/* Property search/picker */}

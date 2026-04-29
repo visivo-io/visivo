@@ -8,6 +8,29 @@ import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
 import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
 import RefTextArea from '../new-views/common/RefTextArea';
+import PropertyFilter from './PropertyFilter';
+import { getEssentialsForChartType } from './chartTypeEssentials';
+
+const PROPERTY_FILTER_STORAGE_PREFIX = 'visivo_property_filter_mode_';
+
+const readPersistedFilterMode = (insightType) => {
+  if (typeof window === 'undefined' || !window.localStorage) return 'essentials';
+  try {
+    const stored = window.localStorage.getItem(`${PROPERTY_FILTER_STORAGE_PREFIX}${insightType}`);
+    return stored === 'all' ? 'all' : 'essentials';
+  } catch (_e) {
+    return 'essentials';
+  }
+};
+
+const persistFilterMode = (insightType, mode) => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(`${PROPERTY_FILTER_STORAGE_PREFIX}${insightType}`, mode);
+  } catch (_e) {
+    // localStorage write failures (quota, private mode) are non-fatal
+  }
+};
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
   const { isOver, setNodeRef } = useDroppable({
@@ -98,6 +121,42 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
   const type = insightState?.type || 'scatter';
   const props = insightState?.props || {};
   const interactions = insightState?.interactions || [];
+
+  const [filterMode, setFilterMode] = useState(() => readPersistedFilterMode(type));
+
+  // Resync filterMode when the chart type changes (e.g., user switches scatter -> bar).
+  // Each chart type has its own persisted preference.
+  useEffect(() => {
+    setFilterMode(readPersistedFilterMode(type));
+  }, [type]);
+
+  const handleFilterModeChange = useCallback(
+    (newMode) => {
+      setFilterMode(newMode);
+      persistFilterMode(type, newMode);
+    },
+    [type]
+  );
+
+  const essentialPaths = useMemo(() => getEssentialsForChartType(type), [type]);
+
+  const allPropertyPaths = useMemo(() => {
+    if (!schema) return [];
+    const defs = schema.$defs || {};
+    return flattenSchemaProperties(schema, '', defs)
+      .filter((p) => p.path !== 'type')
+      .map((p) => p.path);
+  }, [schema]);
+
+  const totalPropertyCount = allPropertyPaths.length;
+
+  const availableEssentialPaths = useMemo(() => {
+    if (!schema) return essentialPaths;
+    const allowed = new Set(allPropertyPaths);
+    return essentialPaths.filter((p) => allowed.has(p));
+  }, [schema, essentialPaths, allPropertyPaths]);
+
+  const essentialPropertyCount = availableEssentialPaths.length;
 
   useEffect(() => {
     let cancelled = false;
@@ -313,7 +372,17 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
 
           {/* Properties (SchemaEditor) */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Properties</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-600">Properties</label>
+              {schema && (
+                <PropertyFilter
+                  totalCount={totalPropertyCount}
+                  essentialCount={essentialPropertyCount}
+                  mode={filterMode}
+                  onChange={handleFilterModeChange}
+                />
+              )}
+            </div>
             <SchemaEditor
               schema={schema}
               value={props}
@@ -321,6 +390,8 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
               excludeProperties={['type']}
               initiallyExpanded={requiredFieldNames}
               droppable={true}
+              filterToKeys={filterMode === 'essentials' ? availableEssentialPaths : null}
+              hidePropertyCount={true}
             />
           </div>
 
