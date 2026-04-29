@@ -160,13 +160,14 @@ describe('LineageNew', () => {
     useLineageDag.mockReturnValue(emptyDagData);
   });
 
-  it('renders empty state when no sources or models exist', async () => {
+  it('renders empty-state CTA when no sources or models exist', async () => {
     render(<LineageNew />);
 
     expect(await screen.findByText('No sources or models yet')).toBeInTheDocument();
     expect(
-      screen.getByText('Click the + button to create your first source or model')
+      screen.getByText('Connect data, then build models, insights, and dashboards.')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-primary')).toHaveTextContent('Add Source');
   });
 
   it('fetches all object types on mount', async () => {

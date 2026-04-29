@@ -7,7 +7,7 @@ import { getEnabledTypes } from './objectTypeConfigs';
  * CreateButton - Floating action button with object type menu
  * Used by both LineageNew and EditorNew views
  */
-const CreateButton = ({ objectTypes = getEnabledTypes(), onSelect }) => {
+const CreateButton = ({ objectTypes = getEnabledTypes(), onSelect, testId }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleSelect = objectType => {
@@ -16,7 +16,7 @@ const CreateButton = ({ objectTypes = getEnabledTypes(), onSelect }) => {
   };
 
   return (
-    <div className="absolute bottom-6 right-6 z-10">
+    <div className="absolute bottom-6 right-6 z-10" data-testid={testId}>
       {/* Object type menu (appears above FAB when open) */}
       {isMenuOpen && (
         <div className="absolute bottom-16 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-40">
