@@ -124,66 +124,31 @@ class TestPreviewTableRowsHelper:
 
     def test_clamps_limit_above_1000(self, integration_app):
         sources = integration_app.source_manager.get_sources_list()
-        result = preview_table_rows(
-            sources,
-            SOURCE_NAME,
-            DB_NAME,
-            TABLE_NAME,
-            None,
-            5000,
-        )
+        result = preview_table_rows(sources, SOURCE_NAME, DB_NAME, TABLE_NAME, None, 5000,)
         assert result["limit"] == 1000
 
     def test_clamps_limit_below_one(self, integration_app):
         sources = integration_app.source_manager.get_sources_list()
-        result = preview_table_rows(
-            sources,
-            SOURCE_NAME,
-            DB_NAME,
-            TABLE_NAME,
-            None,
-            0,
-        )
+        result = preview_table_rows(sources, SOURCE_NAME, DB_NAME, TABLE_NAME, None, 0,)
         assert result["limit"] == 1
 
     def test_handles_non_int_limit(self, integration_app):
         sources = integration_app.source_manager.get_sources_list()
-        result = preview_table_rows(
-            sources,
-            SOURCE_NAME,
-            DB_NAME,
-            TABLE_NAME,
-            None,
-            "bogus",
-        )
+        result = preview_table_rows(sources, SOURCE_NAME, DB_NAME, TABLE_NAME, None, "bogus",)
         # Falls back to default (100) which is then satisfied by the seed data
         assert result["limit"] == 100
 
     def test_truncated_flag_when_limit_below_total(self, integration_app):
         # The seeded test_table has 6 rows; limit=2 should mark truncated.
         sources = integration_app.source_manager.get_sources_list()
-        result = preview_table_rows(
-            sources,
-            SOURCE_NAME,
-            DB_NAME,
-            TABLE_NAME,
-            None,
-            2,
-        )
+        result = preview_table_rows(sources, SOURCE_NAME, DB_NAME, TABLE_NAME, None, 2,)
         assert result["limit"] == 2
         assert result["row_count"] == 2
         assert result["truncated"] is True
 
     def test_truncated_flag_false_when_under_limit(self, integration_app):
         sources = integration_app.source_manager.get_sources_list()
-        result = preview_table_rows(
-            sources,
-            SOURCE_NAME,
-            DB_NAME,
-            TABLE_NAME,
-            None,
-            500,
-        )
+        result = preview_table_rows(sources, SOURCE_NAME, DB_NAME, TABLE_NAME, None, 500,)
         # 6 < 500, so truncated should be False
         assert result["truncated"] is False
         assert result["row_count"] == 6

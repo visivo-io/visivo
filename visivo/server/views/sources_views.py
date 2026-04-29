@@ -117,10 +117,7 @@ def register_source_views(app, flask_app, output_dir):
         try:
             # Use source_manager to include both cached and published sources
             result = get_table_columns(
-                flask_app.source_manager.get_sources_list(),
-                source_name,
-                database_name,
-                table_name,
+                flask_app.source_manager.get_sources_list(), source_name, database_name, table_name,
             )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]

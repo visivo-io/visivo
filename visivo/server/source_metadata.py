@@ -229,12 +229,7 @@ PREVIEW_LIMIT_MAX = 1000
 
 
 def preview_table_rows(
-    sources,
-    source_name,
-    database_name,
-    table_name,
-    schema_name=None,
-    limit=100,
+    sources, source_name, database_name, table_name, schema_name=None, limit=100,
 ):
     """Return the first ``limit`` rows of a table as a list of dicts.
 
@@ -275,10 +270,7 @@ def preview_table_rows(
     # (DuckDB attach, Redshift serialization, etc.) and uses parameterized
     # SQL via the source's read_sql() helper.
     result = src.get_table_preview(
-        database_name=database_name,
-        table_name=table_name,
-        schema_name=schema_name,
-        limit=limit,
+        database_name=database_name, table_name=table_name, schema_name=schema_name, limit=limit,
     )
 
     rows = result.get("rows", []) or []
