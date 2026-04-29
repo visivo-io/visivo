@@ -6,9 +6,14 @@ import InsightCRUDSection from './InsightCRUDSection';
 import useStore from '../../stores/store';
 
 jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
-  const MockSchemaEditor = ({ schema, value, onChange, droppable }) => {
+  const MockSchemaEditor = ({ schema, value, onChange, droppable, filterToKeys, hidePropertyCount }) => {
     return (
-      <div data-testid="schema-editor" data-droppable={droppable}>
+      <div
+        data-testid="schema-editor"
+        data-droppable={droppable}
+        data-filter-keys={filterToKeys ? JSON.stringify(filterToKeys) : 'null'}
+        data-hide-count={hidePropertyCount ? 'true' : 'false'}
+      >
         SchemaEditor: {JSON.stringify(value)}
       </div>
     );
@@ -22,7 +27,32 @@ jest.mock('../../schemas/schemas', () => ({
     { value: 'bar', label: 'Bar' },
     { value: 'pie', label: 'Pie' },
   ],
-  getSchema: jest.fn().mockResolvedValue({ properties: { x: {}, y: {} } }),
+  getSchema: jest.fn().mockResolvedValue({
+    properties: {
+      x: { type: 'array' },
+      y: { type: 'array' },
+      mode: { type: 'string' },
+      name: { type: 'string' },
+      hovertext: { type: 'string' },
+      hovertemplate: { type: 'string' },
+      marker: {
+        type: 'object',
+        properties: {
+          color: { type: 'string' },
+          size: { type: 'number' },
+          opacity: { type: 'number' },
+        },
+      },
+      line: {
+        type: 'object',
+        properties: {
+          color: { type: 'string' },
+          width: { type: 'number' },
+          shape: { type: 'string' },
+        },
+      },
+    },
+  }),
 }));
 
 jest.mock('../new-views/common/insightRequiredFields', () => ({
@@ -309,6 +339,105 @@ describe('InsightCRUDSection', () => {
     // the assertion in act() and lets the schema-fetch effect settle.
     await waitFor(() => {
       expect(screen.queryByTestId('insight-crud-section-nonexistent')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('property filter', () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it('renders PropertyFilter once schema loads', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const filter = await screen.findByTestId('property-filter');
+      expect(filter).toBeInTheDocument();
+    });
+
+    it('defaults to "essentials" mode and passes essential paths to SchemaEditor', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const editor = await screen.findByTestId('schema-editor');
+      const filterKeys = JSON.parse(editor.getAttribute('data-filter-keys'));
+      // For scatter type, essentials are intersected with the schema properties.
+      // The mocked schema includes x, y, mode, name, marker.color, marker.size, line.color, line.width
+      expect(Array.isArray(filterKeys)).toBe(true);
+      expect(filterKeys).toContain('x');
+      expect(filterKeys).toContain('y');
+      expect(filterKeys).toContain('marker.color');
+      expect(filterKeys).toContain('line.width');
+    });
+
+    it('passes null filterToKeys to SchemaEditor in "all" mode', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const toggle = await screen.findByTestId('property-filter-toggle');
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        const editor = screen.getByTestId('schema-editor');
+        expect(editor.getAttribute('data-filter-keys')).toBe('null');
+      });
+    });
+
+    it('toggles between modes when the toggle button is clicked', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const filter = await screen.findByTestId('property-filter');
+      expect(filter).toHaveTextContent('essential propert');
+      const toggle = screen.getByTestId('property-filter-toggle');
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(screen.getByTestId('property-filter')).toHaveTextContent('total properties');
+      });
+      fireEvent.click(screen.getByTestId('property-filter-toggle'));
+      await waitFor(() => {
+        expect(screen.getByTestId('property-filter')).toHaveTextContent('essential propert');
+      });
+    });
+
+    it('persists toggle choice to localStorage per chart type', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const toggle = await screen.findByTestId('property-filter-toggle');
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(window.localStorage.getItem('visivo_property_filter_mode_scatter')).toBe('all');
+      });
+    });
+
+    it('reads persisted mode from localStorage on mount', async () => {
+      window.localStorage.setItem('visivo_property_filter_mode_scatter', 'all');
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const filter = await screen.findByTestId('property-filter');
+      expect(filter).toHaveTextContent('total properties');
+    });
+
+    it('sets hidePropertyCount=true on the SchemaEditor', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const editor = await screen.findByTestId('schema-editor');
+      expect(editor.getAttribute('data-hide-count')).toBe('true');
+    });
+
+    it('shows essential count and total count in the filter summary', async () => {
+      render(
+        <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
+      );
+      const filter = await screen.findByTestId('property-filter');
+      // The mocked scatter schema has 8 essentials (x, y, mode, name, marker.color, marker.size, line.color, line.width)
+      expect(filter).toHaveTextContent('8');
+      const toggle = screen.getByTestId('property-filter-toggle');
+      // The toggle in essentials mode shows "Show all (N)" with the total count.
+      // Mocked schema flattens to: x, y, mode, name, hovertext, hovertemplate, marker.color, marker.size, marker.opacity, line.color, line.width, line.shape -> 12 total
+      expect(toggle).toHaveTextContent('Show all (12)');
     });
   });
 });
