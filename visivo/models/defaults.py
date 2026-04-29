@@ -38,8 +38,7 @@ class Defaults(BaseModel):
     """
 
     alert_name: Optional[str] = Field(
-        None,
-        description="The name of an alert defined elsewhere in the Visivo project.",
+        None, description="The name of an alert defined elsewhere in the Visivo project.",
     )
     source_name: Optional[str] = Field(
         None,
@@ -47,8 +46,7 @@ class Defaults(BaseModel):
         alias="target_name",
     )
     threads: Optional[int] = Field(
-        8,
-        description="The number of threads to use when running queries.",
+        8, description="The number of threads to use when running queries.",
     )
     levels: List[Level] = Field(
         default_factory=list,

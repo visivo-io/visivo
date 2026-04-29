@@ -42,11 +42,7 @@ class TestResolveDraftModeEnabled:
         """defaults.draft_mode_enabled=True wins even on a fresh project."""
         defaults = DefaultsFactory(draft_mode_enabled=True, source_name=None)
         project = ProjectFactory(
-            sources=[],
-            dashboards=[],
-            models=[],
-            insights=[],
-            defaults=defaults,
+            sources=[], dashboards=[], models=[], insights=[], defaults=defaults,
         )
         assert resolve_draft_mode_enabled(project) is True
 
@@ -119,11 +115,7 @@ class TestDraftModeEndpoint:
         create_file_database(url=source.url(), output_dir=output_dir)
         defaults = DefaultsFactory(draft_mode_enabled=True)
         project = ProjectFactory(
-            sources=[source],
-            dashboards=[],
-            models=[],
-            insights=[],
-            defaults=defaults,
+            sources=[source], dashboards=[], models=[], insights=[], defaults=defaults,
         )
         client = _make_client(project, output_dir)
 
