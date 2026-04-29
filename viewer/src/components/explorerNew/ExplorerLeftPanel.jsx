@@ -6,13 +6,16 @@ import {
   PiX,
   PiSpinner,
 } from 'react-icons/pi';
+import { HiDatabase } from 'react-icons/hi';
 import { useDraggable } from '@dnd-kit/core';
 import ObjectList from '../new-views/common/ObjectList';
 import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
 import SourceBrowser from './SourceBrowser';
+import EmptyStateCTA from '../common/EmptyStateCTA';
 import useStore from '../../stores/store';
 import { selectActiveModelSourceName } from '../../stores/explorerNewStore';
+import { useSourceCreationModal } from '../../stores/sourceModalStore';
 
 const SECTION_DEFS = [
   { id: 'source', label: 'Sources', storeKey: null },
@@ -72,6 +75,9 @@ const ExplorerLeftPanel = () => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
   const explorerModelStates = useStore((s) => s.explorerModelStates);
   const explorerInsightStates = useStore((s) => s.explorerInsightStates);
+
+  // Source creation modal — invoked from empty state CTA
+  const { open: openSourceModal } = useSourceCreationModal();
 
   // Object stores
   const models = useStore((s) => s.models || []);
@@ -456,11 +462,19 @@ const ExplorerLeftPanel = () => {
           filteredDimensions.length === 0 &&
           filteredInsights.length === 0 &&
           filteredCharts.length === 0 &&
-          filteredInputs.length === 0 && (
+          filteredInputs.length === 0 &&
+          (searchQuery ? (
             <div className="flex items-center justify-center h-32 text-xs text-secondary-400">
-              {searchQuery ? `No results for "${searchQuery}"` : 'No project objects defined'}
+              {`No results for "${searchQuery}"`}
             </div>
-          )}
+          ) : (
+            <EmptyStateCTA
+              icon={<HiDatabase className="w-12 h-12" />}
+              title="No data sources yet"
+              body="Connect a database or upload a CSV to start building."
+              primaryAction={{ label: 'Add Source', onClick: openSourceModal }}
+            />
+          ))}
       </div>
     </div>
   );
