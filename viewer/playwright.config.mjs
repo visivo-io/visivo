@@ -13,18 +13,21 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  // Three projects:
+  // Four projects:
   //   parallel        — read-only specs, sandbox on :3001 (integration project)
   //   state-mutating  — in-memory save specs, sandbox on :3001, runs after parallel
   //   publish         — file-mutating specs, isolated sandbox on :3002
   //                     (test-projects/explorer-publish-e2e) — runs serially
   //                     within itself but concurrently with the others.
+  //   empty-state     — empty-state CTA specs, isolated sandbox on :3013
+  //                     pointed at viewer/e2e/fixtures/empty-project
   projects: [
     {
       name: 'parallel',
       testIgnore: [
         '**/explorer-crud-save.spec.mjs',
         '**/explorer-publish-to-files.spec.mjs',
+        '**/empty-state-cta.spec.mjs',
       ],
     },
     {
@@ -40,6 +43,14 @@ export default defineConfig({
       workers: 1,
       // Retries would run against polluted backend cache from the failed
       // attempt, so they give no useful signal. Fail fast instead.
+      retries: 0,
+    },
+    {
+      name: 'empty-state',
+      testMatch: ['**/empty-state-cta.spec.mjs'],
+      use: { baseURL: 'http://localhost:3013' },
+      fullyParallel: false,
+      workers: 1,
       retries: 0,
     },
   ],
