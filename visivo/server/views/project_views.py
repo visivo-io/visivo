@@ -17,6 +17,7 @@ from visivo.models.source import CreateSourceRequest, SourceTypeEnum
 from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
+from visivo.server.draft_mode import resolve_draft_mode_enabled
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.views.utils import create_source_dashboard, load_csv, write_project_file
 from visivo.models.example_type import ExampleTypeEnum
@@ -38,6 +39,25 @@ def register_project_views(app, flask_app, output_dir):
             return jsonify(project_file_path)
         else:
             return jsonify({})
+
+    @app.route("/api/project/draft_mode/", methods=["GET"])
+    def draft_mode():
+        """Return the effective draft-mode flag for the current project.
+
+        When ``enabled`` is True, viewer "Save" pushes to a draft cache and
+        an explicit "Publish" must be invoked to write YAML on disk.
+        When False, "Save" writes directly to YAML.
+
+        The value comes from ``defaults.draft_mode_enabled`` when set
+        explicitly; otherwise it is derived from project state (fresh
+        projects default to immediate-write).
+        """
+        try:
+            enabled = resolve_draft_mode_enabled(flask_app._project)
+            return jsonify({"enabled": enabled})
+        except Exception as e:
+            Logger.instance().error(f"Error resolving draft mode: {str(e)}")
+            return jsonify({"enabled": True, "error": str(e)}), 500
 
     @app.route("/api/project/write_changes/", methods=["POST"])
     def write_changes():
