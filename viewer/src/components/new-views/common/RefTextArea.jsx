@@ -469,7 +469,15 @@ const RefTextArea = ({
   // Handle paste - parse for refs and render as pills
   const handlePaste = useCallback((e) => {
     e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
+    const raw = e.clipboardData.getData('text/plain');
+    if (!raw) return;
+
+    // RefTextArea owns the chip-body only. Slicing is authored
+    // separately via the SliceBadge component (see PropertyRow). Strip
+    // `[` and `]` from pasted content so a stray `[0]` in clipboard
+    // text never lands inside the chip body — that was the failure
+    // mode B13 fixed.
+    const text = raw.replace(/[[\]]/g, '');
     if (!text) return;
 
     const sel = window.getSelection();
@@ -498,6 +506,20 @@ const RefTextArea = ({
 
     serializeAndUpdate();
   }, [createPillElement, serializeAndUpdate]);
+
+  // RefTextArea is body-only — bracket characters are reserved for the
+  // SliceBadge's authored slice suffix. Block typed `[` and `]` at the
+  // input layer so the user has exactly one path to author a slice
+  // (the badge popover), matching the design call in
+  // ~/.claude/plans/warm-tickling-quail.md.
+  const handleBeforeInput = useCallback((e) => {
+    const inputType = e.nativeEvent?.inputType || e.inputType;
+    if (inputType !== 'insertText') return;
+    const data = e.nativeEvent?.data ?? e.data;
+    if (typeof data === 'string' && (data === '[' || data === ']')) {
+      e.preventDefault();
+    }
+  }, []);
 
   // Handle copy - serialize pills as ref strings
   const handleCopy = useCallback((e) => {
@@ -875,6 +897,7 @@ const RefTextArea = ({
           onClick={handleClick}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onBeforeInput={handleBeforeInput}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onPaste={handlePaste}

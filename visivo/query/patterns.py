@@ -144,10 +144,24 @@ CONTEXT_STRING_VALUE_PATTERN = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
 # Query and Column Patterns
 # ============================================================================
 
-# Query string pattern: ?{expression}
-# Used for inline query expressions in props
-# Example: ?{sum(amount)}
-QUERY_STRING_VALUE_PATTERN = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
+# Query string pattern: ?{expression} with an optional [index|slice] suffix.
+#
+# Supported forms:
+#   ?{expr}              -> whole array (existing)
+#   ?{expr}[N]           -> single positive or negative index → scalar
+#   ?{expr}[a:b]         -> slice → sub-array
+#   ?{expr}[a:b:c]       -> strided slice
+#   ?{expr}[a,b,c]       -> pick specific indices
+#
+# The expression body uses non-greedy matching so a trailing [...] is left for
+# the slice group rather than being absorbed. The slice group is captured by
+# name so consumers (extract_query_strings, post-query slicing in the insight
+# query builder) can read it back without re-parsing.
+QUERY_STRING_VALUE_PATTERN = (
+    r"^\?\{\s*(?P<query_string>.+?)\s*\}"
+    r"(?P<slice>\[(?:-?\d+|-?\d*:-?\d*(?::-?\d+)?|-?\d+(?:\s*,\s*-?\d+)+)\])?"
+    r"\s*$"
+)
 
 # Query function pattern: query(SELECT ...)
 QUERY_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$"

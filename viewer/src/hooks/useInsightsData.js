@@ -94,7 +94,16 @@ const extractInputDependencies = (query, staticProps = null, knownInputNames = n
  */
 const processInsight = async (db, insight, inputs, { forceReload = false } = {}) => {
   try {
-    const { name, files, query, props_mapping, split_key, type, static_props } = insight;
+    const {
+      name,
+      files,
+      query,
+      props_mapping,
+      split_key,
+      type,
+      static_props,
+      props_slices,
+    } = insight;
     const insightName = name;
 
     // Check for required inputs BEFORE loading parquet files
@@ -114,6 +123,10 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
           query,
           props_mapping,
           static_props,
+          // Per-prop slice expressions surfaced by the server when the
+          // user authored a ?{...}[N|a:b] form. Read in
+          // chartDataFromInsightData → applyPropsSlices.
+          props_slices,
           split_key,
           type,
           loaded: 0,
@@ -141,6 +154,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
         query,
         props_mapping,
         static_props, // Non-query props (e.g., marker.color: ["red", "green"])
+        props_slices, // Per-prop slice suffixes (B13)
         split_key,
         type, // Trace type (bar, scatter, etc.)
         loaded: loaded.length,
@@ -163,6 +177,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
         query: insight.query || null,
         props_mapping: insight.props_mapping || {},
         static_props: insight.static_props || {},
+        props_slices: insight.props_slices || {},
         split_key: insight.split_key || null,
         type: insight.type || null,
         loaded: 0,

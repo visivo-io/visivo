@@ -23,6 +23,12 @@ class FilteredRunner:
         self.working_dir = working_dir
         self.run_id = run_id
         self.project_dag = project.dag()
+        # Aggregated per-job results across every filtered DAG iteration.
+        # The preview executor reads these to surface the real upstream
+        # error when a soft-failure run leaves an insight's JSON
+        # unwritten (B13 follow-up).
+        self.failed_job_results = []
+        self.successful_job_results = []
 
     def run(self):
         for job_dag in self.project_dag.filter_dag(self.dag_filter):
@@ -37,3 +43,5 @@ class FilteredRunner:
                 run_id=self.run_id,
             )
             dag_runner.run()
+            self.failed_job_results.extend(dag_runner.failed_job_results)
+            self.successful_job_results.extend(dag_runner.successful_job_results)
