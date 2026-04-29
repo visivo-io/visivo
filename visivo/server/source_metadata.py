@@ -223,6 +223,80 @@ def get_table_columns(sources, source_name, database_name, table_name, schema_na
         )
 
 
+# Maximum number of rows allowed when previewing a table. Hard cap so callers
+# cannot exhaust memory by passing a huge ?limit= value.
+PREVIEW_LIMIT_MAX = 1000
+
+
+def preview_table_rows(
+    sources,
+    source_name,
+    database_name,
+    table_name,
+    schema_name=None,
+    limit=100,
+):
+    """Return the first ``limit`` rows of a table as a list of dicts.
+
+    Args:
+        sources: Iterable of available sources (typically from SourceManager).
+        source_name: Name of the source containing the table.
+        database_name: Database name (kept for parity with sibling endpoints).
+        table_name: Table to preview.
+        schema_name: Optional schema name. ``None`` for sources that do not
+            expose schemas (e.g., DuckDB, SQLite).
+        limit: Maximum rows to return. Clamped to ``[1, PREVIEW_LIMIT_MAX]``.
+
+    Returns:
+        Either a ``dict`` payload describing the preview, or a ``(dict, int)``
+        tuple ``(error_body, status_code)`` when the source cannot be found.
+    """
+    src = _find_source(sources, source_name)
+    if not src:
+        return _source_not_found_error(source_name)
+
+    # Clamp limit to a safe range. Negative / zero / non-int callers fall back
+    # to the default of 100.
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 100
+    if limit < 1:
+        limit = 1
+    if limit > PREVIEW_LIMIT_MAX:
+        limit = PREVIEW_LIMIT_MAX
+
+    Logger.instance().info(
+        f"Previewing {limit} rows for "
+        f"{source_name}.{database_name}.{schema_name or 'default'}.{table_name}"
+    )
+
+    # Reuse the source's own preview implementation which handles dialect quirks
+    # (DuckDB attach, Redshift serialization, etc.) and uses parameterized
+    # SQL via the source's read_sql() helper.
+    result = src.get_table_preview(
+        database_name=database_name,
+        table_name=table_name,
+        schema_name=schema_name,
+        limit=limit,
+    )
+
+    rows = result.get("rows", []) or []
+    column_names = result.get("columns") or (list(rows[0].keys()) if rows else [])
+
+    return {
+        "source": source_name,
+        "database": database_name,
+        "schema": schema_name,
+        "table": table_name,
+        "columns": [{"name": c, "type": "unknown"} for c in column_names],
+        "rows": rows,
+        "limit": limit,
+        "row_count": len(rows),
+        "truncated": len(rows) >= limit,
+    }
+
+
 def gather_source_metadata(sources):
     """Return metadata for all provided sources."""
     data = {"sources": []}
