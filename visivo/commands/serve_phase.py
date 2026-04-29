@@ -20,6 +20,7 @@ def serve_phase(
     project,
     server_url,
     new=False,
+    onboarding=False,
     no_deprecation_warnings=False,
 ):
 
@@ -98,7 +99,8 @@ def serve_phase(
                 Logger.instance().info("View your project at: " + server_url)
                 try:
                     if new:
-                        webbrowser.open(server_url, new=0, autoraise=True)
+                        open_url = f"{server_url}/?onboarding=1" if onboarding else server_url
+                        webbrowser.open(open_url, new=0, autoraise=True)
                 except Exception as e:
                     error_message = str(e)
                     if os.environ.get("STACKTRACE"):
