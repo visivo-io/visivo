@@ -20,10 +20,7 @@ def _post_upload_temp(client, content, filename, project_dir):
     """Helper to POST a file to the upload-temp endpoint."""
     return client.post(
         "/api/source/upload-temp/",
-        data={
-            "file": (io.BytesIO(content), filename),
-            "project_dir": project_dir,
-        },
+        data={"file": (io.BytesIO(content), filename), "project_dir": project_dir,},
         content_type="multipart/form-data",
     )
 
@@ -104,19 +101,14 @@ def test_upload_temp_400_when_empty_filename(integration_client, tmp_path):
     """Returns 400 when the file has no filename."""
     response = integration_client.post(
         "/api/source/upload-temp/",
-        data={
-            "file": (io.BytesIO(b"x"), ""),
-            "project_dir": str(tmp_path),
-        },
+        data={"file": (io.BytesIO(b"x"), ""), "project_dir": str(tmp_path),},
         content_type="multipart/form-data",
     )
 
     assert response.status_code == 400
 
 
-def test_upload_temp_uses_cwd_when_project_dir_missing(
-    integration_client, tmp_path, monkeypatch
-):
+def test_upload_temp_uses_cwd_when_project_dir_missing(integration_client, tmp_path, monkeypatch):
     """Falls back to os.getcwd() when project_dir is not supplied."""
     monkeypatch.chdir(tmp_path)
     content = b"y"
