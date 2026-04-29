@@ -122,6 +122,30 @@ const SOURCE_SCHEMAS = {
         placeholder: 'path/to/data.csv',
         accept: '.csv,.tsv',
       },
+      {
+        name: 'delimiter',
+        label: 'Delimiter',
+        type: 'text',
+        default: ',',
+        placeholder: ',',
+      },
+      {
+        name: 'encoding',
+        label: 'Encoding',
+        type: 'select',
+        default: 'utf-8',
+        options: [
+          { value: 'utf-8', label: 'UTF-8' },
+          { value: 'utf-16', label: 'UTF-16' },
+          { value: 'latin-1', label: 'Latin-1' },
+        ],
+      },
+      {
+        name: 'has_header',
+        label: 'File has a header row',
+        type: 'checkbox',
+        default: true,
+      },
     ],
   },
   trino: {
