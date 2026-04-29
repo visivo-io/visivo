@@ -22,6 +22,7 @@ const URL_PATTERNS = {
 
     writeChanges: '/api/project/write_changes/',
     projectFilePath: '/api/project/project_file_path/',
+    projectDraftMode: '/api/project/draft_mode/',
     sourcesMetadata: '/api/project/sources_metadata/',
     queryExecution: '/api/query/{projectId}/',
     traceQuery: '/api/trace/{traceName}/query/',
@@ -167,6 +168,7 @@ const URL_PATTERNS = {
     // Interactive endpoints not available in dist
     writeChanges: null,
     projectFilePath: null,
+    projectDraftMode: null,
     sourcesMetadata: null,
     queryExecution: null,
     traceQuery: null,
