@@ -5,8 +5,41 @@ from pydantic import model_validator
 from visivo.models.color_palette import ColorPalette
 from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
 
+LAYOUT_DOCS_URL = "https://docs.visivo.io/reference/configuration/Chart/Layout/"
+
 
 class Layout(JsonSchemaBase):
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_title_shape(cls, data: dict) -> dict:
+        """Catch the common new-user mistake of writing ``title: "string"`` at the
+        top level or under any ``axis``/``yaxis``/``xaxis`` key, which Plotly
+        rejects with an opaque schema-validation message."""
+        if not isinstance(data, dict):
+            return data
+
+        title_value = data.get("title")
+        if isinstance(title_value, str):
+            raise ValueError(
+                f'`layout.title` must be an object: `{{text: "{title_value}"}}`. '
+                f'Got string `"{title_value}"`. See {LAYOUT_DOCS_URL}.'
+            )
+
+        # Same mistake is common under axis configs (xaxis.title, yaxis.title,
+        # yaxis2.title, etc.).
+        for key, value in data.items():
+            if key.endswith("axis") or key.startswith(("xaxis", "yaxis")):
+                if isinstance(value, dict):
+                    sub_title = value.get("title")
+                    if isinstance(sub_title, str):
+                        raise ValueError(
+                            f"`layout.{key}.title` must be an object: "
+                            f'`{{text: "{sub_title}"}}`. Got string '
+                            f'`"{sub_title}"`. See {LAYOUT_DOCS_URL}.'
+                        )
+
+        return data
 
     @model_validator(mode="before")
     @classmethod
