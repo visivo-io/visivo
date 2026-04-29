@@ -16,6 +16,9 @@ const SchemaTreeNode = ({
   statusIcon,
   errorMessage,
   errorCollapsed = false,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
 }) => {
   const isExpandable = type !== 'column';
 
@@ -31,6 +34,9 @@ const SchemaTreeNode = ({
         aria-expanded={isExpandable ? isExpanded : undefined}
         data-testid={`tree-node-${type}-${label}`}
         title={errorMessage || undefined}
+        draggable={draggable || undefined}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
       >
         <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 mr-1">
           {isLoading ? (
