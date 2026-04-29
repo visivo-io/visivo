@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
-import { queryPropsHaveChanged, hashQueryProps, extractNonQueryProps } from '../utils/queryPropertyDetection';
+import {
+  queryPropsHaveChanged,
+  hashQueryProps,
+  extractNonQueryProps,
+  extractQueryAffectingProps,
+} from '../utils/queryPropertyDetection';
 import useStore from '../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -282,18 +287,45 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     runInstanceId,
   } = usePreviewJob();
 
-  const requestHash = useMemo(() => {
+  // The "run hash" hashes ONLY the parts of the request that affect
+  // the SQL pipeline: trace types, query-string props (?{...}), and
+  // interactions. Static prop changes (color, mode, delta.relative,
+  // axis labels, etc.) hash to the same value as before, so they
+  // don't trigger a re-run — the local-update effect below patches
+  // them into insightJobs directly. This avoids round-tripping
+  // through the backend for cosmetic edits that don't change the SQL
+  // or the data.
+  const runHash = useMemo(() => {
     if (!previewRequest || !previewRequest.insight_names?.length) return null;
-    return JSON.stringify(previewRequest);
+    const stripStatic = insight => {
+      const { props, ...rest } = insight;
+      const queryProps = props ? extractQueryAffectingProps(props) : {};
+      return {
+        ...rest,
+        // Keep type — different trace types resolve to different
+        // schemas, so a type swap should still re-run.
+        type: props?.type,
+        props: queryProps,
+      };
+    };
+    const insights = (previewRequest.context_objects?.insights || []).map(stripStatic);
+    return JSON.stringify({
+      insight_names: previewRequest.insight_names,
+      context_objects: {
+        ...previewRequest.context_objects,
+        insights,
+      },
+    });
   }, [previewRequest]);
 
   const [lastFiredHash, setLastFiredHash] = useState(null);
+  const [hasCompletedFirstRun, setHasCompletedFirstRun] = useState(false);
   const [localError, setLocalError] = useState(null);
   const fireRef = useRef(false);
 
   useEffect(() => {
-    if (!requestHash) return;
-    if (requestHash === lastFiredHash) return;
+    if (!runHash) return;
+    if (runHash === lastFiredHash) return;
     if (fireRef.current) return;
     if (isRunning) return;
 
@@ -302,7 +334,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
 
     startRun(previewRequest)
       .then(() => {
-        setLastFiredHash(requestHash);
+        setLastFiredHash(runHash);
       })
       .catch(err => {
         console.error('Failed to start chart preview run:', err);
@@ -311,7 +343,45 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
       .finally(() => {
         fireRef.current = false;
       });
-  }, [requestHash, previewRequest, startRun, isRunning, lastFiredHash]);
+  }, [runHash, previewRequest, startRun, isRunning, lastFiredHash]);
+
+  // Track whether at least one run has completed, so static-only
+  // changes can begin applying locally. Before any run completes
+  // there's nothing in insightJobs to patch.
+  useEffect(() => {
+    if (isCompleted) setHasCompletedFirstRun(true);
+  }, [isCompleted]);
+
+  // Local-update path: when previewRequest changes in a way that
+  // didn't move runHash, the change is static-only — patch each
+  // insight's static_props (and type, if changed) into the preview
+  // store directly so the chart re-renders without a backend round
+  // trip. Mirrors the single-insight path in useInsightPreviewData.
+  useEffect(() => {
+    if (!hasCompletedFirstRun) return;
+    if (isRunning) return;
+    if (!previewRequest?.context_objects?.insights) return;
+
+    const updateInsightJob = useStore.getState().updateInsightJob;
+    const currentJobs = useStore.getState().insightJobs || {};
+
+    for (const insight of previewRequest.context_objects.insights) {
+      const key = PREVIEW_STORE_PREFIX + insight.name;
+      const existing = currentJobs[key];
+      if (!existing?.data) continue;
+      const { type: newType, ...restProps } = insight.props || {};
+      const newStaticProps = extractNonQueryProps(restProps);
+      const typeChanged = newType !== existing.type;
+      const staticChanged =
+        JSON.stringify(newStaticProps) !== JSON.stringify(existing.static_props);
+      if (!typeChanged && !staticChanged) continue;
+
+      const payload = {};
+      if (typeChanged) payload.type = newType;
+      if (staticChanged) payload.static_props = newStaticProps;
+      updateInsightJob(key, payload);
+    }
+  }, [previewRequest, hasCompletedFirstRun, isRunning]);
 
   // Real filesystem run_id comes from the polling response on completion.
   const previewRunId = useMemo(() => {
@@ -332,6 +402,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
   const resetPreview = useCallback(() => {
     resetRun();
     setLastFiredHash(null);
+    setHasCompletedFirstRun(false);
     setLocalError(null);
   }, [resetRun]);
 
