@@ -239,6 +239,16 @@ class Insight(NamedModel, ParentModel):
             query_statements += converted_props
         return query_statements
 
+    def get_props_slices(self):
+        """Return a mapping of prop paths to literal slice suffix (``"[0]"``,
+        ``"[-1]"``, ``"[1:5]"`` etc.) for any prop whose ``?{...}`` value
+        carries a slicing suffix. Used by the insight query builder to
+        attach slice metadata to props_mapping so the viewer can apply the
+        slice after binding query results."""
+        if not self.props:
+            return {}
+        return self.props.extract_query_slices()
+
     def is_dynamic(self, dag) -> bool:
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.inputs.input import Input

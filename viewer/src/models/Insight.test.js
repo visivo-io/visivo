@@ -2,6 +2,7 @@ import {
   chartDataFromInsightData,
   processInputRefsInProps,
   extractInputDependenciesFromProps,
+  applySliceExpression,
 } from './Insight';
 
 const sampleInsightsData = {
@@ -459,3 +460,130 @@ describe('extractInputDependenciesFromProps', () => {
   });
 });
 /* eslint-enable no-template-curly-in-string */
+
+// ---------------------------------------------------------------------------
+// applySliceExpression — JS port of the schema-level ?{...}[N|a:b] grammar.
+// ---------------------------------------------------------------------------
+
+describe('applySliceExpression', () => {
+  describe('single index', () => {
+    it('returns the element at a positive index', () => {
+      expect(applySliceExpression([10, 20, 30], '[0]')).toBe(10);
+      expect(applySliceExpression([10, 20, 30], '[2]')).toBe(30);
+    });
+
+    it('handles negative indexes', () => {
+      expect(applySliceExpression([10, 20, 30], '[-1]')).toBe(30);
+      expect(applySliceExpression([10, 20, 30], '[-2]')).toBe(20);
+    });
+
+    it('returns null for out-of-bounds indexes', () => {
+      expect(applySliceExpression([10, 20, 30], '[99]')).toBeNull();
+      expect(applySliceExpression([10, 20, 30], '[-99]')).toBeNull();
+    });
+  });
+
+  describe('slice forms', () => {
+    it('handles [a:b]', () => {
+      expect(applySliceExpression([0, 1, 2, 3, 4], '[1:4]')).toEqual([1, 2, 3]);
+    });
+
+    it('handles open-start [:b]', () => {
+      expect(applySliceExpression([0, 1, 2, 3], '[:2]')).toEqual([0, 1]);
+    });
+
+    it('handles open-end [a:]', () => {
+      expect(applySliceExpression([0, 1, 2, 3], '[2:]')).toEqual([2, 3]);
+    });
+
+    it('handles negative bounds [-3:-1]', () => {
+      expect(applySliceExpression([0, 1, 2, 3, 4], '[-3:-1]')).toEqual([2, 3]);
+    });
+
+    it('handles strided slice [::2]', () => {
+      expect(applySliceExpression([0, 1, 2, 3, 4], '[::2]')).toEqual([0, 2, 4]);
+    });
+  });
+
+  describe('multi-index forms', () => {
+    it('picks specified indices', () => {
+      expect(applySliceExpression(['a', 'b', 'c', 'd'], '[0,2]')).toEqual(['a', 'c']);
+    });
+
+    it('handles negative indices in multi-index', () => {
+      expect(applySliceExpression(['a', 'b', 'c'], '[0,-1]')).toEqual(['a', 'c']);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('returns the array unchanged when no slice given', () => {
+      expect(applySliceExpression([1, 2, 3], null)).toEqual([1, 2, 3]);
+      expect(applySliceExpression([1, 2, 3], '')).toEqual([1, 2, 3]);
+    });
+
+    it('returns the value unchanged when not an array', () => {
+      expect(applySliceExpression(42, '[0]')).toBe(42);
+      expect(applySliceExpression('hello', '[0]')).toBe('hello');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// chartDataFromInsightData — slice support via insight.props_slices
+// ---------------------------------------------------------------------------
+
+describe('chartDataFromInsightData with props_slices', () => {
+  it('applies a [0] slice to unwrap a scalar from a 1-row indicator query', () => {
+    const insights = {
+      ndr: {
+        type: 'indicator',
+        data: [{ v: 0.4325 }],
+        props_mapping: { 'props.value': 'v' },
+        props_slices: { 'props.value': '[0]' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces.length).toBe(1);
+    expect(traces[0].value).toBe(0.4325);
+    expect(Array.isArray(traces[0].value)).toBe(false);
+  });
+
+  it('applies a slice to a sub-array on a bar.x prop', () => {
+    const insights = {
+      first_three: {
+        type: 'bar',
+        data: [{ x: 1 }, { x: 2 }, { x: 3 }, { x: 4 }, { x: 5 }],
+        props_mapping: { 'props.x': 'x' },
+        props_slices: { 'props.x': '[1:4]' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([2, 3, 4]);
+  });
+
+  it('leaves non-sliced props unchanged', () => {
+    const insights = {
+      mix: {
+        type: 'bar',
+        data: [{ x: 1, y: 10 }, { x: 2, y: 20 }],
+        props_mapping: { 'props.x': 'x', 'props.y': 'y' },
+        props_slices: { 'props.y': '[0]' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([1, 2]);
+    expect(traces[0].y).toBe(10);
+  });
+
+  it('is a no-op when props_slices is undefined', () => {
+    const insights = {
+      a: {
+        type: 'bar',
+        data: [{ x: 1 }, { x: 2 }],
+        props_mapping: { 'props.x': 'x' },
+      },
+    };
+    const traces = chartDataFromInsightData(insights);
+    expect(traces[0].x).toEqual([1, 2]);
+  });
+});
