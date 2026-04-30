@@ -32,20 +32,29 @@ const thumbnailExists = async dashboardName => {
   }
 };
 
-// Wait until the dashboard's chart loading spinners have cleared. The
-// `.loading-spinner` class lives on the placeholder rendered by Chart.jsx
-// while trace/insight data is in flight (see common/Loading.jsx).
+// Wait until the dashboard's chart loading spinners have cleared in the
+// portion we're going to capture. The `.loading-spinner` class lives on the
+// placeholder rendered by Chart.jsx while trace/insight data is in flight
+// (see common/Loading.jsx).
 //
-// We always proceed to capture once the timeout hits, even if some spinners
-// are still up — a partly-rendered thumbnail is better than no thumbnail,
-// and the next visit will overwrite if the user manually deletes the file.
-const waitForRender = async (element, isCancelled) => {
-  const TIMEOUT_MS = 10000;
+// We only count spinners above `targetCaptureHeight` because below-fold rows
+// are lazy-loaded by useVisibleRows — their spinners would never clear until
+// the user scrolled, but we won't capture them anyway.
+//
+// We always proceed once the timeout hits even if some spinners are still
+// up — a partly-rendered thumbnail beats no thumbnail.
+const waitForRender = async (element, captureHeight, isCancelled) => {
+  const TIMEOUT_MS = 5000;
   const POLL_MS = 200;
   const start = Date.now();
   while (Date.now() - start < TIMEOUT_MS) {
     if (isCancelled()) return;
-    if (element.querySelectorAll('.loading-spinner').length === 0) break;
+    const spinners = element.querySelectorAll('.loading-spinner');
+    let aboveFoldStuck = 0;
+    for (const s of spinners) {
+      if (s.offsetTop < captureHeight) aboveFoldStuck++;
+    }
+    if (aboveFoldStuck === 0) break;
     await new Promise(resolve => setTimeout(resolve, POLL_MS));
   }
   // Give Plotly one more idle tick to settle final transforms.
@@ -96,15 +105,15 @@ export const captureDashboardThumbnail = async ({ dashboardName, getElement, isC
   const element = await awaitElement(getElement, isCancelled);
   if (!element || isCancelled()) return;
 
-  await waitForRender(element, isCancelled);
-  if (isCancelled()) return;
-
   // Crop the capture to the visible viewport portion that fits the thumbnail
   // aspect ratio. That gives a hero shot rather than a distorted full-height
   // squish.
   const captureWidth = element.offsetWidth;
   const targetCaptureHeight = captureWidth / ASPECT_RATIO;
   const captureHeight = Math.min(targetCaptureHeight, element.offsetHeight);
+
+  await waitForRender(element, captureHeight, isCancelled);
+  if (isCancelled()) return;
 
   let canvas;
   try {
@@ -120,12 +129,14 @@ export const captureDashboardThumbnail = async ({ dashboardName, getElement, isC
     // Best-effort. If html2canvas chokes, just bail; user can revisit.
     return;
   }
-  if (isCancelled()) return;
 
+  // Once we have pixels, send them. Don't bail on user navigation here —
+  // the upload is cheap and the user benefits from having a thumbnail when
+  // they return to /project, even if they've already left this page.
   const tempCanvas = downscale(canvas);
   await new Promise(resolve => {
     tempCanvas.toBlob(async blob => {
-      if (blob && !isCancelled()) {
+      if (blob) {
         try {
           await upload(blob, dashboardName);
         } catch {
