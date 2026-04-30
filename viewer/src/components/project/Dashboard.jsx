@@ -7,12 +7,13 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useModelsData } from '../../hooks/useModelsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { extractRefNamesFromStrings } from '../../utils/refString';
+import { captureDashboardThumbnail } from './captureDashboardThumbnail';
 
 const isModelData = data => data && (data.sql || data.args || data.models);
 
@@ -78,16 +79,12 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
   return [...inputNames];
 };
 
-const Dashboard = ({
-  project,
-  dashboardName,
-  isPreview = false,
-  previewHeight = 750,
-}) => {
+const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+  const dashboardRootRef = useRef(null);
 
   // Viewport-based loading: Track which rows are visible
-  const { visibleRows: viewportRows, setRowRef } = useVisibleRows(dashboardName);
+  const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
 
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
@@ -132,23 +129,21 @@ const Dashboard = ({
     throwError(`Dashboard with name ${dashboardName} not found.`, 404);
   }
 
-  // Preview renders happen offscreen (left: -9999px) so the IntersectionObserver
-  // in useVisibleRows never fires. Walk rows in order and only mark enough rows
-  // visible to fill the captured thumbnail viewport — anything past that is
-  // cropped out anyway, and skipping it avoids needless data fetches that slow
-  // down the strictly serial thumbnail queue.
-  const visibleRows = useMemo(() => {
-    if (!isPreview) return viewportRows;
-    const rows = dashboard.rows || [];
-    const set = new Set();
-    let acc = 0;
-    for (let i = 0; i < rows.length; i++) {
-      set.add(i);
-      acc += rows[i].height === 'compact' ? 64 : getHeight(rows[i].height);
-      if (acc >= previewHeight) break;
-    }
-    return set;
-  }, [isPreview, viewportRows, dashboard.rows, previewHeight]);
+  // Capture-on-view: once the user actually opens a dashboard and it has
+  // finished rendering, snapshot it for the cards listing. This replaces the
+  // old offscreen-render queue that tried to bulk-generate thumbnails for
+  // every dashboard at once. Only runs when there's no existing thumbnail.
+  useEffect(() => {
+    let cancelled = false;
+    captureDashboardThumbnail({
+      dashboardName,
+      getElement: () => dashboardRootRef.current,
+      isCancelled: () => cancelled,
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardName]);
 
   const shouldShowNamedModel = useCallback(
     namedModel => {
@@ -335,7 +330,10 @@ const Dashboard = ({
 
   return (
     <div
-      ref={observe}
+      ref={el => {
+        dashboardRootRef.current = el;
+        observe(el);
+      }}
       data-testid={`dashboard_${dashboardName}`}
       className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
     >
