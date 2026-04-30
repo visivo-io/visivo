@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
 import { useQuery } from '@tanstack/react-query';
-import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
 import DashboardThumbnail from './DashboardThumbnail';
 import { useFetchDashboard } from '../../contexts/QueryContext';
 import { getUrl } from '../../contexts/URLContext';
+import { acquireThumbnailSlot } from './thumbnailQueue';
 
 const GENERATING_THUMBNAIL_URL = 'GENERATING';
 
@@ -16,7 +16,15 @@ function DashboardCard({ projectId, dashboard }) {
   const [imageUrl, setImageUrl] = useState(null);
   const [shouldStartThumbnail, setShouldStartThumbnail] = useState(false);
   const cardRef = useRef(null);
+  const releaseSlotRef = useRef(null);
   const fetchDashboard = useFetchDashboard();
+
+  const releaseSlot = () => {
+    if (releaseSlotRef.current) {
+      releaseSlotRef.current();
+      releaseSlotRef.current = null;
+    }
+  };
 
   const { data: dashboardData } = useQuery({
     queryKey: ['dashboard', projectId, dashboard.name],
@@ -27,9 +35,8 @@ function DashboardCard({ projectId, dashboard }) {
     try {
       const formData = new FormData();
       formData.append('file', blob, `${dashboard.name}.png`);
-      const dashboardNameHash = md5(dashboard.name);
 
-      let url = getUrl('dashboardThumbnail', { hash: dashboardNameHash });
+      let url = getUrl('dashboardThumbnail', { name: dashboard.name });
       const response = await fetch(url, {
         method: 'POST',
         body: formData,
@@ -56,32 +63,60 @@ function DashboardCard({ projectId, dashboard }) {
     }
   }, [dashboardData]);
 
-  // Simplified approach: Just start thumbnail generation after a short delay
-  // This ensures navigation isn't blocked but thumbnails still generate
+  // Acquire a slot from the shared thumbnail queue before kicking off
+  // generation. The slot is released when the thumbnail finishes (success or
+  // error) or when the card unmounts.
   useEffect(() => {
     if (
-      !shouldStartThumbnail &&
-      dashboardData &&
-      !dashboardData.signed_thumbnail_file_url &&
-      !imageUrl &&
-      project
+      shouldStartThumbnail ||
+      !dashboardData ||
+      dashboardData.signed_thumbnail_file_url ||
+      imageUrl ||
+      !project ||
+      // External dashboards don't render <DashboardThumbnail> (see render
+      // branch below), so they have no flow that would release the slot.
+      // Skipping acquisition entirely keeps the strictly-serial queue moving.
+      dashboard.type === 'external'
     ) {
-      // Use requestIdleCallback to start thumbnail generation when the browser is idle
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(
-          () => {
-            setShouldStartThumbnail(true);
-          },
-          { timeout: 1000 }
-        ); // Start within 1 second if browser never goes idle
-      } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(() => {
-          setShouldStartThumbnail(true);
-        }, 500);
-      }
+      return undefined;
     }
-  }, [shouldStartThumbnail, dashboardData, imageUrl, project, dashboard.name]);
+
+    let cancelled = false;
+    const schedule = () => {
+      acquireThumbnailSlot().then(release => {
+        if (cancelled) {
+          release();
+          return;
+        }
+        releaseSlotRef.current = release;
+        setShouldStartThumbnail(true);
+      });
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(schedule, { timeout: 1000 });
+    } else {
+      setTimeout(schedule, 500);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldStartThumbnail, dashboardData, imageUrl, project, dashboard.name, dashboard.type]);
+
+  // Release the slot whenever generation has settled — either we got an image
+  // back from the upload, or the card is going away.
+  useEffect(() => {
+    if (imageUrl) {
+      releaseSlot();
+    }
+  }, [imageUrl]);
+
+  useEffect(() => {
+    return () => {
+      releaseSlot();
+    };
+  }, []);
 
   const needThumbnail =
     shouldStartThumbnail &&
@@ -156,6 +191,7 @@ function DashboardCard({ projectId, dashboard }) {
           dashboard={dashboard}
           project={project}
           onThumbnailGenerated={onThumbnailGenerated}
+          onSettled={releaseSlot}
         />
       )}
     </Link>

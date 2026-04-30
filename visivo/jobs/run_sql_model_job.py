@@ -166,7 +166,7 @@ def _build_and_write_schema(
 
     # Organize by run_id
     run_output_dir = f"{output_dir}/{run_id}"
-    schema_directory = f"{run_output_dir}/schema/{sql_model.name}/"
+    schema_directory = f"{run_output_dir}/schemas/{sql_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
     with open(schema_file, "w") as fp:
@@ -212,7 +212,7 @@ def model_query_and_schema_action(
             source=source,
             sql=sql_model.sql,
             output_dir=output_dir,
-            name_hash=sql_model.name_hash(),
+            name=sql_model.name,
             run_id=run_id,
         )
 
@@ -262,7 +262,7 @@ def schema_only_action(
 
         # Organize by run_id
         run_output_dir = f"{output_dir}/{run_id}"
-        schema_file = f"{run_output_dir}/schema/{sql_model.name}/schema.json"
+        schema_file = f"{run_output_dir}/schemas/{sql_model.name}/schema.json"
         success_message = format_message_success(
             details=f"Wrote schema for model \033[4m{sql_model.name}\033[0m",
             start_time=start_time,

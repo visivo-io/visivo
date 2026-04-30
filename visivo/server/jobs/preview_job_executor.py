@@ -8,7 +8,6 @@ from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.server.managers.preview_run_manager import RunStatus
-from visivo.models.base.named_model import alpha_hash
 
 
 MANAGER_TO_PROJECT_FIELD = [
@@ -187,8 +186,7 @@ def _read_insight_result(output_dir, run_id, insight_name, runner=None):
     the generic "Insight file not found" message that obscures every
     real cause behind the same string.
     """
-    name_hash = alpha_hash(insight_name)
-    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
+    insight_path = f"{output_dir}/{run_id}/insights/{insight_name}.json"
     if not os.path.exists(insight_path):
         upstream = _find_runner_error_for_insight(runner, insight_name) if runner else None
         if upstream:
@@ -203,8 +201,8 @@ def _read_insight_result(output_dir, run_id, insight_name, runner=None):
         file_path = file_info.get("signed_data_file_url", "")
         if file_path:
             filename = os.path.basename(file_path)
-            file_hash = filename.replace(".parquet", "")
-            file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
+            file_stem = filename.replace(".parquet", "")
+            file_info["signed_data_file_url"] = f"/api/files/{file_stem}/{run_id}/"
     return insight_data
 
 

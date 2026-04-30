@@ -78,11 +78,16 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
   return [...inputNames];
 };
 
-const Dashboard = ({ project, dashboardName }) => {
+const Dashboard = ({
+  project,
+  dashboardName,
+  isPreview = false,
+  previewHeight = 750,
+}) => {
   const [searchParams] = useSearchParams();
 
   // Viewport-based loading: Track which rows are visible
-  const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
+  const { visibleRows: viewportRows, setRowRef } = useVisibleRows(dashboardName);
 
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
@@ -126,6 +131,24 @@ const Dashboard = ({ project, dashboardName }) => {
   if (!dashboard) {
     throwError(`Dashboard with name ${dashboardName} not found.`, 404);
   }
+
+  // Preview renders happen offscreen (left: -9999px) so the IntersectionObserver
+  // in useVisibleRows never fires. Walk rows in order and only mark enough rows
+  // visible to fill the captured thumbnail viewport — anything past that is
+  // cropped out anyway, and skipping it avoids needless data fetches that slow
+  // down the strictly serial thumbnail queue.
+  const visibleRows = useMemo(() => {
+    if (!isPreview) return viewportRows;
+    const rows = dashboard.rows || [];
+    const set = new Set();
+    let acc = 0;
+    for (let i = 0; i < rows.length; i++) {
+      set.add(i);
+      acc += rows[i].height === 'compact' ? 64 : getHeight(rows[i].height);
+      if (acc >= previewHeight) break;
+    }
+    return set;
+  }, [isPreview, viewportRows, dashboard.rows, previewHeight]);
 
   const shouldShowNamedModel = useCallback(
     namedModel => {

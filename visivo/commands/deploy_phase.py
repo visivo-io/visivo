@@ -486,17 +486,18 @@ async def process_insights_async(
     """
     batch_size = 20
 
-    # Build list of insight files that exist
+    # Build list of insight files that exist. Files on disk are now keyed by
+    # clean insight name; name_hash is still sent in upload metadata as the
+    # cloud-side identifier (mirrors the DuckDB table identifier on the FE).
     insight_files = []
     for insight in insights:
-        insight_hash = insight.name_hash()
-        insight_path = f"{output_dir}/insights/{insight_hash}.json"
+        insight_path = f"{output_dir}/insights/{insight.name}.json"
         if os.path.exists(insight_path):
             insight_files.append(
                 {
                     "name": insight.name,
-                    "name_hash": insight_hash,
-                    "file_path": f"insights/{insight_hash}.json",
+                    "name_hash": insight.name_hash(),
+                    "file_path": f"insights/{insight.name}.json",
                 }
             )
 
@@ -569,17 +570,17 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     """
     batch_size = 20
 
-    # Build list of input files that exist
+    # Build list of input files that exist (filename uses clean name; name_hash
+    # is sent in upload metadata as the cloud-side identifier)
     input_files = []
     for input_obj in inputs:
-        input_hash = input_obj.name_hash()
-        input_path = f"{output_dir}/inputs/{input_hash}.json"
+        input_path = f"{output_dir}/inputs/{input_obj.name}.json"
         if os.path.exists(input_path):
             input_files.append(
                 {
                     "name": input_obj.name,
-                    "name_hash": input_hash,
-                    "file_path": f"inputs/{input_hash}.json",
+                    "name_hash": input_obj.name_hash(),
+                    "file_path": f"inputs/{input_obj.name}.json",
                 }
             )
 
@@ -721,10 +722,10 @@ def collect_models_for_insights(insights, dag, output_dir):
 
     There are two types of parquet files:
     1. Static insight result files: Pre-computed query results stored at
-       files/{insight.name_hash()}.parquet - these need to be uploaded so the
+       files/{insight.name}.parquet - these need to be uploaded so the
        client can load them via DuckDB.
     2. Model files for dynamic insights: Model parquet files at
-       files/{model.name_hash()}.parquet - only needed for insights with
+       files/{model.name}.parquet - only needed for insights with
        Input dependencies that require client-side queries on model data.
     """
     models_dict = {}
@@ -733,23 +734,21 @@ def collect_models_for_insights(insights, dag, output_dir):
         if insight.is_dynamic(dag):
             # Dynamic insights need model parquet files for client-side queries
             for model in insight.get_all_dependent_models(dag):
-                model_hash = model.name_hash()
-                parquet_path = f"{output_dir}/files/{model_hash}.parquet"
+                parquet_path = f"{output_dir}/files/{model.name}.parquet"
                 if os.path.exists(parquet_path):
-                    models_dict[model_hash] = {
+                    models_dict[model.name] = {
                         "name": model.name,
-                        "name_hash": model_hash,
-                        "file_path": f"files/{model_hash}.parquet",
+                        "name_hash": model.name_hash(),
+                        "file_path": f"files/{model.name}.parquet",
                     }
         else:
             # Static insights have pre-computed result files that need to be uploaded
-            insight_hash = insight.name_hash()
-            parquet_path = f"{output_dir}/files/{insight_hash}.parquet"
+            parquet_path = f"{output_dir}/files/{insight.name}.parquet"
             if os.path.exists(parquet_path):
-                models_dict[insight_hash] = {
+                models_dict[insight.name] = {
                     "name": insight.name,
-                    "name_hash": insight_hash,
-                    "file_path": f"files/{insight_hash}.parquet",
+                    "name_hash": insight.name_hash(),
+                    "file_path": f"files/{insight.name}.parquet",
                 }
 
     return list(models_dict.values())
@@ -765,8 +764,7 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
     parquet_files = {}
 
     for input_obj in inputs:
-        input_hash = input_obj.name_hash()
-        metadata_path = f"{output_dir}/inputs/{input_hash}.json"
+        metadata_path = f"{output_dir}/inputs/{input_obj.name}.json"
 
         if not os.path.exists(metadata_path):
             continue

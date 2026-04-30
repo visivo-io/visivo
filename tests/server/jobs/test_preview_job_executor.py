@@ -404,9 +404,7 @@ class _FakeRunner:
         _FakeRunner.instances.append(self)
 
     def run(self):
-        # Emulate what FilteredRunner writes: one json file per insight in insights/<hash>.json
-        from visivo.models.base.named_model import alpha_hash
-
+        # Emulate what FilteredRunner writes: one json file per insight in insights/<name>.json
         insights_dir = os.path.join(self.output_dir, self.run_id, "insights")
         os.makedirs(insights_dir, exist_ok=True)
         # Parse the dag_filter to figure out which names are requested.
@@ -426,8 +424,7 @@ class _FakeRunner:
                 fake_result.message = _FakeRunner.fail_insights[segment]
                 self.failed_job_results.append(fake_result)
                 continue
-            name_hash = alpha_hash(segment)
-            path = os.path.join(insights_dir, f"{name_hash}.json")
+            path = os.path.join(insights_dir, f"{segment}.json")
             with open(path, "w") as f:
                 json.dump({"name": segment, "files": []}, f)
 

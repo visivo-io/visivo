@@ -3,7 +3,6 @@ import os
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 from visivo.constants import DEFAULT_RUN_ID
 
 
@@ -40,9 +39,7 @@ def register_input_jobs_views(app, flask_app, output_dir):
             missing_inputs = []
 
             for name in input_names:
-                # Use alpha_hash to match backend name_hash() method
-                name_hash = alpha_hash(name)
-                input_file = os.path.join(output_dir, run_id, "inputs", f"{name_hash}.json")
+                input_file = os.path.join(output_dir, run_id, "inputs", f"{name}.json")
 
                 if not os.path.exists(input_file):
                     Logger.instance().info(f"Input file not found: {input_file}")
@@ -64,15 +61,15 @@ def register_input_jobs_views(app, flask_app, output_dir):
                         for file_ref in input_data["files"]:
                             if "signed_data_file_url" in file_ref:
                                 file_path = file_ref["signed_data_file_url"]
-                                # Convert absolute paths to API URLs
-                                # file_path format: {output_dir}/files/{hash}.parquet
-                                # Extract hash (filename without extension)
+                                # file_path format: {output_dir}/files/{name}_{key}.parquet
+                                # Extract filename stem (no longer a hash, just the
+                                # name + key)
                                 filename = os.path.basename(file_path)
-                                file_hash = os.path.splitext(filename)[
+                                file_stem = os.path.splitext(filename)[
                                     0
                                 ]  # Remove .parquet extension
                                 file_ref["signed_data_file_url"] = (
-                                    f"/api/files/{file_hash}/{run_id}/"
+                                    f"/api/files/{file_stem}/{run_id}/"
                                 )
 
                     inputs.append(input_data)

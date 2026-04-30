@@ -12,10 +12,35 @@ const yieldToMain = () => {
   });
 };
 
-function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
+function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onSettled }) {
   const containerRef = React.useRef();
   const ASPECT_RATIO = 16 / 10;
   const hasStartedRef = React.useRef(false); // Prevent multiple simultaneous generations
+  const settledRef = React.useRef(false);
+  const onSettledRef = React.useRef(onSettled);
+  React.useEffect(() => {
+    onSettledRef.current = onSettled;
+  }, [onSettled]);
+
+  const settleOnce = () => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    if (onSettledRef.current) onSettledRef.current();
+  };
+
+  // Release any WebGL/canvas resources held by the offscreen Plotly plots so
+  // they don't keep contributing to the browser's WebGL-context cap.
+  const purgeOffscreenPlots = () => {
+    const container = containerRef.current;
+    if (!container || !window.Plotly) return;
+    container.querySelectorAll('.js-plotly-plot').forEach(plot => {
+      try {
+        window.Plotly.purge(plot);
+      } catch (e) {
+        // ignore — plot may already be torn down
+      }
+    });
+  };
 
   useEffect(() => {
     if (hasStartedRef.current) {
@@ -26,14 +51,44 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
     const eventListeners = [];
     const timeouts = [];
 
+    // Hard watchdog: even if html2canvas hangs (no built-in timeout) or some
+    // upstream wait deadlocks, force-settle after this window so the strictly
+    // serial queue keeps moving instead of wedging on one card.
+    const WATCHDOG_MS = 30000;
+    const watchdogId = setTimeout(() => {
+      hasStartedRef.current = false;
+      purgeOffscreenPlots();
+      settleOnce();
+    }, WATCHDOG_MS);
+    timeouts.push(watchdogId);
+
     const waitForChartsToLoad = async () => {
       const container = containerRef.current;
       if (!container) return;
 
       await yieldToMain();
 
+      // Wait for Chart loading spinners to clear — those are the placeholders
+      // rendered before trace/insight data arrives. Without this, the offscreen
+      // container has 0 .js-plotly-plot nodes (data not back yet) and we'd
+      // capture the spinner state.
+      const SPINNER_TIMEOUT_MS = 8000;
+      const SPINNER_POLL_MS = 100;
+      const spinnerStart = Date.now();
+      while (Date.now() - spinnerStart < SPINNER_TIMEOUT_MS) {
+        if (!containerRef.current) return;
+        if (containerRef.current.querySelectorAll('.loading-spinner').length === 0) break;
+        await new Promise(resolve => {
+          const id = setTimeout(resolve, SPINNER_POLL_MS);
+          timeouts.push(id);
+        });
+      }
+
+      await yieldToMain();
+      if (!containerRef.current) return;
+
       // Wait for Plotly charts to finish rendering
-      const plotlyPlots = container.querySelectorAll('.js-plotly-plot');
+      const plotlyPlots = containerRef.current.querySelectorAll('.js-plotly-plot');
       if (plotlyPlots.length > 0) {
         // Process charts in smaller batches to avoid blocking
         const batchSize = 2;
@@ -112,6 +167,7 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
       const container = containerRef.current;
       if (!container) {
         hasStartedRef.current = false;
+        settleOnce();
         return;
       }
 
@@ -122,6 +178,7 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
 
         if (!containerRef.current) {
           hasStartedRef.current = false;
+          settleOnce();
           return;
         }
 
@@ -162,6 +219,12 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
         // Yield after html2canvas completes
         await yieldToMain();
 
+        // Free WebGL contexts now — html2canvas has already captured pixels
+        // into a 2D canvas, so the live offscreen Plotly plots aren't needed
+        // anymore. This is the main lever for keeping context usage in check
+        // when many cards are generating thumbnails in sequence.
+        purgeOffscreenPlots();
+
         const tempCanvas = document.createElement('canvas');
         const TARGET_WIDTH = 800;
         tempCanvas.width = TARGET_WIDTH;
@@ -192,10 +255,13 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
           }
           // Reset the flag when done (success or failure)
           hasStartedRef.current = false;
+          settleOnce();
         });
       } catch (error) {
         // Reset the flag on error
         hasStartedRef.current = false;
+        purgeOffscreenPlots();
+        settleOnce();
       }
     };
 
@@ -215,7 +281,13 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
       timeouts.forEach(timeoutId => {
         clearTimeout(timeoutId);
       });
+
+      // If we unmount before settling (e.g. user navigates away mid-capture),
+      // free contexts and release the queue slot.
+      purgeOffscreenPlots();
+      settleOnce();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard, onThumbnailGenerated, ASPECT_RATIO]);
 
   return (

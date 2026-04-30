@@ -178,7 +178,7 @@ class TestInputOptionsLoading:
                 "display": {"type": "dropdown", "default": {"value": "electronics"}},
                 "warnings": [],
             }
-            json_path = input_dir / f"{input_obj.name_hash()}.json"
+            json_path = input_dir / f"{input_obj.name}.json"
             with open(json_path, "w") as f:
                 json.dump(json_data, f)
 
@@ -214,7 +214,7 @@ class TestInputOptionsLoading:
                 "display": {"type": "range-slider", "default": {"start": 0, "end": 100}},
                 "warnings": [],
             }
-            json_path = input_dir / f"{input_obj.name_hash()}.json"
+            json_path = input_dir / f"{input_obj.name}.json"
             with open(json_path, "w") as f:
                 json.dump(json_data, f)
 
@@ -251,7 +251,7 @@ class TestValidationIntegration:
                 "display": {"type": "dropdown", "default": {"value": "electronics"}},
                 "warnings": [],
             }
-            json_path = input_dir / f"{input_obj.name_hash()}.json"
+            json_path = input_dir / f"{input_obj.name}.json"
             with open(json_path, "w") as f:
                 json.dump(json_data, f)
 
@@ -310,7 +310,7 @@ class TestValidationIntegration:
                 "display": {"type": "dropdown", "default": {"value": "electronics"}},
                 "warnings": [],
             }
-            json_path = input_dir / f"{input_obj.name_hash()}.json"
+            json_path = input_dir / f"{input_obj.name}.json"
             with open(json_path, "w") as f:
                 json.dump(json_data, f)
 

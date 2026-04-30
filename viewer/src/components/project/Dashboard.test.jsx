@@ -91,6 +91,43 @@ test('renders dashboard markdown content', async () => {
   expect(text).toBeInTheDocument();
 });
 
+test('isPreview renders without crashing', async () => {
+  const project = {
+    project_json: {
+      dashboards: [
+        {
+          name: 'dashboard',
+          rows: Array.from({ length: 6 }, (_, i) => ({
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                markdown: {
+                  name: `md${i}`,
+                  content: `Row ${i} Content`,
+                  align: 'left',
+                  justify: 'start',
+                },
+              },
+            ],
+          })),
+        },
+      ],
+    },
+  };
+
+  render(
+    withProviders({
+      children: <Dashboard project={project} dashboardName="dashboard" isPreview={true} />,
+      initialPath: '/dashboard',
+    })
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('dashboard_dashboard')).toBeInTheDocument();
+  });
+});
+
 describe('shows/hides row based on selector in URL', () => {
   test('shows option 1 if selected', async () => {
     renderDashboard(project_with_json, 'dashboard', '/dashboard?selector1=option1');

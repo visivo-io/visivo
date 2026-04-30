@@ -2,7 +2,6 @@ import os
 import glob
 from flask import jsonify
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 
 
 def register_model_data_views(app, flask_app, output_dir):
@@ -12,11 +11,10 @@ def register_model_data_views(app, flask_app, output_dir):
         """Check if pre-computed parquet data exists for a model and return it.
 
         Searches across all run directories for a parquet file matching the
-        model's name hash. Returns the data as JSON if found.
+        model's clean name. Returns the data as JSON if found.
         """
         try:
-            name_hash = alpha_hash(model_name)
-            pattern = os.path.join(output_dir, "*", "files", f"{name_hash}.parquet")
+            pattern = os.path.join(output_dir, "*", "files", f"{model_name}.parquet")
             matches = glob.glob(pattern)
 
             if not matches:

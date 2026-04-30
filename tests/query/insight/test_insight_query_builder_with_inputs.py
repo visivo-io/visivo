@@ -413,7 +413,7 @@ class TestInsightQueryBuilderWithInputs:
 
         def _create_schema(model, output_dir):
             """Create a schema.json file for the given model."""
-            schema_base = os.path.join(output_dir, "schema")
+            schema_base = os.path.join(output_dir, "schemas")
             os.makedirs(schema_base, exist_ok=True)
             schema_dir = os.path.join(schema_base, model.name)
             os.makedirs(schema_dir, exist_ok=True)

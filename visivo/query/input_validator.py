@@ -46,7 +46,7 @@ def get_input_options(input_obj: Input, output_dir: str) -> List[str]:
     import polars as pl
 
     input_dir = Path(output_dir) / "inputs"
-    json_path = input_dir / f"{input_obj.name_hash()}.json"
+    json_path = input_dir / f"{input_obj.name}.json"
 
     if not json_path.exists():
         raise FileNotFoundError(

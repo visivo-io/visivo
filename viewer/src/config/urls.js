@@ -17,8 +17,8 @@ const URL_PATTERNS = {
     insightJobData: '/api/insight-jobs/{hash}/',
     inputJobsQuery: '/api/input-jobs/',
     inputJobData: '/data/inputs/{hash}.json',
-    dashboardQuery: '/api/dashboards/{hash}/',
-    dashboardThumbnail: '/api/dashboards/{hash}.png/',
+    dashboardQuery: '/api/dashboards/{name}/',
+    dashboardThumbnail: '/api/dashboards/{name}.png/',
 
     writeChanges: '/api/project/write_changes/',
     projectFilePath: '/api/project/project_file_path/',
@@ -161,8 +161,8 @@ const URL_PATTERNS = {
     insightJobData: '/data/insights/{hash}.json',
     inputJobsQuery: '/data/inputs.json',
     inputJobData: '/data/inputs/{hash}.json',
-    dashboardQuery: '/data/dashboards/{hash}.json',
-    dashboardThumbnail: '/data/dashboards/{hash}.png',
+    dashboardQuery: '/data/dashboards/{name}.json',
+    dashboardThumbnail: '/data/dashboards/{name}.png',
 
     // Interactive endpoints not available in dist
     writeChanges: null,

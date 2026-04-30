@@ -36,7 +36,7 @@ def _write_schema(local_merge_model: LocalMergeModel, run_output_dir: str, dag):
         return
 
     columns = {col_name: data_type for col_name, data_type in rows}
-    schema_directory = f"{run_output_dir}/schema/{local_merge_model.name}/"
+    schema_directory = f"{run_output_dir}/schemas/{local_merge_model.name}/"
     os.makedirs(schema_directory, exist_ok=True)
     schema_file = f"{schema_directory}schema.json"
     with open(schema_file, "w") as fp:
