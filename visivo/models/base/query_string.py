@@ -20,12 +20,22 @@ class QueryString:
 
     def get_value(self) -> str:
         try:
-            matches = re.findall(QUERY_STRING_VALUE_PATTERN, self.value)
-            if len(matches) == 0:
+            match = re.match(QUERY_STRING_VALUE_PATTERN, self.value)
+            if match is None:
                 return None
-            else:
-                return matches[0].strip()
-        except:
+            return match.group("query_string").strip()
+        except Exception:
+            return None
+
+    def get_slice(self) -> str:
+        """Return the literal slice suffix (``"[0]"``, ``"[1:5]"``, ...) if
+        the query string carries one, else ``None``."""
+        try:
+            match = re.match(QUERY_STRING_VALUE_PATTERN, self.value)
+            if match is None:
+                return None
+            return match.group("slice")
+        except Exception:
             return None
 
     @classmethod
@@ -36,8 +46,14 @@ class QueryString:
             if isinstance(value, cls):
                 return value
             str_value = str(value)
-            if not (str_value.startswith("?{") and str_value.endswith("}")):
-                raise ValueError("QueryString must start with '?{' and end with '}'")
+            # Accept both ?{...} and ?{...}[N|a:b] forms. The new grammar
+            # supports a slicing suffix; the QUERY_STRING_VALUE_PATTERN
+            # is the source of truth.
+            if not (
+                str_value.startswith("?{")
+                and (str_value.endswith("}") or re.match(QUERY_STRING_VALUE_PATTERN, str_value))
+            ):
+                raise ValueError("QueryString must start with '?{' and end with '}' or '}[...]'")
             return cls(str_value)
 
         return core_schema.no_info_after_validator_function(

@@ -85,11 +85,11 @@
     },
     "query-string": {
       "type": "string",
-      "description": "A string that will pull the value from the traces query results or inject an input value.",
+      "description": "A string that pulls the value from a model's query results or injects an input value. Supports an optional indexing or slicing suffix that selects a scalar or sub-array from the resolved column at runtime.",
       "oneOf": [
         {
-          "pattern": "^\\?\\{.*\\}$",
-          "description": "String in the format ?{ x } where x can be anything"
+          "pattern": "^\\?\\{.*\\}(?:\\[(?:-?\\d+|-?\\d*:-?\\d*(?::-?\\d+)?|-?\\d+(?:\\s*,\\s*-?\\d+)+)\\])?$",
+          "description": "String in the format ?{ expr }, ?{ expr }[N], ?{ expr }[a:b], ?{ expr }[a:b:c], or ?{ expr }[a,b,c]. The bracket suffix selects a scalar (single index, e.g. [0] or [-1]) or sub-array (slice / multi-index)."
         },
         {
           "pattern": "^query\\(.*\\)$",
@@ -865,6 +865,9 @@
               "$ref": "#/$defs/query-string"
             },
             {
+              "type": "number"
+            },
+            {
               "type": "array",
               "items": {
                 "oneOf": [
@@ -888,6 +891,9 @@
           "oneOf": [
             {
               "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number"
             },
             {
               "type": "array",
@@ -1242,6 +1248,9 @@
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number"
         },
         {
           "type": "array",
@@ -1868,6 +1877,9 @@
           "$ref": "#/$defs/query-string"
         },
         {
+          "type": "number"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2336,6 +2348,9 @@
                   "$ref": "#/$defs/query-string"
                 },
                 {
+                  "type": "number"
+                },
+                {
                   "type": "array",
                   "items": {
                     "oneOf": [
@@ -2394,6 +2409,9 @@
                   "$ref": "#/$defs/query-string"
                 },
                 {
+                  "type": "number"
+                },
+                {
                   "type": "array",
                   "items": {
                     "oneOf": [
@@ -2450,6 +2468,9 @@
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number"
                 },
                 {
                   "type": "array",
@@ -2650,6 +2671,9 @@
           "$ref": "#/$defs/query-string"
         },
         {
+          "type": "number"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2696,6 +2720,9 @@
           "$ref": "#/$defs/query-string"
         },
         {
+          "type": "number"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2726,6 +2753,9 @@
           "$ref": "#/$defs/query-string"
         },
         {
+          "type": "number"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2754,6 +2784,9 @@
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number"
         },
         {
           "type": "array",

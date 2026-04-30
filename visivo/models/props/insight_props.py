@@ -61,43 +61,75 @@ class InsightProps(JsonSchemaBase):
         Returns:
             List of tuples (path, query_string) where:
             - path is the dotted/bracketed path to the value (e.g., "props.x", "props.marker.colorscale[0]")
-            - query_string is the extracted content from ?{...} (e.g., "sum(amount)", "blue")
+            - query_string is the extracted ``?{...}`` body (no surrounding
+              ``?{`` / ``}``, no slice suffix). When the authored value
+              includes a trailing ``[N]`` or ``[a:b]`` slice, that suffix is
+              recorded separately — call :py:meth:`extract_query_slices` to
+              get a path -> slice mapping, or use
+              :py:meth:`extract_query_strings_with_slices` for the combined
+              form.
 
         Example:
             >>> props = InsightProps(type="scatter", x="?{sum(amount)}", marker={"colorscale": ["?{blue}"]})
             >>> props.extract_query_strings()
             [('props.x', 'sum(amount)'), ('props.marker.colorscale[0]', 'blue')]
+
+            >>> props = InsightProps(type="indicator", value="?{MAX(x)}[0]")
+            >>> props.extract_query_strings()
+            [('props.value', 'MAX(x)')]
+            >>> props.extract_query_slices()
+            {'props.value': '[0]'}
         """
-        results = []
+        return [(path, body) for path, body, _slice in self._iter_query_strings(prefix)]
+
+    def extract_query_slices(self, prefix: str = "props") -> dict:
+        """
+        Return a mapping of prop paths to their literal slice suffix
+        (``"[0]"``, ``"[-1]"``, ``"[1:5]"`` etc.) for any prop whose
+        ``?{...}`` value includes a slicing suffix. Paths without a slice
+        are omitted.
+        """
+        return {
+            path: slice_expr
+            for path, _body, slice_expr in self._iter_query_strings(prefix)
+            if slice_expr
+        }
+
+    def extract_query_strings_with_slices(
+        self, prefix: str = "props"
+    ) -> List[Tuple[str, str, "str | None"]]:
+        """
+        Same as :py:meth:`extract_query_strings` but also returns the slice
+        suffix per path (``None`` if no slice). The body is always the bare
+        ``?{...}`` content.
+        """
+        return list(self._iter_query_strings(prefix))
+
+    def _iter_query_strings(self, prefix: str):
         pattern = re.compile(QUERY_STRING_VALUE_PATTERN)
 
         def recurse(obj: Any, path: str):
             if isinstance(obj, str):
-                # Check if this string matches the query pattern
                 match = pattern.match(obj)
                 if match:
-                    query_string = match.group("query_string")
-                    results.append((path, query_string))
+                    body = match.group("query_string")
+                    slice_expr = match.group("slice")
+                    yield (path, body, slice_expr)
 
             elif isinstance(obj, dict):
                 for key, value in obj.items():
-                    new_path = f"{path}.{key}"
-                    recurse(value, new_path)
+                    yield from _walk(value, f"{path}.{key}")
 
             elif isinstance(obj, list):
                 for idx, item in enumerate(obj):
-                    new_path = f"{path}[{idx}]"
-                    recurse(item, new_path)
+                    yield from _walk(item, f"{path}[{idx}]")
 
-            elif isinstance(obj, (int, float, bool, type(None))):
-                # Skip primitive types that can't contain query strings
-                pass
+        def _walk(obj: Any, path: str):
+            yield from recurse(obj, path)
 
         # Start recursion from the model's dictionary representation
         data = self.model_dump()
-        recurse(data, prefix)
-
-        return results
+        yield from recurse(data, prefix)
 
     def extract_static_props(self) -> dict:
         """
