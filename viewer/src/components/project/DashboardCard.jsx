@@ -3,18 +3,10 @@ import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
 import { useQuery } from '@tanstack/react-query';
-import md5 from 'md5';
-import { useRouteLoaderData } from 'react-router-dom';
-import DashboardThumbnail from './DashboardThumbnail';
 import { useFetchDashboard } from '../../contexts/QueryContext';
-import { getUrl } from '../../contexts/URLContext';
-
-const GENERATING_THUMBNAIL_URL = 'GENERATING';
 
 function DashboardCard({ projectId, dashboard }) {
-  const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
-  const [shouldStartThumbnail, setShouldStartThumbnail] = useState(false);
   const cardRef = useRef(null);
   const fetchDashboard = useFetchDashboard();
 
@@ -23,72 +15,11 @@ function DashboardCard({ projectId, dashboard }) {
     queryFn: () => fetchDashboard(projectId, dashboard.name),
   });
 
-  const onThumbnailGenerated = async blob => {
-    try {
-      const formData = new FormData();
-      formData.append('file', blob, `${dashboard.name}.png`);
-      const dashboardNameHash = md5(dashboard.name);
-
-      let url = getUrl('dashboardThumbnail', { hash: dashboardNameHash });
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status}`);
-      }
-
-      const json = await response.json();
-      setImageUrl(json.signed_thumbnail_file_url);
-    } catch (error) {
-      // Error uploading thumbnail
-    }
-  };
-
   useEffect(() => {
-    if (
-      dashboardData &&
-      dashboardData.signed_thumbnail_file_url &&
-      dashboardData.signed_thumbnail_file_url !== GENERATING_THUMBNAIL_URL
-    ) {
+    if (dashboardData?.signed_thumbnail_file_url) {
       setImageUrl(dashboardData.signed_thumbnail_file_url);
     }
   }, [dashboardData]);
-
-  // Simplified approach: Just start thumbnail generation after a short delay
-  // This ensures navigation isn't blocked but thumbnails still generate
-  useEffect(() => {
-    if (
-      !shouldStartThumbnail &&
-      dashboardData &&
-      !dashboardData.signed_thumbnail_file_url &&
-      !imageUrl &&
-      project
-    ) {
-      // Use requestIdleCallback to start thumbnail generation when the browser is idle
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(
-          () => {
-            setShouldStartThumbnail(true);
-          },
-          { timeout: 1000 }
-        ); // Start within 1 second if browser never goes idle
-      } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(() => {
-          setShouldStartThumbnail(true);
-        }, 500);
-      }
-    }
-  }, [shouldStartThumbnail, dashboardData, imageUrl, project, dashboard.name]);
-
-  const needThumbnail =
-    shouldStartThumbnail &&
-    !!dashboardData &&
-    !dashboardData.signed_thumbnail_file_url &&
-    !imageUrl &&
-    !!project;
 
   const CardContent = () => (
     <div
@@ -106,7 +37,6 @@ function DashboardCard({ projectId, dashboard }) {
         ) : (
           <div className="w-full h-full flex items-center justify-center relative">
             <HiTemplate className="w-8 h-8 text-primary-300" />
-            {/* No progress indicators shown - thumbnails generate silently in background */}
           </div>
         )}
         <div className="absolute top-0 left-0 right-0 p-1.5 bg-linear-to-b from-black/50 to-transparent">
@@ -151,13 +81,6 @@ function DashboardCard({ projectId, dashboard }) {
   ) : (
     <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <CardContent />
-      {needThumbnail && (
-        <DashboardThumbnail
-          dashboard={dashboard}
-          project={project}
-          onThumbnailGenerated={onThumbnailGenerated}
-        />
-      )}
     </Link>
   );
 }

@@ -54,7 +54,7 @@ class TestTraceQueryBuild:
         dag = project.dag()
 
         # Create schema file
-        schema_dir = Path(output_dir) / "schema" / model.name
+        schema_dir = Path(output_dir) / "schemas" / model.name
         schema_dir.mkdir(parents=True, exist_ok=True)
         schema_file = schema_dir / "schema.json"
         schema_data = {

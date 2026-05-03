@@ -308,16 +308,13 @@ def test_get_job_status_invalid_id(client):
 
 def test_serve_insight_data_by_name(client, output_dir):
     """Test serve insight data by name using new endpoint"""
-    from visivo.models.base.named_model import alpha_hash
-
     insight_name = "my_insight"
     run_id = "main"
-    name_hash = alpha_hash(insight_name)
 
     insight_dir = Path(output_dir) / run_id / "insights"
     insight_dir.mkdir(parents=True, exist_ok=True)
 
-    insight_file = insight_dir / f"{name_hash}.json"
+    insight_file = insight_dir / f"{insight_name}.json"
     insight_file.write_text(json.dumps({"hello": "world"}))
 
     resp = client.get(f"/api/insight-jobs/?insight_names={insight_name}&run_id={run_id}")
@@ -337,15 +334,12 @@ def test_serve_insight_data_by_name_not_found(client):
 
 def test_serve_insight_data_by_name_default_run_id(client, output_dir):
     """Test serve insight data by name defaults to main run when run_id not provided"""
-    from visivo.models.base.named_model import alpha_hash
-
     insight_name = "my_insight"
-    name_hash = alpha_hash(insight_name)
 
     insight_dir = Path(output_dir) / "main" / "insights"
     insight_dir.mkdir(parents=True, exist_ok=True)
 
-    insight_file = insight_dir / f"{name_hash}.json"
+    insight_file = insight_dir / f"{insight_name}.json"
     insight_file.write_text(json.dumps({"hello": "world", "default": "run"}))
 
     resp = client.get(f"/api/insight-jobs/?insight_names={insight_name}")

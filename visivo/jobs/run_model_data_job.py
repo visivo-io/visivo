@@ -18,7 +18,7 @@ from visivo.jobs.parquet_io import write_dicts_to_parquet
 def write_parquet_from_data(
     data: list,
     output_dir: str,
-    name_hash: str,
+    name: str,
     run_id: str = DEFAULT_RUN_ID,
 ) -> str:
     """Write row data to a parquet file.
@@ -26,7 +26,7 @@ def write_parquet_from_data(
     Args:
         data: List of row dicts to write
         output_dir: Base output directory
-        name_hash: Hash string for naming the parquet file
+        name: Clean model name (used as the parquet filename)
         run_id: Run ID for organizing output files
 
     Returns:
@@ -34,7 +34,7 @@ def write_parquet_from_data(
     """
     files_directory = f"{output_dir}/{run_id}/files"
     os.makedirs(files_directory, exist_ok=True)
-    parquet_path = f"{files_directory}/{name_hash}.parquet"
+    parquet_path = f"{files_directory}/{name}.parquet"
     write_dicts_to_parquet(data, parquet_path)
     return parquet_path
 
@@ -43,7 +43,7 @@ def write_query_to_parquet(
     source: Source,
     sql: str,
     output_dir: str,
-    name_hash: str,
+    name: str,
     run_id: str = DEFAULT_RUN_ID,
 ) -> str:
     """Execute SQL query and write results to parquet.
@@ -52,7 +52,7 @@ def write_query_to_parquet(
         source: The data source to query
         sql: SQL query to execute
         output_dir: Base output directory
-        name_hash: Hash string for naming the parquet file
+        name: Clean model name (used as the parquet filename)
         run_id: Run ID for organizing output files
 
     Returns:
@@ -62,26 +62,26 @@ def write_query_to_parquet(
         Exception if query execution or file writing fails
     """
     data = source.read_sql(sql)
-    return write_parquet_from_data(data, output_dir, name_hash, run_id)
+    return write_parquet_from_data(data, output_dir, name, run_id)
 
 
 def execute_and_get_result(
     source: Source,
     sql: str,
     output_dir: str = None,
-    name_hash: str = None,
+    name: str = None,
     run_id: str = DEFAULT_RUN_ID,
 ) -> dict:
     """Execute query and return result data directly.
 
     Used by model_query_job_executor for returning results to the UI.
-    Optionally writes results to parquet when output_dir and name_hash are provided.
+    Optionally writes results to parquet when output_dir and name are provided.
 
     Args:
         source: The data source to query
         sql: SQL query to execute
-        output_dir: Base output directory (optional - if provided with name_hash, writes parquet)
-        name_hash: Hash string for naming the parquet file (optional)
+        output_dir: Base output directory (optional - if provided with name, writes parquet)
+        name: Clean model name used as the parquet filename (optional)
         run_id: Run ID for organizing output files
 
     Returns:
@@ -97,8 +97,8 @@ def execute_and_get_result(
 
     columns = list(data[0].keys()) if data else []
 
-    if output_dir and name_hash:
-        write_parquet_from_data(data, output_dir, name_hash, run_id)
+    if output_dir and name:
+        write_parquet_from_data(data, output_dir, name, run_id)
 
     return {
         "columns": columns,

@@ -108,9 +108,10 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                                 f"{deployment_root}/data/files/{filename}"
                             )
 
-                # Write individual insight JSON
-                insight_hash = os.path.splitext(os.path.basename(insight_file))[0]
-                with open(f"{dist_dir}/data/insights/{insight_hash}.json", "w") as f:
+                # Write individual insight JSON keyed by clean name (the
+                # source file is now named <insight_name>.json on disk).
+                insight_filename = os.path.basename(insight_file)
+                with open(f"{dist_dir}/data/insights/{insight_filename}", "w") as f:
                     json.dump(insight_data, f)
 
                 insights_list.append(insight_data)
@@ -138,9 +139,10 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                                 f"{deployment_root}/data/files/{filename}"
                             )
 
-                # Write individual input JSON
-                input_hash = os.path.splitext(os.path.basename(input_file))[0]
-                with open(f"{dist_dir}/data/inputs/{input_hash}.json", "w") as f:
+                # Write individual input JSON keyed by clean name (the source
+                # file is now named <input_name>.json on disk).
+                input_filename = os.path.basename(input_file)
+                with open(f"{dist_dir}/data/inputs/{input_filename}", "w") as f:
                     json.dump(input_data, f)
 
                 inputs_list.append(input_data)
@@ -148,14 +150,15 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
         with open(f"{dist_dir}/data/inputs.json", "w") as f:
             json.dump(inputs_list, f)
 
-        # Generate dashboard JSON files for dist mode
+        # Generate dashboard JSON files for dist mode (keyed by clean name —
+        # thumbnails on disk are also named <dashboard_name>.png after the
+        # storage refactor)
         if "dashboards" in project_json:
             os.makedirs(f"{dist_dir}/data/dashboards", exist_ok=True)
             for dashboard in project_json["dashboards"]:
                 dashboard_name = dashboard["name"]
-                dashboard_name_hash = alpha_hash(dashboard_name)
                 thumbnail_path = os.path.join(
-                    dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png"
+                    dist_dir, "data", "dashboards", f"{dashboard_name}.png"
                 )
                 thumbnail_exists = os.path.exists(thumbnail_path)
 
@@ -163,14 +166,13 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                     "id": dashboard_name,
                     "name": dashboard_name,
                     "signed_thumbnail_file_url": (
-                        f"{deployment_root}/data/dashboards/{dashboard_name_hash}.png"
+                        f"{deployment_root}/data/dashboards/{dashboard_name}.png"
                         if thumbnail_exists
                         else None
                     ),
                 }
 
-                # Write individual dashboard JSON file using hash-based filename
-                with open(f"{dist_dir}/data/dashboards/{dashboard_name_hash}.json", "w") as f:
+                with open(f"{dist_dir}/data/dashboards/{dashboard_name}.json", "w") as f:
                     json.dump(dashboard_data, f)
 
         shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
