@@ -7,12 +7,13 @@ import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useModelsData } from '../../hooks/useModelsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { extractRefNamesFromStrings } from '../../utils/refString';
+import { captureDashboardThumbnail } from './captureDashboardThumbnail';
 
 const isModelData = data => data && (data.sql || data.args || data.models);
 
@@ -80,6 +81,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+  const dashboardRootRef = useRef(null);
 
   // Viewport-based loading: Track which rows are visible
   const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
@@ -126,6 +128,22 @@ const Dashboard = ({ project, dashboardName }) => {
   if (!dashboard) {
     throwError(`Dashboard with name ${dashboardName} not found.`, 404);
   }
+
+  // Capture-on-view: once the user actually opens a dashboard and it has
+  // finished rendering, snapshot it for the cards listing. This replaces the
+  // old offscreen-render queue that tried to bulk-generate thumbnails for
+  // every dashboard at once. Only runs when there's no existing thumbnail.
+  useEffect(() => {
+    let cancelled = false;
+    captureDashboardThumbnail({
+      dashboardName,
+      getElement: () => dashboardRootRef.current,
+      isCancelled: () => cancelled,
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardName]);
 
   const shouldShowNamedModel = useCallback(
     namedModel => {
@@ -312,7 +330,10 @@ const Dashboard = ({ project, dashboardName }) => {
 
   return (
     <div
-      ref={observe}
+      ref={el => {
+        dashboardRootRef.current = el;
+        observe(el);
+      }}
       data-testid={`dashboard_${dashboardName}`}
       className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
     >

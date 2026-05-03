@@ -90,7 +90,7 @@ class TestSchemaFileCorrupted:
         dag = project.dag()
 
         # Create schema directory but with invalid JSON
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
@@ -124,7 +124,7 @@ class TestSchemaFileCorrupted:
         dag = project.dag()
 
         # Create empty schema file
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_file.write("{}")
@@ -153,7 +153,7 @@ class TestSchemaFieldMissing:
         dag = project.dag()
 
         # Create schema with specific columns
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
@@ -245,7 +245,7 @@ class TestResolutionStackTracking:
         dag = project.dag()
 
         # Create schema
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
@@ -281,7 +281,7 @@ class TestCacheInvalidation:
         dag = project.dag()
 
         # Create schema
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
@@ -319,7 +319,7 @@ class TestCacheInvalidation:
         dag = project.dag()
 
         # Create schema
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")
@@ -354,7 +354,7 @@ class TestDialectHandling:
         dag = project.dag()
 
         # Create schema
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")

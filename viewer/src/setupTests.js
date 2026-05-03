@@ -19,7 +19,11 @@ const originalWarn = console.warn;
 const isIgnoredErrorArg = (arg) =>
   arg?.includes?.("react-cool-dimensions: the browser doesn't support Resize Observer") ||
   arg?.message?.includes?.('Not implemented: navigation') ||
-  arg?.toString?.()?.includes?.('Not implemented: navigation');
+  arg?.toString?.()?.includes?.('Not implemented: navigation') ||
+  // jsdom's XHR transport surfaces an AggregateError for any fetch that hits
+  // the (fake) network — e.g. the capture-on-view thumbnail metadata probe.
+  // Production code already swallows the rejection; this just silences the noise.
+  arg?.toString?.() === 'Error: AggregateError';
 
 // Track unexpected console output per test so we can fail the test in afterEach.
 // Tests that *intentionally* exercise an error path should silence the expected

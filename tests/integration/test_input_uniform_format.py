@@ -45,7 +45,7 @@ class TestInputUniformFormat:
         )
 
         # Create schema file for the model
-        schema_dir = Path(output_dir) / "schema" / model.name
+        schema_dir = Path(output_dir) / "schemas" / model.name
         schema_dir.mkdir(parents=True, exist_ok=True)
 
         import json

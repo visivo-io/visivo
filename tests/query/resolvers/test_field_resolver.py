@@ -26,7 +26,7 @@ class TestFieldResolverSchemaLoading:
     def test_load_model_schema_success(self, tmpdir):
         """Test successfully loading a schema file."""
         # Create a mock schema file
-        schema_dir = tmpdir.mkdir("schema").mkdir("test_model")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("test_model")
         schema_file = schema_dir.join("schema.json")
         schema_data = {"model_hash_123": {"id": "INTEGER", "name": "VARCHAR", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -45,7 +45,7 @@ class TestFieldResolverSchemaLoading:
     def test_load_model_schema_caching(self, tmpdir):
         """Test that schemas are cached after first load."""
         # Create a mock schema file
-        schema_dir = tmpdir.mkdir("schema").mkdir("test_model")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("test_model")
         schema_file = schema_dir.join("schema.json")
         schema_data = {"model_hash_123": {"id": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
@@ -74,7 +74,7 @@ class TestFieldResolverSchemaLoading:
     def test_load_model_schema_invalid_json(self, tmpdir):
         """Test handling of malformed JSON in schema files."""
         # Create a schema file with invalid JSON
-        schema_dir = tmpdir.mkdir("schema").mkdir("bad_model")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("bad_model")
         schema_file = schema_dir.join("schema.json")
         schema_file.write("{invalid json content")
 
@@ -100,7 +100,7 @@ class TestFieldResolverImplicitDimensions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -121,7 +121,7 @@ class TestFieldResolverImplicitDimensions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -161,7 +161,7 @@ class TestFieldResolverResolveImplicitDimensions:
 
         # Create schema in correct format: {model_hash: {column: type}}
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"x": "INTEGER", "y": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -185,7 +185,7 @@ class TestFieldResolverResolveImplicitDimensions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -224,7 +224,7 @@ class TestFieldResolverResolveMetrics:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -256,7 +256,7 @@ class TestFieldResolverComplexExpressions:
         dag = project.dag()
 
         # Create schemas for both models
-        schema_base_dir = tmpdir.mkdir("schema")
+        schema_base_dir = tmpdir.mkdir("schemas")
         for model_name, fields in [
             ("orders", {"id": "INTEGER", "user_id": "INTEGER"}),
             ("users", {"id": "INTEGER", "name": "VARCHAR"}),
@@ -292,7 +292,7 @@ class TestFieldResolverComplexExpressions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -366,7 +366,7 @@ class TestFieldResolverQualification:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -388,7 +388,7 @@ class TestFieldResolverQualification:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -428,7 +428,7 @@ class TestFieldResolverGlobalMetricsAndDimensions:
 
         # Create schema for the base model
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -466,7 +466,7 @@ class TestFieldResolverGlobalMetricsAndDimensions:
 
         # Create schema for the base model
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "status": "VARCHAR"}}
         schema_file.write(json.dumps(schema_data))
@@ -504,7 +504,7 @@ class TestFieldResolverGlobalMetricsAndDimensions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "price": "DECIMAL", "quantity": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
@@ -545,7 +545,7 @@ class TestFieldResolverGlobalMetricsAndDimensions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("sales")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("sales")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -579,7 +579,7 @@ class TestFieldResolverCaseStatements:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("another_local_test_table")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("another_local_test_table")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"new_x": "INTEGER", "name": "VARCHAR"}}
         schema_file.write(json.dumps(schema_data))
@@ -621,7 +621,7 @@ class TestFieldResolverCaseStatements:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {
             model_hash: {"status": "VARCHAR", "amount": "DECIMAL", "priority": "INTEGER"}
@@ -667,7 +667,7 @@ class TestFieldResolverCaseStatements:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("products")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("products")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"category": "VARCHAR", "price": "DECIMAL", "stock": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
@@ -714,7 +714,7 @@ class TestFieldResolverCaseStatements:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("metrics")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("metrics")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"value": "DECIMAL", "threshold": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -765,7 +765,7 @@ class TestFieldResolverDialectQuoting:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -794,7 +794,7 @@ class TestFieldResolverDialectQuoting:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"amount": "DECIMAL", "date": "DATE"}}
         schema_file.write(json.dumps(schema_data))
@@ -823,7 +823,7 @@ class TestFieldResolverDialectQuoting:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -852,7 +852,7 @@ class TestFieldResolverDialectQuoting:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"status": "VARCHAR", "amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -888,7 +888,7 @@ class TestFieldResolverSortExpressions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"amount": "DECIMAL", "date": "DATE"}}
         schema_file.write(json.dumps(schema_data))
@@ -919,7 +919,7 @@ class TestFieldResolverSortExpressions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"date": "DATE"}}
         schema_file.write(json.dumps(schema_data))
@@ -949,7 +949,7 @@ class TestFieldResolverSortExpressions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"amount": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))
@@ -980,7 +980,7 @@ class TestFieldResolverSortExpressions:
 
         # Create schema
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("sales")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("sales")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"revenue": "DECIMAL", "month": "VARCHAR"}}
         schema_file.write(json.dumps(schema_data))
@@ -1015,7 +1015,7 @@ class TestFieldResolverCaseSensitivity:
 
         # Create schema with UPPERCASE columns (as Snowflake/BigQuery returns)
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("local_test_table")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("local_test_table")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"X": "INTEGER", "Y": "VARCHAR"}}
         schema_file.write(json.dumps(schema_data))
@@ -1041,7 +1041,7 @@ class TestFieldResolverCaseSensitivity:
         dag = project.dag()
 
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"AMOUNT": "DECIMAL", "USER_ID": "INTEGER"}}
         schema_file.write(json.dumps(schema_data))
@@ -1090,7 +1090,7 @@ class TestFieldResolverCaseSensitivity:
         dag = project.dag()
 
         model_hash = model.name_hash()
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {model_hash: {"id": "INTEGER", "amount": "DECIMAL", "status": "VARCHAR"}}
         schema_file.write(json.dumps(schema_data))
@@ -1222,7 +1222,7 @@ class TestFieldResolverB10SqlModelFallback:
         dag = project.dag()
 
         # Schema for 'orders' contains a 'revenue' column.
-        schema_dir = tmpdir.mkdir("schema").mkdir("orders")
+        schema_dir = tmpdir.mkdir("schemas").mkdir("orders")
         schema_file = schema_dir.join("schema.json")
         schema_data = {orders.name_hash(): {"id": "INTEGER", "revenue": "DECIMAL"}}
         schema_file.write(json.dumps(schema_data))

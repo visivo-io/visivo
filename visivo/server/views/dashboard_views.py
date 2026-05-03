@@ -4,7 +4,6 @@ from flask import Response, jsonify, request, send_from_directory
 from pydantic import ValidationError
 
 from visivo.logger.logger import Logger
-from visivo.models.base.named_model import alpha_hash
 
 
 def register_dashboard_views(app, flask_app, output_dir):
@@ -12,8 +11,7 @@ def register_dashboard_views(app, flask_app, output_dir):
     def get_dashboard_api(dashboard_name):
         """API endpoint for dashboard data"""
         try:
-            dashboard_name_hash = alpha_hash(dashboard_name)
-            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+            thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
             thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
 
             return jsonify(
@@ -21,7 +19,7 @@ def register_dashboard_views(app, flask_app, output_dir):
                     "id": dashboard_name,
                     "name": dashboard_name,
                     "signed_thumbnail_file_url": (
-                        f"/api/dashboards/{dashboard_name_hash}.png/" if thumbnail_exists else None
+                        f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
                     ),
                 }
             )
@@ -29,10 +27,10 @@ def register_dashboard_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/dashboards/<dashboard_name_hash>.png/", methods=["GET"])
-    def get_thumbnail_api(dashboard_name_hash):
+    @app.route("/api/dashboards/<dashboard_name>.png/", methods=["GET"])
+    def get_thumbnail_api(dashboard_name):
         try:
-            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+            thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
             if not os.path.exists(os.path.join(output_dir, thumbnail_path)):
                 Logger.instance().debug(f"Thumbnail not found at path: {thumbnail_path}")
                 return Response(status=404)
@@ -42,8 +40,8 @@ def register_dashboard_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/dashboards/<dashboard_name_hash>.png/", methods=["POST"])
-    def create_thumbnail_api(dashboard_name_hash):
+    @app.route("/api/dashboards/<dashboard_name>.png/", methods=["POST"])
+    def create_thumbnail_api(dashboard_name):
         try:
             if "file" not in request.files:
                 return jsonify({"message": "No file provided"}), 400
@@ -55,13 +53,13 @@ def register_dashboard_views(app, flask_app, output_dir):
             dashboard_dir = os.path.join(output_dir, "dashboards")
             os.makedirs(dashboard_dir, exist_ok=True)
 
-            thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name_hash}.png")
+            thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name}.png")
 
             file.save(thumbnail_path)
 
             return jsonify(
                 {
-                    "signed_thumbnail_file_url": f"/api/dashboards/{dashboard_name_hash}.png/",
+                    "signed_thumbnail_file_url": f"/api/dashboards/{dashboard_name}.png/",
                 }
             )
 

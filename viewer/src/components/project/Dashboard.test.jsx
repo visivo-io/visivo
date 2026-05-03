@@ -91,6 +91,7 @@ test('renders dashboard markdown content', async () => {
   expect(text).toBeInTheDocument();
 });
 
+
 describe('shows/hides row based on selector in URL', () => {
   test('shows option 1 if selected', async () => {
     renderDashboard(project_with_json, 'dashboard', '/dashboard?selector1=option1');

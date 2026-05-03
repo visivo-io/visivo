@@ -100,7 +100,7 @@ class TestFieldResolverWithInputs:
         dag = project.dag()
 
         # Create schema file
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = orders_model.name_hash()
         schema_dir = schema_base.mkdir("orders")
         schema_file = schema_dir.join("schema.json")

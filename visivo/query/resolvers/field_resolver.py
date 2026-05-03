@@ -58,7 +58,7 @@ class FieldResolver:
             return self._schema_cache[model_name]
 
         # Build path to schema file
-        schema_file = os.path.join(self.output_dir, "schema", model_name, "schema.json")
+        schema_file = os.path.join(self.output_dir, "schemas", model_name, "schema.json")
 
         # Try to read schema file
         try:

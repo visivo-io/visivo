@@ -37,7 +37,7 @@ class TestRelationGraphBasics:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -74,7 +74,7 @@ class TestRelationGraphBasics:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -140,7 +140,7 @@ class TestTwoModelJoins:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -188,7 +188,7 @@ class TestTwoModelJoins:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -287,7 +287,7 @@ class TestAmbiguousPaths:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -346,7 +346,7 @@ class TestAmbiguousPaths:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -406,7 +406,7 @@ class TestMultiModelJoins:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -460,7 +460,7 @@ class TestMultiModelJoins:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -502,7 +502,7 @@ class TestMultiModelJoins:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -564,7 +564,7 @@ class TestJoinPlan:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -612,7 +612,7 @@ class TestJoinPlan:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_users, model_orders, model_addr]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -651,7 +651,7 @@ class TestJoinPlan:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -695,7 +695,7 @@ class TestValidation:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -733,7 +733,7 @@ class TestValidation:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -789,7 +789,7 @@ class TestDefaultRelationResolution:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b, model_c, model_d]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -850,7 +850,7 @@ class TestDefaultRelationResolution:
         dag = project.dag()
 
         # Create schemas
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -920,7 +920,7 @@ class TestRelationGraphScoping:
         dag = project.dag()
 
         # Create schemas only for models A and B (not C)
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -968,7 +968,7 @@ class TestRelationGraphScoping:
         dag = project.dag()
 
         # Create schemas only for orders and users
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)
@@ -1012,7 +1012,7 @@ class TestRelationGraphScoping:
         dag = project.dag()
 
         # Create schema only for orders
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         model_hash = model_a.name_hash()
         schema_dir = schema_base.mkdir(model_a.name)
         schema_file = schema_dir.join("schema.json")
@@ -1053,7 +1053,7 @@ class TestRelationGraphScoping:
         dag = project.dag()
 
         # Create schemas for both
-        schema_base = tmpdir.mkdir("schema")
+        schema_base = tmpdir.mkdir("schemas")
         for model in [model_a, model_b]:
             model_hash = model.name_hash()
             schema_dir = schema_base.mkdir(model.name)

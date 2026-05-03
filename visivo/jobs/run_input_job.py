@@ -6,8 +6,8 @@ This module handles both single-select and multi-select input types:
 - MultiSelectInput: Execute options OR range queries, store as parquet/JSON
 
 Output follows the insights pattern:
-- Parquet files in {output_dir}/files/{hash}_{key}.parquet for list data
-- Metadata JSON in {output_dir}/inputs/{hash}.json with file references
+- Parquet files in {output_dir}/files/{name}_{key}.parquet for list data
+- Metadata JSON in {output_dir}/inputs/{name}.json with file references
 - Scalars (range values, single-select defaults) resolved at runtime and stored in metadata
 """
 
@@ -39,7 +39,7 @@ OPTION_COUNT_ERROR_THRESHOLD = 100000
 def _write_parquet_file(
     df: pl.DataFrame,
     output_dir: str,
-    input_hash: str,
+    input_name: str,
     key: str,
     run_id: str = DEFAULT_RUN_ID,
 ) -> str:
@@ -49,7 +49,8 @@ def _write_parquet_file(
     Args:
         df: Polars DataFrame to write
         output_dir: Base output directory
-        input_hash: Hash of the input name
+        input_name: Clean name of the input (used as filename; DuckDB table
+            identifiers continue to use name_hash, which stays in metadata)
         key: File key (options, defaults)
         run_id: Run ID for organizing output files
 
@@ -60,7 +61,7 @@ def _write_parquet_file(
     run_output_dir = f"{output_dir}/{run_id}"
     files_directory = f"{run_output_dir}/files"
     os.makedirs(files_directory, exist_ok=True)
-    parquet_path = f"{files_directory}/{input_hash}_{key}.parquet"
+    parquet_path = f"{files_directory}/{input_name}_{key}.parquet"
     df.write_parquet(parquet_path)
     return parquet_path
 
@@ -255,8 +256,9 @@ def _process_single_select(
             query_value, dag, input_name, output_dir, return_dataframe=True
         )
 
-        # Write parquet file
-        parquet_path = _write_parquet_file(df, output_dir, input_hash, "options", run_id)
+        # Write parquet file (filename uses clean name; DuckDB table identifier
+        # in name_hash stays hashed for SQL safety)
+        parquet_path = _write_parquet_file(df, output_dir, input_name, "options", run_id)
         files.append(
             {
                 "name_hash": f"{input_hash}_options",
@@ -343,8 +345,9 @@ def _process_multi_select(
                 query_value, dag, input_name, output_dir, return_dataframe=True
             )
 
-            # Write parquet file
-            parquet_path = _write_parquet_file(df, output_dir, input_hash, "options", run_id)
+            # Write parquet file (filename uses clean name; DuckDB table
+            # identifier in name_hash stays hashed for SQL safety)
+            parquet_path = _write_parquet_file(df, output_dir, input_name, "options", run_id)
             files.append(
                 {
                     "name_hash": f"{input_hash}_options",
@@ -387,9 +390,10 @@ def _process_multi_select(
                     # Rename column to 'value' for defaults
                     defaults_df = defaults_df.rename({"option": "value"})
 
-                    # Write parquet file for defaults
+                    # Write parquet file for defaults (filename uses clean
+                    # name; DuckDB table identifier stays hashed)
                     parquet_path = _write_parquet_file(
-                        defaults_df, output_dir, input_hash, "defaults", run_id
+                        defaults_df, output_dir, input_name, "defaults", run_id
                     )
                     files.append(
                         {
@@ -487,8 +491,8 @@ def action(
     Execute input job - compute options/range and store results as parquet + JSON metadata.
 
     Output structure follows the insights pattern:
-    - Parquet files in {output_dir}/{run_id}/files/{hash}_{key}.parquet
-    - Metadata JSON in {output_dir}/{run_id}/inputs/{hash}.json
+    - Parquet files in {output_dir}/{run_id}/files/{name}_{key}.parquet
+    - Metadata JSON in {output_dir}/{run_id}/inputs/{name}.json
 
     Args:
         input_obj: The input object to process
@@ -502,13 +506,12 @@ def action(
     try:
         start_time = time()
         input_name = input_obj.name
-        input_hash = input_obj.name_hash()
 
         # Organize files by run_id
         run_output_dir = f"{output_dir}/{run_id}"
         inputs_directory = f"{run_output_dir}/inputs"
         os.makedirs(inputs_directory, exist_ok=True)
-        json_path = f"{inputs_directory}/{input_hash}.json"
+        json_path = f"{inputs_directory}/{input_name}.json"
 
         # Process based on input type
         if isinstance(input_obj, SingleSelectInput):
