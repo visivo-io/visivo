@@ -8,9 +8,11 @@ import useStore from '../stores/store';
  */
 export const useUrlSync = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectorValues = useStore(state => state.selectorValues);
-  const setSelectorValues = useStore(state => state.setSelectorValues);
-  const setSelectorValue = useStore(state => state.setSelectorValue);
+  // Selector model was removed; the store no longer initializes these. Default
+  // to a no-op shape so legacy callers don't blow up at Object.entries(null).
+  const selectorValues = useStore(state => state.selectorValues) || {};
+  const setSelectorValues = useStore(state => state.setSelectorValues) || (() => {});
+  const setSelectorValue = useStore(state => state.setSelectorValue) || (() => {});
   const initializedRef = useRef(false);
 
   // Initialize selector values from URL on mount only
@@ -90,7 +92,7 @@ export const useUrlSync = () => {
  */
 export const useUrlSyncManual = () => {
   const [searchParams] = useSearchParams();
-  const setSelectorValue = useStore(state => state.setSelectorValue);
+  const setSelectorValue = useStore(state => state.setSelectorValue) || (() => {});
 
   const setStateSearchParam = (name, value) => {
     setSelectorValue(name, value);

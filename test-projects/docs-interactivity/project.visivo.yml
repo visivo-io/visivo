@@ -1,0 +1,70 @@
+name: docs-interactivity
+
+# Tiny project that backs the screenshots in mkdocs/topics/interactivity.md.
+# Keep in sync with the YAML snippet in that doc.
+
+sources:
+  - name: local-duckdb
+    type: duckdb
+    database: local.duckdb
+
+models:
+  - name: sales_data
+    source: ${ref(local-duckdb)}
+    sql: |
+      SELECT * FROM (VALUES
+        ('North','Electronics',520),
+        ('North','Clothing',310),
+        ('North','Food',180),
+        ('South','Electronics',380),
+        ('South','Clothing',290),
+        ('South','Food',140),
+        ('East','Electronics',610),
+        ('East','Clothing',420),
+        ('East','Food',210),
+        ('West','Electronics',470),
+        ('West','Clothing',360),
+        ('West','Food',165)
+      ) AS t(region, category, amount)
+
+inputs:
+  - name: region
+    type: single-select
+    options:
+      - North
+      - South
+      - East
+      - West
+    display:
+      type: dropdown
+      default:
+        value: North
+
+insights:
+  - name: revenue-by-region
+    props:
+      type: bar
+      x: ?{ ${ref(sales_data).category} }
+      y: ?{ ${ref(sales_data).amount} }
+      marker:
+        color: "#713B57"
+    interactions:
+      - filter: ?{ ${ref(sales_data).region} = '${ref(region).value}' }
+
+charts:
+  - name: revenue-chart
+    layout:
+      title:
+        text: "Revenue by Category"
+    insights:
+      - ${ref(revenue-by-region)}
+
+dashboards:
+  - name: Sales
+    rows:
+      - height: compact
+        items:
+          - input: ${ref(region)}
+      - height: medium
+        items:
+          - chart: ${ref(revenue-chart)}
