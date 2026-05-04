@@ -1,22 +1,27 @@
+insights:
+  - name: Simple Bar
+    props:
+      type: bar
+      x: ?{${ref(Echo CSV).x}}
+      y: ?{${ref(Echo CSV).y}}
+
 dashboards:
   - name: Chart Examples
     rows:
       - height: small
         items:
-          - markdown: |
-              # Chart Examples
+          - markdown:
+              content: |
+                # Chart Examples
 
-              This dashboard contains example on some common chart types.
+                This dashboard contains example on some common chart types.
 
       - height: medium
         items:
-          - markdown: |
-              # Bar
+          - markdown:
+              content: |
+                # Bar
           - chart:
               name: Bar Chart
               insights:
-                - name: Simple Bar
-                  props:
-                    type: bar
-                    x: ?{${ref(Echo CSV).x}}
-                    y: ?{${ref(Echo CSV).y}}
+                - ${ref(Simple Bar)}

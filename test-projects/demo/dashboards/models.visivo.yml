@@ -3,7 +3,7 @@ models:
     table_name: csv
     args:
       - echo
-      - |
+      - |-
         x,y
         1,9
         2,1
@@ -19,5 +19,5 @@ models:
       - "&&"
       - cat target/processes.csv
   - name: Relational
-    target: ${ref(postgres)}
+    source: ${ref(postgres)}
     sql: "select * from fibonacci"

@@ -6,9 +6,9 @@ includes:
   - path: dashboards/models.visivo.yml
 
 defaults:
-  target_name: sqlite
+  source_name: sqlite
 
-targets:
+sources:
   - name: sqlite
     type: sqlite
     database: local.db

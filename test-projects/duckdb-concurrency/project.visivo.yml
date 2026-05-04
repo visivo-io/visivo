@@ -26,7 +26,6 @@ insights:
   #{% endfor %}
 tables: []
 charts: []
-selectors: []
 dashboards:
   - name: Example Dashboard
     rows:
