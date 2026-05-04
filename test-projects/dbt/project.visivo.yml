@@ -4,16 +4,18 @@ dbt:
   enabled: true
   prefix: dbt
 
+insights:
+  - name: trace_name
+    props:
+      type: bar
+      x: ?{${ref(dbt_fact_transaction).CREATED_AT}}
+      y: ?{${ref(dbt_fact_transaction).AMOUNT}}
+
 dashboards:
   - name: dashboard_name
     rows:
       - items:
           - chart:
               name: chart_name
-              traces:
-                - name: trace_name
-                  model: ${ref(dbt_fact_transaction)}
-                  props:
-                    x: ?{CREATED_AT}
-                    y: ?{AMOUNT}
-                    type: bar
+              insights:
+                - ${ref(trace_name)}
