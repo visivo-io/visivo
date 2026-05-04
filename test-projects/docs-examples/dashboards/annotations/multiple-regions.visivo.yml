@@ -10,22 +10,8 @@ models:
         4,5
         5,6
 
-traces:
-  - name: scatter_trace_multiple
-    model: ${ref(scatter_data_multiple)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: markers
-      marker:
-        color: green
-    order_by:
-      - ?{ x asc }
 charts:
-  - name: Multiple Regions Example
-    traces:
-      - ${ref(scatter_trace_multiple)}
+  - name: multiple-regions-example
     layout:
       title:
         text: Multiple Highlighted Regions
@@ -48,3 +34,16 @@ charts:
             color: rgba(0, 255, 0, 1)
             width: 2
           fillcolor: rgba(0, 255, 0, 0.2)
+    insights:
+      - ${ref(scatter_trace_multiple)}
+insights:
+  - name: scatter_trace_multiple
+    props:
+      type: scatter
+      x: ?{${ref(scatter_data_multiple).x}}
+      y: ?{${ref(scatter_data_multiple).y}}
+      mode: markers
+      marker:
+        color: green
+    interactions:
+      - sort: ?{ ${ref(scatter_data_multiple).x} ASC }

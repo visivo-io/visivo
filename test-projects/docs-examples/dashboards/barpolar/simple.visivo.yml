@@ -12,21 +12,8 @@ models:
         225,6
         270,7
         315,3
-traces:
-  - name: Activity Level by Direction
-    model: ${ref(activity-data)}
-    props:
-      type: barpolar
-      r: ?{activity_level}
-      theta: ?{direction}
-      marker:
-        color: "#1f77b4"
-    order_by:
-      - ?{direction}
 charts:
-  - name: Activity Level Polar Chart
-    traces:
-      - ${ref(Activity Level by Direction)}
+  - name: activity-level-polar-chart
     layout:
       polar:
         radialaxis:
@@ -42,3 +29,15 @@ charts:
         b: 40
       title:
         text: Simple Barpolar Chart<br><sub>Activity Level by Direction</sub>
+    insights:
+      - ${ref(activity-level-by-direction)}
+insights:
+  - name: activity-level-by-direction
+    props:
+      type: barpolar
+      r: ?{${ref(activity-data).activity_level}}
+      theta: ?{${ref(activity-data).direction}}
+      marker:
+        color: "#1f77b4"
+    interactions:
+      - sort: ?{${ref(activity-data).direction}}

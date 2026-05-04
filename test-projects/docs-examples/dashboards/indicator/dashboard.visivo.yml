@@ -4,21 +4,24 @@ includes:
   - path: "delta.visivo.yml"
 
 dashboards:
-  - name: "Indicator"
+  - name: indicator
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Indicator"
-          - markdown: ""
+          - markdown:
+              content: "# Indicator"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Numeric Indicator Chart)}
-          - chart: ${ref(Gauge Indicator Chart)}
+          - chart: ${ref(simple-numeric-indicator-chart)}
+          - chart: ${ref(gauge-indicator-chart)}
       - height: medium
         items:
-          - chart: ${ref(Delta Indicator with Comparison Chart)}
-          - markdown: ""
+          - chart: ${ref(delta-indicator-with-comparison-chart)}
+          - markdown:
+              content: ""

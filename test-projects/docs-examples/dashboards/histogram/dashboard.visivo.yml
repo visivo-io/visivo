@@ -4,21 +4,24 @@ includes:
   - path: "stacked.visivo.yml"
 
 dashboards:
-  - name: "Histogram"
+  - name: histogram
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Histogram"
-          - markdown: ""
+          - markdown:
+              content: "# Histogram"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Histogram Chart)}
-          - chart: ${ref(Horizontal Histogram Chart)}
+          - chart: ${ref(simple-histogram-chart)}
+          - chart: ${ref(horizontal-histogram-chart)}
       - height: medium
         items:
-          - chart: ${ref(Stacked Histogram Chart)}
-          - markdown: ""
+          - chart: ${ref(stacked-histogram-chart)}
+          - markdown:
+              content: ""

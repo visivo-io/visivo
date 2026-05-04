@@ -4,20 +4,22 @@ includes:
   - path: "custom-markers.visivo.yml"
 
 dashboards:
-  - name: "Scattersmith"
+  - name: scattersmith
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Scattersmith"
-          - markdown: ""
+          - markdown:
+              content: "# Scattersmith"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Scattersmith Chart)}
-          - chart: ${ref(Scattersmith Chart with Lines)}
+          - chart: ${ref(simple-scattersmith-chart)}
+          - chart: ${ref(scattersmith-chart-with-lines)}
       - height: medium
         items:
-          - chart: ${ref(Scattersmith Chart with Custom Markers)} 
+          - chart: ${ref(scattersmith-chart-with-custom-markers)} 

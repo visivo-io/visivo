@@ -5,7 +5,7 @@ includes:
   - path: "cohort-funnel.visivo.yml"
 
 dashboards:
-  - name: "Funnel"
+  - name: funnel
     level: 1
     tags: 
       - "Trace Prop"
@@ -13,14 +13,16 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: "# Funnel"
-          - markdown: ""
+          - markdown:
+              content: "# Funnel"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Funnel Chart)}
-          - chart: ${ref(Horizontal Funnel Chart)}
+          - chart: ${ref(simple-funnel-chart)}
+          - chart: ${ref(horizontal-funnel-chart)}
       - height: medium
         items:
-          - chart: ${ref(Funnel Chart with Custom Markers)}
-          - chart: ${ref(Funnel Chart with Cohorts)}
+          - chart: ${ref(funnel-chart-with-custom-markers)}
+          - chart: ${ref(funnel-chart-with-cohorts)}

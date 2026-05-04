@@ -26,14 +26,21 @@ models:
         5,1.5,10
         6,2.5,18
         5,2,17
-traces:
-  - name: Carpet Grid Lines
-    model: ${ref(carpet-grid-lines)}
+charts:
+  - name: scattercarpet-chart-with-lines
+    layout:
+      title:
+        text: Scattercarpet Plot with Lines<br><sub>Connecting Data Points on Carpet Axis</sub>
+    insights:
+      - ${ref(carpet-grid-lines-trace)}
+      - ${ref(scattercarpet-plot-with-lines-trace)}
+insights:
+  - name: carpet-grid-lines-trace
     props:
       type: carpet
-      a: ?{a}
-      b: ?{b}
-      y: ?{y}
+      a: ?{${ref(carpet-grid-lines).a}}
+      b: ?{${ref(carpet-grid-lines).b}}
+      y: ?{${ref(carpet-grid-lines).y}}
       aaxis:
         tickprefix: 'a = '
         ticksuffix: 'm'
@@ -44,18 +51,9 @@ traces:
         ticksuffix: 'Pa'
         smoothing: 1
         minorgridcount: 9
-  - name: Scattercarpet Plot with Lines
-    model: ${ref(scattercarpet-data-lines)}
+  - name: scattercarpet-plot-with-lines-trace
     props:
       type: scattercarpet
-      a: ?{a}
-      b: ?{b}
+      a: ?{${ref(scattercarpet-data-lines).a}}
+      b: ?{${ref(scattercarpet-data-lines).b}}
       mode: "lines+markers"
-charts:
-  - name: Scattercarpet Chart with Lines
-    traces:
-      - ${ref(Carpet Grid Lines)}
-      - ${ref(Scattercarpet Plot with Lines)}
-    layout:
-      title:
-        text: Scattercarpet Plot with Lines<br><sub>Connecting Data Points on Carpet Axis</sub> 

@@ -4,21 +4,24 @@ includes:
   - path: "multi-level-contour.visivo.yml"
 
 dashboards:
-  - name: "Contour"
+  - name: contour
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Contour"
-          - markdown: ""
+          - markdown:
+              content: "# Contour"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Contour Chart)}
-          - chart: ${ref(Filled Contour Chart)}
+          - chart: ${ref(simple-contour-chart)}
+          - chart: ${ref(filled-contour-chart)}
       - height: medium
         items:
-          - chart: ${ref(Contour Chart with Multiple Levels)}
-          - markdown: ""
+          - chart: ${ref(contour-chart-with-multiple-levels)}
+          - markdown:
+              content: ""

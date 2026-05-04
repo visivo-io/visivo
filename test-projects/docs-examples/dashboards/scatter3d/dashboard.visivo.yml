@@ -4,7 +4,7 @@ includes:
   - path: custom-markers.visivo.yml
 
 dashboards:
-  - name: Scatter3D Dashboard
+  - name: scatter3d-dashboard
     level: 1
     tags:
       - scatter3d
@@ -13,12 +13,13 @@ dashboards:
     rows:
       - height: compact
         items: 
-        - markdown: |
-            # Scatter3D Dashboard
+        - markdown:
+            content: |
+              # Scatter3D Dashboard
 
-            This dashboard demonstrates different ways to create 3D scatter plots using the `scatter3d` trace type.
+              This dashboard demonstrates different ways to create 3D scatter plots using the `scatter3d` trace type.
       - items: 
-          - chart: ${ref(Simple Scatter3D Chart)}
-          - chart: ${ref(Scatter3D Chart with Lines)}
+          - chart: ${ref(simple-scatter3d-chart)}
+          - chart: ${ref(scatter3d-chart-with-lines)}
       - items: 
-        - chart: ${ref(Scatter3D Chart with Custom Markers)} 
+        - chart: ${ref(scatter3d-chart-with-custom-markers)} 

@@ -10,24 +10,24 @@ models:
         B,30
         B,35
         B,28
-traces:
-  - name: Violin Plot with Box
-    model: ${ref(violin-data-box)}
-    cohort_on: category
+charts:
+  - name: violin-chart-with-box
+    layout:
+      title:
+        text: Horizontal Violin Plot with Box & Points<br><sub>Overlay a Box Plot and Points</sub>
+    insights:
+      - ${ref(violin-plot-with-box)}
+insights:
+  - name: violin-plot-with-box
     props:
       type: violin
-      y: ?{category}
-      x: ?{value}
+      y: ?{${ref(violin-data-box).category}}
+      x: ?{${ref(violin-data-box).value}}
       orientation: h
       box:
         visible: true
       points: "all"
       marker:
         symbol: "cross-dot"
-charts:
-  - name: Violin Chart with Box
-    traces:
-      - ${ref(Violin Plot with Box)}
-    layout:
-      title:
-        text: Horizontal Violin Plot with Box & Points<br><sub>Overlay a Box Plot and Points</sub>
+    interactions:
+      - split: ?{${ref(violin-data-box).category}}

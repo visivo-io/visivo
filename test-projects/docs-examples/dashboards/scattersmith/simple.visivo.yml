@@ -8,18 +8,17 @@ models:
         0.8,0.3
         1.0,0.5
         1.2,0.7
-traces:
-  - name: Simple Scattersmith Plot
-    model: ${ref(scattersmith-data)}
+charts:
+  - name: simple-scattersmith-chart
+    layout:
+      title:
+        text: Simple Scattersmith Plot<br><sub>Data Points on Smith Chart</sub>
+    insights:
+      - ${ref(simple-scattersmith-plot)}
+insights:
+  - name: simple-scattersmith-plot
     props:
       type: scattersmith
       real: ?{real}
-      imag: ?{imaginary}
+      imag: ?{${ref(scattersmith-data).imaginary}}
       mode: "markers"
-charts:
-  - name: Simple Scattersmith Chart
-    traces:
-      - ${ref(Simple Scattersmith Plot)}
-    layout:
-      title:
-        text: Simple Scattersmith Plot<br><sub>Data Points on Smith Chart</sub> 

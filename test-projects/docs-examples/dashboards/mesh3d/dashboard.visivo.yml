@@ -2,17 +2,20 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Mesh3D"
+  - name: mesh3d
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Mesh3D"
-          - markdown: ""
+          - markdown:
+              content: "# Mesh3D"
+          - markdown:
+              content: ""
             width: 5
       - height: large
         items:
-          - chart: ${ref(Simple Mesh3D Chart)}
-          - markdown: ""
+          - chart: ${ref(simple-mesh3d-chart)}
+          - markdown:
+              content: ""

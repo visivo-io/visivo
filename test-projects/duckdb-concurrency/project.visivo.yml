@@ -13,15 +13,16 @@ sources:
 models:
   - name: duck-db-model
     sql: select * from test_table
+  - name: Example Model
+    sql: select * from test_table
 
-traces:
+insights:
   #{% for i in range(100) %}
   - name: "trace-{{i}}"
-    model: ${ref(duck-db-model)}
     props:
       type: bar
-      x: ?{x*{{i}}}
-      y: ?{y*{{i}}}
+      x: ?{${ref(duck-db-model).x}*{{i}}}
+      y: ?{${ref(duck-db-model).y}*{{i}}}
   #{% endfor %}
 tables: []
 charts: []
@@ -34,12 +35,9 @@ dashboards:
           - width: 1
             chart:
               name: Example Chart
-              traces:
+              insights:
                 - name: Example Trace
-                  model:
-                    name: Example Model
-                    sql: select * from test_table
                   props:
                     type: scatter
-                    x: ?{x}
-                    y: ?{y}
+                    x: ?{${ref(Example Model).x}}
+                    y: ?{${ref(Example Model).y}}

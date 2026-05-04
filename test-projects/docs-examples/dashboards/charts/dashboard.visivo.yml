@@ -4,17 +4,19 @@ includes:
   - path: "single-trace.visivo.yml"
 
 dashboards:
-  - name: Chart Layout Examples
+  - name: chart-layout-examples
     level: 0 
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Chart Examples
-          - markdown: ""
+          - markdown:
+              content: |
+                # Chart Examples
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Big Number Over Line Chart)}
-          - chart: ${ref(Single Trace Chart)}
-          - chart: ${ref(Duel Axis)}
+          - chart: ${ref(big-number-over-line-chart)}
+          - chart: ${ref(single-trace-chart)}
+          - chart: ${ref(duel-axis)}

@@ -9,23 +9,22 @@ models:
         -120,47,20,#2ca02c
         -100,35,25,#d62728
         -90,30,30,#9467bd
-traces:
-  - name: Scattergeo Plot with Custom Markers
-    model: ${ref(scattergeo-data-custom)}
-    props:
-      type: scattergeo
-      lon: ?{lon}
-      lat: ?{lat}
-      mode: "markers"
-      marker:
-        size: ?{size}
-        color: ?{color}
 charts:
-  - name: Scattergeo Chart with Custom Markers
-    traces:
-      - ${ref(Scattergeo Plot with Custom Markers)}
+  - name: scattergeo-chart-with-custom-markers
     layout:
       title:
         text: Scattergeo Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>
       geo:
-        scope: "north america" 
+        scope: "north america"
+    insights:
+      - ${ref(scattergeo-plot-with-custom-markers)}
+insights:
+  - name: scattergeo-plot-with-custom-markers
+    props:
+      type: scattergeo
+      lon: ?{${ref(scattergeo-data-custom).lon}}
+      lat: ?{${ref(scattergeo-data-custom).lat}}
+      mode: "markers"
+      marker:
+        size: ?{${ref(scattergeo-data-custom).size}}
+        color: ?{${ref(scattergeo-data-custom).color}}

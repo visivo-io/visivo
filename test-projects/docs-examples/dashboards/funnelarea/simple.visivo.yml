@@ -9,17 +9,16 @@ models:
         Opportunities,400
         Proposals,200
         Closed Deals,100
-traces:
-  - name: Simple Funnelarea Plot
-    model: ${ref(funnelarea-data)}
-    props:
-      type: funnelarea
-      labels: ?{stage}
-      values: ?{value}
 charts:
-  - name: Simple Funnelarea Chart
-    traces:
-      - ${ref(Simple Funnelarea Plot)}
+  - name: simple-funnelarea-chart
     layout:
       title:
         text: Simple Funnelarea Chart<br><sub>Proportional Sales Funnel</sub>
+    insights:
+      - ${ref(simple-funnelarea-plot)}
+insights:
+  - name: simple-funnelarea-plot
+    props:
+      type: funnelarea
+      labels: ?{${ref(funnelarea-data).stage}}
+      values: ?{${ref(funnelarea-data).value}}

@@ -4,29 +4,29 @@ models:
       - curl
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
-traces:
-  - name: Simple Splom Plot
-    model: ${ref(splom-data)}
-    cohort_on: species
+charts:
+  - name: simple-splom-chart
+    layout:
+      title:
+        text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>
+    insights:
+      - ${ref(simple-splom-plot)}
+insights:
+  - name: simple-splom-plot
     props:
       type: splom
       dimensions:
         - label: "Sepal Length"
-          values: ?{sepal_length}
+          values: ?{${ref(splom-data).sepal_length}}
         - label: "Sepal Width"
-          values: ?{sepal_width}
+          values: ?{${ref(splom-data).sepal_width}}
         - label: "Petal Length"
-          values: ?{petal_length}
+          values: ?{${ref(splom-data).petal_length}}
         - label: "Petal Width"
-          values: ?{petal_width}
+          values: ?{${ref(splom-data).petal_width}}
       diagonal:
         visible: false
       showupperhalf: false
 
-charts:
-  - name: Simple Splom Chart
-    traces:
-      - ${ref(Simple Splom Plot)}
-    layout:
-      title:
-        text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>
+    interactions:
+      - split: ?{${ref(splom-data).species}}

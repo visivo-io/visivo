@@ -9,22 +9,8 @@ models:
         Opportunities,400
         Proposals,200
         Closed Deals,100
-traces:
-  - name: Simple Funnel Plot
-    model: ${ref(funnel-data)}
-    props:
-      type: funnel
-      y: ?{stage}
-      x: ?{value}
-      textinfo: "value+percent previous"
-      marker:
-        color: "#17becf"
-    order_by:
-      - ?{value desc}
 charts:
-  - name: Simple Funnel Chart
-    traces:
-      - ${ref(Simple Funnel Plot)}
+  - name: simple-funnel-chart
     layout:
       title:
         text: Simple Funnel Chart<br><sub>Sales Funnel from Leads to Closed Deals</sub>
@@ -33,3 +19,16 @@ charts:
           text: "Stage"
       margin:
         l: 100
+    insights:
+      - ${ref(simple-funnel-plot)}
+insights:
+  - name: simple-funnel-plot
+    props:
+      type: funnel
+      y: ?{${ref(funnel-data).stage}}
+      x: ?{${ref(funnel-data).value}}
+      textinfo: "value+percent previous"
+      marker:
+        color: "#17becf"
+    interactions:
+      - sort: ?{${ref(funnel-data).value} DESC}

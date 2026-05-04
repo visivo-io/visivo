@@ -4,21 +4,24 @@ includes:
   - path: "custom-sizes.visivo.yml"
 
 dashboards:
-  - name: "Sunburst"
+  - name: sunburst
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Sunburst"
-          - markdown: ""
+          - markdown:
+              content: "# Sunburst"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Sunburst Chart)}
-          - chart: ${ref(Sunburst Chart with Custom Colors)}
+          - chart: ${ref(simple-sunburst-chart)}
+          - chart: ${ref(sunburst-chart-with-custom-colors)}
       - height: medium
         items:
-          - chart: ${ref(Sunburst Chart with Custom Sizes)}
-          - markdown: ""
+          - chart: ${ref(sunburst-chart-with-custom-sizes)}
+          - markdown:
+              content: ""

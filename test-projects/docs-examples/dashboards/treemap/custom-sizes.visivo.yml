@@ -14,21 +14,20 @@ models:
         G,B,20
         H,C,15
         I,C,15
-traces:
-  - name: Treemap Plot with Custom Tiling
-    model: ${ref(treemap-data-tiling)}
+charts:
+  - name: treemap-chart-with-custom-tiling
+    layout:
+      title:
+        text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>
+    insights:
+      - ${ref(treemap-plot-with-custom-tiling)}
+insights:
+  - name: treemap-plot-with-custom-tiling
     props:
       type: treemap
-      labels: ?{labels}
-      parents: ?{parents}
+      labels: ?{${ref(treemap-data-tiling).labels}}
+      parents: ?{${ref(treemap-data-tiling).parents}}
       values: ?{"values"}
       tiling:
         packing: binary
         squarifyratio: 1.5
-charts:
-  - name: Treemap Chart with Custom Tiling
-    traces:
-      - ${ref(Treemap Plot with Custom Tiling)}
-    layout:
-      title:
-        text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>

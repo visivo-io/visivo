@@ -13,22 +13,8 @@ models:
         0,2,0
         1,2,5
         2,2,10
-traces:
-  - name: Filled Contour Plot
-    model: ${ref(contour-data-filled)}
-    props:
-      type: contour
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      colorscale: "Earth"
-      contours:
-        coloring: "heatmap"
-        showlines: true
 charts:
-  - name: Filled Contour Chart
-    traces:
-      - ${ref(Filled Contour Plot)}
+  - name: filled-contour-chart
     layout:
       title:
         text: Filled Contour Plot<br><sub>Contour Plot with Filled Levels</sub>
@@ -38,3 +24,16 @@ charts:
       yaxis:
         title:
           text: "Y Axis"
+    insights:
+      - ${ref(filled-contour-plot)}
+insights:
+  - name: filled-contour-plot
+    props:
+      type: contour
+      x: ?{${ref(contour-data-filled).x}}
+      y: ?{${ref(contour-data-filled).y}}
+      z: ?{${ref(contour-data-filled).z}}
+      colorscale: "Earth"
+      contours:
+        coloring: "heatmap"
+        showlines: true

@@ -1,21 +1,18 @@
-
-traces:
-  - name: Streamtube Plot with Color Mapping
-    model: ${ref(streamtube-data)}
-    props:
-      type: streamtube
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      u: ?{u}
-      v: ?{v}
-      w: ?{w}
-      colorscale: "Viridis"
-      
 charts:
-  - name: Streamtube Chart with Color Mapping
-    traces:
-      - ${ref(Streamtube Plot with Color Mapping)}
+  - name: streamtube-chart-with-color-mapping
     layout:
       title:
-        text: Streamtube Plot with Color Mapping<br><sub>Vector Magnitude Represented by Color</sub> 
+        text: Streamtube Plot with Color Mapping<br><sub>Vector Magnitude Represented by Color</sub>
+    insights:
+      - ${ref(streamtube-plot-with-color-mapping)}
+insights:
+  - name: streamtube-plot-with-color-mapping
+    props:
+      type: streamtube
+      x: ?{${ref(streamtube-data).x}}
+      y: ?{${ref(streamtube-data).y}}
+      z: ?{${ref(streamtube-data).z}}
+      u: ?{${ref(streamtube-data).u}}
+      v: ?{${ref(streamtube-data).v}}
+      w: ?{${ref(streamtube-data).w}}
+      colorscale: "Viridis"

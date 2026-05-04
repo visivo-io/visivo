@@ -13,26 +13,8 @@ models:
         B,5
         B,5
         B,6
-traces:
-  - name: Histogram Groups
-    model: ${ref(histogram-data-stacked)}
-    cohort_on: '"group"'
-    columns:
-      color: |
-        case 
-          when "group" = 'A' Then '#1f77b4' 
-          when "group" = 'B' THEN '#ff7f0e' 
-          else null 
-        end
-    props:
-      type: histogram
-      x: ?{value}
-      marker:
-        color: column(color)
 charts:
-  - name: Stacked Histogram Chart
-    traces:
-      - ${ref(Histogram Groups)}
+  - name: stacked-histogram-chart
     layout:
       title:
         text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>
@@ -44,3 +26,14 @@ charts:
           text: "Count"
       barmode: "stack"
       bargap: .05
+    insights:
+      - ${ref(histogram-groups)}
+insights:
+  - name: histogram-groups
+    props:
+      type: histogram
+      x: ?{${ref(histogram-data-stacked).value}}
+      marker:
+        color: ?{case when "${ref(histogram-data-stacked).group}" = 'A' then '#1f77b4' when "${ref(histogram-data-stacked).group}" = 'B' then '#ff7f0e' else null end}
+    interactions:
+      - split: ?{${ref(histogram-data-stacked).group}}

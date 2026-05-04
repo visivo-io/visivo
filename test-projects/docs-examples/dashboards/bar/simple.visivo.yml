@@ -4,21 +4,19 @@ models:
       - curl
       - "s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-traces:
-  - name: Count Enemy Encountered
-    model: ${ref(monty-python-quests)}
-    props:
-      type: bar
-      x: ?{enemy_encountered}
-      y: ?{ count(*) }
-      text: ?{ count(*) }
-    order_by:
-      - ?{ count(*) desc}
-
 charts:
-  - name: Count Times Enemy Was Encountered
-    traces:
-      - ${ref(Count Enemy Encountered)}
+  - name: count-times-enemy-was-encountered
     layout:
       title:
         text: Simple Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest</sub>
+    insights:
+      - ${ref(count-enemy-encountered)}
+insights:
+  - name: count-enemy-encountered
+    props:
+      type: bar
+      x: ?{${ref(monty-python-quests).enemy_encountered}}
+      y: ?{ count(*) }
+      text: ?{ count(*) }
+    interactions:
+      - sort: ?{ count(*) DESC}

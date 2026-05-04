@@ -9,21 +9,8 @@ models:
         2024-01-03,104,110,100,108
         2024-01-04,108,112,101,107
         2024-01-05,107,109,98,103
-traces:
-  - name: Simple Candlestick Plot
-    model: ${ref(stock-data)}
-    props:
-      type: candlestick
-      x: ?{date}
-      open: ?{open}
-      high: ?{high}
-      low: ?{low}
-      close: ?{close}
-
 charts:
-  - name: Simple Candlestick Chart
-    traces:
-      - ${ref(Simple Candlestick Plot)}
+  - name: simple-candlestick-chart
     layout:
       title:
         text: Simple Candlestick Chart<br><sub>Stock Price Movements</sub>
@@ -35,3 +22,15 @@ charts:
       yaxis:
         title:
           text: "Price (USD)"
+    insights:
+      - ${ref(simple-candlestick-plot)}
+insights:
+  - name: simple-candlestick-plot
+    props:
+      type: candlestick
+      x: ?{date}
+      open: ?{${ref(stock-data).open}}
+      high: ?{${ref(stock-data).high}}
+      low: ?{${ref(stock-data).low}}
+      close: ?{${ref(stock-data).close}}
+

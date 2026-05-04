@@ -4,21 +4,24 @@ includes:
   - path: "custom-sizes.visivo.yml"
 
 dashboards:
-  - name: "Treemap"
+  - name: treemap
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Treemap"
-          - markdown: ""
+          - markdown:
+              content: "# Treemap"
+          - markdown:
+              content: ""
             width: 5
       - height: large
         items:
-          - chart: ${ref(Simple Treemap Chart)}
-          - chart: ${ref(Treemap Chart with Custom Colors)}
+          - chart: ${ref(simple-treemap-chart)}
+          - chart: ${ref(treemap-chart-with-custom-colors)}
       - height: large
         items:
-          - chart: ${ref(Treemap Chart with Custom Tiling)}
-          - markdown: ""
+          - chart: ${ref(treemap-chart-with-custom-tiling)}
+          - markdown:
+              content: ""

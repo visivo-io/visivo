@@ -8,22 +8,19 @@ models:
         Database Migration,2024-02-22,2024-03-05
         Bug Fix,2024-02-12,2024-02-18
 
-traces:
-  - name: Bar Project Durations
-    model: ${ref(projects-gantt)}
+insights:
+  - name: bar-project-durations
     props:
       type: bar
-      x: ?{finish_date }
-      y: ?{project}
+      x: ?{${ref(projects-gantt)}.finish_date }
+      y: ?{${ref(projects-gantt)}.project}
       orientation: h
       base: ?{start_date}
-    order_by:
-      - ?{project asc}
+    interactions:
+      - sort: ?{${ref(projects-gantt)}.project ASC}
 
 charts:
-  - name: Project Durations Gantt Chart
-    traces:
-      - ${ref(Bar Project Durations)}
+  - name: project-durations-gantt-chart
     layout:
       title:
         text: Project Duration Gantt Chart<br><sub>Visualizing the duration of each project over time</sub>
@@ -31,3 +28,5 @@ charts:
       margin:
         l: 130
       showlegend: false
+    insights:
+      - ${ref(bar-project-durations)}

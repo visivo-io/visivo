@@ -15,22 +15,9 @@ models:
         I,9
         J,10
 # {% set palettes = ["Warm Earth Tones", "Sunset Over Water", "Muted Vintage", "Retro Pop", "Forest Nightfall", "Desert Sunrise", "Urban Dusk", "Botanical Garden", "Autumn Ember", "Coastal Breeze", "Muted Vintage II", "Muted Rosewood", "Muted Classic", "Vintage Pastel", "Classic Faded","Spring Blossom", "Mint Dream", "Soft Sunset", "Lavender Fields", "Summer Breeze","Mint Dream Contrast", "Mint Dream Dark", "Mint Dream Deep", "Mint Dream Bold", "High Contrast", "High Contrast Earth"] %}
-traces:
-  - name: Color Palette Example
-    model: ${ref(layout-data)}
-    cohort_on: category
-    props:
-      type: bar
-      x: ?{ 1 }
-      y: ?{value}
-      hovertemplate: "%{fullData.marker.color}<extra></extra>"
-      orientation: h
-
 charts:
   # {% for palette in palettes %}
   - name: "{{ palette }}"
-    traces:
-      - ${ref(Color Palette Example)}
     layout:
       colorway: "{{ palette }}"
       title:
@@ -45,23 +32,11 @@ charts:
       showlegend: false
   # {% endfor %}
 
-  - name: Custom Colors Example
-    traces:
-      - ${ref(Color Palette Example)}
+    insights:
+      - ${ref(color-palette-example)}
+  - name: custom-colors-example
     layout:
-      colorway:
-        [
-          "#FF0000",
-          "#00FF00",
-          "#0000FF",
-          "#FFFF00",
-          "#FF00FF",
-          "#00FFFF",
-          "#800000",
-          "#008000",
-          "#000080",
-          "#808000",
-        ]
+      colorway: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#808000"]
       title:
         text: Custom Color Palette
       xaxis:
@@ -73,32 +48,40 @@ charts:
         dtick: 1
       showlegend: false
 
+    insights:
+      - ${ref(color-palette-example)}
 dashboards:
-  - name: Color Palettes in Visivo
+  - name: color-palettes-in-visivo
     level: 0
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Color Palettes in Visivo
+          - markdown:
+              content: |
+                # Color Palettes in Visivo
 
-              This dashboard demonstrates the various predefined color palettes available in Visivo,
-              as well as how to use custom color palettes.
-      # {% for palette in palettes %}
-      # {% if loop.index0 % 2 == 0 %}
+                This dashboard demonstrates the various predefined color palettes available in Visivo,
+                as well as how to use custom color palettes.
       - height: medium
         items:
-          # {% endif %}
-          - chart: ${ref({{ palette }})}
-      # {% endfor %}
-      - height: medium
-        items:
-          - chart: ${ref(Custom Colors Example)}
-          - markdown: |
-              ### Using Custom Color Palettes
+          - chart: ${ref(custom-colors-example)}
+          - markdown:
+              content: |
+                ### Using Custom Color Palettes
 
-              You can define your own color palettes using a list of hex color codes:
-              ```yaml
-              layout:
-                colorway: ['#FF0000', '#00FF00', '#0000FF', ...]
-              ```
+                You can define your own color palettes using a list of hex color codes:
+                ```yaml
+                layout:
+                  colorway: ['#FF0000', '#00FF00', '#0000FF', ...]
+                ```
+insights:
+  - name: color-palette-example
+    props:
+      type: bar
+      x: ?{ 1 }
+      y: ?{${ref(layout-data).value}}
+      hovertemplate: "%{fullData.marker.color}<extra></extra>"
+      orientation: h
+
+    interactions:
+      - split: ?{${ref(layout-data).category}}

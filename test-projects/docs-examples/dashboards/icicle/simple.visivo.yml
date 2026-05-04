@@ -10,14 +10,20 @@ models:
         D,A,10
         E,B,25
         F,B,15
-traces:
-  - name: Simple Icicle Plot
-    model: ${ref(icicle-data)}
+charts:
+  - name: simple-icicle-chart
+    layout:
+      title:
+        text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>
+    insights:
+      - ${ref(simple-icicle-plot)}
+insights:
+  - name: simple-icicle-plot
     props:
       type: icicle
-      labels: ?{category}
-      parents: ?{parent}
-      values: ?{value}
+      labels: ?{${ref(icicle-data).category}}
+      parents: ?{${ref(icicle-data).parent}}
+      values: ?{${ref(icicle-data).value}}
       branchvalues: "total"
       marker:
         colorscale: "Portland"
@@ -25,10 +31,3 @@ traces:
       textfont:
         size: 18
 
-charts:
-  - name: Simple Icicle Chart
-    traces:
-      - ${ref(Simple Icicle Plot)}
-    layout:
-      title:
-        text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>

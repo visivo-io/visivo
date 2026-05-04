@@ -9,36 +9,34 @@ models:
         3,8
         4,15
         5,12
-traces:
-  - name: Markers and Line
-    model: ${ref(scatter-data-lines)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: "lines+markers"
-    order_by:
-      - ?{x asc}
-  - name: Spline No Markers
-    model: ${ref(scatter-data-lines)}
-    props:
-      type: scatter
-      x: ?{x+3 - (x*x)/3}
-      y: ?{y*1.5}
-      mode: "lines"
-      line:
-        shape: spline
-        smoothing: .5 #Sets spline bend
-    order_by:
-      - ?{x+3 - (x*x)/3}
 charts:
-  - name: Scatter Chart with Lines
-    traces:
-      - ${ref(Markers and Line)}
-      - ${ref(Spline No Markers)}
+  - name: scatter-chart-with-lines
     layout:
       title:
         text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
       legend:
         orientation: h
       colorway: "High Contrast"
+    insights:
+      - ${ref(markers-and-line)}
+      - ${ref(spline-no-markers)}
+insights:
+  - name: markers-and-line
+    props:
+      type: scatter
+      x: ?{${ref(scatter-data-lines).x}}
+      y: ?{${ref(scatter-data-lines).y}}
+      mode: "lines+markers"
+    interactions:
+      - sort: ?{${ref(scatter-data-lines).x} ASC}
+  - name: spline-no-markers
+    props:
+      type: scatter
+      x: ?{${ref(scatter-data-lines).x}+3 - (${ref(scatter-data-lines).x}*${ref(scatter-data-lines).x})/3}
+      y: ?{${ref(scatter-data-lines).y}*1.5}
+      mode: "lines"
+      line:
+        shape: spline
+        smoothing: .5 #Sets spline bend
+    interactions:
+      - sort: ?{${ref(scatter-data-lines).x}+3 - (${ref(scatter-data-lines).x}*${ref(scatter-data-lines).x})/3}

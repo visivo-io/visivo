@@ -2,17 +2,20 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Carpet"
+  - name: carpet
     level: 1
     tags:
       - "Trace Prop"
     rows: 
       - height: compact 
         items:
-          - markdown: "# Carpet"
-          - markdown: ""
+          - markdown:
+              content: "# Carpet"
+          - markdown:
+              content: ""
             width: 5 
       - height: medium 
         items: 
-          - chart: ${ref(Simple Carpet Chart)}
-          - markdown: ""
+          - chart: ${ref(simple-carpet-chart)}
+          - markdown:
+              content: ""

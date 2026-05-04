@@ -4,20 +4,22 @@ includes:
   - path: "hover-info.visivo.yml"
 
 dashboards:
-  - name: "Sankey"
+  - name: sankey
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Sankey"
-          - markdown: ""
+          - markdown:
+              content: "# Sankey"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Sankey Chart)}
-          - chart: ${ref(Custom Colors Sankey Chart)}
+          - chart: ${ref(simple-sankey-chart)}
+          - chart: ${ref(custom-colors-sankey-chart)}
       - height: medium
         items:
-          - chart: ${ref(Hover Info Sankey Chart)} 
+          - chart: ${ref(hover-info-sankey-chart)} 

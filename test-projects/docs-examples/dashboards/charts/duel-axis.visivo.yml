@@ -1,42 +1,9 @@
 models:
-  - name: Series of Numbers
-    args:
-      [
-        "curl",
-        "-s",
-        "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv",
-      ]
-
-traces:
-  - name: Yaxis Trace
-    model: ${ref(Series of Numbers)}
-    props:
-      type: bar
-      y: ?{numbers_column}
-      marker:
-        color: "#713B57"
-        opacity: .7
-    order_by:
-      - ?{numbers_column}
-  - name: Yaxis2 Trace
-    model: ${ref(Series of Numbers)}
-    props:
-      type: scatter
-      y: ?{ (500 -  numbers_column) }
-      yaxis: "y2"
-      line:
-        shape: spline
-        smoothing: .1
-        color: orange
-
-    order_by:
-      - ?{numbers_column}
+  - name: series-of-numbers
+    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
 charts:
-  - name: Duel Axis
-    traces:
-      - ${ref(Yaxis2 Trace)}
-      - ${ref(Yaxis Trace)}
+  - name: duel-axis
     layout:
       title:
         text: "Dual Axis"
@@ -58,3 +25,28 @@ charts:
         overlaying: "y"
         anchor: "y"
         showgrid: false
+    insights:
+      - ${ref(yaxis2-trace)}
+      - ${ref(yaxis-trace)}
+insights:
+  - name: yaxis-trace
+    props:
+      type: bar
+      y: ?{${ref(series-of-numbers).numbers_column}}
+      marker:
+        color: "#713B57"
+        opacity: .7
+    interactions:
+      - sort: ?{${ref(series-of-numbers).numbers_column}}
+  - name: yaxis2-trace
+    props:
+      type: scatter
+      y: ?{ (500 -  ${ref(series-of-numbers).numbers_column}) }
+      yaxis: "y2"
+      line:
+        shape: spline
+        smoothing: .1
+        color: orange
+
+    interactions:
+      - sort: ?{${ref(series-of-numbers).numbers_column}}

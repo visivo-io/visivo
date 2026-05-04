@@ -13,25 +13,8 @@ models:
         1,0,1,0,0,-1
         1,1,1,-1,-1,-1
 
-traces:
-  - name: Simple Cone Plot Trace
-    model: ${ref(vector-field-data)}
-    props:
-      type: cone
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      u: ?{u}
-      v: ?{v}
-      w: ?{w}
-      colorscale: "Viridis"
-      sizemode: "absolute"
-      sizeref: 0.5
-
 charts:
-  - name: Simple Cone Plot
-    traces:
-      - ${ref(Simple Cone Plot Trace)}
+  - name: simple-cone-plot
     layout:
       title:
         text: Simple 3D Vector Field
@@ -41,3 +24,19 @@ charts:
             x: 1.5
             y: 1.5
             z: 1.5
+    insights:
+      - ${ref(simple-cone-plot-trace)}
+insights:
+  - name: simple-cone-plot-trace
+    props:
+      type: cone
+      x: ?{${ref(vector-field-data).x}}
+      y: ?{${ref(vector-field-data).y}}
+      z: ?{${ref(vector-field-data).z}}
+      u: ?{${ref(vector-field-data).u}}
+      v: ?{${ref(vector-field-data).v}}
+      w: ?{${ref(vector-field-data).w}}
+      colorscale: "Viridis"
+      sizemode: "absolute"
+      sizeref: 0.5
+

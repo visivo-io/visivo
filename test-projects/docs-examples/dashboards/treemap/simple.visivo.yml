@@ -11,13 +11,19 @@ models:
         D,A,10
         E,A,20
         F,B,10
-traces:
-  - name: Simple Treemap Plot
-    model: ${ref(treemap-data)}
+charts:
+  - name: simple-treemap-chart
+    layout:
+      title:
+        text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>
+    insights:
+      - ${ref(simple-treemap-plot)}
+insights:
+  - name: simple-treemap-plot
     props:
       type: treemap
-      labels: ?{labels}
-      parents: ?{parents}
+      labels: ?{${ref(treemap-data).labels}}
+      parents: ?{${ref(treemap-data).parents}}
       values: ?{"values"}
       marker:
         colorscale: Blackbody
@@ -25,10 +31,3 @@ traces:
       texttemplate: "<b>%{label}</b>"
       textfont:
         size: 12
-charts:
-  - name: Simple Treemap Chart
-    traces:
-      - ${ref(Simple Treemap Plot)}
-    layout:
-      title:
-        text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>

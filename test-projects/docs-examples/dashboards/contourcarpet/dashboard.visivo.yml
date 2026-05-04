@@ -4,21 +4,24 @@ includes:
   - path: "custom.visivo.yml"
 
 dashboards:
-  - name: "Contourcarpet"
+  - name: contourcarpet
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Contourcarpet"
-          - markdown: ""
+          - markdown:
+              content: "# Contourcarpet"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Contourcarpet Chart)}
-          - chart: ${ref(Filled Contourcarpet Chart)}
+          - chart: ${ref(simple-contourcarpet-chart)}
+          - chart: ${ref(filled-contourcarpet-chart)}
       - height: medium
         items:
-          - chart: ${ref(Custom Contourcarpet Chart)}
-          - markdown: "" 
+          - chart: ${ref(custom-contourcarpet-chart)}
+          - markdown:
+              content: "" 

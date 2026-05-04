@@ -4,21 +4,24 @@ includes:
   - path: "depth-limited.visivo.yml"
 
 dashboards:
-  - name: "Icicle"
+  - name: icicle
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Icicle"
-          - markdown: ""
+          - markdown:
+              content: "# Icicle"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Icicle Chart)}
-          - chart: ${ref(Custom Colors Icicle Chart)}
+          - chart: ${ref(simple-icicle-chart)}
+          - chart: ${ref(custom-colors-icicle-chart)}
       - height: medium
         items:
-          - chart: ${ref(Icicle Plot with Depth Limiting)}
-          - markdown: ""
+          - chart: ${ref(icicle-plot-with-depth-limiting)}
+          - markdown:
+              content: ""

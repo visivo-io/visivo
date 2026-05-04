@@ -4,20 +4,22 @@ includes:
   - path: "custom-markers.visivo.yml"
 
 dashboards:
-  - name: "Scatterpolargl"
+  - name: scatterpolargl
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Scatterpolargl"
-          - markdown: ""
+          - markdown:
+              content: "# Scatterpolargl"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Scatterpolargl Chart)}
-          - chart: ${ref(Scatterpolargl Chart with Lines)}
+          - chart: ${ref(simple-scatterpolargl-chart)}
+          - chart: ${ref(scatterpolargl-chart-with-lines)}
       - height: medium
         items:
-          - chart: ${ref(Scatterpolargl Chart with Custom Markers)} 
+          - chart: ${ref(scatterpolargl-chart-with-custom-markers)} 

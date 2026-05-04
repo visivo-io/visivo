@@ -11,20 +11,19 @@ models:
         D,A,10,#9467bd
         E,A,20,#8c564b
         F,B,10,#e377c2
-traces:
-  - name: Sunburst Plot with Custom Colors
-    model: ${ref(sunburst-data-colors)}
-    props:
-      type: sunburst
-      labels: ?{labels}
-      parents: ?{parents}
-      values: ?{"values"}
-      marker:
-        colors: ?{colors}
 charts:
-  - name: Sunburst Chart with Custom Colors
-    traces:
-      - ${ref(Sunburst Plot with Custom Colors)}
+  - name: sunburst-chart-with-custom-colors
     layout:
       title:
         text: Sunburst Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
+    insights:
+      - ${ref(sunburst-plot-with-custom-colors)}
+insights:
+  - name: sunburst-plot-with-custom-colors
+    props:
+      type: sunburst
+      labels: ?{${ref(sunburst-data-colors).labels}}
+      parents: ?{${ref(sunburst-data-colors).parents}}
+      values: ?{"values"}
+      marker:
+        colors: ?{${ref(sunburst-data-colors).colors}}

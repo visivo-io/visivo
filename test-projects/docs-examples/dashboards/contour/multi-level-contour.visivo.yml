@@ -19,23 +19,8 @@ models:
         0,0,4
         1,0,5
         2,0,6
-traces:
-  - name: Contour Plot with Multiple Levels
-    model: ${ref(contour-data-multi)}
-    props:
-      type: contour
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      colorscale: "Jet"
-      contours:
-        start: 0
-        end: 6
-        size: 1
 charts:
-  - name: Contour Chart with Multiple Levels
-    traces:
-      - ${ref(Contour Plot with Multiple Levels)}
+  - name: contour-chart-with-multiple-levels
     layout:
       title:
         text: Contour Plot with Multiple Levels<br><sub>Custom Contour Levels</sub>
@@ -45,3 +30,17 @@ charts:
       yaxis:
         title:
           text: "Y Axis"
+    insights:
+      - ${ref(contour-plot-with-multiple-levels)}
+insights:
+  - name: contour-plot-with-multiple-levels
+    props:
+      type: contour
+      x: ?{${ref(contour-data-multi).x}}
+      y: ?{${ref(contour-data-multi).y}}
+      z: ?{${ref(contour-data-multi).z}}
+      colorscale: "Jet"
+      contours:
+        start: 0
+        end: 6
+        size: 1

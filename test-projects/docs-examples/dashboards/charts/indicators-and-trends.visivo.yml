@@ -1,29 +1,29 @@
 models:
-  - name: Numbers From Remote CSV
-    args:
-      [
-        "curl",
-        "-s",
-        "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv",
-      ]
+  - name: numbers-from-remote-csv
+    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
-traces:
-  - name: Line Trace
-    model: ${ref(Numbers From Remote CSV)}
+charts:
+  - name: big-number-over-line-chart
+    layout:
+      title:
+        text: "Indicator + Scatter Plot"
+    insights:
+      - ${ref(average-value)}
+      - ${ref(total-value)}
+      - ${ref(line-trace)}
+insights:
+  - name: line-trace
     props:
       type: scatter
-      y: ?{numbers_column}
+      y: ?{${ref(numbers-from-remote-csv).numbers_column}}
       line:
         shape: spline
         color: orange
 
-  - name: Average Value
-    model: ${ref(Numbers From Remote CSV)}
-    columns:
-      avg_numbers_column: avg(numbers_column)
+  - name: average-value
     props:
       type: indicator
-      value: column(avg_numbers_column)[0]
+      value: ?{avg(${ref(numbers-from-remote-csv).numbers_column})}[0]
       number:
         font:
           size: 35
@@ -31,14 +31,10 @@ traces:
       domain:
         y: [0, .7]
         x: [.5, 1]
-
-  - name: Total Value
-    model: ${ref(Numbers From Remote CSV)}
-    columns:
-      sum_numbers_column: sum(numbers_column)
+  - name: total-value
     props:
       type: indicator
-      value: column(sum_numbers_column)[0]
+      value: ?{sum(${ref(numbers-from-remote-csv).numbers_column})}[0]
       number:
         font:
           size: 35
@@ -46,13 +42,3 @@ traces:
       domain:
         y: [.5, 1]
         x: [.2, .5]
-
-charts:
-  - name: Big Number Over Line Chart
-    traces:
-      - ${ref(Average Value)}
-      - ${ref(Total Value)}
-      - ${ref(Line Trace)}
-    layout:
-      title:
-        text: "Indicator + Scatter Plot"

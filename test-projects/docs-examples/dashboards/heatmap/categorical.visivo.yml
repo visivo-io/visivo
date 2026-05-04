@@ -13,20 +13,8 @@ models:
         High,A,0.7
         High,B,0.8
         High,C,0.9
-traces:
-  - name: Heatmap with Custom Colorscale
-    model: ${ref(heatmap-data-custom)}
-    props:
-      type: heatmap
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      zmin: 0
-      zmax: 1
 charts:
-  - name: Heatmap Chart with Categorical Axis
-    traces:
-      - ${ref(Heatmap with Custom Colorscale)}
+  - name: heatmap-chart-with-categorical-axis
     layout:
       title:
         text: Heatmap Chart with Categorical Axis<br><sub>Categorical Data</sub>
@@ -38,3 +26,14 @@ charts:
         title:
           text: "Category"
         type: "category"
+    insights:
+      - ${ref(heatmap-with-custom-colorscale)}
+insights:
+  - name: heatmap-with-custom-colorscale
+    props:
+      type: heatmap
+      x: ?{${ref(heatmap-data-custom).x}}
+      y: ?{${ref(heatmap-data-custom).y}}
+      z: ?{${ref(heatmap-data-custom).z}}
+      zmin: 0
+      zmax: 1

@@ -9,18 +9,17 @@ models:
         90,30
         135,25
         180,15
-traces:
-  - name: Simple Scatterpolargl Plot
-    model: ${ref(scatterpolargl-data)}
-    props:
-      type: scatterpolargl
-      theta: ?{theta}
-      r: ?{r}
-      mode: "markers"
 charts:
-  - name: Simple Scatterpolargl Chart
-    traces:
-      - ${ref(Simple Scatterpolargl Plot)}
+  - name: simple-scatterpolargl-chart
     layout:
       title:
-        text: Simple Scatterpolargl Plot<br><sub>High-Performance Polar Data Points</sub> 
+        text: Simple Scatterpolargl Plot<br><sub>High-Performance Polar Data Points</sub>
+    insights:
+      - ${ref(simple-scatterpolargl-plot)}
+insights:
+  - name: simple-scatterpolargl-plot
+    props:
+      type: scatterpolargl
+      theta: ?{${ref(scatterpolargl-data).theta}}
+      r: ?{${ref(scatterpolargl-data).r}}
+      mode: "markers"
