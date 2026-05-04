@@ -4,21 +4,24 @@ includes:
   - path: "custom-markers.visivo.yml"
 
 dashboards:
-  - name: "Scattergeo"
+  - name: scattergeo
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Scattergeo"
-          - markdown: ""
+          - markdown:
+              content: "# Scattergeo"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Scattergeo Chart)}
-          - chart: ${ref(Scattergeo Chart with Lines)}
+          - chart: ${ref(simple-scattergeo-chart)}
+          - chart: ${ref(scattergeo-chart-with-lines)}
       - height: medium
         items:
-          - chart: ${ref(Scattergeo Chart with Custom Markers)}
-          - markdown: "" 
+          - chart: ${ref(scattergeo-chart-with-custom-markers)}
+          - markdown:
+              content: "" 

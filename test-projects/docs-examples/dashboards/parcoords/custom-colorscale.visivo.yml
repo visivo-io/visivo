@@ -7,25 +7,24 @@ models:
         1,2,3
         2,3,4
         3,4,5
-traces:
-  - name: Parcoords Plot with Custom Colorscale
-    model: ${ref(parcoords-data-colorscale)}
+charts:
+  - name: parcoords-chart-with-custom-colorscale
+    layout:
+      title:
+        text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub>
+    insights:
+      - ${ref(parcoords-plot-with-custom-colorscale)}
+insights:
+  - name: parcoords-plot-with-custom-colorscale
     props:
       type: parcoords
       dimensions:
         - label: "Variable 1"
-          values: ?{variable_1}
+          values: ?{${ref(parcoords-data-colorscale).variable_1}}
         - label: "Variable 2"
-          values: ?{variable_2}
+          values: ?{${ref(parcoords-data-colorscale).variable_2}}
         - label: "Variable 3"
-          values: ?{variable_3}
+          values: ?{${ref(parcoords-data-colorscale).variable_3}}
       line:
-        color: ?{variable_3}
+        color: ?{${ref(parcoords-data-colorscale).variable_3}}
         colorscale: "Jet"
-charts:
-  - name: Parcoords Chart with Custom Colorscale
-    traces:
-      - ${ref(Parcoords Plot with Custom Colorscale)}
-    layout:
-      title:
-        text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub>

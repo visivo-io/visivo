@@ -220,80 +220,99 @@ class VisivoRunValidator:
         self.log_success(f"DuckDB source '{source_name}' schema validation passed")
         return True
 
-    def validate_traces(self) -> bool:
-        """Validate trace data generation results."""
-        traces_dir = self.run_dir / "traces"
+    def validate_insights(self) -> bool:
+        """Validate insight data generation results.
 
-        if not traces_dir.exists():
-            self.log_error(f"Traces directory does not exist at {traces_dir}")
+        Insights are stored as flat ``<name>.json`` files (one per insight),
+        not directories. Insights defined in YAML but not referenced by any
+        chart/dashboard are intentionally pruned by the DAG runner and are
+        not expected on disk.
+        """
+        insights_dir = self.run_dir / "insights"
+
+        if not insights_dir.exists():
+            self.log_error(f"Insights directory does not exist at {insights_dir}")
             return False
 
-        # Expected trace names based on traces.visivo.yml and inline traces
-        # Names are normalized: lowercase, hyphens instead of spaces, underscore prefix for names starting with digits
-        expected_traces = [
+        # Expected insight names: every insight that any chart/dashboard
+        # in the integration project actually references. Insights defined
+        # in insights.visivo.yml but not referenced (currently
+        # 3d-scatter-insight, metric-line-insight) are pruned by the DAG
+        # runner and intentionally absent.
+        expected_insights = [
             "3d-line-one",
             "3d-line-two",
+            "aggregated-bar-insight",
             "aggregated-line",
+            "autocomplete-date-insight",
+            "checkboxes-filter-insight",
+            "chips-split-insight",
+            "combined-interactions-test-insight",
+            "composite-scatter-insight",
+            "date-range-category-insight",
+            "date-range-filter-insight",
             "double-simple-line",
             "example-indicator",
+            "fibonacci-split-insight",
             "fibonacci-waterfall",
+            "filter-aggregate-input-test-insight",
+            "filter-nonaggregate-input-test-insight",
             "funnel-trace",
             "indicator-trace",
             "markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters",
+            "pivot-source-insight",
+            "range-slider-insight",
             "simple-line",
+            "simple-scatter-insight",
+            "slider-day-insight",
+            "sort-input-test-insight",
+            "split-input-test-insight",
             "surface-trace",
+            "toggle-mode-insight",
+            "week-selector-insight",
         ]
 
         success = True
-        actual_traces = []
+        actual_insights = []
 
-        for item in traces_dir.iterdir():
-            if item.is_dir():
-                actual_traces.append(item.name)
+        for item in insights_dir.iterdir():
+            if item.is_file() and item.suffix == ".json":
+                actual_insights.append(item.stem)
 
-        actual_traces.sort()
-        expected_traces.sort()
+        actual_insights.sort()
+        expected_insights.sort()
 
-        # Check if we have the expected number of traces
-        if len(actual_traces) != len(expected_traces):
+        if len(actual_insights) != len(expected_insights):
             self.log_error(
-                f"Expected {len(expected_traces)} trace directories, found {len(actual_traces)}"
+                f"Expected {len(expected_insights)} insight files, found {len(actual_insights)}"
             )
-            self.log_error(f"Expected: {expected_traces}")
-            self.log_error(f"Actual: {actual_traces}")
+            self.log_error(f"Expected: {expected_insights}")
+            self.log_error(f"Actual: {actual_insights}")
             success = False
         else:
-            self.log_success(f"Found {len(actual_traces)} trace directories (correct)")
+            self.log_success(f"Found {len(actual_insights)} insight files (correct)")
 
-        # Check if all expected traces exist
-        missing_traces = set(expected_traces) - set(actual_traces)
-        if missing_traces:
-            self.log_error(f"Missing expected trace directories: {list(missing_traces)}")
+        missing_insights = set(expected_insights) - set(actual_insights)
+        if missing_insights:
+            self.log_error(f"Missing expected insight files: {sorted(missing_insights)}")
             success = False
 
-        unexpected_traces = set(actual_traces) - set(expected_traces)
-        if unexpected_traces:
-            self.log_warning(f"Found unexpected trace directories: {list(unexpected_traces)}")
+        unexpected_insights = set(actual_insights) - set(expected_insights)
+        if unexpected_insights:
+            self.log_warning(f"Found unexpected insight files: {sorted(unexpected_insights)}")
 
-        # Validate each trace directory has a data file
-        for trace_name in actual_traces:
-            trace_dir = traces_dir / trace_name
-            data_file = trace_dir / "data.json"
-
-            if not data_file.exists():
-                self.log_error(f"Trace '{trace_name}' missing data.json file")
+        # Verify each insight file is valid JSON.
+        for insight_name in actual_insights:
+            insight_file = insights_dir / f"{insight_name}.json"
+            try:
+                with open(insight_file, "r") as f:
+                    json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                self.log_error(f"Insight '{insight_name}' has invalid JSON: {e}")
                 success = False
-            else:
-                try:
-                    # Verify the data file is valid JSON
-                    with open(data_file, "r") as f:
-                        json.load(f)
-                except (json.JSONDecodeError, IOError) as e:
-                    self.log_error(f"Trace '{trace_name}' has invalid data.json: {e}")
-                    success = False
 
         if success:
-            self.log_success("All trace directories have valid data.json files")
+            self.log_success("All insight files have valid JSON")
 
         return success
 
@@ -363,7 +382,7 @@ class VisivoRunValidator:
             self.validate_target_directory_exists(),
             self.validate_core_files(),
             self.validate_schemas(),
-            self.validate_traces(),
+            self.validate_insights(),
             self.validate_models(),
         ]
 

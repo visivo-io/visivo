@@ -1,4 +1,8 @@
 from visivo.query.insight.insight_query_info import InsightQueryInfo
+from visivo.query.insight.prop_type_validator import (
+    check_slice_type_compatibility,
+    is_scalar_slice,
+)
 from visivo.models.base.project_dag import ProjectDag
 
 from visivo.query.resolvers.field_resolver import FieldResolver
@@ -1001,6 +1005,107 @@ class InsightQueryBuilder:
 
         return order_by_expressions
 
+    def _validate_prop_slice_types(self, props_slices: Dict[str, str]) -> None:
+        """Type-check each sliced ``?{...}[N|a:b]`` prop against the broad
+        type class the Plotly schema expects at that path.
+
+        Only single-index slices (``[N]``) trigger validation — sub-array
+        slices retain the array shape so the existing array-vs-array
+        binding semantics already hold.
+
+        Errors here are raised as ``ValueError`` so the build aborts with
+        a clean message rather than producing an insight that renders
+        nothing (B13).
+        """
+        if not props_slices:
+            return
+
+        trace_type = self.insight.props.type.value if self.insight.props else None
+        if not trace_type:
+            return
+
+        # Map prop path -> resolved SQL expression (no alias suffix).
+        # `resolved_query_statements` is `[(key, sql_with_alias)]`. We
+        # strip a trailing `AS "<hash>"` to get a usable bare expression.
+        resolved_by_path: Dict[str, str] = {}
+        for key, sql in self.resolved_query_statements or []:
+            if not key or "props." not in key:
+                continue
+            bare = re.sub(r"\s+AS\s+\"[^\"]+\"\s*$", "", sql, flags=re.IGNORECASE)
+            resolved_by_path[key] = bare
+
+        for prop_path, slice_expr in props_slices.items():
+            if not is_scalar_slice(slice_expr):
+                # sub-array slices preserve array shape — no scalar/type
+                # mismatch is possible by construction.
+                continue
+            resolved_sql = resolved_by_path.get(prop_path)
+            if not resolved_sql:
+                continue
+
+            sqlglot_dtype = self._infer_expression_type(resolved_sql)
+            ok, message = check_slice_type_compatibility(
+                trace_type=trace_type,
+                prop_path=prop_path,
+                slice_expr=slice_expr,
+                sqlglot_dtype=sqlglot_dtype,
+            )
+            if not ok:
+                raise ValueError(message)
+
+    def _infer_expression_type(self, expression_sql: str) -> Optional[exp.DataType]:
+        """Best-effort sqlglot type inference for a resolved expression.
+
+        Builds a SELECT with the expression and runs it through
+        ``annotate_types`` against the union of all referenced models'
+        schemas. Returns None if any step fails — callers treat that as
+        ``unknown`` and skip validation.
+        """
+        try:
+            from visivo.query.sqlglot_utils import get_sqlglot_dialect
+            from sqlglot.optimizer.annotate_types import annotate_types
+            from sqlglot.schema import MappingSchema
+
+            sqlglot_dialect = get_sqlglot_dialect(self.native_dialect)
+
+            # Aggregate the schemas of every model the insight depends on
+            # into a single MappingSchema keyed by model_hash.
+            mapping = {}
+            for model in self.models:
+                schema = self.field_resolver._load_model_schema(model.name)
+                if not schema:
+                    continue
+                model_hash = model.name_hash()
+                # On Snowflake the resolver uppercases the table-ref key;
+                # mirror that here so qualify can find the columns.
+                if sqlglot_dialect == "snowflake":
+                    table_ref = model_hash.upper()
+                    mapping[table_ref] = {
+                        col: dtype for col, dtype in schema.get(model_hash, {}).items()
+                    }
+                else:
+                    mapping[model_hash] = schema.get(model_hash, {})
+
+            if not mapping:
+                return None
+
+            mapping_schema = MappingSchema(schema=mapping)
+            # Wrap the expression in a tiny SELECT so annotate_types has
+            # somewhere to attach its inferences.
+            from_table = next(iter(mapping.keys()))
+            wrapped = f'SELECT {expression_sql} AS _vtype FROM "{from_table}"'
+            parsed = sqlglot.parse_one(wrapped, dialect=sqlglot_dialect)
+            annotated = annotate_types(parsed, schema=mapping_schema)
+            select = annotated.find(exp.Select)
+            if not select or not select.expressions:
+                return None
+            proj = select.expressions[0]
+            if isinstance(proj, exp.Alias):
+                proj = proj.this
+            return proj.type
+        except Exception:
+            return None
+
     def build(self):
         """
         Build and validate insight queries.
@@ -1067,12 +1172,24 @@ class InsightQueryBuilder:
 
             self.logger.debug("✓ Pre-query validation passed")
 
+        props_slices = self.insight.get_props_slices()
+
+        # B13 follow-up: when a prop is authored with a single-index slice
+        # (e.g. value: ?{MAX(x)}[0]), check that the resolved SQL column's
+        # broad type class is compatible with what the Plotly prop expects
+        # at that path. Errors here surface at build time with a clean
+        # message; ambiguous cases (mixed numeric/string allowed, or
+        # unknown SQL type) pass through.
+        if props_slices:
+            self._validate_prop_slice_types(props_slices)
+
         data = {
             "pre_query": pre_query,
             "post_query": post_query,
             "props_mapping": props_mapping,
             "split_key": self.split_key,
             "static_props": self.static_props,
+            "props_slices": props_slices,
         }
 
         insight_query_info = InsightQueryInfo(**data)

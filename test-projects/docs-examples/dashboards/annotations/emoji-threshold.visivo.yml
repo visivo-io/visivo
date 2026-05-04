@@ -10,23 +10,8 @@ models:
         4,6
         5,8
 
-traces:
-  - name: threshold_emoji_trace
-    model: ${ref(threshold_emoji_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: lines
-      line:
-        color: blue
-    order_by:
-      - ?{ x asc }
-
 charts:
-  - name: Emoji Threshold Example
-    traces:
-      - ${ref(threshold_emoji_trace)}
+  - name: emoji-threshold-example
     layout:
       title:
         text: Threshold Line with Emoji Warning
@@ -48,3 +33,16 @@ charts:
           hovertext: "Warning: Threshold crossed"
           font:
             size: 16
+    insights:
+      - ${ref(threshold_emoji_trace)}
+insights:
+  - name: threshold_emoji_trace
+    props:
+      type: scatter
+      x: ?{${ref(threshold_emoji_data).x}}
+      y: ?{${ref(threshold_emoji_data).y}}
+      mode: lines
+      line:
+        color: blue
+    interactions:
+      - sort: ?{ ${ref(threshold_emoji_data).x} ASC }

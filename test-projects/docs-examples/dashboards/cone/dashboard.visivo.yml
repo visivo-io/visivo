@@ -3,17 +3,19 @@ includes:
   - path: "wind-direction.visivo.yml"
 
 dashboards:
-  - name: "Cone"
+  - name: cone
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Cone"
-          - markdown: ""
+          - markdown:
+              content: "# Cone"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Cone Plot)}
-          - chart: ${ref(Wind Direction Cone Plot)}
+          - chart: ${ref(simple-cone-plot)}
+          - chart: ${ref(wind-direction-cone-plot)}

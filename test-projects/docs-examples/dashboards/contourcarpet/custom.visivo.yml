@@ -13,31 +13,8 @@ models:
         0,2,7,7,70
         1,2,8,8,80
         2,2,9,9,90
-traces:
-  - name: Carpet Plot Custom
-    model: ${ref(contourcarpet-data-custom)}
-    props:
-      type: carpet
-      a: ?{a}
-      b: ?{b}
-      x: ?{x}
-      y: ?{y}
-  - name: Custom Contourcarpet Plot
-    model: ${ref(contourcarpet-data-custom)}
-    props:
-      type: contourcarpet
-      carpet: ${ref(Carpet Plot Custom)}
-      z: ?{z}
-      colorscale: "Jet"
-      contours:
-        start: 10
-        end: 90
-        size: 10
 charts:
-  - name: Custom Contourcarpet Chart
-    traces:
-      - ${ref(Custom Contourcarpet Plot)}
-      - ${ref(Carpet Plot Custom)}
+  - name: custom-contourcarpet-chart
     layout:
       title:
         text: Custom Contourcarpet Plot<br><sub>Customized Contour Levels on a Carpet</sub>
@@ -46,4 +23,25 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(custom-contourcarpet-plot)}
+      - ${ref(carpet-plot-custom)}
+insights:
+  - name: carpet-plot-custom
+    props:
+      type: carpet
+      a: ?{${ref(contourcarpet-data-custom).a}}
+      b: ?{${ref(contourcarpet-data-custom).b}}
+      x: ?{${ref(contourcarpet-data-custom).x}}
+      y: ?{${ref(contourcarpet-data-custom).y}}
+  - name: custom-contourcarpet-plot
+    props:
+      type: contourcarpet
+      carpet: ${ref(carpet-plot-custom)}
+      z: ?{${ref(contourcarpet-data-custom).z}}
+      colorscale: "Jet"
+      contours:
+        start: 10
+        end: 90
+        size: 10

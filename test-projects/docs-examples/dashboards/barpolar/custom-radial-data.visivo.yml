@@ -10,24 +10,8 @@ models:
         180,1,4
         240,2,7
         300,3,5
-traces:
-  - name: Custom Radial Barpolar
-    model: ${ref(custom-radial-data)}
-    props:
-      type: barpolar
-      theta: ?{direction}
-      width: 30
-      r0: 1
-      dr: 2
-      marker:
-        color: "#d62728"
-      opacity: 0.8
-    order_by:
-      - ?{direction}
 charts:
-  - name: Custom Radial Barpolar Chart
-    traces:
-      - ${ref(Custom Radial Barpolar)}
+  - name: custom-radial-barpolar-chart
     layout:
       polar:
         radialaxis:
@@ -38,3 +22,18 @@ charts:
         b: 40
       title:
         text: Polar Bar with Custom Radial Range<br><sub>Bars Starting and Ending at Custom Radial Positions</sub>
+    insights:
+      - ${ref(custom-radial-barpolar)}
+insights:
+  - name: custom-radial-barpolar
+    props:
+      type: barpolar
+      theta: ?{${ref(custom-radial-data).direction}}
+      width: 30
+      r0: 1
+      dr: 2
+      marker:
+        color: "#d62728"
+      opacity: 0.8
+    interactions:
+      - sort: ?{${ref(custom-radial-data).direction}}

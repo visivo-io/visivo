@@ -13,20 +13,8 @@ models:
         4,2
         5,3
         6,4
-traces:
-  - name: 2D Contour Histogram with Filled Contours
-    model: ${ref(histogram2dcontour-data-filled)}
-    props:
-      type: histogram2dcontour
-      x: ?{x}
-      y: ?{y}
-      colorscale: "Blues"
-      contours:
-        coloring: "heatmap"
 charts:
-  - name: 2D Contour Histogram with Filled Contours Chart
-    traces:
-      - ${ref(2D Contour Histogram with Filled Contours)}
+  - name: 2d-contour-histogram-with-filled-contours-chart
     layout:
       title:
         text: 2D Contour Histogram with Filled Contours<br><sub>Filled Density Contours</sub>
@@ -35,4 +23,15 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(2d-contour-histogram-with-filled-contours)}
+insights:
+  - name: 2d-contour-histogram-with-filled-contours
+    props:
+      type: histogram2dcontour
+      x: ?{${ref(histogram2dcontour-data-filled).x}}
+      y: ?{${ref(histogram2dcontour-data-filled).y}}
+      colorscale: "Blues"
+      contours:
+        coloring: "heatmap"

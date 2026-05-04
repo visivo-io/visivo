@@ -28,32 +28,8 @@ models:
         8,NW,0-1 m/s,2
         8,NW,1-2 m/s,5
         8,NW,2-3 m/s,3
-traces:
-  - name: Wind Rose
-    model: ${ref(wind-data)}
-    cohort_on: "speed"
-    columns:
-      bar_color: |
-        CASE speed 
-          when '0-1 m/s' THEN '#1f77b4' 
-          when '1-2 m/s' then '#ff7f0e' 
-          when '2-3 m/s' then '#2ca02c' 
-        end
-    props:
-      type: barpolar
-      r: ?{count}
-      theta: ?{direction}
-      text: ?{speed}
-      marker:
-        color: column(bar_color)
-        opacity: .85
-      hoverinfo: "theta+r+name"
-    order_by:
-      - ?{cardinal_order}
 charts:
-  - name: Wind Rose Chart
-    traces:
-      - ${ref(Wind Rose)}
+  - name: wind-rose-chart
     layout:
       polar:
         radialaxis:
@@ -71,3 +47,19 @@ charts:
           text: "Wind Speed"
       title:
         text: Wind Rose Chart<br><sub>Wind Speed Distribution by Direction</sub>
+    insights:
+      - ${ref(wind-rose)}
+insights:
+  - name: wind-rose
+    props:
+      type: barpolar
+      r: ?{${ref(wind-data).count}}
+      theta: ?{${ref(wind-data).direction}}
+      text: ?{${ref(wind-data).speed}}
+      marker:
+        color: ?{CASE ${ref(wind-data).speed} when '0-1 m/s' THEN '#1f77b4' when '1-2 m/s' then '#ff7f0e' when '2-3 m/s' then '#2ca02c' end}
+        opacity: .85
+      hoverinfo: "theta+r+name"
+    interactions:
+      - split: ?{${ref(wind-data).speed}}
+      - sort: ?{${ref(wind-data).cardinal_order}}

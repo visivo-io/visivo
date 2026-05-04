@@ -8,7 +8,6 @@ from visivo.jobs.filtered_runner import FilteredRunner
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.server.managers.preview_run_manager import RunStatus
-from visivo.models.base.named_model import alpha_hash
 
 
 MANAGER_TO_PROJECT_FIELD = [
@@ -144,11 +143,57 @@ def _assert_insights_present(project, insight_names):
         )
 
 
-def _read_insight_result(output_dir, run_id, insight_name):
-    """Read one insight's result file and rewrite its signed_data_file_url path segments."""
-    name_hash = alpha_hash(insight_name)
-    insight_path = f"{output_dir}/{run_id}/insights/{name_hash}.json"
+def _find_runner_error_for_insight(runner, insight_name):
+    """Look up the upstream error message for ``insight_name`` (or any of
+    its dependencies) from the runner's captured per-job failures.
+
+    Returns ``None`` when no captured failure mentions the insight or
+    when ``runner`` doesn't expose ``failed_job_results``. Used to
+    surface the real cause of "insight file missing after execution"
+    instead of the generic file-not-found message.
+    """
+    failed_results = getattr(runner, "failed_job_results", None)
+    if not failed_results:
+        return None
+    # Prefer a direct match on the insight; fall back to any failure
+    # since an upstream model failure is the most likely cause of a
+    # missing insight JSON.
+    direct = []
+    upstream = []
+    for result in failed_results:
+        item = getattr(result, "item", None)
+        item_name = getattr(item, "name", None)
+        message = getattr(result, "message", None) or repr(result)
+        if item_name == insight_name:
+            direct.append((item_name, message))
+        else:
+            upstream.append((item_name, message))
+    if direct:
+        return direct[0][1]
+    if upstream:
+        name, message = upstream[0]
+        prefix = f"upstream job '{name}' failed: " if name else "upstream job failed: "
+        return prefix + str(message)
+    return None
+
+
+def _read_insight_result(output_dir, run_id, insight_name, runner=None):
+    """Read one insight's result file and rewrite its signed_data_file_url path segments.
+
+    When the JSON is missing — typically because the per-job soft
+    failure suppressed an exception in the build pipeline — surface
+    the upstream error from ``runner.failed_job_results`` instead of
+    the generic "Insight file not found" message that obscures every
+    real cause behind the same string.
+    """
+    insight_path = f"{output_dir}/{run_id}/insights/{insight_name}.json"
     if not os.path.exists(insight_path):
+        upstream = _find_runner_error_for_insight(runner, insight_name) if runner else None
+        if upstream:
+            raise Exception(
+                f"Preview build for insight '{insight_name}' produced no output. "
+                f"Cause: {upstream}"
+            )
         raise Exception(f"Insight file not found at {insight_path} after execution")
     with open(insight_path, "r") as f:
         insight_data = json.load(f)
@@ -156,8 +201,8 @@ def _read_insight_result(output_dir, run_id, insight_name):
         file_path = file_info.get("signed_data_file_url", "")
         if file_path:
             filename = os.path.basename(file_path)
-            file_hash = filename.replace(".parquet", "")
-            file_info["signed_data_file_url"] = f"/api/files/{file_hash}/{run_id}/"
+            file_stem = filename.replace(".parquet", "")
+            file_info["signed_data_file_url"] = f"/api/files/{file_stem}/{run_id}/"
     return insight_data
 
 
@@ -243,7 +288,10 @@ def execute_preview_job(
             progress_message="Finalizing results",
         )
 
-        results = {name: _read_insight_result(output_dir, run_id, name) for name in insight_names}
+        results = {
+            name: _read_insight_result(output_dir, run_id, name, runner=runner)
+            for name in insight_names
+        }
 
         run_manager.set_result(job_id, {"insights": results, "run_id": run_id})
         run_manager.update_status(

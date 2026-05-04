@@ -5,21 +5,23 @@ includes:
   - path: "area-plot.visivo.yml"
 
 dashboards:
-  - name: "Scatter"
+  - name: scatter
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Scatter"
-          - markdown: ""
+          - markdown:
+              content: "# Scatter"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Scatter Chart)}
-          - chart: ${ref(Scatter Chart with Lines)}
+          - chart: ${ref(simple-scatter-chart)}
+          - chart: ${ref(scatter-chart-with-lines)}
       - height: medium
         items:
-          - chart: ${ref(Scatter Chart with Custom Markers)}
-          - chart: ${ref(Area Plot Chart)}
+          - chart: ${ref(scatter-chart-with-custom-markers)}
+          - chart: ${ref(area-plot-chart)}

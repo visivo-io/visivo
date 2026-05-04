@@ -6,33 +6,27 @@ models:
       - -s
       - https://raw.githubusercontent.com/visivo-io/visivo/main/test-projects/integration/data/aapl_pl.csv
 
-traces:
+insights:
   - name: Fibonacci Waterfall Trace
-    model: ${ref(Waterfall Model)}
-    cohort_on: ?{year}
-    columns:
-      x_data: category
-      y_data: try_cast( replace(thousands_dollars, ',', '') as float ) * try_cast(sign as float)
-      measure: waterfall
     props:
       type: waterfall
       base: 0
-      measure: column(measure)
-      x: column(x_data)
-      y: column(y_data)
-      text: ?{ cast(thousands_dollars as text) }
+      measure: ?{${ref(Waterfall Model).waterfall}}
+      x: ?{${ref(Waterfall Model).category}}
+      y: ?{try_cast( replace(${ref(Waterfall Model).thousands_dollars}, ',', '') as float ) * try_cast(${ref(Waterfall Model).sign} as float)}
+      text: ?{ cast(${ref(Waterfall Model).thousands_dollars} as text) }
       increasing:
         marker:
           color: "#b97a9b"
       decreasing:
         marker:
           color: "#edbdb5"
-    order_by:
-      - ?{row asc}
-    filters:
-      - ?{ waterfall is not null }
-      - ?{ category not in ('Earnings From Continuing Operations') }
-      - ?{ year in ('Sep 2023', 'Sep 2022') }
+    interactions:
+      - split: ?{${ref(Waterfall Model).year}}
+      - sort: ?{${ref(Waterfall Model).row} ASC}
+      - filter: ?{ ${ref(Waterfall Model).waterfall} is not null }
+      - filter: ?{ ${ref(Waterfall Model).category} not in ('Earnings From Continuing Operations') }
+      - filter: ?{ ${ref(Waterfall Model).year} in ('Sep 2023', 'Sep 2022') }
 
 dashboards:
   - name: Welcome to Visivo
@@ -40,7 +34,7 @@ dashboards:
       - height: compact
         items:
           - markdown: |
-              # Welcome to Visivo 
+              # Welcome to Visivo
 
               #### This is a demo dashboard that contains some simple examples of common use cases.
 
@@ -48,20 +42,20 @@ dashboards:
       - height: medium
         items:
           - markdown: |
-              ### There are tons of different chart options to display your data.  
+              ### There are tons of different chart options to display your data.
 
-              Each [Chart](https://docs.visivo.io/reference/configuration/Chart/), can have many lines.  Each line is called a [Trace](https://docs.visivo.io/reference/configuration/Trace/).  Here is one with a [Waterfall Trace](https://docs.visivo.io/reference/configuration/Trace/Waterfall/).
+              Each [Chart](https://docs.visivo.io/reference/configuration/Chart/), can have many lines.  Each line is called an [Insight](https://docs.visivo.io/reference/configuration/Insight/).  Here is one with a [Waterfall Insight](https://docs.visivo.io/reference/configuration/Insight/Waterfall/).
 
               Some common options are:
-              1. [Scatter (line)](https://docs.visivo.io/reference/configuration/Trace/Scatter/)
-              1. [Bar](https://docs.visivo.io/reference/configuration/Trace/Bar/)
-              1. [Indicator](https://docs.visivo.io/reference/configuration/Trace/Indicator/)
+              1. [Scatter (line)](https://docs.visivo.io/reference/configuration/Insight/Scatter/)
+              1. [Bar](https://docs.visivo.io/reference/configuration/Insight/Bar/)
+              1. [Indicator](https://docs.visivo.io/reference/configuration/Insight/Indicator/)
 
           - width: 2
             chart:
               name: Fibonacci Waterfall Chart
               selector: ${ref(Fibonacci Waterfall Selector)}
-              traces:
+              insights:
                 - ${ref(Fibonacci Waterfall Trace)}
       - height: medium
         items:
@@ -73,15 +67,14 @@ dashboards:
             table:
               name: Fibonacci Waterfall Table
               selector: ${ref(Fibonacci Waterfall Selector)}
-              traces:
-                - ${ref(Fibonacci Waterfall Trace)}
+              data: ${ref(Fibonacci Waterfall Trace)}
               column_defs:
-                - trace_name: Fibonacci Waterfall Trace
+                - insight_name: Fibonacci Waterfall Trace
                   columns:
                     - header: Widget Type
-                      key: columns.x_data
+                      key: props.x
                     - header: Widget Sales
-                      key: columns.y_data
+                      key: props.y
                     - header: Dollars
                       key: props.text
       - height: small

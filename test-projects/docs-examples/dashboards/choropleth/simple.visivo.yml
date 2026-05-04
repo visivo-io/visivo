@@ -13,18 +13,8 @@ models:
         CHN,153
         IND,450
         COD,48
-traces:
-  - name: Simple Choropleth Map Trace
-    model: ${ref(country-population-data)}
-    props:
-      type: choropleth
-      locations: ?{country}
-      z: ?{population_density}
-      colorscale: "Picnic"
 charts:
-  - name: Simple Choropleth Map
-    traces:
-      - ${ref(Simple Choropleth Map Trace)}
+  - name: simple-choropleth-map
     layout:
       title:
         text: Population Density by Country<br><sub>Data in Persons per Square Kilometer</sub>
@@ -32,3 +22,12 @@ charts:
         showcoastlines: true
         projection:
           type: "natural earth"
+    insights:
+      - ${ref(simple-choropleth-map-trace)}
+insights:
+  - name: simple-choropleth-map-trace
+    props:
+      type: choropleth
+      locations: ?{${ref(country-population-data).country}}
+      z: ?{${ref(country-population-data).population_density}}
+      colorscale: "Picnic"

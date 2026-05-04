@@ -40,14 +40,14 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     ]
     insight_file_starts = [
         {
-            "name": f"{insight.name_hash()}.json",
+            "name": f"{insight.name}.json",
             "id": "id4",
             "upload_url": "http://google/upload/id4",
         },
     ]
     input_file_starts = [
         {
-            "name": f"{input_obj.name_hash()}.json",
+            "name": f"{input_obj.name}.json",
             "id": "id5",
             "upload_url": "http://google/upload/id5",
         },
@@ -63,13 +63,13 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
 
     # Create insight JSON file
     os.makedirs(os.path.join(output_dir, run_id, "insights"), exist_ok=True)
-    insight_path = os.path.join(output_dir, run_id, "insights", f"{insight.name_hash()}.json")
+    insight_path = os.path.join(output_dir, run_id, "insights", f"{insight.name}.json")
     with open(insight_path, "w") as f:
         json.dump({"name": insight.name, "query": "SELECT * FROM test"}, f)
 
     # Create input JSON file
     os.makedirs(os.path.join(output_dir, run_id, "inputs"), exist_ok=True)
-    input_path = os.path.join(output_dir, run_id, "inputs", f"{input_obj.name_hash()}.json")
+    input_path = os.path.join(output_dir, run_id, "inputs", f"{input_obj.name}.json")
     with open(input_path, "w") as f:
         json.dump({"type": "single-select", "options": ["A", "B", "C"]}, f)
 

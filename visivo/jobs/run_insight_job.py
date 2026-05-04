@@ -69,8 +69,9 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
 
             data = source.read_sql(insight_query_info.pre_query)
             os.makedirs(files_directory, exist_ok=True)
-            # Use name_hash for file naming within the run directory
-            parquet_path = f"{files_directory}/{insight.name_hash()}.parquet"
+            # name_hash stays in the metadata as the DuckDB table identifier;
+            # the file on disk uses the clean name for storage consistency.
+            parquet_path = f"{files_directory}/{insight.name}.parquet"
             write_dicts_to_parquet(data, parquet_path)
             files = [{"name_hash": insight.name_hash(), "signed_data_file_url": parquet_path}]
         else:
@@ -78,10 +79,10 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             files = [
                 {
                     "name_hash": model.name_hash(),
-                    "signed_data_file_url": f"{files_directory}/{model.name_hash()}.parquet",
+                    "signed_data_file_url": f"{files_directory}/{model.name}.parquet",
                 }
                 for model in models
-                if os.path.exists(f"{files_directory}/{model.name_hash()}.parquet")
+                if os.path.exists(f"{files_directory}/{model.name}.parquet")
             ]
 
         # Store insight metadata with file references and post_query
@@ -91,12 +92,16 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
             "query": insight_query_info.post_query,
             "props_mapping": insight_query_info.props_mapping,
             "static_props": insight_query_info.static_props,  # Non-query props (e.g., marker.color)
+            # Per-prop slice suffix from authored ?{...}[N|a:b] forms; the
+            # viewer applies the slice to the bound array after the query
+            # column is mapped to the prop. Empty when no prop has a slice.
+            "props_slices": insight_query_info.props_slices,
             "split_key": insight_query_info.split_key,
             "type": insight.props.type.value,  # Trace type (bar, scatter, etc.)
         }
 
         os.makedirs(insights_directory, exist_ok=True)
-        insight_path = os.path.join(insights_directory, f"{insight.name_hash()}.json")
+        insight_path = os.path.join(insights_directory, f"{insight.name}.json")
         with open(insight_path, "w") as f:
             json.dump(insight_data, f, indent=2)
 

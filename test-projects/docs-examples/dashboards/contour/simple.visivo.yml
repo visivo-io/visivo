@@ -29,21 +29,8 @@ models:
         3,5,20
         4,5,25
         5,5,30
-traces:
-  - name: Simple Contour Plot
-    model: ${ref(contour-data)}
-    props:
-      type: contour
-      z:
-        - ?{z}
-        - ?{x}
-        - ?{y}
-      colorscale: "Viridis"
-      ncontours: 20
 charts:
-  - name: Simple Contour Chart
-    traces:
-      - ${ref(Simple Contour Plot)}
+  - name: simple-contour-chart
     layout:
       title:
         text: Simple Contour Plot<br><sub>Contour Plot Based on Z Values</sub>
@@ -53,3 +40,15 @@ charts:
       yaxis:
         title:
           text: "Y Axis"
+    insights:
+      - ${ref(simple-contour-plot)}
+insights:
+  - name: simple-contour-plot
+    props:
+      type: contour
+      z:
+        - ?{${ref(contour-data).z}}
+        - ?{${ref(contour-data).x}}
+        - ?{${ref(contour-data).y}}
+      colorscale: "Viridis"
+      ncontours: 20

@@ -4,21 +4,24 @@ includes:
   - path: "text-annotations.visivo.yml"
 
 dashboards:
-  - name: "Heatmap"
+  - name: heatmap
     level: 1
     tags:
       - "Trace Prop"
     rows:
       - height: compact
         items:
-          - markdown: "# Heatmap"
-          - markdown: ""
+          - markdown:
+              content: "# Heatmap"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Heatmap Chart)}
-          - chart: ${ref(Heatmap Chart with Categorical Axis)}
+          - chart: ${ref(simple-heatmap-chart)}
+          - chart: ${ref(heatmap-chart-with-categorical-axis)}
       - height: medium
         items:
-          - chart: ${ref(Heatmap Chart with Text Annotations)}
-          - markdown: ""
+          - chart: ${ref(heatmap-chart-with-text-annotations)}
+          - markdown:
+              content: ""

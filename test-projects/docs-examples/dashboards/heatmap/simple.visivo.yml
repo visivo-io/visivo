@@ -13,19 +13,8 @@ models:
         C,1,35
         C,2,40
         C,3,45
-traces:
-  - name: Simple Heatmap Plot
-    model: ${ref(heatmap-data)}
-    props:
-      type: heatmap
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      colorscale: "Viridis"
 charts:
-  - name: Simple Heatmap Chart
-    traces:
-      - ${ref(Simple Heatmap Plot)}
+  - name: simple-heatmap-chart
     layout:
       title:
         text: Simple Heatmap Plot<br><sub>Data Visualization on a 2D Grid</sub>
@@ -35,3 +24,13 @@ charts:
       yaxis:
         title:
           text: "Y Axis"
+    insights:
+      - ${ref(simple-heatmap-plot)}
+insights:
+  - name: simple-heatmap-plot
+    props:
+      type: heatmap
+      x: ?{${ref(heatmap-data).x}}
+      y: ?{${ref(heatmap-data).y}}
+      z: ?{${ref(heatmap-data).z}}
+      colorscale: "Viridis"

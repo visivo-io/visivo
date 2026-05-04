@@ -9,20 +9,19 @@ models:
         -120,47
         -100,35
         -90,30
-traces:
-  - name: Simple Scattergeo Plot
-    model: ${ref(scattergeo-data)}
-    props:
-      type: scattergeo
-      lon: ?{lon}
-      lat: ?{lat}
-      mode: "markers"
 charts:
-  - name: Simple Scattergeo Chart
-    traces:
-      - ${ref(Simple Scattergeo Plot)}
+  - name: simple-scattergeo-chart
     layout:
       title:
         text: Simple Scattergeo Plot<br><sub>Geographical Data Points</sub>
       geo:
-        scope: "usa" 
+        scope: "usa"
+    insights:
+      - ${ref(simple-scattergeo-plot)}
+insights:
+  - name: simple-scattergeo-plot
+    props:
+      type: scattergeo
+      lon: ?{${ref(scattergeo-data).lon}}
+      lat: ?{${ref(scattergeo-data).lat}}
+      mode: "markers"

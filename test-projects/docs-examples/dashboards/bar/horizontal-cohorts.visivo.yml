@@ -4,28 +4,26 @@ models:
       - curl
       - "-s"
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
-traces:
-  - name: Count Enemies Encountered by Knight H
-    model: ${ref(monty-python-quest-data-h)}
-    cohort_on: "person"
+charts:
+  - name: count-times-enemy-was-encountered-by-knight-h
+    layout:
+      title:
+        text: Horizontal Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>
+      margin:
+        l: 160
+    insights:
+      - ${ref(count-enemies-encountered-by-knight-h)}
+insights:
+  - name: count-enemies-encountered-by-knight-h
     props:
       type: bar
-      y: ?{enemy_encountered}
+      y: ?{${ref(monty-python-quest-data-h).enemy_encountered}}
       x: ?{ count(*) }
       text: ?{ count(*) }
       textposition: outside
       textfont:
         size: 15
       orientation: h
-    order_by:
-      - ?{ count(*) desc}
-
-charts:
-  - name: Count Times Enemy Was Encountered by Knight H
-    traces:
-      - ${ref(Count Enemies Encountered by Knight H)}
-    layout:
-      title:
-        text: Horizontal Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>
-      margin:
-        l: 160
+    interactions:
+      - split: ?{${ref(monty-python-quest-data-h).person}}
+      - sort: ?{ count(*) DESC}

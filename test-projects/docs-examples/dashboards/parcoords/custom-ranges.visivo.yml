@@ -7,28 +7,27 @@ models:
         5,10,15
         10,20,25
         15,30,35
-traces:
-  - name: Parcoords Plot with Custom Ranges
-    model: ${ref(parcoords-data-ranges)}
+charts:
+  - name: parcoords-chart-with-custom-ranges
+    layout:
+      title:
+        text: Parcoords Plot with Custom Ranges<br><sub>Custom Ranges for Each Variable</sub>
+    insights:
+      - ${ref(parcoords-plot-with-custom-ranges)}
+insights:
+  - name: parcoords-plot-with-custom-ranges
     props:
       type: parcoords
       dimensions:
         - label: "Variable 1"
-          values: ?{variable_1}
+          values: ?{${ref(parcoords-data-ranges).variable_1}}
           range: [5, 15]
         - label: "Variable 2"
-          values: ?{variable_2}
+          values: ?{${ref(parcoords-data-ranges).variable_2}}
           range: [10, 30]
         - label: "Variable 3"
-          values: ?{variable_3}
+          values: ?{${ref(parcoords-data-ranges).variable_3}}
           range: [15, 35]
       line:
-        color: ?{variable_3}
+        color: ?{${ref(parcoords-data-ranges).variable_3}}
         colorscale: "Blues"
-charts:
-  - name: Parcoords Chart with Custom Ranges
-    traces:
-      - ${ref(Parcoords Plot with Custom Ranges)}
-    layout:
-      title:
-        text: Parcoords Plot with Custom Ranges<br><sub>Custom Ranges for Each Variable</sub> 

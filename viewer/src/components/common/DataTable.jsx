@@ -133,7 +133,7 @@ const DataTable = ({
   if (isLoading) {
     return (
       <div
-        className="flex flex-col items-center justify-center h-full border border-secondary-200 rounded overflow-hidden bg-white"
+        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
         style={{ height }}
       >
         <PiSpinner className="animate-spin text-secondary-400 mb-2" size={24} />
@@ -146,7 +146,7 @@ const DataTable = ({
   if (!columns.length || !rows.length) {
     return (
       <div
-        className="flex flex-col items-center justify-center h-full border border-secondary-200 rounded overflow-hidden bg-white"
+        className="flex flex-col items-center justify-center h-full w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
         style={{ height }}
       >
         <span className="text-sm text-secondary-400">No data available</span>
@@ -160,8 +160,12 @@ const DataTable = ({
   const totalWidth = leafHeaderGroup?.headers.reduce((sum, h) => sum + h.getSize(), 0) ?? 0;
 
   return (
+    // w-full max-w-full: fill the parent item div without overflowing it.
+    // Combined with the inner overflow-auto, wide tables now scroll
+    // horizontally inside this container instead of being clipped by the
+    // parent item div's overflow:hidden. See B15.
     <div
-      className="flex flex-col border border-secondary-200 rounded overflow-hidden bg-white"
+      className="flex flex-col w-full max-w-full border border-secondary-200 rounded overflow-hidden bg-white"
       style={{ height }}
     >
       {/* Query progress indicator */}

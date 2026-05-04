@@ -9,13 +9,19 @@ models:
         2,Decrease B,-150,#d62728
         3,Increase C,300,#ff7f0e
         4,Ending,1350,#9467bd
-traces:
-  - name: Waterfall Plot with Custom Colors
-    model: ${ref(waterfall-data-colors)}
+charts:
+  - name: waterfall-chart-with-custom-colors
+    layout:
+      title:
+        text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
+    insights:
+      - ${ref(waterfall-plot-with-custom-colors)}
+insights:
+  - name: waterfall-plot-with-custom-colors
     props:
       type: waterfall
-      x: ?{label}
-      y: ?{value}
+      x: ?{${ref(waterfall-data-colors).label}}
+      y: ?{${ref(waterfall-data-colors).value}}
       measure: ["initial", "relative", "relative", "relative", "total"]
       increasing:
         marker:
@@ -29,12 +35,5 @@ traces:
           line:
             color: "orange"
             width: 4
-    order_by:
-      - ?{ idx asc}
-charts:
-  - name: Waterfall Chart with Custom Colors
-    traces:
-      - ${ref(Waterfall Plot with Custom Colors)}
-    layout:
-      title:
-        text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
+    interactions:
+      - sort: ?{ ${ref(waterfall-data-colors).idx} ASC}

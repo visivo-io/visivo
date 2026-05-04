@@ -2,19 +2,19 @@
 
 charts:
   - name: import_percentages
-    traces:
+    insights:
       - ${ref(percent_imports)}
     layout:
       title: 
         text: "Imports by Country"
   - name: export_percentages
-    traces:
+    insights:
       - ${ref(percent_exports)}
     layout:
       title: 
         text: "Exports by Country"
   - name: importers
-    traces:
+    insights:
       - ${ref(top_importers)}
       - ${ref(total_import_production)}
     layout:
@@ -41,7 +41,7 @@ charts:
         yanchor: top
   
   - name: exporters
-    traces:
+    insights:
       - ${ref(top_exporters)}
       - ${ref(total_export_production)}
     layout:

@@ -1,0 +1,68 @@
+insights:
+  - name: top_exporters
+    props:
+      type: scatter
+      x: ?{${ref(exports).year}::varchar}
+      y: ?{SUM(abs(${ref(exports).kilograms}))}
+      mode: lines
+      line:
+        shape: spline
+    interactions:
+      - split: ?{${ref(exports).top_countries}}
+      - sort: ?{${ref(exports).year}}
+      - filter: ?{SUM(abs(${ref(exports).kilograms})) > 0}
+
+  - name: percent_exports
+    props:
+      type: pie
+      values: ?{sum(${ref(exports).kilograms})}
+      labels: ?{${ref(exports).country}}
+      text: ?{max(${ref(exports).top_countries_perc})}
+      textinfo: text
+
+  - name: percent_imports
+    props:
+      type: pie
+      values: ?{sum(${ref(imports).kilograms})}
+      labels: ?{${ref(imports).country}}
+      text: ?{max(${ref(imports).top_countries_perc})}
+      textinfo: text
+
+  - name: total_export_production
+    props:
+      yaxis: "y2"
+      type: bar
+      marker:
+        opacity: .20
+        color: "grey"
+      x: ?{${ref(exports).year}::varchar}
+      y: ?{sum(${ref(exports).kilograms})}
+      text: ?{round(sum(${ref(exports).kilograms})/1000000000, 1) || 'B'}
+    interactions:
+      - split: ?{'Total'}
+
+  - name: top_importers
+    props:
+      type: scatter
+      x: ?{${ref(imports).year}::varchar}
+      y: ?{SUM(${ref(imports).kilograms})}
+      mode: lines
+      line:
+        shape: spline
+    interactions:
+      - split: ?{${ref(imports).top_countries}}
+      - sort: ?{${ref(imports).year}}
+      - filter: ?{SUM(${ref(imports).kilograms}) > 0}
+
+  - name: total_import_production
+    props:
+      yaxis: "y2"
+      type: bar
+      marker:
+        opacity: .20
+        color: "grey"
+      x: ?{${ref(imports).year}::varchar}
+      y: ?{sum(${ref(imports).kilograms})}
+      text: ?{round(sum(${ref(imports).kilograms})/1000000000, 1) || 'B'}
+    interactions:
+      - split: ?{'Total'}

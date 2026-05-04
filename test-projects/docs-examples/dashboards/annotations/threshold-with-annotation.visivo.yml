@@ -10,23 +10,8 @@ models:
         4,12
         5,15
 
-traces:
-  - name: threshold_annotation_trace
-    model: ${ref(threshold_annotation_data)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: lines
-      line:
-        color: purple
-    order_by:
-      - ?{ x asc }
-
 charts:
-  - name: Threshold with Annotation Example
-    traces:
-      - ${ ref(threshold_annotation_trace) }
+  - name: threshold-with-annotation-example
     layout:
       title:
         text: Threshold with Annotation
@@ -51,3 +36,16 @@ charts:
           font:
             size: 14
             color: black
+    insights:
+      - ${ ref(threshold_annotation_trace) }
+insights:
+  - name: threshold_annotation_trace
+    props:
+      type: scatter
+      x: ?{${ref(threshold_annotation_data).x}}
+      y: ?{${ref(threshold_annotation_data).y}}
+      mode: lines
+      line:
+        color: purple
+    interactions:
+      - sort: ?{ ${ref(threshold_annotation_data).x} ASC }

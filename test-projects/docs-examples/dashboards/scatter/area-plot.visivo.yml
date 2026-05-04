@@ -11,25 +11,24 @@ models:
         5,12
         6,9
         7,11
-traces:
-  - name: Area Plot
-    model: ${ref(area-plot-data)}
+charts:
+  - name: area-plot-chart
+    layout:
+      title:
+        text: Area Plot<br><sub>Filled Area Under the Line</sub>
+    insights:
+      - ${ref(area-plot)}
+insights:
+  - name: area-plot
     props:
       type: scatter
-      x: ?{x}
-      y: ?{y}
+      x: ?{${ref(area-plot-data).x}}
+      y: ?{${ref(area-plot-data).y}}
       mode: "lines"
       fill: "tozeroy"
       fillcolor: "rgba(55, 126, 184, 0.2)"
       line:
         color: "rgb(55, 126, 184)"
         width: 2
-    order_by:
-      - ?{x asc}
-charts:
-  - name: Area Plot Chart
-    traces:
-      - ${ref(Area Plot)}
-    layout:
-      title:
-        text: Area Plot<br><sub>Filled Area Under the Line</sub>
+    interactions:
+      - sort: ?{${ref(area-plot-data).x} ASC}

@@ -13,22 +13,8 @@ models:
         4,8
         5,9
         4,4
-traces:
-  - name: 2D Histogram with Custom Bins
-    model: ${ref(histogram2d-data-bins)}
-    props:
-      type: histogram2d
-      x: ?{x}
-      y: ?{y}
-      xbins:
-        size: 1
-      ybins:
-        size: 1
-      colorscale: "Blues"
 charts:
-  - name: 2D Histogram with Custom Bins Chart
-    traces:
-      - ${ref(2D Histogram with Custom Bins)}
+  - name: 2d-histogram-with-custom-bins-chart
     layout:
       title:
         text: 2D Histogram with Custom Bins<br><sub>Custom Binning Along X and Y Axes</sub>
@@ -37,4 +23,17 @@ charts:
           text: "X Axis"
       yaxis:
         title:
-          text: "Y Axis" 
+          text: "Y Axis"
+    insights:
+      - ${ref(2d-histogram-with-custom-bins)}
+insights:
+  - name: 2d-histogram-with-custom-bins
+    props:
+      type: histogram2d
+      x: ?{${ref(histogram2d-data-bins).x}}
+      y: ?{${ref(histogram2d-data-bins).y}}
+      xbins:
+        size: 1
+      ybins:
+        size: 1
+      colorscale: "Blues"

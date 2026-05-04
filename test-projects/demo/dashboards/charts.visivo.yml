@@ -14,10 +14,9 @@ dashboards:
               # Bar
           - chart:
               name: Bar Chart
-              traces:
+              insights:
                 - name: Simple Bar
-                  model: ${ref(Echo CSV)}
                   props:
                     type: bar
-                    x: ?{x}
-                    y: ?{y}
+                    x: ?{${ref(Echo CSV).x}}
+                    y: ?{${ref(Echo CSV).y}}

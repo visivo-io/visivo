@@ -26,8 +26,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             missing_insights = []
 
             for name in insight_names:
-                name_hash = alpha_hash(name)
-                insight_file = os.path.join(output_dir, run_id, "insights", f"{name_hash}.json")
+                insight_file = os.path.join(output_dir, run_id, "insights", f"{name}.json")
 
                 if not os.path.exists(insight_file):
                     Logger.instance().info(f"Insight file not found: {insight_file}")
@@ -46,9 +45,10 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                             if "signed_data_file_url" in file_ref:
                                 file_path = file_ref["signed_data_file_url"]
                                 filename = os.path.basename(file_path)
-                                file_hash = os.path.splitext(filename)[0]
+                                # Filename is now the clean model/insight name (no hash)
+                                file_stem = os.path.splitext(filename)[0]
                                 file_ref["signed_data_file_url"] = (
-                                    f"/api/files/{file_hash}/{run_id}/"
+                                    f"/api/files/{file_stem}/{run_id}/"
                                 )
 
                     insights.append(insight_data)

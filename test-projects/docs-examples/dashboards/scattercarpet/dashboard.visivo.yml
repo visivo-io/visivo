@@ -4,7 +4,7 @@ includes:
   - path: custom-markers.visivo.yml
 
 dashboards:
-  - name: Scattercarpet Dashboard
+  - name: scattercarpet-dashboard
     level: 1
     tags:
       - scattercarpet
@@ -13,14 +13,15 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: |
-              # Scattercarpet Dashboard
+          - markdown:
+              content: |
+                # Scattercarpet Dashboard
 
-              This dashboard demonstrates different ways to create scatter plots on a carpet axis using the `scattercarpet` trace type.
+                This dashboard demonstrates different ways to create scatter plots on a carpet axis using the `scattercarpet` trace type.
       - height: medium
         items:
-          - chart: ${ref(Simple Scattercarpet Chart)}
-          - chart: ${ref(Scattercarpet Chart with Lines)}
+          - chart: ${ref(simple-scattercarpet-chart)}
+          - chart: ${ref(scattercarpet-chart-with-lines)}
       - height: medium
         items:
-          - chart: ${ref(Scattercarpet Chart with Custom Markers)} 
+          - chart: ${ref(scattercarpet-chart-with-custom-markers)} 

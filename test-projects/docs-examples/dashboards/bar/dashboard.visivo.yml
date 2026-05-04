@@ -4,7 +4,7 @@ includes:
   - path: "horizontal-cohorts.visivo.yml"
 
 dashboards:
-  - name: "Bar"
+  - name: bar
     level: 1
     tags: 
       - "Trace Prop"
@@ -12,14 +12,17 @@ dashboards:
     rows:
       - height: compact 
         items:
-          - markdown: "# Bar"
-          - markdown: ""
+          - markdown:
+              content: "# Bar"
+          - markdown:
+              content: ""
             width: 5 
       - height: medium 
         items: 
-          - chart: ${ref(Count Times Enemy Was Encountered)}
-          - chart: ${ref(Count Times Enemy Was Encountered by Knight)}
+          - chart: ${ref(count-times-enemy-was-encountered)}
+          - chart: ${ref(count-times-enemy-was-encountered-by-knight)}
       - height: medium
         items: 
-          - markdown: ""
-          - chart: ${ref(Count Times Enemy Was Encountered by Knight H)}
+          - markdown:
+              content: ""
+          - chart: ${ref(count-times-enemy-was-encountered-by-knight-h)}

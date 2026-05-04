@@ -9,23 +9,22 @@ models:
         3,8,20,#2ca02c
         4,15,25,#d62728
         5,12,30,#9467bd
-traces:
-  - name: Scatter Plot with Custom Markers
-    model: ${ref(scatter-data-custom)}
-    props:
-      type: scatter
-      x: ?{x}
-      y: ?{y}
-      mode: "markers"
-      marker:
-        size: ?{size}
-        color: ?{color}
-    order_by:
-      - ?{x asc}
 charts:
-  - name: Scatter Chart with Custom Markers
-    traces:
-      - ${ref(Scatter Plot with Custom Markers)}
+  - name: scatter-chart-with-custom-markers
     layout:
       title:
         text: Scatter Plot with Custom Markers<br><sub>Custom Sizes and Colors for Data Points</sub>
+    insights:
+      - ${ref(scatter-plot-with-custom-markers)}
+insights:
+  - name: scatter-plot-with-custom-markers
+    props:
+      type: scatter
+      x: ?{${ref(scatter-data-custom).x}}
+      y: ?{${ref(scatter-data-custom).y}}
+      mode: "markers"
+      marker:
+        size: ?{${ref(scatter-data-custom).size}}
+        color: ?{${ref(scatter-data-custom).color}}
+    interactions:
+      - sort: ?{${ref(scatter-data-custom).x} ASC}

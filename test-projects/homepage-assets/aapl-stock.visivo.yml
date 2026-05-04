@@ -5,38 +5,31 @@ models:
       - cat
       - data/aapl-stock-price.csv
 
-traces:
+insights:
   - name: aapl-candlestick
-    model: ${ref(aapl-stock-price)}
     props:
       type: candlestick
-      x: ?{date}
-      open: ?{cast(open as float)}
-      high: ?{cast(high as float)}
-      low: ?{cast(low as float)}
-      close: ?{cast(close as float)}
-    order_by:
-      - ?{date desc}
+      x: ?{${ref(aapl-stock-price).date}}
+      open: ?{cast(${ref(aapl-stock-price).open} as float)}
+      high: ?{cast(${ref(aapl-stock-price).high} as float)}
+      low: ?{cast(${ref(aapl-stock-price).low} as float)}
+      close: ?{cast(${ref(aapl-stock-price).close} as float)}
+    interactions:
+      - sort: ?{${ref(aapl-stock-price).date} DESC}
 
   - name: max-price
-    model: ${ref(aapl-stock-price)}
-    columns:
-      max_price: max(cast(high as float))
     props:
       type: indicator
-      value: column(max_price)[0]
+      value: ?{max(cast(${ref(aapl-stock-price).high} as float))}[0]
 
   - name: min-price
-    model: ${ref(aapl-stock-price)}
-    columns:
-      min_price: min(cast(high as float))
     props:
       type: indicator
-      value: column(min_price)[0]
+      value: ?{min(cast(${ref(aapl-stock-price).high} as float))}[0]
 
 charts:
   - name: aapl-stock-price-chart
-    traces:
+    insights:
       - ${ref(aapl-candlestick)}
       - ${ref(max-price)}
     layout:
@@ -44,14 +37,14 @@ charts:
         text: "Apple Stock Price"
 
   - name: max-price-chart
-    traces:
+    insights:
       - ${ref(max-price)}
     layout:
       title:
         text: "52 Week High"
 
   - name: min-price-chart
-    traces:
+    insights:
       - ${ref(min-price)}
     layout:
       title:
@@ -59,9 +52,7 @@ charts:
 
 tables:
   - name: aapl-stock-price-table
-    traces:
-      - ${ref(aapl-candlestick)}
-      - ${ref(max-price)}
+    data: ${ref(aapl-candlestick)}
 
 dashboards:
   - name: "Apple Stock Analysis"

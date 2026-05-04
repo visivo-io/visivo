@@ -8,25 +8,24 @@ models:
         Interest,3000
         Consideration,1500
         Conversion,700
-traces:
-  - name: Horizontal Funnel Chart Trace
-    model: ${ref(funnel-data-horizontal)}
-    props:
-      type: funnel
-      orientation: v
-      x: ?{stage}
-      y: ?{value}
-      marker:
-        color: "#ff7f0e"
-    order_by:
-      - ?{value desc}
 charts:
-  - name: Horizontal Funnel Chart
-    traces:
-      - ${ref(Horizontal Funnel Chart Trace)}
+  - name: horizontal-funnel-chart
     layout:
       title:
         text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>
       xaxis:
         title:
           text: "Stage"
+    insights:
+      - ${ref(horizontal-funnel-chart-trace)}
+insights:
+  - name: horizontal-funnel-chart-trace
+    props:
+      type: funnel
+      orientation: v
+      x: ?{${ref(funnel-data-horizontal).stage}}
+      y: ?{${ref(funnel-data-horizontal).value}}
+      marker:
+        color: "#ff7f0e"
+    interactions:
+      - sort: ?{${ref(funnel-data-horizontal).value} DESC}

@@ -4,7 +4,7 @@ includes:
   - path: "hover-info.visivo.yml"
 
 dashboards:
-  - name: "Funnelarea"  
+  - name: funnelarea
     description: An awesome description  
     level: 1
     tags: 
@@ -14,14 +14,17 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: "# Funnelarea"
-          - markdown: ""
+          - markdown:
+              content: "# Funnelarea"
+          - markdown:
+              content: ""
             width: 5
       - height: medium
         items:
-          - chart: ${ref(Simple Funnelarea Chart)}
-          - chart: ${ref(Funnelarea Chart with Custom Colors)}
+          - chart: ${ref(simple-funnelarea-chart)}
+          - chart: ${ref(funnelarea-chart-with-custom-colors)}
       - height: medium
         items:
-          - chart: ${ref(Funnelarea Chart with Hover Info)}
-          - markdown: ""
+          - chart: ${ref(funnelarea-chart-with-hover-info)}
+          - markdown:
+              content: ""

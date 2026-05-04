@@ -11,22 +11,21 @@ models:
         D,A,10,#9467bd
         E,A,20,#8c564b
         F,B,10,#e377c2
-traces:
-  - name: Treemap Plot with Custom Colors
-    model: ${ref(treemap-data-colors)}
-    props:
-      type: treemap
-      labels: ?{labels}
-      parents: ?{parents}
-      values: ?{"values"}
-      marker:
-        colors: ?{colors}
-        line:
-          color: black
 charts:
-  - name: Treemap Chart with Custom Colors
-    traces:
-      - ${ref(Treemap Plot with Custom Colors)}
+  - name: treemap-chart-with-custom-colors
     layout:
       title:
         text: Treemap Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
+    insights:
+      - ${ref(treemap-plot-with-custom-colors)}
+insights:
+  - name: treemap-plot-with-custom-colors
+    props:
+      type: treemap
+      labels: ?{${ref(treemap-data-colors).labels}}
+      parents: ?{${ref(treemap-data-colors).parents}}
+      values: ?{"values"}
+      marker:
+        colors: ?{${ref(treemap-data-colors).colors}}
+        line:
+          color: black

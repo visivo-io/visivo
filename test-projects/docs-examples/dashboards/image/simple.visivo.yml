@@ -5,16 +5,15 @@ models:
       - |
         z
         [[0,0,1,1],[1,0,0,1],[1,1,0,0]]
-traces:
-  - name: Simple Image Plot
-    model: ${ref(image-data)}
-    props:
-      type: image
-      z: ?{z}
 charts:
-  - name: Simple Image Chart
-    traces:
-      - ${ref(Simple Image Plot)}
+  - name: simple-image-chart
     layout:
       title:
         text: Simple Image Plot<br><sub>Raster Image Display</sub>
+    insights:
+      - ${ref(simple-image-plot)}
+insights:
+  - name: simple-image-plot
+    props:
+      type: image
+      z: ?{${ref(image-data).z}}

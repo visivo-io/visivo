@@ -127,6 +127,13 @@ class Insight(NamedModel, ParentModel):
         Excludes models only reachable through Input nodes, since inputs resolve
         their model dependencies independently (for options/defaults). The insight
         query only needs the input's runtime value, not its source models.
+
+        Models are treated as leaves — we do not recurse into their own
+        dependencies. A LocalMergeModel like ``join_table`` already encapsulates
+        its joins inside its own SQL, so an insight that references
+        ``${ref(join_table)}`` only needs ``join_table`` itself, not the
+        underlying tables it merges. Walking past the model would produce a
+        bogus multi-model query that the relation graph can't join.
         """
         from visivo.models.models.model import Model
         from visivo.models.inputs.input import Input
@@ -146,6 +153,7 @@ class Insight(NamedModel, ParentModel):
 
             if isinstance(node, Model):
                 models.add(node)
+                continue
 
             for child in dag.successors(node):
                 if child not in visited:
@@ -238,6 +246,16 @@ class Insight(NamedModel, ParentModel):
                 converted_props.append((key, converted_value))
             query_statements += converted_props
         return query_statements
+
+    def get_props_slices(self):
+        """Return a mapping of prop paths to literal slice suffix (``"[0]"``,
+        ``"[-1]"``, ``"[1:5]"`` etc.) for any prop whose ``?{...}`` value
+        carries a slicing suffix. Used by the insight query builder to
+        attach slice metadata to props_mapping so the viewer can apply the
+        slice after binding query results."""
+        if not self.props:
+            return {}
+        return self.props.extract_query_slices()
 
     def is_dynamic(self, dag) -> bool:
         from visivo.models.dag import all_descendants_of_type

@@ -4,21 +4,24 @@ includes:
   - path: "colored-candlestick.visivo.yml"
 
 dashboards:
-  - name: "Candlestick"
+  - name: candlestick
     level: 1
     tags:
       - "Trace Prop"
     rows: 
       - height: compact 
         items:
-          - markdown: "# Candlestick"
-          - markdown: ""
+          - markdown:
+              content: "# Candlestick"
+          - markdown:
+              content: ""
             width: 5 
       - height: medium 
         items: 
-          - chart: ${ref(Simple Candlestick Chart)}
-          - chart: ${ref(Candlestick Chart with Volume)}
+          - chart: ${ref(simple-candlestick-chart)}
+          - chart: ${ref(candlestick-chart-with-volume)}
       - height: medium 
         items: 
-          - chart: ${ref(Candlestick with Custom Colors)}
-          - markdown: ""
+          - chart: ${ref(candlestick-with-custom-colors)}
+          - markdown:
+              content: ""

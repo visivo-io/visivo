@@ -9,22 +9,21 @@ models:
         3,8,10,25,#2ca02c
         4,15,18,30,#d62728
         5,12,20,35,#9467bd
-traces:
-  - name: Scatter3D Plot with Custom Markers
-    model: ${ref(scatter3d-data-custom)}
-    props:
-      type: scatter3d
-      x: ?{x}
-      y: ?{y}
-      z: ?{z}
-      mode: "markers"
-      marker:
-        size: ?{size}
-        color: ?{color}
 charts:
-  - name: Scatter3D Chart with Custom Markers
-    traces:
-      - ${ref(Scatter3D Plot with Custom Markers)}
+  - name: scatter3d-chart-with-custom-markers
     layout:
       title:
-        text: Scatter3D Plot with Custom Markers<br><sub>Custom Sizes and Colors for 3D Data Points</sub> 
+        text: Scatter3D Plot with Custom Markers<br><sub>Custom Sizes and Colors for 3D Data Points</sub>
+    insights:
+      - ${ref(scatter3d-plot-with-custom-markers)}
+insights:
+  - name: scatter3d-plot-with-custom-markers
+    props:
+      type: scatter3d
+      x: ?{${ref(scatter3d-data-custom).x}}
+      y: ?{${ref(scatter3d-data-custom).y}}
+      z: ?{${ref(scatter3d-data-custom).z}}
+      mode: "markers"
+      marker:
+        size: ?{${ref(scatter3d-data-custom).size}}
+        color: ?{${ref(scatter3d-data-custom).color}}

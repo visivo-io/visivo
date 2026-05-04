@@ -11,18 +11,17 @@ models:
         D,A,10
         E,A,20
         F,B,10
-traces:
-  - name: Simple Sunburst Plot
-    model: ${ref(sunburst-data)}
-    props:
-      type: sunburst
-      labels: ?{labels}
-      parents: ?{parents}
-      values: ?{"values"}
 charts:
-  - name: Simple Sunburst Chart
-    traces:
-      - ${ref(Simple Sunburst Plot)}
+  - name: simple-sunburst-chart
     layout:
       title:
         text: Simple Sunburst Chart<br><sub>Hierarchical Data Visualization</sub>
+    insights:
+      - ${ref(simple-sunburst-plot)}
+insights:
+  - name: simple-sunburst-plot
+    props:
+      type: sunburst
+      labels: ?{${ref(sunburst-data).labels}}
+      parents: ?{${ref(sunburst-data).parents}}
+      values: ?{"values"}

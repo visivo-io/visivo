@@ -14,19 +14,8 @@ models:
         15
         20
         10
-traces:
-  - name: Simple Histogram Plot
-    model: ${ref(histogram-data)}
-    props:
-      type: histogram
-      x: ?{value}
-      nbinsx: 5
-      marker:
-        color: "#17becf"
 charts:
-  - name: Simple Histogram Chart
-    traces:
-      - ${ref(Simple Histogram Plot)}
+  - name: simple-histogram-chart
     layout:
       title:
         text: Simple Histogram Plot<br><sub>Data Distribution Across Bins</sub>
@@ -37,3 +26,13 @@ charts:
         title:
           text: "Count"
       bargap: 0.05
+    insights:
+      - ${ref(simple-histogram-plot)}
+insights:
+  - name: simple-histogram-plot
+    props:
+      type: histogram
+      x: ?{${ref(histogram-data).value}}
+      nbinsx: 5
+      marker:
+        color: "#17becf"

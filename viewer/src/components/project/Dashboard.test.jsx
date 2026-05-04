@@ -20,6 +20,44 @@ const getProject = items => {
   };
 };
 
+const project_with_json = {
+  project_json: {
+    selectors: [
+      { name: 'selector1', type: 'single', options: [{ name: 'option1' }, { name: 'option2' }] },
+      {
+        name: 'selector2',
+        type: 'single',
+        options: [{ name: 'markdown1' }, { name: 'markdown2' }],
+      },
+    ],
+    dashboards: [
+      {
+        name: 'dashboard',
+        rows: [
+          {
+            name: 'option1',
+            items: [
+              {
+                name: 'markdown1',
+                markdown: { name: 'md1', content: 'Option 1 Content', align: 'left', justify: 'start' },
+              },
+            ],
+          },
+          {
+            name: 'option2',
+            items: [
+              {
+                name: 'markdown2',
+                markdown: { name: 'md2', content: 'Option 2 Content', align: 'left', justify: 'start' },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
 const renderDashboard = (project, dashboardName, path) => {
   return render(
     withProviders({
@@ -31,7 +69,7 @@ const renderDashboard = (project, dashboardName, path) => {
 
 test('renders dashboard chart', async () => {
   const project = getProject([
-    { width: 1, chart: { name: 'chart_name', insights: [] } },
+    { width: 1, chart: { name: 'chart_name', traces: [], insights: [] } },
   ]);
 
   renderDashboard(project, 'dashboard', '/dashboard');
@@ -53,8 +91,79 @@ test('renders dashboard markdown content', async () => {
   expect(text).toBeInTheDocument();
 });
 
+
+describe('shows/hides row based on selector in URL', () => {
+  test('shows option 1 if selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector1=option1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 1 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Option 2 Content')).not.toBeInTheDocument();
+    });
+  });
+
+  test('shows option 2 if selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector1=option2');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 2 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Option 1 Content')).not.toBeInTheDocument();
+    });
+  });
+
+  test('show both options if both selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector1=option1,option2');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 1 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Option 2 Content')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('shows/hides item based on selector in URL', () => {
+  test('shows markdown 1 if selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector2=markdown1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 1 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Option 2 Content')).not.toBeInTheDocument();
+    });
+  });
+
+  test('shows markdown 2 if selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector2=markdown2');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 2 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Option 1 Content')).not.toBeInTheDocument();
+    });
+  });
+
+  test('show both markdowns if both selected', async () => {
+    renderDashboard(project_with_json, 'dashboard', '/dashboard?selector2=markdown1,markdown2');
+
+    await waitFor(() => {
+      expect(screen.getByText('Option 1 Content')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Option 2 Content')).toBeInTheDocument();
+    });
+  });
+});
+
 test('throws when dashboard not found', async () => {
-  const project = getProject([{ width: 1, chart: { name: 'chart_name', insights: [] } }]);
+  const project = getProject([{ width: 1, chart: { name: 'chart_name', traces: [] } }]);
   jest.spyOn(console, 'error').mockImplementation(() => null);
 
   expect(() => renderDashboard(project, 'noDashboard', '/dashboard')).toThrow();
