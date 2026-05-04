@@ -10841,7 +10841,7 @@
 <h2 id="attributes">Attributes</h2>
 <p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>sankey</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
 </p><div class="highlight"><pre><span></span><code><span class="nt">arrangement</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(1)!</span>
-<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">domain</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(4)!</span>
@@ -10877,7 +10877,7 @@
 <span class="w">    </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(30)!</span>
 <span class="w">  </span><span class="nt">namelength</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(31)!</span>
 <span class="w">  </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(32)!</span>
-<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(33)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(33)!</span>
 <span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(34)!</span>
 <span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(35)!</span>
 <span class="nt">legendgrouptitle</span><span class="p">:</span>
@@ -10899,7 +10899,7 @@
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(47)!</span>
 <span class="w">  </span><span class="nt">colorscales</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
 <span class="w">  </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(48)!</span>
-<span class="w">  </span><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(49)!</span>
+<span class="w">  </span><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(49)!</span>
 <span class="w">  </span><span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(50)!</span>
 <span class="w">  </span><span class="nt">hovercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(51)!</span>
 <span class="w">  </span><span class="nt">hovercolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(52)!</span>
@@ -10934,18 +10934,18 @@
 <span class="w">    </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(77)!</span>
 <span class="w">  </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(78)!</span>
 <span class="w">  </span><span class="nt">hovertemplatesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(79)!</span>
-<span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(80)!</span>
+<span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(80)!</span>
 <span class="w">  </span><span class="nt">labelsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(81)!</span>
 <span class="w">  </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(82)!</span>
 <span class="w">    </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(83)!</span>
 <span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(84)!</span>
 <span class="w">    </span><span class="nt">widthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(85)!</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(86)!</span>
+<span class="w">  </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(86)!</span>
 <span class="w">  </span><span class="nt">sourcesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(87)!</span>
-<span class="w">  </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(88)!</span>
+<span class="w">  </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(88)!</span>
 <span class="w">  </span><span class="nt">targetsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(89)!</span>
-<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(90)!</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(90)!</span>
 <span class="w">  </span><span class="nt">valuesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(91)!</span>
 <span class="nt">metasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(92)!</span>
 <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(93)!</span>
@@ -10953,7 +10953,7 @@
 <span class="w">  </span><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(94)!</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(95)!</span>
 <span class="w">  </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(96)!</span>
-<span class="w">  </span><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(97)!</span>
+<span class="w">  </span><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(97)!</span>
 <span class="w">  </span><span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(98)!</span>
 <span class="w">  </span><span class="nt">groups</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(99)!</span>
 <span class="w">  </span><span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(100)!</span>
@@ -10987,7 +10987,7 @@
 <span class="w">    </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(124)!</span>
 <span class="w">  </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(125)!</span>
 <span class="w">  </span><span class="nt">hovertemplatesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(126)!</span>
-<span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(127)!</span>
+<span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(127)!</span>
 <span class="w">  </span><span class="nt">labelsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(128)!</span>
 <span class="w">  </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(129)!</span>
@@ -10996,9 +10996,9 @@
 <span class="w">    </span><span class="nt">widthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(132)!</span>
 <span class="w">  </span><span class="nt">pad</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(133)!</span>
 <span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(134)!</span>
-<span class="w">  </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(135)!</span>
+<span class="w">  </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(135)!</span>
 <span class="w">  </span><span class="nt">xsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(136)!</span>
-<span class="w">  </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(137)!</span>
+<span class="w">  </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(137)!</span>
 <span class="w">  </span><span class="nt">ysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(138)!</span>
 <span class="nt">orientation</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(139)!</span>
 <span class="nt">stream</span><span class="p">:</span>

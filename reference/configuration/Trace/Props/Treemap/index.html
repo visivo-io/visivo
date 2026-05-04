@@ -10860,7 +10860,7 @@
 <p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>treemap</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
 </p><div class="highlight"><pre><span></span><code><span class="nt">branchvalues</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(2)!</span>
-<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(4)!</span>
 <span class="nt">domain</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(5)!</span>
@@ -10901,7 +10901,7 @@
 <span class="nt">hovertemplatesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(36)!</span>
 <span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(37)!</span>
 <span class="nt">hovertextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(38)!</span>
-<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(39)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(39)!</span>
 <span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(40)!</span>
 <span class="nt">insidetextfont</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color | array</span>
@@ -10922,7 +10922,7 @@
 <span class="w">  </span><span class="nt">variantsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(54)!</span>
 <span class="w">  </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(55)!</span>
 <span class="w">  </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(56)!</span>
-<span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(57)!</span>
+<span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(57)!</span>
 <span class="nt">labelssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(58)!</span>
 <span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(59)!</span>
 <span class="nt">legendgrouptitle</span><span class="p">:</span>
@@ -10987,9 +10987,9 @@
 <span class="w">    </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(109)!</span>
 <span class="w">    </span><span class="nt">ticks</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(110)!</span>
 <span class="w">    </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(111)!</span>
-<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(112)!</span>
+<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(112)!</span>
 <span class="w">    </span><span class="nt">ticktextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(113)!</span>
-<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(114)!</span>
+<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(114)!</span>
 <span class="w">    </span><span class="nt">tickvalssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(115)!</span>
 <span class="w">    </span><span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(116)!</span>
 <span class="w">    </span><span class="nt">title</span><span class="p">:</span>
@@ -11013,7 +11013,7 @@
 <span class="w">    </span><span class="nt">yanchor</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(131)!</span>
 <span class="w">    </span><span class="nt">ypad</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(132)!</span>
 <span class="w">    </span><span class="nt">yref</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(133)!</span>
-<span class="w">  </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(134)!</span>
+<span class="w">  </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(134)!</span>
 <span class="w">  </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(135)!</span>
 <span class="w">  </span><span class="nt">colorssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(136)!</span>
 <span class="w">  </span><span class="nt">cornerradius</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(137)!</span>
@@ -11066,7 +11066,7 @@
 <span class="w">  </span><span class="nt">variantsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(178)!</span>
 <span class="w">  </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(179)!</span>
 <span class="w">  </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(180)!</span>
-<span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(181)!</span>
+<span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(181)!</span>
 <span class="nt">parentssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(182)!</span>
 <span class="nt">pathbar</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">edgeshape</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(183)!</span>
@@ -11098,7 +11098,7 @@
 <span class="nt">stream</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">maxpoints</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(205)!</span>
 <span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(206)!</span>
-<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(207)!</span>
+<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(207)!</span>
 <span class="nt">textfont</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color | array</span>
 <span class="w">  </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(208)!</span>
@@ -11130,7 +11130,7 @@
 <span class="w">  </span><span class="nt">squarifyratio</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(232)!</span>
 <span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
 <span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(233)!</span>
-<span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(234)!</span>
+<span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(234)!</span>
 <span class="nt">valuessrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(235)!</span>
 <span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(236)!</span>
 </code></pre></div>

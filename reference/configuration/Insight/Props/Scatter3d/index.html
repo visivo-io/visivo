@@ -10840,11 +10840,11 @@
 <h2 id="attributes">Attributes</h2>
 <p>These attributes apply to insights where <code>insight.props.type</code> is set to <code>scatter3d</code>. You would configure these attributes on the insight with the <code>insight.props</code> object.
 </p><div class="highlight"><pre><span></span><code><span class="nt">connectgaps</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
-<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">error_x</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(4)!</span>
-<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(5)!</span>
+<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(4)!</span>
+<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(5)!</span>
 <span class="w">  </span><span class="nt">arrayminussrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(6)!</span>
 <span class="w">  </span><span class="nt">arraysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(7)!</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(8)!</span>
@@ -10859,8 +10859,8 @@
 <span class="w">  </span><span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(14)!</span>
 <span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(15)!</span>
 <span class="nt">error_y</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(16)!</span>
-<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(17)!</span>
+<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(16)!</span>
+<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(17)!</span>
 <span class="w">  </span><span class="nt">arrayminussrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(18)!</span>
 <span class="w">  </span><span class="nt">arraysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(19)!</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(20)!</span>
@@ -10875,8 +10875,8 @@
 <span class="w">  </span><span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(26)!</span>
 <span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(27)!</span>
 <span class="nt">error_z</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(28)!</span>
-<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(29)!</span>
+<span class="w">  </span><span class="nt">array</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(28)!</span>
+<span class="w">  </span><span class="nt">arrayminus</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(29)!</span>
 <span class="w">  </span><span class="nt">arrayminussrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(30)!</span>
 <span class="w">  </span><span class="nt">arraysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(31)!</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(32)!</span>
@@ -10923,7 +10923,7 @@
 <span class="nt">hovertemplatesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(67)!</span>
 <span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(68)!</span>
 <span class="nt">hovertextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(69)!</span>
-<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(70)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(70)!</span>
 <span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(71)!</span>
 <span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(72)!</span>
 <span class="nt">legendgroup</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(73)!</span>
@@ -10990,9 +10990,9 @@
 <span class="w">    </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(124)!</span>
 <span class="w">    </span><span class="nt">ticks</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(125)!</span>
 <span class="w">    </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(126)!</span>
-<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(127)!</span>
+<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(127)!</span>
 <span class="w">    </span><span class="nt">ticktextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(128)!</span>
-<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(129)!</span>
+<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(129)!</span>
 <span class="w">    </span><span class="nt">tickvalssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(130)!</span>
 <span class="w">    </span><span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(131)!</span>
 <span class="w">    </span><span class="nt">title</span><span class="p">:</span>
@@ -11071,9 +11071,9 @@
 <span class="w">    </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(195)!</span>
 <span class="w">    </span><span class="nt">ticks</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(196)!</span>
 <span class="w">    </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(197)!</span>
-<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(198)!</span>
+<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(198)!</span>
 <span class="w">    </span><span class="nt">ticktextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(199)!</span>
-<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(200)!</span>
+<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(200)!</span>
 <span class="w">    </span><span class="nt">tickvalssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(201)!</span>
 <span class="w">    </span><span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(202)!</span>
 <span class="w">    </span><span class="nt">title</span><span class="p">:</span>
@@ -11167,15 +11167,15 @@
 <span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter3d</span>
 <span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(278)!</span>
 <span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(279)!</span>
-<span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(280)!</span>
+<span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(280)!</span>
 <span class="nt">xcalendar</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(281)!</span>
 <span class="nt">xhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(282)!</span>
 <span class="nt">xsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(283)!</span>
-<span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(284)!</span>
+<span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(284)!</span>
 <span class="nt">ycalendar</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(285)!</span>
 <span class="nt">yhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(286)!</span>
 <span class="nt">ysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(287)!</span>
-<span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(288)!</span>
+<span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(288)!</span>
 <span class="nt">zcalendar</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(289)!</span>
 <span class="nt">zhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(290)!</span>
 <span class="nt">zsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(291)!</span>
