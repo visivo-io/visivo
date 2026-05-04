@@ -21,4 +21,4 @@ insights:
       value: ?{${ref(indicator-data-gauge).value}}[0]
       domain:
         x: [0, 1]
-        y: [0, 1]
+        y: [0, 0.9]
