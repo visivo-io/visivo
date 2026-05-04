@@ -14,7 +14,7 @@ You can customize the opacity, surface levels, and colors to effectively visuali
     - **Fluid Dynamics**: Representing 3D fields of density or pressure.
     - **Scientific Visualization**: Displaying any 3D scalar field or volumetric data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Volume/#attributes) for the full set of configuration options**_
 
 ## Examples
 

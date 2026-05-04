@@ -15,7 +15,7 @@ You can control the appearance of candlestick charts through attributes such as 
     - **Trend Identification**: Identifying market trends such as uptrends, downtrends, or reversals.
     - **Price Fluctuation Visualization**: Showing how stock prices move within a specific time period (daily, weekly, etc.).
 
-_**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Candlestick/#attributes) for the full set of configuration options**_
 
 ## Examples
 

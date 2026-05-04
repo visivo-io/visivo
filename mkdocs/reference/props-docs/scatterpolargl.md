@@ -14,7 +14,7 @@ You can customize the marker size, color, and lines to connect points, similar t
     - **Performance Optimization**: Using WebGL for better rendering performance in polar scatter plots.
     - **Circular Data with Directional Components**: Ideal for cyclic data where radial distance and angle are key factors.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scatterpolargl/#attributes) for the full set of configuration options**_
 
 ## Examples
 

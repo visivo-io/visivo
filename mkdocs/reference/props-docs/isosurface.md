@@ -14,7 +14,7 @@ You can customize the colors, opacity, and surface rendering to visualize 3D dat
     - **Medical Imaging**: Displaying 3D representations of structures, such as in MRI or CT scans.
     - **Geospatial and Engineering Data**: Visualizing 3D volumes and their properties.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Isosurface/#attributes) for the full set of configuration options**_
 
 ## Examples
 

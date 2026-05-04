@@ -14,7 +14,7 @@ You can control the orientation, marker styles, and colors to better represent y
     - **Conversion Funnels**: Visualizing the steps in a user journey and where drop-offs occur.
     - **Progression Through Stages**: Representing data at different stages of a sequential process.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes) for the full set of configuration options**_
 
 ## Examples
 

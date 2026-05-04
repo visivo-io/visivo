@@ -15,7 +15,7 @@ Carpet traces provide you with control over the X and Y axes, as well as customi
     - **Bivariate Data Visualization**: Displaying complex relationships between two independent variables.
     - **Gridless Data Representation**: Visualizing data that doesn't fit neatly into grid-like structures.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Carpet/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Carpet/#attributes) for the full set of configuration options**_
 
 ## Examples
 

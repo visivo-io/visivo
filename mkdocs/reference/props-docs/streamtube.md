@@ -14,7 +14,7 @@ You can customize the color, size, and path of the streamtubes to represent the 
     - **Vector Field Analysis**: Analyzing vector fields like wind, magnetic, or electric fields.
     - **Flow Visualization**: Representing flow behavior over time or space.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Streamtube/#attributes) for the full set of configuration options**_
 
 ## Examples
 

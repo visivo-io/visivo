@@ -16,7 +16,7 @@ You have extensive control over the appearance of the bars through the `marker` 
     - **Directional Data Representation**: Showcasing data that has a directional component (e.g., animal migration patterns).
     - **Cyclical Phenomena Visualization**: Illustrating patterns that repeat over a cycle (e.g., seasonal sales data).
 
-_**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Barpolar/#attributes) for the full set of configuration options**_
 
 ## Examples
 

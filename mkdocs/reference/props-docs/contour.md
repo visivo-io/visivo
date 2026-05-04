@@ -15,7 +15,7 @@ Contour traces allow you to customize line colors, fill colors, and the number o
     - **Electromagnetic Fields**: Representing the strength of a field at various points.
     - **Pressure Levels**: Visualizing pressure across different areas in meteorology.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Contour/#attributes) for the full set of configuration options**_
 
 ## Examples
 

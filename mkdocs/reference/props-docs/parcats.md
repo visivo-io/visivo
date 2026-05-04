@@ -14,7 +14,7 @@ You can customize the colors, line widths, and category order to represent your 
     - **Flow Analysis**: Showing how data is distributed across multiple dimensions and comparing those paths.
     - **Segmentation**: Visualizing how different segments of data flow through categories.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Parcats/#attributes) for the full set of configuration options**_
 
 ## Examples
 

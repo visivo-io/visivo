@@ -14,7 +14,7 @@ You can customize the marker size, color, and geo-coordinates (longitude and lat
     - **Location-Based Analysis**: Exploring the distribution of data points across different locations.
     - **Mapping**: Plotting geographical points such as cities, events, or regions.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scattergeo/#attributes) for the full set of configuration options**_
 
 ## Examples
 

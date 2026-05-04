@@ -14,7 +14,7 @@ You can customize the colorscale, gridlines, and other properties to fit your da
     - **Frequency Distributions**: Showing how frequently data points occur across categories.
     - **Geospatial Heatmaps**: Visualizing the density or intensity of occurrences in a 2D space.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Heatmap/#attributes) for the full set of configuration options**_
 
 ## Examples
 

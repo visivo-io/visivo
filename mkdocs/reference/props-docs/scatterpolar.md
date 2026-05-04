@@ -14,7 +14,7 @@ You can customize the marker size, color, and lines to connect points, similar t
     - **Directional Data**: Visualizing data with directional components, such as angular measurements.
     - **Circular Data Analysis**: Useful for data where radial distance and angle are key factors.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scatterpolar/#attributes) for the full set of configuration options**_
 
 ## Examples
 

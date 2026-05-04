@@ -14,7 +14,7 @@ You can customize the orientation, kernel density estimation, and colors to repr
     - **Comparing Categories**: Comparing the distribution of numerical data across different categories.
     - **Outlier Detection**: Identifying outliers and the shape of the data distribution.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Violin/#attributes) for the full set of configuration options**_
 
 ## Examples
 

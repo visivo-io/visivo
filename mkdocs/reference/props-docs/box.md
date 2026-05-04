@@ -15,7 +15,7 @@ You can control various aspects of the plot, such as the orientation, box and wh
     - **Outlier Detection**: Identifying outliers in quest performance metrics.
     - **Comparative Analysis**: Comparing the performance of knights on different quests.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Box/#attributes) for the full set of configuration options**_
 
 ## Examples
 

@@ -14,7 +14,7 @@ You can customize the marker size, color, and lines, similar to scatter plots, b
     - **Correlation Visualization**: Identifying patterns, clusters, or outliers in high-dimensional datasets.
     - **Multivariate Data Exploration**: Useful in statistics, machine learning, and data science for analyzing multiple variables at once.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Splom/#attributes) for the full set of configuration options**_
 
 ## Examples
 

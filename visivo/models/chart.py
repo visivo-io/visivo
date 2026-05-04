@@ -13,14 +13,14 @@ InsightRef: TypeAlias = generate_ref_field(Insight)
 class Chart(NamedModel, ParentModel):
     """
     ## Overview
-    Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
+    Charts enable you to combine one or more [insights](../Insight/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_.
 
     !!! tip
 
-        You can add traces of **different types** to a chart. For example, you may want to display an [`indicator`](../Trace/Props/Indicator/)
-        on top of a [`bar`](../Trace/Props/Bar/) to show how what the bars add up to.
+        You can add insights of **different types** to a chart. For example, you may want to display an [`indicator`](../Insight/Props/Indicator/)
+        on top of a [`bar`](../Insight/Props/Bar/) to show how what the bars add up to.
 
-    You can also configure interactivity in your charts by setting up a  [`selector`](../Selector/).
+    You can configure interactivity in your charts by wiring up [`inputs`](../Inputs/).
 
     ## Common Configurations
 
@@ -60,7 +60,6 @@ class Chart(NamedModel, ParentModel):
                   title:
                     text: "Single Trace"
             ```
-        ![](../../../assets/example-charts/single-trace.png)
     ### Duel Axis
     When you want to display two different types of data on the same chart, duel axis can come in handy.
     !!! tip
@@ -198,7 +197,6 @@ class Chart(NamedModel, ParentModel):
                   title:
                     text: "Indicator + Scatter Plot"
             ```
-        ![](../../../assets/example-charts/position-traces-with-domains.png)
 
     """
 
