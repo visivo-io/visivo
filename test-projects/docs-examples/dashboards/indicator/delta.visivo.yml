@@ -2,7 +2,7 @@ models:
   - name: indicator-data-delta
     args:
       - echo
-      - |
+      - |-
         sort,value
         3,85
         2,75

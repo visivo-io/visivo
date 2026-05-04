@@ -37,7 +37,7 @@ models:
     table_name: csv
     args:
       - echo
-      - |
+      - |-
         x,y
         1,9
         2,1

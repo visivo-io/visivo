@@ -2,7 +2,7 @@ models:
   - name: indicator-data
     args:
       - echo
-      - |
+      - |-
         value
         75
 sources:

@@ -2,9 +2,10 @@ models:
   - name: indicator-data-gauge
     args:
       - echo
-      - |
-        value
-        65
+      - |-
+        value,x
+        65,0.5
+        75,0.6
 charts:
   - name: gauge-indicator-chart
     layout:
@@ -18,8 +19,6 @@ insights:
       type: indicator
       mode: "gauge+number"
       value: ?{${ref(indicator-data-gauge).value}}[0]
-      gauge:
-        axis:
-          range: [0, 100]
-        bar:
-          color: "#17becf"
+      domain:
+        x: [0, 1]
+        y: [0, 1]
