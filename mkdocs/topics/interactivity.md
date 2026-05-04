@@ -15,7 +15,8 @@ inputs:
     options: ["North", "South", "East", "West"]
     display:
       type: dropdown
-      default: { value: North }
+      default:  
+        value: North 
 
 insights:
   - name: revenue-by-region
