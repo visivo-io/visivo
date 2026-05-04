@@ -198,4 +198,54 @@ describe('SchemaEditor', () => {
     // onChange should be called
     expect(onChange).toHaveBeenCalled();
   });
+
+  describe('filterToKeys', () => {
+    it('restricts pickable properties to filterToKeys when provided', () => {
+      render(<SchemaEditor {...defaultProps} filterToKeys={['x', 'y']} />);
+
+      // Open picker
+      fireEvent.click(screen.getByRole('button', { name: /add/i }));
+
+      // x and y should be pickable
+      expect(screen.getByText('x')).toBeInTheDocument();
+      expect(screen.getByText('y')).toBeInTheDocument();
+      // mode and name should NOT be pickable (filtered out)
+      expect(screen.queryByText('mode')).not.toBeInTheDocument();
+      expect(screen.queryByText('name')).not.toBeInTheDocument();
+    });
+
+    it('shows the filtered count in the property summary', () => {
+      render(<SchemaEditor {...defaultProps} filterToKeys={['x', 'y']} />);
+      // The full schema has multiple properties; filter should restrict to 2
+      const counts = screen.getAllByText(/of 2 properties/);
+      expect(counts.length).toBeGreaterThan(0);
+    });
+
+    it('shows full schema when filterToKeys is null', () => {
+      render(<SchemaEditor {...defaultProps} filterToKeys={null} />);
+      fireEvent.click(screen.getByRole('button', { name: /add/i }));
+      expect(screen.getByText('mode')).toBeInTheDocument();
+      expect(screen.getByText('name')).toBeInTheDocument();
+    });
+
+    it('shows full schema when filterToKeys is an empty array', () => {
+      render(<SchemaEditor {...defaultProps} filterToKeys={[]} />);
+      fireEvent.click(screen.getByRole('button', { name: /add/i }));
+      expect(screen.getByText('mode')).toBeInTheDocument();
+    });
+  });
+
+  describe('hidePropertyCount', () => {
+    it('hides the built-in property count when hidePropertyCount=true', () => {
+      render(<SchemaEditor {...defaultProps} hidePropertyCount={true} />);
+      const propertyCountTexts = screen.queryAllByText(/of.*properties/);
+      expect(propertyCountTexts.length).toBe(0);
+    });
+
+    it('shows the built-in property count when hidePropertyCount=false (default)', () => {
+      render(<SchemaEditor {...defaultProps} />);
+      const propertyCountTexts = screen.getAllByText(/of.*properties/);
+      expect(propertyCountTexts.length).toBeGreaterThan(0);
+    });
+  });
 });

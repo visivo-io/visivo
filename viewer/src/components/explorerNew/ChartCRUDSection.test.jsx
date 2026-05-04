@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { DndContext } from '@dnd-kit/core';
 import ChartCRUDSection from './ChartCRUDSection';
@@ -44,9 +44,13 @@ jest.mock('../new-views/lineage/EmbeddedPill', () => {
 });
 
 jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
-  const MockSchemaEditor = ({ schema, value, onChange }) => {
+  const MockSchemaEditor = ({ schema, value, onChange, filterToKeys, hidePropertyCount }) => {
     return (
-      <div data-testid="chart-schema-editor">
+      <div
+        data-testid="chart-schema-editor"
+        data-filter-keys={filterToKeys ? JSON.stringify(filterToKeys) : 'null'}
+        data-hide-count={hidePropertyCount ? 'true' : 'false'}
+      >
         ChartSchemaEditor: {JSON.stringify(value)}
       </div>
     );
@@ -55,7 +59,32 @@ jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
 });
 
 jest.mock('../../schemas/schemas', () => ({
-  getSchema: jest.fn().mockResolvedValue({ properties: { title: {} } }),
+  getSchema: jest.fn().mockResolvedValue({
+    properties: {
+      title: {
+        type: 'object',
+        properties: { text: { type: 'string' } },
+      },
+      xaxis: {
+        type: 'object',
+        properties: {
+          title: { type: 'object', properties: { text: { type: 'string' } } },
+          type: { type: 'string' },
+        },
+      },
+      yaxis: {
+        type: 'object',
+        properties: {
+          title: { type: 'object', properties: { text: { type: 'string' } } },
+          type: { type: 'string' },
+        },
+      },
+      showlegend: { type: 'boolean' },
+      paper_bgcolor: { type: 'string' },
+      plot_bgcolor: { type: 'string' },
+      hovermode: { type: 'string' },
+    },
+  }),
 }));
 
 const defaultState = {
@@ -207,6 +236,62 @@ describe('ChartCRUDSection', () => {
       useStore.setState({ explorerChartInsightNames: [], explorerInsightStates: {} });
       renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
       expect(await screen.findByText(/drag from left nav/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('layout property filter', () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it('renders PropertyFilter once the layout schema loads', async () => {
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const filter = await screen.findByTestId('property-filter');
+      expect(filter).toBeInTheDocument();
+    });
+
+    it('defaults to "essentials" mode and passes layout essential paths to SchemaEditor', async () => {
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const editor = await screen.findByTestId('chart-schema-editor');
+      const filterKeys = JSON.parse(editor.getAttribute('data-filter-keys'));
+      expect(Array.isArray(filterKeys)).toBe(true);
+      expect(filterKeys).toContain('title.text');
+      expect(filterKeys).toContain('xaxis.title.text');
+      expect(filterKeys).toContain('showlegend');
+      // Layout essentials don't include hovermode, so it shouldn't appear here
+      expect(filterKeys).not.toContain('hovermode');
+    });
+
+    it('toggling the filter switches to "all" mode and clears filterToKeys', async () => {
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const toggle = await screen.findByTestId('property-filter-toggle');
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        const editor = screen.getByTestId('chart-schema-editor');
+        expect(editor.getAttribute('data-filter-keys')).toBe('null');
+      });
+    });
+
+    it('persists layout filter mode to localStorage', async () => {
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const toggle = await screen.findByTestId('property-filter-toggle');
+      fireEvent.click(toggle);
+      await waitFor(() => {
+        expect(window.localStorage.getItem('visivo_property_filter_mode_layout')).toBe('all');
+      });
+    });
+
+    it('reads persisted layout mode from localStorage on mount', async () => {
+      window.localStorage.setItem('visivo_property_filter_mode_layout', 'all');
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const filter = await screen.findByTestId('property-filter');
+      expect(filter).toHaveTextContent('total properties');
+    });
+
+    it('passes hidePropertyCount=true to layout SchemaEditor', async () => {
+      renderInDnd(<ChartCRUDSection isExpanded={true} onToggleExpand={jest.fn()} />);
+      const editor = await screen.findByTestId('chart-schema-editor');
+      expect(editor.getAttribute('data-hide-count')).toBe('true');
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PiCaretDown, PiCaretRight, PiPlus, PiX } from 'react-icons/pi';
 import { useDroppable } from '@dnd-kit/core';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
@@ -6,6 +6,30 @@ import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { getSchema } from '../../schemas/schemas';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
+import PropertyFilter from './PropertyFilter';
+import { getLayoutEssentials } from './chartTypeEssentials';
+
+const LAYOUT_FILTER_STORAGE_KEY = 'visivo_property_filter_mode_layout';
+
+const readLayoutFilterMode = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return 'essentials';
+  try {
+    const stored = window.localStorage.getItem(LAYOUT_FILTER_STORAGE_KEY);
+    return stored === 'all' ? 'all' : 'essentials';
+  } catch (_e) {
+    return 'essentials';
+  }
+};
+
+const persistLayoutFilterMode = (mode) => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(LAYOUT_FILTER_STORAGE_KEY, mode);
+  } catch (_e) {
+    // localStorage write failures are non-fatal
+  }
+};
 
 const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
   const status = useStore(selectInsightStatus(name));
@@ -40,7 +64,31 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [layoutFilterMode, setLayoutFilterMode] = useState(() => readLayoutFilterMode());
   const skipNextCommitRef = useRef(false);
+
+  const handleLayoutFilterModeChange = useCallback((newMode) => {
+    setLayoutFilterMode(newMode);
+    persistLayoutFilterMode(newMode);
+  }, []);
+
+  const layoutEssentialPaths = useMemo(() => getLayoutEssentials(), []);
+
+  const allLayoutPropertyPaths = useMemo(() => {
+    if (!layoutSchema) return [];
+    const defs = layoutSchema.$defs || {};
+    return flattenSchemaProperties(layoutSchema, '', defs).map((p) => p.path);
+  }, [layoutSchema]);
+
+  const totalLayoutPropertyCount = allLayoutPropertyPaths.length;
+
+  const availableLayoutEssentialPaths = useMemo(() => {
+    if (!layoutSchema) return layoutEssentialPaths;
+    const allowed = new Set(allLayoutPropertyPaths);
+    return layoutEssentialPaths.filter((p) => allowed.has(p));
+  }, [layoutSchema, layoutEssentialPaths, allLayoutPropertyPaths]);
+
+  const essentialLayoutPropertyCount = availableLayoutEssentialPaths.length;
 
   // Keep the local editing value in sync with the chart name when we're not
   // actively typing, so switching charts updates the displayed text.
@@ -246,9 +294,17 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
 
           {/* Layout Properties */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Layout Properties
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-600">Layout Properties</label>
+              {layoutSchema && (
+                <PropertyFilter
+                  totalCount={totalLayoutPropertyCount}
+                  essentialCount={essentialLayoutPropertyCount}
+                  mode={layoutFilterMode}
+                  onChange={handleLayoutFilterModeChange}
+                />
+              )}
+            </div>
             <SchemaEditor
               schema={layoutSchema}
               value={chartLayout}
@@ -256,6 +312,10 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
               excludeProperties={[]}
               initiallyExpanded={Object.keys(chartLayout || {})}
               droppable={false}
+              filterToKeys={
+                layoutFilterMode === 'essentials' ? availableLayoutEssentialPaths : null
+              }
+              hidePropertyCount={true}
             />
           </div>
         </div>
