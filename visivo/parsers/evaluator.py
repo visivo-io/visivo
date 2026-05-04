@@ -49,8 +49,8 @@ def evaluate_expression(
         else:
             return previous_nodes
 
-    def get_object_from_data(trace):
-        data_file_path = os.path.join(output_dir, trace.name, "data.json")
+    def get_object_from_data(insight):
+        data_file_path = os.path.join(output_dir, insight.name, "data.json")
 
         if not os.path.exists(data_file_path):
             raise FileNotFoundError(f"Data file not found: {data_file_path}")
@@ -70,12 +70,9 @@ def evaluate_expression(
                 return value
             return get_object_from_node(value, next_index, nodes)
         elif isinstance(node, ast.Attribute):
-            if (
-                current_object.__class__.__name__ in ("Trace", "Insight")
-                and node.attr in TRACE_DATA_NODES
-            ):
-                trace_data = get_object_from_data(current_object)
-                current_object = merge_dicts(current_object.model_dump(), trace_data)
+            if current_object.__class__.__name__ == "Insight" and node.attr in TRACE_DATA_NODES:
+                insight_data = get_object_from_data(current_object)
+                current_object = merge_dicts(current_object.model_dump(), insight_data)
             if isinstance(current_object, dict):
                 value = current_object[node.attr]
             else:

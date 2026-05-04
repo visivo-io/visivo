@@ -45,8 +45,7 @@ def test_Runner_insight_with_default():
     server_url = f"http://localhost:{port}"
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    insight_hash = insight.name_hash()
-    assert os.path.exists(f"{output_dir}/main/insights/{insight_hash}.json")
+    assert os.path.exists(f"{output_dir}/main/insights/{insight.name}.json")
 
 
 def test_Runner_insight_given_source():
@@ -67,8 +66,7 @@ def test_Runner_insight_given_source():
 
     runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    insight_hash = insight.name_hash()
-    assert os.path.exists(f"{output_dir}/main/insights/{insight_hash}.json")
+    assert os.path.exists(f"{output_dir}/main/insights/{insight.name}.json")
 
 
 def test_runner_with_csv_script_model():
@@ -152,8 +150,7 @@ def test_runner_dag_filter():
         server_url=server_url,
     )
     runner.run()
-    insight_hash = insight.name_hash()
-    assert os.path.exists(f"{output_dir}/main/insights/{insight_hash}.json")
+    assert os.path.exists(f"{output_dir}/main/insights/{insight.name}.json")
 
 
 def test_runner_dag_filter_with_no_jobs():

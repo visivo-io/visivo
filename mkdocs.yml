@@ -254,8 +254,6 @@ nav:
                   - reference/configuration/Models/LocalMergeModel/index.md
           - Relation:
               - reference/configuration/Relation/index.md
-          - Selector:
-              - reference/configuration/Selector/index.md
           - Sources:
               - SqliteSource:
                   - reference/configuration/Sources/SqliteSource/index.md

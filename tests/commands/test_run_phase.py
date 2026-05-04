@@ -64,5 +64,4 @@ def test_run_phase():
         output_dir=output_dir,
         dag_filter="+dashboard+",
     )
-    insight_hash = insight.name_hash()
-    assert os.path.exists(f"{output_dir}/main/insights/{insight_hash}.json")
+    assert os.path.exists(f"{output_dir}/main/insights/{insight.name}.json")
