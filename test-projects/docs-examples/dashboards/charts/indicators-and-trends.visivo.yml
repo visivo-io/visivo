@@ -23,7 +23,7 @@ insights:
   - name: average-value
     props:
       type: indicator
-      value: ?{avg(${ref(numbers-from-remote-csv).numbers_column})}
+      value: ?{avg(${ref(numbers-from-remote-csv).numbers_column})}[0]
       number:
         font:
           size: 35
@@ -34,7 +34,7 @@ insights:
   - name: total-value
     props:
       type: indicator
-      value: ?{sum(${ref(numbers-from-remote-csv).numbers_column})}
+      value: ?{sum(${ref(numbers-from-remote-csv).numbers_column})}[0]
       number:
         font:
           size: 35

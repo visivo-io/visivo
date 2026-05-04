@@ -20,8 +20,8 @@ insights:
     props:
       type: indicator
       mode: "number+delta"
-      value: ?{${ref(indicator-data-delta).value}}
+      value: ?{${ref(indicator-data-delta).value}}[0]
       delta:
-        reference: ?{${ref(indicator-data-delta).value}}
+        reference: ?{${ref(indicator-data-delta).value}}[0]
     interactions:
       - sort: ?{ ${ref(indicator-data-delta).sort} DESC}

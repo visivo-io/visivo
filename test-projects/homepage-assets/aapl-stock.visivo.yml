@@ -20,12 +20,12 @@ insights:
   - name: max-price
     props:
       type: indicator
-      value: ?{max(cast(${ref(aapl-stock-price).high} as float))}
+      value: ?{max(cast(${ref(aapl-stock-price).high} as float))}[0]
 
   - name: min-price
     props:
       type: indicator
-      value: ?{min(cast(${ref(aapl-stock-price).high} as float))}
+      value: ?{min(cast(${ref(aapl-stock-price).high} as float))}[0]
 
 charts:
   - name: aapl-stock-price-chart

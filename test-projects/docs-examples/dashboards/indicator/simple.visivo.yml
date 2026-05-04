@@ -25,9 +25,9 @@ insights:
     props:
       type: indicator
       mode: "number"
-      value: ?{${ref(indicator-data).value}}
+      value: ?{${ref(indicator-data).value}}[0]
       number:
         suffix: "<sub>hrs</sub>"
-        prefix: ?{case when ${ref(indicator-data).value} > 0 then '<sup>+</sup>' else '<sup>-</sup>' end}
+        prefix: ?{case when ${ref(indicator-data).value} > 0 then '<sup>+</sup>' else '<sup>-</sup>' end}[0]
         font:
           size: 100

@@ -17,7 +17,7 @@ insights:
     props:
       type: indicator
       mode: "gauge+number"
-      value: ?{${ref(indicator-data-gauge).value}}
+      value: ?{${ref(indicator-data-gauge).value}}[0]
       gauge:
         axis:
           range: [0, 100]

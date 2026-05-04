@@ -304,9 +304,9 @@ insights:
   - name: example-indicator
     props:
       type: indicator
-      value: ?{${ref(csv).x}}
+      value: ?{${ref(csv).x}}[0]
       delta:
-        reference: ?{${ref(csv).x}}
+        reference: ?{${ref(csv).x}}[0]
 
   - name: surface-trace
     props:
@@ -320,7 +320,7 @@ insights:
     props:
       type: "indicator"
       mode: "number+delta"
-      value: ?{${ref(csv).y}}
+      value: ?{${ref(csv).y}}[0]
       number:
         prefix: "$"
       delta:
