@@ -20,7 +20,7 @@ class Chart(NamedModel, ParentModel):
         You can add insights of **different types** to a chart. For example, you may want to display an [`indicator`](../Insight/Props/Indicator/)
         on top of a [`bar`](../Insight/Props/Bar/) to show how what the bars add up to.
 
-    You can configure interactivity in your charts by wiring up [`inputs`](../Inputs/).
+    You can configure interactivity in your charts by wiring up [`inputs`](../Inputs/SingleSelectInput/).
 
     ## Common Configurations
 
