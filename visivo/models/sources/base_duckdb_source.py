@@ -157,8 +157,7 @@ class BaseDuckdbSource(Source):
             # Query both tables and views from DuckDB's information schema
             # CSV and Excel sources create views, not tables
             # Exclude DuckDB system tables/views (they start with 'duckdb_', 'sqlite_', or 'pragma_')
-            tables_result = connection.execute(
-                """
+            tables_result = connection.execute("""
                 SELECT table_name, 'table' as object_type
                 FROM information_schema.tables
                 WHERE table_schema = 'main'
@@ -173,8 +172,7 @@ class BaseDuckdbSource(Source):
                 AND table_name NOT LIKE 'sqlite_%'
                 AND table_name NOT LIKE 'pragma_%'
                 ORDER BY table_name
-            """
-            )
+            """)
 
             all_tables = [row[0] for row in tables_result.fetchall()]
 
@@ -193,8 +191,7 @@ class BaseDuckdbSource(Source):
             Logger.instance().error(f"Error getting tables from DuckDB: {e}")
             # Fallback: try to get just tables if views query fails
             try:
-                result = connection.execute(
-                    """
+                result = connection.execute("""
                     SELECT table_name
                     FROM information_schema.tables
                     WHERE table_schema = 'main'
@@ -202,8 +199,7 @@ class BaseDuckdbSource(Source):
                     AND table_name NOT LIKE 'sqlite_%'
                     AND table_name NOT LIKE 'pragma_%'
                     ORDER BY table_name
-                """
-                )
+                """)
                 fallback_tables = [row[0] for row in result.fetchall()]
                 Logger.instance().debug(f"Fallback found tables: {fallback_tables}")
 
@@ -264,14 +260,12 @@ class BaseDuckdbSource(Source):
     def get_schemas(self, database_name: str) -> List[str]:
         """DuckDB typically has 'main' schema only."""
         with self.connect(read_only=True) as connection:
-            result = connection.execute(
-                """
+            result = connection.execute("""
                 SELECT DISTINCT schema_name
                 FROM information_schema.schemata
                 WHERE schema_name NOT IN ('information_schema', 'pg_catalog')
                 ORDER BY schema_name
-            """
-            )
+            """)
             return [row[0] for row in result.fetchall()]
 
     def get_tables(
@@ -281,8 +275,7 @@ class BaseDuckdbSource(Source):
         schema_filter = f"= '{schema_name}'" if schema_name else "= 'main'"
 
         with self.connect(read_only=True) as connection:
-            result = connection.execute(
-                f"""
+            result = connection.execute(f"""
                 SELECT table_name, 'table' as type FROM information_schema.tables
                 WHERE table_schema {schema_filter}
                 AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
@@ -293,8 +286,7 @@ class BaseDuckdbSource(Source):
                 AND table_name NOT LIKE 'duckdb_%' AND table_name NOT LIKE 'sqlite_%'
                 AND table_name NOT LIKE 'pragma_%'
                 ORDER BY table_name
-            """
-            )
+            """)
             return [{"name": row[0], "type": row[1]} for row in result.fetchall()]
 
     def get_columns(

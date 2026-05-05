@@ -9,7 +9,6 @@ from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.model import Model
 from visivo.server.managers.preview_run_manager import RunStatus
 
-
 MANAGER_TO_PROJECT_FIELD = [
     ("model_manager", "models"),
     ("source_manager", "sources"),

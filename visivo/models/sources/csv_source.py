@@ -31,12 +31,10 @@ class CSVFileSource(BaseDuckdbSource):
     def _setup_connection(self, connection, **kwargs):
         """Setup the DuckDB connection by creating a view from the CSV file."""
         try:
-            connection.execute(
-                f"""
+            connection.execute(f"""
                 CREATE VIEW "{self.name}" AS
                 SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
-                """
-            )
+                """)
         except Exception as e:
             raise click.ClickException(f"Error setting up CSV view: {e}")
 

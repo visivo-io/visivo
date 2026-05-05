@@ -6,7 +6,6 @@ from visivo.models.destinations.fields import DestinationField
 from visivo.models.test_run import TestRun
 from visivo.models.base.named_model import NamedModel
 
-
 """
 Tests allow you to assert on the computed values that are the output of a trace.  The tests are run with the `visivo test` command.
 

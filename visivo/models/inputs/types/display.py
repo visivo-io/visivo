@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from visivo.models.base.query_string import QueryString
 
-
 # Type alias for primitive values that can be used in inputs
 Primitive = Union[str, int, float, bool]
 

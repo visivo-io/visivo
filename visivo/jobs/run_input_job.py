@@ -31,7 +31,6 @@ from visivo.query.patterns import extract_ref_names, replace_refs
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
 from visivo.constants import DEFAULT_RUN_ID
 
-
 OPTION_COUNT_WARNING_THRESHOLD = 10000
 OPTION_COUNT_ERROR_THRESHOLD = 100000
 

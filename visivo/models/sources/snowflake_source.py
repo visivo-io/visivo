@@ -306,8 +306,7 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                 from sqlalchemy import text
 
                 # Query ALL schemas (exclude INFORMATION_SCHEMA system schema)
-                query = text(
-                    """
+                query = text("""
                     SELECT
                         TABLE_SCHEMA,
                         TABLE_NAME,
@@ -321,8 +320,7 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     FROM INFORMATION_SCHEMA.COLUMNS
                     WHERE TABLE_SCHEMA NOT IN ('INFORMATION_SCHEMA')
                     ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
-                    """
-                )
+                    """)
 
                 rows = connection.execute(query).fetchall()
 

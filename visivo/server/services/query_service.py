@@ -5,7 +5,6 @@ from typing import Dict, Any, Optional
 from visivo.logger.logger import Logger
 from visivo.models.project import Project
 
-
 # Maximum number of rows to return from a query (will truncate if exceeded)
 MAX_ROWS = 100000
 

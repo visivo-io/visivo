@@ -15,7 +15,6 @@ import duckdb
 
 from visivo.logger.logger import Logger
 
-
 # Cache TTL in seconds (5 minutes)
 CACHE_TTL_SECONDS = 300
 

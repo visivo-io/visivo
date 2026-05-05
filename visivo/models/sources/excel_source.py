@@ -34,12 +34,10 @@ class ExcelFileSource(BaseDuckdbSource):
             # For Excel files, we'll need to use the spatial extension or convert to CSV first
             # For now, let's try to use read_csv_auto assuming it's been converted
             # TODO: In the future, we could add Excel-specific handling here
-            connection.execute(
-                f"""
+            connection.execute(f"""
                 CREATE VIEW "{self.name}" AS
                 SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
-                """
-            )
+                """)
         except Exception as e:
             raise click.ClickException(f"Error setting up Excel view: {e}")
 

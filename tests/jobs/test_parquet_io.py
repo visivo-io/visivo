@@ -16,7 +16,6 @@ import pytest
 
 from visivo.jobs.parquet_io import write_dicts_to_parquet
 
-
 # ---------------------------------------------------------------------------
 # B14: Decimal columns are cast to Float64 before parquet write
 # ---------------------------------------------------------------------------
