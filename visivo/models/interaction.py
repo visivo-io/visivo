@@ -18,7 +18,8 @@ class InsightInteraction(BaseModel):
         None, description="Filter expression to apply to the data on the client side"
     )
     split: Optional[QueryString] = Field(
-        None, description="Column or expression to split data into multiple traces"
+        None,
+        description="Column or expression to split data into multiple plotly series",
     )
     sort: Optional[QueryString] = Field(None, description="Column or expression to sort data by")
 

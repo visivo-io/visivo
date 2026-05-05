@@ -17,7 +17,7 @@ class Defaults(BaseModel):
     Defaults will be overridden if:
 
     1. A source / alert is passed to a command. ex: `visivo serve -t source-name`
-    2. A source is specified in the trace using the `source_name` attribute. when this attribute is set the trace will always run queries against that source.
+    2. A source is specified directly on the model via the `source_name` attribute. When this attribute is set the model will always run queries against that source.
 
     Here's how defaults look in the `project.visivo.yml` file:
     ``` yaml

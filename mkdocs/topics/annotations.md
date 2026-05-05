@@ -88,7 +88,7 @@ Shapes and annotations are defined in your [chart.layout](../reference/configura
     1. Determines whether the shape could be activated for edit or not. Has no effect when the older editable shapes mode is enabled via `config.editable` or `config.edits.shapePosition`. 
     2. Sets the color filling the shape's interior. Only applies to closed shapes. 
     3. Determines which regions of complex paths constitute the interior. For more info please visit https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/fill-rule 
-    4. Specifies whether shapes are drawn below or above traces. 
+    4. Specifies whether shapes are drawn below or above insights. 
     5. Sets the line color. 
     6. Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). 
     7. Sets the line width (in px). 
@@ -263,21 +263,20 @@ Highlighting regions in your charts helps draw attention to important areas or p
                 4,5
                 5,6
     
-        traces:
-          - name: scatter_trace
-            model: ${ref(scatter_data)}
+        insights:
+          - name: scatter_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(scatter_data).x}}
+              y: ?{${ref(scatter_data).y}}
               mode: markers
               marker:
                 color: blue
     
         charts:
           - name: scatter_with_rectangle
-            traces:
-              - ${ref(scatter_trace)}
+            insights:
+              - ${ref(scatter_insight)}
             layout:
               title: Highlighted Region in Scatter Plot
               shapes:
@@ -312,21 +311,20 @@ Highlighting regions in your charts helps draw attention to important areas or p
                 4,5
                 5,6
     
-        traces:
-          - name: scatter_trace
-            model: ${ref(scatter_data)}
+        insights:
+          - name: scatter_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(scatter_data).x}}
+              y: ?{${ref(scatter_data).y}}
               mode: markers
               marker:
                 color: green
     
         charts:
           - name: scatter_with_multiple_regions
-            traces:
-              - ${ref(scatter_trace)}
+            insights:
+              - ${ref(scatter_insight)}
             layout:
               title: Multiple Highlighted Regions
               shapes:
@@ -370,21 +368,20 @@ Highlighting regions in your charts helps draw attention to important areas or p
                 4,5
                 5,6
 
-        traces:
-          - name: scatter_trace
-            model: ${ref(scatter_data)}
+        insights:
+          - name: scatter_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(scatter_data).x}}
+              y: ?{${ref(scatter_data).y}}
               mode: markers
               marker:
                 color: purple
 
         charts:
           - name: scatter_with_region_annotation
-            traces:
-              - ${ref(scatter_trace)}
+            insights:
+              - ${ref(scatter_insight)}
             layout:
               title: Highlighted Region with Annotation
               shapes:
@@ -435,21 +432,20 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
                 4,10
                 5,12
     
-        traces:
-          - name: line_trace
-            model: ${ref(line_data)}
+        insights:
+          - name: line_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(line_data).x}}
+              y: ?{${ref(line_data).y}}
               mode: lines
               line:
                 color: blue
     
         charts:
           - name: line_with_threshold
-            traces:
-              - ${ref(line_trace)}
+            insights:
+              - ${ref(line_insight)}
             layout:
               title: Threshold Line Example
               shapes:
@@ -484,21 +480,20 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
                 4,6
                 5,10
 
-        traces:
-          - name: vertical_line_trace
-            model: ${ref(vertical_threshold_data)}
+        insights:
+          - name: vertical_line_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(vertical_threshold_data).x}}
+              y: ?{${ref(vertical_threshold_data).y}}
               mode: lines
               line:
                 color: green
 
         charts:
           - name: vertical_line_threshold
-            traces:
-              - ${ref(vertical_line_trace)}
+            insights:
+              - ${ref(vertical_line_insight)}
             layout:
               title: Vertical Threshold Line Example
               shapes:
@@ -533,21 +528,20 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
                 4,12
                 5,15
 
-        traces:
-          - name: threshold_annotation_trace
-            model: ${ref(threshold_annotation_data)}
+        insights:
+          - name: threshold_annotation_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(threshold_annotation_data).x}}
+              y: ?{${ref(threshold_annotation_data).y}}
               mode: lines
               line:
                 color: purple
 
         charts:
           - name: threshold_with_annotation
-            traces:
-              - ${ref(threshold_annotation_trace)}
+            insights:
+              - ${ref(threshold_annotation_insight)}
             layout:
               title: Threshold with Annotation
               shapes:
@@ -598,21 +592,20 @@ Key points are data points that are particularly important or noteworthy. Annota
                 4,10
                 5,6
 
-        traces:
-          - name: multiple_points_trace
-            model: ${ref(multiple_points_data)}
+        insights:
+          - name: multiple_points_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(multiple_points_data).x}}
+              y: ?{${ref(multiple_points_data).y}}
               mode: markers
               marker:
                 color: green
 
         charts:
           - name: multiple_points_annotation
-            traces:
-              - ${ref(multiple_points_trace)}
+            insights:
+              - ${ref(multiple_points_insight)}
             layout:
               title: Multiple Points Annotation
               annotations:
@@ -656,21 +649,20 @@ Key points are data points that are particularly important or noteworthy. Annota
                 4,12
                 5,15
 
-        traces:
-          - name: point_region_trace
-            model: ${ref(point_region_data)}
+        insights:
+          - name: point_region_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(point_region_data).x}}
+              y: ?{${ref(point_region_data).y}}
               mode: markers
               marker:
                 color: purple
 
         charts:
           - name: point_with_region
-            traces:
-              - ${ref(point_region_trace)}
+            insights:
+              - ${ref(point_region_insight)}
             layout:
               title: Point with Region
               shapes:
@@ -729,21 +721,20 @@ Below are three examples showcasing the use of emoji annotations.
                 4,6
                 5,10
 
-        traces:
-          - name: emoji_trace
-            model: ${ref(emoji_data)}
+        insights:
+          - name: emoji_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(emoji_data).x}}
+              y: ?{${ref(emoji_data).y}}
               mode: markers
               marker:
                 color: green
 
         charts:
           - name: emoji_annotations_chart
-            traces:
-              - ${ref(emoji_trace)}
+            insights:
+              - ${ref(emoji_insight)}
             layout:
               title: Emoji Annotations for Data Points
               annotations:
@@ -789,21 +780,20 @@ Below are three examples showcasing the use of emoji annotations.
                 4,10
                 5,12
 
-        traces:
-          - name: threshold_emoji_trace
-            model: ${ref(threshold_emoji_data)}
+        insights:
+          - name: threshold_emoji_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(threshold_emoji_data).x}}
+              y: ?{${ref(threshold_emoji_data).y}}
               mode: lines
               line:
                 color: blue
 
         charts:
           - name: threshold_with_emojis
-            traces:
-              - ${ref(threshold_emoji_trace)}
+            insights:
+              - ${ref(threshold_emoji_insight)}
             layout:
               title: Threshold Line with Emojis
               shapes:
@@ -846,21 +836,20 @@ Below are three examples showcasing the use of emoji annotations.
                 4,8
                 5,10
 
-        traces:
-          - name: region_emoji_trace
-            model: ${ref(region_emoji_data)}
+        insights:
+          - name: region_emoji_insight
             props:
               type: scatter
-              x: ?{x}
-              y: ?{y}
+              x: ?{${ref(region_emoji_data).x}}
+              y: ?{${ref(region_emoji_data).y}}
               mode: markers
               marker:
                 color: orange
 
         charts:
           - name: region_with_emojis
-            traces:
-              - ${ref(region_emoji_trace)}
+            insights:
+              - ${ref(region_emoji_insight)}
             layout:
               title: Region Highlighted with Emojis
               shapes:

@@ -15,23 +15,26 @@ from visivo.logger.logger import Logger
 
 class Insight(NamedModel, ParentModel):
     """
-    The **Insight** is the central visualization object in Visivo Interactivity 2.0.
-
-    Insights replace **Traces**, providing a cleaner separation between
-    **server-side data preparation** and **client-side interactivity**.
-    Unlike traces, insights generate flat JSON structures that can be manipulated
-    in the browser for responsive dashboards.
+    The **Insight** is the central visualization object in Visivo. Insights
+    cleanly separate **server-side data preparation** from **client-side
+    interactivity** and produce flat JSON structures the viewer can
+    manipulate in the browser for responsive dashboards.
 
     ## Why Insights?
-    * **Simpler Mental Model** – No more mixing cohort logic or trace naming rules
-    * **Interactive by Default** – Client-side filtering, splitting, and sorting
-    * **Reusable** – Insights can appear in multiple charts & tables
-    * **Fast** – Pre-computed data cached server-side, interactions run locally
+    * **Simple mental model** — declare what you want on the chart, with no
+      ad-hoc cohort or naming rules.
+    * **Interactive by default** — client-side filtering, splitting, and
+      sorting run instantly.
+    * **Reusable** — the same insight can appear in multiple charts and
+      tables; the underlying query runs once.
+    * **Fast** — pre-computed data is cached server-side, and interactions
+      execute locally in the viewer.
 
     ## Core Components
-    - **model**: The SQL model or reference that defines the server-side dataset
-    - **props**: Visualization config (chart type, axes, encodings)
-    - **interactions**: Client-side transformations (filter, split, sort)
+    - **props**: Visualization config (chart type, axes, encodings) with
+      `?{ ... }` slot bindings to model columns.
+    - **interactions**: Client-side transformations (`filter`, `split`,
+      `sort`) layered on the resolved data.
 
     ## Example
     ```yaml
@@ -42,35 +45,26 @@ class Insight(NamedModel, ParentModel):
         props:
           type: scatter
           mode: lines+markers
-          x: ?{ date_trunc('month', created_at) }
-          y: ?{ sum(amount) }
+          x: ?{ date_trunc('month', ${ref(orders).created_at}) }
+          y: ?{ sum(${ref(orders).amount}) }
 
         interactions:
-          - filter: ?{ month >= ${ref(date-range).start} }
-          - split: ?{ region }
-          - sort: ?{ month ASC }
+          - filter: ?{ ${ref(orders).month} >= ${ref(date-range).start} }
+          - split: ?{ ${ref(orders).region} }
+          - sort: ?{ ${ref(orders).month} ASC }
     ```
 
     In the example above:
-    - **Server-side**: Revenue is aggregated by month.
-    - **Client-side**: A date-range filter and region split are applied instantly in the browser.
+    - **Server-side**: revenue is aggregated by month.
+    - **Client-side**: a date-range filter and region split are applied
+      instantly in the browser.
 
     ## Interactions
-    Interactions define how users can manipulate data locally:
-    - **Filter**: Subset rows by conditions (`WHERE` logic)
-    - **Split**: Break a single insight into multiple series (replaces `cohort_on`)
-    - **Sort**: Order data dynamically
-
-    Example:
-    ```yaml
-    interactions:
-      - filter: ?{ sales_amount > 1000 AND region = ${ref(sales-region).value} }
-      - split: ?{ product_category }
-      - sort: ?{ date DESC, amount ASC }
-    ```
-
-    ## Migration from Traces
-    - `cohort_on` → `split` interaction
+    Interactions define how the viewer manipulates the data locally:
+    - **filter**: Subset rows by a boolean expression.
+    - **split**: Break a single insight into multiple plotly series, one
+      per distinct value of the split expression.
+    - **sort**: Order rows dynamically.
     """
 
     name: str = Field(description="The unique name of the insight across the entire project.")

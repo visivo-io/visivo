@@ -123,7 +123,7 @@ includes:
   - path: visivo-io/github-dashboard.git@main
 ```
 
-Once it is included then you can reference the `traces` and `charts` like you would if they were in your project like:
+Once it is included then you can reference the `insights` and `charts` like you would if they were in your project like:
 
 ``` yaml
 dashboards:
@@ -134,7 +134,7 @@ dashboards:
           - width: 1
             chart:
               name: Pull Requests by Repository
-              traces:
+              insights:
                 - ${ref(Pull Request by Repository)}
               layout:
                 title: "Pull Request by Repository"

@@ -24,10 +24,10 @@ class Chart(NamedModel, ParentModel):
 
     ## Common Configurations
 
-    ### Single Trace
+    ### Single Insight
 
-    This is the most common and simplest chart setup. You will use this when you want to display a single trace.
-    !!! example "Single Trace"
+    This is the most common and simplest chart setup — one insight wrapped in chart layout.
+    !!! example "Single Insight"
 
         ??? note "Code"
 
@@ -36,38 +36,35 @@ class Chart(NamedModel, ParentModel):
               - name: Array of Numbers
                 args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
-            traces:
+            insights:
               - name: Simple Scatter
-                model: ref(Array of Numbers)
                 props:
                   type: scatter
-                  x: ?{ ln(numbers_column)}
-                  y: ?{numbers_column}
+                  x: ?{ ln(${ref(Array of Numbers).numbers_column}) }
+                  y: ?{${ref(Array of Numbers).numbers_column}}
                   mode: markers
                   marker:
-                    size: ?{ abs(sin(exp(numbers_column) - 5)*100) }
-                    opacity: ?{ abs(cos(exp(numbers_column) - 5)*100)/100 }
-                filters:
-                  - ?{ numbers_column < 400 }
-                order_by:
-                  - ?{numbers_column}
+                    size: ?{ abs(sin(exp(${ref(Array of Numbers).numbers_column}) - 5)*100) }
+                    opacity: ?{ abs(cos(exp(${ref(Array of Numbers).numbers_column}) - 5)*100)/100 }
+                interactions:
+                  - filter: ?{${ref(Array of Numbers).numbers_column} < 400}
+                  - sort: ?{${ref(Array of Numbers).numbers_column}}
 
             charts:
-              - name: Single Trace Chart
-                traces:
-                  - ref(Simple Scatter)
+              - name: Single Insight Chart
+                insights:
+                  - ${ref(Simple Scatter)}
                 layout:
                   title:
-                    text: "Single Trace"
+                    text: "Single Insight"
             ```
-    ### Duel Axis
-    When you want to display two different types of data on the same chart, duel axis can come in handy.
+    ### Dual Axis
+    When you want to display two different types of data on the same chart, dual axis can come in handy.
     !!! tip
 
-        You can actually create a third, and fourth axis ([see plotly docs](https://plotly.com/javascript/multiple-axes/#multiple-y-axes)), however, we do not recommended using more than two yaxes.
+        You can create a third or fourth axis ([see plotly docs](https://plotly.com/javascript/multiple-axes/#multiple-y-axes)), however, we do not recommend using more than two yaxes.
 
-    Here's a working example that you can copy and paste into your project:
-    !!! example "Duel Y Axes"
+    !!! example "Dual Y Axes"
 
         ??? note "Code"
 
@@ -76,37 +73,34 @@ class Chart(NamedModel, ParentModel):
               - name: Series of Numbers
                 args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
-            traces:
-              - name: Yaxis Trace
-                model: ref(Series of Numbers)
+            insights:
+              - name: Yaxis Bars
                 props:
                   type: bar
-                  y: ?{numbers_column}
+                  y: ?{${ref(Series of Numbers).numbers_column}}
                   marker:
                     color: '#713B57'
                     opacity: .7
-                order_by:
-                  - ?{numbers_column}
+                interactions:
+                  - sort: ?{${ref(Series of Numbers).numbers_column}}
 
-              - name: Yaxis2 Trace
-                model: ref(Series of Numbers)
+              - name: Yaxis2 Line
                 props:
                   type: scatter
-                  y: ?{ (500 -  numbers_column) }
+                  y: ?{ (500 - ${ref(Series of Numbers).numbers_column}) }
                   yaxis: 'y2'
                   line:
                     shape: spline
                     smoothing: .1
                     color: orange
-
-                order_by:
-                  - ?{numbers_column}
+                interactions:
+                  - sort: ?{${ref(Series of Numbers).numbers_column}}
 
             charts:
-              - name: Duel Axis
-                traces:
-                  - ref(Yaxis2 Trace)
-                  - ref(Yaxis Trace)
+              - name: Dual Axis
+                insights:
+                  - ${ref(Yaxis2 Line)}
+                  - ${ref(Yaxis Bars)}
                 layout:
                   title:
                     text: "Dual Axis"
@@ -132,12 +126,11 @@ class Chart(NamedModel, ParentModel):
             ```
         ![](../../../assets/example-charts/duel-axis.png)
 
-    ### Position Traces with Domains
+    ### Position Insights with Domains
 
-    You can use domains to position traces on your chart. This is useful when you want to display multiple traces on your chart.
-    The `domain` attribute in the trace props enables you to position your traces relative to 0,0 coordinates of the chart.
+    You can use domains to position insights on your chart. This is useful when you want to display multiple insights side-by-side on a single chart.
+    The `domain` attribute in the insight props lets you position the insight relative to the chart's 0,0 coordinates.
 
-    Here's some working examples that you can copy and paste into your project:
     !!! example "Trend Line + Multiple Indicators"
 
         ??? note "Code"
@@ -147,23 +140,19 @@ class Chart(NamedModel, ParentModel):
               - name: Numbers From Remote CSV
                 args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
-            traces:
-              - name: Line Trace
-                model: ref(Numbers From Remote CSV)
+            insights:
+              - name: Line
                 props:
                   type: scatter
-                  y: ?{numbers_column}
+                  y: ?{${ref(Numbers From Remote CSV).numbers_column}}
                   line:
                     shape: spline
                     color: orange
 
               - name: Average Value
-                model: ref(Numbers From Remote CSV)
-                columns:
-                  avg_numbers_column: avg(numbers_column)
                 props:
                   type: indicator
-                  value: column(avg_numbers_column)[0]
+                  value: ?{ avg(${ref(Numbers From Remote CSV).numbers_column}) }[0]
                   number:
                     font:
                       size: 35
@@ -173,12 +162,9 @@ class Chart(NamedModel, ParentModel):
                     x: [.5, 1]
 
               - name: Total Value
-                model: ref(Numbers From Remote CSV)
-                columns:
-                  sum_numbers_column: sum(numbers_column)
                 props:
                   type: indicator
-                  value: column(sum_numbers_column)[0]
+                  value: ?{ sum(${ref(Numbers From Remote CSV).numbers_column}) }[0]
                   number:
                     font:
                       size: 35
@@ -189,10 +175,10 @@ class Chart(NamedModel, ParentModel):
 
             charts:
               - name: Big Number Over Line Chart
-                traces:
-                  - ref(Average Value)
-                  - ref(Total Value)
-                  - ref(Line Trace)
+                insights:
+                  - ${ref(Average Value)}
+                  - ${ref(Total Value)}
+                  - ${ref(Line)}
                 layout:
                   title:
                     text: "Indicator + Scatter Plot"

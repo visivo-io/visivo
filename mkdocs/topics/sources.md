@@ -24,7 +24,7 @@ Visivo enables you to configure multiple sources in a single project.
 
 This is really useful for joining together data that lives in different sources. 
 
-Once your sources are set up, you can bring data together in a single chart with traces that originate from different sources, or through sqlite queries that leverage tables from multiple sources (see [LocalMergeModel](/../reference/configuration/Models/LocalMergeModel/)), or through writing csvs to stdout (see [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/)).
+Once your sources are set up, you can bring data together in a single chart with insights whose models originate from different sources, or through DuckDB queries that leverage tables from multiple sources (see [LocalMergeModel](/../reference/configuration/Models/LocalMergeModel/)), or through writing csvs to stdout (see [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/)).
 
 
 ## Environments 

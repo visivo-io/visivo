@@ -14,15 +14,12 @@ from visivo.commands.options import working_dir
 )
 def migrate(working_dir, apply):
     """
-    Migrate deprecated syntax to current recommended syntax.
+    Migrate deprecated syntax in a Visivo project to its current
+    recommended form.
 
-    By default runs in dry-run mode, showing what would be changed without
-    modifying any files. Use --apply to actually modify files.
-
-    Migrations include:
-    - {{ env_var('VAR') }} -> ${env.VAR}
-    - ref(name) -> ${refs.name}
-    - ${ref(name).property} -> ${refs.name.property}
+    By default the command runs in dry-run mode, reporting what would
+    change without modifying any files. Use --apply to write the
+    changes back to disk.
     """
     from visivo.commands.migrate_phase import migrate_phase
 
