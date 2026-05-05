@@ -21,7 +21,7 @@ class EmailDestination(Destination):
         port: 2525 #is this port by default
         host: your_company_email_server.com
         username: someones_username
-        password: {% raw %}{{ env_var('EMAIL_PASSWORD')}}{% endraw %} #We'd recommend using environment variables here for security
+        password: ${env.EMAIL_PASSWORD} #We'd recommend using environment variables here for security
 
     ```
     """

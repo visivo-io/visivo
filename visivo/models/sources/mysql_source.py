@@ -27,8 +27,8 @@ class MysqlSource(ServerSource, SqlalchemySource):
                   - name: mysql_source
                     type: mysql
                     database: database
-                    username: {% raw %}{{ env_var('MYSQL_USER') }}{% endraw %}
-                    password: {% raw %}{{ env_var('MYSQL_PASSWORD') }}{% endraw %}
+                    username: ${env.MYSQL_USER}
+                    password: ${env.MYSQL_PASSWORD}
                     connection_pool_size: 2
             ```
 

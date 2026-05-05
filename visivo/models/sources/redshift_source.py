@@ -23,8 +23,8 @@ class RedshiftSource(ServerSource):
                     database: dev
                     host: my-cluster.abcdefghij.us-east-1.redshift.amazonaws.com
                     port: 5439
-                    username: {% raw %}{{ env_var('REDSHIFT_USER') }}{% endraw %}
-                    password: {% raw %}{{ env_var('REDSHIFT_PASSWORD') }}{% endraw %}
+                    username: ${env.REDSHIFT_USER}
+                    password: ${env.REDSHIFT_PASSWORD}
                     db_schema: public
             ```
 
@@ -37,7 +37,7 @@ class RedshiftSource(ServerSource):
                     database: dev
                     host: my-cluster.abcdefghij.us-east-1.redshift.amazonaws.com
                     port: 5439
-                    username: {% raw %}{{ env_var('REDSHIFT_USER') }}{% endraw %}
+                    username: ${env.REDSHIFT_USER}
                     cluster_identifier: my-cluster
                     region: us-east-1
                     iam: true

@@ -46,7 +46,7 @@ class BigQuerySource(ServerSource, SqlalchemySource):
                 # On Windows PowerShell
                 [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("credentials.json")) > encoded.txt
                 ```
-            4. Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the `{% raw %}{{ env_var('VAR_NAME') }}{% endraw %}` syntax to reference the environment variable in your Visivo config.
+            4. Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the `${env.VAR_NAME}` syntax to reference the environment variable in your Visivo config.
 
         === "`GOOGLE_APPLICATION_CREDENTIALS` Environment Variable"
             If you use gcloud locally you probably have this environment variable configured already.
@@ -99,7 +99,7 @@ class BigQuerySource(ServerSource, SqlalchemySource):
                     type: bigquery
                     project: my-project-id
                     database: my_dataset
-                    credentials_base64: {% raw %}{{ env_var('BIGQUERY_BASE64_ENCODED_CREDENTIALS') }}{% endraw %}
+                    credentials_base64: ${env.BIGQUERY_BASE64_ENCODED_CREDENTIALS}
             ```
 
     Note: Recommended environment variable use is covered in the [sources overview.](/topics/sources/)

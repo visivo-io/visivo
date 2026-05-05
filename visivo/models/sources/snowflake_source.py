@@ -27,8 +27,8 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     warehouse: DEV
                     account: ab12345.us-west-1.aws
                     db_schema: DEFAULT
-                    username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
-                    password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
+                    username: ${env.SNOWFLAKE_USER}
+                    password: ${env.SNOWFLAKE_PASSWORD}
             ```
 
         === "Key Authentication"
@@ -41,9 +41,9 @@ class SnowflakeSource(ServerSource, SqlalchemySource):
                     warehouse: DEV
                     account: ab12345.us-west-1.aws
                     db_schema: DEFAULT
-                    username: {% raw %}"{{ env_var('SNOWFLAKE_USER') }}"{% endraw %}
+                    username: ${env.SNOWFLAKE_USER}
                     private_key_path: /path/to/rsa_key.p8
-                    private_key_passphrase: {% raw %}"{{ env_var('DB_PRIVATE_KEY_PASSPHRASE') }}"{% endraw %}
+                    private_key_passphrase: ${env.DB_PRIVATE_KEY_PASSPHRASE}
             ```
 
     Note: Recommended environment variable use is covered in the [sources overview.](/topics/sources/)

@@ -20,8 +20,8 @@ class PostgresqlSource(ServerSource, SqlalchemySource):
                   - name: postgresql_source
                     type: postgresql
                     database: database
-                    username: {% raw %}{{ env_var('PG_USER') }}{% endraw %}
-                    password: {% raw %}{{ env_var('PG_PASSWORD') }}{% endraw %}
+                    username: ${env.PG_USER}
+                    password: ${env.PG_PASSWORD}
                     connection_pool_size: 2
             ```
 

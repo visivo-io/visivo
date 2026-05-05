@@ -19,7 +19,18 @@ By default any file with the format `*.visivo.yml` will be linted.  If you have 
 },
 ```
 
-## Gotchas
+## Environment Variable Substitution
 
-If you are using `env_var` substitution, surrounding the value with `"` will make the linter happy. For example: `password: "{% raw %}{{ env_var('SECRET_PASSWORD') }}{% endraw %}"`
+Reference any environment variable in your YAML with the `${env.VAR_NAME}` syntax — Visivo resolves it lazily when the value is needed (typically when a source opens its connection):
+
+```yaml
+sources:
+  - name: domain_source
+    type: postgresql
+    host: ${env.APP_HOST}
+    username: ${env.APP_DATABASE_USERNAME}
+    password: ${env.APP_DATABASE_PASSWORD}
+```
+
+No quoting required — `${env.VAR}` parses cleanly as a YAML scalar.
 

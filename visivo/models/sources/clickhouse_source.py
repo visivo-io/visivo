@@ -29,7 +29,7 @@ class ClickhouseSource(ServerSource, SqlalchemySource):
                     port: 9000
                     database: default
                     username: default
-                    password: {% raw %}{{ env_var('CLICKHOUSE_PASSWORD') }}{% endraw %}
+                    password: ${env.CLICKHOUSE_PASSWORD}
             ```
 
         === "HTTP Protocol"
@@ -42,7 +42,7 @@ class ClickhouseSource(ServerSource, SqlalchemySource):
                     port: 8123
                     database: default
                     username: default
-                    password: {% raw %}{{ env_var('CLICKHOUSE_PASSWORD') }}{% endraw %}
+                    password: ${env.CLICKHOUSE_PASSWORD}
                     protocol: http
             ```
 
@@ -56,7 +56,7 @@ class ClickhouseSource(ServerSource, SqlalchemySource):
                     port: 8443
                     database: default
                     username: default
-                    password: {% raw %}{{ env_var('CLICKHOUSE_PASSWORD') }}{% endraw %}
+                    password: ${env.CLICKHOUSE_PASSWORD}
                     protocol: http
                     secure: true
             ```

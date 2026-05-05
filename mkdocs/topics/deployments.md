@@ -10,10 +10,13 @@ You can get an api key by logging into your profile at [app.visivo.io](https://a
     Visivo will put your API in the right place during `visivo init` however there's a few other option if you want to store your API key differently. 
     === "Env Var"
 
-        * Store your Visivo token in an environment variable.
-        * Create a file called `profile.yml` anywhere in the project and include this in the first line: `token: {% raw %}'{{ env_var('YOUR_TOKEN_ENV_VAR')}}'{% endraw %}`.
+        Set the `VISIVO_TOKEN` environment variable to your token. The CLI checks `VISIVO_TOKEN` before reading any `profile.yml`, so no file is needed.
 
-        The nice thing about this method is that it makes setting up a CI like github actions super easy with a different token. 
+        ```bash
+        export VISIVO_TOKEN=your-visivo-token
+        ```
+
+        This is the recommended approach for CI like GitHub Actions — store the token as a repository secret and inject it as `VISIVO_TOKEN` for the deploy step. 
 
     === "Special Location"
 
