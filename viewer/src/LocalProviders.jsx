@@ -11,7 +11,6 @@ import { DuckDBProvider } from './contexts/DuckDBContext';
 const queryClient = new QueryClient();
 
 export default function LocalProviders({
-  fetchTraces,
   fetchInsightJobs,
   fetchDashboard,
   fetchInputJobs,
@@ -19,7 +18,6 @@ export default function LocalProviders({
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider
-        fetchTraces={fetchTraces}
         fetchInsightJobs={fetchInsightJobs}
         fetchDashboard={fetchDashboard}
         fetchInputJobs={fetchInputJobs}

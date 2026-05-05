@@ -19,7 +19,7 @@ You can customize the marker size, color, and add lines to connect the points to
     - **Trend Detection**: Identifying trends or patterns in data.
     - **Outlier Identification**: Spotting outliers in data distributions.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes) for the full set of configuration options**_
 
 ## Examples
 

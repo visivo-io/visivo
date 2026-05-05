@@ -14,7 +14,7 @@ You can customize bin size, orientation, and colors to fit your data. Histograms
     - **Frequency Analysis**: Showing the frequency of values within specific intervals.
     - **Statistical Summaries**: Understanding the spread, central tendency, and outliers in data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Histogram/#attributes) for the full set of configuration options**_
 
 ## Examples
 

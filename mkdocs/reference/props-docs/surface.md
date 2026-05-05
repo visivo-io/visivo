@@ -14,7 +14,7 @@ You can customize the colorscale, lighting, and contours to represent the surfac
     - **Topographical Maps**: Representing elevations or contours of landscapes.
     - **Heatmaps in 3D**: Showing intensity variations in a 3D format.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Surface/#attributes) for the full set of configuration options**_
 
 ## Examples
 

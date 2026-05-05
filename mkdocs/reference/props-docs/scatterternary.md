@@ -14,7 +14,7 @@ You can customize the marker size, color, and lines to connect points, similar t
     - **Ternary Relationship Analysis**: Exploring how three components relate to one another.
     - **Chemistry and Economics**: Commonly used in fields like chemistry, soil science, and economics for visualizing compositional data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scatterternary/#attributes) for the full set of configuration options**_
 
 ## Examples
 

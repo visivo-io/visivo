@@ -14,7 +14,7 @@ You can customize the colors, labels, and hover information to display your data
     - **Categorical Data**: Showing the proportions of different categories in a dataset.
     - **Survey Data**: Visualizing how responses are distributed among categories.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Pie/#attributes) for the full set of configuration options**_
 
 ## Examples
 

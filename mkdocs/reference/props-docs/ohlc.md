@@ -14,7 +14,7 @@ You can customize the colors, bar widths, and date ranges to represent financial
     - **Financial Time Series**: Visualizing price fluctuations over time.
     - **Trading Analysis**: Understanding market trends through candlestick-like visualizations.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Ohlc/#attributes) for the full set of configuration options**_
 
 ## Examples
 

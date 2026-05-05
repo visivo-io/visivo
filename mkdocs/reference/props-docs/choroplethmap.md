@@ -15,7 +15,7 @@ With `choroplethmap`, you can visualize data across geographic regions on MapLib
     - **Thematic Mapping with Interactivity**: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.
     - **Map Projections**: Applying various MapLibre projections for advanced geographical data representation.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Choroplethmap/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Choroplethmap/#attributes) for the full set of configuration options**_
 
 ## Examples
 

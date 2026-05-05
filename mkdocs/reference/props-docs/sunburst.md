@@ -14,7 +14,7 @@ You can customize the colors, labels, and hierarchy of the chart to represent yo
     - **Part-to-Whole Relationships**: Visualizing how parts contribute to the whole across multiple levels.
     - **Categorical Data**: Showing categorical breakdowns with nested data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Sunburst/#attributes) for the full set of configuration options**_
 
 ## Examples
 

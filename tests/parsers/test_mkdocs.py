@@ -1,5 +1,4 @@
 from visivo.parsers.mkdocs import Mkdocs
-import yaml
 
 TEST_MKDOCS_OBJECT = {
     "nav": [
@@ -7,7 +6,7 @@ TEST_MKDOCS_OBJECT = {
         {"including": "index.md"},
         {
             "reference": [
-                {"Configuration": {"trace": [], "chart": []}},
+                {"Configuration": {"insight": [], "chart": []}},
                 {"cli": "index.md"},
             ]
         },
@@ -24,9 +23,6 @@ def test_nav_configuration():
 
 
 def test_docs_content_from_pydantic_model():
-    trace_md = mkdocs.get_md_content("Trace")
-    assert len(trace_md) > 50
-
     chart_md = mkdocs.get_md_content("Chart")
     assert len(chart_md) > 50
 
@@ -46,7 +42,7 @@ def test_docs_content_from_pydantic_model():
     assert len(source_md) > 50
 
 
-def test_docs_content_from_traceprops_model():
+def test_docs_content_from_insightprops_model():
     bar_md = mkdocs.get_md_content("Bar")
     assert len(bar_md) > 50
 
@@ -59,9 +55,8 @@ def test_update_mkdocs_yaml_configuration():
     assert updated_mkdocs_object
 
 
-def test__get_trace_prop_models():
-    trace_prop_models = mkdocs._get_trace_prop_models()
-    assert "Bar" in trace_prop_models
-    assert "Waterfall" in trace_prop_models
-    assert "Scattergl" in trace_prop_models
-    assert "TraceColumns" not in trace_prop_models
+def test__get_insight_prop_models():
+    insight_prop_models = mkdocs._get_insight_prop_models()
+    assert "Bar" in insight_prop_models
+    assert "Waterfall" in insight_prop_models
+    assert "Scattergl" in insight_prop_models

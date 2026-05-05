@@ -11,8 +11,6 @@ const URL_PATTERNS = {
     dag: '/api/dag/',
     schema: '/api/schema/',
     error: '/api/error/',
-    tracesQuery: '/api/traces/',
-    traceData: '/api/traces/{hash}/',
     insightJobsQuery: '/api/insight-jobs/',
     insightJobData: '/api/insight-jobs/{hash}/',
     inputJobsQuery: '/api/input-jobs/',
@@ -24,7 +22,6 @@ const URL_PATTERNS = {
     projectFilePath: '/api/project/project_file_path/',
     sourcesMetadata: '/api/project/sources_metadata/',
     queryExecution: '/api/query/{projectId}/',
-    traceQuery: '/api/trace/{traceName}/query/',
 
     // Source management endpoints
     sourcesList: '/api/sources/',
@@ -155,8 +152,6 @@ const URL_PATTERNS = {
     dag: '/data/dag.json',
     schema: '/data/schema.json',
     error: '/data/error.json',
-    tracesQuery: '/data/traces.json',
-    traceData: '/data/traces/{hash}.json',
     insightJobsQuery: '/data/insights.json',
     insightJobData: '/data/insights/{hash}.json',
     inputJobsQuery: '/data/inputs.json',
@@ -169,7 +164,9 @@ const URL_PATTERNS = {
     projectFilePath: null,
     sourcesMetadata: null,
     queryExecution: null,
-    traceQuery: null,
+    editorsInstalled: null,
+    editorsOpen: null,
+
     // Source management endpoints (not available in dist)
     sourcesList: null,
     sourceDetail: null,

@@ -43,10 +43,10 @@ def test_JobTracker_all_tracked_job_names():
     job = JobFactory()
     job_tracker.track_job(job=job)
 
-    assert job_tracker.all_tracked_job_names == {"trace"}
+    assert job_tracker.all_tracked_job_names == {"insight"}
 
 
-def test_JobTracker_is_job_name_done():
+def test_JobTracker_is_job_name_done_with_future():
     job_tracker = JobTracker()
     job = JobFactory()
     job.set_future(MockFuture(True))

@@ -14,7 +14,7 @@ You can customize the marker size, color, and add lines to connect points, simil
     - **Performance Optimization**: Use when scatter plots with standard rendering struggle with performance.
     - **Real-Time Data**: Useful for real-time visualizations with large or dynamic datasets.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scattergl/#attributes) for the full set of configuration options**_
 
 ## Examples
 

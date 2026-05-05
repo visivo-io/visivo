@@ -9,7 +9,12 @@ from tests.factories.model_factories import (
     DefaultsFactory,
     ProjectFactory,
     SourceFactory,
-    TraceFactory,
+    SqlModelFactory,
+    InsightFactory,
+    ChartFactory,
+    ItemFactory,
+    RowFactory,
+    DashboardFactory,
 )
 from tests.support.utils import temp_folder
 from visivo.server.hot_reload_server import HotReloadServer
@@ -22,9 +27,27 @@ def get_test_port():
     return HotReloadServer.find_available_port()
 
 
+def _make_runnable_project(**kwargs):
+    """Create a project with an insight that references a model, suitable for running."""
+    model = SqlModelFactory(name="model", source="ref(source)")
+    insight = InsightFactory(name="insight", model=model)
+    chart = ChartFactory(
+        name="chart",
+        insights=[insight],
+    )
+    item = ItemFactory(name="item", chart=chart)
+    row = RowFactory(name="row", items=[item])
+    dashboard = DashboardFactory(name="dashboard", rows=[row])
+    return ProjectFactory(
+        models=[model],
+        dashboards=[dashboard],
+        **kwargs,
+    )
+
+
 def test_run():
     output_dir = temp_folder()
-    project = ProjectFactory()
+    project = _make_runnable_project()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
@@ -41,7 +64,7 @@ def test_run():
 
 def test_run_with_threads():
     output_dir = temp_folder()
-    project = ProjectFactory()
+    project = _make_runnable_project()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
@@ -56,29 +79,12 @@ def test_run_with_threads():
     assert response.exit_code == 0
 
 
-def test_run_with_model_ref():
-    output_dir = temp_folder()
-    project = ProjectFactory(model_ref=True)
-
-    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
-    working_dir = os.path.dirname(tmp)
-
-    port = get_test_port()
-    response = runner.invoke(
-        run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)]
-    )
-    assert "Running project" in response.output
-    assert response.exit_code == 0
-
-
 def test_run_by_with_passing_new_defaults():
     output_dir = temp_folder()
 
-    project = ProjectFactory(model_ref=True)
+    project = _make_runnable_project()
     project.defaults = DefaultsFactory(source_name=project.sources[0].name, threads=3)
 
-    project.models[0].source = None
     alternate_source = SourceFactory()
     alternate_source.name = "alternate-source"
     project.sources.append(alternate_source)

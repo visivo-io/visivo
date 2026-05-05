@@ -14,7 +14,7 @@ You can customize the colors, labels, and hierarchy to represent your data effec
     - **Part-to-Whole Relationships**: Visualizing how different categories contribute to the whole.
     - **Categorical Data**: Showing categorical breakdowns with nested structures.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Treemap/#attributes) for the full set of configuration options**_
 
 !!! warning "Unexpected Behavior"
 

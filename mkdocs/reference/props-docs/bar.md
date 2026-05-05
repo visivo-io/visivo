@@ -16,7 +16,7 @@ You have pretty broad control over the appearance of the bars via the `marker` a
     - **Horizontal Bar Charts**: Comparing data where horizontal labels are more readable (e.g., ranking of countries by population).
     - **Time-Series Data (Categorical)**: Displaying data changes over time with categories as the x-axis (e.g., yearly revenue growth by product).
 
-_**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for the full set of configuration options**_
+_**Checkout the [Attributes](../configuration/Insight/Props/Bar/#attributes) for the full set of configuration options**_
 
 ## Examples 
 {% raw %}

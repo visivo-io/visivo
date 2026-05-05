@@ -14,7 +14,7 @@ You can customize the colors, labels, and flow paths to represent your data and 
     - **Part-to-Part Relationships**: Displaying how parts contribute to other parts rather than the whole.
     - **Energy or Supply Chains**: Showing energy transfers or supply chain processes.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Sankey/#attributes) for the full set of configuration options**_
 
 ## Examples
 

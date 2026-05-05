@@ -698,8 +698,8 @@ dashboards:
               justify: between
       - height: small
         items:
-          - align: left
-            markdown:
+          - markdown:
+              align: left
               content: |2
 
                 Lorem ipsum odor amet, consectetuer adipiscing elit.  
@@ -731,16 +731,6 @@ dashboards:
           - width: 3
             table:
               name: awesome-table
-              column_defs:
-                - insight_name: fibonacci-waterfall
-                  columns:
-                    - key: "props.x"
-                      header: "category"
-                    - key: "props.y"
-                      header: "y amount"
-                      aggregation: "sum"
-                    - key: "props.measure"
-                    - key: "props.text"
               data: ${ref(fibonacci-waterfall)}
               rows_per_page: 1000
           - width: 2
@@ -749,14 +739,6 @@ dashboards:
         items:
           - table:
               name: awesome-table-2
-              column_defs:
-                - insight_name: markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters
-                  columns:
-                    - key: "props.x"
-                      header: "vanilla_text"
-                    - key: "props.y"
-                      header: "Markdown"
-                      markdown: true
               data: ${ref(markdown-trace-base-with-a-super-super-long-name-markdown-trace-base-even-longer-now-with-more-characters)}
 
   - name: simple-dashboard

@@ -14,7 +14,7 @@ You can customize the colors, labels, and depth of the icicle chart to represent
     - **Part-to-Whole Relationships**: Showing how parts relate to the whole, with breakdowns for subcategories.
     - **Drill-Down Analysis**: Allowing users to explore different levels of data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Icicle/#attributes) for the full set of configuration options**_
 
 ## Examples
 

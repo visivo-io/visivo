@@ -8,12 +8,6 @@ from visivo.models.deprecations.base_deprecation import (
     DeprecationWarning,
     MigrationAction,
 )
-from visivo.models.deprecations.env_var_syntax_deprecation import EnvVarSyntaxDeprecation
-from visivo.models.deprecations.markdown_deprecation import MarkdownDeprecation
-from visivo.models.deprecations.name_format_deprecation import NameFormatDeprecation
-from visivo.models.deprecations.ref_syntax_deprecation import RefSyntaxDeprecation
-from visivo.models.deprecations.table_deprecation import TableDeprecation
-from visivo.models.deprecations.trace_deprecation import TraceDeprecation
 
 if TYPE_CHECKING:
     from visivo.models.project import Project
@@ -29,14 +23,7 @@ class DeprecationChecker:
 
     def __init__(self):
         """Initialize the deprecation checker with all checkers."""
-        self.checkers: List[BaseDeprecationChecker] = [
-            EnvVarSyntaxDeprecation(),
-            MarkdownDeprecation(),
-            NameFormatDeprecation(),
-            RefSyntaxDeprecation(),
-            TableDeprecation(),
-            TraceDeprecation(),
-        ]
+        self.checkers: List[BaseDeprecationChecker] = []
 
     def check_all(self, project: "Project") -> List[DeprecationWarning]:
         """

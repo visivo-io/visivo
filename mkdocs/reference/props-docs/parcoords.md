@@ -14,7 +14,7 @@ You can customize the axis scaling, color mapping, and line properties to repres
     - **Data Exploration**: Exploring patterns and outliers in high-dimensional datasets.
     - **Decision Making**: Identifying optimal points or anomalies in multi-variable data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Parcoords/#attributes) for the full set of configuration options**_
 
 ## Examples
 

@@ -14,7 +14,7 @@ You can customize the marker size, color, and lines to connect points, similar t
     - **Complex Data Visualization**: Representing data points in terms of complex numbers in a specialized format.
     - **Electrical Engineering Analysis**: Ideal for RF and microwave engineering applications.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scattersmith/#attributes) for the full set of configuration options**_
 
 ## Examples
 

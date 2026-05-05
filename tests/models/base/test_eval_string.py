@@ -105,9 +105,9 @@ def test_evaluate_test_run():
 
 def test_evaluate():
     project = ProjectFactory()
-    project.dashboards[0].rows[0].items[0].chart.traces[
+    project.dashboards[0].rows[0].items[0].chart.insights[
         0
-    ].path = "project.dashboards[0].rows[0].items[0].chart.traces[0]"
+    ].path = "project.dashboards[0].rows[0].items[0].chart.insights[0]"
     project.dashboards[0].rows[0].items[0].path = "project.dashboards[0].rows[0].items[0]"
     dag = project.dag()
     output_dir = "tmp"
@@ -124,7 +124,7 @@ def test_evaluate():
     es = EvalString(">{ ${ project.dashboards[0].rows[0].items[0].name } == 'item' }")
     assert es.evaluate(dag, project, output_dir) == True
 
-    es = EvalString(">{ ${ ref(trace).name } == 'trace' }")
+    es = EvalString(">{ ${ ref(insight).name } == 'insight' }")
     assert es.evaluate(dag, project, output_dir) == True
 
     with pytest.raises(

@@ -14,7 +14,7 @@ You can customize the marker size, color, and line connections, similar to stand
     - **Data Visualization with Carpet Axes**: Displaying data points in cases where the relationships between variables are non-linear or require a more flexible grid.
     - **Heatmap-Like Data**: Scatter plots combined with other traces like `carpet` for advanced visualizations.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Insight/Props/Scattercarpet/#attributes) for the full set of configuration options**_
 
 ## Examples
 
