@@ -36,12 +36,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
                 1,1,0,0
         insights:
           - name: Simple Image Plot
-            model: ${ref(image-data)}
-            columns:
-              z: ?{z}
             props:
               type: image
-              z: ?{columns.z}
+              z: ?{${ref(image-data).z}}
         charts:
           - name: Simple Image Chart
             insights:
@@ -67,12 +64,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
                 0.9,1.0,0.2,0.3
         insights:
           - name: Image Plot with Custom Colorscale
-            model: ${ref(image-data-custom)}
-            columns:
-              z: ?{z}
             props:
               type: image
-              z: ?{columns.z}
+              z: ?{${ref(image-data-custom).z}}
               colorscale: "Viridis"
         charts:
           - name: Image Plot with Custom Colorscale
@@ -99,12 +93,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Image/#attribute
                 0,0,1,1
         insights:
           - name: Image Plot with Axis Annotations
-            model: ${ref(image-data-annotated)}
-            columns:
-              z: ?{z}
             props:
               type: image
-              z: ?{columns.z}
+              z: ?{${ref(image-data-annotated).z}}
         charts:
           - name: Image Plot with Axis Annotations
             insights:

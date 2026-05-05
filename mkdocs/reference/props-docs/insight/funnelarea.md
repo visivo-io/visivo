@@ -40,14 +40,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
                 Closed Deals,100
         insights:
           - name: Simple Funnelarea Insight
-            model: ${ref(funnelarea-data)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
             props:
               type: funnelarea
-              labels: ?{columns.stage}
-              values: ?{columns.value}
+              labels: ?{${ref(funnelarea-data).stage}}
+              values: ?{${ref(funnelarea-data).value}}
         charts:
           - name: Simple Funnelarea Chart
             insights:
@@ -77,17 +73,12 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
                 Purchase,300,"#9467bd"
         insights:
           - name: Custom Colors Funnelarea Insight
-            model: ${ref(funnelarea-data-custom)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
-              color: ?{ color }
             props:
               type: funnelarea
-              labels: ?{columns.stage}
-              values: ?{columns.value}
+              labels: ?{${ref(funnelarea-data-custom).stage}}
+              values: ?{${ref(funnelarea-data-custom).value}}
               marker:
-                colors: ?{columns.color}
+                colors: ?{${ref(funnelarea-data-custom).color}}
         charts:
           - name: Funnelarea Chart with Custom Colors
             insights:
@@ -116,14 +107,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attr
                 Won,100
         insights:
           - name: Funnelarea Insight with Hover Info
-            model: ${ref(funnelarea-data-hover)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
             props:
               type: funnelarea
-              labels: ?{columns.stage}
-              values: ?{columns.value}
+              labels: ?{${ref(funnelarea-data-hover).stage}}
+              values: ?{${ref(funnelarea-data-hover).value}}
               hoverinfo: "label+value+percent"
         charts:
           - name: Funnelarea Chart with Hover Info

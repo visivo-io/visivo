@@ -40,19 +40,16 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
                 Closed Deals,100
         insights:
           - name: Simple Funnel Insight
-            model: ${ref(funnel-data)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
             props:
               type: funnel
-              y: ?{columns.stage}
-              x: ?{columns.value}
+              y: ?{${ref(funnel-data).stage}}
+              x: ?{${ref(funnel-data).value}}
               textinfo: "value+percent previous"
               marker:
                 color: "#17becf"
-            order_by:
-              - ?{columns.value desc}
+            interactions:
+              - sort: ?{${ref(funnel-data).value} desc}
+
         charts:
           - name: Simple Funnel Chart
             insights:
@@ -86,19 +83,16 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
                 Conversion,700
         insights:
           - name: Horizontal Funnel Insight
-            model: ${ref(funnel-data-horizontal)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
             props:
               type: funnel
               orientation: v
-              x: ?{columns.stage}
-              y: ?{columns.value}
+              x: ?{${ref(funnel-data-horizontal).stage}}
+              y: ?{${ref(funnel-data-horizontal).value}}
               marker:
                 color: "#ff7f0e"
-            order_by:
-              - ?{columns.value desc}
+            interactions:
+              - sort: ?{${ref(funnel-data-horizontal).value} desc}
+
         charts:
           - name: Horizontal Funnel Chart
             insights:
@@ -131,21 +125,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
                 Won,100,"#9467bd"
         insights:
           - name: Custom Markers Funnel Insight
-            model: ${ref(funnel-data-custom)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
-              color: ?{ color }
             props:
               type: funnel
-              y: ?{columns.stage}
-              x: ?{columns.value}
+              y: ?{${ref(funnel-data-custom).stage}}
+              x: ?{${ref(funnel-data-custom).value}}
               marker:
-                color: ?{columns.color}
+                color: ?{${ref(funnel-data-custom).color}}
               textinfo: "value+percent"
               orientation: h
-            order_by:
-              - ?{columns.value desc}
+            interactions:
+              - sort: ?{${ref(funnel-data-custom).value} desc}
+
         charts:
           - name: Funnel Chart with Custom Markers
             insights:
@@ -185,22 +175,18 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attribut
                 Purchase,300,Product C
         insights:
           - name: Cohort Funnel Insight
-            model: ${ref(funnel-data-cohorts)}
-            columns:
-              stage: ?{ stage }
-              value: ?{ value }
-              product: ?{ product }
-            cohort_on: product
             props:
               type: funnel
-              y: ?{columns.stage}
-              x: ?{columns.value}
+              y: ?{${ref(funnel-data-cohorts).stage}}
+              x: ?{${ref(funnel-data-cohorts).value}}
               textinfo: "value+percent previous"
               marker:
                 colorscale: "Viridis"
-            order_by:
-              - ?{columns.product}
-              - ?{columns.value desc}
+            interactions:
+              - sort: ?{${ref(funnel-data-cohorts).product}}
+              - sort: ?{${ref(funnel-data-cohorts).value} desc}
+              - split: ?{${ref(funnel-data-cohorts).product}}
+
         charts:
           - name: Funnel Chart with Cohorts
             insights:

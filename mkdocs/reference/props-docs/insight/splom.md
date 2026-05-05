@@ -31,24 +31,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
         insights:
           - name: Simple Splom Insight
-            model: ${ref(splom-data)}
-            columns:
-              sepal_length: ?{ sepal_length }
-              sepal_width: ?{ sepal_width }
-              petal_length: ?{ petal_length }
-              petal_width: ?{ petal_width }
-              species: ?{ species }
             props:
               type: splom
               dimensions:
                 - label: "Sepal Length"
-                  values: ?{ columns.sepal_length }
+                  values: ?{${ref(splom-data).sepal_length}}
                 - label: "Sepal Width"
-                  values: ?{ columns.sepal_width }
+                  values: ?{${ref(splom-data).sepal_width}}
                 - label: "Petal Length"
-                  values: ?{ columns.petal_length }
+                  values: ?{${ref(splom-data).petal_length}}
                 - label: "Petal Width"
-                  values: ?{ columns.petal_width }
+                  values: ?{${ref(splom-data).petal_width}}
               diagonal:
                 visible: false
               showupperhalf: false
@@ -78,23 +71,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
                 5,6,7,A
         insights:
           - name: Splom Insight with Custom Colors
-            model: ${ref(splom-data-colors)}
-            columns:
-              var1: ?{ var1 }
-              var2: ?{ var2 }
-              var3: ?{ var3 }
-              category: ?{ category }
             props:
               type: splom
               dimensions:
                 - label: "Variable 1"
-                  values: ?{ columns.var1 }
+                  values: ?{${ref(splom-data-colors).var1}}
                 - label: "Variable 2"
-                  values: ?{ columns.var2 }
+                  values: ?{${ref(splom-data-colors).var2}}
                 - label: "Variable 3"
-                  values: ?{ columns.var3 }
+                  values: ?{${ref(splom-data-colors).var3}}
               marker:
-                color: ?{ case when columns.category = 'A' then 'red' else 'green' end }
+                color: ?{ case when ${ref(splom-data-colors).category} = 'A' then 'red' else 'green' end }
                 size: 20
             interactions:
               - split: ?{ category }
@@ -123,23 +110,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attribute
                 5,6,7,30
         insights:
           - name: Splom Insight with Custom Sizes
-            model: ${ref(splom-data-sizes)}
-            columns:
-              var1: ?{ var1 }
-              var2: ?{ var2 }
-              var3: ?{ var3 }
-              size: ?{ size }
             props:
               type: splom
               dimensions:
                 - label: "Variable 1"
-                  values: ?{ columns.var1 }
+                  values: ?{${ref(splom-data-sizes).var1}}
                 - label: "Variable 2"
-                  values: ?{ columns.var2 }
+                  values: ?{${ref(splom-data-sizes).var2}}
                 - label: "Variable 3"
-                  values: ?{ columns.var3 }
+                  values: ?{${ref(splom-data-sizes).var3}}
               marker:
-                size: ?{ columns.size }
+                size: ?{${ref(splom-data-sizes).size}}
             interactions:
               - split: ?{ size }
         charts:

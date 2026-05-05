@@ -41,20 +41,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
 
         insights:
           - name: Simple OHLC Insight
-            model: ${ref(ohlc-data)}
-            columns:
-              date: ?{date}
-              open: ?{open}
-              high: ?{high}
-              low: ?{low}
-              close: ?{close}
             props:
               type: ohlc
-              x: ?{columns.date}
-              open: ?{columns.open}
-              high: ?{columns.high}
-              low: ?{columns.low}
-              close: ?{columns.close}
+              x: ?{${ref(ohlc-data).date}}
+              open: ?{${ref(ohlc-data).open}}
+              high: ?{${ref(ohlc-data).high}}
+              low: ?{${ref(ohlc-data).low}}
+              close: ?{${ref(ohlc-data).close}}
               increasing:
                 line:
                   color: "#17becf"
@@ -96,20 +89,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
 
         insights:
           - name: OHLC with Custom Width
-            model: ${ref(ohlc-data-width)}
-            columns:
-              date: ?{date}
-              open: ?{open}
-              high: ?{high}
-              low: ?{low}
-              close: ?{close}
             props:
               type: ohlc
-              x: ?{columns.date}
-              open: ?{columns.open}
-              high: ?{columns.high}
-              low: ?{columns.low}
-              close: ?{columns.close}
+              x: ?{${ref(ohlc-data-width).date}}
+              open: ?{${ref(ohlc-data-width).open}}
+              high: ?{${ref(ohlc-data-width).high}}
+              low: ?{${ref(ohlc-data-width).low}}
+              close: ?{${ref(ohlc-data-width).close}}
               increasing:
                 line:
                   color: "#2ca02c"
@@ -154,54 +140,40 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes
 
         insights:
           - name: OHLC for AAPL
-            model: ${ref(ohlc-data-multi)}
-            columns:
-              stock: ?{stock}
-              date: ?{date}
-              open: ?{open}
-              high: ?{high}
-              low: ?{low}
-              close: ?{close}
             props:
               type: ohlc
-              x: ?{columns.date}
-              open: ?{columns.open}
-              high: ?{columns.high}
-              low: ?{columns.low}
-              close: ?{columns.close}
+              x: ?{${ref(ohlc-data-multi).date}}
+              open: ?{${ref(ohlc-data-multi).open}}
+              high: ?{${ref(ohlc-data-multi).high}}
+              low: ?{${ref(ohlc-data-multi).low}}
+              close: ?{${ref(ohlc-data-multi).close}}
               increasing:
                 line:
                   color: "#1f77b4"
               decreasing:
                 line:
                   color: "#ff7f0e"
-            filters:
-              - ?{columns.stock = 'AAPL'}
+            interactions:
+              - filter: ?{${ref(ohlc-data-multi).stock} = 'AAPL'}
+
 
           - name: OHLC for MSFT
-            model: ${ref(ohlc-data-multi)}
-            columns:
-              stock: ?{stock}
-              date: ?{date}
-              open: ?{open}
-              high: ?{high}
-              low: ?{low}
-              close: ?{close}
             props:
               type: ohlc
-              x: ?{columns.date}
-              open: ?{columns.open}
-              high: ?{columns.high}
-              low: ?{columns.low}
-              close: ?{columns.close}
+              x: ?{${ref(ohlc-data-multi).date}}
+              open: ?{${ref(ohlc-data-multi).open}}
+              high: ?{${ref(ohlc-data-multi).high}}
+              low: ?{${ref(ohlc-data-multi).low}}
+              close: ?{${ref(ohlc-data-multi).close}}
               increasing:
                 line:
                   color: "#2ca02c"
               decreasing:
                 line:
                   color: "#d62728"
-            filters:
-              - ?{columns.stock = 'MSFT'}
+            interactions:
+              - filter: ?{${ref(ohlc-data-multi).stock} = 'MSFT'}
+
 
         charts:
           - name: OHLC Chart with Multiple Stocks

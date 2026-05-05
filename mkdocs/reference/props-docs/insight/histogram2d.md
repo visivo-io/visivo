@@ -44,14 +44,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
                 4,2
         insights:
           - name: Simple 2D Histogram Plot
-            model: ${ref(histogram2d-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2d
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2d-data).x}}
+              y: ?{${ref(histogram2d-data).y}}
               colorscale: "Viridis"
         charts:
           - name: Simple 2D Histogram Chart
@@ -92,14 +88,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
                 4,4
         insights:
           - name: 2D Histogram with Custom Bins
-            model: ${ref(histogram2d-data-bins)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2d
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2d-data-bins).x}}
+              y: ?{${ref(histogram2d-data-bins).y}}
               xbins:
                 size: 1
               ybins:
@@ -144,14 +136,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#att
                 5,2
         insights:
           - name: 2D Histogram with Density Mode
-            model: ${ref(histogram2d-data-density)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2d
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2d-data-density).x}}
+              y: ?{${ref(histogram2d-data-density).y}}
               histnorm: "density"
               colorscale: "Jet"
         charts:

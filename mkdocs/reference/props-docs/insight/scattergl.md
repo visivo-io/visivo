@@ -40,14 +40,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
                 5,30
         insights:
           - name: Simple Scattergl Insight
-            model: ${ref(scattergl-data)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
             props:
               type: scattergl
-              x: ?{ columns.x }
-              y: ?{ columns.y }
+              x: ?{${ref(scattergl-data).x}}
+              y: ?{${ref(scattergl-data).y}}
               mode: "markers"
             interactions:
               - split: ?{ x }
@@ -81,14 +77,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
                 5,12
         insights:
           - name: Scattergl Insight with Lines
-            model: ${ref(scattergl-data-lines)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
             props:
               type: scattergl
-              x: ?{ columns.x }
-              y: ?{ columns.y }
+              x: ?{${ref(scattergl-data-lines).x}}
+              y: ?{${ref(scattergl-data-lines).y}}
               mode: "lines+markers"
             interactions:
               - split: ?{ x }
@@ -122,20 +114,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attri
                 5,12,30,#9467bd
         insights:
           - name: Scattergl Insight with Custom Markers
-            model: ${ref(scattergl-data-custom)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scattergl
-              x: ?{ columns.x }
-              y: ?{ columns.y }
+              x: ?{${ref(scattergl-data-custom).x}}
+              y: ?{${ref(scattergl-data-custom).y}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scattergl-data-custom).size}}
+                color: ?{${ref(scattergl-data-custom).color}}
             interactions:
               - split: ?{ x }
               - split: ?{ y }

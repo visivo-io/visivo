@@ -55,16 +55,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
 
         insights:
           - name: Carpet Grid
-            model: ${ref(carpet-grid)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              y: ?{y}
             props:
               type: carpet
-              a: ?{columns.a}
-              b: ?{columns.b}
-              y: ?{columns.y}
+              a: ?{${ref(carpet-grid).a}}
+              b: ?{${ref(carpet-grid).b}}
+              y: ?{${ref(carpet-grid).y}}
               aaxis:
                 tickprefix: 'a = '
                 ticksuffix: 'm'
@@ -77,15 +72,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
                 minorgridcount: 9
 
           - name: Simple Scattercarpet Plot
-            model: ${ref(scattercarpet-data)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              value: ?{value}
             props:
               type: scattercarpet
-              a: ?{columns.a}
-              b: ?{columns.b}
+              a: ?{${ref(scattercarpet-data).a}}
+              b: ?{${ref(scattercarpet-data).b}}
               mode: "markers"
 
         charts:
@@ -132,27 +122,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
 
         insights:
           - name: Carpet Grid Lines
-            model: ${ref(carpet-grid-lines)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              y: ?{y}
             props:
               type: carpet
-              a: ?{columns.a}
-              b: ?{columns.b}
-              y: ?{columns.y}
+              a: ?{${ref(carpet-grid-lines).a}}
+              b: ?{${ref(carpet-grid-lines).b}}
+              y: ?{${ref(carpet-grid-lines).y}}
 
           - name: Scattercarpet Plot with Lines
-            model: ${ref(scattercarpet-data-lines)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              value: ?{value}
             props:
               type: scattercarpet
-              a: ?{columns.a}
-              b: ?{columns.b}
+              a: ?{${ref(scattercarpet-data-lines).a}}
+              b: ?{${ref(scattercarpet-data-lines).b}}
               mode: "lines+markers"
 
         charts:
@@ -199,32 +179,21 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#a
 
         insights:
           - name: Carpet Grid Markers
-            model: ${ref(carpet-grid-markers)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              y: ?{y}
             props:
               type: carpet
-              a: ?{columns.a}
-              b: ?{columns.b}
-              y: ?{columns.y}
+              a: ?{${ref(carpet-grid-markers).a}}
+              b: ?{${ref(carpet-grid-markers).b}}
+              y: ?{${ref(carpet-grid-markers).y}}
 
           - name: Scattercarpet Plot with Custom Markers
-            model: ${ref(scattercarpet-data-custom)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              size: ?{size}
-              color: ?{color}
             props:
               type: scattercarpet
-              a: ?{columns.a}
-              b: ?{columns.b}
+              a: ?{${ref(scattercarpet-data-custom).a}}
+              b: ?{${ref(scattercarpet-data-custom).b}}
               mode: "markers"
               marker:
-                size: ?{columns.size}
-                color: ?{columns.color}
+                size: ?{${ref(scattercarpet-data-custom).size}}
+                color: ?{${ref(scattercarpet-data-custom).color}}
 
         charts:
           - name: Scattercarpet Chart with Custom Markers

@@ -37,14 +37,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
                 B,28
         insights:
           - name: Simple Violin Insight
-            model: ${ref(violin-data)}
-            columns:
-              category: ?{category}
-              value: ?{value}
             props:
               type: violin
-              x: ?{columns.category}
-              y: ?{columns.value}
+              x: ?{${ref(violin-data).category}}
+              y: ?{${ref(violin-data).value}}
         charts:
           - name: Simple Violin Chart
             insights:
@@ -71,14 +67,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
                 B,28
         insights:
           - name: Violin Insight with Box
-            model: ${ref(violin-data-box)}
-            columns:
-              category: ?{category}
-              value: ?{value}
             props:
               type: violin
-              x: ?{columns.value}
-              y: ?{columns.category}
+              x: ?{${ref(violin-data-box).value}}
+              y: ?{${ref(violin-data-box).category}}
               orientation: h
               box:
                 visible: true
@@ -120,33 +112,25 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Violin/#attribut
                 B,X,28
         insights:
           - name: Violin Insight Category X
-            model: ${ref(violin-data-split)}
-            columns:
-              category: ?{category}
-              value: ?{value}
-              sub_category: ?{sub_category}
-            cohort_on: sub_category
             props:
               type: violin
-              x: ?{columns.category}
-              y: ?{columns.value}
+              x: ?{${ref(violin-data-split).category}}
+              y: ?{${ref(violin-data-split).value}}
               side: positive
-            filters:
-              - ?{ sub_category = 'X'}
+            interactions:
+              - filter: ?{${ref(violin-data-split).sub_category} = 'X'}
+              - split: ?{${ref(violin-data-split).sub_category}}
+
           - name: Violin Insight Category Y
-            model: ${ref(violin-data-split)}
-            columns:
-              category: ?{category}
-              value: ?{value}
-              sub_category: ?{sub_category}
-            cohort_on: sub_category
             props:
               type: violin
-              x: ?{columns.category}
-              y: ?{columns.value}
+              x: ?{${ref(violin-data-split).category}}
+              y: ?{${ref(violin-data-split).value}}
               side: negative
-            filters:
-              - ?{ sub_category = 'Y'}
+            interactions:
+              - filter: ?{${ref(violin-data-split).sub_category} = 'Y'}
+              - split: ?{${ref(violin-data-split).sub_category}}
+
         charts:
           - name: Violin Chart with Split Categories
             insights:

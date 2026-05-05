@@ -38,14 +38,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
                 29.7604,-95.3698
         insights:
           - name: Simple Densitymap Insight
-            model: ${ref(densitymap-data)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymap
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymap-data).lat}}
+              lon: ?{${ref(densitymap-data).lon}}
               radius: 10
               colorscale: "Viridis"
               zmin: 0
@@ -83,14 +79,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
                 34.0522,-118.2437
         insights:
           - name: Densitymap with Custom Radius
-            model: ${ref(densitymap-data-radius)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymap
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymap-data-radius).lat}}
+              lon: ?{${ref(densitymap-data-radius).lon}}
               radius: 20
               colorscale: "Jet"
               zmin: 0
@@ -128,14 +120,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attr
                 51.1657,10.4515
         insights:
           - name: Densitymap with Custom Colorscale
-            model: ${ref(densitymap-data-colorscale)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymap
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymap-data-colorscale).lat}}
+              lon: ?{${ref(densitymap-data-colorscale).lon}}
               radius: 15
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0

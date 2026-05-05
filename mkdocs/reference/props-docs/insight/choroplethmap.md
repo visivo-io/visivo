@@ -40,15 +40,11 @@ With `choroplethmap`, you can visualize data across geographic regions on MapLib
                 IND,450
         insights:
           - name: Simple ChoroplethMapLibre Map
-            model: ${ref(country-population-data-map)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              population_density: ?{population_density}
             props:
               type: choroplethmap
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ?{columns.iso_alpha}
-              z: ?{columns.population_density}
+              locations: ?{${ref(country-population-data-map).iso_alpha}}
+              z: ?{${ref(country-population-data-map).population_density}}
               colorscale: "Blues"
               marker:
                 opacity: 0.7
@@ -83,15 +79,11 @@ With `choroplethmap`, you can visualize data across geographic regions on MapLib
                 GBR,2827
         insights:
           - name: ChoroplethMapLibre with Custom Colorscale
-            model: ${ref(european-gdp-data)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              gdp: ?{gdp}
             props:
               type: choroplethmap
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ?{columns.iso_alpha}
-              z: ?{columns.gdp}
+              locations: ?{${ref(european-gdp-data).iso_alpha}}
+              z: ?{${ref(european-gdp-data).gdp}}
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               marker:
                 opacity: 0.75
@@ -126,17 +118,12 @@ With `choroplethmap`, you can visualize data across geographic regions on MapLib
                 ZAF,2000000,60000
         insights:
           - name: Interactive ChoroplethMapLibre with Hover Data
-            model: ${ref(covid-data-map)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              covid_cases: ?{covid_cases}
-              covid_deaths: ?{covid_deaths}
             props:
               type: choroplethmap
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ?{columns.iso_alpha}
-              z: ?{columns.covid_cases}
-              text: ?{columns.covid_deaths}
+              locations: ?{${ref(covid-data-map).iso_alpha}}
+              z: ?{${ref(covid-data-map).covid_cases}}
+              text: ?{${ref(covid-data-map).covid_deaths}}
               hovertemplate: "Cases: %{z}<br>Deaths: %{text}"
               colorscale: "Reds"
               marker:

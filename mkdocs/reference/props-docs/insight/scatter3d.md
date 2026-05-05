@@ -41,11 +41,6 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
 
         insights:
           - name: Simple Scatter3D Plot
-            model: ${ref(scatter3d-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: scatter3d
               mode: "markers"
@@ -80,11 +75,6 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
 
         insights:
           - name: Scatter3D Plot with Lines
-            model: ${ref(scatter3d-data-lines)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: scatter3d
               mode: "lines+markers"
@@ -119,19 +109,12 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attri
 
         insights:
           - name: Scatter3D Plot with Custom Markers
-            model: ${ref(scatter3d-data-custom)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              size: ?{size}
-              color: ?{color}
             props:
               type: scatter3d
               mode: "markers"
               marker:
-                size: ?{columns.size}
-                color: ?{columns.color}
+                size: ?{${ref(scatter3d-data-custom).size}}
+                color: ?{${ref(scatter3d-data-custom).color}}
 
         charts:
           - name: Scatter3D Chart with Custom Markers

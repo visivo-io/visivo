@@ -40,14 +40,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
                 -90,30
         insights:
           - name: Simple Scattergeo Insight
-            model: ${ref(scattergeo-data)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattergeo
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattergeo-data).lon}}
+              lat: ?{${ref(scattergeo-data).lat}}
               mode: "markers"
             interactions:
               - split: ?{ lon }
@@ -83,14 +79,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
                 -90,30
         insights:
           - name: Scattergeo Insight with Lines
-            model: ${ref(scattergeo-data-lines)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattergeo
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattergeo-data-lines).lon}}
+              lat: ?{${ref(scattergeo-data-lines).lat}}
               mode: "lines+markers"
             interactions:
               - split: ?{ lon }
@@ -126,20 +118,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attr
                 -90,30,30,#9467bd
         insights:
           - name: Scattergeo Insight with Custom Markers
-            model: ${ref(scattergeo-data-custom)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scattergeo
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattergeo-data-custom).lon}}
+              lat: ?{${ref(scattergeo-data-custom).lat}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scattergeo-data-custom).size}}
+                color: ?{${ref(scattergeo-data-custom).color}}
             interactions:
               - split: ?{ lon }
               - split: ?{ lat }

@@ -36,14 +36,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
                 180,15
         insights:
           - name: Simple Scatterpolargl Insight
-            model: ${ref(scatterpolargl-data)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
             props:
               type: scatterpolargl
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolargl-data).theta}}
+              r: ?{${ref(scatterpolargl-data).r}}
               mode: "markers"
             interactions:
               - split: ?{ theta }
@@ -73,14 +69,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
                 180,25
         insights:
           - name: Scatterpolargl Insight with Lines
-            model: ${ref(scatterpolargl-data-lines)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
             props:
               type: scatterpolargl
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolargl-data-lines).theta}}
+              r: ?{${ref(scatterpolargl-data-lines).r}}
               mode: "lines+markers"
             interactions:
               - split: ?{ theta }
@@ -110,20 +102,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolargl/#
                 180,25,30,#9467bd
         insights:
           - name: Scatterpolargl Insight with Custom Markers
-            model: ${ref(scatterpolargl-data-custom)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scatterpolargl
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolargl-data-custom).theta}}
+              r: ?{${ref(scatterpolargl-data-custom).r}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scatterpolargl-data-custom).size}}
+                color: ?{${ref(scatterpolargl-data-custom).color}}
             interactions:
               - split: ?{ theta }
               - split: ?{ r }

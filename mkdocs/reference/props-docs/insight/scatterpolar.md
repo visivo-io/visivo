@@ -36,14 +36,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolar/#at
                 180,15
         insights:
           - name: Simple Scatterpolar Insight
-            model: ${ref(scatterpolar-data)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
             props:
               type: scatterpolar
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolar-data).theta}}
+              r: ?{${ref(scatterpolar-data).r}}
               mode: "markers"
             interactions:
               - split: ?{ theta }
@@ -73,14 +69,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolar/#at
                 180,25
         insights:
           - name: Scatterpolar Insight with Lines
-            model: ${ref(scatterpolar-data-lines)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
             props:
               type: scatterpolar
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolar-data-lines).theta}}
+              r: ?{${ref(scatterpolar-data-lines).r}}
               mode: "lines+markers"
             interactions:
               - split: ?{ theta }
@@ -110,20 +102,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolar/#at
                 180,25,30,#9467bd
         insights:
           - name: Scatterpolar Insight with Custom Markers
-            model: ${ref(scatterpolar-data-custom)}
-            columns:
-              theta: ?{ theta }
-              r: ?{ r }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scatterpolar
-              theta: ?{ columns.theta }
-              r: ?{ columns.r }
+              theta: ?{${ref(scatterpolar-data-custom).theta}}
+              r: ?{${ref(scatterpolar-data-custom).r}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scatterpolar-data-custom).size}}
+                color: ?{${ref(scatterpolar-data-custom).color}}
             interactions:
               - split: ?{ theta }
               - split: ?{ r }

@@ -39,19 +39,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
                 2,3,5
         insights:
           - name: Simple Sankey Diagram
-            model: ${ref(sankey-data)}
-            columns:
-              source: ?{source}
-              target: ?{target}
-              value: ?{value}
             props:
               type: sankey
               node:
                 label: ["A", "B", "C", "D"]
               link:
-                source: ?{columns.source}
-                target: ?{columns.target}
-                value: ?{columns.value}
+                source: ?{${ref(sankey-data).source}}
+                target: ?{${ref(sankey-data).target}}
+                value: ?{${ref(sankey-data).value}}
         ```
 
     === "Sankey Diagram with Custom Colors"
@@ -73,21 +68,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
                 2,3,5,#d62728
         insights:
           - name: Sankey Diagram with Custom Colors
-            model: ${ref(sankey-data-colors)}
-            columns:
-              source: ?{source}
-              target: ?{target}
-              value: ?{value}
-              color: ?{color}
             props:
               type: sankey
               node:
                 label: ["X", "Y", "Z", "W"]
-                color: ?{columns.color}
+                color: ?{${ref(sankey-data-colors).color}}
               link:
-                source: ?{columns.source}
-                target: ?{columns.target}
-                value: ?{columns.value}
+                source: ?{${ref(sankey-data-colors).source}}
+                target: ?{${ref(sankey-data-colors).target}}
+                value: ?{${ref(sankey-data-colors).value}}
         ```
 
     === "Sankey Diagram with Hover Information"
@@ -109,19 +98,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
                 2,3,5
         insights:
           - name: Sankey Diagram with Hover Information
-            model: ${ref(sankey-data-hover)}
-            columns:
-              source: ?{source}
-              target: ?{target}
-              value: ?{value}
             props:
               type: sankey
               node:
                 label: ["P", "Q", "R", "S"]
               link:
-                source: ?{columns.source}
-                target: ?{columns.target}
-                value: ?{columns.value}
+                source: ?{${ref(sankey-data-hover).source}}
+                target: ?{${ref(sankey-data-hover).target}}
+                value: ?{${ref(sankey-data-hover).value}}
                 hoverinfo: "source+target+value"
         ```
 

@@ -44,16 +44,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
                 C,3,90
         insights:
           - name: Simple Heatmapgl Insight
-            model: ${ref(heatmapgl-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmapgl
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(heatmapgl-data).x}}
+              y: ?{${ref(heatmapgl-data).y}}
+              z: ?{${ref(heatmapgl-data).z}}
               colorscale: "Viridis"
         charts:
           - name: Simple Heatmapgl Chart
@@ -94,16 +89,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
                 3,3,0.3
         insights:
           - name: Heatmapgl with Custom Colorscale
-            model: ${ref(heatmapgl-data-custom)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmapgl
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(heatmapgl-data-custom).x}}
+              y: ?{${ref(heatmapgl-data-custom).y}}
+              z: ?{${ref(heatmapgl-data-custom).z}}
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0
               zmax: 1
@@ -152,16 +142,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attri
                 3,5,15
         insights:
           - name: Heatmapgl for Large Datasets
-            model: ${ref(heatmapgl-data-large)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmapgl
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(heatmapgl-data-large).x}}
+              y: ?{${ref(heatmapgl-data-large).y}}
+              z: ?{${ref(heatmapgl-data-large).z}}
               colorscale: "Jet"
               zmin: 0
               zmax: 15

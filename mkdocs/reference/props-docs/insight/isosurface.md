@@ -46,24 +46,18 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attr
 
         insights:
           - name: Simple Isosurface Plot Insight
-            model: ${ref(isosurface-data-simple)}
-            columns:
-              idx: ?{idx}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              value: ?{value}
             props:
               type: isosurface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
-              value: ?{columns.value}
+              x: ?{${ref(isosurface-data-simple).x}}
+              y: ?{${ref(isosurface-data-simple).y}}
+              z: ?{${ref(isosurface-data-simple).z}}
+              value: ?{${ref(isosurface-data-simple).value}}
               isomin: 2
               isomax: 6
               colorscale: "Reds"
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(isosurface-data-simple).idx} asc}
+
 
         charts:
           - name: Simple Isosurface Chart
@@ -91,19 +85,12 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attr
 
         insights:
           - name: Complex With Slice Isosurface Insight
-            model: ${ref(isosurface-data)}
-            columns:
-              idx: ?{idx}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              value: ?{value}
             props:
               type: isosurface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
-              value: ?{columns.value}
+              x: ?{${ref(isosurface-data).x}}
+              y: ?{${ref(isosurface-data).y}}
+              z: ?{${ref(isosurface-data).z}}
+              value: ?{${ref(isosurface-data).value}}
               isomin: -100
               isomax: 100
               surface:
@@ -121,8 +108,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attr
                   show: false
                 z:
                   show: false
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(isosurface-data).idx} asc}
+
 
         charts:
           - name: Complex With Slice Isosurface Chart

@@ -45,20 +45,13 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
 
         insights:
           - name: Simple Candlestick Plot
-            model: ${ref(stock-data)}
-            columns:
-              date: ?{ date }
-              open: ?{ open }
-              high: ?{ high }
-              low: ?{ low }
-              close: ?{ close }
             props:
               type: candlestick
-              x: ?{ columns.date }
-              open: ?{ columns.open }
-              high: ?{ columns.high }
-              low: ?{ columns.low }
-              close: ?{ columns.close }
+              x: ?{${ref(stock-data).date}}
+              open: ?{${ref(stock-data).open}}
+              high: ?{${ref(stock-data).high}}
+              low: ?{${ref(stock-data).low}}
+              close: ?{${ref(stock-data).close}}
 
         charts:
           - name: Simple Candlestick Chart
@@ -98,30 +91,19 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
 
         insights:
           - name: Candlestick Plot with Volume
-            model: ${ref(stock-data-with-volume)}
-            columns:
-              date: ?{ date }
-              open: ?{ open }
-              high: ?{ high }
-              low: ?{ low }
-              close: ?{ close }
             props:
               type: candlestick
-              x: ?{ columns.date }
-              open: ?{ columns.open }
-              high: ?{ columns.high }
-              low: ?{ columns.low }
-              close: ?{ columns.close }
+              x: ?{${ref(stock-data-with-volume).date}}
+              open: ?{${ref(stock-data-with-volume).open}}
+              high: ?{${ref(stock-data-with-volume).high}}
+              low: ?{${ref(stock-data-with-volume).low}}
+              close: ?{${ref(stock-data-with-volume).close}}
 
           - name: Volume Insight
-            model: ${ref(stock-data-with-volume)}
-            columns:
-              date: ?{ date }
-              volume: ?{ volume }
             props:
               type: bar
-              x: ?{ columns.date }
-              y: ?{ columns.volume }
+              x: ?{${ref(stock-data-with-volume).date}}
+              y: ?{${ref(stock-data-with-volume).volume}}
               yaxis: "y2"
               marker:
                 opacity: 0.5
@@ -173,20 +155,13 @@ _**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attribute
 
         insights:
           - name: Colored Candlestick Plot
-            model: ${ref(stock-data-colored)}
-            columns:
-              date: ?{ date }
-              open: ?{ open }
-              high: ?{ high }
-              low: ?{ low }
-              close: ?{ close }
             props:
               type: candlestick
-              x: ?{ columns.date }
-              open: ?{ columns.open }
-              high: ?{ columns.high }
-              low: ?{ columns.low }
-              close: ?{ columns.close }
+              x: ?{${ref(stock-data-colored).date}}
+              open: ?{${ref(stock-data-colored).open}}
+              high: ?{${ref(stock-data-colored).high}}
+              low: ?{${ref(stock-data-colored).low}}
+              close: ?{${ref(stock-data-colored).close}}
               increasing:
                 line:
                   color: "#17becf"

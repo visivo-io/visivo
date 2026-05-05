@@ -40,16 +40,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
                 3,3,9
         insights:
           - name: Simple Surface Insight
-            model: ${ref(surface-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: surface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(surface-data).x}}
+              y: ?{${ref(surface-data).y}}
+              z: ?{${ref(surface-data).z}}
         charts:
           - name: Simple Surface Chart
             insights:
@@ -79,16 +74,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
                 3,3,9
         insights:
           - name: Surface Insight with Custom Colorscale
-            model: ${ref(surface-data-colorscale)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: surface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(surface-data-colorscale).x}}
+              y: ?{${ref(surface-data-colorscale).y}}
+              z: ?{${ref(surface-data-colorscale).z}}
               colorscale: "Viridis"
         charts:
           - name: Surface Chart with Custom Colorscale
@@ -119,16 +109,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attribu
                 3,3,9
         insights:
           - name: Surface Insight with Contours
-            model: ${ref(surface-data-contours)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: surface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(surface-data-contours).x}}
+              y: ?{${ref(surface-data-contours).y}}
+              z: ?{${ref(surface-data-contours).z}}
               contours:
                 z:
                   show: true

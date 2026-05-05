@@ -36,17 +36,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
                 75
         insights:
           - name: Simple Numeric Indicator
-            model: ${ref(indicator-data)}
-            columns:
-              val: ?{value}
-              sign: ?{ case when value > 0 then '<sup>+</sup>' else '<sup>-</sup>' end }
             props:
               type: indicator
               mode: "number"
-              value: ?{columns.val[0]}
+              value: ?{${ref(indicator-data).value}}[0]
               number:
                 suffix: '<sub>hrs</sub>'
-                prefix: ?{columns.sign[0]}
+                prefix: ?{case when ${ref(indicator-data).value} > 0 then '<sup>+</sup>' else '<sup>-</sup>' end}[0]
                 font:
                   size: 100
         charts:
@@ -78,13 +74,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
                 65
         insights:
           - name: Gauge Indicator
-            model: ${ref(indicator-data-gauge)}
-            columns:
-              val: ?{value}
             props:
               type: indicator
               mode: "gauge+number"
-              value: ?{columns.val[0]}
+              value: ?{${ref(indicator-data-gauge).value}}[0]
               gauge:
                 axis:
                   range: [0, 100]
@@ -118,17 +111,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Indicator/#attri
                 0,55
         insights:
           - name: Delta Indicator with Comparison
-            model: ${ref(indicator-data-delta)}
-            columns:
-              val: ?{value}
             props:
               type: indicator
               mode: "number+delta"
-              value: ?{columns.val[0]}
+              value: ?{${ref(indicator-data-delta).value}}[0]
               delta:
-                reference: ?{columns.val[1]}
-            order_by:
-              - ?{sort desc}
+                reference: ?{${ref(indicator-data-delta).value}}[1]
+            interactions:
+              - sort: ?{${ref(indicator-data-delta).sort} desc}
+
         charts:
           - name: Delta Indicator with Comparison Chart
             insights:

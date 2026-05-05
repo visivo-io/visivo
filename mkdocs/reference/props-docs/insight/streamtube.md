@@ -31,22 +31,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
               - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         insights:
           - name: Simple Streamtube Insight
-            model: ${ref(streamtube-data)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
-              z: ?{ z }
-              u: ?{ u }
-              v: ?{ v }
-              w: ?{ w }
             props:
               type: streamtube
-              x: ?{ columns.x }
-              y: ?{ columns.y }
-              z: ?{ columns.z }
-              u: ?{ columns.u }
-              v: ?{ columns.v }
-              w: ?{ columns.w }
+              x: ?{${ref(streamtube-data).x}}
+              y: ?{${ref(streamtube-data).y}}
+              z: ?{${ref(streamtube-data).z}}
+              u: ?{${ref(streamtube-data).u}}
+              v: ?{${ref(streamtube-data).v}}
+              w: ?{${ref(streamtube-data).w}}
         charts:
           - name: Simple Streamtube Chart
             insights:
@@ -67,22 +59,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
               - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         insights:
           - name: Streamtube Insight with Color Mapping
-            model: ${ref(streamtube-data)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
-              z: ?{ z }
-              u: ?{ u }
-              v: ?{ v }
-              w: ?{ w }
             props:
               type: streamtube
-              x: ?{ columns.x }
-              y: ?{ columns.y }
-              z: ?{ columns.z }
-              u: ?{ columns.u }
-              v: ?{ columns.v }
-              w: ?{ columns.w }
+              x: ?{${ref(streamtube-data).x}}
+              y: ?{${ref(streamtube-data).y}}
+              z: ?{${ref(streamtube-data).z}}
+              u: ?{${ref(streamtube-data).u}}
+              v: ?{${ref(streamtube-data).v}}
+              w: ?{${ref(streamtube-data).w}}
               colorscale: "Viridis"
         charts:
           - name: Streamtube Chart with Color Mapping
@@ -104,22 +88,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attr
               - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         insights:
           - name: Streamtube Insight with Custom Tube Sizes
-            model: ${ref(streamtube-data)}
-            columns:
-              x: ?{ x }
-              y: ?{ y }
-              z: ?{ z }
-              u: ?{ u }
-              v: ?{ v }
-              w: ?{ w }
             props:
               type: streamtube
-              x: ?{ columns.x }
-              y: ?{ columns.y }
-              z: ?{ columns.z }
-              u: ?{ columns.u }
-              v: ?{ columns.v }
-              w: ?{ columns.w }
+              x: ?{${ref(streamtube-data).x}}
+              y: ?{${ref(streamtube-data).y}}
+              z: ?{${ref(streamtube-data).z}}
+              u: ?{${ref(streamtube-data).u}}
+              v: ?{${ref(streamtube-data).v}}
+              w: ?{${ref(streamtube-data).w}}
               sizeref: 0.5
         charts:
           - name: Streamtube Chart with Custom Tube Sizes

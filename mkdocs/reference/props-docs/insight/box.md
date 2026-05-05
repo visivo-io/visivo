@@ -50,14 +50,10 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
 
         insights:
           - name: Sample Box Plot
-            model: ${ref(sample-data)}
-            columns:
-              category: ?{ category }
-              value: ?{ value }
             props:
               type: box
-              x: ?{ columns.category }
-              y: ?{ columns.value }
+              x: ?{${ref(sample-data).category}}
+              y: ?{${ref(sample-data).value}}
               boxpoints: "all"
               jitter: 1
               pointpos: -1.1
@@ -92,14 +88,10 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
 
         insights:
           - name: Rewards Distribution by Quest
-            model: ${ref(quest-rewards)}
-            columns:
-              person: ?{ person }
-              reward_gbp: ?{ reward_gbp }
             props:
               type: box
-              y: ?{ columns.person }
-              x: ?{ columns.reward_gbp }
+              y: ?{${ref(quest-rewards).person}}
+              x: ?{${ref(quest-rewards).reward_gbp}}
               boxpoints: "all"
               jitter: 1
               pointpos: -1.1
@@ -132,17 +124,12 @@ _**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for t
 
         insights:
           - name: Proclamations Box Plot
-            model: ${ref(proclamations-data)}
-            columns:
-              proclamations: ?{ proclamations_made }
-              enemy: ?{ enemy_encountered }
-              person: ?{ person }
             props:
               type: box
-              y: ?{ columns.proclamations }
-              x: ?{ columns.enemy }
+              y: ?{${ref(proclamations-data).proclamations_made}}
+              x: ?{${ref(proclamations-data).enemy_encountered}}
             interactions:
-              - split: ?{ columns.person }
+              - split: ?{${ref(proclamations-data).person}}
 
         charts:
           - name: Proclamations Box Plot Chart

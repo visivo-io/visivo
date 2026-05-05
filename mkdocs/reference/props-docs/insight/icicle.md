@@ -41,16 +41,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
                 F,B,15
         insights:
           - name: Simple Icicle Plot
-            model: ${ref(icicle-data)}
-            columns:
-              category: ?{category}
-              parent: ?{parent}
-              value: ?{value}
             props:
               type: icicle
-              labels: ?{columns.category}
-              parents: ?{columns.parent}
-              values: ?{columns.value}
+              labels: ?{${ref(icicle-data).category}}
+              parents: ?{${ref(icicle-data).parent}}
+              values: ?{${ref(icicle-data).value}}
               branchvalues: "total"
               marker:
                 colorscale: "Portland"
@@ -87,19 +82,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
                 F,B,15,"#8c564b"
         insights:
           - name: Custom Colors Icicle Plot
-            model: ${ref(icicle-data-custom)}
-            columns:
-              category: ?{category}
-              parent: ?{parent}
-              value: ?{value}
-              color: ?{color}
             props:
               type: icicle
-              labels: ?{columns.category}
-              parents: ?{columns.parent}
-              values: ?{columns.value}
+              labels: ?{${ref(icicle-data-custom).category}}
+              parents: ?{${ref(icicle-data-custom).parent}}
+              values: ?{${ref(icicle-data-custom).value}}
               marker:
-                colors: ?{columns.color}
+                colors: ?{${ref(icicle-data-custom).color}}
               branchvalues: "total"
         charts:
           - name: Custom Colors Icicle Chart
@@ -131,16 +120,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attribut
                 F,B,15
         insights:
           - name: Icicle Plot with Depth Limiting
-            model: ${ref(icicle-data-depth)}
-            columns:
-              category: ?{category}
-              parent: ?{parent}
-              value: ?{value}
             props:
               type: icicle
-              labels: ?{columns.category}
-              parents: ?{columns.parent}
-              values: ?{columns.value}
+              labels: ?{${ref(icicle-data-depth).category}}
+              parents: ?{${ref(icicle-data-depth).parent}}
+              values: ?{${ref(icicle-data-depth).value}}
               maxdepth: 2
               branchvalues: "total"
               marker:

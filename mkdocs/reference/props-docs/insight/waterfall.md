@@ -37,18 +37,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
 
         insights:
           - name: Simple Waterfall Insight
-            model: ${ref(waterfall-data)}
-            columns:
-              idx: ?{idx}
-              label: ?{label}
-              value: ?{value}
             props:
               type: waterfall
-              x: ?{columns.label}
-              y: ?{columns.value}
+              x: ?{${ref(waterfall-data).label}}
+              y: ?{${ref(waterfall-data).value}}
               measure: ["initial", "relative", "relative", "relative", "total"]
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(waterfall-data).idx} asc}
+
 
         charts:
           - name: Simple Waterfall Chart
@@ -76,15 +72,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
 
         insights:
           - name: Waterfall Insight with Custom Colors
-            model: ${ref(waterfall-data-colors)}
-            columns:
-              idx: ?{idx}
-              label: ?{label}
-              value: ?{value}
             props:
               type: waterfall
-              x: ?{columns.label}
-              y: ?{columns.value}
+              x: ?{${ref(waterfall-data-colors).label}}
+              y: ?{${ref(waterfall-data-colors).value}}
               measure: ["initial", "relative", "relative", "relative", "total"]
               increasing:
                 marker:
@@ -98,8 +89,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
                   line:
                     color: 'orange'
                     width: 4
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(waterfall-data-colors).idx} asc}
+
 
         charts:
           - name: Waterfall Chart with Custom Colors
@@ -128,20 +120,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
 
         insights:
           - name: Financial Waterfall Insight
-            model: ${ref(waterfall-data-connectors)}
-            columns:
-              idx: ?{idx}
-              quarter: ?{quarter}
-              half: ?{half}
-              value: ?{value}
-              mode: ?{mode}
             props:
               type: waterfall
               x:
-                - ?{columns.half}
-                - ?{columns.quarter}
-              y: ?{columns.value}
-              measure: ?{columns.mode}
+                - ?{${ref(waterfall-data-connectors).half}}
+                - ?{${ref(waterfall-data-connectors).quarter}}
+              y: ?{${ref(waterfall-data-connectors).value}}
+              measure: ?{${ref(waterfall-data-connectors).mode}}
               hovertemplate: "%{x}: %{y:$.2f}"
               texttemplate: "%{delta:$.2f}"
               textposition: "outside"
@@ -149,8 +134,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attri
                 line:
                   color: "orange"
                   width: 5
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(waterfall-data-connectors).idx} asc}
+
 
         charts:
           - name: Financial Waterfall Chart

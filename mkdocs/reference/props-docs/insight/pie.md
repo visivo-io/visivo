@@ -38,14 +38,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
                 C,50
         insights:
           - name: Simple Pie Chart
-            model: ${ref(pie-data)}
-            columns:
-              category: ?{category}
-              value: ?{value}
             props:
               type: pie
-              labels: ?{columns.category}
-              values: ?{columns.value}
+              labels: ?{${ref(pie-data).category}}
+              values: ?{${ref(pie-data).value}}
         ```
 
     === "Pie Chart with Custom Colors"
@@ -66,17 +62,12 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
                 C,30,#2ca02c
         insights:
           - name: Pie Chart with Custom Colors
-            model: ${ref(pie-data-colors)}
-            columns:
-              category: ?{category}
-              value: ?{value}
-              color: ?{color}
             props:
               type: pie
-              labels: ?{columns.category}
-              values: ?{columns.value}
+              labels: ?{${ref(pie-data-colors).category}}
+              values: ?{${ref(pie-data-colors).value}}
               marker:
-                colors: ?{columns.color}
+                colors: ?{${ref(pie-data-colors).color}}
         ```
 
     === "Pie Chart with Hover Info"
@@ -97,14 +88,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes)
                 Z,15
         insights:
           - name: Pie Chart with Hover Info
-            model: ${ref(pie-data-hover)}
-            columns:
-              category: ?{category}
-              value: ?{value}
             props:
               type: pie
-              labels: ?{columns.category}
-              values: ?{columns.value}
+              labels: ?{${ref(pie-data-hover).category}}
+              values: ?{${ref(pie-data-hover).value}}
               hoverinfo: "label+value+percent"
         ```
 

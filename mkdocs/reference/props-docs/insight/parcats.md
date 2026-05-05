@@ -41,20 +41,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcats/#attribu
         insights:
           - name: Simple Parcats Plot
             description: "Parallel Categories Diagram with two categorical variables"
-            model: ${ref(parcats-data)}
-            columns:
-              category_1: ?{ category_1 }
-              category_2: ?{ category_2 }
-              value: ?{ value }
             props:
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: ?{columns.category_1}
+                  values: ?{${ref(parcats-data).category_1}}
                 - label: "Category 2"
-                  values: ?{columns.category_2}
+                  values: ?{${ref(parcats-data).category_2}}
               line:
-                color: ?{columns.value}
+                color: ?{${ref(parcats-data).value}}
                 colorscale: "Viridis"
             interactions:
               - split: ?{category_1}
@@ -91,23 +86,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcats/#attribu
         insights:
           - name: Parcats Plot with Multiple Dimensions
             description: "Flow across three categorical variables"
-            model: ${ref(parcats-data-multi)}
-            columns:
-              category_1: ?{ category_1 }
-              category_2: ?{ category_2 }
-              category_3: ?{ category_3 }
-              value: ?{ value }
             props:
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: ?{columns.category_1}
+                  values: ?{${ref(parcats-data-multi).category_1}}
                 - label: "Category 2"
-                  values: ?{columns.category_2}
+                  values: ?{${ref(parcats-data-multi).category_2}}
                 - label: "Category 3"
-                  values: ?{columns.category_3}
+                  values: ?{${ref(parcats-data-multi).category_3}}
               line:
-                color: ?{columns.value}
+                color: ?{${ref(parcats-data-multi).value}}
                 colorscale: "Blues"
             interactions:
               - split: ?{category_1}
@@ -145,21 +134,16 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcats/#attribu
         insights:
           - name: Parcats Plot with Custom Line Widths
             description: "Custom line widths based on values"
-            model: ${ref(parcats-data-linewidth)}
-            columns:
-              category_1: ?{ category_1 }
-              category_2: ?{ category_2 }
-              value: ?{ value }
             props:
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: ?{columns.category_1}
+                  values: ?{${ref(parcats-data-linewidth).category_1}}
                 - label: "Category 2"
-                  values: ?{columns.category_2}
+                  values: ?{${ref(parcats-data-linewidth).category_2}}
               line:
-                color: ?{columns.value}
-                width: ?{columns.value}
+                color: ?{${ref(parcats-data-linewidth).value}}
+                width: ?{${ref(parcats-data-linewidth).value}}
                 colorscale: "Jet"
             interactions:
               - split: ?{category_1}
