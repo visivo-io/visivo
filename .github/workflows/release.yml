@@ -43,6 +43,9 @@ jobs:
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
+        with:
+          # Pinned to 1.8.x — poetry 2.x rejects 1.x-generated locks as "stale".
+          poetry-version: 1.8.5
 
       - name: Build App
         env:
@@ -85,6 +88,9 @@ jobs:
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
+        with:
+          # Pinned to 1.8.x — poetry 2.x rejects 1.x-generated locks as "stale".
+          poetry-version: 1.8.5
 
       - name: Build App
         run: |

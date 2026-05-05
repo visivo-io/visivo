@@ -41,7 +41,8 @@ tasks:
 
   - key: poetry
     use: python
-    run: pip install poetry
+    # Pinned to 1.8.x — poetry 2.x rejects 1.x-generated locks as "stale".
+    run: pip install 'poetry>=1.8,<2'
 
   - key: yarn
     use: node

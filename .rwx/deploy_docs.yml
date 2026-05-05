@@ -30,7 +30,8 @@ tasks:
 
   - key: Install-CLI-Dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev 
+    # Pinned to poetry 1.8.x — 2.x rejects 1.x-generated locks as "stale".
+    run: pip install 'poetry>=1.8,<2' && poetry install --with dev
 
   - key: Generate-Schema
     use: [Install-CLI-Dependencies]
