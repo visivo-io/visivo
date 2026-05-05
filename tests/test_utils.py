@@ -142,18 +142,6 @@ def test_extract_value_from_function():
     assert argument == "args"
 
 
-def test_load_yaml_file_with_backslash(monkeypatch):
-    password = "^%$#@!~&\\4'a\"}{|+_}"
-    monkeypatch.setenv("PASSWORD", password)
-    project_file = temp_file(
-        "project.visivo.yml",
-        "name: \"{{ env_var('PASSWORD') }}\"",
-    )
-
-    loaded = load_yaml_file(project_file)
-    assert loaded["name"] == password
-
-
 def test_nested_dict_from_dotted_keys():
     flat_dict = {
         "a.b.c": 1,

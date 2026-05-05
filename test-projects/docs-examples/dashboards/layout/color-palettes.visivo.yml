@@ -14,26 +14,7 @@ models:
         H,8
         I,9
         J,10
-# {% set palettes = ["Warm Earth Tones", "Sunset Over Water", "Muted Vintage", "Retro Pop", "Forest Nightfall", "Desert Sunrise", "Urban Dusk", "Botanical Garden", "Autumn Ember", "Coastal Breeze", "Muted Vintage II", "Muted Rosewood", "Muted Classic", "Vintage Pastel", "Classic Faded","Spring Blossom", "Mint Dream", "Soft Sunset", "Lavender Fields", "Summer Breeze","Mint Dream Contrast", "Mint Dream Dark", "Mint Dream Deep", "Mint Dream Bold", "High Contrast", "High Contrast Earth"] %}
 charts:
-  # {% for palette in palettes %}
-  - name: "{{ palette }}"
-    layout:
-      colorway: "{{ palette }}"
-      title:
-        text: "'{{ palette }}' Palette"
-      xaxis:
-        showgrid: false
-        showticklabels: false
-      yaxis:
-        title:
-          text: "Order"
-        dtick: 1
-      showlegend: false
-  # {% endfor %}
-
-    insights:
-      - ${ref(color-palette-example)}
   - name: custom-colors-example
     layout:
       colorway: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#808000"]
