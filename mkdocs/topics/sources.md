@@ -47,5 +47,4 @@ sources:
 
 This structure then allows you to set your username, password, and host differently in each environment to connect with the right app_db.
 
-!!! tip
-    Reference any environment variable with the `${env.VAR_NAME}` syntax. Values are resolved lazily — at the moment Visivo actually opens the connection — so the substitution stays editable in the explorer UI. 
+See [Environment Variables](environment-variables.md) for the full reference on the `${env.VAR_NAME}` syntax, where it works, and how Visivo loads `.env` files.

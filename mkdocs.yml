@@ -83,6 +83,7 @@ nav:
       - Linting: topics/linting.md
       - Including: topics/including.md
       - Sources: topics/sources.md
+      - Environment Variables: topics/environment-variables.md
       - Deployment: topics/deployments.md
       - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md
