@@ -7,8 +7,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-dbt = "^1.0.0.40.3"
-dbt-snowflake = "^1.8.4"
+dbt-core = "^1.8"
+dbt-duckdb = "^1.8"
 
 
 [build-system]

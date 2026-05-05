@@ -4,8 +4,10 @@ version: 2
 sources:
   - name: crm
     description: PLEASE UPDATE SCHEMA DESCRIPTION
-    database: raw
-    schema: crm
+    database: dbt
+    # Seeds land in `main` (the dbt profile default) so visivo's source
+    # introspection — which is scoped to db_schema=main — can see them.
+    schema: main
   
     tables:
       - name: closed_deals

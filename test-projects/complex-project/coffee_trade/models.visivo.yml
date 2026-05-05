@@ -1,54 +1,165 @@
-
 models:
+  # Raw seed data — formerly Snowflake tables RAW.COFFEE.COFFEE_EXPORT /
+  # COFFEE_IMPORT. Inlined as CSV so the project can run from a fresh checkout
+  # against a local DuckDB without needing a Snowflake account.
+  - name: coffee_export_raw
+    table_name: coffee_export
+    args:
+      - echo
+      - |
+        country,total_export,year,kilograms
+        Brazil,9000000000,2020,2700000000
+        Brazil,9500000000,2021,2900000000
+        Brazil,9800000000,2022,3000000000
+        Vietnam,5000000000,2020,1600000000
+        Vietnam,5300000000,2021,1700000000
+        Vietnam,5500000000,2022,1750000000
+        Colombia,3200000000,2020,810000000
+        Colombia,3400000000,2021,840000000
+        Colombia,3500000000,2022,860000000
+        Indonesia,2400000000,2020,660000000
+        Indonesia,2600000000,2021,690000000
+        Indonesia,2750000000,2022,720000000
+        Ethiopia,1900000000,2020,470000000
+        Ethiopia,2000000000,2021,490000000
+        Ethiopia,2100000000,2022,510000000
+        Honduras,1600000000,2020,420000000
+        Honduras,1700000000,2021,440000000
+        Honduras,1750000000,2022,460000000
+        India,1400000000,2020,380000000
+        India,1500000000,2021,400000000
+        India,1550000000,2022,410000000
+        Uganda,1300000000,2020,360000000
+        Uganda,1400000000,2021,375000000
+        Uganda,1450000000,2022,390000000
+        Mexico,1100000000,2020,300000000
+        Mexico,1150000000,2021,315000000
+        Mexico,1200000000,2022,325000000
+        Guatemala,1000000000,2020,260000000
+        Guatemala,1050000000,2021,270000000
+        Guatemala,1100000000,2022,280000000
+        Peru,800000000,2020,210000000
+        Peru,820000000,2021,215000000
+        Peru,850000000,2022,225000000
+        Nicaragua,700000000,2020,180000000
+        Nicaragua,720000000,2021,185000000
+        Nicaragua,740000000,2022,190000000
+        Costa Rica,500000000,2020,130000000
+        Costa Rica,520000000,2021,135000000
+        Costa Rica,535000000,2022,140000000
+        Kenya,400000000,2020,90000000
+        Kenya,420000000,2021,95000000
+        Kenya,435000000,2022,100000000
+        Tanzania,300000000,2020,75000000
+        Tanzania,310000000,2021,78000000
+        Tanzania,320000000,2022,80000000
+
+  - name: coffee_import_raw
+    table_name: coffee_import
+    args:
+      - echo
+      - |
+        country,total_import,year,kilograms
+        United States,7000000000,2020,1500000000
+        United States,7400000000,2021,1600000000
+        United States,7700000000,2022,1650000000
+        Germany,6000000000,2020,1200000000
+        Germany,6200000000,2021,1250000000
+        Germany,6400000000,2022,1280000000
+        France,3500000000,2020,720000000
+        France,3650000000,2021,740000000
+        France,3800000000,2022,765000000
+        Italy,3300000000,2020,660000000
+        Italy,3450000000,2021,680000000
+        Italy,3550000000,2022,700000000
+        Japan,3000000000,2020,420000000
+        Japan,3100000000,2021,435000000
+        Japan,3200000000,2022,445000000
+        Canada,2200000000,2020,300000000
+        Canada,2300000000,2021,315000000
+        Canada,2400000000,2022,325000000
+        United Kingdom,2100000000,2020,260000000
+        United Kingdom,2200000000,2021,275000000
+        United Kingdom,2300000000,2022,285000000
+        Netherlands,1900000000,2020,250000000
+        Netherlands,2000000000,2021,260000000
+        Netherlands,2050000000,2022,270000000
+        Spain,1700000000,2020,340000000
+        Spain,1780000000,2021,355000000
+        Spain,1820000000,2022,365000000
+        Belgium,1500000000,2020,290000000
+        Belgium,1560000000,2021,300000000
+        Belgium,1600000000,2022,310000000
+        South Korea,900000000,2020,170000000
+        South Korea,950000000,2021,180000000
+        South Korea,990000000,2022,190000000
+        Switzerland,800000000,2020,90000000
+        Switzerland,820000000,2021,95000000
+        Switzerland,840000000,2022,100000000
+        Russia,750000000,2020,210000000
+        Russia,780000000,2021,220000000
+        Russia,790000000,2022,225000000
+        Australia,600000000,2020,110000000
+        Australia,640000000,2021,118000000
+        Australia,665000000,2022,125000000
+        Sweden,500000000,2020,135000000
+        Sweden,525000000,2021,140000000
+        Sweden,545000000,2022,145000000
+
   - name: exports
-    sql: | 
-      with 
+    models:
+      - ${ref(coffee_export_raw)}
+    sql: |
+      with
       base as (
-      SELECt 
-        country,
-        total_export,
-        (year || '-01-01')::date as year,
-        kilograms,
-        SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
-        SUM(kilograms) OVER() as total_kg_all_countries
-      FROM coffee_export
+        SELECT
+          country,
+          total_export,
+          (year || '-01-01')::date as year,
+          kilograms,
+          SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
+          SUM(kilograms) OVER() as total_kg_all_countries
+        FROM coffee_export_raw.coffee_export
       )
-      SELECT 
+      SELECT
         *,
-        CASE 
-          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10 
+        CASE
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10
             THEN country
-          ELSE  'Everyone Else'
+          ELSE 'Everyone Else'
         END as top_countries,
-        CASE 
-          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15 
+        CASE
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15
             THEN round((total_kilograms / total_kg_all_countries)*100, 2) || ' %'
-          ELSE  ''
+          ELSE ''
         END as top_countries_perc
-      FROM base 
+      FROM base
+
   - name: imports
-    sql: | 
-      with 
+    models:
+      - ${ref(coffee_import_raw)}
+    sql: |
+      with
       base as (
-      SELECt 
-        country,
-        total_import,
-        (year || '-01-01')::date as year,
-        kilograms,
-        SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
-        SUM(kilograms) OVER() as total_kg_all_countries
-      FROM coffee_import
+        SELECT
+          country,
+          total_import,
+          (year || '-01-01')::date as year,
+          kilograms,
+          SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
+          SUM(kilograms) OVER() as total_kg_all_countries
+        FROM coffee_import_raw.coffee_import
       )
-      SELECT 
+      SELECT
         *,
-        CASE 
-          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10 
+        CASE
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10
             THEN country
-          ELSE  'Everyone Else'
+          ELSE 'Everyone Else'
         END as top_countries,
-        CASE 
-          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15 
+        CASE
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15
             THEN round((total_kilograms / total_kg_all_countries)*100, 2) || ' %'
-          ELSE  ''
+          ELSE ''
         END as top_countries_perc
-      FROM base 
+      FROM base

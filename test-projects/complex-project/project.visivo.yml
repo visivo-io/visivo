@@ -1,16 +1,12 @@
 name: coffee_facts
 
 defaults:
-  source_name: snowflake
+  source_name: local-duckdb
 
 includes:
   - path: coffee_trade/coffee_trade.visivo.yml
 
 sources:
-  - name: snowflake
-    database: raw
-    account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-    db_schema: coffee
-    username: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}"
-    password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
-    type: snowflake
+  - name: local-duckdb
+    database: coffee.duckdb
+    type: duckdb
