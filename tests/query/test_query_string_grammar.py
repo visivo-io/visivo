@@ -12,7 +12,6 @@ import pytest
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 from visivo.models.props.insight_props import InsightProps
 
-
 PATTERN = re.compile(QUERY_STRING_VALUE_PATTERN)
 
 

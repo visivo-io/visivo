@@ -8,7 +8,6 @@ the query resolution system, eliminating duplication and ensuring consistency.
 import re
 from typing import Tuple, Optional, List, Set
 
-
 # ============================================================================
 # Base Patterns - Character classes and building blocks
 # ============================================================================

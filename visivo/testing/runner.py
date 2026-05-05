@@ -12,7 +12,6 @@ import click
 from datetime import datetime
 import warnings
 
-
 warnings.filterwarnings("ignore")
 
 

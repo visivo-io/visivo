@@ -23,7 +23,6 @@ from typing import Optional, Tuple
 
 from sqlglot import exp
 
-
 # Minimum mapping from sqlglot DataType.this names to broad classes.
 # Anything not in this set defaults to "unknown" (no validation fires).
 _NUMERIC = {

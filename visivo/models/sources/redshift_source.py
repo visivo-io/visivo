@@ -23,8 +23,8 @@ class RedshiftSource(ServerSource):
                     database: dev
                     host: my-cluster.abcdefghij.us-east-1.redshift.amazonaws.com
                     port: 5439
-                    username: {% raw %}{{ env_var('REDSHIFT_USER') }}{% endraw %}
-                    password: {% raw %}{{ env_var('REDSHIFT_PASSWORD') }}{% endraw %}
+                    username: ${env.REDSHIFT_USER}
+                    password: ${env.REDSHIFT_PASSWORD}
                     db_schema: public
             ```
 
@@ -37,7 +37,7 @@ class RedshiftSource(ServerSource):
                     database: dev
                     host: my-cluster.abcdefghij.us-east-1.redshift.amazonaws.com
                     port: 5439
-                    username: {% raw %}{{ env_var('REDSHIFT_USER') }}{% endraw %}
+                    username: ${env.REDSHIFT_USER}
                     cluster_identifier: my-cluster
                     region: us-east-1
                     iam: true
@@ -405,13 +405,11 @@ class RedshiftSource(ServerSource):
         """Get schemas, similar pattern to existing introspect() method."""
         with self.connect() as connection:
             cursor = connection.cursor()
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT schema_name FROM information_schema.schemata
                 WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
                 ORDER BY schema_name
-            """
-            )
+            """)
             schemas = [row[0] for row in cursor.fetchall()]
             cursor.close()
             return schemas
@@ -427,13 +425,11 @@ class RedshiftSource(ServerSource):
 
         with self.connect() as connection:
             cursor = connection.cursor()
-            cursor.execute(
-                f"""
+            cursor.execute(f"""
                 SELECT table_name, table_type FROM information_schema.tables
                 WHERE table_schema {schema_filter}
                 ORDER BY table_name
-            """
-            )
+            """)
             tables = [
                 {"name": row[0], "type": "view" if row[1] == "VIEW" else "table"}
                 for row in cursor.fetchall()

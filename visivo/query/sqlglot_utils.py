@@ -16,7 +16,6 @@ import click
 
 from visivo.models.base.context_string import ContextString
 
-
 # Map divergent Visivo source types to SQLGlot dialect names
 VISIVO_TO_SQLGLOT_DIALECT = {
     "postgresql": "postgres",

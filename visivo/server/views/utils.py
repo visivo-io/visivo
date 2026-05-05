@@ -60,7 +60,7 @@ def write_project_file(project, project_dir):
 
     with open(project.project_file_path, "w") as f:
         content = yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False)
-        content = content.replace("'**********'", "\"{{ env_var('DB_PASSWORD') }}\"")
+        content = content.replace("'**********'", "${env.DB_PASSWORD}")
         f.write(content)
 
     if project_dir:

@@ -28,38 +28,40 @@ def action(insight: Insight, dag: ProjectDag, output_dir, run_id=DEFAULT_RUN_ID)
     # Organize files by run_id
     # Structure: {output_dir}/{run_id}/files/ and {output_dir}/{run_id}/insights/
     run_output_dir = f"{output_dir}/{run_id}"
-
-    model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
-    source = get_source_for_model(model, dag, run_output_dir)
-
-    insight_query_info = insight.get_query_info(dag, run_output_dir)
-
-    # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
-    if insight_query_info.post_query:
-        import re
-        from visivo.query.input_validator import validate_insight_with_inputs
-        from visivo.query.patterns import INPUT_FRONTEND_PATTERN
-
-        # Check if post_query has input placeholders (frontend pattern: ${input.accessor})
-        has_placeholders = bool(re.search(INPUT_FRONTEND_PATTERN, insight_query_info.post_query))
-
-        if has_placeholders:
-            try:
-                # Validate query with all input combinations
-                validate_insight_with_inputs(
-                    insight=insight,
-                    query=insight_query_info.post_query,
-                    dag=dag,
-                    output_dir=run_output_dir,
-                    dialect="duckdb",  # Dynamic post_query always runs in DuckDB WASM
-                )
-            except Exception as e:
-                raise ValueError(
-                    f"Input validation failed for insight '{insight.name}': {str(e)}"
-                ) from e
+    start_time = time()
+    insight_query_info = None
 
     try:
-        start_time = time()
+        model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
+        source = get_source_for_model(model, dag, run_output_dir)
+
+        insight_query_info = insight.get_query_info(dag, run_output_dir)
+
+        # Validate post_query with inputs if it has placeholders (Phase 3: SQLGlot validation)
+        if insight_query_info.post_query:
+            import re
+            from visivo.query.input_validator import validate_insight_with_inputs
+            from visivo.query.patterns import INPUT_FRONTEND_PATTERN
+
+            # Check if post_query has input placeholders (frontend pattern: ${input.accessor})
+            has_placeholders = bool(
+                re.search(INPUT_FRONTEND_PATTERN, insight_query_info.post_query)
+            )
+
+            if has_placeholders:
+                try:
+                    # Validate query with all input combinations
+                    validate_insight_with_inputs(
+                        insight=insight,
+                        query=insight_query_info.post_query,
+                        dag=dag,
+                        output_dir=run_output_dir,
+                        dialect="duckdb",  # Dynamic post_query always runs in DuckDB WASM
+                    )
+                except Exception as e:
+                    raise ValueError(
+                        f"Input validation failed for insight '{insight.name}': {str(e)}"
+                    ) from e
 
         files_directory = f"{run_output_dir}/files"
         insights_directory = f"{run_output_dir}/insights"

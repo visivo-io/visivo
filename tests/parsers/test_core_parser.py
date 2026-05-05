@@ -33,18 +33,6 @@ def test_Core_Parser_with_one_of_each_project():
     assert project.charts[0].name == "chart"
 
 
-def test_Core_Parser_with_env_var(monkeypatch):
-    monkeypatch.setenv("NAME", "test_name")
-
-    tmp = temp_yml_file(
-        {"name": '{{ env_var("NAME") }}'},
-        name=PROJECT_FILE_NAME,
-    )
-    core_parser = CoreParser(project_file=tmp, files=[tmp])
-    project = core_parser.parse()
-    assert project.name == "test_name"
-
-
 def test_Core_Parser_combines_different_files():
     project_file = temp_yml_file(
         {

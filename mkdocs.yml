@@ -83,6 +83,7 @@ nav:
       - Linting: topics/linting.md
       - Including: topics/including.md
       - Sources: topics/sources.md
+      - Environment Variables: topics/environment-variables.md
       - Deployment: topics/deployments.md
       - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md
@@ -284,11 +285,6 @@ nav:
               - FormatCells:
                   - reference/configuration/Table/FormatCells/index.md
       - Functions:
-          - On Compile:
-              - reference/functions/jinja/index.md
-              - reference/functions/jinja/macros.md
-              - reference/functions/jinja/loops.md
-              - reference/functions/jinja/variables.md
           - Run Time:
               - reference/functions/runtime_functions/index.md
   - Background:

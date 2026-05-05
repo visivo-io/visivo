@@ -9,7 +9,6 @@ import sys
 from visivo.logger.logger import Logger
 from visivo.models.base.named_model import alpha_hash
 from visivo.models.base.query_string import QueryString
-from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 import importlib.resources as resources
 
@@ -184,7 +183,7 @@ def load_yaml_file(file):
     with open(file, "r") as stream:
         template_string = stream.read()
         try:
-            loaded = yaml.safe_load(render_yaml(template_string))
+            loaded = yaml.safe_load(template_string)
             set_location_recursive_items(loaded, str(file))
             return loaded
         except yaml.YAMLError as exc:

@@ -18,9 +18,21 @@ clean-targets:
 
 models:
   visivo_qa:
-    example:
-      +materialized: view
-      schema: example
     salesmart:
       +materialized: table
-      schema: salesmart
+      # No +schema override — models land in the profile's `main` schema so
+      # they're visible to Visivo's source introspection (which is scoped to
+      # the configured db_schema). See test-projects/dbt/profiles.yml.
+
+seeds:
+  visivo_qa:
+    crm:
+      # Seeds land in `main` (default) so the dbt model's `source('crm',
+      # 'closed_deals')` reference resolves to dbt.main.closed_deals — which
+      # matches sources.yml.
+      closed_deals:
+        +column_types:
+          created_at: timestamp
+          product: varchar
+          sales_rep: varchar
+          amount: double

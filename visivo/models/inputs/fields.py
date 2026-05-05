@@ -5,7 +5,6 @@ from pydantic import Field
 from visivo.models.inputs.types.single_select import SingleSelectInput
 from visivo.models.inputs.types.multi_select import MultiSelectInput
 
-
 InputField = Annotated[
     Union[SingleSelectInput, MultiSelectInput],
     Field(discriminator="type"),

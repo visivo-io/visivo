@@ -19,7 +19,3 @@ By default any file with the format `*.visivo.yml` will be linted.  If you have 
 },
 ```
 
-## Gotchas
-
-If you are using `env_var` substitution, surrounding the value with `"` will make the linter happy. For example: `password: "{% raw %}{{ env_var('SECRET_PASSWORD') }}{% endraw %}"`
-

@@ -13,7 +13,7 @@ class SlackDestination(Destination):
     alerts:
       - name: slack-destination #any name you choose
         type: slack
-        webhook_url: {% raw %}{{ env_var("SLACK_WEBHOOK")}}{% endraw %}
+        webhook_url: ${env.SLACK_WEBHOOK}
     ```
     """
 

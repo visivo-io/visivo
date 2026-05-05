@@ -27,8 +27,7 @@ class TestSourceSchemaIntegration:
         conn = duckdb.connect(db_path)
 
         # Create a variety of tables with different data types
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
@@ -38,11 +37,9 @@ class TestSourceSchemaIntegration:
                 is_active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
+        """)
 
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE products (
                 product_id BIGINT PRIMARY KEY,
                 product_name TEXT NOT NULL,
@@ -50,11 +47,9 @@ class TestSourceSchemaIntegration:
                 category VARCHAR(50),
                 tags TEXT[]
             )
-        """
-        )
+        """)
 
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE orders (
                 order_id UUID PRIMARY KEY,
                 user_id INTEGER,
@@ -62,25 +57,20 @@ class TestSourceSchemaIntegration:
                 order_date DATE,
                 status VARCHAR(20) DEFAULT 'pending'
             )
-        """
-        )
+        """)
 
         # Insert some test data
-        conn.execute(
-            """
+        conn.execute("""
             INSERT INTO users (id, name, email, age, balance, is_active) VALUES
             (1, 'John Doe', 'john@example.com', 30, 1500.50, true),
             (2, 'Jane Smith', 'jane@example.com', 25, 2300.75, false)
-        """
-        )
+        """)
 
-        conn.execute(
-            """
+        conn.execute("""
             INSERT INTO products (product_id, product_name, price, category, tags) VALUES
             (101, 'Laptop', 999.99, 'Electronics', ['computer', 'portable']),
             (102, 'Mouse', 29.99, 'Electronics', ['accessory', 'input'])
-        """
-        )
+        """)
 
         conn.close()
 
@@ -90,8 +80,7 @@ class TestSourceSchemaIntegration:
         cursor = conn.cursor()
 
         # Create tables with various SQLite data types
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE customers (
                 customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 first_name TEXT NOT NULL,
@@ -104,11 +93,9 @@ class TestSourceSchemaIntegration:
                 registration_date DATE,
                 last_login DATETIME
             )
-        """
-        )
+        """)
 
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE inventory (
                 item_id INTEGER PRIMARY KEY,
                 item_name TEXT NOT NULL,
@@ -118,11 +105,9 @@ class TestSourceSchemaIntegration:
                 description TEXT,
                 is_available BOOLEAN DEFAULT 1
             )
-        """
-        )
+        """)
 
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE transactions (
                 transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_id INTEGER,
@@ -131,25 +116,20 @@ class TestSourceSchemaIntegration:
                 transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
             )
-        """
-        )
+        """)
 
         # Insert test data
-        cursor.execute(
-            """
+        cursor.execute("""
             INSERT INTO customers (first_name, last_name, email, phone, credit_score, account_balance, is_premium, registration_date) VALUES
             ('Alice', 'Johnson', 'alice@test.com', '555-1234', 750, 1200.50, 1, '2023-01-15'),
             ('Bob', 'Wilson', 'bob@test.com', '555-5678', 680, 850.25, 0, '2023-02-20')
-        """
-        )
+        """)
 
-        cursor.execute(
-            """
+        cursor.execute("""
             INSERT INTO inventory (item_id, item_name, quantity, unit_price, weight, description, is_available) VALUES
             (1, 'Widget A', 100, 19.99, 2.5, 'Standard widget', 1),
             (2, 'Widget B', 50, 35.50, 4.2, 'Premium widget', 1)
-        """
-        )
+        """)
 
         conn.commit()
         conn.close()
@@ -472,8 +452,7 @@ class TestSourceSchemaIntegration:
         try:
             # Create database with various data types
             conn = duckdb.connect(db_path)
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE data_types_test (
                     int_col INTEGER,
                     bigint_col BIGINT,
@@ -486,8 +465,7 @@ class TestSourceSchemaIntegration:
                     timestamp_col TIMESTAMP,
                     uuid_col UUID
                 )
-            """
-            )
+            """)
             conn.close()
 
             # Create DuckDB source and get schema

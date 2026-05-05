@@ -40,12 +40,11 @@ sources:
     database: app_db
     type: postgresql
     port: 5432
-    host: {% raw %} "{{ env_var('APP_HOST') }}" {% endraw %}
-    username: {% raw %} "{{ env_var('APP_DATABASE_USERNAME') }}" {% endraw %}
-    password: {% raw %} "{{ env_var('APP_DATABASE_USERNAME') }}" {% endraw %}
+    host: ${env.APP_HOST}
+    username: ${env.APP_DATABASE_USERNAME}
+    password: ${env.APP_DATABASE_PASSWORD}
 ```
 
-This structure then allows you to set your username, password, and host differently in each environment to connect with the right app_db. 
+This structure then allows you to set your username, password, and host differently in each environment to connect with the right app_db.
 
-!!! tip 
-    You can use the [`env_var` function](/../reference/functions/jinja/macros/#environment-variables-env_var) to store any secrets or things that you would want to change dynamically in different environments. 
+See [Environment Variables](environment-variables.md) for the full reference on the `${env.VAR_NAME}` syntax, where it works, and how Visivo loads `.env` files.

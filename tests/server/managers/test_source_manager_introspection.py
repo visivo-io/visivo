@@ -24,28 +24,20 @@ class TestSourceManagerIntrospection:
 
             with engine.connect() as conn:
                 # Create actual test tables
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE TABLE users (
                         id INTEGER PRIMARY KEY,
                         name TEXT NOT NULL,
                         email TEXT
                     )
-                """
-                    )
-                )
-                conn.execute(
-                    text(
-                        """
+                """))
+                conn.execute(text("""
                     CREATE TABLE orders (
                         id INTEGER PRIMARY KEY,
                         user_id INTEGER,
                         total REAL
                     )
-                """
-                    )
-                )
+                """))
                 conn.execute(
                     text("INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com')")
                 )
