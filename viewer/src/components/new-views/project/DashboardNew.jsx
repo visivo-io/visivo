@@ -574,7 +574,15 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     <div
       ref={observe}
       data-testid={`dashboard_${dashboardName}`}
-      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
+      // overflow-x-clip (NOT overflow-x-hidden) keeps horizontal-overflow
+      // protection without forcing the browser to set overflow-y to auto.
+      // With overflow-x-hidden, the browser silently switches overflow-y from
+      // visible to auto, creating an inner scroll area on the dashboard div
+      // that traps the bottom of tall dashboards (last rows clipped at the
+      // wrapper's measured height, e.g. Section 4 of nested-layouts-dashboard
+      // ending 88px below the wrapper's auto-sized scroll bottom).
+      // overflow-x-clip is Tailwind v4+ and clips without changing Y.
+      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-4"
     >
       {dashboard.rows.map(renderRow)}
     </div>
