@@ -38,10 +38,10 @@ dashboards:
                   - chart: ${ref(indicator_chart)}
               - height: small
                 items:
-                  - chart: ${ref(toggle-mode-chart)}
+                  - chart: ${ref(composite-metric-chart)}
               - height: small
                 items:
-                  - chart: ${ref(range-slider-chart)}
+                  - chart: ${ref(toggle-mode-chart)}
 
       # Section 2: 2x2 KPI cluster + sidebar chart on the right
       - height: compact
@@ -49,6 +49,10 @@ dashboards:
           - markdown:
               content: "## Section 2 — 2x2 Cluster + Sidebar Chart"
 
+      # Note on chart selection: at width=1 (≈462px / 4 cells = ~115px each),
+      # full-fat scatter/line charts can't fit their title + axes. We use
+      # indicator_chart in all four KPI cells because it's a single-number
+      # display with no axes — readable at narrow widths.
       - height: medium
         items:
           - width: 1
@@ -58,13 +62,13 @@ dashboards:
                   - width: 1
                     chart: ${ref(indicator_chart)}
                   - width: 1
-                    chart: ${ref(toggle-mode-chart)}
+                    chart: ${ref(indicator_chart)}
               - height: small
                 items:
                   - width: 1
-                    chart: ${ref(range-slider-chart)}
+                    chart: ${ref(indicator_chart)}
                   - width: 1
-                    chart: ${ref(autocomplete-date-chart)}
+                    chart: ${ref(indicator_chart)}
           - width: 2
             chart: ${ref(simple-scatter-chart)}
 
@@ -112,7 +116,7 @@ dashboards:
                     rows:
                       - height: small
                         items:
-                          - chart: ${ref(slider-day-chart)}
+                          - chart: ${ref(simple-scatter-chart)}
               - height: medium
                 items:
-                  - chart: ${ref(week-selector-chart)}
+                  - chart: ${ref(composite-metric-chart)}

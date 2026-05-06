@@ -18,7 +18,11 @@
 
 import { test, expect } from '@playwright/test';
 
-const DASHBOARD_PATH = '/project/nested-layouts-dashboard';
+// Hit /project-new/ — the store-based renderer (DashboardNew.jsx) where the
+// recursive Item.rows handling lives. The legacy /project/ route uses
+// project_json + the older Dashboard.jsx renderer that doesn't know about
+// item.rows and would render the fixture as if those items were leaves.
+const DASHBOARD_PATH = '/project-new/nested-layouts-dashboard';
 
 test.describe('Nested Layouts', () => {
   test('Step 1: Dashboard route loads without runtime errors', async ({ page }) => {
@@ -57,12 +61,16 @@ test.describe('Nested Layouts', () => {
     await page.goto(DASHBOARD_PATH);
     await page.waitForLoadState('networkidle');
 
-    // The four `## Section N — ...` markdown headers exist as h2 elements.
-    const headers = page.locator('h2');
-    await expect(headers.nth(0)).toContainText('Section 1');
-    await expect(headers.nth(1)).toContainText('Section 2');
-    await expect(headers.nth(2)).toContainText('Section 3');
-    await expect(headers.nth(3)).toContainText('Section 4');
+    // Match h2 elements whose text starts with "Section " — input widget
+    // labels also render as h2 inside Section 3 ("Split Threshold (Dropdown)"
+    // etc.), so we filter to just the section headers and assert the four
+    // are present in document order.
+    const sectionHeaders = page.locator('h2', { hasText: /^Section [1-4]/ });
+    await expect(sectionHeaders).toHaveCount(4);
+    await expect(sectionHeaders.nth(0)).toContainText('Section 1');
+    await expect(sectionHeaders.nth(1)).toContainText('Section 2');
+    await expect(sectionHeaders.nth(2)).toContainText('Section 3');
+    await expect(sectionHeaders.nth(3)).toContainText('Section 4');
   });
 
   test('Step 3: Row-container items render the dashboard-nested-rows wrapper', async ({ page }) => {
@@ -127,22 +135,94 @@ test.describe('Nested Layouts', () => {
     await page.goto(DASHBOARD_PATH);
     await page.waitForLoadState('networkidle');
 
-    // Section 3 has three input widgets (split_threshold dropdown, sort_direction
-    // tabs, show_markers toggle) stacked in a column container. Their wrapper
-    // elements should be visible somewhere on the page.
-    // Inputs render as Flowbite Select / Tabs / Toggle components.
-    // We assert at least one input control surface (form/select/role=tablist/
-    // checkbox) is present; the framework controls vary by display type.
-    const interactiveCount = await page
-      .locator('select, [role="tablist"], [role="checkbox"], [role="radiogroup"], button[role="tab"]')
-      .count();
-    expect(interactiveCount).toBeGreaterThan(0);
+    // Section 3 has three input widgets stacked in the left column of a sidebar
+    // layout: split_threshold (dropdown), sort_direction (tabs), show_markers
+    // (toggle). Match by their h2 label text — that's what every Input widget
+    // renders regardless of its display type. All three should be present.
+    await expect(page.locator('h2', { hasText: /Split Threshold/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2', { hasText: /Sort Direction/ })).toBeVisible();
+    await expect(page.locator('h2', { hasText: /Show Markers/ })).toBeVisible();
   });
 
-  test('Step 8: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
+  test('Step 8: No grid track collapse (no chart slot starves to <50px)', async ({ page }) => {
+    // Regression test for the original Item.rows bug: when a row mixed a leaf
+    // chart with a row-container item, the leaf chart's grid track collapsed
+    // to ~11px because the container's plotly children pushed their track to
+    // 1410px. The fix added min-width: 0 to grid items + threaded slot pixel
+    // widths through the renderer. This test asserts no top-level row item
+    // ends up unreasonably narrow given its declared `width` share.
     await page.goto(DASHBOARD_PATH);
     await page.waitForLoadState('networkidle');
-    // Plotly charts can take a beat to settle.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(1000);
+
+    const widths = await page.evaluate(() => {
+      const dashboard = document.querySelector('[data-testid="dashboard_nested-layouts-dashboard"]');
+      const rows = dashboard.querySelectorAll(':scope > .dashboard-row');
+      return Array.from(rows).map((row, idx) => {
+        const items = row.querySelectorAll(':scope > div');
+        return {
+          rowIdx: idx,
+          rowWidth: row.getBoundingClientRect().width,
+          itemWidths: Array.from(items).map(it => Math.round(it.getBoundingClientRect().width)),
+        };
+      });
+    });
+
+    // Every item that's actually rendered (rows with multiple items) should
+    // be at least 100px wide — anything below that is a track-collapse bug.
+    for (const r of widths) {
+      if (r.itemWidths.length < 2) continue; // single-item rows can be any width
+      for (const w of r.itemWidths) {
+        expect(w, `row ${r.rowIdx} has an item collapsed to ${w}px (full row ${r.rowWidth})`).toBeGreaterThanOrEqual(100);
+      }
+    }
+  });
+
+  test('Step 9: Mixed leaf+container row distributes pixel width by `width` shares', async ({ page }) => {
+    // Section 1's row 1 has [width=2 leaf, width=1 container]. After the
+    // grid+slot fix, the leaf should get ~2/3 of the row pixels and the
+    // container ~1/3. Allow ±10% tolerance for grid gaps and rounding.
+    await page.goto(DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(1000);
+
+    const widths = await page.evaluate(() => {
+      const dashboard = document.querySelector('[data-testid="dashboard_nested-layouts-dashboard"]');
+      const rows = dashboard.querySelectorAll(':scope > .dashboard-row');
+      // Row 1 (index 1) is Section 1's leaf+container row. Skip the markdown header at index 0.
+      const target = rows[1];
+      const items = target.querySelectorAll(':scope > div');
+      return {
+        row: target.getBoundingClientRect().width,
+        items: Array.from(items).map(it => it.getBoundingClientRect().width),
+      };
+    });
+
+    expect(widths.items.length).toBe(2);
+    const ratio = widths.items[0] / widths.items[1];
+    // Expected ratio is 2:1; tolerate 1.5–2.5 to account for grid gaps.
+    expect(ratio, `leaf vs container width ratio expected ≈ 2.0, got ${ratio.toFixed(2)}`).toBeGreaterThan(1.5);
+    expect(ratio).toBeLessThan(2.5);
+  });
+
+  test('Step 10: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
+    await page.goto(DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    // Scroll each row into view to trigger the IntersectionObserver-based
+    // lazy-load (charts below the initial fold show "Loading..." until their
+    // row scrolls in). Without this, the snapshot would have spinners.
+    await page.evaluate(async () => {
+      const rows = [...document.querySelectorAll('.dashboard-row')];
+      for (const row of rows) {
+        row.scrollIntoView({ behavior: 'instant', block: 'center' });
+        await new Promise(r => setTimeout(r, 300));
+      }
+      window.scrollTo(0, 0);
+    });
     await page.waitForTimeout(2000);
 
     await page.screenshot({
