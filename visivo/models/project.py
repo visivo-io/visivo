@@ -264,6 +264,40 @@ class Project(NamedModel, ParentModel):
         return validator.validate(self)
 
     @model_validator(mode="before")
+    def coerce_null_list_fields(cls, values):
+        """Coerce null/None values for list fields to empty lists.
+
+        This lets users write a YAML where a list-typed key has only comments
+        beneath it (which YAML parses as None) without tripping Pydantic's
+        list validation. Used by the scaffold produced by `visivo init`.
+        """
+        if not isinstance(values, dict):
+            return values
+        list_field_names = [
+            "includes",
+            "destinations",
+            "alerts",
+            "sources",
+            "targets",
+            "models",
+            "traces",
+            "insights",
+            "markdowns",
+            "tables",
+            "charts",
+            "selectors",
+            "inputs",
+            "dashboards",
+            "metrics",
+            "relations",
+            "dimensions",
+        ]
+        for name in list_field_names:
+            if name in values and values[name] is None:
+                values[name] = []
+        return values
+
+    @model_validator(mode="before")
     def set_path_on_named_models(cls, values):
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
