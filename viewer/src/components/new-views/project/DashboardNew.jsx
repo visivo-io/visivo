@@ -508,7 +508,15 @@ const DashboardNew = ({ projectId, dashboardName }) => {
         data-row-index={rowIndex}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
-          margin: '0.5rem',
+          // Use vertical-only margin so the row stays inside its parent's
+          // horizontal padding. The previous `margin: 0.5rem` (all four sides)
+          // combined with `width: 100%` pushed the row 8px past the wrapper's
+          // right padding edge, producing asymmetric left/right gaps
+          // (~24px left vs ~8px right). Keeping vertical spacing between rows
+          // and letting the wrapper's `px-6` handle horizontal padding gives
+          // a symmetric ~24px on both sides.
+          marginTop: '0.5rem',
+          marginBottom: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
@@ -582,7 +590,12 @@ const DashboardNew = ({ projectId, dashboardName }) => {
       // wrapper's measured height, e.g. Section 4 of nested-layouts-dashboard
       // ending 88px below the wrapper's auto-sized scroll bottom).
       // overflow-x-clip is Tailwind v4+ and clips without changing Y.
-      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-4"
+      //
+      // px-6: symmetric 24px horizontal padding on every dashboard.
+      // pb-8:  32px bottom padding so the last row isn't flush against the
+      //        page edge (longstanding pet peeve). Top padding is handled by
+      //        the parent route's pt-12.
+      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-6 pb-8"
     >
       {dashboard.rows.map(renderRow)}
     </div>

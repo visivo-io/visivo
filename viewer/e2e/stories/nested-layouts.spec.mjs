@@ -246,7 +246,45 @@ test.describe('Nested Layouts', () => {
     expect(probe.docScrollHeight).toBeGreaterThanOrEqual(probe.lastRowAbsBottom - 20);
   });
 
-  test('Step 11: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
+  test('Step 11: Dashboard wrapper has symmetric horizontal padding + bottom padding', async ({ page }) => {
+    // Pet-peeve regression: previously the row had `margin: 0.5rem` (all 4
+    // sides) combined with `width: 100%`, which pushed the row 8px past the
+    // wrapper's right padding edge. Result: ~24px gap on the left, ~8px on
+    // the right. There was also no bottom padding — last row flush with
+    // the page edge.
+    //
+    // Fix: row uses vertical-only margin; wrapper uses px-6 + pb-8.
+    // Assert the rendered gaps are symmetric (within 2px) and bottom padding
+    // exists (>= 16px from last row to document end).
+    await page.goto(DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(1000);
+
+    const probe = await page.evaluate(() => {
+      const dashboard = document.querySelector('[data-testid="dashboard_nested-layouts-dashboard"]');
+      const firstRow = dashboard.querySelector(':scope > .dashboard-row');
+      const rows = dashboard.querySelectorAll(':scope > .dashboard-row');
+      const lastRow = rows[rows.length - 1];
+      const firstRect = firstRow.getBoundingClientRect();
+      const lastRect = lastRow.getBoundingClientRect();
+      return {
+        leftGap: firstRect.left,
+        rightGap: window.innerWidth - firstRect.right,
+        bottomGap: document.documentElement.scrollHeight - (lastRect.bottom + window.scrollY),
+      };
+    });
+
+    // Horizontal symmetry: ±2px tolerance for sub-pixel rounding.
+    expect(Math.abs(probe.leftGap - probe.rightGap)).toBeLessThanOrEqual(2);
+    // Both should have visible padding (>= 16px = pb-4 / px-4 minimum).
+    expect(probe.leftGap).toBeGreaterThanOrEqual(16);
+    expect(probe.rightGap).toBeGreaterThanOrEqual(16);
+    // Bottom padding: at least 16px between the last row and the document end.
+    expect(probe.bottomGap).toBeGreaterThanOrEqual(16);
+  });
+
+  test('Step 12: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
     await page.goto(DASHBOARD_PATH);
     await page.waitForLoadState('networkidle');
     await page.setViewportSize({ width: 1440, height: 900 });
