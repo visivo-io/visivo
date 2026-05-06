@@ -10,7 +10,6 @@ from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_fro
 from visivo.models.props.types import PropType
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
-
 #: Field names that the parser may attach to props during YAML loading
 #: but that are not valid Plotly trace properties. Strip them out of the
 #: dumped dict before running jsonschema validation, otherwise the
