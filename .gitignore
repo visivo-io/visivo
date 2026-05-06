@@ -22,6 +22,7 @@ test-results/
 
 .sandbox/
 .sandbox-publish/
+.sandbox-save-flow/
 viewer/e2e/screenshots/
 viewer/test-results/
 

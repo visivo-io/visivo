@@ -22,6 +22,7 @@ import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerNewSlice from './explorerNewStore';
 import createModelJobsSlice from './modelJobsStore';
+import createNotificationSlice from './notificationStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -48,6 +49,7 @@ const useStore = create(
     ...createLocalMergeModelSlice(...a),
     ...createExplorerNewSlice(...a),
     ...createModelJobsSlice(...a),
+    ...createNotificationSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: state => ({ scrollPositions: state.scrollPositions }),

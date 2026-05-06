@@ -12,6 +12,27 @@ export const fetchProject = async (projectId = null) => {
   }
 };
 
+/**
+ * Fetch the effective draft-mode flag for the current project.
+ *
+ * Returns a boolean. Falls back to `true` (the historical behavior of
+ * staging changes) when the endpoint is unavailable (e.g. dist mode) or
+ * the request fails — the existing draft -> publish flow remains the
+ * safe default for any environment that can't tell us otherwise.
+ */
+export const fetchDraftMode = async () => {
+  try {
+    const url = getUrl('projectDraftMode');
+    if (!url) return true;
+    const response = await fetch(url);
+    if (response.status !== 200) return true;
+    const data = await response.json();
+    return data?.enabled !== false;
+  } catch (err) {
+    return true;
+  }
+};
+
 // ========== New projects CRUD endpoints ==========
 
 /**
