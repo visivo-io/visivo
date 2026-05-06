@@ -228,4 +228,232 @@ describe('DashboardNew', () => {
     expect(fetchMarkdowns).toHaveBeenCalled();
     expect(fetchInputs).toHaveBeenCalled();
   });
+
+  // ---------- VIS-748: nested item.rows rendering ----------
+
+  describe('nested item.rows', () => {
+    const makeChart = name => ({ name, config: { name, insights: [] } });
+
+    const renderWithDashboard = dashboard => {
+      useStore.mockImplementation((selector) => {
+        const charts = {
+          'big-chart': makeChart('big-chart'),
+          'small-a': makeChart('small-a'),
+          'small-b': makeChart('small-b'),
+          'small-c': makeChart('small-c'),
+          'deep-chart': makeChart('deep-chart'),
+        };
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+        </BrowserRouter>
+      );
+    };
+
+    it('renders all leaf charts when an Item has nested rows alongside leaf siblings', () => {
+      const dashboard = {
+        name: 'nested-test',
+        rows: [
+          {
+            height: 'large',
+            items: [
+              { width: 2, chart: 'big-chart' },
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'small', items: [{ chart: 'small-b' }] },
+                  { height: 'small', items: [{ chart: 'small-c' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      // Leaf sibling and all three nested charts should render.
+      const charts = screen.getAllByTestId('chart');
+      const renderedNames = charts.map(c => c.textContent).sort();
+      expect(renderedNames).toEqual(['big-chart', 'small-a', 'small-b', 'small-c']);
+    });
+
+    it('renders a row-container item with the dashboard-nested-rows wrapper', () => {
+      const dashboard = {
+        name: 'wrapper-test',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'small', items: [{ chart: 'small-b' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      expect(screen.getByTestId('dashboard-nested-rows')).toBeInTheDocument();
+      // Two sub-rows inside this wrapper.
+      const subRows = screen.getAllByTestId('dashboard-nested-subrow');
+      expect(subRows).toHaveLength(2);
+    });
+
+    it('assigns equal flex weights to two equal-height sub-rows', () => {
+      const dashboard = {
+        name: 'equal-weights',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'small', items: [{ chart: 'small-b' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      const subRows = screen.getAllByTestId('dashboard-nested-subrow');
+      expect(subRows).toHaveLength(2);
+      // Both should have the same flex value (weight 2 = 'small'), e.g. "2 1 0".
+      const flex0 = subRows[0].style.flex;
+      const flex1 = subRows[1].style.flex;
+      expect(flex0).toBeTruthy();
+      expect(flex1).toBe(flex0);
+    });
+
+    it('assigns proportional flex weights for [small, large] sub-rows', () => {
+      const dashboard = {
+        name: 'uneven-weights',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'large', items: [{ chart: 'small-b' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      const subRows = screen.getAllByTestId('dashboard-nested-subrow');
+      expect(subRows).toHaveLength(2);
+      // small=2 weight, large=4 weight per heightToWeight in DashboardNew.jsx.
+      // Flex format: "<grow> 1 0".
+      const grow0 = parseFloat(subRows[0].style.flex.split(' ')[0]);
+      const grow1 = parseFloat(subRows[1].style.flex.split(' ')[0]);
+      // small / large ratio = 2/4 = 0.5
+      expect(grow1 / grow0).toBeCloseTo(2, 5);
+    });
+
+    it('handles two-level deep nesting (rows-in-item-in-rows-in-item)', () => {
+      const dashboard = {
+        name: 'deep-nest',
+        rows: [
+          {
+            height: 'large',
+            items: [
+              {
+                width: 1,
+                rows: [
+                  {
+                    height: 'medium',
+                    items: [
+                      {
+                        width: 1,
+                        rows: [
+                          { height: 'small', items: [{ chart: 'deep-chart' }] },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      const charts = screen.getAllByTestId('chart');
+      expect(charts.length).toBe(1);
+      expect(charts[0].textContent).toBe('deep-chart');
+    });
+
+    it('falls back to leaf rendering when item.rows is an empty list', () => {
+      const dashboard = {
+        name: 'empty-rows',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { chart: 'big-chart', rows: [] },
+            ],
+          },
+        ],
+      };
+      // Note: an Item with both `chart` and `rows: []` would normally fail the
+      // Pydantic validator (mutual exclusion). On the frontend, if the API
+      // returns this shape (e.g. legacy data), we fall back to the leaf path.
+      renderWithDashboard(dashboard);
+
+      const charts = screen.getAllByTestId('chart');
+      expect(charts.length).toBe(1);
+    });
+
+    it('does not break when getChartByName cannot resolve a nested chart', () => {
+      const dashboard = {
+        name: 'missing-chart',
+        rows: [
+          {
+            height: 'large',
+            items: [
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'unknown-chart' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      // The "Chart not found" placeholder should appear inside the nested slot.
+      expect(screen.getByText(/Chart not found/)).toBeInTheDocument();
+    });
+  });
 });
