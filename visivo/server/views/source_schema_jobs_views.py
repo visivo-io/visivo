@@ -116,7 +116,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error listing source schema jobs: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/source-schema-jobs/", methods=["POST"])
     def run_source_schema_job():
@@ -138,25 +138,25 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             Logger.instance().info(f"Request data parsed: {bool(data)}")
 
             if not data:
-                return jsonify({"message": "Request body is required"}), 400
+                return jsonify({"error": "Request body is required"}), 400
 
             if not data.get("run"):
-                return jsonify({"message": "run parameter must be true to execute"}), 400
+                return jsonify({"error": "run parameter must be true to execute"}), 400
 
             config = data.get("config")
             if config is None:
-                return jsonify({"message": "config field is required"}), 400
+                return jsonify({"error": "config field is required"}), 400
 
             source_name = config.get("source_name")
             if not source_name:
-                return jsonify({"message": "config.source_name is required"}), 400
+                return jsonify({"error": "config.source_name is required"}), 400
 
             Logger.instance().info(f"Processing schema generation for source: {source_name}")
 
             source = flask_app.project.find_source(source_name)
             if source is None:
                 return (
-                    jsonify({"message": f"Source '{source_name}' not found in project"}),
+                    jsonify({"error": f"Source '{source_name}' not found in project"}),
                     404,
                 )
 
@@ -189,7 +189,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error creating schema generation job: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/source-schema-jobs/<identifier>/", methods=["GET"])
     def get_source_schema_or_job_status(identifier):
@@ -213,7 +213,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
                 return _get_source_schema(identifier)
         except Exception as e:
             Logger.instance().error(f"Error in get_source_schema_or_job_status: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     def _get_job_status(job_id):
         """Get status of a schema generation job."""
@@ -223,7 +223,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
         if not run:
             Logger.instance().info(f"Schema generation job {job_id} not found")
-            return jsonify({"message": f"Job {job_id} not found"}), 404
+            return jsonify({"error": f"Job {job_id} not found"}), 404
 
         response = run.to_dict()
 
@@ -253,7 +253,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             return (
                 jsonify(
                     {
-                        "message": f"Schema not found for source '{source_name}'. "
+                        "error": f"Schema not found for source '{source_name}'. "
                         "Use POST /api/source-schema-jobs/ with config.source_name to generate."
                     }
                 ),
@@ -285,7 +285,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             if schema_data is None:
                 return (
-                    jsonify({"message": f"Schema not found for source '{source_name}'"}),
+                    jsonify({"error": f"Schema not found for source '{source_name}'"}),
                     404,
                 )
 
@@ -310,7 +310,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error listing tables for source {source_name}: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/source-schema-jobs/<source_name>/tables/<table_name>/columns/", methods=["GET"]
@@ -338,7 +338,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             if schema_data is None:
                 return (
-                    jsonify({"message": f"Schema not found for source '{source_name}'"}),
+                    jsonify({"error": f"Schema not found for source '{source_name}'"}),
                     404,
                 )
 
@@ -346,9 +346,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
 
             if table_name not in tables:
                 return (
-                    jsonify(
-                        {"message": f"Table '{table_name}' not found in source '{source_name}'"}
-                    ),
+                    jsonify({"error": f"Table '{table_name}' not found in source '{source_name}'"}),
                     404,
                 )
 
@@ -375,4 +373,4 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             Logger.instance().error(
                 f"Error listing columns for {source_name}.{table_name}: {str(e)}"
             )
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500

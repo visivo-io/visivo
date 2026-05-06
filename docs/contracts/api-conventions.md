@@ -175,6 +175,15 @@ migrate to the envelope at that point.
 - Serves the viewer SPA HTML/assets. Not an API route. Trailing slash
   rule does not apply.
 
+### `/api/models/<model_name>/data/`
+
+- Returns `200 + {"available": false}` on missing parquet rather than
+  `404`. This is intentional: the endpoint is a "probe + fetch" — the
+  frontend (`viewer/src/api/modelData.js`) reads the boolean to decide
+  whether to render a "no data yet" state. Migrating to 404 would force
+  the frontend to treat a normal "no data" state as an error in network
+  panels and observability tooling. Keep as 200+payload.
+
 ## Phase 0 Fix List
 
 The following changes are required to bring visivo's existing views into
@@ -196,8 +205,13 @@ correctly-written client.
 
 ### 2. Fix `200+empty` returns on missing resources
 
-- `visivo/server/views/model_data_views.py:9` — when the parquet file doesn't exist, currently returns `200 + {"available": false}`. Change to `404 + {"error": "Model data for '<model_name>' not found"}`.
-- Audit `file_views.py` similarly — confirm 404 on missing file (the audit suggests it already does for `<run_id>` variant; verify the bare-hash variant too).
+- `file_views.py` — confirm 404 on missing file (the audit suggests it
+  already does for `<run_id>` variant; verify the bare-hash variant too).
+  *(Verified — `file_views.py:7-19` already returns 404 on missing.
+  The bare-hash variant at `:24` delegates to the `<run_id>` variant, so
+  same behavior.)*
+- `model_data_views.py:9` — left as 200+payload (sanctioned exception;
+  see Sanctioned Exceptions section above).
 
 ### 3. Fix missing trailing slashes
 

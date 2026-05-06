@@ -329,7 +329,7 @@ def test_serve_insight_data_by_name_not_found(client):
     """Test serve insight data by name not found"""
     resp = client.get("/api/insight-jobs/?insight_names=unknown&run_id=main")
     assert resp.status_code == 404
-    assert "No insight files found" in resp.get_json()["message"]
+    assert "No insight files found" in resp.get_json()["error"]
 
 
 def test_serve_insight_data_by_name_default_run_id(client, output_dir):

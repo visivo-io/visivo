@@ -42,7 +42,7 @@ def register_project_views(app, flask_app, output_dir):
     def write_changes():
         data = request.get_json()
         if not data:
-            return jsonify({"message": "No data provided"}), 400
+            return jsonify({"error": "No data provided"}), 400
 
         try:
             project_writer = ProjectWriter(data)
@@ -51,7 +51,7 @@ def register_project_views(app, flask_app, output_dir):
             return jsonify({"message": "Changes written successfully"}), 200
         except Exception as e:
             Logger.instance().error(f"Error writing changes: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/project/load_example/", methods=["POST"])
     def load_example_project():
@@ -64,7 +64,7 @@ def register_project_views(app, flask_app, output_dir):
         project_dir = data.get("project_dir", ".")
 
         if not project_name:
-            return jsonify({"message": "Project name is required"}), 400
+            return jsonify({"error": "Project name is required"}), 400
 
         # Pause the file watcher during cloning
         if flask_app.hot_reload_server:
@@ -91,7 +91,7 @@ def register_project_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error loading example project: {str(e)}")
-            return jsonify({"message": f"Failed to load example project: {str(e)}"}), 500
+            return jsonify({"error": f"Failed to load example project: {str(e)}"}), 500
         finally:
             if flask_app.hot_reload_server:
                 Logger.instance().debug("Resuming file watcher after example load")
@@ -108,7 +108,7 @@ def register_project_views(app, flask_app, output_dir):
         project_dir = data.get("project_dir", "").strip()
 
         if not project_name:
-            return jsonify({"message": "Project name is required"}), 400
+            return jsonify({"error": "Project name is required"}), 400
 
         project_path = (
             os.path.join(project_dir, "project.visivo.yml") if project_dir else "project.visivo.yml"
@@ -149,7 +149,7 @@ def register_project_views(app, flask_app, output_dir):
 
         source = create_source(**data.model_dump(exclude_none=True), **extra_params)
         if isinstance(source, str):
-            return jsonify({"message": source}), 400
+            return jsonify({"error": source}), 400
 
         json_dump = source.model_dump_json(exclude_none=True)
         return jsonify({"message": "Source created", "source": json.loads(json_dump)})
@@ -162,7 +162,7 @@ def register_project_views(app, flask_app, output_dir):
         project_dir = request.form.get("project_dir", "")
 
         if not file:
-            return jsonify({"message": "File is required"}), 400
+            return jsonify({"error": "File is required"}), 400
 
         file_path = os.path.join(project_dir, file.filename)
         file.save(file_path)
