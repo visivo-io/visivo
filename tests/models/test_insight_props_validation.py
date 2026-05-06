@@ -12,7 +12,6 @@ import pytest
 
 from visivo.models.props.insight_props import InsightProps
 
-
 # ---------------------------------------------------------------------------
 # B08 part 1: file_path / path don't leak into validation
 # ---------------------------------------------------------------------------
