@@ -228,13 +228,24 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     return 8; // xxlarge
   };
 
-  const getWidth = (items, item) => {
-    if (width < widthBreakpoint) {
-      return width;
+  // Compute the pixel width an item should use for chart/table sizing.
+  // `containerPixelWidth` is the pixel width of the row this item lives in —
+  // the dashboard's measured width at the top level, but the item's parent
+  // slot inside a nested row-container. Without this, nested charts size
+  // themselves to the dashboard width and overflow their slot, which then
+  // collapses sibling grid tracks (CSS grid resolves min-content overflow
+  // by stealing track width from siblings).
+  const getWidth = (items, item, containerPixelWidth) => {
+    const containerWidth =
+      typeof containerPixelWidth === 'number' && containerPixelWidth > 0
+        ? containerPixelWidth
+        : width;
+    if (containerWidth < widthBreakpoint) {
+      return containerWidth;
     }
-    const totalWidth = items.reduce((sum, i) => sum + (i.width || 1), 0);
+    const totalWidth = items.reduce((sum, i) => sum + (i.width || 1), 0) || 1;
     const itemWidth = item.width || 1;
-    return width * (itemWidth / totalWidth);
+    return containerWidth * (itemWidth / totalWidth);
   };
 
   // Item visibility logic (no selector support needed)
@@ -293,8 +304,13 @@ const DashboardNew = ({ projectId, dashboardName }) => {
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, keyPrefix = '') => {
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
+
+    // Pixel width this item slot was given by its parent row. Used for chart
+    // sizing on leaves AND threaded down into nested rows so nested charts
+    // size from the slot, not the dashboard.
+    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
 
     // Row-container item: render nested rows as a vertical flex stack with
     // weight-based heights (see Q9 — sub-row heights are relative weights inside
@@ -312,7 +328,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           key={key}
           className="dashboard-nested-rows flex flex-col w-full h-full"
           data-testid="dashboard-nested-rows"
-          style={{ gap: '0.5rem', minHeight: 0 }}
+          style={{ gap: '0.5rem', minWidth: 0, minHeight: 0 }}
         >
           {subRows.map((subRow, subIdx) => {
             const subHeightPx = parentPixelHeight * (heightToWeight(subRow.height) / totalWeight);
@@ -323,11 +339,12 @@ const DashboardNew = ({ projectId, dashboardName }) => {
                 data-testid="dashboard-nested-subrow"
                 style={{
                   flex: `${heightToWeight(subRow.height)} 1 0`,
+                  minWidth: 0,
                   minHeight: 0,
                   height: subHeightPx,
                 }}
               >
-                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, `${key}-sub-${subIdx}-`)}
+                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`)}
               </div>
             );
           })}
@@ -376,7 +393,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           chart={chart}
           projectId={projectId}
           height={effectiveSlotHeight - 8}
-          width={getWidth(items, item)}
+          width={effectiveSlotWidth}
           itemWidth={item.width}
           shouldLoad={shouldLoad}
         />
@@ -398,7 +415,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           table={table}
           projectId={projectId}
           itemWidth={item.width}
-          width={getWidth(items, item)}
+          width={effectiveSlotWidth}
           height={effectiveSlotHeight}
           shouldLoad={shouldLoad}
         />
@@ -431,7 +448,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
   // as a top-level row, but height is governed by the parent slot's flex
   // allocation rather than the row's pixel-mapped HeightEnum. Reuses renderItem
   // so leaf-vs-row-container handling is shared with the top level.
-  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, keyPrefix) => {
+  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
@@ -443,6 +460,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
           gap: '0.5rem',
+          minWidth: 0,
           minHeight: 0,
         }}
       >
@@ -453,6 +471,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
+              minWidth: 0,
               minHeight: 0,
             }}
           >
@@ -465,6 +484,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
                 shouldLoad,
                 visibleItems,
                 slotPixelHeight,
+                slotPixelWidth,
                 keyPrefix,
               )}
             </div>
@@ -493,6 +513,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
           gap: '0.7rem',
+          minWidth: 0,
           ...rowStyle,
         }}
       >
@@ -503,9 +524,17 @@ const DashboardNew = ({ projectId, dashboardName }) => {
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
+              // CRITICAL: grid items default to min-width: auto, which equals
+              // their content's intrinsic min-content width. If a child (e.g.
+              // a Plotly chart with a fixed pixel width) exceeds 1/N of the
+              // row, CSS grid will steal track width from siblings to fit.
+              // min-width: 0 lets grid distribute the row by `fr` units even
+              // when content overflows; the chart's pixel width is then
+              // constrained by `effectiveSlotWidth` inside renderItem.
+              minWidth: 0,
             }}
           >
-            <div className="flex items-center h-full w-full max-w-full">
+            <div className="flex items-center h-full w-full max-w-full" style={{ minWidth: 0 }}>
               {renderItem(
                 item,
                 row,
@@ -514,6 +543,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
                 shouldLoad,
                 visibleItems,
                 row.height !== 'compact' ? getHeight(row.height) : undefined,
+                width, // top-level container width = dashboard width
               )}
             </div>
           </div>
