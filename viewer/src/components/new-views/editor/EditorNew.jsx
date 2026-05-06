@@ -8,6 +8,9 @@ import ObjectList from '../common/ObjectList';
 import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { HiDatabase } from 'react-icons/hi';
+import EmptyStateCTA from '../../common/EmptyStateCTA';
+import { useSourceCreationModal } from '../../../stores/sourceModalStore';
 
 /**
  * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
@@ -19,6 +22,9 @@ const EditorNew = () => {
   const fetchSources = useStore(state => state.fetchSources);
   const sourcesLoading = useStore(state => state.sourcesLoading);
   const sourcesError = useStore(state => state.sourcesError);
+
+  // Source creation modal — invoked from empty state CTA
+  const { open: openSourceModal } = useSourceCreationModal();
 
   // Models
   const models = useStore(state => state.models);
@@ -809,8 +815,33 @@ const EditorNew = () => {
 
       {/* Main content area */}
       <div className="flex-1 bg-gray-50 relative">
-        {/* Empty state */}
-        {!isPanelOpen && (
+        {/* Empty state — actionable CTA when project is empty */}
+        {!isPanelOpen && hasNoObjects && !isLoading && (
+          <div className="flex h-full items-center justify-center">
+            <EmptyStateCTA
+              icon={<HiDatabase className="w-12 h-12" />}
+              title="Your project is empty"
+              body="Sources, models, insights, dashboards — they all live here."
+              primaryAction={{ label: 'Add Source', onClick: openSourceModal }}
+              secondaryAction={{
+                label: 'Show me the FAB',
+                onClick: () => {
+                  const fab = document.querySelector('[data-testid="editor-fab"]');
+                  if (fab) {
+                    fab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    fab.classList.add('ring-4', 'ring-primary-300', 'transition-all');
+                    setTimeout(() => {
+                      fab.classList.remove('ring-4', 'ring-primary-300', 'transition-all');
+                    }, 1500);
+                  }
+                },
+              }}
+            />
+          </div>
+        )}
+
+        {/* Empty state — project has objects but nothing is being edited */}
+        {!isPanelOpen && !hasNoObjects && (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <div className="flex gap-4 mb-4">
               {SourceIcon && (
@@ -866,7 +897,7 @@ const EditorNew = () => {
         )}
 
         {/* Create button (FAB) */}
-        <CreateButton onSelect={handleCreateSelect} />
+        <CreateButton onSelect={handleCreateSelect} testId="editor-fab" />
       </div>
 
       {/* Edit Panel (right side) - EditPanel now renders both the panel and preview drawer */}

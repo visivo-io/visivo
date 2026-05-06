@@ -239,7 +239,7 @@ describe('ExplorerLeftPanel', () => {
     expect(screen.getByText('No results for "zzzznonexistent"')).toBeInTheDocument();
   });
 
-  it('shows empty state message when no project objects defined', () => {
+  it('shows empty-state CTA when no project objects defined', () => {
     useStore.setState({
       models: [],
       metrics: [],
@@ -251,7 +251,8 @@ describe('ExplorerLeftPanel', () => {
 
     render(<ExplorerLeftPanel />);
 
-    expect(screen.getByText('No project objects defined')).toBeInTheDocument();
+    expect(screen.getByText('No data sources yet')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-primary')).toHaveTextContent('Add Source');
   });
 
   it('renders SourceBrowser', () => {

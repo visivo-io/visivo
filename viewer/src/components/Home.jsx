@@ -10,6 +10,7 @@ import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import PublishModal from './publish/PublishModal';
+import SourceCreationModalStub from './common/SourceCreationModalStub';
 import { useState, useEffect } from 'react';
 
 const Home = () => {
@@ -114,6 +115,7 @@ const Home = () => {
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <PublishModal />
+      <SourceCreationModalStub />
       <div className={'pt-12'}>
         {isProject && (
           <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">

@@ -126,7 +126,23 @@ describe('EditorNew', () => {
     });
   });
 
-  it('renders empty state when no sources or models exist', () => {
+  it('renders empty-state CTA when project has no objects', () => {
+    render(<EditorNew />);
+
+    expect(screen.getByText('Your project is empty')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state-primary')).toHaveTextContent('Add Source');
+    expect(screen.getByTestId('empty-state-secondary')).toHaveTextContent('Show me the FAB');
+  });
+
+  it('renders "Select an object to edit" when project has objects but nothing selected', () => {
+    useStore.mockImplementation(selector => {
+      const state = {
+        ...defaultStoreState,
+        sources: [{ name: 'src1', config: { type: 'postgresql' } }],
+      };
+      return typeof selector === 'function' ? selector(state) : state;
+    });
+
     render(<EditorNew />);
 
     expect(screen.getByText('Select an object to edit')).toBeInTheDocument();

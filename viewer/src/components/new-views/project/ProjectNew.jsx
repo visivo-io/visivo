@@ -4,9 +4,11 @@ import useStore from '../../../stores/store';
 import DashboardNew from './DashboardNew';
 import Loading from '../../common/Loading';
 import { Container } from '../../styled/Container';
-import { HiTemplate } from 'react-icons/hi';
+import { HiTemplate, HiDatabase } from 'react-icons/hi';
 import DashboardSection from '../../project/DashboardSection';
 import FilterBar from '../../project/FilterBar';
+import EmptyStateCTA from '../../common/EmptyStateCTA';
+import { useSourceCreationModal } from '../../../stores/sourceModalStore';
 
 /**
  * ProjectNew - Container component for the new project view
@@ -26,6 +28,9 @@ function ProjectNew() {
   const filteredDashboards = useStore(state => state.filteredDashboards);
   const dashboardsByLevel = useStore(state => state.dashboardsByLevel);
   const initializeDashboardView = useStore(state => state.initializeDashboardView);
+
+  // Source creation modal — invoked from empty state CTA
+  const { open: openSourceModal } = useSourceCreationModal();
 
   // Fetch dashboards on mount
   useEffect(() => {
@@ -77,7 +82,12 @@ function ProjectNew() {
   if (!dashboards || dashboards.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-gray-400">No dashboards found</div>
+        <EmptyStateCTA
+          icon={<HiDatabase className="w-12 h-12" />}
+          title="No dashboards yet"
+          body="Connect data and build your first dashboard."
+          primaryAction={{ label: 'Add Source', onClick: openSourceModal }}
+        />
       </div>
     );
   }

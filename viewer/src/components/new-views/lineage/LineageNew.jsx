@@ -23,6 +23,9 @@ import { Button } from '../../styled/Button';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
 import { formatRefExpression } from '../../../utils/refString';
+import { HiDatabase } from 'react-icons/hi';
+import EmptyStateCTA from '../../common/EmptyStateCTA';
+import { useSourceCreationModal } from '../../../stores/sourceModalStore';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
@@ -32,6 +35,9 @@ const LineageNew = () => {
   // Sources
   const fetchSources = useStore(state => state.fetchSources);
   const sourcesError = useStore(state => state.sourcesError);
+
+  // Source creation modal — invoked from empty state CTA
+  const { open: openSourceModal } = useSourceCreationModal();
 
   // Models
   const models = useStore(state => state.models);
@@ -505,11 +511,13 @@ const LineageNew = () => {
 
           {/* Empty state */}
           {initialLoadDone && dagNodes.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
-              <div className="text-gray-400 text-lg mb-2">No sources or models yet</div>
-              <div className="text-gray-400 text-sm">
-                Click the + button to create your first source or model
-              </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+              <EmptyStateCTA
+                icon={<HiDatabase className="w-12 h-12" />}
+                title="No sources or models yet"
+                body="Connect data, then build models, insights, and dashboards."
+                primaryAction={{ label: 'Add Source', onClick: openSourceModal }}
+              />
             </div>
           )}
 
