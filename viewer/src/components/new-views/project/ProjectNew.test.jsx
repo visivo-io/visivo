@@ -4,12 +4,14 @@ import { BrowserRouter } from 'react-router-dom';
 import { futureFlags } from '../../../router-config';
 import ProjectNew from './ProjectNew';
 import useStore from '../../../stores/store';
+import { SINGLE_SELECT, MULTI_SELECT } from '../../items/Input';
 
 jest.mock('../../../stores/store');
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: () => ({ dashboardName: undefined }),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
 }));
 
 jest.mock('./DashboardNew', () => ({
@@ -36,15 +38,6 @@ jest.mock('../../project/FilterBar', () => ({
   default: () => <div data-testid="filter-bar" />,
 }));
 
-const renderWithStore = (state) => {
-  useStore.mockImplementation((selector) => selector(state));
-  return render(
-    <BrowserRouter future={futureFlags}>
-      <ProjectNew />
-    </BrowserRouter>
-  );
-};
-
 const baseDashboard = {
   name: 'Sales',
   config: {
@@ -56,37 +49,54 @@ const baseDashboard = {
   },
 };
 
+// Build a default store-state with overridable fields. ProjectNew now reads
+// many slices (defaults, inputs, scroll position) so a single source-of-truth
+// keeps tests focused on the behavior under test.
+const buildState = (overrides = {}) => ({
+  project: { id: 'p1', name: 'Test' },
+  dashboards: [baseDashboard],
+  dashboardsLoading: false,
+  fetchDashboards: jest.fn(),
+  defaults: null,
+  fetchDefaults: jest.fn(),
+  inputs: [],
+  fetchInputs: jest.fn(),
+  setDefaultInputJobValues: jest.fn(),
+  setScrollPosition: jest.fn(),
+  scrollPositions: {},
+  filteredDashboards: [],
+  dashboardsByLevel: {},
+  initializeDashboardView: jest.fn(),
+  ...overrides,
+});
+
+const renderWithStore = (overrides = {}) => {
+  const state = buildState(overrides);
+  useStore.mockImplementation((selector) => selector(state));
+  return { state, ...render(
+    <BrowserRouter future={futureFlags}>
+      <ProjectNew />
+    </BrowserRouter>
+  ) };
+};
+
 describe('ProjectNew', () => {
-  it('calls fetchDashboards and fetchDefaults on mount', () => {
+  it('calls fetchDashboards, fetchDefaults, and fetchInputs on mount', () => {
     const fetchDashboards = jest.fn();
     const fetchDefaults = jest.fn();
-    renderWithStore({
-      project: { id: 'p1', name: 'Test' },
-      dashboards: [baseDashboard],
-      dashboardsLoading: false,
-      fetchDashboards,
-      defaults: null,
-      fetchDefaults,
-      filteredDashboards: [],
-      dashboardsByLevel: {},
-      initializeDashboardView: jest.fn(),
-    });
+    const fetchInputs = jest.fn();
+    renderWithStore({ fetchDashboards, fetchDefaults, fetchInputs });
     expect(fetchDashboards).toHaveBeenCalled();
     expect(fetchDefaults).toHaveBeenCalled();
+    expect(fetchInputs).toHaveBeenCalled();
   });
 
   it('passes defaults from the store (not project_json) into DashboardSection', () => {
     const defaults = { source_name: 'snowflake' };
     renderWithStore({
-      project: { id: 'p1', name: 'Test' },
-      dashboards: [baseDashboard],
-      dashboardsLoading: false,
-      fetchDashboards: jest.fn(),
       defaults,
-      fetchDefaults: jest.fn(),
       filteredDashboards: [baseDashboard],
       dashboardsByLevel: { 'Level 0': [baseDashboard] },
-      initializeDashboardView: jest.fn(),
     });
     expect(screen.getByTestId('section-Level 0-defaults')).toHaveTextContent(
       JSON.stringify(defaults)
@@ -96,17 +106,7 @@ describe('ProjectNew', () => {
   it('passes defaults from the store into initializeDashboardView', () => {
     const defaults = { source_name: 'snowflake' };
     const initializeDashboardView = jest.fn();
-    renderWithStore({
-      project: { id: 'p1', name: 'Test' },
-      dashboards: [baseDashboard],
-      dashboardsLoading: false,
-      fetchDashboards: jest.fn(),
-      defaults,
-      fetchDefaults: jest.fn(),
-      filteredDashboards: [],
-      dashboardsByLevel: {},
-      initializeDashboardView,
-    });
+    renderWithStore({ defaults, initializeDashboardView });
     expect(initializeDashboardView).toHaveBeenCalledWith(
       expect.any(Array),
       undefined,
@@ -115,32 +115,59 @@ describe('ProjectNew', () => {
   });
 
   it('renders loading state when dashboards are loading', () => {
-    renderWithStore({
-      project: { id: 'p1', name: 'Test' },
-      dashboards: null,
-      dashboardsLoading: true,
-      fetchDashboards: jest.fn(),
-      defaults: null,
-      fetchDefaults: jest.fn(),
-      filteredDashboards: [],
-      dashboardsByLevel: {},
-      initializeDashboardView: jest.fn(),
-    });
+    renderWithStore({ dashboards: null, dashboardsLoading: true });
     expect(screen.queryByTestId('filter-bar')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no dashboards exist', () => {
-    renderWithStore({
-      project: { id: 'p1', name: 'Test' },
-      dashboards: [],
-      dashboardsLoading: false,
-      fetchDashboards: jest.fn(),
-      defaults: null,
-      fetchDefaults: jest.fn(),
-      filteredDashboards: [],
-      dashboardsByLevel: {},
-      initializeDashboardView: jest.fn(),
-    });
+    renderWithStore({ dashboards: [] });
     expect(screen.getByText(/No dashboards found/i)).toBeInTheDocument();
+  });
+
+  describe('input default priming', () => {
+    it('seeds setDefaultInputJobValues from the input store after fetch', () => {
+      const setDefaultInputJobValues = jest.fn();
+      renderWithStore({
+        setDefaultInputJobValues,
+        inputs: [
+          {
+            name: 'split_threshold',
+            config: {
+              type: SINGLE_SELECT,
+              display: { default: { value: '5' } },
+            },
+          },
+          {
+            name: 'regions',
+            config: {
+              type: MULTI_SELECT,
+              display: { default: ['NA', 'EU'] },
+            },
+          },
+          // No default — should be skipped
+          {
+            name: 'no_default',
+            config: { type: SINGLE_SELECT, display: {} },
+          },
+          // Wrong type — should be skipped
+          {
+            name: 'wrong_type',
+            config: { type: 'date-range', display: { default: '2024-01-01' } },
+          },
+        ],
+      });
+      expect(setDefaultInputJobValues).toHaveBeenCalledTimes(1);
+      const passed = setDefaultInputJobValues.mock.calls[0][0];
+      expect(passed).toEqual([
+        { name: 'split_threshold', value: { value: '5' }, type: SINGLE_SELECT },
+        { name: 'regions', value: ['NA', 'EU'], type: MULTI_SELECT },
+      ]);
+    });
+
+    it('does not call setDefaultInputJobValues when there are no inputs', () => {
+      const setDefaultInputJobValues = jest.fn();
+      renderWithStore({ setDefaultInputJobValues, inputs: [] });
+      expect(setDefaultInputJobValues).not.toHaveBeenCalled();
+    });
   });
 });
