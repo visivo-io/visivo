@@ -21,16 +21,21 @@ function ProjectNew() {
   const dashboards = useStore(state => state.dashboards);
   const dashboardsLoading = useStore(state => state.dashboardsLoading);
   const fetchDashboards = useStore(state => state.fetchDashboards);
+  const defaults = useStore(state => state.defaults);
+  const fetchDefaults = useStore(state => state.fetchDefaults);
 
   // Filtering state from store
   const filteredDashboards = useStore(state => state.filteredDashboards);
   const dashboardsByLevel = useStore(state => state.dashboardsByLevel);
   const initializeDashboardView = useStore(state => state.initializeDashboardView);
 
-  // Fetch dashboards on mount
+  // Fetch dashboards + defaults on mount. Defaults previously came from
+  // project.project_json.defaults (legacy bulk blob); now sourced from the
+  // dedicated /api/defaults/ endpoint via defaultsStore.
   useEffect(() => {
     fetchDashboards();
-  }, [fetchDashboards]);
+    fetchDefaults();
+  }, [fetchDashboards, fetchDefaults]);
 
   // Transform dashboards for navigation (similar to ProjectContainer)
   const dashboardsList = useMemo(() => {
@@ -51,13 +56,9 @@ function ProjectNew() {
   // Initialize dashboard filtering system when dashboards load
   useEffect(() => {
     if (dashboardsList.length > 0) {
-      initializeDashboardView(
-        dashboardsList,
-        dashboardName,
-        project?.project_json?.defaults
-      );
+      initializeDashboardView(dashboardsList, dashboardName, defaults);
     }
-  }, [dashboardsList, dashboardName, project?.project_json?.defaults, initializeDashboardView]);
+  }, [dashboardsList, dashboardName, defaults, initializeDashboardView]);
 
   // Loading state
   if (dashboardsLoading) {
@@ -97,7 +98,7 @@ function ProjectNew() {
                 dashboards={dashboards}
                 projectId={project.id}
                 hasLevels={Object.keys(dashboardsByLevel).length > 1}
-                projectDefaults={project?.project_json?.defaults}
+                projectDefaults={defaults}
               />
             ))}
 
