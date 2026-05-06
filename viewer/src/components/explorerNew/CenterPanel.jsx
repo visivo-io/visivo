@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { PiCaretUp, PiCaretDown, PiCode, PiChartBar } from 'react-icons/pi';
 import SQLEditor from './SQLEditor';
+import SQLTemplateMenu from './SQLTemplateMenu';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
 import ExplorerChartPreview from './ExplorerChartPreview';
@@ -12,6 +13,7 @@ import ModelTabBar from './ModelTabBar';
 import VerticalDivider from '../common/VerticalDivider';
 import Divider from '../common/Divider';
 import useStore from '../../stores/store';
+import { useSourceSchema } from '../../hooks/useSourceSchema';
 import {
   selectActiveModelSql,
   selectActiveModelSourceName,
@@ -51,9 +53,18 @@ const CenterPanel = () => {
   // Initialize DuckDB integration for computed columns
   useExplorerDuckDB();
 
+  // Schema for the active source (used to suggest a sample table in templates)
+  const { tables: schemaTables } = useSourceSchema(sourceName);
+  const firstTableInScope = useMemo(() => {
+    if (!schemaTables || schemaTables.length === 0) return null;
+    const first = schemaTables[0];
+    return first?.table_name || first?.name || null;
+  }, [schemaTables]);
+
   const containerRef = useRef(null);
   const topRowRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(800);
+  const [isDragOverEditor, setIsDragOverEditor] = useState(false);
 
   // Observe container width for responsive behavior
   useEffect(() => {
@@ -201,8 +212,46 @@ const CenterPanel = () => {
     </button>
   );
 
+  const handleEditorDragOver = useCallback((e) => {
+    if (e.dataTransfer.types.includes('application/x-visivo-table')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setIsDragOverEditor(true);
+    }
+  }, []);
+
+  const handleEditorDragLeave = useCallback((e) => {
+    // Only clear when leaving the section, not transitioning between children
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDragOverEditor(false);
+  }, []);
+
+  const handleEditorDrop = useCallback(
+    (e) => {
+      const data = e.dataTransfer.getData('application/x-visivo-table');
+      setIsDragOverEditor(false);
+      if (!data) return;
+      e.preventDefault();
+      try {
+        const { tableName } = JSON.parse(data);
+        if (tableName) {
+          setSql(`SELECT *\nFROM ${tableName}\nLIMIT 1000;`);
+        }
+      } catch {
+        // Ignore malformed payload
+      }
+    },
+    [setSql]
+  );
+
   const renderEditorSection = () => (
-    <div className="flex flex-col h-full overflow-hidden" data-testid="editor-section">
+    <div
+      className="flex flex-col h-full overflow-hidden relative"
+      data-testid="editor-section"
+      onDragOver={handleEditorDragOver}
+      onDragLeave={handleEditorDragLeave}
+      onDrop={handleEditorDrop}
+    >
       {!isEditorCollapsed ? (
         <div className="flex-1 min-h-0">
           <SQLEditor
@@ -220,6 +269,16 @@ const CenterPanel = () => {
         <div className="flex items-center justify-between px-3 py-1.5 bg-secondary-50 border-b border-secondary-100 flex-shrink-0">
           {sourceSelector}
           {editorToggleButton}
+        </div>
+      )}
+      {isDragOverEditor && (
+        <div
+          className="absolute inset-0 pointer-events-none flex items-center justify-center bg-primary-500/10 border-2 border-dashed border-primary-500 rounded"
+          data-testid="editor-drop-overlay"
+        >
+          <div className="bg-white rounded-md shadow-md px-4 py-2 text-sm font-medium text-primary-700">
+            Drop to seed SELECT * query
+          </div>
         </div>
       )}
     </div>
@@ -338,6 +397,34 @@ const CenterPanel = () => {
                 data-testid="query-error"
               >
                 {queryError}
+              </div>
+            </div>
+          ) : !sourceName ? (
+            <div className="flex items-center justify-center h-full w-full">
+              <span className="text-sm text-secondary-400" data-testid="empty-results">
+                No source selected — set a source on your model or select one to run queries
+              </span>
+            </div>
+          ) : !sql || sql.trim() === '' ? (
+            <div
+              className="flex items-center justify-center h-full w-full p-6"
+              data-testid="empty-editor-overlay"
+            >
+              <div className="bg-white rounded-lg shadow-md border border-secondary-200 p-6 max-w-md w-full text-center">
+                <h3 className="text-base font-medium text-secondary-900 mb-2">
+                  Start a query to see results
+                </h3>
+                <p className="text-sm text-secondary-600 mb-4">
+                  Drag a table from the left panel, pick a SQL template, or type your own query
+                  in the editor above.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <SQLTemplateMenu
+                    onPick={(templateSql) => setSql(templateSql)}
+                    currentTable={firstTableInScope}
+                    label="Use a SQL template"
+                  />
+                </div>
               </div>
             </div>
           ) : (
