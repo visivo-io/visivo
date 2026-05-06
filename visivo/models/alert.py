@@ -7,14 +7,16 @@ from visivo.models.test_run import TestRun
 from visivo.models.base.named_model import NamedModel
 
 """
-Tests allow you to assert on the computed values that are the output of a trace.  The tests are run with the `visivo test` command.
+Alerts fire when their `if` expression evaluates to true after a `visivo
+test` run. They forward the result to one or more destinations (Slack,
+email, console, etc.).
 
 ### Example
 ``` yaml
 alerts:
     - name: Example Alert
       if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
-      destinations: 
+      destinations:
         - ${ ref(Production Slack) }
         - ${ ref(Production Email) }
 ```

@@ -38,16 +38,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
                 F,B,10
         insights:
           - name: Simple Sunburst Insight
-            model: ${ref(sunburst-data)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{values}
             props:
               type: sunburst
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(sunburst-data).labels}}
+              parents: ?{${ref(sunburst-data).parents}}
+              values: ?{${ref(sunburst-data).values}}
         charts:
           - name: Simple Sunburst Chart
             insights:
@@ -75,19 +70,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
                 F,B,10,#e377c2
         insights:
           - name: Sunburst Insight with Custom Colors
-            model: ${ref(sunburst-data-colors)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{values}
-              colors: ?{colors}
             props:
               type: sunburst
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(sunburst-data-colors).labels}}
+              parents: ?{${ref(sunburst-data-colors).parents}}
+              values: ?{${ref(sunburst-data-colors).values}}
               marker:
-                colors: ?{columns.colors}
+                colors: ?{${ref(sunburst-data-colors).colors}}
         charts:
           - name: Sunburst Chart with Custom Colors
             insights:
@@ -115,20 +104,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attrib
                 F,B,10,7
         insights:
           - name: Sunburst Insight with Custom Sizes
-            model: ${ref(sunburst-data-sizes)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{values}
-              size: ?{size}
             props:
               type: sunburst
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(sunburst-data-sizes).labels}}
+              parents: ?{${ref(sunburst-data-sizes).parents}}
+              values: ?{${ref(sunburst-data-sizes).values}}
               marker:
                 line:
-                  width: ?{columns.size}
+                  width: ?{${ref(sunburst-data-sizes).size}}
                   color: black
         charts:
           - name: Sunburst Chart with Custom Sizes

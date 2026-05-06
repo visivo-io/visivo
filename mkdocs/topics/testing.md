@@ -1,56 +1,55 @@
 # Testing
 
-Tests enable you to **quickly** validate data across your project.  
+Tests let you **quickly** validate the data behind your insights and assert invariants across your project.
 
 !!! note
-    Tests are run with the `visivo test` command (_[docs](../../reference/cli/#test)_).
+    Tests are run with the `visivo test` command (_[docs](../reference/cli.md#test)_).
 
-Tests can run any arbitrary python statement so long as it evaluates to `True` or `False`. Additionally tests can access trace data from across the project by using the `$(project)` context variable. By default trace data arrays will be represented as numpy arrays. 
+A test is any boolean Python expression that can read insight data through the `${ref(...)}` context. Insight prop arrays come back as numpy arrays, so numpy is available out of the box.
 
-The combination of python based boolean statements and access to all trace data makes it _super fast_ all while enabling complex assertions about your data. 
+The combination of Python expressions and direct access to every insight's resolved data makes tests _fast_ to write while still allowing complex assertions about your data.
 
 !!! example
 
-    === "Revenue Sums Match"
-   
+    === "Sums Match"
+
         ``` yaml
         tests:
           - name: revenue-date-grains-match
-            logic: ">{ numpy.sum( ${project.traces['revenue-per-week'].props.y} ) = numpy.sum( ${project.traces['revenue-per-month'].props.y} ) }"
+            assertions:
+              - >{ numpy.sum( ${ref(revenue-per-week).props.y} ) == numpy.sum( ${ref(revenue-per-month).props.y} ) }
         ```
 
     === "Standard Deviation"
-   
+
         ``` yaml
         tests:
           - name: recent-std-less-double-normal
-            logic: ">{ numpy.std( ${project.traces['revenue-per-week'].props.y} ) * 2 > numpy.std( ${project.traces['revenue-per-month'].props.y[:-10]} ) }"
+            assertions:
+              - >{ numpy.std( ${ref(revenue-per-week).props.y} ) * 2 > numpy.std( ${ref(revenue-per-month).props.y[:-10]} ) }
         ```
 
-    === "Assert Value"
-   
+    === "Assert Specific Value"
+
         ``` yaml
         tests:
-          - name: recent-std-less-double-normal
-            logic: ">{ round( ${project.traces['revenue-per-week'].props.y[10]} ) = 2901384 }"
+          - name: oct-week-revenue
+            assertions:
+              - >{ round( ${ref(revenue-per-week).props.y[10]} ) == 2901384 }
         ```
 
-You can also define tests within the trace it's self which gives you access to the information of the trace data that you're defining the test on through the `${trace}` context variable. You can still access the `${project}` context variable from within the trace definition. 
-!!! example 
+## Conditional execution
 
-    ``` yaml
-    traces:
-        - name: tested-trace
-        model: ${ref(model)}
-        columns:
-            account_name: account_name
-        props:
-            type: scatter
-            x: column(project_created_at)
-            y: column(project_name)
-        tests:
-            - logic: ">{ assert_that(numpy.sum( ${trace.props.x} ).is_equal_to(7) }"
-            - logic: ">{ 'key account' in ${trace.columns.account_name} }"
-            - logic: ">{ numpy.unique( ${trace.columns.account_name} ) = numpy.unique( ${project.traces[another-trace].columns.account_name} ) }
-    ```
-The `assert_that()` function from the [assertpy](https://assertpy.github.io/) library and the [numpy](https://numpy.org/doc/stable/index.html) library are available to reference. The combination of these two libraries enable a wide array of calculations and logical assertions. 
+Use the optional `if:` field to skip a test unless a condition holds. Useful for assertions that only apply to certain insight types or shapes:
+
+``` yaml
+tests:
+  - name: scatter-only-check
+    if: ${ ref(my-insight).props.type } == "scatter"
+    assertions:
+      - >{ len( ${ref(my-insight).props.x} ) == len( ${ref(my-insight).props.y} ) }
+```
+
+## Available helpers
+
+The [`assertpy`](https://assertpy.github.io/) library and [`numpy`](https://numpy.org/doc/stable/index.html) are always available in test expressions. Together they cover most numerical and structural assertions you'll want to write.

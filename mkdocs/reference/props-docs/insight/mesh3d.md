@@ -42,28 +42,19 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Mesh3d/#attribut
 
         insights:
           - name: Simple Mesh3D Insight
-            model: ${ref(mesh3d-data)}
-            columns:
-              idx: ?{idx}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              i: ?{i}
-              j: ?{j}
-              k: ?{k}
-              color: ?{color}
             props:
               type: mesh3d
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
-              i: ?{columns.i}
-              j: ?{columns.j}
-              k: ?{columns.k}
-              facecolor: ?{columns.color}
+              x: ?{${ref(mesh3d-data).x}}
+              y: ?{${ref(mesh3d-data).y}}
+              z: ?{${ref(mesh3d-data).z}}
+              i: ?{${ref(mesh3d-data).i}}
+              j: ?{${ref(mesh3d-data).j}}
+              k: ?{${ref(mesh3d-data).k}}
+              facecolor: ?{${ref(mesh3d-data).color}}
               opacity: 0.7
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(mesh3d-data).idx} asc}
+
 
         charts:
           - name: Simple Mesh3D Chart

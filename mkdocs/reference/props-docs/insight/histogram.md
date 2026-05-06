@@ -45,12 +45,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
                 10
         insights:
           - name: Simple Histogram Insight
-            model: ${ref(histogram-data)}
-            columns:
-              value: ?{value}
             props:
               type: histogram
-              x: ?{columns.value}
+              x: ?{${ref(histogram-data).value}}
               nbinsx: 5
               marker:
                 color: "#17becf"
@@ -108,12 +105,9 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
                 4
         insights:
           - name: Horizontal Histogram Insight
-            model: ${ref(histogram-data-horizontal)}
-            columns:
-              value: ?{value}
             props:
               type: histogram
-              y: ?{columns.value}
+              y: ?{${ref(histogram-data-horizontal).value}}
               nbinsy: 2
               marker:
                 color: "#ff7f0e"
@@ -158,22 +152,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attri
                 B,6
         insights:
           - name: Histogram Groups
-            model: ${ref(histogram-data-stacked)}
-            cohort_on: '"group"'
-            columns:
-              value: ?{value}
-              group: ?{group}
-              color: |
-                case
-                  when "group" = 'A' then '#1f77b4'
-                  when "group" = 'B' then '#ff7f0e'
-                  else null
-                end
             props:
               type: histogram
-              x: ?{columns.value}
+              x: ?{${ref(histogram-data-stacked).value}}
               marker:
-                color: ?{columns.color}
+                color: ?{case when ${ref(histogram-data-stacked).group} = 'A' then '#1f77b4' when ${ref(histogram-data-stacked).group} = 'B' then '#ff7f0e' else null end}
+            interactions:
+              - split: ?{${ref(histogram-data-stacked).group}}
+
         charts:
           - name: Stacked Histogram Chart
             insights:

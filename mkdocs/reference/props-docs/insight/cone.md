@@ -47,22 +47,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Cone/#attributes
                 1,1,1,-1,-1,-1
         insights:
           - name: Simple Cone Plot
-            model: ${ref(vector-field-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              u: ?{u}
-              v: ?{v}
-              w: ?{w}
             props:
               type: cone
-              x: ${columns.x}
-              y: ${columns.y}
-              z: ${columns.z}
-              u: ${columns.u}
-              v: ${columns.v}
-              w: ${columns.w}
+              x: ?{${ref(vector-field-data).x}}
+              y: ?{${ref(vector-field-data).y}}
+              z: ?{${ref(vector-field-data).z}}
+              u: ?{${ref(vector-field-data).u}}
+              v: ?{${ref(vector-field-data).v}}
+              w: ?{${ref(vector-field-data).w}}
               colorscale: "Viridis"
               sizemode: "absolute"
               sizeref: 0.5
@@ -101,28 +93,19 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Cone/#attributes
                 4,4,0,0,0,5,5.00
         insights:
           - name: Wind Direction Cone Plot
-            model: ${ref(wind-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              u: ?{u}
-              v: ?{v}
-              w: ?{w}
-              speed: ?{speed}
             props:
               type: cone
-              x: ${columns.x}
-              y: ${columns.y}
-              z: ${columns.z}
-              u: ${columns.u}
-              v: ${columns.v}
-              w: ${columns.w}
+              x: ?{${ref(wind-data).x}}
+              y: ?{${ref(wind-data).y}}
+              z: ?{${ref(wind-data).z}}
+              u: ?{${ref(wind-data).u}}
+              v: ?{${ref(wind-data).v}}
+              w: ?{${ref(wind-data).w}}
               colorscale: "Viridis"
               colorbar:
                 title: "Wind Speed (m/s)"
               hoverinfo: "text"
-              text: ${columns.speed}
+              text: ?{${ref(wind-data).speed}}
         charts:
           - name: Wind Direction Cone Plot Chart
             insights:

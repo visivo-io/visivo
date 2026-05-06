@@ -35,14 +35,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
                 1.2,0.7
         insights:
           - name: Simple Scattersmith Insight
-            model: ${ref(scattersmith-data)}
-            columns:
-              real: ?{ real }
-              imaginary: ?{ imaginary }
             props:
               type: scattersmith
-              real: ?{ columns.real }
-              imag: ?{ columns.imaginary }
+              real: ?{${ref(scattersmith-data).real}}
+              imag: ?{${ref(scattersmith-data).imaginary}}
               mode: "markers"
             interactions:
               - split: ?{ real }
@@ -71,14 +67,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
                 1.0,0.8
         insights:
           - name: Scattersmith Insight with Lines
-            model: ${ref(scattersmith-data-lines)}
-            columns:
-              real: ?{ real }
-              imaginary: ?{ imaginary }
             props:
               type: scattersmith
-              real: ?{ columns.real }
-              imag: ?{ columns.imaginary }
+              real: ?{${ref(scattersmith-data-lines).real}}
+              imag: ?{${ref(scattersmith-data-lines).imaginary}}
               mode: "lines+markers"
             interactions:
               - split: ?{ real }
@@ -107,20 +99,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#at
                 1.2,0.7,25,#d62728
         insights:
           - name: Scattersmith Insight with Custom Markers
-            model: ${ref(scattersmith-data-custom)}
-            columns:
-              real: ?{ real }
-              imaginary: ?{ imaginary }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scattersmith
-              real: ?{ columns.real }
-              imag: ?{ columns.imaginary }
+              real: ?{${ref(scattersmith-data-custom).real}}
+              imag: ?{${ref(scattersmith-data-custom).imaginary}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scattersmith-data-custom).size}}
+                color: ?{${ref(scattersmith-data-custom).color}}
             interactions:
               - split: ?{ real }
               - split: ?{ imaginary }

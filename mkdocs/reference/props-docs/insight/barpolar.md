@@ -49,14 +49,10 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
 
         insights:
           - name: Activity Level by Direction
-            model: ${ref(activity-data)}
-            columns:
-              direction: ?{ direction }
-              activity_level: ?{ activity_level }
             props:
               type: barpolar
-              r: ?{ columns.activity_level }
-              theta: ?{ columns.direction }
+              r: ?{${ref(activity-data).activity_level}}
+              theta: ?{${ref(activity-data).direction}}
               marker:
                 color: "#1f77b4"
             interactions:
@@ -123,23 +119,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
 
         insights:
           - name: Wind Rose
-            model: ${ref(wind-data)}
-            columns:
-              cardinal_order: ?{ cardinal_order }
-              direction: ?{ direction }
-              speed: ?{ speed }
-              count: ?{ count }
-              bar_color: |
-                CASE speed
-                  WHEN '0-1 m/s' THEN '#1f77b4'
-                  WHEN '1-2 m/s' THEN '#ff7f0e'
-                  WHEN '2-3 m/s' THEN '#2ca02c'
-                END
             props:
               type: barpolar
-              r: ?{ columns.count }
-              theta: ?{ columns.direction }
-              text: ?{ columns.speed }
+              r: ?{${ref(wind-data).count}}
+              theta: ?{${ref(wind-data).direction}}
+              text: ?{${ref(wind-data).speed}}
               marker:
                 color: column(bar_color)
                 opacity: 0.85
@@ -188,19 +172,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) 
 
         insights:
           - name: Custom Radial Barpolar
-            model: ${ref(custom-radial-data)}
-            columns:
-              direction: ?{ direction }
-              radial_start: ?{ radial_start }
-              radial_end: ?{ radial_end }
-              # optionally compute radial length if needed:
-              radial_length: |
-                radial_end - radial_start
             props:
               type: barpolar
-              theta: ?{ columns.direction }
+              theta: ?{${ref(custom-radial-data).direction}}
               # use radial_end (or radial_length) depending on how you want to render
-              r: ?{ columns.radial_end }
+              r: ?{${ref(custom-radial-data).radial_end}}
               width: 30
               marker:
                 color: "#d62728"

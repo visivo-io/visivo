@@ -46,15 +46,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
                 IND,450
         insights:
           - name: Simple ChoroplethMapbox Map
-            model: ${ref(country-population-data-mapbox)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              population_density: ?{population_density}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ${columns.iso_alpha}
-              z: ${columns.population_density}
+              locations: ?{${ref(country-population-data-mapbox).iso_alpha}}
+              z: ?{${ref(country-population-data-mapbox).population_density}}
               colorscale: "Blues"
               marker:
                 opacity: 0.7
@@ -89,15 +85,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
                 GBR,2827
         insights:
           - name: ChoroplethMapbox with Custom Colorscale
-            model: ${ref(european-gdp-data)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              gdp: ?{gdp}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ${columns.iso_alpha}
-              z: ${columns.gdp}
+              locations: ?{${ref(european-gdp-data).iso_alpha}}
+              z: ?{${ref(european-gdp-data).gdp}}
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               marker:
                 opacity: 0.75
@@ -132,18 +124,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox
                 ZAF,2000000,60000
         insights:
           - name: Interactive ChoroplethMapbox with Hover Data
-            model: ${ref(covid-data-mapbox)}
-            columns:
-              iso_alpha: ?{iso_alpha}
-              covid_cases: ?{covid_cases}
-              covid_deaths: ?{covid_deaths}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: ${columns.iso_alpha}
-              z: ${columns.covid_cases}
+              locations: ?{${ref(covid-data-mapbox).iso_alpha}}
+              z: ?{${ref(covid-data-mapbox).covid_cases}}
               colorscale: "Reds"
-              text: ${columns.covid_deaths}
+              text: ?{${ref(covid-data-mapbox).covid_deaths}}
               hovertemplate: "Cases: %{z}<br>Deaths: %{text}"
               marker:
                 opacity: 0.8

@@ -40,24 +40,18 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Volume/#attribut
 
         insights:
           - name: Simple Isosurface Insight
-            model: ${ref(isosurface-data-simple)}
-            columns:
-              idx: ?{idx}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
-              value: ?{value}
             props:
               type: isosurface
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
-              value: ?{columns.value}
+              x: ?{${ref(isosurface-data-simple).x}}
+              y: ?{${ref(isosurface-data-simple).y}}
+              z: ?{${ref(isosurface-data-simple).z}}
+              value: ?{${ref(isosurface-data-simple).value}}
               isomin: 2
               isomax: 6
               colorscale: "Reds"
-            order_by:
-              - ?{columns.idx asc}
+            interactions:
+              - sort: ?{${ref(isosurface-data-simple).idx} asc}
+
 
         charts:
           - name: Simple Isosurface Chart

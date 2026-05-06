@@ -10,9 +10,8 @@ from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_fro
 from visivo.models.props.types import PropType
 from visivo.query.patterns import QUERY_STRING_VALUE_PATTERN
 
-
 #: Field names that the parser may attach to props during YAML loading
-#: but that are not valid Plotly trace properties. Strip them out of the
+#: but that are not valid Plotly insight properties. Strip them out of the
 #: dumped dict before running jsonschema validation, otherwise the
 #: schema's `additionalProperties: false` rejects them and produces a
 #: misleading error like "Additional properties are not allowed
@@ -23,7 +22,7 @@ _VISIVO_INTERNAL_PROPS = {"file_path", "path"}
 
 class InsightProps(JsonSchemaBase):
 
-    type: PropType = Field(..., description="Type of the trace")
+    type: PropType = Field(..., description="Type of the insight")
 
     @model_validator(mode="after")
     def validate_against_schema(self) -> "InsightProps":
@@ -41,7 +40,7 @@ class InsightProps(JsonSchemaBase):
 
         validator = InsightProps._validators.get(self.type.value)
         if not validator:
-            raise ValueError(f"Schema not found for trace type: {self.type.value}")
+            raise ValueError(f"Schema not found for insight type: {self.type.value}")
 
         try:
             data_dict = self.model_dump()
@@ -53,14 +52,14 @@ class InsightProps(JsonSchemaBase):
             validator.validate(data_dict)
 
         except FileNotFoundError:
-            raise ValueError(f"Schema file not found for trace type: {self.type.value}")
+            raise ValueError(f"Schema file not found for insight type: {self.type.value}")
         except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON in schema file for trace type: {self.type.value}")
+            raise ValueError(f"Invalid JSON in schema file for insight type: {self.type.value}")
         except ValidationError as e:
             schema = InsightProps._schemas.get(self.type.value)
             message = get_message_from_error(e, schema)
             raise ValueError(
-                f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(message)}"
+                f"Validation error for insight type {self.type.value} at location: {e.instance_path}: {str(message)}"
             )
 
         return self

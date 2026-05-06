@@ -30,22 +30,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Contourcarpet/#a
         insights:
           - name: Simple Contourcarpet
             description: "Contour plot over a carpet plot"
-            model: ${ref(contourcarpet-data)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contourcarpet
               carpet:
                 type: carpet
-                a: ?{columns.a}
-                b: ?{columns.b}
-                x: ?{columns.x}
-                y: ?{columns.y}
-              z: ?{columns.z}
+                a: ?{${ref(contourcarpet-data).a}}
+                b: ?{${ref(contourcarpet-data).b}}
+                x: ?{${ref(contourcarpet-data).x}}
+                y: ?{${ref(contourcarpet-data).y}}
+              z: ?{${ref(contourcarpet-data).z}}
               colorscale: "Viridis"
         ```
 
@@ -59,22 +52,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Contourcarpet/#a
         insights:
           - name: Filled Contourcarpet
             description: "Filled contourcarpet with heatmap coloring"
-            model: ${ref(contourcarpet-data-filled)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contourcarpet
               carpet:
                 type: carpet
-                a: ?{columns.a}
-                b: ?{columns.b}
-                x: ?{columns.x}
-                y: ?{columns.y}
-              z: ?{columns.z}
+                a: ?{${ref(contourcarpet-data-filled).a}}
+                b: ?{${ref(contourcarpet-data-filled).b}}
+                x: ?{${ref(contourcarpet-data-filled).x}}
+                y: ?{${ref(contourcarpet-data-filled).y}}
+              z: ?{${ref(contourcarpet-data-filled).z}}
               colorscale: "Earth"
               contours:
                 coloring: "heatmap"
@@ -91,22 +77,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Contourcarpet/#a
         insights:
           - name: Custom Contourcarpet
             description: "Customized contour levels on a carpet plot"
-            model: ${ref(contourcarpet-data-custom)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contourcarpet
               carpet:
                 type: carpet
-                a: ?{columns.a}
-                b: ?{columns.b}
-                x: ?{columns.x}
-                y: ?{columns.y}
-              z: ?{columns.z}
+                a: ?{${ref(contourcarpet-data-custom).a}}
+                b: ?{${ref(contourcarpet-data-custom).b}}
+                x: ?{${ref(contourcarpet-data-custom).x}}
+                y: ?{${ref(contourcarpet-data-custom).y}}
+              z: ?{${ref(contourcarpet-data-custom).z}}
               colorscale: "Jet"
               contours:
                 start: 10

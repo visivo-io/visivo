@@ -40,16 +40,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
 
         insights:
           - name: Count Enemies Encountered by Knight
-            model: ${ref(monty-python-quest-data)}
-            columns:
-              enemy_encountered: ?{ enemy_encountered }
-              y: ?{ count(*) }
-              text: ?{ count(*) }
             props:
               type: bar
-              x: ?{ columns.enemy_encountered }
-              y: ?{ columns.y }
-              text: ?{ columns.text }
+              x: ?{${ref(monty-python-quest-data).enemy_encountered}}
+              y: ?{count(*)}
+              text: ?{count(*)}
             interactions:
               - sort: ?{ count(*) DESC }
 
@@ -76,16 +71,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
 
         insights:
           - name: Count Enemies Encountered by Knight
-            model: ${ref(monty-python-quest-data)}
-            columns:
-              enemy_encountered: ?{ enemy_encountered }
-              y: ?{ count(*) }
-              text: ?{ count(*) }
             props:
               type: bar
-              x: ?{ columns.enemy_encountered }
-              y: ?{ columns.y }
-              text: ?{ columns.text }
+              x: ?{${ref(monty-python-quest-data).enemy_encountered}}
+              y: ?{count(*)}
+              text: ?{count(*)}
             interactions:
               - split: ?{ person }
               - sort: ?{ count(*) DESC }
@@ -113,16 +103,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for t
 
         insights:
           - name: Count Enemies Encountered by Knight H
-            model: ${ref(monty-python-quest-data-h)}
-            columns:
-              enemy_encountered: ?{ enemy_encountered }
-              y: ?{ count(*) }
-              text: ?{ count(*) }
             props:
               type: bar
-              x: ?{ columns.enemy_encountered }
-              y: ?{ columns.y }
-              text: ?{ columns.text }
+              x: ?{${ref(monty-python-quest-data-h).enemy_encountered}}
+              y: ?{count(*)}
+              text: ?{count(*)}
               textposition: outside
               textfont:
                 size: 15

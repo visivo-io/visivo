@@ -44,16 +44,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
                 C,3,45
         insights:
           - name: Simple Heatmap Insight
-            model: ${ref(heatmap-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmap
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(heatmap-data).x}}
+              y: ?{${ref(heatmap-data).y}}
+              z: ?{${ref(heatmap-data).z}}
               colorscale: "Viridis"
         charts:
           - name: Simple Heatmap Chart
@@ -92,16 +87,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
                 High,C,0.9
         insights:
           - name: Heatmap with Custom Colorscale
-            model: ${ref(heatmap-data-custom)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmap
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(heatmap-data-custom).x}}
+              y: ?{${ref(heatmap-data-custom).y}}
+              z: ?{${ref(heatmap-data-custom).z}}
               zmin: 0
               zmax: 1
         charts:
@@ -142,17 +132,12 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
                 Q4,2020,450
         insights:
           - name: Heatmap with Text Annotations
-            model: ${ref(heatmap-data-annotations)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: heatmap
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
-              text: ?{columns.z}
+              x: ?{${ref(heatmap-data-annotations).x}}
+              y: ?{${ref(heatmap-data-annotations).y}}
+              z: ?{${ref(heatmap-data-annotations).z}}
+              text: ?{${ref(heatmap-data-annotations).z}}
               texttemplate: "%{text}"
               textfont:
                 size: 12

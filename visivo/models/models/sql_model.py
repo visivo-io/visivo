@@ -17,7 +17,9 @@ class SqlModel(Model, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     """
-    SQL Models are queries that return base data from a SQL source. These data are then used in Traces
+    SQL Models are queries that return base data from a SQL source. The
+    resulting rows are then referenced by Insights via `${ref(model).column}`
+    field references in their `?{ ... }` slot bindings.
 
     !!! example {% raw %}
 

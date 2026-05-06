@@ -19,7 +19,7 @@ plotly
 analytics
 project_dir
 simple_chart
-simple_trace
+weekly_widget_sales
 widget_sales
 pypi
 DevOps

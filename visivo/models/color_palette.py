@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 class ColorPalette(BaseModel):
     palette: Union[List[str], str] = Field(
         "High Contrast",
-        description="""string or list of colors<br>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name.""",
+        description="""string or list of colors<br>Sets the default chart series colors. Can be either a list of colors or a string corresponding to a palette name.""",
     )
 
     PREDEFINED_PALETTES: ClassVar[Dict[str, List[str]]] = {

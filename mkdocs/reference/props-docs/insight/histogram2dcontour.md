@@ -44,14 +44,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
                 5,3
         insights:
           - name: Simple 2D Contour Histogram
-            model: ${ref(histogram2dcontour-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2dcontour
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2dcontour-data).x}}
+              y: ?{${ref(histogram2dcontour-data).y}}
               colorscale: "Viridis"
               contours:
                 coloring: "none"
@@ -94,14 +90,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
                 6,4
         insights:
           - name: 2D Contour Histogram with Filled Contours
-            model: ${ref(histogram2dcontour-data-filled)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2dcontour
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2dcontour-data-filled).x}}
+              y: ?{${ref(histogram2dcontour-data-filled).y}}
               colorscale: "Blues"
               contours:
                 coloring: "heatmap"
@@ -144,14 +136,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dconto
                 5,4
         insights:
           - name: 2D Contour Histogram with Custom Bins
-            model: ${ref(histogram2dcontour-data-bins)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: histogram2dcontour
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(histogram2dcontour-data-bins).x}}
+              y: ?{${ref(histogram2dcontour-data-bins).y}}
               xbins:
                 size: 1
               ybins:

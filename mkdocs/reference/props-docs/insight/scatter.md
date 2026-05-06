@@ -51,14 +51,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
 
         insights:
           - name: Simple Scatter Plot
-            model: ${ref(scatter-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: scatter
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(scatter-data).x}}
+              y: ?{${ref(scatter-data).y}}
               mode: "markers"
               marker:
                 size: 10
@@ -87,27 +83,19 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
 
         insights:
           - name: Markers and Line
-            model: ${ref(scatter-data-lines)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: scatter
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(scatter-data-lines).x}}
+              y: ?{${ref(scatter-data-lines).y}}
               mode: "lines+markers"
             interactions:
               - sort: ?{x ASC}
 
           - name: Spline No Markers
-            model: ${ref(scatter-data-lines)}
-            columns:
-              x: ?{x+3 - (x*x)/3}
-              y: ?{y*1.5}
             props:
               type: scatter
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(scatter-data-lines).x}+3 - (${ref(scatter-data-lines).x}*${ref(scatter-data-lines).x})/3}
+              y: ?{${ref(scatter-data-lines).y}*1.5}
               mode: "lines"
               line:
                 shape: spline
@@ -137,20 +125,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
 
         insights:
           - name: Scatter Plot with Custom Markers
-            model: ${ref(scatter-data-custom)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              size: ?{size}
-              color: ?{color}
             props:
               type: scatter
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(scatter-data-custom).x}}
+              y: ?{${ref(scatter-data-custom).y}}
               mode: "markers"
               marker:
-                size: ?{columns.size}
-                color: ?{columns.color}
+                size: ?{${ref(scatter-data-custom).size}}
+                color: ?{${ref(scatter-data-custom).color}}
             interactions:
               - sort: ?{x ASC}
         ```
@@ -178,14 +160,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attribu
 
         insights:
           - name: Area Plot
-            model: ${ref(area-plot-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
             props:
               type: scatter
-              x: ?{columns.x}
-              y: ?{columns.y}
+              x: ?{${ref(area-plot-data).x}}
+              y: ?{${ref(area-plot-data).y}}
               mode: "lines"
               fill: "tozeroy"
               fillcolor: "rgba(55, 126, 184, 0.2)"

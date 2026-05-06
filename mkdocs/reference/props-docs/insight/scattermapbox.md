@@ -35,14 +35,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
                 139.6917,35.6895
         insights:
           - name: Simple Scattermapbox Insight
-            model: ${ref(scattermapbox-data)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattermapbox
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermapbox-data).lon}}
+              lat: ?{${ref(scattermapbox-data).lat}}
               mode: "markers"
               marker:
                 size: 10
@@ -75,14 +71,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
                 139.6917,35.6895
         insights:
           - name: Scattermapbox Insight with Lines
-            model: ${ref(scattermapbox-data-lines)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattermapbox
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermapbox-data-lines).lon}}
+              lat: ?{${ref(scattermapbox-data-lines).lat}}
               mode: "lines+markers"
               marker:
                 size: 10
@@ -115,20 +107,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#a
                 139.6917,35.6895,25,#d62728
         insights:
           - name: Scattermapbox Insight with Custom Markers
-            model: ${ref(scattermapbox-data-custom)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scattermapbox
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermapbox-data-custom).lon}}
+              lat: ?{${ref(scattermapbox-data-custom).lat}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scattermapbox-data-custom).size}}
+                color: ?{${ref(scattermapbox-data-custom).color}}
             interactions:
               - split: ?{ lon }
               - split: ?{ lat }

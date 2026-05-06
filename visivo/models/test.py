@@ -9,33 +9,21 @@ from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
 """
-Tests allow you to assert on the computed values that are the output of a trace.  The tests are run with the `visivo test` command.
+Tests allow you to assert on the computed values that are the output of an
+insight. Tests are run with the `visivo test` command.
 
 ### Example
 ``` yaml
 tests:
   - name: Test One
-    if: ${ ref(Tested Trace).props.type } == "scatter"
+    if: ${ ref(Tested Insight).props.type } == "scatter"
     assertions:
-      - >{ sum( ${ ref(Tested Trace).props.x) } ) == 7 }
-      - >{ ${ ref(Tested Trace).props.x[0] } == 1 } 
-traces:
-    - name: Tested Trace
-      model: ref(model)
-      columns:
-          account_name: account_name
-      props:
-          type: scatter
-          x: column(project_created_at)
-          y: column(project_name)
-      tests:
-        - assertions: 
-            - >{ sum( ${ ref(Tested Trace).props.x) } ) == 7 }
-            - >{ ${ ref(Tested Trace).props.x[0] } == 1 } 
-          alerts:
-            - ${ ref(Alert One) }
+      - >{ sum( ${ ref(Tested Insight).props.x } ) == 7 }
+      - >{ ${ ref(Tested Insight).props.x[0] } == 1 }
 ```
-The [numpy](https://numpy.org/doc/stable/index.html) libraries are available for testing.
+
+The [numpy](https://numpy.org/doc/stable/index.html) library is available
+in test expressions.
 """
 
 

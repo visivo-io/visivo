@@ -46,12 +46,6 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Carpet/#attribut
                 5,9,6,7
         insights:
           - name: Carpet Plot with Custom Axes
-            model: ${ref(carpet-data-axes)}
-            columns:
-              a: ?{a}
-              b: ?{b}
-              x: ?{x}
-              y: ?{y}
             props:
               type: carpet
               a: ?{a}

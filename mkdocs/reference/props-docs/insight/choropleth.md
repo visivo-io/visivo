@@ -48,14 +48,10 @@ The `choropleth` insight allows you to control the region coloring based on a va
                 COD,48
         insights:
           - name: Simple Choropleth Map
-            model: ${ref(country-population-data)}
-            columns:
-              country: ?{country}
-              population_density: ?{population_density}
             props:
               type: choropleth
-              locations: ?{columns.country}
-              z: ?{columns.population_density}
+              locations: ?{${ref(country-population-data).country}}
+              z: ?{${ref(country-population-data).population_density}}
               colorscale: "Picnic"
         charts:
           - name: Simple Choropleth Map

@@ -36,5 +36,5 @@ class TokenizedInsight(BaseModel):
     groupby_statements: Optional[List[str]] = None
 
     # Additional metadata for client processing
-    split_column: Optional[str] = None  # Column used for splitting data into multiple traces
+    split_column: Optional[str] = None  # Column used for splitting data into multiple plotly series
     sort_expressions: Optional[List[str]] = None  # Sort expressions for client-side ordering

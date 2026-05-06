@@ -35,16 +35,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
                 0.7,0.2,0.1
         insights:
           - name: Simple Scatterternary Insight
-            model: ${ref(scatterternary-data)}
-            columns:
-              a: ?{ a }
-              b: ?{ b }
-              c: ?{ c }
             props:
               type: scatterternary
-              a: ?{ columns.a }
-              b: ?{ columns.b }
-              c: ?{ columns.c }
+              a: ?{${ref(scatterternary-data).a}}
+              b: ?{${ref(scatterternary-data).b}}
+              c: ?{${ref(scatterternary-data).c}}
               mode: "markers"
             interactions:
               - split: ?{ a }
@@ -74,16 +69,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
                 0.8,0.1,0.1
         insights:
           - name: Scatterternary Insight with Lines
-            model: ${ref(scatterternary-data-lines)}
-            columns:
-              a: ?{ a }
-              b: ?{ b }
-              c: ?{ c }
             props:
               type: scatterternary
-              a: ?{ columns.a }
-              b: ?{ columns.b }
-              c: ?{ columns.c }
+              a: ?{${ref(scatterternary-data-lines).a}}
+              b: ?{${ref(scatterternary-data-lines).b}}
+              c: ?{${ref(scatterternary-data-lines).c}}
               mode: "lines+markers"
             interactions:
               - split: ?{ a }
@@ -113,22 +103,15 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#
                 0.7,0.2,0.1,25,#d62728
         insights:
           - name: Scatterternary Insight with Custom Markers
-            model: ${ref(scatterternary-data-custom)}
-            columns:
-              a: ?{ a }
-              b: ?{ b }
-              c: ?{ c }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scatterternary
-              a: ?{ columns.a }
-              b: ?{ columns.b }
-              c: ?{ columns.c }
+              a: ?{${ref(scatterternary-data-custom).a}}
+              b: ?{${ref(scatterternary-data-custom).b}}
+              c: ?{${ref(scatterternary-data-custom).c}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scatterternary-data-custom).size}}
+                color: ?{${ref(scatterternary-data-custom).color}}
             interactions:
               - split: ?{ a }
               - split: ?{ b }

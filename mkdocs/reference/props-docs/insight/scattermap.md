@@ -37,14 +37,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
                 139.6917,35.6895
         insights:
           - name: Simple Scattermap Insight
-            model: ${ref(scattermap-data)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattermap
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermap-data).lon}}
+              lat: ?{${ref(scattermap-data).lat}}
               mode: "markers"
               marker:
                 size: 10
@@ -79,14 +75,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
                 139.6917,35.6895
         insights:
           - name: Scattermap Insight with Lines
-            model: ${ref(scattermap-data-lines)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
             props:
               type: scattermap
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermap-data-lines).lon}}
+              lat: ?{${ref(scattermap-data-lines).lat}}
               mode: "lines+markers"
               marker:
                 size: 10
@@ -121,20 +113,14 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Scattermap/#attr
                 139.6917,35.6895,25,#d62728
         insights:
           - name: Scattermap Insight with Custom Markers
-            model: ${ref(scattermap-data-custom)}
-            columns:
-              lon: ?{ lon }
-              lat: ?{ lat }
-              size: ?{ size }
-              color: ?{ color }
             props:
               type: scattermap
-              lon: ?{ columns.lon }
-              lat: ?{ columns.lat }
+              lon: ?{${ref(scattermap-data-custom).lon}}
+              lat: ?{${ref(scattermap-data-custom).lat}}
               mode: "markers"
               marker:
-                size: ?{ columns.size }
-                color: ?{ columns.color }
+                size: ?{${ref(scattermap-data-custom).size}}
+                color: ?{${ref(scattermap-data-custom).color}}
             interactions:
               - split: ?{ lon }
               - split: ?{ lat }

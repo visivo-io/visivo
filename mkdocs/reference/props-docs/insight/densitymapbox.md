@@ -38,14 +38,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymapbox/#a
                 29.7604,-95.3698
         insights:
           - name: Simple Densitymapbox Insight
-            model: ${ref(densitymapbox-data)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymapbox
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymapbox-data).lat}}
+              lon: ?{${ref(densitymapbox-data).lon}}
               radius: 10
               colorscale: "Viridis"
               zmin: 0
@@ -83,14 +79,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymapbox/#a
                 34.0522,-118.2437
         insights:
           - name: Densitymapbox with Custom Radius
-            model: ${ref(densitymapbox-data-radius)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymapbox
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymapbox-data-radius).lat}}
+              lon: ?{${ref(densitymapbox-data-radius).lon}}
               radius: 20
               colorscale: "Jet"
               zmin: 0
@@ -128,14 +120,10 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Densitymapbox/#a
                 51.1657,10.4515
         insights:
           - name: Densitymapbox with Custom Colorscale
-            model: ${ref(densitymapbox-data-colorscale)}
-            columns:
-              lat: ?{lat}
-              lon: ?{lon}
             props:
               type: densitymapbox
-              lat: ?{columns.lat}
-              lon: ?{columns.lon}
+              lat: ?{${ref(densitymapbox-data-colorscale).lat}}
+              lon: ?{${ref(densitymapbox-data-colorscale).lon}}
               radius: 15
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0

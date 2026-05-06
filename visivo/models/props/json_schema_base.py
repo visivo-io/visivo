@@ -29,7 +29,8 @@ def get_message_from_error(error: ValidationError, schema: Dict[str, Any]) -> st
             preview = ", ".join(valid[:25])
             ellipsis = "..." if len(valid) > 25 else ""
             message = (
-                f"{message}\n  Valid Plotly properties for this trace type: " f"{preview}{ellipsis}"
+                f"{message}\n  Valid Plotly properties for this insight type: "
+                f"{preview}{ellipsis}"
             )
     return message
 

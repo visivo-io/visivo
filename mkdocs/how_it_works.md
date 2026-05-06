@@ -1,7 +1,8 @@
 # How Visivo Works
-When working with Visivo, all you have to do is write yaml configurations & CLI commands. Visivo handles everything else automatically so you and your team can focus on just the stuff that matters. While the example that we will go through here is not exactly how Visivo functions under the hood, it's a pretty nice approximation to give you an idea of how the sauce is made!
 
-Say you have a model called `widget_sales` that looks like this: 
+When you work with Visivo, you write YAML configurations and run a few CLI commands. Visivo handles everything else automatically so you and your team can focus on what matters. The walkthrough below isn't exactly what happens under the hood, but it's a solid approximation.
+
+Say you have a model called `widget_sales` that looks like this:
 
 | widget           | quantity | completed_at |
 | ---------------- | -------- | ------------ |
@@ -12,7 +13,7 @@ Say you have a model called `widget_sales` that looks like this:
 | Expensive Widget | 50       | 2023-01-03   |
 | Expensive Widget | 50       | 2023-01-09   |
 
-You can write a trace in any yml file directly your project. The trace can be just a few lines or more complex if you want to customize it. Here's an example of a fairly simple trace that builds on the `widget_sales` model: 
+You can declare an [insight](reference/configuration/Insight/index.md) in any `*.visivo.yml` file in your project. The insight binds plotly props to the columns of one or more models using `?{ ... }` slot expressions and `${ref(model).column}` field references:
 
 === "Relational Db"
 
@@ -20,47 +21,54 @@ You can write a trace in any yml file directly your project. The trace can be ju
     models:
       - name: widget_sales
         sql: select * from widget_sales
-    traces:
-      - name: simple_trace
-        model: ${ref(widget_sales)}
-        cohort_on: widget
+
+    insights:
+      - name: weekly_widget_sales
         props:
-          x: ?{ date_trunc('week', completed_at) }
-          y: ?{ sum(amount) }
-          marker: 
-            color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
-            shape: square
-          mode: 'lines'
+          type: scatter
+          mode: lines
+          x: ?{ date_trunc('week', ${ref(widget_sales).completed_at}) }
+          y: ?{ sum(${ref(widget_sales).quantity}) }
+          marker:
+            color: ?{ case when sum(${ref(widget_sales).quantity}) > 200 then 'green' else 'blue' end }
+        interactions:
+          - split: ?{${ref(widget_sales).widget}}
+
     charts:
       - name: simple_chart
-        traces:
-          - ${ref(simple_trace)}
+        insights:
+          - ${ref(weekly_widget_sales)}
         layout:
-          - title: Widget Sales by Week
+          title:
+            text: Widget Sales by Week
     ```
+
 === "dbt"
 
-    ``` yaml title="project_dir/models/schema.yml" 
-    traces:
-      - name: simple_trace
-        model: ${ref(widget_sales)}
-        cohort_on: ?{ widget }
+    ``` yaml title="project_dir/models/schema.yml"
+    insights:
+      - name: weekly_widget_sales
         props:
-          x: ?{ date_trunc('week', completed_at) }
-          y: ?{ sum(amount) }
-          marker: 
-            color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
-            shape: square
-          mode: 'lines'
+          type: scatter
+          mode: lines
+          x: ?{ date_trunc('week', ${ref(widget_sales).completed_at}) }
+          y: ?{ sum(${ref(widget_sales).quantity}) }
+          marker:
+            color: ?{ case when sum(${ref(widget_sales).quantity}) > 200 then 'green' else 'blue' end }
+        interactions:
+          - split: ?{${ref(widget_sales).widget}}
+
     charts:
       - name: simple_chart
-        traces:
-          - ${ref(simple_trace)}
+        insights:
+          - ${ref(weekly_widget_sales)}
         layout:
-          - title: Widget Sales by Week
+          title:
+            text: Widget Sales by Week
+
     models:
       - name: widget_sales
-        description: "A table containing widgets sales sourced from the CRM"
+        description: "A table containing widget sales sourced from the CRM"
         columns:
           - name: widget
             description: The type of widget sold
@@ -69,76 +77,37 @@ You can write a trace in any yml file directly your project. The trace can be ju
           - name: completed_at
             description: Timestamp of when the transaction occurred
     ```
-    Where the dbt model is defined like this:
-    ``` sql title="project_dir/models/widget_sales.sql" 
-    SELECT 
-      widget, 
-      quantity, 
+
+    Where the dbt model itself is defined like this:
+
+    ``` sql title="project_dir/models/widget_sales.sql"
+    SELECT
+      widget,
+      quantity,
       completed_at
     FROM {% raw %}{{ source('crm', 'sales_of_widgets') }}{% endraw %}
     ```
 
-Using that context, Visivo will produce this query and store it in your target directory:
-``` sql title="project_dir/target/traces/simple_trace/query.sql"
-WITH 
-sql as (
-select * from widget_sales --context set to target.database & target.schema
-)
-select 
-  widget as "cohort_on",
-  date_trunc('week', completed_at) as "x", 
-  sum(amount) as "y", 
-  case sum(amount) > 300 then 'green' else 'blue' end as "marker.color"
-from sql 
-GROUP BY 
-  "cohort_on",
-  "x"
-```
-After small transformations on the output of the query you get this `data.json` which is stored in the target directly next to the query to enable debugging:
-``` json title="project_dir/target/traces/simple_trace/data.json"
-{
-"Useful Widget": {
-  "x": ["2023-01-01", "2023-01-08"],
-  "y": [300, 400],
-  "marker.color": ["blue", "green"]
-  },
-"Expensive Widget": {
-  "x": ["2023-01-01", "2023-01-08"],
-  "y": [950, 50],
-  "marker.color": ["green", "blue"]
-  }
-}
-```
-Next Visivo generates the plotly chart configuration:
-``` js title="project_dir/target/charts/simple_chart/chart.js"
-...
+## Compile
 
-var traces = [
-  {
-    name: "Useful Widget",
-    x: data["Useful Widget"]["x"],
-    y: data["Useful Widget"]["y"],
-    marker: {
-      color: data["Useful Widget"]["marker.color"],
-      shape: "square"
-    },
-    mode: "lines"
-  },
-  {
-    name: "Expensive Widget",
-    x: data["Expensive Widget"]["x"],
-    y: data["Expensive Widget"]["y"],
-    marker: {
-      color: data["Expensive Widget"]["marker.color"],
-      shape: "square"
-    },
-    mode: "lines"
-  },
-]
-var layout = {title: "Widget Sales by Week" }
+`visivo compile` parses your YAML, validates the project against the [JSON schema](https://docs.visivo.io/assets/visivo_schema.json), and writes `target/project.json` plus per-insight metadata. The `?{ ... }` slots and `${ref(...)}` references are resolved into a SQL query that the source can execute, captured in the insight's metadata file.
 
-Plotly.newPlot('aDiv', data, layout);
+## Run
+
+`visivo run` executes the model query against your source and writes a Parquet file per insight to `target/<run-id>/files/<insight-name>.parquet`. It also writes an `insights/<insight-name>.json` describing the prop-to-column mapping and any post-query (the part that runs client-side in the browser).
+
+```text title="target/main/files/weekly_widget_sales.parquet"
+widget,         x,           y,    marker.color
+Useful Widget,  2023-01-01,  300,  green
+Useful Widget,  2023-01-08,  400,  green
+Expensive Widget, 2023-01-01, 950, green
+Expensive Widget, 2023-01-08,  50, blue
 ```
-The compiled JS produces a chart! Now you can mix and match traces with the one we outlined here or deploy this chart to 1 or more dashboards without having to do any duplicate work.  
+
+## Render
+
+When the dashboard is opened in the browser, the Visivo viewer loads the Parquet file with [DuckDB-WASM](https://duckdb.org/docs/api/wasm/overview), applies any [interactions](reference/configuration/Insight/InsightInteraction/index.md) (`split`, `sort`, `filter`) client-side, maps the result columns onto the insight's plotly props, and hands the assembled series data to plotly to render.
+
+That same insight can now be reused across as many [charts](reference/configuration/Chart/index.md) and [dashboards](reference/configuration/Dashboards/Dashboard/index.md) as you like — Visivo computes the underlying data exactly once.
 
 ![](assets/example_chart.png)

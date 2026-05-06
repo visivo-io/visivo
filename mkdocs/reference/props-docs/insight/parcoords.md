@@ -40,22 +40,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         insights:
           - name: Simple Parcoords Plot
             description: "Parallel coordinates plot with three numerical variables"
-            model: ${ref(parcoords-data)}
-            columns:
-              variable_1: ?{ variable_1 }
-              variable_2: ?{ variable_2 }
-              variable_3: ?{ variable_3 }
             props:
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: ?{columns.variable_1}
+                  values: ?{${ref(parcoords-data).variable_1}}
                 - label: "Variable 2"
-                  values: ?{columns.variable_2}
+                  values: ?{${ref(parcoords-data).variable_2}}
                 - label: "Variable 3"
-                  values: ?{columns.variable_3}
+                  values: ?{${ref(parcoords-data).variable_3}}
               line:
-                color: ?{columns.variable_3}
+                color: ?{${ref(parcoords-data).variable_3}}
                 colorscale: "Viridis"
             interactions:
               - split: ?{variable_1}
@@ -91,25 +86,20 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         insights:
           - name: Parcoords Plot with Custom Ranges
             description: "Parallel coordinates with custom axis ranges"
-            model: ${ref(parcoords-data-ranges)}
-            columns:
-              variable_1: ?{ variable_1 }
-              variable_2: ?{ variable_2 }
-              variable_3: ?{ variable_3 }
             props:
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: ?{columns.variable_1}
+                  values: ?{${ref(parcoords-data-ranges).variable_1}}
                   range: [5, 15]
                 - label: "Variable 2"
-                  values: ?{columns.variable_2}
+                  values: ?{${ref(parcoords-data-ranges).variable_2}}
                   range: [10, 30]
                 - label: "Variable 3"
-                  values: ?{columns.variable_3}
+                  values: ?{${ref(parcoords-data-ranges).variable_3}}
                   range: [15, 35]
               line:
-                color: ?{columns.variable_3}
+                color: ?{${ref(parcoords-data-ranges).variable_3}}
                 colorscale: "Blues"
             interactions:
               - split: ?{variable_1}
@@ -145,22 +135,17 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attri
         insights:
           - name: Parcoords Plot with Custom Colorscale
             description: "Custom colorscale applied to parallel coordinates"
-            model: ${ref(parcoords-data-colorscale)}
-            columns:
-              variable_1: ?{ variable_1 }
-              variable_2: ?{ variable_2 }
-              variable_3: ?{ variable_3 }
             props:
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: ?{columns.variable_1}
+                  values: ?{${ref(parcoords-data-colorscale).variable_1}}
                 - label: "Variable 2"
-                  values: ?{columns.variable_2}
+                  values: ?{${ref(parcoords-data-colorscale).variable_2}}
                 - label: "Variable 3"
-                  values: ?{columns.variable_3}
+                  values: ?{${ref(parcoords-data-colorscale).variable_3}}
               line:
-                color: ?{columns.variable_3}
+                color: ?{${ref(parcoords-data-colorscale).variable_3}}
                 colorscale: "Jet"
             interactions:
               - split: ?{variable_1}

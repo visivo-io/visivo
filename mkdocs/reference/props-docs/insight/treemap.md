@@ -41,16 +41,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
                 F,B,10
         insights:
           - name: Simple Treemap Insight
-            model: ${ref(treemap-data)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{"values"}
             props:
               type: treemap
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(treemap-data).labels}}
+              parents: ?{${ref(treemap-data).parents}}
+              values: ?{"${ref(treemap-data).values}"}
               marker:
                 colorscale: Blackbody
               textposition: "middle center"
@@ -84,19 +79,13 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
                 F,B,10,#e377c2
         insights:
           - name: Treemap Insight with Custom Colors
-            model: ${ref(treemap-data-colors)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{"values"}
-              colors: ?{colors}
             props:
               type: treemap
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(treemap-data-colors).labels}}
+              parents: ?{${ref(treemap-data-colors).parents}}
+              values: ?{"${ref(treemap-data-colors).values}"}
               marker:
-                colors: ?{columns.colors}
+                colors: ?{${ref(treemap-data-colors).colors}}
                 line:
                   color: black
         charts:
@@ -129,16 +118,11 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attribu
                 I,C,15
         insights:
           - name: Treemap Insight with Custom Tiling
-            model: ${ref(treemap-data-tiling)}
-            columns:
-              labels: ?{labels}
-              parents: ?{parents}
-              values: ?{"values"}
             props:
               type: treemap
-              labels: ?{columns.labels}
-              parents: ?{columns.parents}
-              values: ?{columns.values}
+              labels: ?{${ref(treemap-data-tiling).labels}}
+              parents: ?{${ref(treemap-data-tiling).parents}}
+              values: ?{"${ref(treemap-data-tiling).values}"}
               tiling:
                 packing: binary
                 squarifyratio: 1.5

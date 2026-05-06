@@ -1,1 +1,0 @@
-Markdown files in this directory will be rendered as a section in the traceprop model that matches the filename. 

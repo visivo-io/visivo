@@ -37,16 +37,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Contour/#attributes) f
         insights:
           - name: Simple Contour Insight
             description: "Basic contour plot using X, Y, Z"
-            model: ${ref(contour-data)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contour
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(contour-data).x}}
+              y: ?{${ref(contour-data).y}}
+              z: ?{${ref(contour-data).z}}
               colorscale: "Viridis"
               ncontours: 20
             layout:
@@ -68,16 +63,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Contour/#attributes) f
         insights:
           - name: Filled Contour Insight
             description: "Contour plot with heatmap coloring"
-            model: ${ref(contour-data-filled)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contour
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(contour-data-filled).x}}
+              y: ?{${ref(contour-data-filled).y}}
+              z: ?{${ref(contour-data-filled).z}}
               colorscale: "Earth"
               contours:
                 coloring: "heatmap"
@@ -102,16 +92,11 @@ _**See the [Attributes](../../configuration/Insight/Props/Contour/#attributes) f
         insights:
           - name: Multi-Level Contour Insight
             description: "Contour plot with custom contour levels"
-            model: ${ref(contour-data-multi)}
-            columns:
-              x: ?{x}
-              y: ?{y}
-              z: ?{z}
             props:
               type: contour
-              x: ?{columns.x}
-              y: ?{columns.y}
-              z: ?{columns.z}
+              x: ?{${ref(contour-data-multi).x}}
+              y: ?{${ref(contour-data-multi).y}}
+              z: ?{${ref(contour-data-multi).z}}
               colorscale: "Jet"
               contours:
                 start: 0
