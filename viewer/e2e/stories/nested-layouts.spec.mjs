@@ -207,7 +207,46 @@ test.describe('Nested Layouts', () => {
     expect(ratio).toBeLessThan(2.5);
   });
 
-  test('Step 10: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
+  test('Step 10: Dashboard wrapper does not trap content in an inner scroll', async ({ page }) => {
+    // Regression for Section 4 clipping. The wrapper used to have
+    // `overflow-x-hidden` which silently makes browsers force overflow-y to
+    // auto, creating an inner scroll area whose box height was less than the
+    // total content height. Tall dashboards (this fixture is 2348px) had
+    // their last sections trapped inside the inner scroll.
+    //
+    // The fix swaps to `overflow-x-clip` (Tailwind v4+), which clips X
+    // without coercing Y. We assert (a) the wrapper's resolved overflow-y
+    // is "visible" or "clip", never "auto"/"scroll", and (b) the document
+    // is scrollable to a position past the last top-level row's bottom.
+    await page.goto(DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(1000);
+
+    const probe = await page.evaluate(() => {
+      const dashboard = document.querySelector('[data-testid="dashboard_nested-layouts-dashboard"]');
+      const cs = getComputedStyle(dashboard);
+      const rows = dashboard.querySelectorAll(':scope > .dashboard-row');
+      const last = rows[rows.length - 1].getBoundingClientRect();
+      return {
+        overflowY: cs.overflowY,
+        overflowX: cs.overflowX,
+        docScrollHeight: document.documentElement.scrollHeight,
+        lastRowAbsBottom: last.bottom + window.scrollY,
+      };
+    });
+
+    // The wrapper's vertical overflow must NOT be auto/scroll — those create
+    // an inner scroll trap. visible (default) and clip both let content
+    // flow into the parent.
+    expect(['visible', 'clip']).toContain(probe.overflowY);
+    // The document must be scrollable to at least the last row's bottom
+    // (within ±20px for any padding/margin). If the document can't scroll
+    // that far, the user can't see the last section.
+    expect(probe.docScrollHeight).toBeGreaterThanOrEqual(probe.lastRowAbsBottom - 20);
+  });
+
+  test('Step 11: Visual snapshot of the nested-layouts dashboard', async ({ page }) => {
     await page.goto(DASHBOARD_PATH);
     await page.waitForLoadState('networkidle');
     await page.setViewportSize({ width: 1440, height: 900 });
