@@ -45,3 +45,10 @@ class Row(NamedModel, ParentModel):
 
     def child_items(self):
         return self.items
+
+
+# Resolve the forward reference Item.rows: Optional[List["Row"]] now that Row is defined.
+# Pydantic v2 needs an explicit rebuild because Item is imported above (when Row didn't exist
+# yet) and Item.rows references "Row" by string. Calling model_rebuild here updates Item's
+# schema to bind the string reference to the actual Row class.
+Item.model_rebuild()
