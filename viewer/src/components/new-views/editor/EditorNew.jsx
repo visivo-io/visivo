@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import useStore from '../../../stores/store';
+import { useSourceCreationModal } from '../../../stores/sourceModalStore';
 import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceSearch from './SourceSearch';
 import EditPanel from '../common/EditPanel';
@@ -528,12 +529,23 @@ const EditorNew = () => {
     pushEdit('defaults', { name: 'Project Settings', config: defaults || {} });
   }, [clearEdit, pushEdit, defaults]);
 
+  // App-level shared modal for creating sources from any view
+  const { open: openSourceCreationModal } = useSourceCreationModal();
+
   // Handle create button selection
   const handleCreateSelect = useCallback(objectType => {
+    if (objectType === 'source') {
+      // Use the shared, app-level source-creation modal so source creation
+      // is consistent across Editor, Onboarding, Explorer, etc.
+      clearEdit();
+      setIsCreating(false);
+      openSourceCreationModal();
+      return;
+    }
     clearEdit();
     setIsCreating(true);
     setCreateObjectType(objectType);
-  }, [clearEdit]);
+  }, [clearEdit, openSourceCreationModal]);
 
   // Handle panel close
   const handlePanelClose = useCallback(() => {

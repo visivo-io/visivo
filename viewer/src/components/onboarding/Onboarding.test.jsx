@@ -10,6 +10,17 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../stores/store');
+
+const mockOpenSourceModal = jest.fn();
+const mockCloseSourceModal = jest.fn();
+jest.mock('../../stores/sourceModalStore', () => ({
+  useSourceCreationModal: () => ({
+    isOpen: false,
+    open: mockOpenSourceModal,
+    close: mockCloseSourceModal,
+  }),
+}));
+
 jest.mock(
   './ProjectModal',
   () =>
@@ -17,9 +28,6 @@ jest.mock(
       <div data-testid="project-modal">Project Modal</div>
     )
 );
-jest.mock('../new-views/common/SourceEditForm', () => () => (
-  <div data-testid="source-edit-form">Source Edit Form</div>
-));
 jest.mock('../common/Loading', () => ({ text }) => (
   <div data-testid="loading">{text || 'Loading...'}</div>
 ));
@@ -59,11 +67,17 @@ test('opens project name modal if no name set', () => {
   expect(screen.getByTestId('project-modal')).toBeInTheDocument();
 });
 
-test("opens CreateObjectModal on 'Add Data Source' click", async () => {
+test("opens shared SourceCreationModal on 'Add Data Source' click", async () => {
   render(<Onboarding />);
   const addButton = screen.getByText(/add data source/i);
   fireEvent.click(addButton);
-  expect(await screen.findByTestId('create-object-modal')).toBeInTheDocument();
+  // Onboarding now delegates to the app-level shared modal store. The button
+  // should call the store's open() with an onSave callback so the
+  // modal-driven save still triggers the project-finalize flow.
+  expect(mockOpenSourceModal).toHaveBeenCalled();
+  const args = mockOpenSourceModal.mock.calls[0][0];
+  expect(args).toBeDefined();
+  expect(typeof args.onSave).toBe('function');
 });
 
 test("handles 'Import Example' click", async () => {
