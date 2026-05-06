@@ -44,7 +44,17 @@ def _get_ref(field_data):
     return refs, None
 
 
-def _process_model(schema, model_data, processed_models):
+def _process_model(schema, model_data, processed_models, _stack=None):
+    """Walk the JSON-schema structure recursively, building a nested dict that mirrors
+    model containment.
+
+    `_stack` tracks the set of model names on the current recursion path. When a ref
+    would lead back to a model already on the stack (a cycle — e.g. `Item.rows: List[Row]`
+    where Row.items: List[Item]), we record an empty leaf and stop descending. Without
+    this guard, recursive model definitions blow the Python stack."""
+
+    if _stack is None:
+        _stack = frozenset()
 
     properties = model_data.get("properties", {})
     nested_structure = {}
@@ -54,9 +64,15 @@ def _process_model(schema, model_data, processed_models):
         if refs and field not in ["props", "layout"] and ref_type != "oneOf":
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
+                if nested_model_name in _stack:
+                    nested_structure[nested_model_name] = {}
+                    continue
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
                 nested_structure[nested_model_name] = _process_model(
-                    schema, nested_model_data, processed_models
+                    schema,
+                    nested_model_data,
+                    processed_models,
+                    _stack | {nested_model_name},
                 )
         elif refs and field in ["props", "layout"]:
             for ref in refs:
@@ -77,9 +93,15 @@ def _process_model(schema, model_data, processed_models):
             nested_structure[field.capitalize()] = {}
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
+                if nested_model_name in _stack:
+                    nested_structure[field.capitalize()][nested_model_name] = {}
+                    continue
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
                 nested_structure[field.capitalize()][nested_model_name] = _process_model(
-                    schema, nested_model_data, processed_models
+                    schema,
+                    nested_model_data,
+                    processed_models,
+                    _stack | {nested_model_name},
                 )
         else:
             nested_structure[field] = field_data.get("type", "unknown")
