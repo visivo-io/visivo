@@ -154,6 +154,49 @@ def register_project_views(app, flask_app, output_dir):
         json_dump = source.model_dump_json(exclude_none=True)
         return jsonify({"message": "Source created", "source": json.loads(json_dump)})
 
+    @app.route("/api/source/upload-temp/", methods=["POST"])
+    def source_upload_temp():
+        """
+        Saves an uploaded file (SQLite, DuckDB, CSV, or Excel) to the project
+        directory so it can be referenced by absolute path in source config.
+
+        Form fields:
+            file (required): The file to upload.
+            project_dir (optional): Project directory; defaults to os.getcwd().
+
+        Returns:
+            JSON with absolute_path, filename, and size_bytes.
+        """
+        if "file" not in request.files:
+            return jsonify({"error": "No file in request"}), 400
+
+        file = request.files["file"]
+        if not file.filename:
+            return jsonify({"error": "Empty filename"}), 400
+
+        project_dir = request.form.get("project_dir") or os.getcwd()
+        project_dir = os.path.abspath(project_dir)
+
+        # Sanitize filename - allow only safe chars (letters, digits, dot, dash, underscore)
+        safe_name = re.sub(r"[^\w\.\-]", "_", os.path.basename(file.filename))
+        if not safe_name or safe_name in (".", ".."):
+            return jsonify({"error": "Invalid filename"}), 400
+
+        # Save to <project_dir>/data/<filename> (create data/ if needed)
+        data_dir = os.path.join(project_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+
+        abs_path = os.path.join(data_dir, safe_name)
+        file.save(abs_path)
+
+        return jsonify(
+            {
+                "absolute_path": abs_path,
+                "filename": safe_name,
+                "size_bytes": os.path.getsize(abs_path),
+            }
+        )
+
     @app.route("/api/source/upload/", methods=["POST"])
     def upload_file():
         file = request.files.get("file")
