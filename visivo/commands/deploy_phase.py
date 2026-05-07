@@ -144,9 +144,18 @@ async def create_dashboard_records(
             ),
             None,
         )
+        # The full dashboard config (rows, description, tags, level, type,
+        # href) is needed by core to populate per-dashboard rows. Previously
+        # this was only available implicitly inside the project_json blob;
+        # sending it explicitly per-dashboard lets core's intake split it
+        # out without re-parsing the full project. See
+        # docs/contracts/core-api-spec.md "Project Intake".
         dashboard_body = {
             "name": dashboard.name,
             "project_id": project_id,
+            "config": dashboard.model_dump(
+                mode="json", exclude_none=True, exclude={"file_path", "path"}
+            ),
         }
         if thumbnail_file_id:
             dashboard_body["thumbnail_file_id"] = thumbnail_file_id

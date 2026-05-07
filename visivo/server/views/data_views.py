@@ -21,7 +21,7 @@ def register_data_views(app, flask_app, output_dir):
             return send_file(SCHEMA_FILE)
         else:
             return (
-                jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
+                jsonify({"error": f"Schema file not found: {SCHEMA_FILE}"}),
                 404,
             )
 

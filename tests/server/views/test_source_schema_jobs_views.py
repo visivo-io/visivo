@@ -185,8 +185,8 @@ class TestGetSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 404
         data = response.get_json()
-        assert "message" in data
-        assert "nonexistent" in data["message"]
+        assert "error" in data
+        assert "nonexistent" in data["error"]
 
 
 class TestListSourceTables(TestSourceSchemaJobsViews):
@@ -309,7 +309,7 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 404
         data = response.get_json()
-        assert "nonexistent" in data["message"]
+        assert "nonexistent" in data["error"]
 
     def test_generate_schema_missing_config(self, client, app):
         """Test generating schema without config field."""
@@ -320,7 +320,7 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 400
         data = response.get_json()
-        assert "config" in data["message"]
+        assert "config" in data["error"]
 
     def test_generate_schema_missing_source_name(self, client, app):
         """Test generating schema without source_name in config."""
@@ -331,7 +331,7 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 400
         data = response.get_json()
-        assert "source_name" in data["message"]
+        assert "source_name" in data["error"]
 
     def test_generate_schema_missing_run_flag(self, client, app):
         """Test generating schema without run flag."""
@@ -342,7 +342,7 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 400
         data = response.get_json()
-        assert "run" in data["message"]
+        assert "run" in data["error"]
 
 
 class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):

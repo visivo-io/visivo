@@ -1,7 +1,7 @@
 import React from 'react';
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 import { futureFlags } from './router-config';
-import { loadProject } from './loaders/project';
+import { loadProject, loadProjectMeta } from './loaders/project';
 import { loadError } from './loaders/error';
 import Home from './components/Home';
 import ProjectContainer from './components/project/ProjectContainer';
@@ -39,7 +39,7 @@ const LocalRouter = createBrowserRouter(
           id="lineage"
           path="/lineage"
           element={<LineageNew />}
-          loader={loadProject}
+          loader={loadProjectMeta}
           handle={{
             crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
           }}
@@ -48,7 +48,7 @@ const LocalRouter = createBrowserRouter(
           id="editor"
           path="/editor"
           element={<EditorNew />}
-          loader={loadProject}
+          loader={loadProjectMeta}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
           }}
@@ -57,7 +57,7 @@ const LocalRouter = createBrowserRouter(
           id="project-new"
           path="/project-new/:dashboardName?"
           element={<ProjectNew />}
-          loader={loadProject}
+          loader={loadProjectMeta}
           handle={{
             crumb: match => (
               <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
