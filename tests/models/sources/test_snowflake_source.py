@@ -12,6 +12,104 @@ def test_SnowflakeSource_simple_data():
     assert source.name == "source"
 
 
+# B5 regression: ${env.X} on connection-relevant fields must reach the snowflake URL
+# attributes already resolved. Before this fix, account/warehouse/role/timezone were
+# typed Optional[str] AND read directly inside url(), so the literal "${env.…}"
+# string ended up in the URL and every Snowflake query 404'd at the connector.
+@pytest.mark.parametrize(
+    "field,env_var,expected",
+    [
+        ("account", "SF_ACCOUNT", "ab12345.us-west-1.aws"),
+        ("warehouse", "SF_WAREHOUSE", "TEST_WH"),
+        ("role", "SF_ROLE", "TEST_ROLE"),
+        ("timezone", "SF_TIMEZONE", "UTC"),
+        # username / password / database already worked — included for symmetry
+        # so a future regression on the base-class fields also surfaces here.
+        ("username", "SF_USER", "test_user"),
+        ("password", "SF_PASSWORD", "test_pw"),
+        ("database", "SF_DATABASE", "TEST_DB"),
+    ],
+)
+def test_env_var_resolves_in_url_attributes(monkeypatch, field, env_var, expected):
+    """Every connection-relevant field must resolve ${env.X} before url() builds attrs."""
+    monkeypatch.setenv("SF_ACCOUNT", "ab12345.us-west-1.aws")
+    monkeypatch.setenv("SF_USER", "test_user")
+    monkeypatch.setenv("SF_PASSWORD", "test_pw")
+    monkeypatch.setenv("SF_WAREHOUSE", "TEST_WH")
+    monkeypatch.setenv("SF_ROLE", "TEST_ROLE")
+    monkeypatch.setenv("SF_DATABASE", "TEST_DB")
+    monkeypatch.setenv("SF_TIMEZONE", "UTC")
+
+    src = SnowflakeSource(
+        name="t",
+        type="snowflake",
+        account="${env.SF_ACCOUNT}",
+        username="${env.SF_USER}",
+        password="${env.SF_PASSWORD}",
+        warehouse="${env.SF_WAREHOUSE}",
+        role="${env.SF_ROLE}",
+        database="${env.SF_DATABASE}",
+        timezone="${env.SF_TIMEZONE}",
+    )
+
+    with patch("snowflake.sqlalchemy.URL") as mock_url:
+        src.url()
+        attrs = mock_url.call_args.kwargs
+
+    # snowflake-sqlalchemy uses `user` rather than `username`; everything else maps 1:1.
+    url_key = {"username": "user"}.get(field, field)
+    assert attrs[url_key] == expected, (
+        f"Expected {url_key}={expected!r} but got {attrs.get(url_key)!r}. "
+        f"Likely the field type isn't StringOrEnvVar or url() reads it directly "
+        f"without _resolve_field()."
+    )
+    assert "${env." not in str(attrs[url_key]), (
+        f"Literal ${{env.…}} placeholder leaked into url attribute {url_key!r}: "
+        f"{attrs[url_key]!r}. Fix _resolve_field wiring in SnowflakeSource.url()."
+    )
+
+
+def test_get_account_warehouse_role_timezone_resolve_env_vars(monkeypatch):
+    """The four B5 getters must hand back resolved env-var values, not the literal."""
+    monkeypatch.setenv("SF_ACCOUNT", "abc123.us-east-1.aws")
+    monkeypatch.setenv("SF_WAREHOUSE", "MY_WH")
+    monkeypatch.setenv("SF_ROLE", "MY_ROLE")
+    monkeypatch.setenv("SF_TIMEZONE", "America/New_York")
+
+    src = SnowflakeSource(
+        name="t",
+        type="snowflake",
+        account="${env.SF_ACCOUNT}",
+        warehouse="${env.SF_WAREHOUSE}",
+        role="${env.SF_ROLE}",
+        timezone="${env.SF_TIMEZONE}",
+        database="db",
+    )
+
+    assert src.get_account() == "abc123.us-east-1.aws"
+    assert src.get_warehouse() == "MY_WH"
+    assert src.get_role() == "MY_ROLE"
+    assert src.get_timezone() == "America/New_York"
+
+
+def test_literal_string_values_pass_through_unchanged():
+    """Plain (non-env-var) strings still flow through the getters unchanged."""
+    src = SnowflakeSource(
+        name="t",
+        type="snowflake",
+        account="abc.us-west-2.aws",
+        warehouse="WH",
+        role="ROLE",
+        timezone="UTC",
+        database="db",
+    )
+
+    assert src.get_account() == "abc.us-west-2.aws"
+    assert src.get_warehouse() == "WH"
+    assert src.get_role() == "ROLE"
+    assert src.get_timezone() == "UTC"
+
+
 def test_SnowflakeSource_key_authentication():
     data = {
         "name": "source",
