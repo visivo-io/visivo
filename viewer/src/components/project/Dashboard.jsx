@@ -15,33 +15,47 @@ import { captureDashboardThumbnail } from './captureDashboardThumbnail';
 const isModelData = data => data && (data.sql || data.args || data.models);
 
 /**
- * Collect insight and model names from visible rows for centralized prefetching.
+ * Walk every Item across a list of rows, descending through `item.rows`
+ * row-containers so nested charts/tables/inputs are also reached.
  */
+const forEachItemDeep = (rows, callback) => {
+  if (!rows) return;
+  for (const row of rows) {
+    if (!row || !row.items) continue;
+    for (const item of row.items) {
+      callback(item);
+      if (item.rows && item.rows.length > 0) {
+        forEachItemDeep(item.rows, callback);
+      }
+    }
+  }
+};
+
 const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightNames = new Set()) => {
   const insightNames = new Set();
   const modelNames = new Set();
   const pivotRefStrings = [];
 
-  for (const rowIndex of visibleRowIndices) {
-    const row = rows[rowIndex];
-    if (!row) continue;
-    for (const item of row.items) {
-      if (shouldShowItem && !shouldShowItem(item)) continue;
-      item.chart?.insights?.forEach(i => insightNames.add(i.name));
-      if (item.table?.data?.name) {
-        if (isModelData(item.table.data)) {
-          modelNames.add(item.table.data.name);
-        } else {
-          insightNames.add(item.table.data.name);
-        }
+  const visibleSeed = visibleRowIndices
+    .map(idx => rows[idx])
+    .filter(row => row);
+
+  forEachItemDeep(visibleSeed, item => {
+    if (shouldShowItem && !shouldShowItem(item)) return;
+    item.chart?.insights?.forEach(i => insightNames.add(i.name));
+    if (item.table?.data?.name) {
+      if (isModelData(item.table.data)) {
+        modelNames.add(item.table.data.name);
+      } else {
+        insightNames.add(item.table.data.name);
       }
-      pivotRefStrings.push(
-        ...(item.table?.columns || []),
-        ...(item.table?.rows || []),
-        ...(item.table?.values || []),
-      );
     }
-  }
+    pivotRefStrings.push(
+      ...(item.table?.columns || []),
+      ...(item.table?.rows || []),
+      ...(item.table?.values || []),
+    );
+  });
 
   // Classify pivot refs: known insights go to insightNames, everything else to modelNames
   const allKnown = new Set([...insightNames, ...knownInsightNames]);
@@ -56,23 +70,18 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightN
   return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
-/**
- * Collect all input names from visible rows for centralized prefetching.
- * This enables a single useInputsData call instead of N calls from individual Input components.
- */
 const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
   const inputNames = new Set();
-  for (const rowIndex of visibleRowIndices) {
-    const row = rows[rowIndex];
-    if (!row) continue;
-    for (const item of row.items) {
-      // Only collect from items that will be rendered
-      if (shouldShowItem && !shouldShowItem(item)) continue;
-      if (item.input?.name) {
-        inputNames.add(item.input.name);
-      }
+  const visibleSeed = visibleRowIndices
+    .map(idx => rows[idx])
+    .filter(row => row);
+
+  forEachItemDeep(visibleSeed, item => {
+    if (shouldShowItem && !shouldShowItem(item)) return;
+    if (item.input?.name) {
+      inputNames.add(item.input.name);
     }
-  }
+  });
   return [...inputNames];
 };
 
@@ -107,17 +116,39 @@ const Dashboard = ({ project, dashboardName }) => {
     }
   };
 
-  const getWidth = (items, item) => {
-    if (width < widthBreakpoint) {
-      return width;
+  // Relative-weight mapping for sub-rows nested inside an Item's `rows` field.
+  // Top-level rows interpret `height` as absolute pixels (getHeight). Nested
+  // sub-rows reuse the same enum as a relative weight that divides the parent
+  // slot's height. See specs/dashboard-building/04-open-questions.md Q9.
+  const heightToWeight = height => {
+    if (height === 'compact') return 1;
+    if (height === 'xsmall') return 1;
+    if (height === 'small') return 2;
+    if (height === 'medium') return 3;
+    if (height === 'large') return 4;
+    if (height === 'xlarge') return 6;
+    return 8; // xxlarge
+  };
+
+  // `containerPixelWidth` is the row's own pixel width — the dashboard width at
+  // the top level, but the parent item slot's width inside a nested row. Without
+  // threading this down, nested charts size to the dashboard width and overflow
+  // their slot, which then collapses sibling grid tracks.
+  const getWidth = (items, item, containerPixelWidth) => {
+    const containerWidth =
+      typeof containerPixelWidth === 'number' && containerPixelWidth > 0
+        ? containerPixelWidth
+        : width;
+    if (containerWidth < widthBreakpoint) {
+      return containerWidth;
     }
     const totalWidth = items.reduce((partialSum, i) => {
       const itemWidth = i.width ? i.width : 1;
       return partialSum + itemWidth;
-    }, 0);
+    }, 0) || 1;
 
     const itemWidth = item.width ? item.width : 1;
-    return width * (itemWidth / totalWidth);
+    return containerWidth * (itemWidth / totalWidth);
   };
 
   const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName);
@@ -181,14 +212,12 @@ const Dashboard = ({ project, dashboardName }) => {
 
   const knownInsightNames = useMemo(() => {
     const names = new Set();
-    for (const row of dashboard.rows || []) {
-      for (const item of row.items || []) {
-        item.chart?.insights?.forEach(i => { if (i.name) names.add(i.name); });
-        if (item.table?.data?.name && !isModelData(item.table.data)) {
-          names.add(item.table.data.name);
-        }
+    forEachItemDeep(dashboard.rows || [], item => {
+      item.chart?.insights?.forEach(i => { if (i.name) names.add(i.name); });
+      if (item.table?.data?.name && !isModelData(item.table.data)) {
+        names.add(item.table.data.name);
       }
-    }
+    });
     return names;
   }, [dashboard.rows]);
 
@@ -204,6 +233,159 @@ const Dashboard = ({ project, dashboardName }) => {
 
   useInsightsData(project.id, visibleInsightNames);
   useModelsData(project.id, visibleModelNames);
+
+  // Render a single dashboard item.
+  // `slotPixelHeight` is the pixel height the parent row reserved for this slot;
+  // it sizes the chart/table inside the slot AND sub-rows when the item is a
+  // row-container. `slotPixelWidth` is the parent row's pixel width; threaded
+  // so nested charts size from the slot, not the dashboard. `keyPrefix`
+  // namespaces children when rendered inside nested-rows.
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
+    if (items.indexOf(item) < 0) {
+      return null;
+    }
+    const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
+    const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
+
+    // Row-container item: render nested rows as a vertical flex stack with
+    // weight-based heights (Q9 — sub-row heights are relative weights inside
+    // the parent slot, not absolute pixels).
+    if (item.rows && item.rows.length > 0) {
+      const subRows = item.rows;
+      const totalWeight = subRows.reduce(
+        (sum, r) => sum + heightToWeight(r.height), 0
+      ) || 1;
+      const parentPixelHeight = typeof slotPixelHeight === 'number' && slotPixelHeight > 0
+        ? slotPixelHeight
+        : getHeight(row.height);
+      return (
+        <div
+          key={key}
+          className="dashboard-nested-rows flex flex-col w-full h-full"
+          data-testid="dashboard-nested-rows"
+          style={{ gap: '0.5rem', minWidth: 0, minHeight: 0 }}
+        >
+          {subRows.map((subRow, subIdx) => {
+            const subHeightPx = parentPixelHeight * (heightToWeight(subRow.height) / totalWeight);
+            return (
+              <div
+                key={`${key}-sub-${subIdx}`}
+                className="dashboard-nested-subrow w-full"
+                data-testid="dashboard-nested-subrow"
+                style={{
+                  flex: `${heightToWeight(subRow.height)} 1 0`,
+                  minWidth: 0,
+                  minHeight: 0,
+                  height: subHeightPx,
+                }}
+              >
+                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`)}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    const effectiveSlotHeight = typeof slotPixelHeight === 'number' && slotPixelHeight > 0
+      ? slotPixelHeight
+      : getHeight(row.height);
+
+    if (item.input) {
+      return (
+        <Input
+          input={item.input}
+          project={project}
+          itemWidth={item.width}
+          key={key}
+        ></Input>
+      );
+    } else if (item.table) {
+      return (
+        <Table
+          table={item.table}
+          project={project}
+          itemWidth={item.width}
+          width={effectiveSlotWidth}
+          height={effectiveSlotHeight}
+          shouldLoad={shouldLoad}
+          key={key}
+        />
+      );
+    } else if (item.chart) {
+      return (
+        <Chart
+          chart={item.chart}
+          project={project}
+          height={effectiveSlotHeight - 8}
+          width={effectiveSlotWidth}
+          itemWidth={item.width}
+          shouldLoad={shouldLoad}
+          key={key}
+        />
+      );
+    } else if (item.markdown) {
+      return (
+        <Markdown
+          key={key}
+          markdown={item.markdown}
+          row={row}
+          height={effectiveSlotHeight}
+        />
+      );
+    }
+    return null;
+  };
+
+  // Sub-row that lives inside an Item's `rows` field. Same grid layout as a
+  // top-level row, but height is governed by the parent slot's flex allocation
+  // rather than the row's pixel-mapped HeightEnum. Reuses renderItem so leaf-
+  // vs-row-container handling stays shared.
+  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
+    if (!subRow || !subRow.items) return null;
+    const visibleItems = subRow.items.filter(shouldShowItem);
+    const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    return (
+      <div
+        className={`dashboard-nested-row w-full h-full ${isColumn ? 'flex' : 'grid'}`}
+        style={{
+          display: isColumn ? 'flex' : 'grid',
+          flexDirection: isColumn ? 'column' : undefined,
+          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          gap: '0.5rem',
+          minWidth: 0,
+          minHeight: 0,
+        }}
+      >
+        {visibleItems.map((item, itemIdx) => (
+          <div
+            key={`${keyPrefix}item-${itemIdx}`}
+            className={isColumn ? 'w-full max-w-full' : ''}
+            style={{
+              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
+              width: isColumn ? '100%' : 'auto',
+              minWidth: 0,
+              minHeight: 0,
+            }}
+          >
+            <div className="flex items-center h-full w-full max-w-full">
+              {renderItem(
+                item,
+                subRow,
+                itemIdx,
+                parentRowIndex,
+                shouldLoad,
+                visibleItems,
+                slotPixelHeight,
+                slotPixelWidth,
+                keyPrefix,
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderRow = (row, rowIndex) => {
     if (!shouldShowNamedModel(row)) {
@@ -221,11 +403,17 @@ const Dashboard = ({ project, dashboardName }) => {
         data-row-index={rowIndex}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
-          margin: '0.5rem',
+          // Vertical-only margin so the row stays inside the wrapper's
+          // horizontal padding. The previous all-side `margin: 0.5rem`
+          // combined with `width: 100%` pushed the row 8px past the wrapper's
+          // right padding edge, producing asymmetric left/right gaps.
+          marginTop: '0.5rem',
+          marginBottom: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
           gap: '0.7rem',
+          minWidth: 0,
           ...rowStyle,
         }}
       >
@@ -236,66 +424,31 @@ const Dashboard = ({ project, dashboardName }) => {
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
+              // Grid items default to min-width: auto (== min-content). If a
+              // child (e.g. Plotly chart at fixed pixel width) exceeds 1/N of
+              // the row, CSS grid will steal track width from siblings to fit.
+              // min-width: 0 lets grid distribute the row by `fr` units even
+              // when content overflows; the chart's pixel width is constrained
+              // by `effectiveSlotWidth` inside renderItem.
+              minWidth: 0,
             }}
           >
-            <div className="flex items-center h-full w-full max-w-full">
-              {renderComponent(item, row, itemIndex, rowIndex, shouldLoad)}
+            <div className="flex items-center h-full w-full max-w-full" style={{ minWidth: 0 }}>
+              {renderItem(
+                item,
+                row,
+                itemIndex,
+                rowIndex,
+                shouldLoad,
+                visibleItems,
+                row.height !== 'compact' ? getHeight(row.height) : undefined,
+                width,
+              )}
             </div>
           </div>
         ))}
       </div>
     );
-  };
-
-  const renderComponent = (item, row, itemIndex, rowIndex, shouldLoad = true) => {
-    const items = row.items.filter(shouldShowItem);
-    if (items.indexOf(item) < 0) {
-      return null;
-    }
-    if (item.input) {
-      return (
-        <Input
-          input={item.input}
-          project={project}
-          itemWidth={item.width}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        ></Input>
-      );
-    } else if (item.table) {
-      return (
-        <Table
-          table={item.table}
-          project={project}
-          itemWidth={item.width}
-          width={getWidth(items, item)}
-          height={getHeight(row.height)}
-          shouldLoad={shouldLoad}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
-      );
-    } else if (item.chart) {
-      return (
-        <Chart
-          chart={item.chart}
-          project={project}
-          height={getHeight(row.height) - 8}
-          width={getWidth(items, item)}
-          itemWidth={item.width}
-          shouldLoad={shouldLoad}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
-      );
-    } else if (item.markdown) {
-      return (
-        <Markdown
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-          markdown={item.markdown}
-          row={row}
-          height={getHeight(row.height)}
-        />
-      );
-    }
-    return null;
   };
 
   const getHeightStyle = row => {
@@ -313,7 +466,12 @@ const Dashboard = ({ project, dashboardName }) => {
         observe(el);
       }}
       data-testid={`dashboard_${dashboardName}`}
-      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
+      // overflow-x-clip (NOT overflow-x-hidden) keeps horizontal-overflow
+      // protection without forcing the browser to set overflow-y to auto,
+      // which would create an inner scroll trap on tall dashboards.
+      // px-6: symmetric 24px horizontal padding. pb-8: 32px bottom padding so
+      // the last row isn't flush against the page edge.
+      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-6 pb-8"
     >
       {(dashboard.rows || []).map(renderRow)}
     </div>

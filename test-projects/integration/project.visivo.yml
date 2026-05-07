@@ -3,6 +3,7 @@ name: project
 includes:
   - path: models.visivo.yml
   - path: insights.visivo.yml
+  - path: nested_layouts.visivo.yml
   - path: visivo-io/example-include.git@main
 
 defaults:
