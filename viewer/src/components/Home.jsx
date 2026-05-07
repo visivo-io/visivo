@@ -10,6 +10,7 @@ import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import PublishModal from './publish/PublishModal';
+import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import { useState, useEffect } from 'react';
 
 const Home = () => {
@@ -124,6 +125,7 @@ const Home = () => {
         {error && error.message && <Error>{error.message}</Error>}
         {isRoot ? renderNavigationCards() : <Outlet />}
       </div>
+      <OnboardingChecklist />
     </div>
   );
 };
