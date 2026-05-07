@@ -233,3 +233,237 @@ def test_Item_rows_only_with_no_leaf_parses():
     assert item.chart is None
     assert item.rows is not None
     assert len(item.rows) == 1
+
+
+# ---------- Recursive DAG traversal through Item.rows ----------
+#
+# These tests address PR #408 review feedback: confirm that descendants_of_type()
+# walks through Item.rows recursively and reaches every leaf (chart, table,
+# input, markdown) buried in nested layouts. The DAG walker invokes
+# child_items() at each ParentModel; the test below exercises the full chain
+# from Dashboard down to a 3-level-deep chart.
+
+
+def _make_test_chart(suffix: str):
+    """Build a Chart with an inline Insight using factory_boy (no ref resolution needed)."""
+    from visivo.models.chart import Chart
+    from tests.factories.model_factories import InsightFactory
+
+    insight = InsightFactory(name=f"insight_{suffix}")
+    return Chart(name=f"chart_{suffix}", insights=[insight])
+
+
+def test_descendants_of_type_walks_through_nested_rows_to_charts():
+    """A chart 3 levels deep inside Item.rows is reachable via Dashboard descendants."""
+    from visivo.models.chart import Chart
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.row import Row
+
+    leaf_chart = _make_test_chart("deep_insight")
+    sibling_chart = _make_test_chart("sibling_insight")
+
+    dashboard = Dashboard(
+        name="nested",
+        rows=[
+            Row(
+                height="large",
+                items=[
+                    Item(width=2, chart=sibling_chart),
+                    Item(
+                        width=1,
+                        rows=[
+                            Row(
+                                height="medium",
+                                items=[
+                                    Item(
+                                        width=1,
+                                        rows=[
+                                            Row(
+                                                height="small",
+                                                items=[Item(width=1, chart=leaf_chart)],
+                                            )
+                                        ],
+                                    )
+                                ],
+                            )
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+
+    charts = dashboard.descendants_of_type(type=Chart)
+    chart_names = sorted(c.name for c in charts)
+    assert chart_names == ["chart_deep_insight", "chart_sibling_insight"], (
+        "descendants_of_type(Chart) must reach charts inside Item.rows recursion. "
+        f"got: {chart_names}"
+    )
+
+
+def test_descendants_of_type_collects_all_leaf_types_through_nested_rows():
+    """Every leaf type (Chart, Table, Markdown) buried in nested rows is reachable."""
+    from visivo.models.chart import Chart
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.row import Row
+    from visivo.models.table import Table
+
+    leaf_chart = _make_test_chart("leaf_chart")
+    leaf_table = Table(name="leaf_table")
+    top_markdown = Markdown(name="top_md", content="header")
+
+    dashboard = Dashboard(
+        name="mixed_nested",
+        rows=[
+            Row(height="compact", items=[Item(width=1, markdown=top_markdown)]),
+            Row(
+                height="large",
+                items=[
+                    Item(
+                        width=1,
+                        rows=[
+                            Row(height="small", items=[Item(width=1, chart=leaf_chart)]),
+                            Row(height="small", items=[Item(width=1, table=leaf_table)]),
+                        ],
+                    )
+                ],
+            ),
+        ],
+    )
+
+    chart_names = sorted(c.name for c in dashboard.descendants_of_type(type=Chart))
+    table_names = sorted(t.name for t in dashboard.descendants_of_type(type=Table))
+    markdown_names = sorted(m.name for m in dashboard.descendants_of_type(type=Markdown))
+
+    assert chart_names == ["chart_leaf_chart"]
+    assert table_names == ["leaf_table"]
+    assert markdown_names == ["top_md"]
+
+
+def test_dag_includes_every_item_chart_buried_in_three_levels_of_rows():
+    """Three levels of Item.rows nesting still produce a connected DAG.
+
+    Each Item along the path is added as a node, and the chart at the bottom
+    is reachable via the DAG's descendant walk. This is the integration
+    contract that DashboardNew.jsx relies on for prefetching nested charts.
+    """
+    from visivo.models.chart import Chart
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.row import Row
+
+    deepest = _make_test_chart("deepest")
+
+    dashboard = Dashboard(
+        name="three_levels",
+        rows=[
+            Row(
+                height="large",
+                items=[
+                    Item(
+                        width=1,
+                        rows=[
+                            Row(
+                                height="medium",
+                                items=[
+                                    Item(
+                                        width=1,
+                                        rows=[
+                                            Row(
+                                                height="small",
+                                                items=[Item(width=1, chart=deepest)],
+                                            )
+                                        ],
+                                    )
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    dag = dashboard.dag()
+    # Three Items along the path: row-container at L1, row-container at L2, leaf
+    # chart at L3. Three Rows: top-level, nested-1, nested-2.
+    item_nodes = [n for n in dag.nodes if isinstance(n, Item)]
+    assert len(item_nodes) == 3, f"expected 3 Item nodes in DAG, got {len(item_nodes)}"
+
+    row_nodes = [n for n in dag.nodes if isinstance(n, Row)]
+    assert len(row_nodes) == 3, f"expected 3 Row nodes in DAG, got {len(row_nodes)}"
+
+    # The deeply-buried chart is reachable from the dashboard root.
+    charts = dashboard.descendants_of_type(type=Chart)
+    assert len(charts) == 1
+    assert charts[0].name == "chart_deepest"
+
+
+def test_descendants_through_nested_rows_with_input_leaf():
+    """Inputs nested inside Item.rows are reached by descendants_of_type."""
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.inputs.types.single_select import SingleSelectInput
+    from visivo.models.row import Row
+
+    nested_input = SingleSelectInput(
+        name="nested_input",
+        type="single-select",
+        options=["a", "b"],
+    )
+
+    dashboard = Dashboard(
+        name="with_input",
+        rows=[
+            Row(
+                height="large",
+                items=[
+                    Item(
+                        width=1,
+                        rows=[
+                            Row(
+                                height="compact",
+                                items=[Item(width=1, input=nested_input)],
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    inputs = dashboard.descendants_of_type(type=SingleSelectInput)
+    assert len(inputs) == 1
+    assert inputs[0].name == "nested_input"
+
+
+def test_dag_does_not_double_count_row_container_item():
+    """A row-container item appears once in the DAG, not duplicated by its sub-rows."""
+    from visivo.models.dashboard import Dashboard
+    from visivo.models.row import Row
+
+    leaf = _make_test_chart("leaf")
+    dashboard = Dashboard(
+        name="single_path",
+        rows=[
+            Row(
+                height="large",
+                items=[
+                    Item(
+                        width=1,
+                        rows=[
+                            Row(
+                                height="small",
+                                items=[Item(width=1, chart=leaf)],
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    dag = dashboard.dag()
+    item_nodes = [n for n in dag.nodes if isinstance(n, Item)]
+    # Two Items: the row-container Item and the leaf-chart Item. The row-container
+    # is NOT also counted as one of its children, even though its child_items()
+    # returns Rows that themselves contain Items.
+    assert len(item_nodes) == 2
