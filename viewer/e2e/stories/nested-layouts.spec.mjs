@@ -18,11 +18,16 @@
 
 import { test, expect } from '@playwright/test';
 
-// Hit /project-new/ — the store-based renderer (DashboardNew.jsx) where the
-// recursive Item.rows handling lives. The legacy /project/ route uses
-// project_json + the older Dashboard.jsx renderer that doesn't know about
-// item.rows and would render the fixture as if those items were leaves.
+// Both renderers now support recursive Item.rows: DashboardNew.jsx (store-based,
+// /project-new/) and the legacy Dashboard.jsx (project_json-based, /project/).
+// We keep /project-new/ as the primary path the full step suite runs against —
+// it's where new authoring features land first — and add a parallel suite at
+// the bottom of this file that runs the high-value invariants (nested-rows
+// wrapper, charts render, no track collapse, padding symmetry) against
+// /project/ so the legacy surface that core/ and dist still depend on stays
+// in lockstep.
 const DASHBOARD_PATH = '/project-new/nested-layouts-dashboard';
+const LEGACY_DASHBOARD_PATH = '/project/nested-layouts-dashboard';
 
 test.describe('Nested Layouts', () => {
   test('Step 1: Dashboard route loads without runtime errors', async ({ page }) => {
@@ -306,5 +311,106 @@ test.describe('Nested Layouts', () => {
       path: 'e2e/screenshots/nested-layouts.png',
       fullPage: true,
     });
+  });
+});
+
+// Parallel suite for the legacy /project/ route. The same Dashboard.jsx now
+// renders Item.rows; these checks ensure core/ and the dist build (which still
+// import the legacy component) stay in sync with the new surface.
+test.describe('Nested Layouts — Legacy /project/ route', () => {
+  test('Legacy Step 1: Dashboard route loads without runtime errors', async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    const networkErrors = [];
+    page.on('response', response => {
+      if (response.status() >= 400 && response.url().includes('/api/')) {
+        networkErrors.push(`${response.status()} ${response.url()}`);
+      }
+    });
+
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+
+    const realErrors = consoleErrors.filter(
+      e => !e.includes('Failed to load resource') && !e.includes('favicon')
+    );
+    expect(realErrors).toEqual([]);
+    expect(networkErrors).toEqual([]);
+
+    await expect(page.getByTestId('dashboard_nested-layouts-dashboard')).toBeVisible();
+  });
+
+  test('Legacy Step 2: Row-container items render the dashboard-nested-rows wrapper', async ({ page }) => {
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+
+    const wrappers = await page.locator('[data-testid="dashboard-nested-rows"]').count();
+    expect(wrappers).toBeGreaterThanOrEqual(4);
+  });
+
+  test('Legacy Step 3: Sub-rows have the dashboard-nested-subrow testid', async ({ page }) => {
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+
+    const subRows = await page.locator('[data-testid="dashboard-nested-subrow"]').count();
+    expect(subRows).toBeGreaterThanOrEqual(10);
+  });
+
+  test('Legacy Step 4: All four section headers render', async ({ page }) => {
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+
+    const headers = await page.locator('h2').filter({ hasText: /^Section [1-4]/ }).allTextContents();
+    expect(headers.length).toBe(4);
+    expect(headers[0]).toMatch(/Section 1/);
+    expect(headers[3]).toMatch(/Section 4/);
+  });
+
+  test('Legacy Step 5: No grid track collapse (no chart slot starves to <50px)', async ({ page }) => {
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+
+    const probe = await page.evaluate(() => {
+      const containers = [...document.querySelectorAll('[data-testid="dashboard-nested-rows"]')];
+      const widths = [];
+      containers.forEach(c => {
+        const parentRow = c.closest('.dashboard-row');
+        if (parentRow) {
+          [...parentRow.children].forEach(slot => {
+            widths.push(slot.getBoundingClientRect().width);
+          });
+        }
+      });
+      return widths;
+    });
+    probe.forEach(w => expect(w).toBeGreaterThanOrEqual(50));
+  });
+
+  test('Legacy Step 6: Symmetric horizontal padding + bottom padding', async ({ page }) => {
+    await page.goto(LEGACY_DASHBOARD_PATH);
+    await page.waitForLoadState('networkidle');
+
+    const probe = await page.evaluate(() => {
+      const wrapper = document.querySelector('[data-testid="dashboard_nested-layouts-dashboard"]');
+      if (!wrapper) return null;
+      const style = getComputedStyle(wrapper);
+      return {
+        paddingLeft: parseFloat(style.paddingLeft),
+        paddingRight: parseFloat(style.paddingRight),
+        paddingBottom: parseFloat(style.paddingBottom),
+        overflowX: style.overflowX,
+        overflowY: style.overflowY,
+      };
+    });
+
+    expect(probe).not.toBeNull();
+    expect(probe.paddingLeft).toBe(probe.paddingRight);
+    expect(probe.paddingLeft).toBeGreaterThanOrEqual(16);
+    expect(probe.paddingBottom).toBeGreaterThanOrEqual(16);
+    expect(probe.overflowX).toBe('clip');
+    expect(probe.overflowY).toBe('visible');
   });
 });
