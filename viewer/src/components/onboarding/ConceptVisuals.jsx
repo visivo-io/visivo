@@ -1,13 +1,7 @@
 import React from 'react';
-import DagMini from './DagMini';
 
-function Stage({ step, onNavigate, children }) {
-  return (
-    <div className="onb-concept-stage">
-      <DagMini step={step} onNavigate={onNavigate} />
-      {children}
-    </div>
-  );
+function Stage({ children }) {
+  return <div className="onb-concept-stage">{children}</div>;
 }
 
 function SourceVisual() {
@@ -561,11 +555,11 @@ const VISUAL_BY_ID = {
   dashboard: DashboardVisual,
 };
 
-export default function ConceptVisual({ conceptId, step, onNavigate }) {
+export default function ConceptVisual({ conceptId }) {
   const Visual = VISUAL_BY_ID[conceptId];
   if (!Visual) return null;
   return (
-    <Stage step={step} onNavigate={onNavigate}>
+    <Stage>
       <Visual />
     </Stage>
   );

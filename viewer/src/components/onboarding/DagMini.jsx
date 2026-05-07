@@ -99,9 +99,9 @@ const NODES = [
   { id: 'dashboard', label: 'Dashboard', color: '#f43f5e' },
 ];
 
-export default function DagMini({ step, onNavigate }) {
+export default function DagMini({ step, onNavigate, placement = 'inline' }) {
   return (
-    <div className="onb-dag onb-dag--corner" title={`Step ${step} of ${NODES.length}`}>
+    <div className={`onb-dag onb-dag--${placement}`} title={`Step ${step} of ${NODES.length}`}>
       {NODES.map((n, i) => {
         const lit = i < step;
         const current = i === step - 1;

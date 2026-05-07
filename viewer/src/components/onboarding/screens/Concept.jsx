@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import ConceptVisual from '../ConceptVisuals';
-import { CONCEPTS, PERSONA_CONTENT, rolePluralLabel } from '../concepts';
+import DagMini from '../DagMini';
+import { PERSONA_CONTENT, rolePluralLabel } from '../concepts';
 
 export default function Concept({ concept, step, role, onNavigate, fire }) {
   useEffect(() => {
@@ -17,11 +18,8 @@ export default function Concept({ concept, step, role, onNavigate, fire }) {
     <div className="onb-screen-inner onb-screen-enter" key={concept.id}>
       <div className="onb-concept">
         <div>
-          <div className="onb-concept-eyebrow">
-            <span className="onb-concept-eyebrow__num">{step}</span>
-            <span>
-              Concept {step} of {CONCEPTS.length}
-            </span>
+          <div className="onb-concept-eyebrow onb-concept-eyebrow--dag">
+            <DagMini step={step} placement="inline" onNavigate={onNavigate} />
           </div>
           <h2 className="onb-concept-h2">{concept.title}.</h2>
           <p className="onb-concept-def">{concept.def}</p>
@@ -30,7 +28,7 @@ export default function Concept({ concept, step, role, onNavigate, fire }) {
             <div className="onb-concept-example__body">{example}</div>
           </div>
         </div>
-        <ConceptVisual conceptId={concept.id} step={step} onNavigate={onNavigate} />
+        <ConceptVisual conceptId={concept.id} />
       </div>
     </div>
   );

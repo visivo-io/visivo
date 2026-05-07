@@ -521,6 +521,17 @@
   box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.10);
   z-index: 4;
 }
+.onb-dag--inline {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 9999px;
+  padding: 4px 8px;
+  gap: 3px;
+}
+.onb-concept-eyebrow--dag {
+  padding: 0;
+  background: transparent;
+  display: inline-flex;
+}
 .onb-dag__node-wrap {
   display: inline-flex;
   align-items: center;
