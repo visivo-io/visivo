@@ -1,16 +1,23 @@
 name: EV Sales
 
+sources:
+  - name: ev_sales_db
+    type: duckdb
+    database: ev_sales.duckdb
+
+defaults:
+  source_name: ev_sales_db
+
 models:
   - name: ev_sales
-    table_name: ev_sales
-    args: [cat, data/ev_sales.csv]
+    sql: SELECT * FROM ev_sales
 
 insights:
   - name: total_units_kpi
     props:
       type: indicator
       mode: number
-      value: ?{ SUM(${ref(ev_sales).units_sold}) }
+      value: ?{ SUM(${ref(ev_sales).units_sold}) }[0]
       number:
         valueformat: ".3s"
         suffix: " units"
@@ -19,7 +26,7 @@ insights:
     props:
       type: indicator
       mode: number
-      value: ?{ SUM(${ref(ev_sales).revenue_usd}) / 1000000000.0 }
+      value: ?{ SUM(${ref(ev_sales).revenue_usd}) / 1000000000.0 }[0]
       number:
         valueformat: ".2f"
         prefix: "$"

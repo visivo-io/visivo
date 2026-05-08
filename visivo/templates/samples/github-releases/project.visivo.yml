@@ -1,16 +1,23 @@
 name: GitHub Releases
 
+sources:
+  - name: github_releases_db
+    type: duckdb
+    database: github_releases.duckdb
+
+defaults:
+  source_name: github_releases_db
+
 models:
   - name: releases
-    table_name: releases
-    args: [cat, data/releases.csv]
+    sql: SELECT * FROM releases
 
 insights:
   - name: total_releases_kpi
     props:
       type: indicator
       mode: number
-      value: ?{ COUNT(${ref(releases).version}) }
+      value: ?{ COUNT(${ref(releases).version}) }[0]
       number:
         valueformat: ","
 
@@ -18,7 +25,7 @@ insights:
     props:
       type: indicator
       mode: number
-      value: ?{ SUM(${ref(releases).download_count}) }
+      value: ?{ SUM(${ref(releases).download_count}) }[0]
       number:
         valueformat: ".3s"
 

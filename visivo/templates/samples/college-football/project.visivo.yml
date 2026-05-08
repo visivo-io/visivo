@@ -1,22 +1,29 @@
 name: College Football
 
+sources:
+  - name: college_football_db
+    type: duckdb
+    database: college_football.duckdb
+
+defaults:
+  source_name: college_football_db
+
 models:
   - name: games
-    table_name: games
-    args: [cat, data/games.csv]
+    sql: SELECT * FROM games
 
 insights:
   - name: total_games_kpi
     props:
       type: indicator
       mode: number
-      value: ?{ COUNT(${ref(games).date}) }
+      value: ?{ COUNT(${ref(games).date}) }[0]
 
   - name: total_attendance_kpi
     props:
       type: indicator
       mode: number
-      value: ?{ SUM(${ref(games).attendance}) / 1000.0 }
+      value: ?{ SUM(${ref(games).attendance}) / 1000.0 }[0]
       number:
         valueformat: ".0f"
         suffix: "K"
