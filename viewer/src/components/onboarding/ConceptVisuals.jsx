@@ -1,7 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function Stage({ children }) {
   return <div className="onb-concept-stage">{children}</div>;
+}
+
+// Drives a 0 → 1 timer that resets each time `deps` change. Used by
+// concept visuals that animate on screen entry (e.g. the Chart visual's
+// "two insights merge into one chart" sequence).
+function useEntryTick(deps = []) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    setT(0);
+    let raf;
+    const start = performance.now();
+    const tick = now => {
+      setT(Math.min(1, (now - start) / 1800));
+      if (now - start < 2200) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return t;
 }
 
 function SourceVisual() {
@@ -301,6 +321,10 @@ function InsightVisual() {
 }
 
 function ChartVisual() {
+  // Two insight tiles drift toward center and fade out as the
+  // combined chart card fades in below them.
+  const t = useEntryTick();
+  const merge = Math.min(1, t * 1.4);
   return (
     <svg viewBox="0 0 480 400" width="100%" height="100%" style={{ display: 'block' }}>
       <defs>
@@ -310,7 +334,40 @@ function ChartVisual() {
         </linearGradient>
       </defs>
       <rect width="480" height="400" fill="url(#onb-chart-bg)" />
-      <g transform="translate(80 220)">
+
+      {/* Top-left source insight, drifting right */}
+      <g transform={`translate(${40 + merge * 30} 70)`} opacity={1 - merge * 0.45}>
+        <rect width="170" height="120" rx="10" fill="#fff" stroke="rgba(0,0,0,0.08)" />
+        <text x="14" y="24" fontSize="10" fontWeight="700" fill="#9ca3af" letterSpacing="0.08em">
+          INSIGHT
+        </text>
+        <text x="14" y="46" fontSize="22" fontWeight="700" fill="#111">
+          $4.2M
+        </text>
+        <text x="14" y="62" fontSize="10" fill="#6b7280">
+          revenue · this quarter
+        </text>
+      </g>
+
+      {/* Top-right source insight, drifting left */}
+      <g transform={`translate(${270 - merge * 30} 70)`} opacity={1 - merge * 0.45}>
+        <rect width="170" height="120" rx="10" fill="#fff" stroke="rgba(0,0,0,0.08)" />
+        <text x="14" y="24" fontSize="10" fontWeight="700" fill="#9ca3af" letterSpacing="0.08em">
+          INSIGHT
+        </text>
+        <polyline
+          points="14,100 35,90 56,95 78,80 100,72 122,60 144,52"
+          fill="none"
+          stroke="#8b5cf6"
+          strokeWidth="2"
+        />
+        <text x="14" y="46" fontSize="10" fill="#6b7280">
+          trend · last 12 wks
+        </text>
+      </g>
+
+      {/* Combined chart card forming */}
+      <g transform="translate(80 220)" opacity={merge}>
         <rect width="320" height="140" rx="12" fill="#fff" stroke="#8b5cf6" strokeWidth="1.5" />
         <text x="20" y="28" fontSize="10" fontWeight="700" fill="#8b5cf6" letterSpacing="0.08em">
           CHART
@@ -339,45 +396,24 @@ function ChartVisual() {
           <circle cx="126" cy="8" r="3" fill="#8b5cf6" />
         </g>
       </g>
-      <g transform="translate(60 60)">
-        <rect width="170" height="120" rx="10" fill="#fff" stroke="rgba(0,0,0,0.08)" />
-        <text x="14" y="24" fontSize="10" fontWeight="700" fill="#9ca3af" letterSpacing="0.08em">
-          INSIGHT
-        </text>
-        <text x="14" y="50" fontSize="22" fontWeight="700" fill="#111">
-          $4.2M
-        </text>
-        <text x="14" y="66" fontSize="10" fill="#6b7280">
-          revenue · this quarter
-        </text>
-      </g>
-      <g transform="translate(250 60)">
-        <rect width="170" height="120" rx="10" fill="#fff" stroke="rgba(0,0,0,0.08)" />
-        <text x="14" y="24" fontSize="10" fontWeight="700" fill="#9ca3af" letterSpacing="0.08em">
-          INSIGHT
-        </text>
-        <polyline
-          points="14,100 35,90 56,95 78,80 100,72 122,60 144,52"
-          fill="none"
-          stroke="#8b5cf6"
-          strokeWidth="2"
-        />
-        <text x="14" y="46" fontSize="10" fill="#6b7280">
-          trend · last 12 wks
-        </text>
-      </g>
-      <path
-        d="M125 195 L165 215"
-        stroke="rgba(139,92,246,0.5)"
-        strokeWidth="1.5"
-        strokeDasharray="3 3"
-      />
-      <path
-        d="M355 195 L315 215"
-        stroke="rgba(139,92,246,0.5)"
-        strokeWidth="1.5"
-        strokeDasharray="3 3"
-      />
+
+      {/* Dashed arrows visible only while the two insights are still merging */}
+      {merge < 0.95 && (
+        <>
+          <path
+            d="M125 195 L165 215"
+            stroke="rgba(139,92,246,0.5)"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
+          <path
+            d="M355 195 L315 215"
+            stroke="rgba(139,92,246,0.5)"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
+        </>
+      )}
     </svg>
   );
 }
