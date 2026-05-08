@@ -1,0 +1,45 @@
+date,home_team,away_team,home_score,away_score,conference,attendance
+2024-08-31,Georgia,Clemson,34,3,SEC,93033
+2024-08-31,Texas,Colorado State,52,0,Big 12,100212
+2024-08-31,Penn State,West Virginia,34,12,Big Ten,107284
+2024-08-31,Notre Dame,Texas A&M,23,13,Independent,79024
+2024-09-07,Georgia,Tennessee Tech,48,3,SEC,92763
+2024-09-07,Texas,Michigan,31,12,Big 12,111156
+2024-09-07,Penn State,Bowling Green,34,27,Big Ten,108218
+2024-09-07,Notre Dame,Northern Illinois,14,16,Independent,77622
+2024-09-07,Ohio State,Western Michigan,56,0,Big Ten,103107
+2024-09-14,Georgia,Kentucky,13,12,SEC,93128
+2024-09-14,Texas,UTSA,56,7,Big 12,103014
+2024-09-14,Penn State,Kent State,56,0,Big Ten,108107
+2024-09-14,Notre Dame,Purdue,66,7,Independent,77622
+2024-09-14,Ohio State,Marshall,49,14,Big Ten,103029
+2024-09-21,Georgia,Alabama,34,41,SEC,99840
+2024-09-21,Texas,ULM,51,3,Big 12,103172
+2024-09-21,Penn State,Illinois,21,7,Big Ten,108428
+2024-09-21,Ohio State,Michigan State,38,7,Big Ten,103129
+2024-09-28,Georgia,Auburn,31,13,SEC,87451
+2024-09-28,Texas,Mississippi State,35,13,Big 12,103172
+2024-09-28,Penn State,UCLA,27,11,Big Ten,108528
+2024-09-28,Notre Dame,Louisville,31,24,Independent,77622
+2024-09-28,Ohio State,Michigan State,38,7,Big Ten,103129
+2024-10-05,Georgia,Auburn,31,13,SEC,87451
+2024-10-05,Texas,Oklahoma,34,3,Big 12,93182
+2024-10-05,Penn State,UCLA,27,11,Big Ten,108528
+2024-10-12,Georgia,Mississippi State,41,31,SEC,93033
+2024-10-12,Texas,Georgia,30,15,Big 12,103172
+2024-10-12,Penn State,USC,33,30,Big Ten,109212
+2024-10-12,Notre Dame,Stanford,49,7,Independent,77622
+2024-10-12,Ohio State,Oregon,32,31,Big Ten,103129
+2024-10-19,Georgia,Texas,30,15,SEC,93033
+2024-10-19,Penn State,Wisconsin,28,13,Big Ten,108428
+2024-10-19,Notre Dame,Georgia Tech,31,13,Independent,77622
+2024-10-19,Ohio State,Iowa,35,7,Big Ten,103129
+2024-10-26,Georgia,Florida,34,20,SEC,93033
+2024-10-26,Texas,Vanderbilt,27,24,Big 12,103172
+2024-10-26,Penn State,Ohio State,20,21,Big Ten,108428
+2024-10-26,Notre Dame,Navy,51,14,Independent,77622
+2024-11-02,Georgia,Ole Miss,28,10,SEC,93033
+2024-11-02,Texas,Florida,49,17,Big 12,103172
+2024-11-02,Penn State,Washington,35,6,Big Ten,108428
+2024-11-02,Notre Dame,Florida State,52,3,Independent,77622
+2024-11-02,Ohio State,Penn State,21,20,Big Ten,103129

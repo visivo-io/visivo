@@ -78,6 +78,19 @@ tasks:
     run: |
       poetry run black --check .
 
+  - key: test-onboarding-samples
+    use: [cli-dependencies]
+    run: |
+      poetry install --with dev
+      poetry run pytest tests/templates/test_samples.py -v --tb=short
+    env:
+      STACKTRACE: true
+    filter:
+      - visivo/templates/samples
+      - visivo/commands/init_phase.py
+      - visivo/models
+      - tests/templates/test_samples.py
+
   - key: yarn
     use: node
     run: npm install --global yarn
