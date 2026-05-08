@@ -1,16 +1,18 @@
 import React from 'react';
 
-// Available source types matching backend Pydantic models
+// Available source types — must match the backend SourceField discriminated
+// union in visivo/visivo/models/sources/fields.py. Trino and Databricks were
+// removed because they are not in the backend union (selecting them would
+// fail at API time). Redshift was added because it IS in the backend.
 export const SOURCE_TYPES = [
   { value: 'postgresql', label: 'PostgreSQL' },
   { value: 'mysql', label: 'MySQL' },
   { value: 'snowflake', label: 'Snowflake' },
   { value: 'bigquery', label: 'BigQuery' },
+  { value: 'redshift', label: 'Redshift' },
   { value: 'duckdb', label: 'DuckDB' },
   { value: 'sqlite', label: 'SQLite' },
   { value: 'csv', label: 'CSV' },
-  { value: 'trino', label: 'Trino' },
-  { value: 'databricks', label: 'Databricks' },
 ];
 
 const SourceTypeSelector = ({ value, onChange, disabled = false }) => {
