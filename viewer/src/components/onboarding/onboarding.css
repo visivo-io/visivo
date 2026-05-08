@@ -1080,6 +1080,11 @@
   border: 1px solid var(--onb-border-default);
   overflow: hidden;
   animation: onbScreenEnter 350ms var(--onb-ease-out) both;
+  transition: box-shadow 160ms var(--onb-ease-out);
+  user-select: none;
+}
+.onb-checklist__card--dragging {
+  box-shadow: 0 32px 60px -16px rgba(0, 0, 0, 0.32);
 }
 .onb-checklist__head {
   padding: 14px 16px 12px;
@@ -1130,12 +1135,16 @@
   text-align: left;
   font-family: inherit;
   cursor: pointer;
+  outline-offset: -2px;
 }
-.onb-checklist__item:hover:not(:disabled) {
+.onb-checklist__item:hover:not(.onb-checklist__item--done) {
   background: rgba(113, 59, 87, 0.04);
 }
-.onb-checklist__item:disabled {
+.onb-checklist__item--done {
   cursor: default;
+}
+.onb-checklist__item:focus-visible {
+  outline: 2px solid var(--color-primary-300);
 }
 .onb-checklist__check {
   flex: 0 0 auto;

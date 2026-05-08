@@ -46,9 +46,11 @@ describe('OnboardingChecklist', () => {
     renderChecklist();
     expect(screen.getByTestId('onboarding-checklist')).toBeInTheDocument();
     expect(screen.getByText(/Get started with Visivo/)).toBeInTheDocument();
-    // source_connected signal flips connect_source done
+    // source_connected signal flips connect_source done; the row is no
+    // longer keyboard-actionable and shows aria-disabled.
     const item = screen.getByTestId('onb-checklist-connect_source');
-    expect(item).toBeDisabled();
+    expect(item).toHaveAttribute('aria-disabled', 'true');
+    expect(item).toHaveClass('onb-checklist__item--done');
   });
 
   test('clicking an unfinished item navigates and emits event', () => {
