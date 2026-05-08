@@ -111,6 +111,25 @@ jest.mock('../../hooks/useExplorerDuckDB', () => ({
   default: () => {},
 }));
 
+// Mock useSourceSchema (CenterPanel uses it to suggest a sample table for templates)
+jest.mock('../../hooks/useSourceSchema', () => ({
+  __esModule: true,
+  useSourceSchema: () => ({
+    tables: [{ name: 'sample_table' }],
+    tableColumns: {},
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  }),
+  default: () => ({
+    tables: [{ name: 'sample_table' }],
+    tableColumns: {},
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  }),
+}));
+
 // Mock DataSectionToolbar — reads from store internally, no props from CenterPanel
 jest.mock('./DataSectionToolbar', () => {
   return function MockDataSectionToolbar() {
@@ -387,6 +406,195 @@ describe('CenterPanel', () => {
       render(<CenterPanel />);
 
       expect(screen.queryByTestId('data-section-toolbar')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Empty-editor overlay (SQL templates)', () => {
+    it('renders the empty-editor overlay when source is set and editor is empty', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.getByTestId('empty-editor-overlay')).toBeInTheDocument();
+      expect(screen.getByText('Start a query to see results')).toBeInTheDocument();
+      expect(screen.getByTestId('sql-template-menu-trigger')).toBeInTheDocument();
+    });
+
+    it('treats whitespace-only SQL as empty and shows the overlay', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '   \n  ', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.getByTestId('empty-editor-overlay')).toBeInTheDocument();
+    });
+
+    it('hides the overlay and shows "Run a query" when editor has content', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.queryByTestId('empty-editor-overlay')).not.toBeInTheDocument();
+      expect(screen.getByTestId('empty-results')).toBeInTheDocument();
+      expect(screen.getByText('Run a query to see results')).toBeInTheDocument();
+    });
+
+    it('does not show overlay or template menu when no source is selected', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '', sourceName: null }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.queryByTestId('empty-editor-overlay')).not.toBeInTheDocument();
+      expect(screen.getByTestId('empty-results')).toHaveTextContent(
+        /No source selected/i
+      );
+    });
+
+    it('does not show overlay when query result exists', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({
+            sql: '',
+            sourceName: 'test_source',
+            queryResult: {
+              columns: ['id'],
+              rows: [{ id: 1 }],
+              row_count: 1,
+            },
+          }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      expect(screen.queryByTestId('empty-editor-overlay')).not.toBeInTheDocument();
+      expect(screen.getByTestId('data-table')).toBeInTheDocument();
+    });
+
+    it('picking a template via menu populates the editor SQL', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      // Open the template menu
+      fireEvent.click(screen.getByTestId('sql-template-menu-trigger'));
+      // Pick the "select-all" template
+      fireEvent.click(screen.getByTestId('sql-template-select-all'));
+
+      const newSql = useStore.getState().explorerModelStates.test_model.sql;
+      expect(newSql).toContain('SELECT *');
+      expect(newSql).toContain('LIMIT 100');
+    });
+  });
+
+  describe('Drag table to seed editor', () => {
+    it('drop with valid table payload sets editor SQL to a SELECT *', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      const editorSection = screen.getByTestId('editor-section');
+      const dataTransfer = {
+        types: ['application/x-visivo-table'],
+        getData: jest.fn(() =>
+          JSON.stringify({ tableName: 'main.songs', sourceName: 'test_source' })
+        ),
+        dropEffect: '',
+      };
+
+      fireEvent.dragOver(editorSection, { dataTransfer });
+      fireEvent.drop(editorSection, { dataTransfer });
+
+      const newSql = useStore.getState().explorerModelStates.test_model.sql;
+      expect(newSql).toContain('SELECT *');
+      expect(newSql).toContain('FROM main.songs');
+      expect(newSql).toContain('LIMIT 1000');
+    });
+
+    it('shows the drop overlay while dragging a table over the editor', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: '', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      const editorSection = screen.getByTestId('editor-section');
+      const dataTransfer = {
+        types: ['application/x-visivo-table'],
+        getData: jest.fn(),
+        dropEffect: '',
+      };
+
+      fireEvent.dragOver(editorSection, { dataTransfer });
+
+      expect(screen.getByTestId('editor-drop-overlay')).toBeInTheDocument();
+      expect(screen.getByText('Drop to seed SELECT * query')).toBeInTheDocument();
+    });
+
+    it('drop without a table payload does not change SQL', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      const editorSection = screen.getByTestId('editor-section');
+      const dataTransfer = {
+        types: ['text/plain'],
+        getData: jest.fn(() => ''),
+        dropEffect: '',
+      };
+
+      fireEvent.drop(editorSection, { dataTransfer });
+
+      expect(useStore.getState().explorerModelStates.test_model.sql).toBe('SELECT 1');
+    });
+
+    it('drop with malformed payload does not throw', () => {
+      useStore.setState({
+        explorerModelStates: {
+          test_model: makeModelState({ sql: 'SELECT 1', sourceName: 'test_source' }),
+        },
+      });
+
+      render(<CenterPanel />);
+
+      const editorSection = screen.getByTestId('editor-section');
+      const dataTransfer = {
+        types: ['application/x-visivo-table'],
+        getData: jest.fn(() => 'not-json'),
+        dropEffect: '',
+      };
+
+      expect(() => fireEvent.drop(editorSection, { dataTransfer })).not.toThrow();
+      expect(useStore.getState().explorerModelStates.test_model.sql).toBe('SELECT 1');
     });
   });
 });

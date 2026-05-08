@@ -24,6 +24,8 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
     errorMessage,
     errorCollapsed,
     actions,
+    draggable,
+    onDragStart,
   }) => {
     return (
       <div
@@ -33,8 +35,14 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
         data-badge={badge}
         data-error={errorMessage}
         data-error-collapsed={errorCollapsed}
+        data-draggable={draggable ? 'true' : undefined}
       >
-        <button data-testid={`click-${type}-${label}`} onClick={onClick}>
+        <button
+          data-testid={`click-${type}-${label}`}
+          onClick={onClick}
+          draggable={draggable || undefined}
+          onDragStart={onDragStart}
+        >
           {label}
         </button>
         {onDoubleClick && (
@@ -378,6 +386,58 @@ describe('SourceBrowser', () => {
       'true'
     );
     errorSpy.mockRestore();
+  });
+
+  it('table nodes are draggable and emit a visivo-table payload on drag start', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-postgres_db');
+
+    // Expand postgres_db so its tables render
+    fireEvent.click(screen.getByTestId('click-source-postgres_db'));
+
+    await screen.findByTestId('tree-node-table-users');
+
+    // Table nodes should be marked draggable
+    expect(screen.getByTestId('tree-node-table-users')).toHaveAttribute(
+      'data-draggable',
+      'true'
+    );
+
+    // Simulate drag start and verify the payload written to dataTransfer
+    const setData = jest.fn();
+    const dataTransfer = {
+      setData,
+      get effectAllowed() {
+        return this._effectAllowed;
+      },
+      set effectAllowed(value) {
+        this._effectAllowed = value;
+      },
+    };
+
+    fireEvent.dragStart(screen.getByTestId('click-table-users'), { dataTransfer });
+
+    expect(setData).toHaveBeenCalledWith(
+      'application/x-visivo-table',
+      JSON.stringify({ tableName: 'users', sourceName: 'postgres_db' })
+    );
+    expect(dataTransfer._effectAllowed).toBe('copy');
+  });
+
+  it('source and column nodes are not draggable', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('tree-node-source-postgres_db');
+
+    // Source nodes should not be draggable
+    expect(
+      screen.getByTestId('tree-node-source-postgres_db')
+    ).not.toHaveAttribute('data-draggable');
   });
 
   it('clicking an errored source toggles error visibility', async () => {

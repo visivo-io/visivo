@@ -207,6 +207,17 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
         })
         .map((table) => {
           const colKey = `${sourceKey}::table::${table.name}`;
+          const handleDragStart = (e) => {
+            try {
+              e.dataTransfer.setData(
+                'application/x-visivo-table',
+                JSON.stringify({ tableName: table.name, sourceName: srcName })
+              );
+              e.dataTransfer.effectAllowed = 'copy';
+            } catch {
+              // older browsers / jsdom may throw — ignore
+            }
+          };
           return (
             <SchemaTreeNode
               key={colKey}
@@ -218,6 +229,8 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
               errorMessage={getNodeError(colKey)}
               onClick={() => toggleNode(colKey, () => fetchTableColumns(srcName, table.name))}
               onDoubleClick={() => onTableSelect?.({ sourceName: srcName, table: table.name })}
+              draggable
+              onDragStart={handleDragStart}
               level={1}
             >
               {renderColumns(loadedData[colKey], table.name)}
