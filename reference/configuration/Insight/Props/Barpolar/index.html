@@ -8252,14 +8252,10 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Activity Level by Direction</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(activity-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ direction }</span>
-<span class="w">      </span><span class="nt">activity_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ activity_level }</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
-<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.activity_level }</span>
-<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.direction }</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(activity-data).activity_level}}</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(activity-data).direction}}</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#1f77b4"</span>
 <span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
@@ -8322,23 +8318,11 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(wind-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">cardinal_order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ cardinal_order }</span>
-<span class="w">      </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ direction }</span>
-<span class="w">      </span><span class="nt">speed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ speed }</span>
-<span class="w">      </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ count }</span>
-<span class="w">      </span><span class="nt">bar_color</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">CASE speed</span>
-<span class="w">          </span><span class="no">WHEN '0-1 m/s' THEN '#1f77b4'</span>
-<span class="w">          </span><span class="no">WHEN '1-2 m/s' THEN '#ff7f0e'</span>
-<span class="w">          </span><span class="no">WHEN '2-3 m/s' THEN '#2ca02c'</span>
-<span class="w">        </span><span class="no">END</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
-<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.count }</span>
-<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.direction }</span>
-<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.speed }</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(wind-data).count}}</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(wind-data).direction}}</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(wind-data).speed}}</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(bar_color)</span>
 <span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.85</span>
@@ -8383,19 +8367,11 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Custom Radial Barpolar</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(custom-radial-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ direction }</span>
-<span class="w">      </span><span class="nt">radial_start</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ radial_start }</span>
-<span class="w">      </span><span class="nt">radial_end</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ radial_end }</span>
-<span class="w">      </span><span class="c1"># optionally compute radial length if needed:</span>
-<span class="w">      </span><span class="nt">radial_length</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">radial_end - radial_start</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
-<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.direction }</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(custom-radial-data).direction}}</span>
 <span class="w">      </span><span class="c1"># use radial_end (or radial_length) depending on how you want to render</span>
-<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ columns.radial_end }</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(custom-radial-data).radial_end}}</span>
 <span class="w">      </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#d62728"</span>

@@ -8613,7 +8613,7 @@ If the callback is not received, you will be prompted to cancel or continue wait
   --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="deploy">deploy</h2>
-<p>Sends the current version of your project, traces &amp; data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production environments.</p>
+<p>Sends the current version of your project and its insight data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production environments.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo deploy [OPTIONS]
 </code></pre></div>
@@ -8667,13 +8667,11 @@ Use --example to load an example project from GitHub.</p>
   --help                  Show this message and exit.
 </code></pre></div>
 <h2 id="migrate">migrate</h2>
-<p>Migrate deprecated syntax to current recommended syntax.</p>
-<p>By default runs in dry-run mode, showing what would be changed without
-modifying any files. Use --apply to actually modify files.</p>
-<p>Migrations include:
-- {{ env_var('VAR') }} -&gt; ${env.VAR}
-- ref(name) -&gt; ${refs.name}
-- ${ref(name).property} -&gt; ${refs.name.property}</p>
+<p>Migrate deprecated syntax in a Visivo project to its current
+recommended form.</p>
+<p>By default the command runs in dry-run mode, reporting what would
+change without modifying any files. Use --apply to write the
+changes back to disk.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo migrate [OPTIONS]
 </code></pre></div>

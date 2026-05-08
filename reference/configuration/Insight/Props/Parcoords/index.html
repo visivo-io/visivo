@@ -8240,22 +8240,17 @@
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Parcoords Plot</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Parallel</span><span class="nv"> </span><span class="s">coordinates</span><span class="nv"> </span><span class="s">plot</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">three</span><span class="nv"> </span><span class="s">numerical</span><span class="nv"> </span><span class="s">variables"</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(parcoords-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">variable_1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_1 }</span>
-<span class="w">      </span><span class="nt">variable_2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_2 }</span>
-<span class="w">      </span><span class="nt">variable_3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_3 }</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
 <span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_1}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data).variable_1}}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_2}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data).variable_2}}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data).variable_3}}</span>
 <span class="w">      </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data).variable_3}}</span>
 <span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Viridis"</span>
 <span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{variable_1}</span>
@@ -8287,25 +8282,20 @@
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Ranges</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Parallel</span><span class="nv"> </span><span class="s">coordinates</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">custom</span><span class="nv"> </span><span class="s">axis</span><span class="nv"> </span><span class="s">ranges"</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(parcoords-data-ranges)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">variable_1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_1 }</span>
-<span class="w">      </span><span class="nt">variable_2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_2 }</span>
-<span class="w">      </span><span class="nt">variable_3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_3 }</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
 <span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_1}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-ranges).variable_1}}</span>
 <span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">15</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_2}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-ranges).variable_2}}</span>
 <span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">30</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-ranges).variable_3}}</span>
 <span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">15</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">35</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-ranges).variable_3}}</span>
 <span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Blues"</span>
 <span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{variable_1}</span>
@@ -8337,22 +8327,17 @@
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Colorscale</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"Custom</span><span class="nv"> </span><span class="s">colorscale</span><span class="nv"> </span><span class="s">applied</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">parallel</span><span class="nv"> </span><span class="s">coordinates"</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(parcoords-data-colorscale)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">variable_1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_1 }</span>
-<span class="w">      </span><span class="nt">variable_2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_2 }</span>
-<span class="w">      </span><span class="nt">variable_3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ variable_3 }</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
 <span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_1}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-colorscale).variable_1}}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_2}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-colorscale).variable_2}}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
-<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-colorscale).variable_3}}</span>
 <span class="w">      </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.variable_3}</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(parcoords-data-colorscale).variable_3}}</span>
 <span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Jet"</span>
 <span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{variable_1}</span>

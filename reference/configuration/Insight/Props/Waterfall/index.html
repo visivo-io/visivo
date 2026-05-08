@@ -8239,18 +8239,14 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Waterfall Insight</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(waterfall-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">idx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{idx}</span>
-<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{label}</span>
-<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.label}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.value}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data).label}}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data).value}}</span>
 <span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"initial"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"total"</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.idx asc}</span>
+<span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data).idx} asc}</span>
+
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Waterfall Chart</span>
@@ -8276,15 +8272,10 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Waterfall Insight with Custom Colors</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(waterfall-data-colors)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">idx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{idx}</span>
-<span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{label}</span>
-<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.label}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.value}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-colors).label}}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-colors).value}}</span>
 <span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"initial"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"total"</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">marker</span><span class="p">:</span>
@@ -8298,8 +8289,9 @@
 <span class="w">          </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'orange'</span>
 <span class="w">            </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.idx asc}</span>
+<span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-colors).idx} asc}</span>
+
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Waterfall Chart with Custom Colors</span>
@@ -8326,20 +8318,13 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Financial Waterfall Insight</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(waterfall-data-connectors)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">idx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{idx}</span>
-<span class="w">      </span><span class="nt">quarter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{quarter}</span>
-<span class="w">      </span><span class="nt">half</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{half}</span>
-<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{mode}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.half}</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.quarter}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.value}</span>
-<span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.mode}</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-connectors).half}}</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-connectors).quarter}}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-connectors).value}}</span>
+<span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-connectors).mode}}</span>
 <span class="w">      </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"%{x}:</span><span class="nv"> </span><span class="s">%{y:$.2f}"</span>
 <span class="w">      </span><span class="nt">texttemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"%{delta:$.2f}"</span>
 <span class="w">      </span><span class="nt">textposition</span><span class="p">:</span><span class="w"> </span><span class="s">"outside"</span>
@@ -8347,8 +8332,9 @@
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"orange"</span>
 <span class="w">          </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.idx asc}</span>
+<span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(waterfall-data-connectors).idx} asc}</span>
+
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Financial Waterfall Chart</span>

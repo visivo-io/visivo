@@ -8241,20 +8241,13 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple OHLC Insight</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(ohlc-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{close}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.close}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data).date}}</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data).open}}</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data).high}}</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data).low}}</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data).close}}</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#17becf"</span>
@@ -8293,20 +8286,13 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OHLC with Custom Width</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(ohlc-data-width)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{close}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.close}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-width).date}}</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-width).open}}</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-width).high}}</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-width).low}}</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-width).close}}</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#2ca02c"</span>
@@ -8348,54 +8334,40 @@
 
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OHLC for AAPL</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(ohlc-data-multi)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">stock</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{stock}</span>
-<span class="w">      </span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{close}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.close}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).date}}</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).open}}</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).high}}</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).low}}</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).close}}</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#1f77b4"</span>
 <span class="w">      </span><span class="nt">decreasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#ff7f0e"</span>
-<span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.stock = 'AAPL'}</span>
+<span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).stock} = 'AAPL'}</span>
+
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OHLC for MSFT</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(ohlc-data-multi)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">stock</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{stock}</span>
-<span class="w">      </span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{close}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.date}</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.open}</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.high}</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.low}</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.close}</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).date}}</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).open}}</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).high}}</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).low}}</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).close}}</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#2ca02c"</span>
 <span class="w">      </span><span class="nt">decreasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#d62728"</span>
-<span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.stock = 'MSFT'}</span>
+<span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(ohlc-data-multi).stock} = 'MSFT'}</span>
+
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OHLC Chart with Multiple Stocks</span>

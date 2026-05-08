@@ -8244,16 +8244,11 @@
 <span class="w">        </span><span class="no">F,B,10</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Treemap Insight</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(treemap-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"values"}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.values}</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data).labels}}</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data).parents}}</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"${ref(treemap-data).values}"}</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Blackbody</span>
 <span class="w">      </span><span class="nt">textposition</span><span class="p">:</span><span class="w"> </span><span class="s">"middle</span><span class="nv"> </span><span class="s">center"</span>
@@ -8285,19 +8280,13 @@
 <span class="w">        </span><span class="no">F,B,10,#e377c2</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Insight with Custom Colors</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(treemap-data-colors)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"values"}</span>
-<span class="w">      </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{colors}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.values}</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data-colors).labels}}</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data-colors).parents}}</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"${ref(treemap-data-colors).values}"}</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.colors}</span>
+<span class="w">        </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data-colors).colors}}</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">black</span>
 <span class="nt">charts</span><span class="p">:</span>
@@ -8328,16 +8317,11 @@
 <span class="w">        </span><span class="no">I,C,15</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Insight with Custom Tiling</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(treemap-data-tiling)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"values"}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.labels}</span>
-<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.parents}</span>
-<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.values}</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data-tiling).labels}}</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(treemap-data-tiling).parents}}</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"${ref(treemap-data-tiling).values}"}</span>
 <span class="w">      </span><span class="nt">tiling</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">packing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">binary</span>
 <span class="w">        </span><span class="nt">squarifyratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.5</span>

@@ -8245,15 +8245,11 @@
 <span class="w">        </span><span class="no">IND,450</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple ChoroplethMapLibre Map</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(country-population-data-map)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">iso_alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{iso_alpha}</span>
-<span class="w">      </span><span class="nt">population_density</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{population_density}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
 <span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
-<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.iso_alpha}</span>
-<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.population_density}</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(country-population-data-map).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(country-population-data-map).population_density}}</span>
 <span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Blues"</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
@@ -8286,15 +8282,11 @@
 <span class="w">        </span><span class="no">GBR,2827</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ChoroplethMapLibre with Custom Colorscale</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(european-gdp-data)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">iso_alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{iso_alpha}</span>
-<span class="w">      </span><span class="nt">gdp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{gdp}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
 <span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
-<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.iso_alpha}</span>
-<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.gdp}</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(european-gdp-data).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(european-gdp-data).gdp}}</span>
 <span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(255,245,240)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(252,146,114)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(165,15,21)"</span><span class="p p-Indicator">]]</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
@@ -8327,17 +8319,12 @@
 <span class="w">        </span><span class="no">ZAF,2000000,60000</span>
 <span class="nt">insights</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Interactive ChoroplethMapLibre with Hover Data</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(covid-data-map)}</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">iso_alpha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{iso_alpha}</span>
-<span class="w">      </span><span class="nt">covid_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{covid_cases}</span>
-<span class="w">      </span><span class="nt">covid_deaths</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{covid_deaths}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmap</span>
 <span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
-<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.iso_alpha}</span>
-<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.covid_cases}</span>
-<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{columns.covid_deaths}</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).iso_alpha}}</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).covid_cases}}</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{${ref(covid-data-map).covid_deaths}}</span>
 <span class="w">      </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"Cases:</span><span class="nv"> </span><span class="s">%{z}&lt;br&gt;Deaths:</span><span class="nv"> </span><span class="s">%{text}"</span>
 <span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Reds"</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>

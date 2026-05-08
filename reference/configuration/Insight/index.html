@@ -8201,17 +8201,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#migration-from-traces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Migration from Traces
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8243,23 +8232,27 @@
 
 
 <div><h1 id="insight">Insight</h1>
-<p>The <strong>Insight</strong> is the central visualization object in Visivo Interactivity 2.0.</p>
-<p>Insights replace <strong>Traces</strong>, providing a cleaner separation between
-<strong>server-side data preparation</strong> and <strong>client-side interactivity</strong>.
-Unlike traces, insights generate flat JSON structures that can be manipulated
-in the browser for responsive dashboards.</p>
+<p>The <strong>Insight</strong> is the central visualization object in Visivo. Insights
+cleanly separate <strong>server-side data preparation</strong> from <strong>client-side
+interactivity</strong> and produce flat JSON structures the viewer can
+manipulate in the browser for responsive dashboards.</p>
 <h2 id="why-insights">Why Insights?</h2>
 <ul>
-<li><strong>Simpler Mental Model</strong> – No more mixing cohort logic or trace naming rules</li>
-<li><strong>Interactive by Default</strong> – Client-side filtering, splitting, and sorting</li>
-<li><strong>Reusable</strong> – Insights can appear in multiple charts &amp; tables</li>
-<li><strong>Fast</strong> – Pre-computed data cached server-side, interactions run locally</li>
+<li><strong>Simple mental model</strong> — declare what you want on the chart, with no
+  ad-hoc cohort or naming rules.</li>
+<li><strong>Interactive by default</strong> — client-side filtering, splitting, and
+  sorting run instantly.</li>
+<li><strong>Reusable</strong> — the same insight can appear in multiple charts and
+  tables; the underlying query runs once.</li>
+<li><strong>Fast</strong> — pre-computed data is cached server-side, and interactions
+  execute locally in the viewer.</li>
 </ul>
 <h2 id="core-components">Core Components</h2>
 <ul>
-<li><strong>model</strong>: The SQL model or reference that defines the server-side dataset</li>
-<li><strong>props</strong>: Visualization config (chart type, axes, encodings)</li>
-<li><strong>interactions</strong>: Client-side transformations (filter, split, sort)</li>
+<li><strong>props</strong>: Visualization config (chart type, axes, encodings) with
+  <code>?{ ... }</code> slot bindings to model columns.</li>
+<li><strong>interactions</strong>: Client-side transformations (<code>filter</code>, <code>split</code>,
+  <code>sort</code>) layered on the resolved data.</li>
 </ul>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><span class="nt">insights</span><span class="p">:</span>
@@ -8269,32 +8262,24 @@ in the browser for responsive dashboards.</p>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lines+markers</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('month', created_at) }</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ sum(amount) }</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('month', ${ref(orders).created_at}) }</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ sum(${ref(orders).amount}) }</span>
 
 <span class="w">    </span><span class="nt">interactions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ month &gt;= ${ref(date-range).start} }</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ region }</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ month ASC }</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ ${ref(orders).month} &gt;= ${ref(date-range).start} }</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ ${ref(orders).region} }</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ ${ref(orders).month} ASC }</span>
 </code></pre></div>
 <p>In the example above:
-- <strong>Server-side</strong>: Revenue is aggregated by month.
-- <strong>Client-side</strong>: A date-range filter and region split are applied instantly in the browser.</p>
+- <strong>Server-side</strong>: revenue is aggregated by month.
+- <strong>Client-side</strong>: a date-range filter and region split are applied
+  instantly in the browser.</p>
 <h2 id="interactions">Interactions</h2>
-<p>Interactions define how users can manipulate data locally:
-- <strong>Filter</strong>: Subset rows by conditions (<code>WHERE</code> logic)
-- <strong>Split</strong>: Break a single insight into multiple series (replaces <code>cohort_on</code>)
-- <strong>Sort</strong>: Order data dynamically</p>
-<p>Example:
-</p><div class="highlight"><pre><span></span><code><span class="nt">interactions</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ sales_amount &gt; 1000 AND region = ${ref(sales-region).value} }</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ product_category }</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date DESC, amount ASC }</span>
-</code></pre></div>
-<h2 id="migration-from-traces">Migration from Traces</h2>
-<ul>
-<li><code>cohort_on</code> → <code>split</code> interaction</li>
-</ul>
+<p>Interactions define how the viewer manipulates the data locally:
+- <strong>filter</strong>: Subset rows by a boolean expression.
+- <strong>split</strong>: Break a single insight into multiple plotly series, one
+  per distinct value of the split expression.
+- <strong>sort</strong>: Order rows dynamically.</p>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
