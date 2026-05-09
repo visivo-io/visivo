@@ -283,6 +283,7 @@ const AddComputedColumnPopover = ({
         className="p-1 rounded hover:bg-secondary-200 text-secondary-400 hover:text-secondary-600 transition-colors"
         title="Add computed column"
         data-testid="add-computed-column-btn"
+        data-onb-target="metric-add-button"
       >
         <PiPlus size={14} />
       </button>

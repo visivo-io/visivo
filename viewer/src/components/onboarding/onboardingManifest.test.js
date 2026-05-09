@@ -203,7 +203,7 @@ describe('onboardingManifest', () => {
     const cs = items.find(i => i.id === 'connect_source');
     expect(typeof cs.predicate).toBe('function');
     expect(cs.weight).toBe(10);
-    expect(cs.route).toBe('/explorer');
+    expect(cs.route).toBe('/editor');
     expect(cs.label).toBe('Connect your warehouse');
   });
 

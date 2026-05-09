@@ -37,7 +37,10 @@ export const CHECKLIST_ITEMS = [
     id: 'connect_source',
     label: 'Connect a data source',
     why: 'A Source is the connection to where your data already lives.',
-    route: '/explorer',
+    route: '/editor',                       // the Editor FAB is the canonical
+                                            // add-source surface; SourceBrowser
+                                            // in /explorer lists existing
+                                            // sources but doesn't create them.
     target: 'source-create-button',
     weight: 10,
     predicate: ({ project, sources, persisted }) =>

@@ -198,6 +198,7 @@ const ModelTabBar = () => {
       <div
         className="flex items-center px-3 py-1.5 bg-secondary-50 border-b border-secondary-200"
         data-testid="model-tab-bar"
+        data-onb-target="model-tab-bar"
       >
         <span className="text-xs text-secondary-400" data-testid="no-models-message">
           No models
@@ -219,6 +220,7 @@ const ModelTabBar = () => {
     <div
       className="flex items-center gap-1 px-2 py-1 bg-secondary-50 border-b border-secondary-200 overflow-x-auto flex-shrink-0"
       data-testid="model-tab-bar"
+      data-onb-target="model-tab-bar"
     >
       {tabs.map((tabName) => (
         <ModelTab
