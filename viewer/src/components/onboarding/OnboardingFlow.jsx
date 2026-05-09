@@ -40,7 +40,24 @@ export default function OnboardingFlow() {
 
   const steps = useMemo(buildSteps, []);
   const [stepIdx, setStepIdx] = useState(() => persisted.current.last_step_idx ?? 0);
-  const [role, setRole] = useState(persisted.current.role ?? '');
+  const [role, setRoleRaw] = useState(persisted.current.role ?? '');
+  // Wrapping setRole so that switching role mid-flow clears the per-item
+  // coach_dismissed set. Otherwise a user who picks "Other" first and
+  // dismisses the deploy hint would never see analytics_engineer's
+  // `define_metric` hint after switching, even though it's a brand-new
+  // item they've never been shown.
+  const setRole = useCallback(nextRole => {
+    setRoleRaw(prev => {
+      if (nextRole !== prev) {
+        const ps = persisted.current;
+        if (ps && Array.isArray(ps.coach_dismissed) && ps.coach_dismissed.length > 0) {
+          persisted.current = { ...ps, coach_dismissed: [] };
+          writeOnboardingState(persisted.current);
+        }
+      }
+      return nextRole;
+    });
+  }, []);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [outcome, setOutcome] = useState({

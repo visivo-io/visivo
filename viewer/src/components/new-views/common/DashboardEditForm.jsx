@@ -426,7 +426,12 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
             <ButtonOutline type="button" onClick={onClose} disabled={saving || deleting} className="text-sm">
               Cancel
             </ButtonOutline>
-            <Button type="submit" disabled={!isValid || saving || deleting} className="text-sm">
+            <Button
+              type="submit"
+              data-onb-target="dashboard-save"
+              disabled={!isValid || saving || deleting}
+              className="text-sm"
+            >
               {saving ? (
                 <>
                   <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />

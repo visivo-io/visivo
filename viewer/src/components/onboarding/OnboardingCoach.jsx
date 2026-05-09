@@ -41,12 +41,27 @@ export default function OnboardingCoach() {
     }
 
     let raf = 0;
+    let warnedAt = 0;
     const measure = () => {
       const el = document.querySelector(`[data-onb-target="${targetId}"]`);
       if (!el) {
         setRect(null);
+        // Dev-only warn the first time the target stays missing for >1.5s.
+        // Catches the failure mode where a host component renames itself
+        // and silently breaks a Coach hint. Production builds skip this.
+        if (process.env.NODE_ENV !== 'production') {
+          if (!warnedAt) warnedAt = performance.now();
+          else if (performance.now() - warnedAt > 1500) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[OnboardingCoach] currentItem "${itemId}" advertises target "${targetId}" but no element with [data-onb-target="${targetId}"] is mounted on ${location.pathname}. The hint is silently hidden.`
+            );
+            warnedAt = Number.MAX_SAFE_INTEGER;
+          }
+        }
         return;
       }
+      warnedAt = 0;
       const r = el.getBoundingClientRect();
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
     };
