@@ -40,6 +40,11 @@ async function gotoCompletedFlow(page, role, overrides = {}) {
 }
 
 test.describe('OnboardingCoach', () => {
+  // Each test does 2-3 page navigations + waitForLoadState. Under
+  // 7-worker parallel sweep the default 30s isn't enough headroom;
+  // these settle in 5-8s in isolation.
+  test.describe.configure({ timeout: 60_000 });
+
   test('shows on /editor pointing at the Deploy button when deploy is the current item', async ({
     page,
   }) => {

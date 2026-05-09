@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import './onboarding.css';
 import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } from './onboardingState';
@@ -18,6 +18,7 @@ import useChecklistProgress from './useChecklistProgress';
  */
 export default function OnboardingCoach() {
   const location = useLocation();
+  const navigate = useNavigate();
   const persistedRole = (readOnboardingState() || {}).role || null;
   const { currentItem } = useChecklistProgress(persistedRole);
   const [rect, setRect] = useState(null);
@@ -33,6 +34,11 @@ export default function OnboardingCoach() {
   const itemId = currentItem?.id;
   const isDismissed = itemId ? dismissedSet.has(itemId) : false;
   const shouldRender = !!currentItem && !!targetId && onRoute && !isDismissed;
+  // Off-route hint: when there's an incomplete item that lives on a
+  // different page, render a small floating pill so the user knows
+  // there's still something to do and can jump back in one click.
+  // Hidden after dismiss (same per-item flag).
+  const showOffRouteChip = !!currentItem && !onRoute && !isDismissed;
 
   useLayoutEffect(() => {
     if (!shouldRender) {
@@ -124,6 +130,31 @@ export default function OnboardingCoach() {
   }, [shouldRender, targetId, itemId]);
 
   if (!hasCompletedOnboarding()) return null;
+
+  if (showOffRouteChip) {
+    // No wrapper — the button itself carries the testid + position so
+    // Playwright's "visible" check matches the button's bounding box,
+    // not a collapsed wrapper.
+    return (
+      <button
+        type="button"
+        className="onb-coach__chip"
+        onClick={() => {
+          fireEvent('onboarding_coach_chip_clicked', { item_id: itemId });
+          navigate(currentItem.route);
+        }}
+        data-testid="onboarding-coach-chip"
+        data-onb-chip-item={itemId}
+      >
+        <span className="onb-coach__chip-dot" aria-hidden="true" />
+        <span className="onb-coach__chip-label">Next: {currentItem.label}</span>
+        <span className="onb-coach__chip-arrow" aria-hidden="true">
+          →
+        </span>
+      </button>
+    );
+  }
+
   if (!shouldRender || !rect) return null;
 
   const handleDismiss = () => dismissCoach(itemId, setDismissedSet);
@@ -156,10 +187,19 @@ export default function OnboardingCoach() {
     Math.min(rect.left + rect.width / 2 - TOOLTIP_W / 2, window.innerWidth - TOOLTIP_W - 8)
   );
 
+  // Keyed on itemId so the appear keyframes replay smoothly when the
+  // user finishes one item and the next one becomes current (otherwise
+  // the same DOM nodes hard-snap to new positions, which feels broken).
   return (
     <div className="onb-coach" data-testid="onboarding-coach">
-      <div className="onb-coach__halo" style={halo} aria-hidden="true" />
       <div
+        key={`halo-${itemId}`}
+        className="onb-coach__halo"
+        style={halo}
+        aria-hidden="true"
+      />
+      <div
+        key={`tip-${itemId}`}
         className={`onb-coach__tooltip onb-coach__tooltip--${tooltip.placement}`}
         style={{ top: tooltip.top, left: tooltipLeft, width: TOOLTIP_W }}
         data-testid={`onboarding-coach-${itemId}`}

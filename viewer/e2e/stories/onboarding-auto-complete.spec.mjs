@@ -36,6 +36,8 @@ async function gotoCompletedOnboardingState(page, overrides = {}) {
 }
 
 test.describe('Onboarding checklist — auto-complete predicates', () => {
+  test.describe.configure({ timeout: 60_000 });
+
   test('build_model row flips when modelStore.models is non-empty', async ({ page }) => {
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-build_model');

@@ -1324,11 +1324,63 @@
   color: var(--onb-coach-fg-muted);
 }
 
+/* Off-route chip: small floating pill that points the user at the
+   page where the next action lives. Sits bottom-right so it doesn't
+   collide with the post-flow checklist (top-right) or the FAB
+   (bottom-right of /editor — mid-y vs the chip's bottom). */
+.onb-coach--chip {
+  inset: auto;
+  pointer-events: auto;
+}
+.onb-coach__chip {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  background: #fff;
+  border: 1px solid var(--onb-coach-border);
+  border-radius: 9999px;
+  padding: 8px 14px 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--onb-coach-fg-primary);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  font-family: inherit;
+  animation: onbCoachAppear 220ms ease-out both;
+  z-index: 70;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+.onb-coach__chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.24);
+}
+.onb-coach__chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--onb-coach-primary);
+  animation: onbCoachPulse 1.6s ease-in-out infinite;
+}
+.onb-coach__chip-label {
+  letter-spacing: -0.005em;
+}
+.onb-coach__chip-arrow {
+  color: var(--onb-coach-primary);
+  font-weight: 700;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .onb-coach__halo {
     animation: none;
   }
   .onb-coach__tooltip {
+    animation: none;
+  }
+  .onb-coach__chip,
+  .onb-coach__chip-dot {
     animation: none;
   }
 }
