@@ -282,3 +282,94 @@ class TestObjectManager:
         assert ObjectStatus.NEW.value == "new"
         assert ObjectStatus.MODIFIED.value == "modified"
         assert ObjectStatus.PUBLISHED.value == "published"
+
+
+class TestSerializeObjectShape:
+    """Lock the canonical envelope returned by ``_serialize_object``.
+
+    Every per-resource detail GET (charts, tables, dashboards, models,
+    sources, insights, inputs, dimensions, metrics, relations, markdowns,
+    csv-script-models, local-merge-models) flows through this helper. The
+    shape is part of the public HTTP contract — both visivo's own viewer
+    and the separate core SaaS depend on the exact key set being stable.
+
+    If you find yourself updating these tests, also bump the contract docs
+    so consumers know to follow.
+    """
+
+    EXPECTED_KEYS = {"id", "name", "status", "child_item_names", "config"}
+
+    @staticmethod
+    def _make_obj():
+        from pydantic import BaseModel
+
+        class _Obj(BaseModel):
+            model_config = {"extra": "allow"}
+            name: str = "demo"
+            value: int = 42
+
+            def child_items(self):
+                return []
+
+        return _Obj()
+
+    def _serialize(self, status):
+        manager = ConcreteObjectManager()
+        return manager._serialize_object("demo", self._make_obj(), status)
+
+    def test_envelope_keys_are_exactly_the_canonical_set(self):
+        """Top-level keys must be exactly {id, name, status, child_item_names, config}.
+
+        No more (rogue extras leak implementation details) and no fewer
+        (consumers depend on every field being present, even when empty).
+        """
+        for status in (ObjectStatus.PUBLISHED, ObjectStatus.NEW, ObjectStatus.MODIFIED, None):
+            result = self._serialize(status)
+            assert set(result.keys()) == self.EXPECTED_KEYS, (
+                f"Envelope drifted for status={status}: extra={set(result.keys()) - self.EXPECTED_KEYS}, "
+                f"missing={self.EXPECTED_KEYS - set(result.keys())}"
+            )
+
+    def test_id_equals_name_in_single_project_mode(self):
+        """Locally `id` mirrors `name`. Cloud may diverge to a UUID."""
+        result = self._serialize(ObjectStatus.PUBLISHED)
+        assert result["id"] == result["name"] == "demo"
+
+    def test_status_is_string_value_or_none(self):
+        """Status is the enum's string value, never the enum instance."""
+        for status in (ObjectStatus.PUBLISHED, ObjectStatus.NEW, ObjectStatus.MODIFIED):
+            result = self._serialize(status)
+            assert result["status"] == status.value
+        assert self._serialize(None)["status"] is None
+
+    def test_child_item_names_is_a_list(self):
+        """Always a list — never null. Empty list when no children."""
+        result = self._serialize(ObjectStatus.PUBLISHED)
+        assert isinstance(result["child_item_names"], list)
+        assert result["child_item_names"] == []
+
+    def test_config_excludes_internal_pydantic_fields(self):
+        """`config` is the model dump with internal fields stripped.
+
+        ``file_path`` and ``path`` are visivo-internal — they describe
+        where the object came from on disk, which should never be exposed
+        over the API. Verify they're stripped even when the source object
+        carries them.
+        """
+        from pydantic import BaseModel
+
+        class _ObjWithInternals(BaseModel):
+            model_config = {"extra": "allow"}
+            name: str = "demo"
+            file_path: str = "/some/yaml/path.visivo.yml"
+            path: str = "dashboards.0"
+            description: str = "kept"
+
+            def child_items(self):
+                return []
+
+        manager = ConcreteObjectManager()
+        result = manager._serialize_object("demo", _ObjWithInternals(), ObjectStatus.PUBLISHED)
+        assert "file_path" not in result["config"]
+        assert "path" not in result["config"]
+        assert result["config"]["description"] == "kept"
