@@ -139,6 +139,15 @@ export default function OnboardingChecklist() {
   const handleItemClick = it => {
     if (it.done) return;
     fireEvent('onboarding_checklist_item_clicked', { item_id: it.id });
+    // Clicking a checklist row is a reset for the Coach — even if the
+    // user previously dismissed the per-item hint, they're now asking
+    // for guidance, so undo the dismiss so the halo reappears on the
+    // destination route.
+    const persisted = readOnboardingState() || {};
+    const dismissed = (persisted.coach_dismissed || []).filter(id => id !== it.id);
+    if (dismissed.length !== (persisted.coach_dismissed || []).length) {
+      writeOnboardingState({ ...persisted, coach_dismissed: dismissed });
+    }
     navigate(it.route);
   };
 

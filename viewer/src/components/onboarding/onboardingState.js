@@ -36,3 +36,26 @@ export function hasCompletedOnboarding() {
   const s = readOnboardingState();
   return !!(s && s.completed_at);
 }
+
+/* Record a user-initiated onboarding action (model saved, insight saved,
+ * dashboard saved, deploy succeeded, etc) into the persisted state.
+ *
+ * Predicates in onboardingManifest.js read `persisted.actions[id]` so
+ * the checklist credits actual user work — not the mere presence of an
+ * object that came from a bundled sample. Idempotent: writes the first
+ * timestamp and leaves later calls as a no-op.
+ *
+ * No-op if the user has not completed onboarding yet (the rows are
+ * hidden), so we don't pollute fresh-install state.
+ */
+export function recordOnboardingAction(actionId) {
+  if (typeof window === 'undefined') return;
+  if (!hasCompletedOnboarding()) return;
+  const s = readOnboardingState() || {};
+  const actions = s.actions || {};
+  if (actions[actionId]) return;
+  writeOnboardingState({
+    ...s,
+    actions: { ...actions, [actionId]: new Date().toISOString() },
+  });
+}

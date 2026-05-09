@@ -36,6 +36,10 @@ const createInsightSlice = (set, get) => ({
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
       }
+      // Tap for the onboarding "Create an Insight" checklist row.
+      import('../components/onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+        recordOnboardingAction('insight_saved');
+      });
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

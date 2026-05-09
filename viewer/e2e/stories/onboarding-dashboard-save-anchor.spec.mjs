@@ -31,7 +31,10 @@ async function gotoCompletedAsRole(page, role = 'analytics_engineer') {
 }
 
 test.describe('Onboarding — dashboard-save lazy anchor', () => {
-  test.setTimeout(45_000);
+  // Drives the FAB → Dashboard EditPanel flow; under parallel sweep
+  // load on a populated integration project the Editor's lazy
+  // sub-loaders take longer than the default 30s budget.
+  test.setTimeout(90_000);
 
   test('marker mounts when a Dashboard is opened via the Editor FAB', async ({ page }) => {
     await gotoCompletedAsRole(page);

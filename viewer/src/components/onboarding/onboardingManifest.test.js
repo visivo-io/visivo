@@ -59,63 +59,47 @@ describe('onboardingManifest', () => {
     ).toBe(true);
   });
 
-  test('build_model predicate fires from modelStore.models OR project.models', () => {
+  test('build_model predicate fires only when persisted.actions.model_saved is set', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'build_model');
-    expect(
-      it.predicate({ project: { project_json: { models: [] } }, models: [], persisted: {} })
-    ).toBe(false);
-    expect(
-      it.predicate({ project: { project_json: { models: [] } }, models: [{ name: 'm' }], persisted: {} })
-    ).toBe(true);
+    // Presence of pre-existing models (from a sample) is not enough.
     expect(
       it.predicate({
         project: { project_json: { models: [{ name: 'm' }] } },
-        models: [],
+        models: [{ name: 'm' }],
         persisted: {},
       })
+    ).toBe(false);
+    expect(
+      it.predicate({ persisted: { actions: { model_saved: '2026-05-09' } } })
     ).toBe(true);
   });
 
-  test('create_insight predicate fires from insightStore.insights OR project.insights', () => {
+  test('create_insight predicate fires only when persisted.actions.insight_saved is set', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'create_insight');
     expect(
       it.predicate({
-        project: { project_json: { insights: [] } },
-        insights: [],
-        persisted: {},
-      })
-    ).toBe(false);
-    expect(
-      it.predicate({
-        project: { project_json: { insights: [] } },
+        project: { project_json: { insights: [{ name: 'i' }] } },
         insights: [{ name: 'i' }],
         persisted: {},
       })
+    ).toBe(false);
+    expect(
+      it.predicate({ persisted: { actions: { insight_saved: '2026-05-09' } } })
     ).toBe(true);
   });
 
-  test('build_dashboard predicate honors the sample-onboarding outcome', () => {
+  test('build_dashboard predicate fires only when persisted.actions.dashboard_saved is set', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'build_dashboard');
-    expect(
-      it.predicate({
-        project: { project_json: { dashboards: [] } },
-        dashboards: [],
-        persisted: {},
-      })
-    ).toBe(false);
-    expect(
-      it.predicate({
-        project: { project_json: { dashboards: [] } },
-        dashboards: [],
-        persisted: { path: 'sample' },
-      })
-    ).toBe(true);
+    // Sample-pickers don't get build_dashboard for free anymore.
     expect(
       it.predicate({
         project: { project_json: { dashboards: [{ name: 'd' }] } },
-        dashboards: [],
-        persisted: {},
+        dashboards: [{ name: 'd' }],
+        persisted: { path: 'sample' },
       })
+    ).toBe(false);
+    expect(
+      it.predicate({ persisted: { actions: { dashboard_saved: '2026-05-09' } } })
     ).toBe(true);
   });
 

@@ -59,9 +59,17 @@ test.describe('Onboarding checklist — role-aware manifest', () => {
       'connect_cloud',
       'deploy',
     ]);
-    await expect(page.getByText('Connect your warehouse')).toBeVisible();
-    await expect(page.getByText('Re-use a dbt model or save a SQL file')).toBeVisible();
-    await expect(page.getByText('Define a Metric on a Model')).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-connect_source').getByText('Connect your warehouse')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('onb-checklist-build_model')
+        .getByText('Re-use a dbt model or save a SQL file')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-define_metric').getByText('Define a Metric on a Model')
+    ).toBeVisible();
     await page.screenshot({
       path: '../../analytics-engineer-checklist.png',
       clip: { x: 1080, y: 60, width: 360, height: 600 },
@@ -80,8 +88,12 @@ test.describe('Onboarding checklist — role-aware manifest', () => {
       'connect_cloud',
       'deploy',
     ]);
-    await expect(page.getByText('Connect a database (Postgres / DuckDB)')).toBeVisible();
-    await expect(page.getByText('Save a `.sql` file as a Model')).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-connect_source').getByText('Connect a database (Postgres / DuckDB)')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-build_model').getByText('Save a `.sql` file as a Model')
+    ).toBeVisible();
     await page.screenshot({
       path: '../../software-engineer-checklist.png',
       clip: { x: 1080, y: 60, width: 360, height: 600 },
@@ -114,8 +126,16 @@ test.describe('Onboarding checklist — role-aware manifest', () => {
 
   test('founder relabels deploy to the cloud-first framing', async ({ page }) => {
     await gotoCompletedAsRole(page, 'founder');
-    await expect(page.getByText('Connect Visivo Cloud + share with your team')).toBeVisible();
-    await expect(page.getByText('Connect Stripe, Postgres, or upload a CSV')).toBeVisible();
+    await expect(
+      page
+        .getByTestId('onb-checklist-deploy')
+        .getByText('Connect Visivo Cloud + share with your team')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('onb-checklist-connect_source')
+        .getByText('Connect Stripe, Postgres, or upload a CSV')
+    ).toBeVisible();
   });
 
   test('other (just exploring) lands on the lowest-friction set', async ({ page }) => {

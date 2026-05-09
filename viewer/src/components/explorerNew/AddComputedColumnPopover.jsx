@@ -129,6 +129,12 @@ const AddComputedColumnPopover = ({
     }
     const type = detectedType || 'dimension';
     onAdd({ name: name.trim(), expression: expression.trim(), type });
+    // Tap for the analytics_engineer "Define a Metric on a Model"
+    // checklist row. A computed column on a Model IS a re-usable
+    // measure (it's exactly what the row's why-text describes).
+    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+      recordOnboardingAction('metric_defined');
+    });
     resetForm();
     setIsOpen(false);
   };

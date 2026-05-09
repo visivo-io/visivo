@@ -36,6 +36,11 @@ const createModelSlice = (set, get) => ({
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
       }
+      // Tap for the onboarding "Build a Model" checklist row. Lazy
+      // import so non-onboarded users don't pay for it.
+      import('../components/onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+        recordOnboardingAction('model_saved');
+      });
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

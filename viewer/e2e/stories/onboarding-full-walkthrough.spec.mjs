@@ -129,13 +129,23 @@ test.describe('Onboarding — full walkthrough', () => {
     );
     expect(persistedAfterVisit.visited_project_route).toBeTruthy();
 
-    // 9) Inject cloud_connected + deployed_at to simulate successful
-    //    cloud signup + deploy (the real /api/cloud/* endpoints aren't
-    //    wired in the sandbox).
+    // 9) Inject cloud_connected + deployed_at + the action flags to
+    //    simulate successful save / cloud signup / deploy. The real
+    //    save endpoints + /api/cloud/* aren't wired in the sandbox,
+    //    and Phase 3 onwards predicates require user-action flags
+    //    rather than mere object presence (samples ship populated).
     await page.evaluate(() => {
       const ps = JSON.parse(window.localStorage.getItem('visivo.onboarding.v1') || '{}');
       ps.cloud_connected = true;
       ps.deployed_at = new Date().toISOString();
+      ps.actions = {
+        ...(ps.actions || {}),
+        model_saved: new Date().toISOString(),
+        insight_saved: new Date().toISOString(),
+        dashboard_saved: new Date().toISOString(),
+        // analytics_engineer adds the define_metric row.
+        metric_defined: new Date().toISOString(),
+      };
       window.localStorage.setItem('visivo.onboarding.v1', JSON.stringify(ps));
     });
 

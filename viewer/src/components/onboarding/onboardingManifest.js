@@ -55,8 +55,10 @@ export const CHECKLIST_ITEMS = [
     route: '/explorer',
     target: 'model-tab-bar',
     weight: 20,
-    predicate: ({ project, models }) =>
-      (models?.length ?? 0) > 0 || (project?.project_json?.models?.length ?? 0) > 0,
+    // Action-based: presence-of-models is no signal — a bundled sample
+    // ships a populated models list. Only credit the user when their
+    // own save fires (modelStore.saveModel taps recordOnboardingAction).
+    predicate: ({ persisted }) => !!persisted?.actions?.model_saved,
   },
   {
     id: 'create_insight',
@@ -65,8 +67,7 @@ export const CHECKLIST_ITEMS = [
     route: '/explorer',
     target: 'chart-crud-section',
     weight: 30,
-    predicate: ({ project, insights }) =>
-      (insights?.length ?? 0) > 0 || (project?.project_json?.insights?.length ?? 0) > 0,
+    predicate: ({ persisted }) => !!persisted?.actions?.insight_saved,
   },
   {
     id: 'build_dashboard',
@@ -75,10 +76,7 @@ export const CHECKLIST_ITEMS = [
     route: '/editor',
     target: 'dashboard-save',
     weight: 40,
-    predicate: ({ project, dashboards, persisted }) =>
-      (dashboards?.length ?? 0) > 0 ||
-      (project?.project_json?.dashboards?.length ?? 0) > 0 ||
-      persisted.path === 'sample',
+    predicate: ({ persisted }) => !!persisted?.actions?.dashboard_saved,
   },
   {
     id: 'view_project',
@@ -150,15 +148,12 @@ export const ROLE_OVERRIDES = {
         route: '/explorer',
         target: 'metric-add-button',
         weight: 25,
-        predicate: ({ project, models }) => {
-          const fromStore = (models || []).some(m => (m.metrics?.length ?? 0) > 0);
-          if (fromStore) return true;
-          const fromProject = (project?.project_json?.models || []).some(
-            m => (m.metrics?.length ?? 0) > 0
-          );
-          if (fromProject) return true;
-          return (project?.project_json?.metrics?.length ?? 0) > 0;
-        },
+        // Action-based: AddComputedColumnPopover taps
+        // recordOnboardingAction('metric_defined') on save. A computed
+        // column on a Model is exactly the "re-usable measure" the
+        // why-text describes; this satisfies the row when the user
+        // actually saves one, not when one happens to pre-exist.
+        predicate: ({ persisted }) => !!persisted?.actions?.metric_defined,
       },
     ],
   },

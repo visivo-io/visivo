@@ -32,6 +32,10 @@ const createDashboardSlice = (set, get) => ({
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
       }
+      // Tap for the onboarding "Build a Dashboard" checklist row.
+      import('../components/onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+        recordOnboardingAction('dashboard_saved');
+      });
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

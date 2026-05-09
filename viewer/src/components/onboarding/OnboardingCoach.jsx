@@ -25,6 +25,13 @@ export default function OnboardingCoach() {
   const [dismissedSet, setDismissedSet] = useState(() => readDismissed());
   const tickerRef = useRef(0);
 
+  // The OnboardingChecklist clears `coach_dismissed` for an item when
+  // the user clicks its row. Re-pick up that change on every route
+  // transition so the Coach immediately re-shows on the destination.
+  useEffect(() => {
+    setDismissedSet(readDismissed());
+  }, [location.pathname]);
+
   const onRoute = currentItem
     ? location.pathname === currentItem.route ||
       (currentItem.route === '/project' && location.pathname.startsWith('/project'))
@@ -47,32 +54,22 @@ export default function OnboardingCoach() {
     }
 
     let raf = 0;
-    let warnedAt = 0;
     const measure = () => {
       const el = document.querySelector(`[data-onb-target="${targetId}"]`);
       if (!el) {
         setRect(null);
-        // Dev-only warn the first time the target stays missing for >1.5s.
-        // Catches the failure mode where a host component renames itself
-        // and silently breaks a Coach hint. Production builds skip this.
-        if (process.env.NODE_ENV !== 'production') {
-          if (!warnedAt) warnedAt = performance.now();
-          else if (performance.now() - warnedAt > 1500) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              `[OnboardingCoach] currentItem "${itemId}" advertises target "${targetId}" but no element with [data-onb-target="${targetId}"] is mounted on ${location.pathname}. The hint is silently hidden.`
-            );
-            warnedAt = Number.MAX_SAFE_INTEGER;
-          }
-        }
-        return;
+        return false;
       }
-      warnedAt = 0;
       const r = el.getBoundingClientRect();
+      // Skip noise from elements that briefly mount with 0×0 box.
+      if (r.width === 0 && r.height === 0) {
+        setRect(null);
+        return false;
+      }
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      return true;
     };
 
-    measure();
     const onResize = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(measure);
@@ -80,17 +77,51 @@ export default function OnboardingCoach() {
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onResize, true);
 
-    // Re-measure briefly after route changes to pick up late-mounting
-    // host components.
-    const interval = setInterval(measure, 250);
-    const stopAt = setTimeout(() => clearInterval(interval), 3000);
+    // Try once eagerly. If the target isn't there yet, watch the DOM
+    // until it mounts — far more reliable than polling, especially on
+    // slow async routes (the Editor's first paint is ~1.5s after the
+    // route handler resolves, well past the previous 3s polling
+    // budget).
+    const found = measure();
+    let observer = null;
+    let warnTimer = null;
+
+    if (!found) {
+      observer = new MutationObserver(() => {
+        if (measure()) {
+          observer.disconnect();
+          observer = null;
+          if (warnTimer) {
+            clearTimeout(warnTimer);
+            warnTimer = null;
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      // Dev-only: if the target stays missing for 5s, the marker
+      // probably renamed or moved. Loud breakage > silent breakage.
+      if (process.env.NODE_ENV !== 'production') {
+        warnTimer = setTimeout(() => {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[OnboardingCoach] currentItem "${itemId}" advertises target "${targetId}" but no element with [data-onb-target="${targetId}"] mounted on ${location.pathname} within 5s. The hint is silently hidden.`
+          );
+        }, 5000);
+      }
+    }
+
+    // Re-measure after layout settles in case the target moves
+    // (Plotly resizes, fonts load, etc).
+    const settle = setTimeout(measure, 600);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onResize, true);
-      clearInterval(interval);
-      clearTimeout(stopAt);
+      if (observer) observer.disconnect();
+      if (warnTimer) clearTimeout(warnTimer);
+      clearTimeout(settle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldRender, targetId, itemId, location.pathname]);

@@ -38,25 +38,17 @@ async function gotoCompletedOnboardingState(page, overrides = {}) {
 test.describe('Onboarding checklist — auto-complete predicates', () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test('build_model row flips when modelStore.models is non-empty', async ({ page }) => {
+  test('build_model row flips when persisted.actions.model_saved is set', async ({ page }) => {
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-build_model');
-    // The integration project's modelStore is populated lazily on the
-    // Explorer route, so the editor route alone may keep models empty.
-    // Force a slice update from the page to isolate the predicate.
+    // Sample-onboarded users land with models pre-existing, but the
+    // build_model predicate requires the action flag — they have to
+    // actually save one. Until that flag flips, the row stays open.
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
     await page.evaluate(() => {
-      window.useStoreForTest = window.useStoreForTest || null;
-    });
-    await page.evaluate(() => {
-      // Reach into the live store via the named global if available;
-      // otherwise we mutate localStorage signals as a fallback.
-      // Because the manifest also reads project.project_json.models,
-      // we can satisfy the predicate by toggling the window-level
-      // store dispatch helper if exposed, OR by simulating the
-      // sticky-completion path.
       const lsKey = 'visivo.onboarding.v1';
       const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
-      current.checklist_checked = [...new Set([...(current.checklist_checked || []), 'build_model'])];
+      current.actions = { ...(current.actions || {}), model_saved: new Date().toISOString() };
       window.localStorage.setItem(lsKey, JSON.stringify(current));
     });
     await page.reload();
