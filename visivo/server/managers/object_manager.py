@@ -259,7 +259,8 @@ class ObjectManager(ABC, Generic[T]):
         Serialize an object with consistent structure.
 
         Provides a standard format for API responses:
-        - name: Object identifier
+        - id: Object identifier (locally == name; cloud may use a UUID)
+        - name: Human-readable name
         - status: Object state (new, modified, published, deleted)
         - child_item_names: List of dependency names (from child_items())
         - config: Full Pydantic model dump
@@ -298,6 +299,7 @@ class ObjectManager(ABC, Generic[T]):
                             child_names.append(model_name)
 
         return {
+            "id": name,
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,

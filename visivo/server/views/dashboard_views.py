@@ -9,23 +9,33 @@ from visivo.logger.logger import Logger
 def register_dashboard_views(app, flask_app, output_dir):
     @app.route("/api/dashboards/<dashboard_name>/", methods=["GET"])
     def get_dashboard_api(dashboard_name):
-        """API endpoint for dashboard data"""
+        """Return canonical dashboard envelope plus the thumbnail URL.
+
+        Detail and list responses now share the same canonical shape from
+        ``DashboardManager._serialize_object``: ``{id, name, status,
+        child_item_names, config}``. The dashboard-specific
+        ``signed_thumbnail_file_url`` is attached as a sibling key alongside
+        — never inside ``config`` — so consumers can read it without
+        digging into the model dump.
+        """
         try:
+            dashboard_data = flask_app.dashboard_manager.get_dashboard_with_status(dashboard_name)
+            if not dashboard_data:
+                return (
+                    jsonify({"error": f"Dashboard '{dashboard_name}' not found"}),
+                    404,
+                )
+
             thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
             thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
-
-            return jsonify(
-                {
-                    "id": dashboard_name,
-                    "name": dashboard_name,
-                    "signed_thumbnail_file_url": (
-                        f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
-                    ),
-                }
+            dashboard_data["signed_thumbnail_file_url"] = (
+                f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
             )
+
+            return jsonify(dashboard_data)
         except Exception as e:
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/<dashboard_name>.png/", methods=["GET"])
     def get_thumbnail_api(dashboard_name):

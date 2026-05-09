@@ -4,14 +4,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
  * Hook for managing preview run execution
  *
  * Handles the async workflow:
- * 1. POST config to start run → get run_instance_id
- * 2. Poll GET /status until completed/failed
+ * 1. POST config to start run → get run_id
+ * 2. Poll GET /api/insight-jobs/<run_id>/ until completed/failed
  * 3. Result is included in completed response
  *
  * @returns {Object} Preview run state and control functions
  */
 export const usePreviewJob = () => {
-  const [runInstanceId, setRunInstanceId] = useState(null);
+  const [runId, setRunId] = useState(null);
   const [status, setStatus] = useState(null); // 'queued' | 'running' | 'completed' | 'failed'
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
@@ -24,7 +24,7 @@ export const usePreviewJob = () => {
    * Start a preview run.
    * @param {Object} body - Request body. For the batched preview contract, pass
    *   { insight_names, context_objects }. The hook injects { run: true } automatically.
-   * @returns {Promise<string>} run_instance_id
+   * @returns {Promise<string>} run_id
    */
   const startRun = useCallback(async (body = {}) => {
     try {
@@ -33,7 +33,7 @@ export const usePreviewJob = () => {
       setProgress(0);
       setProgressMessage('');
       setResult(null);
-      setRunInstanceId(null);
+      setRunId(null);
 
       const response = await fetch('/api/insight-jobs/', {
         method: 'POST',
@@ -52,11 +52,11 @@ export const usePreviewJob = () => {
       }
 
       const data = await response.json();
-      const newRunInstanceId = data.run_instance_id;
-      currentRunIdRef.current = newRunInstanceId;
-      setRunInstanceId(newRunInstanceId);
+      const newRunId = data.run_id;
+      currentRunIdRef.current = newRunId;
+      setRunId(newRunId);
       setStatus('queued');
-      return newRunInstanceId;
+      return newRunId;
     } catch (err) {
       const errorMsg = err.message || 'Failed to start preview run';
       setError(errorMsg);
@@ -70,12 +70,12 @@ export const usePreviewJob = () => {
    * Ignores responses from stale runs (where the run ID no longer matches
    * the current run) to prevent old 404s from contaminating state.
    */
-  const pollStatus = useCallback(async currentRunInstanceId => {
+  const pollStatus = useCallback(async currentPollRunId => {
     try {
-      const response = await fetch(`/api/insight-jobs/${currentRunInstanceId}/`);
+      const response = await fetch(`/api/insight-jobs/${currentPollRunId}/`);
 
       // Ignore stale responses from previous runs
-      if (currentRunIdRef.current !== currentRunInstanceId) return;
+      if (currentRunIdRef.current !== currentPollRunId) return;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -106,7 +106,7 @@ export const usePreviewJob = () => {
       }
     } catch (err) {
       // Ignore errors from stale runs
-      if (currentRunIdRef.current !== currentRunInstanceId) return;
+      if (currentRunIdRef.current !== currentPollRunId) return;
 
       const errorMsg = err.message || 'Failed to poll run status';
       setError(errorMsg);
@@ -122,15 +122,15 @@ export const usePreviewJob = () => {
    * Start polling when run is started
    */
   useEffect(() => {
-    if (!runInstanceId) return;
+    if (!runId) return;
     if (status === 'completed' || status === 'failed') return;
 
     pollingIntervalRef.current = setInterval(() => {
-      pollStatus(runInstanceId);
+      pollStatus(runId);
     }, 500);
 
     // Immediate first poll
-    pollStatus(runInstanceId);
+    pollStatus(runId);
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -138,7 +138,7 @@ export const usePreviewJob = () => {
         pollingIntervalRef.current = null;
       }
     };
-  }, [runInstanceId, status, pollStatus]);
+  }, [runId, status, pollStatus]);
 
   /**
    * Cancel/reset current run
@@ -148,7 +148,7 @@ export const usePreviewJob = () => {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    setRunInstanceId(null);
+    setRunId(null);
     setStatus(null);
     setProgress(0);
     setProgressMessage('');
@@ -158,7 +158,7 @@ export const usePreviewJob = () => {
 
   return {
     // State
-    runInstanceId,
+    runId,
     status,
     progress,
     progressMessage,

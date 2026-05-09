@@ -204,7 +204,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
  * @param {string} runId - Run ID to load data from (default: "main")
  * @param {Object} options - Optional configuration
  * @param {string} options.storeKeyPrefix - Prefix for Zustand store keys (e.g., '__preview__')
- * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runInstanceId)
+ * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runId)
  * @returns {Object} Insights data and loading state
  */
 export const useInsightsData = (
@@ -339,7 +339,7 @@ export const useInsightsData = (
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   // Also includes runId to separate cache for different runs
-  // Also includes cacheKey for preview cache busting (runInstanceId changes each preview run)
+  // Also includes cacheKey for preview cache busting (runId changes each preview run)
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({

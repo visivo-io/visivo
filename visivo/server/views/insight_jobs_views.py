@@ -109,9 +109,9 @@ def register_insight_jobs_views(app, flask_app, output_dir):
         POST body: {
             "insight_names": ["a", "b", ...],  # Names of insights to render
             "context_objects": {...},          # Optional: overlay of edited objects
-            "run": true                        # Flag to execute the job
+            "run": true                        # Flag to execute the run
         }
-        Returns: {"run_instance_id": "uuid"}
+        Returns: {"run_id": "uuid"}
         """
         try:
             Logger.instance().info("Received POST to /api/insight-jobs/")
@@ -141,38 +141,38 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
             if existing_run_id:
                 Logger.instance().info(f"Returning existing preview run {existing_run_id}")
-                return jsonify({"run_instance_id": existing_run_id}), 202
+                return jsonify({"run_id": existing_run_id}), 202
 
             Logger.instance().info(f"Invalidating any completed runs for insights: {insight_names}")
             for insight_name in insight_names:
                 run_manager.invalidate_completed_runs_for_insight(insight_name)
 
             Logger.instance().info("Creating new run")
-            job_id = run_manager.create_run(run_config, object_type="insight")
-            Logger.instance().info(f"Created run with job_id: {job_id}")
+            run_id = run_manager.create_run(run_config, object_type="insight")
+            Logger.instance().info(f"Created run with run_id: {run_id}")
 
             thread = threading.Thread(
                 target=execute_preview_job,
-                args=(job_id, insight_names, flask_app, output_dir, run_manager),
+                args=(run_id, insight_names, flask_app, output_dir, run_manager),
                 kwargs={"context_objects": context_objects},
                 daemon=True,
             )
             thread.start()
 
-            Logger.instance().info(f"Started preview job {job_id}")
-            return jsonify({"run_instance_id": job_id}), 202
+            Logger.instance().info(f"Started preview run {run_id}")
+            return jsonify({"run_id": run_id}), 202
 
         except Exception as e:
-            Logger.instance().error(f"Error creating preview job: {str(e)}")
+            Logger.instance().error(f"Error creating preview run: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/insight-jobs/<job_id>/", methods=["GET"])
-    def get_insight_job_status(job_id):
+    @app.route("/api/insight-jobs/<run_id>/", methods=["GET"])
+    def get_insight_run_status(run_id):
         """Get status and result of a preview run.
 
         Returns: {
-            "job_id": "uuid",
             "run_id": "uuid",
+            "object_type": "insight",
             "status": "queued|running|completed|failed",
             "progress": 0.0-1.0,
             "progress_message": "...",
@@ -181,15 +181,15 @@ def register_insight_jobs_views(app, flask_app, output_dir):
         }
         """
         try:
-            Logger.instance().info(f"GET /api/insight-jobs/{job_id}/ - fetching status")
+            Logger.instance().info(f"GET /api/insight-jobs/{run_id}/ - fetching status")
             run_manager = PreviewRunManager.instance()
-            Logger.instance().info(f"Got run manager, getting run {job_id}")
-            run = run_manager.get_run(job_id)
+            Logger.instance().info(f"Got run manager, getting run {run_id}")
+            run = run_manager.get_run(run_id)
             Logger.instance().info(f"Got run: {run is not None}")
 
             if not run:
-                Logger.instance().info(f"Run {job_id} not found")
-                return jsonify({"message": f"Run {job_id} not found"}), 404
+                Logger.instance().info(f"Run {run_id} not found")
+                return jsonify({"message": f"Run {run_id} not found"}), 404
 
             Logger.instance().info(f"Returning run status: {run.status}")
             return jsonify(run.to_dict())
