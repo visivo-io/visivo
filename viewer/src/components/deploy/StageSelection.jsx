@@ -74,6 +74,14 @@ const StageSelection = ({ status }) => {
             const baseUrl = 'https://app.visivo.io';
             setPreviewUrl(new URL(data.project_url, baseUrl).toString());
           }
+          // Tap for the onboarding "Deploy to share" checklist row.
+          // Lazily imported so non-onboarded users pay nothing extra.
+          import('../onboarding/onboardingState').then(({ readOnboardingState, writeOnboardingState }) => {
+            const persisted = readOnboardingState() || {};
+            if (!persisted.deployed_at) {
+              writeOnboardingState({ ...persisted, deployed_at: new Date().toISOString() });
+            }
+          });
         } else if ([400, 404, 500].includes(data.status)) {
           clearInterval(interval);
           resetDeploymentState();

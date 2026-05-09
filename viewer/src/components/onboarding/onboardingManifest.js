@@ -6,22 +6,29 @@
  *
  * Predicate signature:
  *
- *   predicate({ project, persisted }) -> boolean
+ *   predicate({ project, sources, models, insights, dashboards, persisted }) -> boolean
  *
- *   project    — the parsed project payload from useStore (full Project
- *                JSON including sources / models / insights / dashboards).
- *   persisted  — the parsed onboarding state from localStorage
- *                (role / path / source_connected / cloud_connected /
- *                deployed_at / visited_project_route / ...).
+ *   project     — the parsed project payload from /api/project/.
+ *   sources     — sourceStore.sources (server-side managed list, includes
+ *                 entries from `includes:` not just top-level YAML).
+ *   models      — modelStore.models (same caveat).
+ *   insights    — insightStore.insights.
+ *   dashboards  — dashboardStore items if present, else fall back to
+ *                 project.project_json.dashboards.
+ *   persisted   — the parsed onboarding state from localStorage
+ *                 (role / path / source_connected / cloud_connected /
+ *                 deployed_at / visited_project_route / ...).
+ *
+ * Why not just project.project_json.{models,insights}? Because top-level
+ * `models:` is empty when the user organizes their YAML through includes,
+ * which is the recommended pattern. The dedicated stores fetch the
+ * fully-resolved lists from the server.
  *
  * Sticky completion: once a predicate returns true on any render, the
  * hook (useChecklistProgress) records it in persisted.checklist_checked
  * so the row stays done across reloads even if the underlying state
  * later goes away (for example: user creates and then deletes a model).
  *
- * Phase 1 keeps the same predicates the current OnboardingChecklist
- * had inline. Phase 2 swaps the `() => false` placeholders for real
- * store-backed signals (project.models.length, deploy event tap, etc).
  * Phase 3 layers in role overrides via ROLE_OVERRIDES below.
  */
 
@@ -33,8 +40,10 @@ export const CHECKLIST_ITEMS = [
     route: '/explorer',
     target: 'source-create-button',
     weight: 10,
-    predicate: ({ project, persisted }) =>
-      (project?.project_json?.sources?.length ?? 0) > 0 || !!persisted.source_connected,
+    predicate: ({ project, sources, persisted }) =>
+      (sources?.length ?? 0) > 0 ||
+      (project?.project_json?.sources?.length ?? 0) > 0 ||
+      !!persisted.source_connected,
   },
   {
     id: 'build_model',
@@ -43,8 +52,8 @@ export const CHECKLIST_ITEMS = [
     route: '/explorer',
     target: 'model-tab-bar',
     weight: 20,
-    // Phase 2: () => (project?.project_json?.models?.length ?? 0) > 0
-    predicate: () => false,
+    predicate: ({ project, models }) =>
+      (models?.length ?? 0) > 0 || (project?.project_json?.models?.length ?? 0) > 0,
   },
   {
     id: 'create_insight',
@@ -53,8 +62,8 @@ export const CHECKLIST_ITEMS = [
     route: '/explorer',
     target: 'chart-crud-section',
     weight: 30,
-    // Phase 2: () => (project?.project_json?.insights?.length ?? 0) > 0
-    predicate: () => false,
+    predicate: ({ project, insights }) =>
+      (insights?.length ?? 0) > 0 || (project?.project_json?.insights?.length ?? 0) > 0,
   },
   {
     id: 'build_dashboard',
@@ -63,8 +72,10 @@ export const CHECKLIST_ITEMS = [
     route: '/editor',
     target: 'dashboard-save',
     weight: 40,
-    predicate: ({ project, persisted }) =>
-      (project?.project_json?.dashboards?.length ?? 0) > 0 || persisted.path === 'sample',
+    predicate: ({ project, dashboards, persisted }) =>
+      (dashboards?.length ?? 0) > 0 ||
+      (project?.project_json?.dashboards?.length ?? 0) > 0 ||
+      persisted.path === 'sample',
   },
   {
     id: 'view_project',
@@ -73,11 +84,10 @@ export const CHECKLIST_ITEMS = [
     route: '/project',
     target: 'top-nav-project',
     weight: 50,
-    // Phase 1 keeps the existing proxy: a populated project counts as
-    // "viewed". Phase 2 will switch to persisted.visited_project_route
-    // so a user has to actually navigate there to satisfy this row.
-    predicate: ({ project, persisted }) =>
-      (project?.project_json?.dashboards?.length ?? 0) > 0 || persisted.path === 'sample',
+    // Real signal now: user has to actually navigate to /project after
+    // completing onboarding. The visit is recorded by ProjectVisitTracker
+    // mounted under the /project route.
+    predicate: ({ persisted }) => !!persisted.visited_project_route,
   },
   {
     id: 'deploy',
@@ -86,9 +96,9 @@ export const CHECKLIST_ITEMS = [
     route: '/editor',
     target: 'top-nav-deploy',
     weight: 60,
-    // Phase 2: read persisted.deployed_at (StageSelection.jsx writes it
-    // on a successful /api/cloud/deploy/ response).
-    predicate: () => false,
+    // StageSelection.jsx writes persisted.deployed_at on a successful
+    // /api/cloud/deploy/ poll response.
+    predicate: ({ persisted }) => !!persisted.deployed_at,
   },
 ];
 

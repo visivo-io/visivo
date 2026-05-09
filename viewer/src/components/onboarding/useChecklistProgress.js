@@ -23,6 +23,10 @@ import { fireEvent } from './telemetry';
  */
 export default function useChecklistProgress(roleId) {
   const project = useStore(s => s.project);
+  const sources = useStore(s => s.sources);
+  const models = useStore(s => s.models);
+  const insights = useStore(s => s.insights);
+  const dashboards = useStore(s => s.dashboards);
 
   const [stickySatisfied, setStickySatisfied] = useState(
     () => new Set((readOnboardingState() || {}).checklist_checked || [])
@@ -30,14 +34,15 @@ export default function useChecklistProgress(roleId) {
 
   const items = useMemo(() => {
     const persisted = readOnboardingState() || {};
+    const ctx = { project, sources, models, insights, dashboards, persisted };
     return buildChecklistForRole(roleId).map(it => {
-      const predicateDone = !!it.predicate({ project, persisted });
+      const predicateDone = !!it.predicate(ctx);
       return {
         ...it,
         done: predicateDone || stickySatisfied.has(it.id),
       };
     });
-  }, [project, roleId, stickySatisfied]);
+  }, [project, sources, models, insights, dashboards, roleId, stickySatisfied]);
 
   // Persist newly-satisfied items + emit telemetry once per item.
   useEffect(() => {

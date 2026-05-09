@@ -28,41 +28,100 @@ describe('onboardingManifest', () => {
     });
   });
 
-  test('connect_source predicate is satisfied by sources or by onboarding flag', () => {
+  test('connect_source predicate is satisfied by sources slice OR project.json OR onboarding flag', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'connect_source');
-    expect(it.predicate({ project: { project_json: { sources: [] } }, persisted: {} })).toBe(false);
     expect(
-      it.predicate({ project: { project_json: { sources: [{ name: 'a' }] } }, persisted: {} })
-    ).toBe(true);
-    expect(it.predicate({ project: { project_json: {} }, persisted: { source_connected: true } })).toBe(
-      true
-    );
-  });
-
-  test('build_dashboard predicate honors the sample-onboarding outcome', () => {
-    const it = CHECKLIST_ITEMS.find(i => i.id === 'build_dashboard');
-    expect(it.predicate({ project: { project_json: { dashboards: [] } }, persisted: {} })).toBe(false);
+      it.predicate({ project: { project_json: { sources: [] } }, sources: [], persisted: {} })
+    ).toBe(false);
     expect(
-      it.predicate({ project: { project_json: { dashboards: [] } }, persisted: { path: 'sample' } })
+      it.predicate({
+        project: { project_json: { sources: [] } },
+        sources: [{ name: 'a' }],
+        persisted: {},
+      })
     ).toBe(true);
     expect(
       it.predicate({
-        project: { project_json: { dashboards: [{ name: 'd' }] } },
+        project: { project_json: { sources: [{ name: 'a' }] } },
+        sources: [],
+        persisted: {},
+      })
+    ).toBe(true);
+    expect(
+      it.predicate({ project: { project_json: {} }, sources: [], persisted: { source_connected: true } })
+    ).toBe(true);
+  });
+
+  test('build_model predicate fires from modelStore.models OR project.models', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'build_model');
+    expect(
+      it.predicate({ project: { project_json: { models: [] } }, models: [], persisted: {} })
+    ).toBe(false);
+    expect(
+      it.predicate({ project: { project_json: { models: [] } }, models: [{ name: 'm' }], persisted: {} })
+    ).toBe(true);
+    expect(
+      it.predicate({
+        project: { project_json: { models: [{ name: 'm' }] } },
+        models: [],
         persisted: {},
       })
     ).toBe(true);
   });
 
-  test('build_model / create_insight / deploy stay false until phase 2 lands', () => {
-    ['build_model', 'create_insight', 'deploy'].forEach(id => {
-      const it = CHECKLIST_ITEMS.find(i => i.id === id);
-      expect(
-        it.predicate({
-          project: { project_json: { models: [{ name: 'a' }], insights: [{ name: 'a' }] } },
-          persisted: { deployed_at: '2026-01-01' },
-        })
-      ).toBe(false);
-    });
+  test('create_insight predicate fires from insightStore.insights OR project.insights', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'create_insight');
+    expect(
+      it.predicate({
+        project: { project_json: { insights: [] } },
+        insights: [],
+        persisted: {},
+      })
+    ).toBe(false);
+    expect(
+      it.predicate({
+        project: { project_json: { insights: [] } },
+        insights: [{ name: 'i' }],
+        persisted: {},
+      })
+    ).toBe(true);
+  });
+
+  test('build_dashboard predicate honors the sample-onboarding outcome', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'build_dashboard');
+    expect(
+      it.predicate({
+        project: { project_json: { dashboards: [] } },
+        dashboards: [],
+        persisted: {},
+      })
+    ).toBe(false);
+    expect(
+      it.predicate({
+        project: { project_json: { dashboards: [] } },
+        dashboards: [],
+        persisted: { path: 'sample' },
+      })
+    ).toBe(true);
+    expect(
+      it.predicate({
+        project: { project_json: { dashboards: [{ name: 'd' }] } },
+        dashboards: [],
+        persisted: {},
+      })
+    ).toBe(true);
+  });
+
+  test('view_project predicate keys off persisted.visited_project_route', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'view_project');
+    expect(it.predicate({ persisted: {} })).toBe(false);
+    expect(it.predicate({ persisted: { visited_project_route: '2026-01-01' } })).toBe(true);
+  });
+
+  test('deploy predicate keys off persisted.deployed_at', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'deploy');
+    expect(it.predicate({ persisted: {} })).toBe(false);
+    expect(it.predicate({ persisted: { deployed_at: '2026-01-01' } })).toBe(true);
   });
 
   test('buildChecklistForRole returns the defaults for unknown roles', () => {

@@ -11,6 +11,7 @@ import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import PublishModal from './publish/PublishModal';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
+import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
 import { useState, useEffect } from 'react';
 
 const Home = () => {
@@ -126,6 +127,7 @@ const Home = () => {
         {isRoot ? renderNavigationCards() : <Outlet />}
       </div>
       <OnboardingChecklist />
+      <ProjectVisitTracker />
     </div>
   );
 };
