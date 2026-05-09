@@ -359,7 +359,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           margin: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
           flexDirection: isColumn ? 'column' : undefined,
-          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, minmax(0, 1fr))`,
           gap: '0.7rem',
           ...rowStyle,
         }}
@@ -367,13 +367,13 @@ const DashboardNew = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
+            className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
             }}
           >
-            <div className="flex items-center h-full w-full max-w-full">
+            <div className="flex items-center h-full w-full max-w-full min-w-0">
               {renderItem(item, row, itemIndex, rowIndex, shouldLoad, visibleItems)}
             </div>
           </div>

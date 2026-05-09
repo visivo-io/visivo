@@ -175,8 +175,11 @@ const DataTable = ({
         </div>
       )}
 
-      {/* Scrollable area (header + body scroll together horizontally) */}
-      <div ref={parentRef} className="flex-1 overflow-auto">
+      {/* Scrollable area (header + body scroll together horizontally).
+          min-w-0 lets this flex child be narrower than its inner content
+          (which has minWidth: totalWidth) so overflow-auto can clip and
+          scroll instead of letting min-content leak up to the grid track. */}
+      <div ref={parentRef} className="flex-1 min-w-0 overflow-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
           <div className="sticky top-0 z-10 bg-secondary-100 border-b border-secondary-200">
