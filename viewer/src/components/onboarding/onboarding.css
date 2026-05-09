@@ -1217,3 +1217,118 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== OnboardingCoach (Phase 4) =====
+   Floating halo + tooltip that points the user at the next checklist
+   action's target. Mounts at top level, sits above page content
+   (z 70) but below the checklist (z 60 — coach has higher because
+   it's the active prompt). */
+.onb-coach {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  --onb-coach-primary: #713b57;
+  --onb-coach-primary-100: #e2d7dd;
+  --onb-coach-fg-primary: #111827;
+  --onb-coach-fg-secondary: #374151;
+  --onb-coach-fg-muted: #6b7280;
+  --onb-coach-border: #e5e7eb;
+}
+.onb-coach__halo {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 3px rgba(113, 59, 87, 0.30),
+    0 0 0 6px rgba(113, 59, 87, 0.15),
+    0 0 0 9999px rgba(15, 23, 42, 0.04);
+  animation: onbCoachPulse 1.6s ease-in-out infinite;
+}
+@keyframes onbCoachPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(113, 59, 87, 0.30),
+      0 0 0 6px rgba(113, 59, 87, 0.15),
+      0 0 0 9999px rgba(15, 23, 42, 0.04);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(113, 59, 87, 0.45),
+      0 0 0 10px rgba(113, 59, 87, 0.20),
+      0 0 0 9999px rgba(15, 23, 42, 0.04);
+  }
+}
+.onb-coach__tooltip {
+  position: absolute;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--onb-coach-border);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.20);
+  padding: 14px 16px 12px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  pointer-events: auto;
+  animation: onbCoachAppear 220ms ease-out both;
+}
+@keyframes onbCoachAppear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.onb-coach__tooltip::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1px solid var(--onb-coach-border);
+  transform: rotate(45deg);
+  left: 50%;
+  margin-left: -6px;
+}
+.onb-coach__tooltip--below::before {
+  top: -6px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.onb-coach__tooltip--above::before {
+  bottom: -6px;
+  border-left: 0;
+  border-top: 0;
+}
+.onb-coach__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--onb-coach-fg-primary);
+}
+.onb-coach__why {
+  font-size: 12px;
+  color: var(--onb-coach-fg-secondary);
+  margin: 4px 0 12px;
+  line-height: 1.45;
+}
+.onb-coach__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.onb-coach .onb-text-link {
+  font-size: 12px;
+  padding: 0;
+  color: var(--onb-coach-fg-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-coach__halo {
+    animation: none;
+  }
+  .onb-coach__tooltip {
+    animation: none;
+  }
+}
