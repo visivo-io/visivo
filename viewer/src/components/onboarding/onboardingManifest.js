@@ -90,6 +90,18 @@ export const CHECKLIST_ITEMS = [
     predicate: ({ persisted }) => !!persisted.visited_project_route,
   },
   {
+    id: 'connect_cloud',
+    label: 'Connect Visivo Cloud',
+    why: 'Sign in to push your dashboard out so a teammate can open it.',
+    route: '/editor',
+    target: 'top-nav-deploy',
+    weight: 55,
+    // Set by the onboarding flow's Cloud screen on a successful
+    // signup, OR by any future /editor cloud-connect button. Users
+    // who connected during onboarding will see this auto-pass.
+    predicate: ({ persisted }) => !!persisted.cloud_connected,
+  },
+  {
     id: 'deploy',
     label: 'Deploy to share',
     why: 'Run visivo deploy to push to cloud.',
@@ -103,9 +115,122 @@ export const CHECKLIST_ITEMS = [
 ];
 
 /* Role overrides — keyed on the role id captured by the onboarding flow.
- * Phase 3 turns this on; Phase 1 leaves it empty so every role gets the
- * default ordered list. */
-export const ROLE_OVERRIDES = {};
+ *
+ * Each entry can specify any combination of:
+ *   - replace: { itemId: { ...partial fields to merge into that item } }
+ *   - remove:  ['itemId', ...]
+ *   - add:     [ { ...full item record }, ... ]
+ *
+ * Roles without an entry inherit the default CHECKLIST_ITEMS unchanged.
+ * Items targeted by `replace` keep their predicate / weight / route /
+ * target unless the override explicitly redeclares them — only the
+ * label / why / etc tend to vary by role.
+ *
+ * Two of the items (`define_metric` for analytics engineers, and the
+ * "configure_env" item we sketched for consultants) need supporting
+ * UI before their predicates can fire — those are flagged in the plan
+ * as Phase 5 follow-ups. We still ship the manifest entries today so
+ * the roles see the right copy + so the Coach (Phase 4) has a target
+ * id to point at as soon as the host UI lands.
+ */
+export const ROLE_OVERRIDES = {
+  analytics_engineer: {
+    replace: {
+      connect_source: { label: 'Connect your warehouse' },
+      build_model: { label: 'Re-use a dbt model or save a SQL file' },
+    },
+    add: [
+      {
+        id: 'define_metric',
+        label: 'Define a Metric on a Model',
+        why: 'A re-usable measure every Insight + chart agrees on.',
+        route: '/explorer',
+        target: 'metric-add-button',
+        weight: 25,
+        predicate: ({ project, models }) => {
+          const fromStore = (models || []).some(m => (m.metrics?.length ?? 0) > 0);
+          if (fromStore) return true;
+          const fromProject = (project?.project_json?.models || []).some(
+            m => (m.metrics?.length ?? 0) > 0
+          );
+          if (fromProject) return true;
+          return (project?.project_json?.metrics?.length ?? 0) > 0;
+        },
+      },
+    ],
+  },
+
+  data_engineer: {
+    replace: {
+      connect_source: { label: 'Connect your warehouse' },
+      create_insight: { label: 'Add a pipeline-health Insight' },
+    },
+  },
+
+  bi_analyst: {
+    replace: {
+      connect_source: { label: 'Connect your data warehouse' },
+      build_model: { label: 'Save a query as a Model' },
+      create_insight: { label: 'Build your first chart' },
+    },
+  },
+
+  product_analyst: {
+    replace: {
+      connect_source: { label: 'Connect your event store' },
+      create_insight: { label: 'Build a funnel Insight' },
+    },
+  },
+
+  software_engineer: {
+    replace: {
+      connect_source: { label: 'Connect a database (Postgres / DuckDB)' },
+      build_model: { label: 'Save a `.sql` file as a Model' },
+    },
+  },
+
+  data_scientist: {
+    replace: {
+      connect_source: { label: 'Connect your feature store' },
+      create_insight: { label: 'Add a model-drift Insight' },
+    },
+  },
+
+  founder: {
+    replace: {
+      connect_source: { label: 'Connect Stripe, Postgres, or upload a CSV' },
+      deploy: { label: 'Connect Visivo Cloud + share with your team' },
+    },
+  },
+
+  executive: {
+    // An exec lands to consume, not build. Strip the build steps; the
+    // remaining items auto-pass for sample-pickers, so the checklist
+    // mostly nudges them to connect cloud + deploy if they want a link
+    // to share back to the analyst.
+    remove: ['build_model', 'create_insight', 'deploy'],
+    replace: {
+      connect_source: { label: 'Pick a sample to explore' },
+      build_dashboard: { label: 'Open your dashboard' },
+    },
+  },
+
+  consultant: {
+    replace: {
+      connect_source: { label: "Connect your client's warehouse" },
+      deploy: { label: "Deploy this client's dashboard" },
+    },
+  },
+
+  other: {
+    // Lowest-friction set: 4 items (Connect / Dashboard / View /
+    // Connect cloud). Tire-kickers feel a win quickly.
+    remove: ['build_model', 'create_insight', 'deploy'],
+    replace: {
+      connect_source: { label: 'Pick a sample to explore' },
+    },
+  },
+};
 
 /**
  * Resolve the final ordered checklist for a given role.

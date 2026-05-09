@@ -5,7 +5,7 @@ import {
 } from './onboardingManifest';
 
 describe('onboardingManifest', () => {
-  test('default checklist exposes the six rows in weight order', () => {
+  test('default checklist exposes seven rows in weight order', () => {
     const ids = CHECKLIST_ITEMS.map(i => i.id);
     expect(ids).toEqual([
       'connect_source',
@@ -13,10 +13,17 @@ describe('onboardingManifest', () => {
       'create_insight',
       'build_dashboard',
       'view_project',
+      'connect_cloud',
       'deploy',
     ]);
     const weights = CHECKLIST_ITEMS.map(i => i.weight);
     expect([...weights].sort((a, b) => a - b)).toEqual(weights);
+  });
+
+  test('connect_cloud predicate keys off persisted.cloud_connected', () => {
+    const it = CHECKLIST_ITEMS.find(i => i.id === 'connect_cloud');
+    expect(it.predicate({ persisted: {} })).toBe(false);
+    expect(it.predicate({ persisted: { cloud_connected: true } })).toBe(true);
   });
 
   test('every item declares the predicate hook surface', () => {
@@ -124,14 +131,100 @@ describe('onboardingManifest', () => {
     expect(it.predicate({ persisted: { deployed_at: '2026-01-01' } })).toBe(true);
   });
 
-  test('buildChecklistForRole returns the defaults for unknown roles', () => {
-    expect(buildChecklistForRole('analytics_engineer').map(i => i.id)).toEqual(
-      CHECKLIST_ITEMS.map(i => i.id)
-    );
+  test('buildChecklistForRole(null) returns the defaults unchanged', () => {
     expect(buildChecklistForRole(null).map(i => i.id)).toEqual(CHECKLIST_ITEMS.map(i => i.id));
   });
 
-  test('ROLE_OVERRIDES is empty in phase 1 (overrides land in phase 3)', () => {
-    expect(Object.keys(ROLE_OVERRIDES)).toEqual([]);
+  test('buildChecklistForRole(unknown role) falls through to defaults', () => {
+    expect(buildChecklistForRole('not_a_real_role').map(i => i.id)).toEqual(
+      CHECKLIST_ITEMS.map(i => i.id)
+    );
+  });
+
+  test('analytics_engineer adds define_metric in weight order between build_model and create_insight', () => {
+    const items = buildChecklistForRole('analytics_engineer');
+    expect(items.map(i => i.id)).toEqual([
+      'connect_source',
+      'build_model',
+      'define_metric',
+      'create_insight',
+      'build_dashboard',
+      'view_project',
+      'connect_cloud',
+      'deploy',
+    ]);
+    expect(items.find(i => i.id === 'connect_source').label).toBe('Connect your warehouse');
+    expect(items.find(i => i.id === 'build_model').label).toBe(
+      'Re-use a dbt model or save a SQL file'
+    );
+  });
+
+  test('software_engineer keeps the default count but relabels two rows', () => {
+    const items = buildChecklistForRole('software_engineer');
+    expect(items.map(i => i.id)).toEqual(CHECKLIST_ITEMS.map(i => i.id));
+    expect(items.find(i => i.id === 'connect_source').label).toBe(
+      'Connect a database (Postgres / DuckDB)'
+    );
+    expect(items.find(i => i.id === 'build_model').label).toBe('Save a `.sql` file as a Model');
+  });
+
+  test('executive drops the build steps and shows just consume + cloud', () => {
+    const items = buildChecklistForRole('executive');
+    expect(items.map(i => i.id)).toEqual([
+      'connect_source',
+      'build_dashboard',
+      'view_project',
+      'connect_cloud',
+    ]);
+    expect(items.find(i => i.id === 'connect_source').label).toBe('Pick a sample to explore');
+    expect(items.find(i => i.id === 'build_dashboard').label).toBe('Open your dashboard');
+  });
+
+  test('founder keeps all defaults and relabels the deploy row', () => {
+    const items = buildChecklistForRole('founder');
+    expect(items.map(i => i.id)).toEqual(CHECKLIST_ITEMS.map(i => i.id));
+    expect(items.find(i => i.id === 'deploy').label).toBe(
+      'Connect Visivo Cloud + share with your team'
+    );
+  });
+
+  test('other (just exploring) lands on the lowest-friction four-item set', () => {
+    const items = buildChecklistForRole('other');
+    expect(items.map(i => i.id)).toEqual([
+      'connect_source',
+      'build_dashboard',
+      'view_project',
+      'connect_cloud',
+    ]);
+  });
+
+  test('replace overrides preserve the predicate / weight / route from the default item', () => {
+    const items = buildChecklistForRole('analytics_engineer');
+    const cs = items.find(i => i.id === 'connect_source');
+    expect(typeof cs.predicate).toBe('function');
+    expect(cs.weight).toBe(10);
+    expect(cs.route).toBe('/explorer');
+    expect(cs.label).toBe('Connect your warehouse');
+  });
+
+  test('ROLE_OVERRIDES covers every role from concepts.js', () => {
+    // If a new role lands in the onboarding flow we want this test to
+    // remind us to decide the override (default is fine; silent default
+    // hurts when a role wants a different list).
+    const expected = [
+      'analytics_engineer',
+      'data_engineer',
+      'bi_analyst',
+      'product_analyst',
+      'software_engineer',
+      'data_scientist',
+      'founder',
+      'executive',
+      'consultant',
+      'other',
+    ];
+    expected.forEach(roleId => {
+      expect(ROLE_OVERRIDES[roleId]).toBeDefined();
+    });
   });
 });
