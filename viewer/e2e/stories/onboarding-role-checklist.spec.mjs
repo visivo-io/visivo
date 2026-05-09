@@ -100,8 +100,12 @@ test.describe('Onboarding checklist — role-aware manifest', () => {
     expect(ids).not.toContain('build_model');
     expect(ids).not.toContain('create_insight');
     expect(ids).not.toContain('deploy');
-    await expect(page.getByText('Pick a sample to explore')).toBeVisible();
-    await expect(page.getByText('Open your dashboard')).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-connect_source').getByText('Pick a sample to explore')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('onb-checklist-build_dashboard').getByText('Open your dashboard')
+    ).toBeVisible();
     await page.screenshot({
       path: '../../executive-checklist.png',
       clip: { x: 1080, y: 60, width: 360, height: 600 },
