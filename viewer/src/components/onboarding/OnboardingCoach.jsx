@@ -82,20 +82,36 @@ export default function OnboardingCoach() {
     }
   }, [shouldRender, rect, itemId]);
 
+  // Esc-to-dismiss for keyboard users.
+  useEffect(() => {
+    if (!shouldRender || !itemId) return undefined;
+    const onKey = e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        dismissCoach(itemId, setDismissedSet);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shouldRender, itemId]);
+
+  // When the user actually clicks the highlighted target, fire telemetry
+  // so we can measure prompt → click conversion in PostHog.
+  useEffect(() => {
+    if (!shouldRender || !targetId || !itemId) return undefined;
+    const el = document.querySelector(`[data-onb-target="${targetId}"]`);
+    if (!el) return undefined;
+    const onClick = () => {
+      fireEvent('onboarding_coach_target_clicked', { item_id: itemId });
+    };
+    el.addEventListener('click', onClick, { once: true });
+    return () => el.removeEventListener('click', onClick);
+  }, [shouldRender, targetId, itemId]);
+
   if (!hasCompletedOnboarding()) return null;
   if (!shouldRender || !rect) return null;
 
-  const handleDismiss = () => {
-    fireEvent('onboarding_coach_dismissed_per_item', { item_id: itemId });
-    const persisted = readOnboardingState() || {};
-    const dismissed = new Set(persisted.coach_dismissed || []);
-    dismissed.add(itemId);
-    writeOnboardingState({
-      ...persisted,
-      coach_dismissed: Array.from(dismissed),
-    });
-    setDismissedSet(new Set(dismissed));
-  };
+  const handleDismiss = () => dismissCoach(itemId, setDismissedSet);
 
   // Tooltip placement: prefer below the target; fall back above if
   // there's no room below.
@@ -126,17 +142,23 @@ export default function OnboardingCoach() {
   );
 
   return (
-    <div className="onb-coach" aria-live="polite" data-testid="onboarding-coach">
-      <div className="onb-coach__halo" style={halo} />
+    <div className="onb-coach" data-testid="onboarding-coach">
+      <div className="onb-coach__halo" style={halo} aria-hidden="true" />
       <div
         className={`onb-coach__tooltip onb-coach__tooltip--${tooltip.placement}`}
         style={{ top: tooltip.top, left: tooltipLeft, width: TOOLTIP_W }}
         data-testid={`onboarding-coach-${itemId}`}
+        role="status"
+        aria-live="polite"
       >
         <div className="onb-coach__title">{currentItem.label}</div>
         <div className="onb-coach__why">{currentItem.why}</div>
         <div className="onb-coach__actions">
-          <button className="onb-text-link" onClick={handleDismiss}>
+          <button
+            className="onb-text-link"
+            onClick={handleDismiss}
+            aria-label={`Dismiss the onboarding hint for ${currentItem.label}`}
+          >
             I&apos;ve got this
           </button>
         </div>
@@ -148,4 +170,17 @@ export default function OnboardingCoach() {
 function readDismissed() {
   const persisted = readOnboardingState() || {};
   return new Set(persisted.coach_dismissed || []);
+}
+
+function dismissCoach(itemId, setDismissedSet) {
+  if (!itemId) return;
+  fireEvent('onboarding_coach_dismissed_per_item', { item_id: itemId });
+  const persisted = readOnboardingState() || {};
+  const dismissed = new Set(persisted.coach_dismissed || []);
+  dismissed.add(itemId);
+  writeOnboardingState({
+    ...persisted,
+    coach_dismissed: Array.from(dismissed),
+  });
+  setDismissedSet(new Set(dismissed));
 }
