@@ -1269,8 +1269,15 @@
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
     Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  pointer-events: auto;
+  /* Tooltip body stays pointer-transparent so clicks fall through to
+     whatever's underneath (e.g. the FAB menu items when the Coach is
+     anchored on the create button). Only the explicit Dismiss link
+     opts back in via the .onb-text-link rule below. */
+  pointer-events: none;
   animation: onbCoachAppear 220ms ease-out both;
+}
+.onb-coach__tooltip .onb-text-link {
+  pointer-events: auto;
 }
 @keyframes onbCoachAppear {
   from {

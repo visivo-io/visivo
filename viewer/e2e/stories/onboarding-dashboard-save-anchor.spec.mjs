@@ -12,6 +12,12 @@ import { test, expect } from '@playwright/test';
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 
 async function gotoCompletedAsRole(page, role = 'analytics_engineer') {
+  // The FAB's "Dashboard" menu item lands at ~y=745 with the integration
+  // project's full create menu (Markdown / Table / Chart / Dashboard +
+  // dividers). Default Playwright viewport is 720px tall — the menu
+  // item is off-screen and click() can't auto-scroll it because the
+  // FAB wrapper is absolute-positioned.
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${BASE}/editor`);
   await page.evaluate(role => {
     window.localStorage.setItem(
