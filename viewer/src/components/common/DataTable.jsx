@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
+import { useAdaptiveColumnSizing } from '../../hooks/useAdaptiveColumnSizing';
 import ColumnVisibilityPicker from './ColumnVisibilityPicker';
 import { PiCaretLeft, PiCaretRight, PiSpinner } from 'react-icons/pi';
 
@@ -44,6 +45,16 @@ const DataTable = ({
 }) => {
   const parentRef = useRef(null);
 
+  // Adaptive column sizing: distributes columns to fit container when natural
+  // total exceeds available width; locks columns the user has manually dragged.
+  const {
+    columnSizing,
+    setColumnSizing,
+    columnSizingInfo,
+    setColumnSizingInfo,
+    isCompressed,
+  } = useAdaptiveColumnSizing(columns, parentRef);
+
   // Build tanstack column definitions via hook
   const tableColumns = useDataTableColumns({
     columns,
@@ -52,6 +63,7 @@ const DataTable = ({
     onSortChange,
     onColumnProfileRequest,
     HeaderComponent,
+    isCompressed,
   });
 
   // Column visibility state
@@ -70,8 +82,12 @@ const DataTable = ({
     state: {
       pagination: { pageIndex: page, pageSize },
       columnVisibility,
+      columnSizing,
+      columnSizingInfo,
     },
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
+    onColumnSizingInfoChange: setColumnSizingInfo,
   });
 
   const tableRows = table.getRowModel().rows;

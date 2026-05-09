@@ -22,7 +22,7 @@ const TYPE_ICONS = {
   [COLUMN_TYPES.UNKNOWN]: PiQuestion,
 };
 
-const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
+const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick, isCompressed = false }) => {
   const isSorted = sorting?.column === column.name;
   const sortDirection = isSorted ? sorting.direction : null;
 
@@ -56,7 +56,14 @@ const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick }) => {
     >
       <div className="flex items-center gap-1.5 min-w-0">
         <TypeIcon className={`${column.computedError ? 'text-red-500' : 'text-secondary-400'} flex-shrink-0`} size={14} />
-        <span className={`text-sm font-medium truncate flex-1 ${column.computedError ? 'text-red-600' : 'text-secondary-700'}`}>
+        <span
+          className={`text-sm font-medium flex-1 ${
+            isCompressed
+              ? 'whitespace-normal break-words leading-tight line-clamp-2'
+              : 'truncate'
+          } ${column.computedError ? 'text-red-600' : 'text-secondary-700'}`}
+          title={column.displayName || column.name}
+        >
           {column.displayName || column.name}
         </span>
         {column.computedError && (

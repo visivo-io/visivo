@@ -78,4 +78,39 @@ describe('DataTableHeader', () => {
     render(<DataTableHeader column={defaultColumn} />);
     expect(screen.getByTitle('5.2% null')).toBeInTheDocument();
   });
+
+  // Wide-table fix: when the table is in compressed mode (natural total
+  // exceeds container), header text wraps to up to 2 lines instead of being
+  // truncated, so columns can be narrower without losing readable headers.
+  describe('compressed mode wrapping', () => {
+    const longCol = {
+      name: 'canceled_and_completed_deal_revenue',
+      displayName: 'Canceled and Completed Deal Revenue',
+      normalizedType: 'number',
+      duckdbType: 'DOUBLE',
+      nullPercentage: 0,
+    };
+
+    it('uses truncate when not compressed (default)', () => {
+      render(<DataTableHeader column={longCol} />);
+      const span = screen.getByText('Canceled and Completed Deal Revenue');
+      expect(span.className).toMatch(/\btruncate\b/);
+      expect(span.className).not.toMatch(/\bline-clamp-2\b/);
+    });
+
+    it('uses line-clamp-2 + break-words when compressed', () => {
+      render(<DataTableHeader column={longCol} isCompressed />);
+      const span = screen.getByText('Canceled and Completed Deal Revenue');
+      expect(span.className).toMatch(/\bline-clamp-2\b/);
+      expect(span.className).toMatch(/\bbreak-words\b/);
+      expect(span.className).toMatch(/\bwhitespace-normal\b/);
+      expect(span.className).not.toMatch(/\btruncate\b/);
+    });
+
+    it('keeps full name in title attribute for hover tooltip', () => {
+      render(<DataTableHeader column={longCol} isCompressed />);
+      const span = screen.getByText('Canceled and Completed Deal Revenue');
+      expect(span.getAttribute('title')).toBe('Canceled and Completed Deal Revenue');
+    });
+  });
 });
