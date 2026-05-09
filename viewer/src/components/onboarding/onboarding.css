@@ -1062,8 +1062,20 @@
   z-index: 25;
 }
 
-/* ===== Checklist widget (post-flow, overlays viewer) ===== */
+/* ===== Checklist widget (post-flow, overlays viewer) =====
+   The checklist mounts in Home, *outside* the .onb-frame container,
+   so it doesn't inherit the onboarding tokens declared up there.
+   Re-declare the few tokens it needs locally so things like the green
+   "done" disk paint correctly outside the flow. */
 .onb-checklist {
+  --onb-fg-primary: #111827;
+  --onb-fg-secondary: #374151;
+  --onb-fg-muted: #6b7280;
+  --onb-border-default: #e5e7eb;
+  --onb-border-strong: #d1d5db;
+  --onb-success: #16a34a;
+  --onb-ease-out: cubic-bezier(0, 0, 0.2, 1);
+
   position: fixed;
   top: 60px;
   right: 16px;
