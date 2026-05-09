@@ -39,6 +39,16 @@ jest.mock('../../../hooks/useVisibleRows', () => ({
   })),
 }));
 
+const mockCapture = jest.fn();
+jest.mock('../../project/captureDashboardThumbnail', () => ({
+  captureDashboardThumbnail: (...args) => mockCapture(...args),
+}));
+
+const mockEnvironment = { current: 'server' };
+jest.mock('../../../contexts/URLContext', () => ({
+  useURLConfig: () => ({ environment: mockEnvironment.current }),
+}));
+
 // Mock the item components
 jest.mock('../../items/Chart', () => ({
   __esModule: true,
@@ -90,6 +100,7 @@ describe('DashboardNew', () => {
       const state = {
         project: mockProject,
         dashboards: [mockDashboard],
+        dashboardsLoading: false,
         fetchDashboards: jest.fn(),
         fetchCharts: jest.fn(),
         fetchTables: jest.fn(),
@@ -104,11 +115,12 @@ describe('DashboardNew', () => {
     });
   });
 
-  it('renders loading state when dashboard not found', () => {
+  it('renders loading state while dashboards are still being fetched', () => {
     useStore.mockImplementation((selector) => {
       const state = {
         project: mockProject,
-        dashboards: [],
+        dashboards: null,
+        dashboardsLoading: true,
         fetchDashboards: jest.fn(),
         fetchCharts: jest.fn(),
         fetchTables: jest.fn(),
@@ -131,11 +143,41 @@ describe('DashboardNew', () => {
     expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
   });
 
+  it('shows 404 when dashboards have loaded but the requested name is missing', () => {
+    useStore.mockImplementation((selector) => {
+      const state = {
+        project: mockProject,
+        dashboards: [],
+        dashboardsLoading: false,
+        fetchDashboards: jest.fn(),
+        fetchCharts: jest.fn(),
+        fetchTables: jest.fn(),
+        fetchMarkdowns: jest.fn(),
+        fetchInputs: jest.fn(),
+        getChartByName: jest.fn(),
+        getTableByName: jest.fn(),
+        getMarkdownByName: jest.fn(),
+        getInputByName: jest.fn(),
+      };
+      return selector(state);
+    });
+
+    render(
+      <BrowserRouter future={futureFlags}>
+        <DashboardNew project={mockProject} dashboardName={dashboardName} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByTestId(`dashboard-not-found-${dashboardName}`)).toBeInTheDocument();
+    expect(screen.getByText(/not found/i)).toBeInTheDocument();
+  });
+
   it('renders empty state when dashboard has no rows', () => {
     useStore.mockImplementation((selector) => {
       const state = {
         project: mockProject,
         dashboards: [{ name: 'test-dashboard', rows: [] }],
+        dashboardsLoading: false,
         fetchDashboards: jest.fn(),
         fetchCharts: jest.fn(),
         fetchTables: jest.fn(),
@@ -173,6 +215,7 @@ describe('DashboardNew', () => {
       const state = {
         project: mockProject,
         dashboards: [mockDashboard],
+        dashboardsLoading: false,
         fetchDashboards: jest.fn(),
         fetchCharts: jest.fn(),
         fetchTables: jest.fn(),
@@ -205,6 +248,7 @@ describe('DashboardNew', () => {
       const state = {
         project: mockProject,
         dashboards: [mockDashboard],
+        dashboardsLoading: false,
         fetchCharts,
         fetchTables,
         fetchMarkdowns,
@@ -227,5 +271,34 @@ describe('DashboardNew', () => {
     expect(fetchTables).toHaveBeenCalled();
     expect(fetchMarkdowns).toHaveBeenCalled();
     expect(fetchInputs).toHaveBeenCalled();
+  });
+
+  describe('thumbnail capture gating', () => {
+    beforeEach(() => {
+      mockCapture.mockClear();
+    });
+
+    it('triggers captureDashboardThumbnail in local server mode', () => {
+      mockEnvironment.current = 'server';
+      render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboardName} />
+        </BrowserRouter>
+      );
+      expect(mockCapture).toHaveBeenCalledTimes(1);
+      expect(mockCapture).toHaveBeenCalledWith(
+        expect.objectContaining({ dashboardName })
+      );
+    });
+
+    it('skips captureDashboardThumbnail in dist (cloud) mode', () => {
+      mockEnvironment.current = 'dist';
+      render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboardName} />
+        </BrowserRouter>
+      );
+      expect(mockCapture).not.toHaveBeenCalled();
+    });
   });
 });

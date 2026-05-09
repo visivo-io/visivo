@@ -25,7 +25,7 @@ def register_dashboard_views(app, flask_app, output_dir):
             )
         except Exception as e:
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/<dashboard_name>.png/", methods=["GET"])
     def get_thumbnail_api(dashboard_name):
@@ -38,17 +38,17 @@ def register_dashboard_views(app, flask_app, output_dir):
             return send_from_directory(output_dir, thumbnail_path)
         except Exception as e:
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/<dashboard_name>.png/", methods=["POST"])
     def create_thumbnail_api(dashboard_name):
         try:
             if "file" not in request.files:
-                return jsonify({"message": "No file provided"}), 400
+                return jsonify({"error": "No file provided"}), 400
 
             file = request.files["file"]
             if file.filename == "" or not file.filename.endswith(".png"):
-                return jsonify({"message": "Invalid file - must be a PNG"}), 400
+                return jsonify({"error": "Invalid file - must be a PNG"}), 400
 
             dashboard_dir = os.path.join(output_dir, "dashboards")
             os.makedirs(dashboard_dir, exist_ok=True)
@@ -65,7 +65,7 @@ def register_dashboard_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error creating thumbnail: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/", methods=["GET"])
     def list_all_dashboards():

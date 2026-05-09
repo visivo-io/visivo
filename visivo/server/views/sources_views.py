@@ -21,7 +21,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(metadata)
         except Exception as e:
             Logger.instance().error(f"Error gathering source metadata: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/project/sources/<source_name>/test-connection/", methods=["GET"])
     def test_connection(source_name):
@@ -36,7 +36,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error testing connection for {source_name}: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/project/sources/<source_name>/databases/", methods=["GET"])
     def list_source_databases(source_name):
@@ -49,7 +49,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing databases for {source_name}: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/project/sources/<source_name>/databases/<database_name>/schemas/", methods=["GET"]
@@ -66,7 +66,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing schemas: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/project/sources/<source_name>/databases/<database_name>/tables/", methods=["GET"]
@@ -83,7 +83,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing tables: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/",
@@ -104,7 +104,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing tables: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/project/sources/<source_name>/databases/<database_name>/tables/<table_name>/columns/",
@@ -125,7 +125,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing columns: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route(
         "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/<table_name>/columns/",
@@ -147,7 +147,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify(result)
         except Exception as e:
             Logger.instance().error(f"Error listing columns: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/sources/test-connection/", methods=["POST"])
     def test_source_connection():

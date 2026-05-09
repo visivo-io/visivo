@@ -1,7 +1,7 @@
 import React from 'react';
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 import { futureFlags } from './router-config';
-import { loadProject } from './loaders/project';
+import { loadProject, loadProjectMeta } from './loaders/project';
 import ProjectContainer from './components/project/ProjectContainer';
 import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
 import BreadcrumbLink from './components/common/BreadcrumbLink';
@@ -62,6 +62,7 @@ const DistRouter = createBrowserRouter(
         id="project-new"
         path="project-new/:dashboardName?"
         element={<ProjectNew />}
+        loader={loadProjectMeta}
         handle={{
           crumb: match => (
             <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>

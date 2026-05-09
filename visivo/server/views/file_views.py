@@ -57,12 +57,12 @@ def register_file_views(app, output_dir):
                     return send_file(resolved)
 
             return (
-                jsonify({"message": f"Data file not found for hash: {hash} in run: {run_id}"}),
+                jsonify({"error": f"Data file not found for hash: {hash} in run: {run_id}"}),
                 404,
             )
         except Exception as e:
             Logger.instance().error(f"Error serving data file by hash: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/files/<hash>/")
     def serve_file_data_by_hash(hash):

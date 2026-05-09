@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import useDimensions from 'react-cool-dimensions';
 import useStore from '../../../stores/store';
 import Chart from '../../items/Chart';
@@ -9,7 +9,9 @@ import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useModelsData } from '../../../hooks/useModelsData';
 import { useInputsData } from '../../../hooks/useInputsData';
 import { useVisibleRows } from '../../../hooks/useVisibleRows';
+import { useURLConfig } from '../../../contexts/URLContext';
 import { parseRefValue, extractRefNamesFromStrings } from '../../../utils/refString';
+import { captureDashboardThumbnail } from '../../project/captureDashboardThumbnail';
 
 /**
  * Resolve an item reference (chart, table, markdown, input) from the store.
@@ -131,8 +133,18 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * Shows draft versions of objects merged with published versions
  */
 const DashboardNew = ({ projectId, dashboardName }) => {
+  // Ref for thumbnail capture (post-first-paint snapshot of the live tree).
+  const dashboardRootRef = useRef(null);
+
+  // Environment gates the thumbnail capture upload — only the local visivo
+  // server accepts POSTs to /api/dashboards/<name>.png/. In dist mode (or
+  // against core) thumbnails come from deploy upload, not browser capture.
+  const urlConfig = useURLConfig();
+  const isLocalServer = urlConfig.environment === 'server';
+
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
+  const dashboardsLoading = useStore(state => state.dashboardsLoading);
 
   // Chart store
   const fetchCharts = useStore(state => state.fetchCharts);
@@ -173,6 +185,22 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     fetchInputs();
   }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs]);
 
+  // Capture-on-view thumbnail: once the dashboard renders, snapshot it for
+  // the project cards listing. Only runs in local-server mode — cloud/dist
+  // thumbnails come from the deploy upload.
+  useEffect(() => {
+    if (!isLocalServer) return undefined;
+    let cancelled = false;
+    captureDashboardThumbnail({
+      dashboardName,
+      getElement: () => dashboardRootRef.current,
+      isCancelled: () => cancelled,
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardName, isLocalServer]);
+
   // Find the current dashboard and extract its config
   const dashboard = useMemo(() => {
     const dashboardData = dashboards?.find(d => d.name === dashboardName);
@@ -204,12 +232,11 @@ const DashboardNew = ({ projectId, dashboardName }) => {
   // Item visibility logic (no selector support needed)
   const shouldShowItem = useCallback(() => true, []);
 
-  // Centralized input prefetching - fetch for ALL rows (optimize later)
+  // Centralized input prefetching, scoped to viewport-visible rows.
   const visibleInputNames = useMemo(() => {
     if (!dashboard?.rows) return [];
-    const allRowIndices = dashboard.rows.map((_, idx) => idx);
-    return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
-  }, [dashboard?.rows, shouldShowItem]);
+    return collectInputNames(dashboard.rows, [...visibleRows], shouldShowItem);
+  }, [dashboard?.rows, visibleRows, shouldShowItem]);
 
   useInputsData(projectId, visibleInputNames);
 
@@ -237,10 +264,9 @@ const DashboardNew = ({ projectId, dashboardName }) => {
 
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
     if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
-    const allRowIndices = dashboard.rows.map((_, idx) => idx);
     const { insightNames, modelNames } = collectDataNames(
       dashboard.rows,
-      allRowIndices,
+      [...visibleRows],
       shouldShowItem,
       getChartByName,
       getTableByName,
@@ -248,7 +274,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
+  }, [dashboard?.rows, visibleRows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
 
   useInsightsData(projectId, visibleInsightNames);
   useModelsData(projectId, visibleModelNames);
@@ -364,29 +390,54 @@ const DashboardNew = ({ projectId, dashboardName }) => {
           ...rowStyle,
         }}
       >
-        {visibleItems.map((item, itemIndex) => (
-          <div
-            key={`item-${rowIndex}-${itemIndex}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
-            style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
-              width: isColumn ? '100%' : 'auto',
-            }}
-          >
-            <div className="flex items-center h-full w-full max-w-full">
-              {renderItem(item, row, itemIndex, rowIndex, shouldLoad, visibleItems)}
+        {visibleItems.map((item, itemIndex) => {
+          // Resolve a stable identity for keying so re-orders / store updates
+          // don't force component remounts. Falls back to index when there is
+          // nothing to key on.
+          const itemId =
+            (typeof item.chart === 'string' ? item.chart : item.chart?.name) ||
+            (typeof item.table === 'string' ? item.table : item.table?.name) ||
+            (typeof item.input === 'string' ? item.input : item.input?.name) ||
+            (typeof item.markdown === 'string' ? item.markdown : item.markdown?.name) ||
+            itemIndex;
+          return (
+            <div
+              key={`item-${rowIndex}-${itemId}`}
+              className={isColumn ? 'w-full max-w-full' : ''}
+              style={{
+                gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
+                width: isColumn ? '100%' : 'auto',
+              }}
+            >
+              <div className="flex items-center h-full w-full max-w-full">
+                {renderItem(item, row, itemIndex, rowIndex, shouldLoad, visibleItems)}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
 
-  // Loading state
-  if (!dashboard) {
+  // Loading state — dashboards still in flight.
+  if (!dashboard && (dashboardsLoading || !dashboards)) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-gray-500">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  // 404 — dashboards have loaded but the requested name isn't here.
+  if (!dashboard) {
+    return (
+      <div
+        className="flex items-center justify-center h-full"
+        data-testid={`dashboard-not-found-${dashboardName}`}
+      >
+        <div className="text-gray-700">
+          Dashboard <span className="font-mono">{dashboardName}</span> not found.
+        </div>
       </div>
     );
   }
@@ -402,7 +453,10 @@ const DashboardNew = ({ projectId, dashboardName }) => {
 
   return (
     <div
-      ref={observe}
+      ref={el => {
+        dashboardRootRef.current = el;
+        observe(el);
+      }}
       data-testid={`dashboard_${dashboardName}`}
       className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
     >

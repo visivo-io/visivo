@@ -96,7 +96,7 @@ class TestFlaskSourceEndpoints:
 
             assert response.status_code == 500
             data = json.loads(response.data)
-            assert "Connection failed" in data["message"]
+            assert "Connection failed" in data["error"]
 
     def test_list_database_schemas_success(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas."""
@@ -353,7 +353,7 @@ class TestFlaskSourceEndpoints:
 
             assert response.status_code == 500
             data = json.loads(response.data)
-            assert "Introspection failed" in data["message"]
+            assert "Introspection failed" in data["error"]
 
     def test_endpoint_error_responses(self):
         """Test that all endpoints handle tuple error responses correctly."""
