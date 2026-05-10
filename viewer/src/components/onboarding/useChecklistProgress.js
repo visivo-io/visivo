@@ -28,6 +28,16 @@ export default function useChecklistProgress(roleId) {
   const insights = useStore(s => s.insights);
   const dashboards = useStore(s => s.dashboards);
 
+  // Bump `persistedTick` on every onboardingState write so action
+  // taps (e.g. model_tab_created) immediately advance multi-step
+  // currentItems without waiting for an unrelated store change.
+  const [persistedTick, setPersistedTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setPersistedTick(t => t + 1);
+    window.addEventListener('visivo:onboarding-state-changed', onChange);
+    return () => window.removeEventListener('visivo:onboarding-state-changed', onChange);
+  }, []);
+
   const [stickySatisfied, setStickySatisfied] = useState(
     () => new Set((readOnboardingState() || {}).checklist_checked || [])
   );
@@ -36,13 +46,30 @@ export default function useChecklistProgress(roleId) {
     const persisted = readOnboardingState() || {};
     const ctx = { project, sources, models, insights, dashboards, persisted };
     return buildChecklistForRole(roleId).map(it => {
-      const predicateDone = !!it.predicate(ctx);
+      // Multi-step macro item: derive done from steps[].done(), and
+      // attach a `currentStep` pointer so the Coach can walk through.
+      let resolvedSteps = null;
+      let currentStep = null;
+      let macroDone;
+      if (Array.isArray(it.steps) && it.steps.length > 0) {
+        resolvedSteps = it.steps.map(step => ({
+          ...step,
+          done: !!step.done(ctx),
+        }));
+        macroDone = resolvedSteps.every(s => s.done);
+        currentStep = resolvedSteps.find(s => !s.done) || null;
+      } else {
+        macroDone = it.predicate ? !!it.predicate(ctx) : false;
+      }
       return {
         ...it,
-        done: predicateDone || stickySatisfied.has(it.id),
+        steps: resolvedSteps,
+        currentStep,
+        done: macroDone || stickySatisfied.has(it.id),
       };
     });
-  }, [project, sources, models, insights, dashboards, roleId, stickySatisfied]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, sources, models, insights, dashboards, roleId, stickySatisfied, persistedTick]);
 
   // Persist newly-satisfied items + emit telemetry once per item.
   useEffect(() => {

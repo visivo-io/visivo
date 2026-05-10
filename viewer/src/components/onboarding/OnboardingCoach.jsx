@@ -37,8 +37,17 @@ export default function OnboardingCoach() {
       (currentItem.route === '/project' && location.pathname.startsWith('/project'))
     : false;
 
-  const targetId = currentItem?.target;
+  // For multi-step macro items, the Coach points at the active step
+  // (the first incomplete substep). For simple items it points at the
+  // item's own target. Both label + tip swap accordingly so the user
+  // sees a focused next-action prompt that updates as they progress.
+  const activeStep = currentItem?.currentStep || null;
+  const targetId = activeStep ? activeStep.target : currentItem?.target;
   const itemId = currentItem?.id;
+  const stepId = activeStep?.id;
+  const halloKey = activeStep ? `${itemId}:${stepId}` : itemId;
+  const tooltipTitle = activeStep ? activeStep.label : currentItem?.label;
+  const tooltipBody = activeStep ? activeStep.tip : currentItem?.why;
   const isDismissed = itemId ? dismissedSet.has(itemId) : false;
   const shouldRender = !!currentItem && !!targetId && onRoute && !isDismissed;
   // Off-route hint: when there's an incomplete item that lives on a
@@ -221,24 +230,55 @@ export default function OnboardingCoach() {
   // Keyed on itemId so the appear keyframes replay smoothly when the
   // user finishes one item and the next one becomes current (otherwise
   // the same DOM nodes hard-snap to new positions, which feels broken).
+  // Tiny step pip strip rendered above the title for multi-step items
+  // so the user can see they're on step N of M without leaving the
+  // tooltip. Hidden for single-step items to keep them visually quiet.
+  const stepCount = currentItem?.steps?.length ?? 0;
+  const stepIndex = stepCount
+    ? Math.max(0, currentItem.steps.findIndex(s => s.id === stepId))
+    : -1;
+
   return (
     <div className="onb-coach" data-testid="onboarding-coach">
       <div
-        key={`halo-${itemId}`}
+        key={`halo-${halloKey}`}
         className="onb-coach__halo"
         style={halo}
         aria-hidden="true"
       />
       <div
-        key={`tip-${itemId}`}
+        key={`tip-${halloKey}`}
         className={`onb-coach__tooltip onb-coach__tooltip--${tooltip.placement}`}
         style={{ top: tooltip.top, left: tooltipLeft, width: TOOLTIP_W }}
         data-testid={`onboarding-coach-${itemId}`}
+        data-onb-coach-step={stepId || undefined}
         role="status"
         aria-live="polite"
       >
-        <div className="onb-coach__title">{currentItem.label}</div>
-        <div className="onb-coach__why">{currentItem.why}</div>
+        {stepCount > 1 && (
+          <div
+            className="onb-coach__steps"
+            aria-label={`Step ${stepIndex + 1} of ${stepCount}`}
+          >
+            {currentItem.steps.map((s, i) => (
+              <span
+                key={s.id}
+                className={`onb-coach__step-pip ${
+                  s.done
+                    ? 'onb-coach__step-pip--done'
+                    : i === stepIndex
+                    ? 'onb-coach__step-pip--current'
+                    : ''
+                }`}
+              />
+            ))}
+            <span className="onb-coach__step-label">
+              Step {stepIndex + 1} of {stepCount} · {currentItem.label}
+            </span>
+          </div>
+        )}
+        <div className="onb-coach__title">{tooltipTitle}</div>
+        <div className="onb-coach__why">{tooltipBody}</div>
         <div className="onb-coach__actions">
           <button
             className="onb-text-link"

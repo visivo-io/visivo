@@ -26,12 +26,30 @@ describe('onboardingManifest', () => {
     expect(it.predicate({ persisted: { cloud_connected: true } })).toBe(true);
   });
 
-  test('every item declares the predicate hook surface', () => {
+  test('every item declares the predicate hook surface (or steps[])', () => {
     CHECKLIST_ITEMS.forEach(it => {
-      expect(typeof it.predicate).toBe('function');
+      // Macro items have steps[]; simple items have a predicate. Either
+      // is fine — the progress hook handles both shapes.
+      const hasSteps = Array.isArray(it.steps) && it.steps.length > 0;
+      expect(typeof it.predicate === 'function' || hasSteps).toBe(true);
       expect(typeof it.label).toBe('string');
       expect(typeof it.route).toBe('string');
       expect(typeof it.weight).toBe('number');
+    });
+  });
+
+  test('macro items expose well-formed steps[]', () => {
+    const macros = CHECKLIST_ITEMS.filter(
+      it => Array.isArray(it.steps) && it.steps.length > 0
+    );
+    expect(macros.length).toBeGreaterThan(0);
+    const stepRecords = macros.flatMap(it => it.steps);
+    stepRecords.forEach(step => {
+      expect(typeof step.id).toBe('string');
+      expect(typeof step.target).toBe('string');
+      expect(typeof step.label).toBe('string');
+      expect(typeof step.tip).toBe('string');
+      expect(typeof step.done).toBe('function');
     });
   });
 
@@ -59,19 +77,23 @@ describe('onboardingManifest', () => {
     ).toBe(true);
   });
 
-  test('build_model predicate fires only when persisted.actions.model_saved is set', () => {
+  test('build_model is a multi-step macro (create_tab → write_sql → run_query)', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'build_model');
-    // Presence of pre-existing models (from a sample) is not enough.
-    expect(
-      it.predicate({
-        project: { project_json: { models: [{ name: 'm' }] } },
-        models: [{ name: 'm' }],
-        persisted: {},
-      })
-    ).toBe(false);
-    expect(
-      it.predicate({ persisted: { actions: { model_saved: '2026-05-09' } } })
-    ).toBe(true);
+    expect(it.label).toBe('Create and run a model');
+    expect(it.steps.map(s => s.id)).toEqual(['create_tab', 'write_sql', 'run_query']);
+    // Each step's done() reads its own action flag.
+    const allOff = { persisted: { actions: {} } };
+    it.steps.forEach(s => expect(s.done(allOff)).toBe(false));
+    const allOn = {
+      persisted: {
+        actions: {
+          model_tab_created: '2026-05-10',
+          sql_written: '2026-05-10',
+          query_run: '2026-05-10',
+        },
+      },
+    };
+    it.steps.forEach(s => expect(s.done(allOn)).toBe(true));
   });
 
   test('create_insight predicate fires only when persisted.actions.insight_saved is set', () => {
@@ -138,9 +160,9 @@ describe('onboardingManifest', () => {
       'deploy',
     ]);
     expect(items.find(i => i.id === 'connect_source').label).toBe('Connect your warehouse');
-    expect(items.find(i => i.id === 'build_model').label).toBe(
-      'Re-use a dbt model or save a SQL file'
-    );
+    // analytics_engineer no longer overrides build_model — the new
+    // default "Create and run a model" is universal.
+    expect(items.find(i => i.id === 'build_model').label).toBe('Create and run a model');
   });
 
   test('software_engineer keeps the default count but relabels two rows', () => {

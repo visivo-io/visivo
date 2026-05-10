@@ -115,9 +115,7 @@ test.describe('Onboarding — full walkthrough', () => {
       page.getByTestId('onb-checklist-connect_source').getByText('Connect your warehouse')
     ).toBeVisible();
     await expect(
-      page
-        .getByTestId('onb-checklist-build_model')
-        .getByText('Re-use a dbt model or save a SQL file')
+      page.getByTestId('onb-checklist-build_model').getByText('Create and run a model')
     ).toBeVisible();
 
     // 8) Navigate to /project — ProjectVisitTracker writes
@@ -140,7 +138,11 @@ test.describe('Onboarding — full walkthrough', () => {
       ps.deployed_at = new Date().toISOString();
       ps.actions = {
         ...(ps.actions || {}),
-        model_saved: new Date().toISOString(),
+        // build_model is a 3-step macro now.
+        model_tab_created: new Date().toISOString(),
+        sql_written: new Date().toISOString(),
+        query_run: new Date().toISOString(),
+        // simple action-based predicates for the rest.
         insight_saved: new Date().toISOString(),
         dashboard_saved: new Date().toISOString(),
         // analytics_engineer adds the define_metric row.

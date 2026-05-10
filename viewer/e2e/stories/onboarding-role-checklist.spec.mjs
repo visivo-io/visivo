@@ -63,9 +63,7 @@ test.describe('Onboarding checklist — role-aware manifest', () => {
       page.getByTestId('onb-checklist-connect_source').getByText('Connect your warehouse')
     ).toBeVisible();
     await expect(
-      page
-        .getByTestId('onb-checklist-build_model')
-        .getByText('Re-use a dbt model or save a SQL file')
+      page.getByTestId('onb-checklist-build_model').getByText('Create and run a model')
     ).toBeVisible();
     await expect(
       page.getByTestId('onb-checklist-define_metric').getByText('Define a Metric on a Model')

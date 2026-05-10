@@ -1310,6 +1310,32 @@
   border-left: 0;
   border-top: 0;
 }
+.onb-coach__steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--onb-coach-fg-muted);
+}
+.onb-coach__step-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.15);
+  flex: 0 0 auto;
+  transition: background 200ms;
+}
+.onb-coach__step-pip--current {
+  background: var(--onb-coach-primary);
+}
+.onb-coach__step-pip--done {
+  background: var(--onb-success, #16a34a);
+}
+.onb-coach__step-label {
+  margin-left: 6px;
+  letter-spacing: -0.005em;
+}
 .onb-coach__title {
   font-size: 14px;
   font-weight: 700;

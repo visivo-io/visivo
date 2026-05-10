@@ -106,6 +106,10 @@ const SQLEditor = ({
 
     setShowError(true);
     executeQuery(sourceName, queryText.trim());
+    // Tap for the onboarding "Run the query" sub-step. Lazy import.
+    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+      recordOnboardingAction('query_run');
+    });
   }, [sourceName, sql, executeQuery]);
 
   // Handle cancel
@@ -129,6 +133,14 @@ const SQLEditor = ({
       setSql(value || '');
       if (onSave) {
         onSave(value || '');
+      }
+      // Tap for the onboarding "Write your SQL" sub-step on first
+      // non-trivial keystroke. recordOnboardingAction is idempotent
+      // so a second pass is a no-op.
+      if (value && value.trim().length > 2) {
+        import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+          recordOnboardingAction('sql_written');
+        });
       }
     },
     [onSave]
@@ -226,6 +238,7 @@ const SQLEditor = ({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary hover:bg-primary-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleRun}
               disabled={!sourceName || readOnly}
+              data-onb-target="sql-run-button"
               title={!sourceName ? 'Select a source or set a default source on your model to run queries' : 'Run query (Cmd/Ctrl+Enter)'}
             >
               <PiPlay size={14} />

@@ -19,6 +19,11 @@ export function readOnboardingState() {
 export function writeOnboardingState(state) {
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
+    // Same-tab localStorage updates don't fire `storage` events, so
+    // notify any subscribed React hooks via a custom event. The Coach
+    // + checklist progress hook listen for this so a new action flag
+    // (e.g. model_tab_created) immediately re-evaluates step state.
+    window.dispatchEvent(new CustomEvent('visivo:onboarding-state-changed'));
   } catch {
     /* localStorage unavailable / quota — onboarding is a one-shot UX, fine to drop */
   }

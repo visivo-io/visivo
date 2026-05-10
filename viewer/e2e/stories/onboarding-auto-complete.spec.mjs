@@ -38,17 +38,29 @@ async function gotoCompletedOnboardingState(page, overrides = {}) {
 test.describe('Onboarding checklist — auto-complete predicates', () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test('build_model row flips when persisted.actions.model_saved is set', async ({ page }) => {
+  test('build_model row flips only when all three sub-actions fire', async ({ page }) => {
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-build_model');
-    // Sample-onboarded users land with models pre-existing, but the
-    // build_model predicate requires the action flag — they have to
-    // actually save one. Until that flag flips, the row stays open.
+    // Macro item: requires model_tab_created + sql_written + query_run.
+    // Each sub-action alone is not enough.
     await expect(row).not.toHaveAttribute('aria-disabled', 'true');
     await page.evaluate(() => {
       const lsKey = 'visivo.onboarding.v1';
       const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
-      current.actions = { ...(current.actions || {}), model_saved: new Date().toISOString() };
+      current.actions = { ...(current.actions || {}), model_tab_created: new Date().toISOString() };
+      window.localStorage.setItem(lsKey, JSON.stringify(current));
+    });
+    await page.reload();
+    await page.waitForSelector('[data-testid="onboarding-checklist"]');
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.evaluate(() => {
+      const lsKey = 'visivo.onboarding.v1';
+      const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
+      current.actions = {
+        ...(current.actions || {}),
+        sql_written: new Date().toISOString(),
+        query_run: new Date().toISOString(),
+      };
       window.localStorage.setItem(lsKey, JSON.stringify(current));
     });
     await page.reload();

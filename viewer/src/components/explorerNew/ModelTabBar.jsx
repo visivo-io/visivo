@@ -205,7 +205,12 @@ const ModelTabBar = () => {
         </span>
         <button
           type="button"
-          onClick={() => createModelTab()}
+          onClick={() => {
+            createModelTab();
+            import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+              recordOnboardingAction('model_tab_created');
+            });
+          }}
           className="ml-2 p-0.5 text-secondary-400 hover:text-secondary-600 transition-colors"
           title="Add model"
           data-testid="add-model-tab"
@@ -243,7 +248,12 @@ const ModelTabBar = () => {
 
       <button
         type="button"
-        onClick={() => createModelTab()}
+        onClick={() => {
+            createModelTab();
+            import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+              recordOnboardingAction('model_tab_created');
+            });
+          }}
         className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors flex-shrink-0"
         title="Add model"
         data-testid="add-model-tab"

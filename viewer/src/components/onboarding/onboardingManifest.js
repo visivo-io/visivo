@@ -50,15 +50,39 @@ export const CHECKLIST_ITEMS = [
   },
   {
     id: 'build_model',
-    label: 'Build a Model in Explorer',
+    label: 'Create and run a model',
     why: "A Model is a re-usable SQL definition you'll chart from.",
     route: '/explorer',
     target: 'model-tab-bar',
     weight: 20,
-    // Action-based: presence-of-models is no signal — a bundled sample
-    // ships a populated models list. Only credit the user when their
-    // own save fires (modelStore.saveModel taps recordOnboardingAction).
-    predicate: ({ persisted }) => !!persisted?.actions?.model_saved,
+    // Multi-step flow: the Coach walks the user through creating a tab,
+    // typing SQL, and running the query before the row checks off.
+    // Each step's `done` reads a per-action flag tapped by the host
+    // surface — the tab + button (createModelTab), Monaco's onChange
+    // (setActiveModelSql), and SQLEditor's handleRun.
+    steps: [
+      {
+        id: 'create_tab',
+        target: 'model-tab-bar',
+        label: 'Open a new model tab',
+        tip: 'Click + on the tab bar to start a Model. Rename it so your team knows what it does.',
+        done: ({ persisted }) => !!persisted?.actions?.model_tab_created,
+      },
+      {
+        id: 'write_sql',
+        target: 'sql-editor',
+        label: 'Write your SQL',
+        tip: 'Type a SELECT here. The model is whatever this query returns.',
+        done: ({ persisted }) => !!persisted?.actions?.sql_written,
+      },
+      {
+        id: 'run_query',
+        target: 'sql-run-button',
+        label: 'Run the query',
+        tip: 'Click Run (or press Cmd+Enter) to fetch results from your source.',
+        done: ({ persisted }) => !!persisted?.actions?.query_run,
+      },
+    ],
   },
   {
     id: 'create_insight',
@@ -138,7 +162,8 @@ export const ROLE_OVERRIDES = {
   analytics_engineer: {
     replace: {
       connect_source: { label: 'Connect your warehouse' },
-      build_model: { label: 'Re-use a dbt model or save a SQL file' },
+      // build_model uses the default "Create and run a model" — the
+      // multi-step flow walks dbt-fluent users through the same path.
     },
     add: [
       {
