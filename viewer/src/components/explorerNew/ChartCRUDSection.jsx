@@ -76,6 +76,9 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
 
   const handleAddInsight = useCallback(() => {
     createInsight();
+    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+      recordOnboardingAction('insight_added');
+    });
   }, [createInsight]);
 
   const handleRemoveInsight = useCallback(
@@ -141,6 +144,7 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
   return (
     <div
       data-testid="chart-crud-section"
+      data-onb-target="chart-crud-section"
       className="border border-gray-200 rounded-lg overflow-hidden"
     >
       {/* Header — name integrated, matching insight pattern */}

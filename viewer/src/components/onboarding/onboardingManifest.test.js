@@ -96,18 +96,20 @@ describe('onboardingManifest', () => {
     it.steps.forEach(s => expect(s.done(allOn)).toBe(true));
   });
 
-  test('create_insight predicate fires only when persisted.actions.insight_saved is set', () => {
+  test('create_insight is a multi-step macro (add_insight → save_insight)', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'create_insight');
-    expect(
-      it.predicate({
-        project: { project_json: { insights: [{ name: 'i' }] } },
-        insights: [{ name: 'i' }],
-        persisted: {},
-      })
-    ).toBe(false);
-    expect(
-      it.predicate({ persisted: { actions: { insight_saved: '2026-05-09' } } })
-    ).toBe(true);
+    expect(it.steps.map(s => s.id)).toEqual(['add_insight', 'save_insight']);
+    const allOff = { persisted: { actions: {} } };
+    it.steps.forEach(s => expect(s.done(allOff)).toBe(false));
+    const allOn = {
+      persisted: {
+        actions: {
+          insight_added: '2026-05-11',
+          insight_saved: '2026-05-11',
+        },
+      },
+    };
+    it.steps.forEach(s => expect(s.done(allOn)).toBe(true));
   });
 
   test('build_dashboard predicate fires only when persisted.actions.dashboard_saved is set', () => {

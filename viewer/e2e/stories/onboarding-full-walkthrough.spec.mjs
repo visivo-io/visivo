@@ -138,12 +138,14 @@ test.describe('Onboarding — full walkthrough', () => {
       ps.deployed_at = new Date().toISOString();
       ps.actions = {
         ...(ps.actions || {}),
-        // build_model is a 3-step macro now.
+        // build_model is a 3-step macro.
         model_tab_created: new Date().toISOString(),
         sql_written: new Date().toISOString(),
         query_run: new Date().toISOString(),
-        // simple action-based predicates for the rest.
+        // create_insight is a 2-step macro (add → save).
+        insight_added: new Date().toISOString(),
         insight_saved: new Date().toISOString(),
+        // build_dashboard stays single-action for now.
         dashboard_saved: new Date().toISOString(),
         // analytics_engineer adds the define_metric row.
         metric_defined: new Date().toISOString(),

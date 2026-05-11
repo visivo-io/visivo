@@ -89,9 +89,29 @@ export const CHECKLIST_ITEMS = [
     label: 'Create an Insight in Explorer',
     why: 'An Insight is a chart on top of a Model.',
     route: '/explorer',
-    target: 'chart-crud-section',
+    target: 'right-panel-add-insight',
     weight: 30,
-    predicate: ({ persisted }) => !!persisted?.actions?.insight_saved,
+    // Multi-step flow: the Coach walks the user from "create the insight"
+    // (an in-memory record on the active chart) through "save it to the
+    // project" (round-trips through saveInsight → backend). Both steps
+    // are taps recorded by the store: createInsight records `insight_added`,
+    // saveInsight records `insight_saved`.
+    steps: [
+      {
+        id: 'add_insight',
+        target: 'right-panel-add-insight',
+        label: 'Add an Insight',
+        tip: 'Click + Add Insight in the right panel to start charting your model data.',
+        done: ({ persisted }) => !!persisted?.actions?.insight_added,
+      },
+      {
+        id: 'save_insight',
+        target: 'explorer-save-button',
+        label: 'Save to Project',
+        tip: 'Click Save to Project to commit your insight to the YAML.',
+        done: ({ persisted }) => !!persisted?.actions?.insight_saved,
+      },
+    ],
   },
   {
     id: 'build_dashboard',

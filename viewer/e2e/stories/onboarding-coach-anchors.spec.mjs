@@ -26,6 +26,9 @@ const ANCHORS = [
   { id: 'sql-editor', route: '/explorer' },
   { id: 'model-tab-bar', route: '/explorer' },
   { id: 'sql-run-button', route: '/explorer' },
+  { id: 'chart-crud-section', route: '/explorer' },
+  { id: 'right-panel-add-insight', route: '/explorer' },
+  { id: 'explorer-save-button', route: '/explorer' },
 ];
 
 async function setupOnboarded(page, role = 'analytics_engineer') {
