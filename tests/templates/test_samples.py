@@ -30,7 +30,6 @@ from visivo.commands.init_phase import (
 from visivo.models.example_type import ExampleTypeEnum
 from visivo.parsers.parser_factory import ParserFactory
 
-
 SAMPLES = list(SAMPLE_DIR_MAP.items())
 
 

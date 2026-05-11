@@ -97,3 +97,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
+# Pin to py312 so Black doesn't emit Python 3.13-only formatting that fails
+# the AST safety check on CI's Python 3.12 runtime. requires-python allows up
+# to 3.14 for downstream installers, but our CI lane is py312.
+target-version = ["py312"]

@@ -85,11 +85,10 @@ tasks:
       poetry run pytest tests/templates/test_samples.py -v --tb=short
     env:
       STACKTRACE: true
-    filter:
-      - visivo/templates/samples
-      - visivo/commands/init_phase.py
-      - visivo/models
-      - tests/templates/test_samples.py
+    # No `filter:` here — in Mint, `filter:` strips non-matching files from
+    # the workspace, which would drop pyproject.toml / poetry.lock and make
+    # `poetry install` fail with "Poetry could not find a pyproject.toml".
+    # The sample smoke test runs in ~10s; always run it.
 
   - key: yarn
     use: node
