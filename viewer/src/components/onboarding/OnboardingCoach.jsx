@@ -199,6 +199,36 @@ export default function OnboardingCoach() {
 
   if (!shouldRender || !rect) return null;
 
+  // Scroll-offscreen handling: if the target is fully above or below the
+  // viewport (e.g. the user scrolled past it), render a pinned chip at
+  // the appropriate edge instead of drawing the halo offscreen — clicking
+  // the chip scrolls the target back into view. Partial visibility still
+  // renders the normal Coach so the user can finish what they started.
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const offscreenAbove = rect.top + rect.height < 0;
+  const offscreenBelow = rect.top > viewportH;
+  if (offscreenAbove || offscreenBelow) {
+    const direction = offscreenAbove ? 'up' : 'down';
+    return (
+      <button
+        type="button"
+        className={`onb-coach__scroll-chip onb-coach__scroll-chip--${direction}`}
+        onClick={() => {
+          fireEvent('onboarding_coach_scroll_chip_clicked', { item_id: itemId });
+          const el = document.querySelector(`[data-onb-target="${targetId}"]`);
+          if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }}
+        data-testid="onboarding-coach-scroll-chip"
+        data-onb-scroll-dir={direction}
+      >
+        <span className="onb-coach__scroll-chip-arrow" aria-hidden="true">
+          {direction === 'up' ? '↑' : '↓'}
+        </span>
+        <span className="onb-coach__scroll-chip-label">{tooltipTitle}</span>
+      </button>
+    );
+  }
+
   const handleDismiss = () => dismissCoach(itemId, setDismissedSet);
 
   // Tooltip placement: prefer below the target; fall back above if

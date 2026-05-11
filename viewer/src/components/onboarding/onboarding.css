@@ -1405,6 +1405,58 @@
   font-weight: 700;
 }
 
+/* Scroll-offscreen pin chip: when the Coach's target scrolls fully out
+   of viewport on the same route, we don't draw the halo offscreen — we
+   render this chip pinned to the top or bottom of the viewport so the
+   user can click it to scrollIntoView. Direction-aware (up = above the
+   viewport, down = below). */
+.onb-coach__scroll-chip {
+  position: fixed;
+  background: #fff;
+  border: 1px solid var(--onb-coach-border);
+  border-radius: 9999px;
+  padding: 8px 14px 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--onb-coach-fg-primary);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  font-family: inherit;
+  animation: onbCoachAppear 220ms ease-out both;
+  z-index: 70;
+  max-width: 280px;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+/* Up-chip lives at top-LEFT because the post-flow checklist widget
+   occupies the top-right corner. Down-chip stays bottom-right — it
+   doesn't collide with the checklist (top) or the FAB (bottom-right
+   icon-only; the chip floats above it when needed). */
+.onb-coach__scroll-chip--up {
+  top: 72px;
+  left: 24px;
+}
+.onb-coach__scroll-chip--down {
+  bottom: 24px;
+  right: 24px;
+}
+.onb-coach__scroll-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.24);
+}
+.onb-coach__scroll-chip-arrow {
+  color: var(--onb-coach-primary);
+  font-weight: 700;
+}
+.onb-coach__scroll-chip-label {
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .onb-coach__halo {
     animation: none;
@@ -1413,7 +1465,8 @@
     animation: none;
   }
   .onb-coach__chip,
-  .onb-coach__chip-dot {
+  .onb-coach__chip-dot,
+  .onb-coach__scroll-chip {
     animation: none;
   }
 }
