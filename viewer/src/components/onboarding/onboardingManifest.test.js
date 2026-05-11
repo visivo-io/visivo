@@ -112,19 +112,20 @@ describe('onboardingManifest', () => {
     it.steps.forEach(s => expect(s.done(allOn)).toBe(true));
   });
 
-  test('build_dashboard predicate fires only when persisted.actions.dashboard_saved is set', () => {
+  test('build_dashboard is a multi-step macro (open_dashboard_editor → save_dashboard)', () => {
     const it = CHECKLIST_ITEMS.find(i => i.id === 'build_dashboard');
-    // Sample-pickers don't get build_dashboard for free anymore.
-    expect(
-      it.predicate({
-        project: { project_json: { dashboards: [{ name: 'd' }] } },
-        dashboards: [{ name: 'd' }],
-        persisted: { path: 'sample' },
-      })
-    ).toBe(false);
-    expect(
-      it.predicate({ persisted: { actions: { dashboard_saved: '2026-05-09' } } })
-    ).toBe(true);
+    expect(it.steps.map(s => s.id)).toEqual(['open_dashboard_editor', 'save_dashboard']);
+    const allOff = { persisted: { actions: {} } };
+    it.steps.forEach(s => expect(s.done(allOff)).toBe(false));
+    const allOn = {
+      persisted: {
+        actions: {
+          dashboard_editor_opened: '2026-05-11',
+          dashboard_saved: '2026-05-11',
+        },
+      },
+    };
+    it.steps.forEach(s => expect(s.done(allOn)).toBe(true));
   });
 
   test('view_project predicate keys off persisted.visited_project_route', () => {

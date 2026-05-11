@@ -145,7 +145,8 @@ test.describe('Onboarding — full walkthrough', () => {
         // create_insight is a 2-step macro (add → save).
         insight_added: new Date().toISOString(),
         insight_saved: new Date().toISOString(),
-        // build_dashboard stays single-action for now.
+        // build_dashboard is a 2-step macro (open → save).
+        dashboard_editor_opened: new Date().toISOString(),
         dashboard_saved: new Date().toISOString(),
         // analytics_engineer adds the define_metric row.
         metric_defined: new Date().toISOString(),

@@ -533,6 +533,11 @@ const EditorNew = () => {
     clearEdit();
     setIsCreating(true);
     setCreateObjectType(objectType);
+    if (objectType === 'dashboard') {
+      import('../../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
+        recordOnboardingAction('dashboard_editor_opened');
+      });
+    }
   }, [clearEdit]);
 
   // Handle panel close

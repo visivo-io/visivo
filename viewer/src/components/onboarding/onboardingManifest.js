@@ -118,9 +118,28 @@ export const CHECKLIST_ITEMS = [
     label: 'Build a Dashboard',
     why: 'Arrange Insights and Inputs into a single page.',
     route: '/editor',
-    target: 'dashboard-save',
+    target: 'source-create-button',
     weight: 40,
-    predicate: ({ persisted }) => !!persisted?.actions?.dashboard_saved,
+    // Multi-step flow: Step 1 anchors on the always-mounted FAB so the
+    // user can find the entry point. Once the dashboard editor opens
+    // (handleCreateSelect taps `dashboard_editor_opened`), the lazy
+    // `dashboard-save` marker mounts and Step 2 takes over.
+    steps: [
+      {
+        id: 'open_dashboard_editor',
+        target: 'source-create-button',
+        label: 'Open a new Dashboard',
+        tip: 'Click + and pick Dashboard to start arranging widgets.',
+        done: ({ persisted }) => !!persisted?.actions?.dashboard_editor_opened,
+      },
+      {
+        id: 'save_dashboard',
+        target: 'dashboard-save',
+        label: 'Save your dashboard',
+        tip: 'Click Save to commit the dashboard to your YAML.',
+        done: ({ persisted }) => !!persisted?.actions?.dashboard_saved,
+      },
+    ],
   },
   {
     id: 'view_project',
