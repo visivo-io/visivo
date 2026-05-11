@@ -114,7 +114,9 @@ export default function OnboardingCoach() {
         warnTimer = setTimeout(() => {
           // eslint-disable-next-line no-console
           console.warn(
-            `[OnboardingCoach] currentItem "${itemId}" advertises target "${targetId}" but no element with [data-onb-target="${targetId}"] mounted on ${location.pathname} within 5s. The hint is silently hidden.`
+            `[OnboardingCoach] currentItem "${itemId}" advertises target "${targetId}" but no element with [data-onb-target="${targetId}"] mounted on ${location.pathname} within 5s. The hint is silently hidden. ` +
+              `Fix: add data-onb-target="${targetId}" to the host component, or update the manifest entry. ` +
+              `The Playwright anchor sweep (viewer/e2e/stories/onboarding-coach-anchors.spec.mjs) is the canonical guard against this regressing again.`
           );
         }, 5000);
       }

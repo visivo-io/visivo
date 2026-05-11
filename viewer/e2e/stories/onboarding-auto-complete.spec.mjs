@@ -90,6 +90,67 @@ test.describe('Onboarding checklist — auto-complete predicates', () => {
     );
   });
 
+  test('create_insight row flips only when both sub-actions fire', async ({ page }) => {
+    await gotoCompletedOnboardingState(page);
+    const row = page.getByTestId('onb-checklist-create_insight');
+    // Macro item: requires insight_added + insight_saved.
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.evaluate(() => {
+      const lsKey = 'visivo.onboarding.v1';
+      const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
+      current.actions = { ...(current.actions || {}), insight_added: new Date().toISOString() };
+      window.localStorage.setItem(lsKey, JSON.stringify(current));
+    });
+    await page.reload();
+    await page.waitForSelector('[data-testid="onboarding-checklist"]');
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.evaluate(() => {
+      const lsKey = 'visivo.onboarding.v1';
+      const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
+      current.actions = {
+        ...(current.actions || {}),
+        insight_saved: new Date().toISOString(),
+      };
+      window.localStorage.setItem(lsKey, JSON.stringify(current));
+    });
+    await page.reload();
+    await page.waitForSelector('[data-testid="onboarding-checklist"]');
+    await expect(row).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  test('build_dashboard row flips only when both sub-actions fire', async ({ page }) => {
+    await gotoCompletedOnboardingState(page);
+    const row = page.getByTestId('onb-checklist-build_dashboard');
+    // Macro item: requires dashboard_editor_opened + dashboard_saved.
+    // Step 1 alone (user opens editor but doesn't save) is not enough —
+    // exactly the scenario the lazy-anchor work originally tried to cover.
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.evaluate(() => {
+      const lsKey = 'visivo.onboarding.v1';
+      const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
+      current.actions = {
+        ...(current.actions || {}),
+        dashboard_editor_opened: new Date().toISOString(),
+      };
+      window.localStorage.setItem(lsKey, JSON.stringify(current));
+    });
+    await page.reload();
+    await page.waitForSelector('[data-testid="onboarding-checklist"]');
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.evaluate(() => {
+      const lsKey = 'visivo.onboarding.v1';
+      const current = JSON.parse(window.localStorage.getItem(lsKey) || '{}');
+      current.actions = {
+        ...(current.actions || {}),
+        dashboard_saved: new Date().toISOString(),
+      };
+      window.localStorage.setItem(lsKey, JSON.stringify(current));
+    });
+    await page.reload();
+    await page.waitForSelector('[data-testid="onboarding-checklist"]');
+    await expect(row).toHaveAttribute('aria-disabled', 'true');
+  });
+
   test('deploy row flips when deployed_at is set', async ({ page }) => {
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-deploy');
