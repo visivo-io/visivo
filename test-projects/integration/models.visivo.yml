@@ -127,3 +127,28 @@ models:
 
   - name: nested-and-name
     sql: "SELECT x, y*3 as y FROM test_table"
+
+  # Wide-columns model used by the table-width-overflow E2E story.
+  # 12 columns with deliberately long display names (>= 25 chars each)
+  # so the natural totalWidth from `calculateColumnWidth` (~250px each)
+  # exceeds any reasonable viewport. This forces the wide-table fix paths:
+  # - dashboard grid track must not expand past the viewport
+  # - DataTable's inner overflow-auto must scroll horizontally
+  # - DataTableHeader must wrap to 2 lines under compression
+  - name: wide-columns-table
+    source: ${ref(local-duckdb)}
+    sql: |
+      SELECT
+        i AS id_column,
+        'row ' || i AS canceled_and_completed_deal_revenue,
+        i * 10 AS month_to_date_revenue_goal_value,
+        i * 11 AS opened_files_to_date_count_total,
+        i * 12 AS month_to_date_opened_files_goal,
+        i * 13 AS canceled_orders_running_count,
+        i * 14 AS month_to_date_canceled_files_goal,
+        i * 15 AS closed_deals_goal_running_total,
+        i * 16 AS revenue_goal_month_to_date_value,
+        i * 17 AS canceled_deals_goal_running_total,
+        i * 18 AS opened_files_goal_month_to_date,
+        i * 19 AS pipeline_value_running_total
+      FROM generate_series(1, 5) AS t(i)

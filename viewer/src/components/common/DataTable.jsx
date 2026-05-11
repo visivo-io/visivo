@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
+import { useAdaptiveColumnSizing } from '../../hooks/useAdaptiveColumnSizing';
 import ColumnVisibilityPicker from './ColumnVisibilityPicker';
 import { PiCaretLeft, PiCaretRight, PiSpinner } from 'react-icons/pi';
 
@@ -44,6 +45,16 @@ const DataTable = ({
 }) => {
   const parentRef = useRef(null);
 
+  // Adaptive column sizing: distributes columns to fit container when natural
+  // total exceeds available width; locks columns the user has manually dragged.
+  const {
+    columnSizing,
+    setColumnSizing,
+    columnSizingInfo,
+    setColumnSizingInfo,
+    isCompressed,
+  } = useAdaptiveColumnSizing(columns, parentRef);
+
   // Build tanstack column definitions via hook
   const tableColumns = useDataTableColumns({
     columns,
@@ -52,6 +63,7 @@ const DataTable = ({
     onSortChange,
     onColumnProfileRequest,
     HeaderComponent,
+    isCompressed,
   });
 
   // Column visibility state
@@ -70,8 +82,12 @@ const DataTable = ({
     state: {
       pagination: { pageIndex: page, pageSize },
       columnVisibility,
+      columnSizing,
+      columnSizingInfo,
     },
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
+    onColumnSizingInfoChange: setColumnSizingInfo,
   });
 
   const tableRows = table.getRowModel().rows;
@@ -175,8 +191,11 @@ const DataTable = ({
         </div>
       )}
 
-      {/* Scrollable area (header + body scroll together horizontally) */}
-      <div ref={parentRef} className="flex-1 overflow-auto">
+      {/* Scrollable area (header + body scroll together horizontally).
+          min-w-0 lets this flex child be narrower than its inner content
+          (which has minWidth: totalWidth) so overflow-auto can clip and
+          scroll instead of letting min-content leak up to the grid track. */}
+      <div ref={parentRef} className="flex-1 min-w-0 overflow-auto">
         <div style={{ minWidth: totalWidth }}>
           {/* Header */}
           <div className="sticky top-0 z-10 bg-secondary-100 border-b border-secondary-200">
