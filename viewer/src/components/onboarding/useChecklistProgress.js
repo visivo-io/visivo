@@ -31,16 +31,22 @@ export default function useChecklistProgress(roleId) {
   // Bump `persistedTick` on every onboardingState write so action
   // taps (e.g. model_tab_created) immediately advance multi-step
   // currentItems without waiting for an unrelated store change.
+  // Also re-seed `stickySatisfied` from localStorage on each event so
+  // manual checklist check-offs (OnboardingChecklist.handleManualCheck)
+  // and any other persisted.checklist_checked writes are picked up
+  // without a reload.
   const [persistedTick, setPersistedTick] = useState(0);
-  useEffect(() => {
-    const onChange = () => setPersistedTick(t => t + 1);
-    window.addEventListener('visivo:onboarding-state-changed', onChange);
-    return () => window.removeEventListener('visivo:onboarding-state-changed', onChange);
-  }, []);
-
   const [stickySatisfied, setStickySatisfied] = useState(
     () => new Set((readOnboardingState() || {}).checklist_checked || [])
   );
+  useEffect(() => {
+    const onChange = () => {
+      setPersistedTick(t => t + 1);
+      setStickySatisfied(new Set((readOnboardingState() || {}).checklist_checked || []));
+    };
+    window.addEventListener('visivo:onboarding-state-changed', onChange);
+    return () => window.removeEventListener('visivo:onboarding-state-changed', onChange);
+  }, []);
 
   const items = useMemo(() => {
     const persisted = readOnboardingState() || {};

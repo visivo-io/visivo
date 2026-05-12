@@ -158,6 +158,21 @@ export default function OnboardingChecklist() {
     setDismissed(true);
   };
 
+  // Manual override: lets the user mark a row done themselves when the
+  // auto-complete predicate hasn't fired (e.g. the action they took
+  // wasn't tapped, or they just want to skip past the Coach for this
+  // step). Adds the id to persisted.checklist_checked — the same store
+  // the predicate-driven sticky completion writes to — so the row
+  // flips green permanently and the Coach moves to the next item.
+  const handleManualCheck = it => {
+    if (it.done) return;
+    fireEvent('onboarding_checklist_item_manually_checked', { item_id: it.id });
+    const persisted = readOnboardingState() || {};
+    const checked = new Set(persisted.checklist_checked || []);
+    checked.add(it.id);
+    writeOnboardingState({ ...persisted, checklist_checked: Array.from(checked) });
+  };
+
   const pct = total ? Math.round((completed / total) * 100) : 0;
   const dashLen = total ? (completed / total) * 88 : 0;
 
@@ -242,12 +257,33 @@ export default function OnboardingChecklist() {
                 data-testid={`onb-checklist-${it.id}`}
                 aria-disabled={it.done || undefined}
               >
-                <div
-                  className={`onb-checklist__check ${it.done ? 'onb-checklist__check--done' : ''}`}
-                  aria-hidden="true"
+                <span
+                  className={`onb-checklist__check ${
+                    it.done ? 'onb-checklist__check--done' : 'onb-checklist__check--manual'
+                  }`}
+                  role={it.done ? undefined : 'button'}
+                  tabIndex={it.done ? -1 : 0}
+                  aria-label={
+                    it.done ? `${it.label} done` : `Mark "${it.label}" as done`
+                  }
+                  title={it.done ? undefined : 'Mark as done'}
+                  data-testid={`onb-row-check-${it.id}`}
+                  data-onb-no-drag
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleManualCheck(it);
+                  }}
+                  onKeyDown={e => {
+                    if (it.done) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleManualCheck(it);
+                    }
+                  }}
                 >
                   {it.done ? '✓' : ''}
-                </div>
+                </span>
                 <div style={{ flex: 1 }}>
                   <div
                     className={`onb-checklist__label ${

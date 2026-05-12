@@ -108,7 +108,7 @@ export const CHECKLIST_ITEMS = [
         id: 'save_insight',
         target: 'explorer-save-button',
         label: 'Save to Project',
-        tip: 'Click Save to Project to commit your insight to the YAML.',
+        tip: 'Saves the chart into your working project so it shows up across the app. Writing to YAML is a separate publish step.',
         done: ({ persisted }) => !!persisted?.actions?.insight_saved,
       },
     ],

@@ -151,6 +151,24 @@ test.describe('Onboarding checklist — auto-complete predicates', () => {
     await expect(row).toHaveAttribute('aria-disabled', 'true');
   });
 
+  test('manual check-off flips a row without firing the predicate', async ({ page }) => {
+    // Safety valve: the user can mark any row done themselves if the
+    // auto-complete predicate hasn't fired (or didn't trigger
+    // correctly). Clicking the empty circle adds the id to
+    // persisted.checklist_checked and re-renders without a reload.
+    await gotoCompletedOnboardingState(page);
+    const row = page.getByTestId('onb-checklist-build_model');
+    await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('onb-row-check-build_model').click();
+    // No reload — useChecklistProgress listens for the same-tab
+    // onboarding-state-changed CustomEvent and re-seeds stickySatisfied.
+    await expect(row).toHaveAttribute('aria-disabled', 'true');
+    const persisted = await page.evaluate(() =>
+      JSON.parse(window.localStorage.getItem('visivo.onboarding.v1') || '{}')
+    );
+    expect(persisted.checklist_checked).toContain('build_model');
+  });
+
   test('deploy row flips when deployed_at is set', async ({ page }) => {
     await gotoCompletedOnboardingState(page);
     const row = page.getByTestId('onb-checklist-deploy');

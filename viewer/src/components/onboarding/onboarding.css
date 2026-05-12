@@ -1176,6 +1176,22 @@
   border: 0;
   background: var(--onb-success);
 }
+/* The empty circle is a manual check-off button when the row hasn't
+   auto-completed yet. Hover styling so the affordance is discoverable
+   without a tooltip — users can click the circle to mark a row done
+   themselves. */
+.onb-checklist__check--manual {
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.onb-checklist__check--manual:hover {
+  border-color: var(--onb-success);
+  background: rgba(22, 163, 74, 0.08);
+}
+.onb-checklist__check--manual:focus-visible {
+  outline: 2px solid var(--color-primary-300);
+  outline-offset: 2px;
+}
 .onb-checklist__label {
   font-size: 13px;
   font-weight: 500;

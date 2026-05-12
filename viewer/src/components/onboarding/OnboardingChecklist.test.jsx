@@ -62,6 +62,25 @@ describe('OnboardingChecklist', () => {
     expect(events).toContain('onboarding_checklist_item_clicked');
   });
 
+  test('clicking the empty circle manually marks the row done', () => {
+    writeOnboardingState({ completed_at: '2026-01-01' });
+    renderChecklist();
+    // build_model is not auto-complete in this state.
+    const row = screen.getByTestId('onb-checklist-build_model');
+    expect(row).not.toHaveAttribute('aria-disabled', 'true');
+    const check = screen.getByTestId('onb-row-check-build_model');
+    fireEvent.click(check);
+    // Row should flip to done after the manual check.
+    expect(screen.getByTestId('onb-checklist-build_model')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    // Click did not propagate to the row click handler (no navigate).
+    expect(mockNavigate).not.toHaveBeenCalled();
+    const events = getEventBuffer().map(e => e.event);
+    expect(events).toContain('onboarding_checklist_item_manually_checked');
+  });
+
   test('dismiss persists and removes the widget', () => {
     writeOnboardingState({ completed_at: '2026-01-01' });
     const { rerender } = renderChecklist();
