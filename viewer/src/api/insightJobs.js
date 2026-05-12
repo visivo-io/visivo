@@ -1,5 +1,6 @@
 import { getUrl } from '../contexts/URLContext';
 import { DEFAULT_RUN_ID } from '../constants';
+import { apiFetch } from './utils';
 
 /**
  * Validates an insight job object has the required structure
@@ -86,7 +87,7 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
     try {
       console.debug(`Fetching insight jobs (attempt ${attempt + 1}/${retries}):`, names);
 
-      const response = await fetch(url);
+      const response = await apiFetch(url);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(

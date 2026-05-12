@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all dashboards with their status
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllDashboards = async (projectId = null) => {
   let url = getUrl('dashboardsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllDashboards = async (projectId = null) => {
  * Save a dashboard configuration to cache (draft state)
  */
 export const saveDashboard = async (name, config) => {
-  const response = await fetch(getUrl('dashboardSave', { name }), {
+  const response = await apiFetch(getUrl('dashboardSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export const saveDashboard = async (name, config) => {
  * Delete a dashboard (mark for deletion)
  */
 export const deleteDashboard = async name => {
-  const response = await fetch(getUrl('dashboardDelete', { name }), {
+  const response = await apiFetch(getUrl('dashboardDelete', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -48,7 +49,7 @@ export const deleteDashboard = async name => {
  * Validate a dashboard configuration without saving
  */
 export const validateDashboard = async (name, config) => {
-  const response = await fetch(getUrl('dashboardValidate', { name }), {
+  const response = await apiFetch(getUrl('dashboardValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

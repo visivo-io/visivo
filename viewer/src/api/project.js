@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 // ============================================================
 // Legacy bulk-blob endpoint
@@ -14,7 +15,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchProjectBlob = async (projectId = null) => {
   let url = getUrl('project');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   } else {
@@ -39,7 +40,7 @@ export const fetchProjectBlob = async (projectId = null) => {
  */
 export const fetchAllProjects = async () => {
   const url = getUrl('projectsList');
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -59,7 +60,7 @@ export const fetchAllProjects = async () => {
  */
 export const fetchProject = async id => {
   const url = getUrl('projectDetail', { name: id });
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -73,7 +74,7 @@ export const fetchProject = async id => {
  * Save a project configuration to cache (draft state)
  */
 export const saveProject = async (name, config) => {
-  const response = await fetch(getUrl('projectSave', { name }), {
+  const response = await apiFetch(getUrl('projectSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -91,7 +92,7 @@ export const saveProject = async (name, config) => {
  * Delete a project from cache (revert to published version)
  */
 export const deleteProject = async name => {
-  const response = await fetch(getUrl('projectDetail', { name }), {
+  const response = await apiFetch(getUrl('projectDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -104,7 +105,7 @@ export const deleteProject = async name => {
  * Validate a project configuration without saving
  */
 export const validateProject = async (name, config) => {
-  const response = await fetch(getUrl('projectValidate', { name }), {
+  const response = await apiFetch(getUrl('projectValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
