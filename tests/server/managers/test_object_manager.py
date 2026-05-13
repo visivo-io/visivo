@@ -348,6 +348,51 @@ class TestSerializeObjectShape:
         assert isinstance(result["child_item_names"], list)
         assert result["child_item_names"] == []
 
+    def test_child_item_names_recurses_through_anonymous_containers(self):
+        """Container children (Row, Item) without a ``name`` should be
+        traversed so the leaf names underneath show up in
+        ``child_item_names`` directly. Without this, dashboards report
+        no children — and the per-resource lazy-fetch path can't tell
+        which charts/tables/markdowns/inputs a given dashboard needs.
+        """
+        from pydantic import BaseModel
+
+        class _Leaf(BaseModel):
+            model_config = {"extra": "allow"}
+            name: str
+
+            def child_items(self):
+                return []
+
+        class _AnonContainer(BaseModel):
+            """Mimics Row/Item — a grouping node with no name."""
+            model_config = {"extra": "allow"}
+            kids: list
+
+            def child_items(self):
+                return self.kids
+
+        class _Dashboard(BaseModel):
+            model_config = {"extra": "allow"}
+            name: str = "dash"
+            rows: list
+
+            def child_items(self):
+                return self.rows
+
+        dash = _Dashboard(
+            rows=[
+                _AnonContainer(kids=[_AnonContainer(kids=[_Leaf(name="chart_a")])]),
+                _AnonContainer(kids=[_Leaf(name="table_b"), _Leaf(name="md_c")]),
+                # Duplicate name should not appear twice.
+                _AnonContainer(kids=[_Leaf(name="chart_a")]),
+            ]
+        )
+        manager = ConcreteObjectManager()
+        result = manager._serialize_object("dash", dash, ObjectStatus.PUBLISHED)
+
+        assert result["child_item_names"] == ["chart_a", "table_b", "md_c"]
+
     def test_config_excludes_internal_pydantic_fields(self):
         """`config` is the model dump with internal fields stripped.
 
