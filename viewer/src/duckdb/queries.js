@@ -1,5 +1,6 @@
 import { getTempFilename, getConnection } from './duckdb';
 import { getParquetCache } from './parquetCache';
+import { apiFetch } from '../api/utils';
 
 /**
  * Retry a function with exponential backoff
@@ -331,7 +332,11 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
     filesToLoad.map(async file => {
       // Use cache to prevent duplicate concurrent fetches
       return cache.getOrFetch(file.name_hash, async () => {
-        const response = await fetch(file.signed_data_file_url);
+        // Use apiFetch so same-origin /api/files/<hash>/<run_id>/ calls
+        // pick up the registered auth headers (JWT against core). For
+        // already-signed external URLs (GCS), apiFetch passes through
+        // and the cross-origin 302 strips Authorization automatically.
+        const response = await apiFetch(file.signed_data_file_url);
         if (!response.ok) {
           throw new Error(
             `Failed to fetch parquet file: ${response.status} ${response.statusText}`
