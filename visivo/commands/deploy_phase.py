@@ -275,7 +275,7 @@ async def create_model_records(batch, project_id, json_headers, host, progress):
     async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
-                url = f"{host}/api/models/"
+                url = f"{host}/api/model-jobs/"
                 response = await client.post(url, json=body, headers=json_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
