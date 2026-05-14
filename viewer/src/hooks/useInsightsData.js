@@ -291,12 +291,16 @@ export const useInsightsData = (
     return relevantInputs;
   }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata, storeKeyPrefix]);
 
-  // Create a stable string representation of relevant inputs for the queryKey
-  // On initial load (no query metadata yet), use 'initial' to force first fetch
+  // Create a stable string representation of relevant inputs for the
+  // queryKey. ``relevantInputValues`` is ``{}`` until the first fetch
+  // populates query metadata in the store — and stays ``{}`` for any
+  // insight without input dependencies. Using ``JSON.stringify`` for
+  // both states means the key doesn't change on metadata discovery
+  // (no spurious second fetch), and only changes when an insight's
+  // *relevant* input value actually moves.
   const stableRelevantInputs = useMemo(() => {
-    if (!hasQueryMetadata) return 'initial';
     return JSON.stringify(relevantInputValues);
-  }, [hasQueryMetadata, relevantInputValues]);
+  }, [relevantInputValues]);
 
   const isPreviewMode = storeKeyPrefix !== '';
 
