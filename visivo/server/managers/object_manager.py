@@ -225,6 +225,78 @@ class ObjectManager(ABC, Generic[T]):
                 return True
             return False
 
+    def rename(self, old_name: str, new_name: str) -> Optional[T]:
+        """
+        Rename an object from old_name to new_name.
+
+        Implementation:
+        1. Find the current object (cached takes priority over published).
+        2. Validate the new name is not already taken in cache or published.
+        3. Save the object under new_name with its `name` attribute updated.
+        4. Mark old_name for deletion (None in cache) so the publish step removes the old YAML entry.
+
+        Note: this method does NOT rewrite cross-object references that point at the
+        old name. Callers that need cross-ref rewriting (e.g., when renaming objects
+        that other objects reference by name) should layer that on top.
+
+        Args:
+            old_name: The current name of the object.
+            new_name: The desired new name. Must be unique across cached + published.
+
+        Returns:
+            The renamed object (with its `name` attribute updated to `new_name`),
+            or None if `old_name` does not exist.
+
+        Raises:
+            ValueError: If new_name is already taken, or if old_name == new_name.
+        """
+        if old_name == new_name:
+            raise ValueError("New name must be different from the old name")
+
+        with self._lock:
+            # Find current object — prefer cached over published.
+            current = self._cached_objects.get(old_name)
+            if current is None and old_name in self._cached_objects:
+                # Already marked for deletion under old_name
+                raise ValueError(f"Cannot rename '{old_name}' — already marked for deletion")
+            if current is None:
+                current = self._published_objects.get(old_name)
+            if current is None:
+                return None
+
+            # Validate destination name is free.
+            destination_taken_in_cache = (
+                new_name in self._cached_objects and self._cached_objects[new_name] is not None
+            )
+            destination_taken_in_published = new_name in self._published_objects
+            if destination_taken_in_cache or destination_taken_in_published:
+                raise ValueError(
+                    f"Cannot rename '{old_name}' to '{new_name}': another object already uses that name"
+                )
+
+            # Update the object's `name` on a copy so we don't mutate published state.
+            if hasattr(current, "model_copy"):
+                # Pydantic v2 path — used by every real ObjectManager subclass.
+                renamed = current.model_copy(update={"name": new_name})
+            elif isinstance(current, dict):
+                # dict path — used by the abstract-class test stub.
+                renamed = {**current, "name": new_name}
+            else:
+                # Fallback for plain Python objects with a `name` attribute.
+                renamed = current
+                if hasattr(renamed, "name"):
+                    setattr(renamed, "name", new_name)
+
+            self._cached_objects[new_name] = renamed
+            # Mark the old name for deletion so the publish step removes the old YAML entry.
+            # Only mark for deletion if the old name is published (otherwise just drop from cache).
+            if old_name in self._published_objects:
+                self._cached_objects[old_name] = None
+            elif old_name in self._cached_objects:
+                del self._cached_objects[old_name]
+
+            return renamed
+
     def get_objects_for_publish(self) -> Dict[str, T]:
         """
         Get all cached objects ready for publishing to YAML.

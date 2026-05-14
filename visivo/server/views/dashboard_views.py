@@ -156,3 +156,114 @@ def register_dashboard_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error validating dashboard: {str(e)}")
             return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboards/<dashboard_name>/rename/", methods=["POST"])
+    def rename_dashboard_crud(dashboard_name):
+        """Rename a dashboard from <dashboard_name> to the new name in the request body.
+
+        Body: {"new_name": "..."}. The rename is applied to the draft cache; the user
+        must publish to flush the change to YAML. Validates that the new name doesn't
+        collide with another dashboard.
+
+        Note: this endpoint does NOT rewrite cross-object references to the dashboard
+        (e.g., `${ ref(<old>) }` in another object's config). Dashboards are leaves of
+        the project DAG — almost no other object references them by name — so the
+        cross-ref rewrite is deferred. A future generic-rename pass will cover charts,
+        tables, etc., where ref-rewrite is load-bearing.
+        """
+        try:
+            body = request.get_json(silent=True) or {}
+            new_name = (body.get("new_name") or "").strip()
+            if not new_name:
+                return jsonify({"error": "new_name is required"}), 400
+
+            try:
+                renamed = flask_app.dashboard_manager.rename(dashboard_name, new_name)
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+
+            if renamed is None:
+                return jsonify({"error": f"Dashboard '{dashboard_name}' not found"}), 404
+
+            status = flask_app.dashboard_manager.get_status(new_name)
+            return (
+                jsonify(
+                    {
+                        "message": (
+                            f"Dashboard renamed from '{dashboard_name}' to '{new_name}'. "
+                            "Publish your changes to flush the rename to YAML."
+                        ),
+                        "old_name": dashboard_name,
+                        "new_name": new_name,
+                        "status": status.value if status else None,
+                        "rewritten_ref_count": 0,
+                    }
+                ),
+                200,
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error renaming dashboard: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/dashboards/<dashboard_name>/preview-rename/", methods=["GET"])
+    def preview_rename_dashboard_crud(dashboard_name):
+        """Preview a rename without applying it.
+
+        Query params: `new_name`. Returns whether the rename is valid and how many
+        cross-object references would be rewritten (currently always 0 for dashboards
+        since they aren't referenced by other objects — see the note on the rename endpoint).
+        """
+        try:
+            new_name = (request.args.get("new_name") or "").strip()
+            if not new_name:
+                return jsonify({"error": "new_name query parameter is required"}), 400
+
+            manager = flask_app.dashboard_manager
+
+            # Existence check
+            existing = manager.get(dashboard_name)
+            if existing is None:
+                return jsonify({"error": f"Dashboard '{dashboard_name}' not found"}), 404
+
+            # Same-name no-op
+            if dashboard_name == new_name:
+                return (
+                    jsonify(
+                        {
+                            "valid": False,
+                            "error": "New name must be different from the old name",
+                            "rewritten_ref_count": 0,
+                        }
+                    ),
+                    200,
+                )
+
+            # Collision check across cached + published.
+            taken_in_cache = (
+                new_name in manager.cached_objects and manager.cached_objects[new_name] is not None
+            )
+            taken_in_published = new_name in manager.published_objects
+            if taken_in_cache or taken_in_published:
+                return (
+                    jsonify(
+                        {
+                            "valid": False,
+                            "error": f"'{new_name}' is already used by another dashboard",
+                            "rewritten_ref_count": 0,
+                        }
+                    ),
+                    200,
+                )
+
+            return (
+                jsonify(
+                    {
+                        "valid": True,
+                        "rewritten_ref_count": 0,
+                    }
+                ),
+                200,
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error previewing dashboard rename: {str(e)}")
+            return jsonify({"error": str(e)}), 500

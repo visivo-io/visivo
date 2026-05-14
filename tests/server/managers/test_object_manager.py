@@ -282,3 +282,126 @@ class TestObjectManager:
         assert ObjectStatus.NEW.value == "new"
         assert ObjectStatus.MODIFIED.value == "modified"
         assert ObjectStatus.PUBLISHED.value == "published"
+
+
+class TestObjectManagerRename:
+    """Tests for the generic rename() method on ObjectManager (VIS-749)."""
+
+    def test_rename_published_only_object(self):
+        """Renaming an object that exists only in published_objects copies it under
+        the new name in cache and marks the old name for deletion."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old", "value": 1}
+
+        renamed = manager.rename("old", "new")
+
+        assert renamed is not None
+        assert renamed["name"] == "new"
+        assert renamed["value"] == 1
+        # New name landed in cache.
+        assert manager.cached_objects["new"]["name"] == "new"
+        # Old name marked for deletion (None in cache).
+        assert "old" in manager.cached_objects
+        assert manager.cached_objects["old"] is None
+        # Published objects untouched.
+        assert manager.published_objects["old"]["name"] == "old"
+
+    def test_rename_cache_only_object(self):
+        """Renaming a NEW (cache-only) object moves it under the new name and
+        removes the old key entirely (no need to mark for deletion)."""
+        manager = ConcreteObjectManager()
+        manager.save("old", {"name": "old", "value": 2})
+
+        renamed = manager.rename("old", "new")
+
+        assert renamed["name"] == "new"
+        assert "new" in manager.cached_objects
+        assert "old" not in manager.cached_objects
+
+    def test_rename_modified_object(self):
+        """Renaming an object that exists in BOTH cache and published uses the
+        cached version (the user's draft) and marks the old name for deletion."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old", "value": 1}
+        manager.save("old", {"name": "old", "value": 99})  # draft change
+
+        renamed = manager.rename("old", "new")
+
+        assert renamed["value"] == 99  # took the draft value
+        assert manager.cached_objects["new"]["value"] == 99
+        assert manager.cached_objects["old"] is None
+
+    def test_rename_returns_none_for_missing_object(self):
+        """Renaming a non-existent object returns None (no exception)."""
+        manager = ConcreteObjectManager()
+
+        result = manager.rename("missing", "anything")
+
+        assert result is None
+        # Nothing was added to cache.
+        assert "anything" not in manager.cached_objects
+
+    def test_rename_rejects_collision_with_cached(self):
+        """Cannot rename to a name that's already taken by another cached object."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old"}
+        manager.save("taken", {"name": "taken"})
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.rename("old", "taken")
+        assert "already uses that name" in str(exc_info.value)
+
+    def test_rename_rejects_collision_with_published(self):
+        """Cannot rename to a name that's already taken by a published object."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old"}
+        manager._published_objects["taken"] = {"name": "taken"}
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.rename("old", "taken")
+        assert "already uses that name" in str(exc_info.value)
+
+    def test_rename_rejects_same_name(self):
+        """Renaming to the same name is a noop and raises so callers don't think
+        anything changed."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["foo"] = {"name": "foo"}
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.rename("foo", "foo")
+        assert "different from the old name" in str(exc_info.value)
+
+    def test_rename_rejects_object_marked_for_deletion(self):
+        """Cannot rename an object that's already been marked for deletion."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old"}
+        manager.mark_for_deletion("old")
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.rename("old", "new")
+        assert "marked for deletion" in str(exc_info.value)
+
+    def test_rename_rejects_destination_with_pending_deletion(self):
+        """If the destination name is currently marked for deletion, the rename is
+        still rejected — the user should publish the deletion first, then rename.
+        This is conservative; the rename pipeline does not auto-resolve pending
+        deletions on the destination side."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old", "value": 1}
+        manager._published_objects["dest"] = {"name": "dest"}
+        manager.mark_for_deletion("dest")  # cached_objects["dest"] = None
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.rename("old", "dest")
+        assert "already uses that name" in str(exc_info.value)
+
+    def test_rename_status_after_published_to_published(self):
+        """After renaming, the new name has status NEW (cache-only) and the old
+        name has status DELETED (None in cache, exists in published)."""
+        manager = ConcreteObjectManager()
+        manager._published_objects["old"] = {"name": "old"}
+
+        manager.rename("old", "new")
+
+        assert manager.get_status("new") == ObjectStatus.NEW
+        assert manager.get_status("old") == ObjectStatus.DELETED

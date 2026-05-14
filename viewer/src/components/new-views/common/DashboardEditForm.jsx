@@ -33,6 +33,12 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Rename confirmation state — when the Name input differs from the original
+  // dashboard name on a non-create form, we capture the rename and prompt the
+  // user to confirm before applying.
+  const [renameConfirm, setRenameConfirm] = useState(null);
+  const [renaming, setRenaming] = useState(false);
+  const originalName = dashboard?.name || '';
 
   // Build available objects list grouped by type
   const availableObjects = useMemo(() => {
@@ -85,10 +91,39 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const handleSubmit = async e => {
     e.preventDefault();
     setError(null);
+
+    const trimmedName = name.trim();
+
+    // If this is an edit (not create) and the name has changed, run the rename
+    // preview first so we can show a confirmation dialog with the count of
+    // cross-object references that would be rewritten. The actual rename
+    // happens via the dedicated /rename/ endpoint, after the user confirms.
+    if (!isCreate && originalName && trimmedName !== originalName) {
+      try {
+        const previewRes = await fetch(
+          `/api/dashboards/${encodeURIComponent(originalName)}/preview-rename/?new_name=${encodeURIComponent(trimmedName)}`,
+        );
+        const previewData = await previewRes.json();
+        if (!previewRes.ok || previewData?.valid === false) {
+          setError(previewData?.error || 'Cannot rename dashboard.');
+          return;
+        }
+        setRenameConfirm({
+          oldName: originalName,
+          newName: trimmedName,
+          rewrittenRefCount: previewData?.rewritten_ref_count ?? 0,
+        });
+        return;
+      } catch (err) {
+        setError(err?.message || 'Failed to preview rename.');
+        return;
+      }
+    }
+
     setSaving(true);
 
     const config = {
-      name: name.trim(),
+      name: trimmedName,
       type: 'internal',
     };
 
@@ -118,6 +153,44 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     if (!result?.success) {
       setError(result?.error || 'Failed to save dashboard');
     }
+  };
+
+  const handleRenameConfirm = async () => {
+    if (!renameConfirm) return;
+    setRenaming(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/dashboards/${encodeURIComponent(renameConfirm.oldName)}/rename/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ new_name: renameConfirm.newName }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error || 'Rename failed.');
+        return;
+      }
+      // Refresh publish status so the top-bar publish badge picks up the
+      // pending rename, then close the form. The new dashboard's edit panel
+      // will be re-opened by the parent if needed.
+      await checkPublishStatus();
+      setRenameConfirm(null);
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Rename failed.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setRenameConfirm(null);
+    // Restore the input to the original name so the user knows the rename
+    // was abandoned and can keep editing other fields.
+    setName(originalName);
   };
 
   const handleDelete = async () => {
@@ -248,9 +321,52 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           label="Name"
           value={name}
           onChange={e => setName(e.target.value)}
-          disabled={!isCreate}
-          helperText={!isCreate ? 'Dashboard names cannot be changed after creation.' : undefined}
+          helperText={
+            !isCreate && name.trim() !== originalName && name.trim()
+              ? `Will rename '${originalName}' on save.`
+              : undefined
+          }
         />
+
+        {/* Rename confirmation dialog */}
+        {renameConfirm && !isCreate && (
+          <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-md space-y-2">
+            <p className="text-sm text-gray-800">
+              Rename <span className="font-semibold">{renameConfirm.oldName}</span> to{' '}
+              <span className="font-semibold">{renameConfirm.newName}</span>?
+            </p>
+            <p className="text-xs text-gray-600">
+              <span data-testid="rename-ref-count-message">
+                {renameConfirm.rewrittenRefCount > 0
+                  ? `This will also update ${renameConfirm.rewrittenRefCount} reference${
+                      renameConfirm.rewrittenRefCount === 1 ? '' : 's'
+                    } in your project.`
+                  : 'No other objects reference this dashboard, so no other files will change.'}
+              </span>{' '}
+              You will need to publish to flush the rename to YAML.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                data-testid="rename-cancel-button"
+                onClick={handleRenameCancel}
+                disabled={renaming}
+                className="px-3 py-1 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel Rename
+              </button>
+              <button
+                type="button"
+                data-testid="rename-confirm-button"
+                onClick={handleRenameConfirm}
+                disabled={renaming}
+                className="px-3 py-1 text-sm text-white bg-yellow-600 rounded hover:bg-yellow-700 disabled:opacity-50"
+              >
+                {renaming ? 'Renaming...' : 'Confirm Rename'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <FormInput
           id="dashboard-description"
