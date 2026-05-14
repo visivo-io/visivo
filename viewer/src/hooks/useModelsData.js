@@ -17,11 +17,15 @@ import { DEFAULT_RUN_ID } from '../constants';
  */
 const processModel = async (db, modelName, runId) => {
   try {
+    // ``name_hash`` is the DuckDB table identifier (clean, valid SQL
+    // identifier — model names may contain whitespace/punctuation).
+    // The URL itself uses the *name*, matching visivo Flask's
+    // /api/files/<name>/<run_id>/ contract and core's FileByHash.
     const nameHash = alphaHash(modelName);
     const files = [
       {
         name_hash: nameHash,
-        signed_data_file_url: `/api/files/${nameHash}/${runId}/`,
+        signed_data_file_url: `/api/files/${encodeURIComponent(modelName)}/${runId}/`,
       },
     ];
 
