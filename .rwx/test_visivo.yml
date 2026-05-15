@@ -76,7 +76,7 @@ tasks:
   - key: lint-cli
     use: [cli-dependencies]
     run: |
-      poetry run black --check .
+      poetry run black --check . --target-version py312
 
   - key: yarn
     use: node

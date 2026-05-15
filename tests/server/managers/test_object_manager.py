@@ -366,6 +366,7 @@ class TestSerializeObjectShape:
 
         class _AnonContainer(BaseModel):
             """Mimics Row/Item — a grouping node with no name."""
+
             model_config = {"extra": "allow"}
             kids: list
 
