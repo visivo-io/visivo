@@ -1,0 +1,122 @@
+# Integration fixture for VIS-750 — exercises every layout shape unlocked by
+# Item.rows (VIS-747 + VIS-748). Reuses charts/inputs already defined in the
+# integration project so the file stays self-contained and dependency-free.
+#
+# The dashboard renders only when both:
+#   - Backend Item.rows field is present (VIS-747)
+#   - Frontend renderer recurses through item.rows (VIS-748)
+#
+# Layout sections, in render order:
+#   1. Uneven vertical stack — big chart left, three small charts stacked right
+#   2. 2x2 KPI cluster + sidebar chart
+#   3. Sidebar — left column inputs, right column content rows
+#   4. Deep nesting — 3 levels, smallest leaf is a chart
+dashboards:
+  - name: nested-layouts-dashboard
+    level: 1
+    tags:
+      - "layout"
+      - "nested"
+    description: |
+      Exercises every layout shape unlocked by `Item.rows` (VIS-747 + VIS-748):
+      uneven vertical stack, 2x2 cluster, sidebar, and deep nesting.
+    rows:
+      # Section 1: Uneven vertical stack — big chart on left, three stacked small charts on right
+      - height: compact
+        items:
+          - markdown:
+              content: "## Section 1 — Uneven Vertical Stack"
+
+      - height: large
+        items:
+          - width: 2
+            chart: ${ref(simple-scatter-chart)}
+          - width: 1
+            rows:
+              - height: small
+                items:
+                  - chart: ${ref(indicator_chart)}
+              - height: small
+                items:
+                  - chart: ${ref(composite-metric-chart)}
+              - height: small
+                items:
+                  - chart: ${ref(toggle-mode-chart)}
+
+      # Section 2: 2x2 KPI cluster + sidebar chart on the right
+      - height: compact
+        items:
+          - markdown:
+              content: "## Section 2 — 2x2 Cluster + Sidebar Chart"
+
+      # Note on chart selection: at width=1 (≈462px / 4 cells = ~115px each),
+      # full-fat scatter/line charts can't fit their title + axes. We use
+      # indicator_chart in all four KPI cells because it's a single-number
+      # display with no axes — readable at narrow widths.
+      - height: medium
+        items:
+          - width: 1
+            rows:
+              - height: small
+                items:
+                  - width: 1
+                    chart: ${ref(indicator_chart)}
+                  - width: 1
+                    chart: ${ref(indicator_chart)}
+              - height: small
+                items:
+                  - width: 1
+                    chart: ${ref(indicator_chart)}
+                  - width: 1
+                    chart: ${ref(indicator_chart)}
+          - width: 2
+            chart: ${ref(simple-scatter-chart)}
+
+      # Section 3: Sidebar — left column inputs stacked, right column content rows
+      - height: compact
+        items:
+          - markdown:
+              content: "## Section 3 — Sidebar Layout"
+
+      - height: large
+        items:
+          - width: 1
+            rows:
+              - height: compact
+                items:
+                  - input: ${ref(split_threshold)}
+              - height: compact
+                items:
+                  - input: ${ref(sort_direction)}
+              - height: compact
+                items:
+                  - input: ${ref(show_markers)}
+          - width: 3
+            rows:
+              - height: medium
+                items:
+                  - chart: ${ref(simple-scatter-chart)}
+              - height: medium
+                items:
+                  - chart: ${ref(toggle-mode-chart)}
+
+      # Section 4: Deep nesting — 3 levels — exercises recursion past depth 1
+      - height: compact
+        items:
+          - markdown:
+              content: "## Section 4 — Deep Nesting (3 levels)"
+
+      - height: large
+        items:
+          - width: 1
+            rows:
+              - height: medium
+                items:
+                  - width: 1
+                    rows:
+                      - height: small
+                        items:
+                          - chart: ${ref(simple-scatter-chart)}
+              - height: medium
+                items:
+                  - chart: ${ref(composite-metric-chart)}
