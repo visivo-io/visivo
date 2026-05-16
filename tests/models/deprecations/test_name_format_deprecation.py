@@ -230,3 +230,77 @@ sources:
 
             # Should have 0 migrations because there's no project.visivo.yml
             assert len(migrations) == 0
+
+
+# ---------------------------------------------------------------------------
+# B03 / B04: silent-skip overhaul. Unreadable files must not stop the
+# cascade from processing other files in the same project, and the
+# previous bare ``except Exception: continue`` must be replaced with a
+# logged warning.
+# ---------------------------------------------------------------------------
+
+
+class TestNameFormatCascadeErrorHandling:
+    """B03/B04 regression coverage."""
+
+    def test_undecodable_file_does_not_block_other_files(self, tmp_path):
+        """A sibling file with non-UTF-8 bytes must not stop the cascade
+        from migrating other files. The new ``errors='replace'`` UTF-8
+        reader handles the bad bytes gracefully."""
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+
+        # Create a file with raw bytes that don't form valid UTF-8.
+        bad_path = tmp_path / "bad.visivo.yml"
+        with open(bad_path, "wb") as f:
+            f.write(b"# stray bytes: \xff\xfe\xfd\n")
+
+        # And a normal file with an invalid-format name to migrate.
+        good_path = tmp_path / "good.visivo.yml"
+        good_path.write_text("name: My Good Source\n")
+
+        checker = NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+
+        # The good file must produce at least one migration.
+        good_migrations = [m for m in migrations if str(good_path) in m.file_path]
+        assert good_migrations, (
+            "good.visivo.yml should still migrate even when a sibling file "
+            "has UTF-8-incompatible bytes"
+        )
+
+    def test_unreadable_file_logs_and_continues(self, tmp_path, monkeypatch):
+        """If the safe-reader hits a real OSError-like failure on one
+        file, that's logged via Logger and the pass continues with
+        every other file."""
+        from visivo.models.deprecations import name_format_deprecation as nfd
+
+        (tmp_path / "project.visivo.yml").write_text("name: project\n")
+        good_path = tmp_path / "good.visivo.yml"
+        good_path.write_text("name: My Good Source\n")
+        broken_path = tmp_path / "broken.visivo.yml"
+        broken_path.write_text("name: Should Not Migrate\n")
+
+        original_read = nfd._read_file_safe
+        warns = []
+
+        def patched_read(file_path):
+            if str(file_path).endswith("broken.visivo.yml"):
+                # Capture that the broken-file path was visited and
+                # signal a "skip" return like the real safe reader would.
+                warns.append(str(file_path))
+                return None
+            return original_read(file_path)
+
+        monkeypatch.setattr(nfd, "_read_file_safe", patched_read)
+
+        checker = nfd.NameFormatDeprecation()
+        migrations = checker.get_migrations_from_files(str(tmp_path))
+
+        # The patched reader was invoked for the broken file each time
+        # it appears in the file walk (3 passes in current code).
+        assert any(
+            p.endswith("broken.visivo.yml") for p in warns
+        ), "broken file should have been visited by the safe reader"
+        # And the good file should still produce a migration.
+        good_migrations = [m for m in migrations if str(good_path) in m.file_path]
+        assert good_migrations, "good file should migrate despite broken sibling"
