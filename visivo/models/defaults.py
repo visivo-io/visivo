@@ -38,8 +38,7 @@ class Defaults(BaseModel):
     """
 
     alert_name: Optional[str] = Field(
-        None,
-        description="The name of an alert defined elsewhere in the Visivo project.",
+        None, description="The name of an alert defined elsewhere in the Visivo project.",
     )
     source_name: Optional[str] = Field(
         None,
@@ -47,8 +46,7 @@ class Defaults(BaseModel):
         alias="target_name",
     )
     threads: Optional[int] = Field(
-        8,
-        description="The number of threads to use when running queries.",
+        8, description="The number of threads to use when running queries.",
     )
     levels: List[Level] = Field(
         default_factory=list,
@@ -71,6 +69,15 @@ class Defaults(BaseModel):
         description="Controls whether anonymous usage telemetry is collected for this project. "
         "When set to false, no telemetry data will be sent. "
         "Can also be disabled globally via VISIVO_TELEMETRY_DISABLED environment variable.",
+    )
+    draft_mode_enabled: Optional[bool] = Field(
+        None,
+        description="When true, edits made in the viewer go to a draft cache; "
+        "explicit Publish is required to write YAML. When false (default for new projects), "
+        "edits write directly to YAML on save. When None (default), the value is "
+        "auto-derived from project state: fresh projects with no models, insights, "
+        "or dashboards default to immediate-write (False); projects with content "
+        "default to draft mode (True).",
     )
 
     def __hash__(self):

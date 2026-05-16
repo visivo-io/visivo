@@ -1,4 +1,6 @@
 import * as sourcesApi from '../api/sources';
+import * as projectApi from '../api/project';
+import * as publishApi from '../api/publish';
 
 // Object status constants (matches backend ObjectStatus enum)
 export const ObjectStatus = {
@@ -35,17 +37,60 @@ const createSourceSlice = (set, get) => ({
     }
   },
 
-  // Save source to cache
+  // Save source.
+  //
+  // Branches on the project's effective draft mode:
+  //   - draft mode ON: stage in cache, surface a "Saved as draft" toast, and
+  //     leave it to the user to click Publish.
+  //   - draft mode OFF (immediate write): stage + immediately publish in one
+  //     pass so the YAML on disk reflects the change before the toast fires.
+  //
+  // Falls back to draft-mode behavior on any error fetching the flag, since
+  // staging is the safer default if we can't determine intent.
   saveSource: async (name, config) => {
     try {
+      const draftModeEnabled = await projectApi.fetchDraftMode();
+
+      // Always cache first so the source manager has the new config
+      // available for both branches.
       const result = await sourcesApi.saveSource(name, config);
-      // Refresh sources list to get updated status
       await get().fetchSources();
-      // Trigger publish status check
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
       }
-      return { success: true, result };
+
+      if (!draftModeEnabled) {
+        // Immediate write: flush the cache to YAML right away.
+        try {
+          await publishApi.publishChanges();
+          if (get().fetchSources) await get().fetchSources();
+          if (get().checkPublishStatus) await get().checkPublishStatus();
+          if (get().pushNotification) {
+            get().pushNotification({
+              message: 'Saved to project.visivo.yml',
+              variant: 'success',
+            });
+          }
+          return { success: true, result, immediateWrite: true };
+        } catch (publishError) {
+          if (get().pushNotification) {
+            get().pushNotification({
+              message: `Saved as draft (immediate write failed: ${publishError.message})`,
+              variant: 'warning',
+              durationMs: 6000,
+            });
+          }
+          return { success: true, result, immediateWrite: false };
+        }
+      }
+
+      if (get().pushNotification) {
+        get().pushNotification({
+          message: 'Saved as draft. Click Publish to write to project files.',
+          variant: 'info',
+        });
+      }
+      return { success: true, result, immediateWrite: false };
     } catch (error) {
       return { success: false, error: error.message };
     }

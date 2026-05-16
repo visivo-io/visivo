@@ -1,0 +1,6 @@
+name: save-flow-immediate-write-fixture
+
+# Intentionally fresh: no models, insights, or dashboards.
+# When draft_mode_enabled is unset, the runtime auto-derives it from
+# project state — and a project with no objects defaults to immediate
+# write. This fixture is consumed by Branch 9's e2e spec.
