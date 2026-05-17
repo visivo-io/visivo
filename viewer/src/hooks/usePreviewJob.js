@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { apiFetch } from '../api/utils';
 
 /**
  * Hook for managing preview run execution
@@ -35,7 +36,7 @@ export const usePreviewJob = () => {
       setResult(null);
       setRunId(null);
 
-      const response = await fetch('/api/insight-jobs/', {
+      const response = await apiFetch('/api/insight-jobs/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +49,7 @@ export const usePreviewJob = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to start preview run');
+        throw new Error(errorData.error || errorData.message || 'Failed to start preview run');
       }
 
       const data = await response.json();
@@ -72,14 +73,14 @@ export const usePreviewJob = () => {
    */
   const pollStatus = useCallback(async currentPollRunId => {
     try {
-      const response = await fetch(`/api/insight-jobs/${currentPollRunId}/`);
+      const response = await apiFetch(`/api/insight-jobs/${currentPollRunId}/`);
 
       // Ignore stale responses from previous runs
       if (currentRunIdRef.current !== currentPollRunId) return;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to poll run status');
+        throw new Error(errorData.error || errorData.message || 'Failed to poll run status');
       }
 
       const runData = await response.json();

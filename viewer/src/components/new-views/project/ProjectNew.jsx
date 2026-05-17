@@ -48,16 +48,23 @@ function ProjectNew() {
     }));
   }, [dashboards]);
 
+  // Project defaults can live in either of two envelope shapes:
+  //   - visivo Studio: ``project.project_json.defaults`` (full project_json blob)
+  //   - core's canonical envelope: ``project.config.defaults``
+  // Read both so the dashboard filter init works against either backend
+  // without forcing the wrapper to adapt.
+  const projectDefaults = project?.config?.defaults ?? project?.project_json?.defaults;
+
   // Initialize dashboard filtering system when dashboards load
   useEffect(() => {
     if (dashboardsList.length > 0) {
       initializeDashboardView(
         dashboardsList,
         dashboardName,
-        project?.project_json?.defaults
+        projectDefaults
       );
     }
-  }, [dashboardsList, dashboardName, project?.project_json?.defaults, initializeDashboardView]);
+  }, [dashboardsList, dashboardName, projectDefaults, initializeDashboardView]);
 
   // Loading state
   if (dashboardsLoading) {
@@ -97,7 +104,7 @@ function ProjectNew() {
                 dashboards={dashboards}
                 projectId={project.id}
                 hasLevels={Object.keys(dashboardsByLevel).length > 1}
-                projectDefaults={project?.project_json?.defaults}
+                projectDefaults={projectDefaults}
               />
             ))}
 

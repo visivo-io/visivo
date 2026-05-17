@@ -20,7 +20,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             run_id = request.args.get("run_id", DEFAULT_RUN_ID)
 
             if not insight_names:
-                return jsonify({"message": "insight_names parameter is required"}), 400
+                return jsonify({"error": "insight_names parameter is required"}), 400
 
             insights = []
             missing_insights = []
@@ -60,16 +60,16 @@ def register_insight_jobs_views(app, flask_app, output_dir):
                     Logger.instance().error(
                         f"Invalid JSON in insight file {insight_file}: {str(e)}"
                     )
-                    return jsonify({"message": f"Invalid JSON in insight '{name}'"}), 500
+                    return jsonify({"error": f"Invalid JSON in insight '{name}'"}), 500
                 except Exception as e:
                     Logger.instance().error(f"Error loading insight '{name}': {str(e)}")
-                    return jsonify({"message": f"Error loading insight '{name}': {str(e)}"}), 500
+                    return jsonify({"error": f"Error loading insight '{name}': {str(e)}"}), 500
 
             if missing_insights:
                 Logger.instance().info(f"Missing insight files: {missing_insights}")
                 if not insights:
                     return (
-                        jsonify({"message": f"No insight files found for: {missing_insights}"}),
+                        jsonify({"error": f"No insight files found for: {missing_insights}"}),
                         404,
                     )
 
@@ -77,7 +77,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error fetching insights data: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insight-jobs/hash", methods=["POST"])
     def compute_insight_hash():
@@ -90,7 +90,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
         try:
             data = request.get_json()
             if not data or "name" not in data:
-                return jsonify({"message": "name field is required in request body"}), 400
+                return jsonify({"error": "name field is required in request body"}), 400
 
             name = data["name"]
             name_hash = alpha_hash(name)
@@ -100,7 +100,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error computing hash: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insight-jobs/", methods=["POST"])
     def run_insight_preview():
@@ -118,15 +118,15 @@ def register_insight_jobs_views(app, flask_app, output_dir):
             data = request.get_json()
             Logger.instance().info(f"Request data parsed: {bool(data)}")
             if not data:
-                return jsonify({"message": "Request body is required"}), 400
+                return jsonify({"error": "Request body is required"}), 400
 
             if not data.get("run"):
-                return jsonify({"message": "run parameter must be true to execute preview"}), 400
+                return jsonify({"error": "run parameter must be true to execute preview"}), 400
 
             insight_names = data.get("insight_names")
             if not insight_names or not isinstance(insight_names, list):
                 return (
-                    jsonify({"message": "insight_names field is required and must be a list"}),
+                    jsonify({"error": "insight_names field is required and must be a list"}),
                     400,
                 )
 
@@ -164,7 +164,7 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error creating preview run: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/insight-jobs/<run_id>/", methods=["GET"])
     def get_insight_run_status(run_id):
@@ -189,11 +189,11 @@ def register_insight_jobs_views(app, flask_app, output_dir):
 
             if not run:
                 Logger.instance().info(f"Run {run_id} not found")
-                return jsonify({"message": f"Run {run_id} not found"}), 404
+                return jsonify({"error": f"Run {run_id} not found"}), 404
 
             Logger.instance().info(f"Returning run status: {run.status}")
             return jsonify(run.to_dict())
 
         except Exception as e:
             Logger.instance().error(f"Error getting run status: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
