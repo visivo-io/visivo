@@ -1,0 +1,193 @@
+/**
+ * Workspace shell mount tests (VIS-775 / Track B B2).
+ *
+ * Verifies the smart Workspace container renders the shell at both
+ * /workspace (unscoped) and /workspace/dashboard/:dashboardName (scoped),
+ * hydrates the project tab, opens a dashboard tab when scoped, fires the
+ * workspace_mode_entered telemetry event on mount, and dispatches the
+ * middle pane based on the active object type.
+ */
+import React from 'react';
+import { render, screen, act } from '@testing-library/react';
+import {
+  createMemoryRouter,
+  Route,
+  createRoutesFromElements,
+  RouterProvider,
+} from 'react-router-dom';
+import { futureFlags } from '../../../router-config';
+import Workspace from './Workspace';
+import useStore from '../../../stores/store';
+import { setWorkspaceTelemetryListener } from './telemetry';
+
+// DashboardNew has heavy dependencies (insights data, plotly, etc.) — stub
+// it out so the Workspace shell render stays focused on shell behaviour.
+jest.mock('../project/DashboardNew', () => ({
+  __esModule: true,
+  default: ({ projectId, dashboardName }) => (
+    <div data-testid="dashboard-new-stub">
+      DashboardNew {projectId}:{dashboardName}
+    </div>
+  ),
+}));
+
+const resetWorkspaceStore = () => {
+  act(() => {
+    useStore.setState({
+      workspaceTabs: [],
+      workspaceActiveTabId: null,
+      workspaceLeftCollapsed: false,
+      workspaceRightCollapsed: false,
+      workspaceRightTab: 'edit',
+      workspaceLens: 'preview',
+      hasUnpublishedChanges: false,
+      // Stub project that the loader normally hydrates.
+      project: {
+        id: 'p1',
+        project_json: { name: 'analytics-platform' },
+      },
+      // Stub a no-op checkPublishStatus / openPublishModal so the
+      // Workspace mount effect doesn't throw.
+      checkPublishStatus: jest.fn(),
+      openPublishModal: jest.fn(),
+    });
+  });
+};
+
+const renderAt = (entry) => {
+  const router = createMemoryRouter(
+    createRoutesFromElements(
+      <>
+        <Route path="/workspace" element={<Workspace />} />
+        <Route
+          path="/workspace/dashboard/:dashboardName"
+          element={<Workspace />}
+        />
+      </>
+    ),
+    { initialEntries: [entry], future: futureFlags }
+  );
+  return render(<RouterProvider router={router} future={futureFlags} />);
+};
+
+describe('VIS-775 Workspace shell', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+  });
+
+  test('mounts the shell at /workspace (unscoped) with the project tab as default', () => {
+    renderAt('/workspace');
+    expect(screen.getByTestId('workspace-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-top-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-top-bar-project-name')).toHaveTextContent(
+      'analytics-platform'
+    );
+    // Project tab is hydrated on mount.
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toHaveAttribute('data-active', 'true');
+    // Middle pane shows the Project Editor placeholder.
+    expect(screen.getByTestId('workspace-middle-project')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('workspace-middle-project-placeholder')
+    ).toBeInTheDocument();
+  });
+
+  test('mounts the shell at /workspace/dashboard/<name> and focuses the dashboard tab', () => {
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-shell')).toBeInTheDocument();
+    // Both tabs exist — project (hydrated) + dashboard (URL-scoped).
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).toBeInTheDocument();
+    // Dashboard tab is the active one (URL drives focus).
+    expect(
+      screen.getByTestId('workspace-tab-dashboard:simple-dashboard')
+    ).toHaveAttribute('data-active', 'true');
+    // Middle pane dispatches to the dashboard variant.
+    expect(screen.getByTestId('workspace-middle-dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-dashboard-canvas')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-new-stub')).toHaveTextContent(
+      'DashboardNew p1:simple-dashboard'
+    );
+  });
+
+  test('renders all three rails and the drag handles', () => {
+    renderAt('/workspace');
+    expect(screen.getByTestId('workspace-left-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-right-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-drag-handle-left')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-drag-handle-right')).toBeInTheDocument();
+    // Library placeholder is visible (real content lands in VIS-C1).
+    expect(
+      screen.getByTestId('workspace-left-rail-placeholder')
+    ).toHaveTextContent('Library coming soon (VIS-C1)');
+    // Right rail defaults to Edit tab.
+    expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
+  });
+
+  test('right rail Edit tab surfaces the active object name', () => {
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(
+      screen.getByTestId('workspace-right-rail-edit-active-name')
+    ).toHaveTextContent('simple-dashboard');
+  });
+
+  test('Publish · N button only renders when dirty > 0', () => {
+    // Clean state.
+    renderAt('/workspace');
+    expect(
+      screen.queryByTestId('workspace-top-bar-publish')
+    ).not.toBeInTheDocument();
+    // Mark dirty.
+    act(() => {
+      useStore.setState({ hasUnpublishedChanges: true });
+    });
+    expect(screen.getByTestId('workspace-top-bar-publish')).toHaveTextContent(
+      'Publish'
+    );
+    expect(screen.getByTestId('workspace-top-bar-publish')).toHaveTextContent('1');
+  });
+
+  test('fires workspace_mode_entered telemetry on mount with dashboard scope', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener((evt) =>
+      events.push(evt)
+    );
+    try {
+      renderAt('/workspace/dashboard/simple-dashboard');
+      const entered = events.filter(
+        (e) => e.eventName === 'workspace_mode_entered'
+      );
+      expect(entered).toHaveLength(1);
+      expect(entered[0].payload.dashboardName).toBe('simple-dashboard');
+      expect(entered[0].payload.scope).toBe('dashboard');
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('fires workspace_mode_entered telemetry with null dashboardName when unscoped', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener((evt) =>
+      events.push(evt)
+    );
+    try {
+      renderAt('/workspace');
+      const entered = events.filter(
+        (e) => e.eventName === 'workspace_mode_entered'
+      );
+      expect(entered).toHaveLength(1);
+      expect(entered[0].payload.dashboardName).toBeNull();
+      expect(entered[0].payload.scope).toBe('root');
+    } finally {
+      unsubscribe();
+    }
+  });
+});
