@@ -11,7 +11,6 @@ import Cloud from './screens/Cloud';
 import Handoff from './screens/Handoff';
 import { fireEvent } from './telemetry';
 import { readOnboardingState, writeOnboardingState } from './onboardingState';
-import { createSource, finalizeProject, loadExample, uploadSourceFile } from './onboardingApi';
 import SourceEditForm from '../new-views/common/SourceEditForm';
 import useStore from '../../stores/store';
 import logo from '../../images/logo.png';
@@ -163,15 +162,22 @@ export default function OnboardingFlow() {
       setSampleLoadingText('Importing example…');
       setErrorMessage(null);
       try {
-        await loadExample({
-          projectName,
-          projectDir,
-          exampleType: sample.apiKey,
+        const res = await fetch('/api/project/load_example/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_name: projectName,
+            project_dir: projectDir,
+            example_type: sample.apiKey,
+          }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message || 'Failed to import the example dashboard.');
+        }
         setSampleLoadingText('Preparing project…');
         setOutcome(o => ({ ...o, path: 'sample', sample: sample.name }));
-        // Skip cloud screen if we want? Brief says cloud comes after data either way.
-        // Move to cloud step.
+        // Brief says cloud comes after data either way.
         const cloudIdx = steps.findIndex(s => s.kind === 'cloud');
         setStepIdx(cloudIdx);
       } catch (err) {
@@ -199,17 +205,64 @@ export default function OnboardingFlow() {
       setSourceSaving(true);
       setErrorMessage(null);
       try {
-        const source = await createSource({ projectName, projectDir, config });
+        const sourceForm = new FormData();
+        const appendField = (k, v) => sourceForm.append(k, v ?? '');
+        appendField('project_name', projectName);
+        appendField('source_name', config?.name);
+        appendField('source_type', config?.type);
+        appendField('port', config?.port);
+        appendField('database', config?.database);
+        appendField('host', config?.host);
+        appendField('username', config?.username);
+        appendField('password', config?.password);
+        appendField('account', config?.account);
+        appendField('warehouse', config?.warehouse);
+        appendField('credentials_base64', config?.credentials_base64);
+        appendField('project', config?.project);
+        appendField('dataset', config?.dataset);
+        appendField('project_dir', projectDir);
+        const sourceRes = await fetch('/api/source/create/', {
+          method: 'POST',
+          body: sourceForm,
+        });
+        const sourceData = await sourceRes.json().catch(() => ({}));
+        if (!sourceRes.ok) {
+          throw new Error(sourceData.message || 'Failed to connect to the data source.');
+        }
+        const source = sourceData.source;
+
         let dashboard = null;
         if (config?.file) {
-          dashboard = await uploadSourceFile({ projectDir, config });
+          const uploadForm = new FormData();
+          uploadForm.append('file', config.file);
+          uploadForm.append('project_dir', projectDir);
+          uploadForm.append('source_type', config?.type);
+          const uploadRes = await fetch('/api/source/upload/', {
+            method: 'POST',
+            body: uploadForm,
+          });
+          const uploadData = await uploadRes.json().catch(() => ({}));
+          if (!uploadRes.ok) {
+            throw new Error(uploadData.message || 'Failed to upload the file.');
+          }
+          dashboard = uploadData.dashboard;
         }
-        await finalizeProject({
-          projectName,
-          projectDir,
-          sources: [source],
-          dashboards: dashboard ? [dashboard] : [],
+
+        const finalizeRes = await fetch('/api/project/finalize/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_name: projectName,
+            project_dir: projectDir,
+            sources: [source],
+            dashboards: dashboard ? [dashboard] : [],
+          }),
         });
+        if (!finalizeRes.ok) {
+          const data = await finalizeRes.json().catch(() => ({}));
+          throw new Error(data.message || 'Failed to finalize the project.');
+        }
+
         handleConnected(config?.type || 'unknown');
         return { success: true };
       } catch (err) {

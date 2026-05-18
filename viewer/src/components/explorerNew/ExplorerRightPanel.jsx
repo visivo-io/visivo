@@ -5,6 +5,7 @@ import { selectHasModifications } from '../../stores/explorerNewStore';
 import InsightCRUDSection from './InsightCRUDSection';
 import ChartCRUDSection from './ChartCRUDSection';
 import ExplorerSaveModal from './ExplorerSaveModal';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const ExplorerRightPanel = () => {
   const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
@@ -33,9 +34,7 @@ const ExplorerRightPanel = () => {
 
   const handleAddInsight = useCallback(() => {
     createInsight();
-    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-      recordOnboardingAction('insight_added');
-    });
+    recordOnboardingAction('insight_added');
   }, [createInsight]);
 
   return (

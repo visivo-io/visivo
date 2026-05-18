@@ -1,4 +1,5 @@
 import * as insightsApi from '../api/insights';
+import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 
 /**
  * Insight Store Slice
@@ -37,9 +38,7 @@ const createInsightSlice = (set, get) => ({
         await get().checkPublishStatus();
       }
       // Tap for the onboarding "Create an Insight" checklist row.
-      import('../components/onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-        recordOnboardingAction('insight_saved');
-      });
+      recordOnboardingAction('insight_saved');
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

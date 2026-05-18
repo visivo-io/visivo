@@ -6,6 +6,7 @@ import useStore from '../../stores/store';
 import { selectInsightStatus } from '../../stores/explorerNewStore';
 import { getSchema } from '../../schemas/schemas';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const InsightPillItem = ({ name, isActive, onRemove, onClick }) => {
   const status = useStore(selectInsightStatus(name));
@@ -76,9 +77,7 @@ const ChartCRUDSection = ({ isExpanded, onToggleExpand }) => {
 
   const handleAddInsight = useCallback(() => {
     createInsight();
-    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-      recordOnboardingAction('insight_added');
-    });
+    recordOnboardingAction('insight_added');
   }, [createInsight]);
 
   const handleRemoveInsight = useCallback(

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { PiPlus, PiX, PiCheckCircle, PiWarningCircle, PiSpinner } from 'react-icons/pi';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const DEBOUNCE_MS = 750;
 
@@ -132,9 +133,7 @@ const AddComputedColumnPopover = ({
     // Tap for the analytics_engineer "Define a Metric on a Model"
     // checklist row. A computed column on a Model IS a re-usable
     // measure (it's exactly what the row's why-text describes).
-    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-      recordOnboardingAction('metric_defined');
-    });
+    recordOnboardingAction('metric_defined');
     resetForm();
     setIsOpen(false);
   };

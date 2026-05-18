@@ -1,4 +1,5 @@
 import * as dashboardsApi from '../api/dashboards';
+import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 
 /**
  * Dashboard Store Slice
@@ -33,9 +34,7 @@ const createDashboardSlice = (set, get) => ({
         await get().checkPublishStatus();
       }
       // Tap for the onboarding "Build a Dashboard" checklist row.
-      import('../components/onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-        recordOnboardingAction('dashboard_saved');
-      });
+      recordOnboardingAction('dashboard_saved');
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

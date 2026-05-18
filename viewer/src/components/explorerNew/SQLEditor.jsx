@@ -8,6 +8,7 @@ import { inferColumnTypes } from '../../utils/inferColumnTypes';
 import { computeColumnProfile } from '../../utils/computeColumnProfile';
 import DataTable from '../common/DataTable';
 import ColumnProfilePanel from './ColumnProfilePanel';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const SQLEditor = ({
   initialValue = '',
@@ -106,10 +107,7 @@ const SQLEditor = ({
 
     setShowError(true);
     executeQuery(sourceName, queryText.trim());
-    // Tap for the onboarding "Run the query" sub-step. Lazy import.
-    import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-      recordOnboardingAction('query_run');
-    });
+    recordOnboardingAction('query_run');
   }, [sourceName, sql, executeQuery]);
 
   // Handle cancel
@@ -138,9 +136,7 @@ const SQLEditor = ({
       // non-trivial keystroke. recordOnboardingAction is idempotent
       // so a second pass is a no-op.
       if (value && value.trim().length > 2) {
-        import('../onboarding/onboardingState').then(({ recordOnboardingAction }) => {
-          recordOnboardingAction('sql_written');
-        });
+        recordOnboardingAction('sql_written');
       }
     },
     [onSave]
