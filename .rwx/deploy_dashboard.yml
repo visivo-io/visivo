@@ -7,7 +7,7 @@ on:
         pr-num: ${{ event.github.pull_request.pull_request.number }}
         head-ref: ${{ event.git.branch	}}
         deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
-        archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
+        archive: ${{ event.github.pull_request.pull_request.state == 'closed' }}
 
 base:
   image: ubuntu:22.04
@@ -31,11 +31,13 @@ tasks:
     call: github/install-cli 1.0.5
 
   - key: install-visivo
+    if: ${{ init.deploy }}
     use: [python]
     run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.head-ref }}
     filter: [visivo]
 
   - key: install-visivo-for-archive
+    if: ${{ init.archive }}
     use: [python]
     run: pip install git+https://github.com/visivo-io/visivo.git@main
     filter: [visivo]
