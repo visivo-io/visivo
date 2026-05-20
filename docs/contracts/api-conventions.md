@@ -23,7 +23,7 @@ envelope:
 
 | Field | Notes |
 |---|---|
-| `id` | Object identifier. Locally `id == name`; in cloud deployments core may use a UUID for `id` while keeping `name` as the human-readable label. |
+| `id` | Object identifier. **Flask backends** (visivo CLI / Studio) emit `id == name` because there is no database — only one project is loaded at a time and names are unique within it. **Django backends** (core / cloud) emit the row's UUID primary key for `id` and keep `name` as the human-readable label. Viewer code must treat `id` as opaque and never assume it equals `name`. |
 | `name` | The user-facing name of the object — what the user typed in YAML. |
 | `status` | One of `new`, `modified`, `published`, `deleted`, or `null`. Cloud should always emit `"published"` (no draft cache concept exists in deploys). |
 | `child_item_names` | Array of names of objects this one references. Always a list, never `null`; empty array when there are no dependencies. |
@@ -40,7 +40,7 @@ Some resources attach extra keys at the SAME level as `id`/`name`/`status`
 
 | Resource | Extra sibling key | Purpose |
 |---|---|---|
-| `dashboards` (detail GET only) | `signed_thumbnail_file_url` | Thumbnail URL or `null` if none on disk |
+| `dashboards` (list and detail GET) | `signed_thumbnail_file_url` | Thumbnail URL or `null` if none on disk. Present on every list element AND on detail responses — the cards page renders straight from the list response without a follow-up per-dashboard fetch. |
 
 Adding a new sibling key for a resource is a **breaking change for that
 endpoint**. New keys SHOULD live inside `config` if they are part of the
@@ -58,7 +58,7 @@ resource plural:
 ```
 
 Examples: `{"dashboards": [...]}`, `{"insights": [...]}`,
-`{"models": [...]}`. Each element is exactly the same shape as a detail
+`{"model_jobs": [...]}`. Each element is exactly the same shape as a detail
 GET would return.
 
 ### Project endpoint exception
@@ -117,15 +117,22 @@ are real and distinct, so renaming would lose information.
 
 ## Job-list endpoints — bare arrays
 
-`GET /api/insight-jobs/?insight_names=...&run_id=...` and
-`GET /api/input-jobs/?input_names=...` return bare JSON arrays
-(no envelope) of flat job objects:
+The three job-list endpoints share a single contract shape:
+`(project_id, names[])`. All three return bare JSON arrays — no
+envelope.
+
+```
+GET /api/insight-jobs/?project_id=<id>&insight_names=...
+GET /api/input-jobs/?project_id=<id>&input_names=...
+GET /api/model-jobs/?project_id=<id>&model_names=...
+```
 
 ```json
 [
   {
-    "id": "<insight_name>",
+    "id": "<insight_name on Flask, UUID on Django>",
     "name": "<insight_name>",
+    "name_hash": "m...",
     "files": [ {"name_hash": "m...", "signed_data_file_url": "..."} ],
     "query": "SELECT ...",
     "props_mapping": {...},
@@ -140,6 +147,21 @@ are real and distinct, so renaming would lose information.
 This is a sanctioned exception to the list-envelope convention because
 these endpoints don't return the canonical detail shape — each element is
 operational data, not the resource's authored configuration.
+
+### `run_id` is Flask-only
+
+Visivo Flask accepts an optional `?run_id=<dir>` query param to look up
+job data under `target/<run_id>/insights/<name>.json` (defaults to
+`main`). This supports Studio's preview-job flow where a fresh run dir
+is created per preview.
+
+**Django (core) does not accept `run_id`** on any of the three list
+endpoints. The cloud has no per-run namespacing concept — every deploy
+is its own `Project` row, so insight/input/model data is uniquely
+identified by `(project_id, name)`. Django silently drops the
+parameter if the viewer sends it. Callers that need to behave
+identically against both backends can simply omit `run_id` (Flask
+defaults to `main`).
 
 ## Singleton endpoint exception
 

@@ -332,10 +332,9 @@ export const loadInsightParquetFiles = async (db, files, force = false) => {
     filesToLoad.map(async file => {
       // Use cache to prevent duplicate concurrent fetches
       return cache.getOrFetch(file.name_hash, async () => {
-        // Use apiFetch so same-origin /api/files/<hash>/<run_id>/ calls
-        // pick up the registered auth headers (JWT against core). For
-        // already-signed external URLs (GCS), apiFetch passes through
-        // and the cross-origin 302 strips Authorization automatically.
+        // ``apiFetch`` only injects auth on same-origin ``/api/*`` URLs
+        // (see ``viewer/src/api/utils.js::looksLikeOurApi``); already-
+        // signed external URLs like GCS pass through unchanged.
         const response = await apiFetch(file.signed_data_file_url);
         if (!response.ok) {
           throw new Error(

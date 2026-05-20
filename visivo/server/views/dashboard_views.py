@@ -7,16 +7,31 @@ from visivo.logger.logger import Logger
 
 
 def register_dashboard_views(app, flask_app, output_dir):
+    def _attach_thumbnail_url(dashboard_data):
+        """Attach ``signed_thumbnail_file_url`` to a dashboard envelope.
+
+        Sibling key alongside ``id``/``name``/``status`` — never inside
+        ``config``. Resolves to ``/api/dashboards/<name>.png/`` if the
+        thumbnail exists on disk, ``None`` otherwise. Applied to both
+        detail and list responses so the cards page can render without
+        a follow-up per-dashboard fetch.
+        """
+        dashboard_name = dashboard_data["name"]
+        thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
+        thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+        dashboard_data["signed_thumbnail_file_url"] = (
+            f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
+        )
+        return dashboard_data
+
     @app.route("/api/dashboards/<dashboard_name>/", methods=["GET"])
     def get_dashboard_api(dashboard_name):
         """Return canonical dashboard envelope plus the thumbnail URL.
 
-        Detail and list responses now share the same canonical shape from
+        Detail and list responses share the same canonical shape from
         ``DashboardManager._serialize_object``: ``{id, name, status,
-        child_item_names, config}``. The dashboard-specific
-        ``signed_thumbnail_file_url`` is attached as a sibling key alongside
-        — never inside ``config`` — so consumers can read it without
-        digging into the model dump.
+        child_item_names, config}`` plus the per-dashboard
+        ``signed_thumbnail_file_url`` sibling key.
         """
         try:
             dashboard_data = flask_app.dashboard_manager.get_dashboard_with_status(dashboard_name)
@@ -26,13 +41,7 @@ def register_dashboard_views(app, flask_app, output_dir):
                     404,
                 )
 
-            thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
-            thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
-            dashboard_data["signed_thumbnail_file_url"] = (
-                f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
-            )
-
-            return jsonify(dashboard_data)
+            return jsonify(_attach_thumbnail_url(dashboard_data))
         except Exception as e:
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
             return jsonify({"error": str(e)}), 500
@@ -79,10 +88,15 @@ def register_dashboard_views(app, flask_app, output_dir):
 
     @app.route("/api/dashboards/", methods=["GET"])
     def list_all_dashboards():
-        """List all dashboards (cached + published) with status."""
+        """List all dashboards (cached + published) with status.
+
+        Each element matches the detail GET shape exactly, including the
+        ``signed_thumbnail_file_url`` sibling key — so the cards page can
+        render without a follow-up per-dashboard fetch.
+        """
         try:
             dashboards = flask_app.dashboard_manager.get_all_dashboards_with_status()
-            return jsonify({"dashboards": dashboards})
+            return jsonify({"dashboards": [_attach_thumbnail_url(d) for d in dashboards]})
         except Exception as e:
             Logger.instance().error(f"Error listing dashboards: {str(e)}")
             return jsonify({"error": str(e)}), 500

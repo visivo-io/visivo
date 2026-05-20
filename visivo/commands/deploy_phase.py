@@ -1,5 +1,6 @@
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
+from visivo.models.dashboards.base_dashboard import BaseDashboard
 from visivo.models.insight import Insight
 from visivo.models.inputs.input import Input
 import click
@@ -447,6 +448,12 @@ async def process_insights_async(
     # Also read the local JSON file content so core can store it on the
     # InsightJob row and serve a fully-inlined response from
     # /api/insight-jobs/ (matching visivo Flask's contract).
+    #
+    # Track failures and abort the deploy if any occurred — a silent
+    # warning would leave the cloud-side InsightJob row with NULL
+    # content, which renders an empty insight to the viewer with no
+    # signal to the operator.
+    content_failures = []
     for i, upload in enumerate(data_file_uploads):
         upload["name"] = insight_files[i]["name"]
         upload["name_hash"] = insight_files[i]["name_hash"]
@@ -459,6 +466,12 @@ async def process_insights_async(
                 f"Could not load insight JSON content for {insight_files[i]['name']}: {e}"
             )
             upload["content"] = None
+            content_failures.append(insight_files[i]["name"])
+    if content_failures:
+        raise click.ClickException(
+            f"Failed to read insight JSON content for {len(content_failures)} insight(s): "
+            f"{', '.join(content_failures)}. Cloud would render these as empty insights."
+        )
 
     tasks = []
     for i in range(0, len(data_file_uploads), batch_size):
@@ -542,6 +555,10 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
     # Read the local JSON content so core can store it on the InputJob
     # row and serve a fully-inlined response from /api/input-jobs/
     # (matching visivo Flask's contract).
+    #
+    # See process_insights_async for why we abort on any failure rather
+    # than letting NULL ``content`` rows reach the cloud.
+    content_failures = []
     for i, upload in enumerate(data_file_uploads):
         upload["name"] = input_files[i]["name"]
         upload["name_hash"] = input_files[i]["name_hash"]
@@ -554,6 +571,12 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
                 f"Could not load input JSON content for {input_files[i]['name']}: {e}"
             )
             upload["content"] = None
+            content_failures.append(input_files[i]["name"])
+    if content_failures:
+        raise click.ClickException(
+            f"Failed to read input JSON content for {len(content_failures)} input(s): "
+            f"{', '.join(content_failures)}. Cloud would render these as empty inputs."
+        )
 
     tasks = []
     for i in range(0, len(data_file_uploads), batch_size):
@@ -797,7 +820,12 @@ def deploy_phase(
         # Process thumbnails
         send_progress("Processing dashboard uploads...", "info")
         process_thumbnails_start_time = time()
-        dashboards = project.descendants_of_type(type=Dashboard)
+        # ``BaseDashboard`` is the shared parent of internal ``Dashboard``
+        # and ``ExternalDashboard``. Narrowing to ``Dashboard`` here would
+        # silently skip externals from the deploy payload — core would
+        # never create rows for them, and ``GET /api/dashboards/`` on
+        # cloud would drop external cards from the new project view.
+        dashboards = project.descendants_of_type(type=BaseDashboard)
 
         asyncio.run(
             process_dashboards_async(

@@ -73,8 +73,11 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
     params.push(`project_id=${encodeURIComponent(projectId)}`);
   }
 
-  // Add run_id parameter
-  if (runId) {
+  // Only send ``run_id`` when the caller overrode the default. Cloud
+  // (core) has no per-run namespacing and silently drops the param;
+  // Flask defaults to ``main`` when absent. Sending the default just
+  // adds noise to the URL.
+  if (runId && runId !== DEFAULT_RUN_ID) {
     params.push(`run_id=${encodeURIComponent(runId)}`);
   }
 
