@@ -14,7 +14,7 @@ def test_init_with_project_dir():
     project_dir = os.path.join(tmp, "my-test-project")
     os.makedirs(project_dir, exist_ok=True)
 
-    response = runner.invoke(init, args=["--project-dir", project_dir])
+    response = runner.invoke(init, args=["--project-dir", project_dir, "--bare"])
 
     assert response.exit_code == 0, f"Command failed with output: {response.output}"
     assert "Done" in response.output
@@ -23,7 +23,9 @@ def test_init_with_project_dir():
     # Check that project name matches the directory name
     project_content = Path(f"{project_dir}/project.visivo.yml").read_text()
     assert "name: my-test-project" in project_content
-    assert "sources: []" in project_content
+    # Scaffold places `sources:` followed by commented examples, not `sources: []`
+    assert "sources:" in project_content
+    assert "# A Source is where your data lives" in project_content
 
 
 @patch("visivo.commands.init_phase.load_example_project")
@@ -37,7 +39,8 @@ def test_init_with_example_value(mock_load_example):
     mock_load_example.return_value = f"{project_dir}/project.visivo.yml"
 
     response = runner.invoke(
-        init, args=["--project-dir", project_dir, "--example", "github-releases"]
+        init,
+        args=["--project-dir", project_dir, "--example", "github-releases", "--bare"],
     )
 
     assert response.exit_code == 0, f"Command failed with output: {response.output}"
@@ -56,14 +59,17 @@ def test_init_basic_creates_simple_project():
     tmp = temp_folder()
     os.makedirs(f"{tmp}", exist_ok=True)
 
-    response = runner.invoke(init, args=["--project-dir", tmp])
+    response = runner.invoke(init, args=["--project-dir", tmp, "--bare"])
 
     assert response.exit_code == 0, f"Command failed with output: {response.output}"
     assert "Done" in response.output
     assert os.path.exists(f"{tmp}/project.visivo.yml")
 
-    # Check that basic project structure is created
+    # Check that basic project structure is created (scaffolded YAML)
     project_content = Path(f"{tmp}/project.visivo.yml").read_text()
     project_name = os.path.basename(tmp)
     assert f"name: {project_name}" in project_content
-    assert "sources: []" in project_content
+    assert "sources:" in project_content
+    assert "models:" in project_content
+    assert "insights:" in project_content
+    assert "dashboards:" in project_content
