@@ -1,10 +1,11 @@
 /**
  * useLibraryData behaviour (VIS-769 / Track C C1).
  *
- * Verifies the hook partitions the project's collections into the five
- * sections (Insert · Charts · Insights · Models · Sources) the Library
- * design expects, with stable ids and `Models` being the union of
- * sql_model + csv_script_model + local_merge_model.
+ * Verifies the hook partitions the project's collections into the C-1
+ * design's two sections — Layout Items (chart · table · markdown · input)
+ * and Data Layer (source · model · dimension · metric · relation · insight)
+ * — with stable ids and `model` being the union of sql_model +
+ * csv_script_model + local_merge_model.
  */
 import { renderHook, act } from '@testing-library/react';
 import useStore from '../../../../stores/store';
@@ -14,11 +15,17 @@ const resetStore = () => {
   act(() => {
     useStore.setState({
       charts: [],
-      insights: [],
+      tables: [],
+      markdowns: [],
+      inputs: [],
+      sources: [],
       models: [],
       csvScriptModels: [],
       localMergeModels: [],
-      sources: [],
+      dimensions: [],
+      metrics: [],
+      relations: [],
+      insights: [],
     });
   });
 };
@@ -28,38 +35,65 @@ describe('useLibraryData', () => {
     resetStore();
   });
 
-  test('always exposes the four built-in Insert primitives', () => {
+  test('partitions the store into layoutItems and dataLayer groups', () => {
     const { result } = renderHook(() => useLibraryData());
-    const ids = result.current.insert.map((r) => r.id);
-    expect(ids).toEqual([
-      'insert:dashboard',
-      'insert:row',
-      'insert:item',
-      'insert:markdown',
+    expect(Object.keys(result.current.layoutItems).sort()).toEqual([
+      'chart',
+      'input',
+      'markdown',
+      'table',
     ]);
-    result.current.insert.forEach((r) => {
-      expect(r.type).toBe('insert');
-      expect(r.subtype).toBeTruthy();
-    });
+    expect(Object.keys(result.current.dataLayer).sort()).toEqual([
+      'dimension',
+      'insight',
+      'metric',
+      'model',
+      'relation',
+      'source',
+    ]);
   });
 
-  test('maps charts and insights into rows with stable ids', () => {
+  test('maps the four Layout-Item collections into typed rows with stable ids', () => {
     act(() => {
       useStore.setState({
         charts: [{ name: 'waterfall', status: 'published' }],
+        tables: [{ name: 'revenue_rows', status: 'new' }],
+        markdowns: [{ name: 'notes', status: 'modified' }],
+        inputs: [{ name: 'date_range', status: 'published' }],
+      });
+    });
+    const { result } = renderHook(() => useLibraryData());
+    expect(result.current.layoutItems.chart).toEqual([
+      { id: 'chart:waterfall', type: 'chart', name: 'waterfall', status: 'published' },
+    ]);
+    expect(result.current.layoutItems.table).toEqual([
+      { id: 'table:revenue_rows', type: 'table', name: 'revenue_rows', status: 'new' },
+    ]);
+    expect(result.current.layoutItems.markdown[0].type).toBe('markdown');
+    expect(result.current.layoutItems.input[0].type).toBe('input');
+  });
+
+  test('maps the data-layer collections into typed rows', () => {
+    act(() => {
+      useStore.setState({
+        dimensions: [{ name: 'period' }],
+        metrics: [{ name: 'revenue' }],
+        relations: [{ name: 'customers_orders' }],
         insights: [{ name: 'revenue_growth', status: 'new' }],
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    expect(result.current.charts).toEqual([
-      { id: 'chart:waterfall', type: 'chart', name: 'waterfall', status: 'published' },
+    expect(result.current.dataLayer.dimension).toEqual([
+      { id: 'dimension:period', type: 'dimension', name: 'period', status: null },
     ]);
-    expect(result.current.insights).toEqual([
+    expect(result.current.dataLayer.metric[0].type).toBe('metric');
+    expect(result.current.dataLayer.relation[0].type).toBe('relation');
+    expect(result.current.dataLayer.insight).toEqual([
       { id: 'insight:revenue_growth', type: 'insight', name: 'revenue_growth', status: 'new' },
     ]);
   });
 
-  test('models row is the union of sql / csv-script / local-merge models', () => {
+  test('model is the union of sql / csv-script / local-merge models', () => {
     act(() => {
       useStore.setState({
         models: [{ name: 'monthly_revenue', status: 'published' }],
@@ -68,20 +102,21 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    expect(result.current.models).toHaveLength(3);
-    expect(result.current.models.map((m) => m.subtype)).toEqual([
+    expect(result.current.dataLayer.model).toHaveLength(3);
+    expect(result.current.dataLayer.model.map(m => m.subtype)).toEqual([
       'sql_model',
       'csv_script_model',
       'local_merge_model',
     ]);
-    expect(result.current.models.map((m) => m.name)).toEqual([
+    expect(result.current.dataLayer.model.map(m => m.name)).toEqual([
       'monthly_revenue',
       'fibonacci_seed',
       'daily_join',
     ]);
+    expect(result.current.dataLayer.model.every(m => m.type === 'model')).toBe(true);
   });
 
-  test('sources expose the underlying source subtype', () => {
+  test('sources expose the underlying source subtype + status passthrough', () => {
     act(() => {
       useStore.setState({
         sources: [
@@ -91,7 +126,7 @@ describe('useLibraryData', () => {
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    expect(result.current.sources).toEqual([
+    expect(result.current.dataLayer.source).toEqual([
       {
         id: 'source:local-duck',
         type: 'source',
@@ -99,13 +134,7 @@ describe('useLibraryData', () => {
         subtype: 'duckdb',
         status: 'published',
       },
-      {
-        id: 'source:pg',
-        type: 'source',
-        name: 'pg',
-        subtype: 'postgresql',
-        status: null,
-      },
+      { id: 'source:pg', type: 'source', name: 'pg', subtype: 'postgresql', status: null },
     ]);
   });
 
@@ -113,17 +142,23 @@ describe('useLibraryData', () => {
     act(() => {
       useStore.setState({
         charts: undefined,
-        insights: undefined,
+        tables: undefined,
+        markdowns: undefined,
+        inputs: undefined,
+        sources: undefined,
         models: undefined,
         csvScriptModels: undefined,
         localMergeModels: undefined,
-        sources: undefined,
+        dimensions: undefined,
+        metrics: undefined,
+        relations: undefined,
+        insights: undefined,
       });
     });
     const { result } = renderHook(() => useLibraryData());
-    expect(result.current.charts).toEqual([]);
-    expect(result.current.insights).toEqual([]);
-    expect(result.current.models).toEqual([]);
-    expect(result.current.sources).toEqual([]);
+    expect(result.current.layoutItems.chart).toEqual([]);
+    expect(result.current.layoutItems.table).toEqual([]);
+    expect(result.current.dataLayer.model).toEqual([]);
+    expect(result.current.dataLayer.insight).toEqual([]);
   });
 });

@@ -1,33 +1,38 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { PiCaretDown, PiPlus } from 'react-icons/pi';
+import React, { useCallback, useMemo, useState } from 'react';
+import { PiCaretDown } from 'react-icons/pi';
 import LibrarySearch from './LibrarySearch';
-import LibraryScopeChips from './LibraryScopeChips';
-import LibraryRow from './LibraryRow';
+import LibraryFilterChips from './LibraryFilterChips';
+import LibrarySubsection from './LibrarySubsection';
 import useLibraryFilter from './useLibraryFilter';
 
 /**
  * LibrarySection — VIS-769 / Track C C1.
  *
- * One collapsible section in the Library rail (Insert · Charts · Insights ·
- * Models · Sources). Each section gets:
+ * One of the two stacked sections in the Library rail (Layout Items or
+ * Data Layer). Mirrors the `Section` function in the C-1 `library.jsx`
+ * blueprint. Each section gets:
  *
- *   - a header with caret + uppercase label + count badge (header itself
- *     toggles the collapse),
- *   - a search input + scope chips (rendered only when expanded),
- *   - the body of rows (rendered only when expanded),
- *   - an optional "+ New X" CTA (one per droppable section).
+ *   - A header bar (caret + UPPERCASE title + `(count)` + right-aligned
+ *     subtitle). The header toggles the section's collapse.
+ *   - A toolbar block — a search input (`<LibrarySearch>`) + a type-filter
+ *     chip row (`<LibraryFilterChips>`).
+ *   - A list of per-type `<LibrarySubsection>` groups, one per type the
+ *     section owns.
  *
- * Collapse state persists per-section in localStorage under
- * `library:section-collapsed:<key>` (per VIS-773). The initial render uses
- * the persisted value (or `false` when no entry exists).
+ * Filtering rules:
+ *   - When a filter chip is active, every non-matching subsection is hidden.
+ *   - When the search is non-empty, rows are filtered by name and any
+ *     subsection left with zero matches is hidden.
+ *
+ * Section-level collapse persists per-section in localStorage under
+ * `library:section-collapsed:<key>` (per VIS-773).
  */
 const STORAGE_PREFIX = 'library:section-collapsed:';
 
 function readPersistedCollapsed(key) {
   if (typeof window === 'undefined' || !window.localStorage) return false;
   try {
-    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}${key}`);
-    return raw === '1';
+    return window.localStorage.getItem(`${STORAGE_PREFIX}${key}`) === '1';
   } catch {
     return false;
   }
@@ -42,98 +47,49 @@ function writePersistedCollapsed(key, collapsed) {
       window.localStorage.removeItem(`${STORAGE_PREFIX}${key}`);
     }
   } catch {
-    // Ignore quota errors etc. — collapsing the section is non-critical.
+    // Ignore quota errors — collapsing the section is non-critical.
   }
 }
 
 const LibrarySection = ({
   sectionKey,
-  label,
-  hint,
-  rows = [],
-  scope = 'root',
+  title,
+  subtitle,
+  // The type keys this section owns, in display order.
+  types = [],
+  // Map of typeKey -> row[] for every type the section owns.
+  rowsByType = {},
   selectedRowId = null,
-  emptyText,
-  showSearch = true,
-  showScopeChips = true,
-  showCreate = false,
-  createLabel,
   onRowClick,
-  onCreate,
   onContextAction,
+  onCreate,
   initialCollapsed,
-  // Whether rows in this section are draggable. The Insert section is
-  // droppable + draggable (4 layout primitives), Charts/Insights are
-  // draggable, Models/Sources are click-to-edit only per the design.
-  draggable = false,
-  // Hooks for the parent to read child state in tests / Workspace store.
-  searchValue,
-  onSearchChange,
-  scopeChip = 'all',
-  onScopeChipChange,
-  // Compatibility chip is only enabled when a typed slot is selected.
-  hasSelectedSlot = false,
 }) => {
-  const [collapsedState, setCollapsedState] = useState(() => {
+  const [collapsed, setCollapsed] = useState(() => {
     if (typeof initialCollapsed === 'boolean') return initialCollapsed;
     return readPersistedCollapsed(sectionKey);
   });
-
-  const [localSearch, setLocalSearch] = useState(searchValue || '');
-  const [localScope, setLocalScope] = useState(scopeChip || 'all');
-
-  // Sync from parent if it controls these (we accept both controlled and
-  // uncontrolled patterns to keep the LibrarySection self-contained).
-  useEffect(() => {
-    if (typeof searchValue === 'string' && searchValue !== localSearch) {
-      setLocalSearch(searchValue);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue]);
-
-  useEffect(() => {
-    if (scopeChip && scopeChip !== localScope) {
-      setLocalScope(scopeChip);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeChip]);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState(null);
 
   const handleToggleCollapsed = useCallback(() => {
-    setCollapsedState((prev) => {
+    setCollapsed(prev => {
       const next = !prev;
       writePersistedCollapsed(sectionKey, next);
       return next;
     });
   }, [sectionKey]);
 
-  const handleSearchChange = useCallback(
-    (next) => {
-      setLocalSearch(next);
-      if (onSearchChange) onSearchChange(next);
-    },
-    [onSearchChange]
+  // Flat list of every row across the section's types — used both for the
+  // header count and as the input to the search/type-filter.
+  const allRows = useMemo(
+    () => types.flatMap(t => rowsByType[t] || []),
+    [types, rowsByType]
   );
 
-  const handleScopeChange = useCallback(
-    (next) => {
-      setLocalScope(next);
-      if (onScopeChipChange) onScopeChipChange(next);
-    },
-    [onScopeChipChange]
-  );
-
-  // Apply the filter logic (search + scope chip).
-  const filteredRows = useLibraryFilter({
-    rows,
-    search: localSearch,
-    scopeChip: localScope,
-    scope,
-    usedNames: [],
-    compatibleTypes: [],
-  });
-
-  const count = rows.length;
-  const collapsed = collapsedState;
+  // Apply search + type-filter across the whole section at once.
+  const filteredRows = useLibraryFilter({ rows: allRows, search, typeFilter });
+  const searchActive = search.trim().length > 0;
 
   return (
     <section
@@ -159,80 +115,53 @@ const LibrarySection = ({
           }`}
         />
         <h2 className="text-[12px] font-semibold uppercase tracking-wider text-gray-700">
-          {label}
+          {title}
         </h2>
         <span
           className="text-[11px] text-gray-400"
           data-testid={`library-section-${sectionKey}-count`}
         >
-          ({count})
+          ({allRows.length})
         </span>
-        {!collapsed && hint && (
-          <span className="ml-auto text-[10px] text-gray-400">{hint}</span>
+        {!collapsed && subtitle && (
+          <span className="ml-auto text-[10px] text-gray-400">{subtitle}</span>
         )}
       </button>
 
       {!collapsed && (
-        <div
-          id={`library-section-${sectionKey}-body`}
-          data-testid={`library-section-${sectionKey}-body`}
-        >
-          {(showSearch || showScopeChips) && (
-            <div className="flex flex-col gap-1.5 px-3 py-2">
-              {showSearch && (
-                <LibrarySearch
-                  sectionKey={sectionKey}
-                  value={localSearch}
-                  onChange={handleSearchChange}
+        <div id={`library-section-${sectionKey}-body`} data-testid={`library-section-${sectionKey}-body`}>
+          {/* Section toolbar — search + type-filter chips. */}
+          <div className="flex flex-col gap-1.5 px-3 py-2">
+            <LibrarySearch sectionKey={sectionKey} value={search} onChange={setSearch} />
+            <LibraryFilterChips
+              sectionKey={sectionKey}
+              types={types}
+              value={typeFilter}
+              onChange={setTypeFilter}
+            />
+          </div>
+
+          {/* Per-type subsections. */}
+          <div className="flex flex-1 flex-col gap-1 px-1.5 pb-2">
+            {types.map(typeKey => {
+              // Hide entirely when a filter chip is set and this isn't it.
+              if (typeFilter && typeFilter !== typeKey) return null;
+              const rows = filteredRows.filter(r => r.type === typeKey);
+              // When a search is active and the subsection has no matches,
+              // hide it to keep the rail uncluttered.
+              if (searchActive && rows.length === 0) return null;
+              return (
+                <LibrarySubsection
+                  key={typeKey}
+                  typeKey={typeKey}
+                  rows={rows}
+                  selectedRowId={selectedRowId}
+                  onRowClick={onRowClick}
+                  onContextAction={onContextAction}
+                  onCreate={onCreate}
                 />
-              )}
-              {showScopeChips && (
-                <LibraryScopeChips
-                  sectionKey={sectionKey}
-                  value={localScope}
-                  onChange={handleScopeChange}
-                  scope={scope}
-                  hasSelectedSlot={hasSelectedSlot}
-                />
-              )}
-            </div>
-          )}
-          <div className="flex flex-col gap-px px-1.5 pb-2">
-            {filteredRows.length === 0 ? (
-              <p
-                className="px-3 py-1.5 text-[11px] italic text-gray-400"
-                data-testid={`library-section-${sectionKey}-empty`}
-              >
-                {emptyText || `No ${label.toLowerCase()} yet`}
-              </p>
-            ) : (
-              <ul
-                className="flex flex-col gap-px"
-                data-testid={`library-section-${sectionKey}-rows`}
-              >
-                {filteredRows.map((obj) => (
-                  <li key={obj.id} className="relative">
-                    <LibraryRow
-                      obj={obj}
-                      selected={selectedRowId === obj.id}
-                      draggable={draggable}
-                      onClick={onRowClick}
-                      onContextAction={onContextAction}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-            {showCreate && (
-              <button
-                type="button"
-                onClick={onCreate}
-                data-testid={`library-section-${sectionKey}-create`}
-                className="mt-0.5 inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-[#713b57] hover:bg-[#e2d7dd]/40"
-              >
-                <PiPlus className="h-3 w-3" /> New {createLabel}
-              </button>
-            )}
+              );
+            })}
           </div>
         </div>
       )}

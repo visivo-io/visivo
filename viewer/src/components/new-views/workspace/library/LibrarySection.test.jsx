@@ -2,136 +2,126 @@
  * LibrarySection behaviour (VIS-769 + VIS-773 / Track C C1 + C2).
  *
  * Covers:
- *   - 5-section / row rendering
- *   - count badge
- *   - empty-state placeholder
- *   - collapse toggle + localStorage persistence
- *   - "+ New X" CTA delegates onCreate
+ *   - section header (UPPERCASE title + total count across all types)
+ *   - per-type subsections rendering in order
+ *   - search filters rows and hides empty subsections
+ *   - type-filter chip hides non-matching subsections
+ *   - section-level collapse toggle + localStorage persistence
  */
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import LibrarySection from './LibrarySection';
-import { STORAGE_PREFIX } from './LibrarySection';
+import LibrarySection, { STORAGE_PREFIX } from './LibrarySection';
 
-const withDnd = (ui) => <DndContext>{ui}</DndContext>;
+const withDnd = ui => <DndContext>{ui}</DndContext>;
 
-const ROWS = [
-  { id: 'chart:waterfall', type: 'chart', name: 'waterfall' },
-  { id: 'chart:fib', type: 'chart', name: 'fibonacci_growth' },
-];
+const LAYOUT_TYPES = ['chart', 'table', 'markdown', 'input'];
+
+const ROWS_BY_TYPE = {
+  chart: [
+    { id: 'chart:waterfall', type: 'chart', name: 'waterfall' },
+    { id: 'chart:fib', type: 'chart', name: 'fibonacci_growth' },
+  ],
+  table: [{ id: 'table:revenue', type: 'table', name: 'revenue_rows' }],
+  markdown: [{ id: 'markdown:notes', type: 'markdown', name: 'project_notes' }],
+  input: [],
+};
+
+const renderSection = (props = {}) =>
+  render(
+    withDnd(
+      <LibrarySection
+        sectionKey="layout"
+        title="Layout Items"
+        subtitle="Drag onto the canvas"
+        types={LAYOUT_TYPES}
+        rowsByType={ROWS_BY_TYPE}
+        {...props}
+      />
+    )
+  );
 
 describe('LibrarySection', () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  test('renders header + rows + count', () => {
-    render(
-      withDnd(
-        <LibrarySection
-          sectionKey="charts"
-          label="Charts"
-          rows={ROWS}
-          draggable
-          showCreate
-          createLabel="Chart"
-        />
-      )
-    );
-    expect(screen.getByTestId('library-section-charts')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-charts-count')).toHaveTextContent('(2)');
-    expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
-    expect(screen.getByTestId('library-row-chart-fibonacci_growth')).toBeInTheDocument();
-    expect(screen.getByTestId('library-section-charts-create')).toHaveTextContent('New Chart');
-  });
-
-  test('renders the empty placeholder when no rows present', () => {
-    render(
-      withDnd(
-        <LibrarySection
-          sectionKey="models"
-          label="Models"
-          rows={[]}
-          emptyText="No models yet"
-        />
-      )
-    );
-    expect(screen.getByTestId('library-section-models-empty')).toHaveTextContent(
-      'No models yet'
+  test('renders the section header with the total count across every type', () => {
+    renderSection();
+    expect(screen.getByTestId('library-section-layout')).toBeInTheDocument();
+    // 2 charts + 1 table + 1 markdown + 0 inputs = 4.
+    expect(screen.getByTestId('library-section-layout-count')).toHaveTextContent('(4)');
+    expect(screen.getByTestId('library-section-layout-header')).toHaveTextContent(
+      'Layout Items'
     );
   });
 
-  test('toggles collapsed state on header click and persists to localStorage', () => {
-    render(
-      withDnd(<LibrarySection sectionKey="charts" label="Charts" rows={ROWS} />)
-    );
-    const header = screen.getByTestId('library-section-charts-header');
-    const section = screen.getByTestId('library-section-charts');
-    expect(section).toHaveAttribute('data-collapsed', 'false');
-    expect(screen.getByTestId('library-section-charts-body')).toBeInTheDocument();
-
-    fireEvent.click(header);
-    expect(section).toHaveAttribute('data-collapsed', 'true');
-    expect(screen.queryByTestId('library-section-charts-body')).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}charts`)).toBe('1');
-
-    fireEvent.click(header);
-    expect(section).toHaveAttribute('data-collapsed', 'false');
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}charts`)).toBeNull();
+  test('renders one subsection per type in declaration order', () => {
+    renderSection();
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-markdown')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-input')).toBeInTheDocument();
   });
 
-  test('reads persisted collapse state on mount', () => {
-    window.localStorage.setItem(`${STORAGE_PREFIX}charts`, '1');
-    render(
-      withDnd(<LibrarySection sectionKey="charts" label="Charts" rows={ROWS} />)
-    );
-    expect(screen.getByTestId('library-section-charts')).toHaveAttribute(
-      'data-collapsed',
-      'true'
-    );
+  test('renders the search input and the type-filter chip row', () => {
+    renderSection();
+    expect(screen.getByTestId('library-search-layout')).toBeInTheDocument();
+    expect(screen.getByTestId('library-filter-chips-layout')).toBeInTheDocument();
   });
 
-  test('"+ New X" button fires onCreate', () => {
-    const onCreate = jest.fn();
-    render(
-      withDnd(
-        <LibrarySection
-          sectionKey="charts"
-          label="Charts"
-          rows={ROWS}
-          showCreate
-          createLabel="Chart"
-          onCreate={onCreate}
-        />
-      )
-    );
-    fireEvent.click(screen.getByTestId('library-section-charts-create'));
-    expect(onCreate).toHaveBeenCalledTimes(1);
+  test('an active type-filter chip hides every non-matching subsection', () => {
+    renderSection();
+    fireEvent.click(screen.getByTestId('library-filter-chip-layout-chart'));
+    expect(screen.getByTestId('library-subsection-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
   });
 
-  test('filters rows via the search input', () => {
+  test('search filters rows and hides subsections with no matches', () => {
     jest.useFakeTimers();
     try {
-      render(
-        withDnd(
-          <LibrarySection
-            sectionKey="charts"
-            label="Charts"
-            rows={ROWS}
-            draggable
-          />
-        )
-      );
-      const input = screen.getByTestId('library-search-charts');
-      fireEvent.change(input, { target: { value: 'fib' } });
+      renderSection();
+      fireEvent.change(screen.getByTestId('library-search-layout'), {
+        target: { value: 'fib' },
+      });
       act(() => {
         jest.advanceTimersByTime(200);
       });
-      expect(screen.queryByTestId('library-row-chart-waterfall')).not.toBeInTheDocument();
+      // The chart subsection keeps the matching row.
       expect(screen.getByTestId('library-row-chart-fibonacci_growth')).toBeInTheDocument();
+      expect(screen.queryByTestId('library-row-chart-waterfall')).not.toBeInTheDocument();
+      // Subsections with no match drop out entirely.
+      expect(screen.queryByTestId('library-subsection-table')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  test('toggles collapse on header click and persists to localStorage', () => {
+    renderSection();
+    const header = screen.getByTestId('library-section-layout-header');
+    const section = screen.getByTestId('library-section-layout');
+    expect(section).toHaveAttribute('data-collapsed', 'false');
+    expect(screen.getByTestId('library-section-layout-body')).toBeInTheDocument();
+
+    fireEvent.click(header);
+    expect(section).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.queryByTestId('library-section-layout-body')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(`${STORAGE_PREFIX}layout`)).toBe('1');
+
+    fireEvent.click(header);
+    expect(section).toHaveAttribute('data-collapsed', 'false');
+    expect(window.localStorage.getItem(`${STORAGE_PREFIX}layout`)).toBeNull();
+  });
+
+  test('reads persisted collapse state on mount', () => {
+    window.localStorage.setItem(`${STORAGE_PREFIX}layout`, '1');
+    renderSection();
+    expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
+      'data-collapsed',
+      'true'
+    );
   });
 });

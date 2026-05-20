@@ -30,13 +30,15 @@ describe('LibraryDragPreview', () => {
     expect(pill).toHaveTextContent('Chart');
   });
 
-  test('uses the subtype label for an insert primitive', () => {
-    render(
-      <LibraryDragPreview
-        data={{ source: 'library', type: 'insert', subtype: 'row', name: 'Row' }}
-      />
+  test('renders the type label for each Layout-Items type', () => {
+    const { rerender } = render(
+      <LibraryDragPreview data={{ source: 'library', type: 'markdown', name: 'notes' }} />
     );
-    const pill = screen.getByTestId('library-drag-preview');
-    expect(pill).toHaveTextContent('Row');
+    expect(screen.getByTestId('library-drag-preview')).toHaveTextContent('Markdown');
+
+    rerender(
+      <LibraryDragPreview data={{ source: 'library', type: 'input', name: 'date_range' }} />
+    );
+    expect(screen.getByTestId('library-drag-preview')).toHaveTextContent('Input');
   });
 });

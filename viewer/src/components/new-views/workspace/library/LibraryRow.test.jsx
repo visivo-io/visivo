@@ -12,7 +12,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import LibraryRow from './LibraryRow';
+import LibraryRow, { TYPE } from './LibraryRow';
 
 const withDnd = (ui) => <DndContext>{ui}</DndContext>;
 
@@ -25,6 +25,17 @@ const INSIGHT = {
 const MODEL = { id: 'model:monthly_revenue', type: 'model', name: 'monthly_revenue' };
 
 describe('LibraryRow', () => {
+  test('the TYPE map covers every C-1 leaf type with an icon + droppable flag', () => {
+    ['chart', 'table', 'markdown', 'input'].forEach((t) => {
+      expect(TYPE[t]).toBeTruthy();
+      expect(TYPE[t].droppable).toBe(true);
+    });
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach((t) => {
+      expect(TYPE[t]).toBeTruthy();
+      expect(TYPE[t].droppable).toBe(false);
+    });
+  });
+
   test('renders the type icon and name and forwards click', () => {
     const onClick = jest.fn();
     render(withDnd(<LibraryRow obj={CHART} onClick={onClick} />));

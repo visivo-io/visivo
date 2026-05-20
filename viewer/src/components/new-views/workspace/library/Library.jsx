@@ -2,54 +2,60 @@ import React, { useCallback } from 'react';
 import { PiSidebar } from 'react-icons/pi';
 import LibrarySection from './LibrarySection';
 import useLibraryData from './useLibraryData';
-import { useWorkspaceScope } from '../useWorkspaceScope';
+import { LAYOUT_TYPES, DATA_TYPES } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { emitWorkspaceEvent } from '../telemetry';
 
 /**
- * Library — VIS-769 / Track C C1.
+ * Library — VIS-769 / Track C C1 (+ C2 / C3).
  *
- * The Library left rail: five sections (Insert · Charts · Insights · Models ·
- * Sources) that replace the legacy `/editor` flat list. Each section has a
- * collapsible header, a debounced search input, scope chips (All · Used here
- * · Compatible), and a list of rows. Charts / Insights are drag-source
- * eligible (handled by Track D's drop targets); Models / Sources are click-to-
- * edit only per the design.
+ * The Library left rail. Ports the C-1 `library.jsx` blueprint into
+ * production React: two stacked, independently-collapsible sections that
+ * replace the legacy `/editor` flat list.
+ *
+ *   - Layout Items — canvas-droppable types (Charts · Tables · Markdowns ·
+ *                    Inputs). Subtitle "Drag onto the canvas".
+ *   - Data Layer   — click-to-edit types (Sources · Models · Dimensions ·
+ *                    Metrics · Relations · Insights). Subtitle
+ *                    "Click to edit".
+ *
+ * Each section carries a search input + a type-filter chip row, and groups
+ * its objects into per-type collapsible subsections. Layout-Items rows are
+ * dnd-kit drag sources; Data-Layer rows are click-to-edit only.
  *
  * The single-PR Library bundles C1 + C2 + C3:
- *   - C1 (VIS-769) — shell + sections + rows.
- *   - C2 (VIS-773) — search + scope chips + persisted collapse.
+ *   - C1 (VIS-769) — shell + sections + per-type subsections + rows.
+ *   - C2 (VIS-773) — per-section search + type-filter chips + persisted
+ *                    section / subsection collapse.
  *   - C3 (VIS-776) — drag sources + LibraryRowFlipPopover.
  *
  * Selection (which row binds the Edit panel) is wired into the workspace
  * store via `openWorkspaceTab` — clicking a row opens (or focuses) a tab
  * for the object. Track G wires the actual Edit form into the right rail.
  *
- * "+ New X" CTAs delegate to each store's `openCreateModal()` action. The
- * inline_create_used telemetry event fires only from this rail per the C3
- * scope (other entry points are out of scope until VIS-N1 / VIS-G1).
+ * "+ New X" CTAs (droppable subsections only) delegate to each store's
+ * per-type `openCreate*Modal()` action. The `inline_create_used` telemetry
+ * event fires only from this rail per the C3 scope.
+ *
+ * The drag-preview pill itself is rendered by the workspace `<DragOverlay>`
+ * via `<LibraryDragPreview>` — see Track D for the `<DndContext>` wiring.
  */
 const Library = ({ onCollapse }) => {
   const data = useLibraryData();
-  const scope = useWorkspaceScope();
 
-  // Workspace actions — open or focus a tab for the clicked row.
-  const openWorkspaceTab = useStore((s) => s.openWorkspaceTab);
+  // Workspace action — open or focus a tab for the clicked row.
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
 
-  // Create-modal openers (per-type). Each store registers its own opener
-  // with a slightly different name; we wire them all here so the Library
-  // doesn't need to know the per-store naming convention.
-  const openCreateSourceModal = useStore((s) => s.openCreateModal);
-  const openCreateModelModal = useStore((s) => s.openCreateModelModal);
-  const openCreateChartModal = useStore((s) => s.openCreateChartModal);
-  const openCreateInsightModal = useStore((s) => s.openCreateInsightModal);
+  // Create-modal openers (per-type). Each store registers its own opener;
+  // we wire the four droppable Layout types here since only those expose a
+  // "+ New X" button in the rail.
+  const openCreateChartModal = useStore(s => s.openCreateChartModal);
+  const openCreateTableModal = useStore(s => s.openCreateTableModal);
+  const openCreateMarkdownModal = useStore(s => s.openCreateMarkdownModal);
+  const openCreateInputModal = useStore(s => s.openCreateInputModal);
 
   const handleRowClick = useCallback(
-    (obj) => {
-      // Insert primitives don't open a tab — they're drag-only on the
-      // canvas; clicking them is a no-op.
-      if (obj.type === 'insert') return;
-
+    obj => {
       if (openWorkspaceTab) {
         openWorkspaceTab({
           id: `${obj.type}:${obj.name}`,
@@ -75,31 +81,26 @@ const Library = ({ onCollapse }) => {
   }, []);
 
   const handleCreate = useCallback(
-    (kind) => {
-      emitWorkspaceEvent('inline_create_used', { source: 'library', kind });
-      switch (kind) {
+    typeKey => {
+      emitWorkspaceEvent('inline_create_used', { source: 'library', kind: typeKey });
+      switch (typeKey) {
         case 'chart':
           if (openCreateChartModal) openCreateChartModal();
           break;
-        case 'insight':
-          if (openCreateInsightModal) openCreateInsightModal();
+        case 'table':
+          if (openCreateTableModal) openCreateTableModal();
           break;
-        case 'model':
-          if (openCreateModelModal) openCreateModelModal();
+        case 'markdown':
+          if (openCreateMarkdownModal) openCreateMarkdownModal();
           break;
-        case 'source':
-          if (openCreateSourceModal) openCreateSourceModal();
+        case 'input':
+          if (openCreateInputModal) openCreateInputModal();
           break;
         default:
           break;
       }
     },
-    [
-      openCreateChartModal,
-      openCreateInsightModal,
-      openCreateModelModal,
-      openCreateSourceModal,
-    ]
+    [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
   );
 
   return (
@@ -127,75 +128,28 @@ const Library = ({ onCollapse }) => {
 
       <div className="flex flex-1 flex-col overflow-y-auto">
         <LibrarySection
-          sectionKey="insert"
-          label="Insert"
-          hint="Drag onto the canvas"
-          rows={data.insert}
-          scope={scope.scope}
-          draggable
-          showCreate={false}
-          showScopeChips={false}
-          emptyText="No layout primitives configured"
+          sectionKey="layout"
+          title="Layout Items"
+          subtitle="Drag onto the canvas"
+          types={LAYOUT_TYPES}
+          rowsByType={data.layoutItems}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
+          onCreate={handleCreate}
         />
         <LibrarySection
-          sectionKey="charts"
-          label="Charts"
-          hint="Drag onto the canvas"
-          rows={data.charts}
-          scope={scope.scope}
-          draggable
-          showCreate
-          createLabel="Chart"
-          emptyText="No charts yet"
+          sectionKey="data"
+          title="Data Layer"
+          subtitle="Click to edit"
+          types={DATA_TYPES}
+          rowsByType={data.dataLayer}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
-          onCreate={() => handleCreate('chart')}
-        />
-        <LibrarySection
-          sectionKey="insights"
-          label="Insights"
-          rows={data.insights}
-          scope={scope.scope}
-          draggable
-          showCreate
-          createLabel="Insight"
-          emptyText="No insights yet"
-          onRowClick={handleRowClick}
-          onContextAction={handleContextAction}
-          onCreate={() => handleCreate('insight')}
-        />
-        <LibrarySection
-          sectionKey="models"
-          label="Models"
-          rows={data.models}
-          scope={scope.scope}
-          draggable={false}
-          showCreate
-          createLabel="Model"
-          emptyText="No models yet"
-          onRowClick={handleRowClick}
-          onContextAction={handleContextAction}
-          onCreate={() => handleCreate('model')}
-        />
-        <LibrarySection
-          sectionKey="sources"
-          label="Sources"
-          rows={data.sources}
-          scope={scope.scope}
-          draggable={false}
-          showCreate
-          createLabel="Source"
-          emptyText="No sources yet"
-          onRowClick={handleRowClick}
-          onContextAction={handleContextAction}
-          onCreate={() => handleCreate('source')}
         />
       </div>
 
       <div className="shrink-0 border-t border-gray-200 px-3 py-2 text-[11px] text-gray-400">
-        Drag any item onto the canvas or onto the Edit panel.
+        Drag a layout item onto the canvas. Click a data object to edit it.
       </div>
     </aside>
   );
