@@ -140,6 +140,66 @@ class TestIdentifyColumnReferences:
         assert '"model_abc"."amount"' in result
 
 
+class TestIdentifyColumnReferencesB09SnowflakeQuotedCase:
+    """B09: Snowflake user-quoted identifier case must survive qualification.
+
+    Lightdash and dbt projects often emit SQL with quoted-lowercase aliases
+    (`AS "fact_order_x"`). The visivo qualifier used to uppercase every
+    identifier on Snowflake, breaking outer-SELECT / ORDER-BY references that
+    appear elsewhere in the user's model. Identifiers the user wrote as
+    explicitly quoted should keep their original case.
+    """
+
+    def test_unquoted_identifier_uppercases_on_snowflake(self):
+        """Regression: unquoted identifiers should still be uppercased so
+        Snowflake (which auto-uppercases unquoted refs) finds them."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"AMOUNT": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="amount",
+            dialect="snowflake",
+        )
+        # Output is uppercase quoted: "MODEL_ABC"."AMOUNT"
+        assert '"MODEL_ABC"' in result
+        assert '"AMOUNT"' in result
+
+    def test_user_quoted_lowercase_preserved_on_snowflake(self):
+        """B09: a user-supplied "lowercase_alias" should NOT be flipped to
+        upper-case when Snowflake is the target dialect."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"fact_order_x": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql='"fact_order_x"',
+            dialect="snowflake",
+        )
+        # The quoted-lowercase identifier must round-trip as lowercase.
+        assert '"fact_order_x"' in result
+        # And it must NOT have been uppercased.
+        assert '"FACT_ORDER_X"' not in result
+
+    def test_other_dialects_unaffected(self):
+        """Postgres has separate case rules; this fix is Snowflake-only and
+        shouldn't change postgres output."""
+        model_hash = "model_abc"
+        model_schema = {model_hash: {"my_col": "INT"}}
+
+        result = identify_column_references(
+            model_hash=model_hash,
+            model_schema=model_schema,
+            expr_sql="my_col",
+            dialect="postgresql",
+        )
+        # Postgres preserves lowercase from the schema and produces quoted.
+        assert '"model_abc"' in result
+        assert '"my_col"' in result
+
+
 class TestClassifyStatement:
     """Tests for the classify_statement function."""
 
