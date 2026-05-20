@@ -5,7 +5,6 @@ import json
 import os
 import shutil
 from pathlib import Path
-from git import Repo
 from visivo.command_line import load_env
 from visivo.logger.logger import Logger
 from visivo.models.include import Include
@@ -63,25 +62,46 @@ def create_basic_project(project_name: str, project_dir: str = "."):
     return project_file_path
 
 
+# Sample directory names match what the design + viewer surface as sample
+# names (data-testid="onb-sample-<key>"). Each lives under
+# visivo/templates/samples/<key>/ in the package and is bundled into the
+# wheel so onboarding works offline and the YAML always matches the
+# current Project schema. These are exercised in tests/templates/
+# test_samples.py to catch schema drift.
+SAMPLE_DIR_MAP = {
+    ExampleTypeEnum.github_releases: "github-releases",
+    ExampleTypeEnum.ev_sales: "ev-sales",
+    ExampleTypeEnum.college_football: "college-football",
+}
+
+
+def _bundled_samples_root() -> Path:
+    """Path to the bundled samples directory inside the visivo package."""
+    return Path(__file__).resolve().parent.parent / "templates" / "samples"
+
+
 def load_example_project(
     project_name: str, example_type: str = ExampleTypeEnum.github_releases, project_dir: str = "."
 ):
-    """Load example project from GitHub repository."""
-    GIT_TEMP_DIR = "tempgit"
+    """Copy a bundled example project into project_dir.
 
-    # Map example type to actual repo name
-    repo_name_map = {
-        ExampleTypeEnum.github_releases: "github-releases",
-        ExampleTypeEnum.ev_sales: "ev-sales",
-        ExampleTypeEnum.college_football: "2024-college-football-dashboards",
-    }
+    The samples ship with the visivo package so the flow works offline
+    and never falls out of sync with the Project schema (an external
+    git repo with stale YAML used to crash onboarding). See
+    visivo/templates/samples/.
+    """
+    sample_dir_name = SAMPLE_DIR_MAP.get(example_type, example_type)
+    src_root = _bundled_samples_root() / sample_dir_name
+    if not src_root.exists():
+        raise FileNotFoundError(
+            f"Bundled sample '{sample_dir_name}' not found at {src_root}. "
+            "Did the package get built without the templates/samples directory?"
+        )
 
-    repo_name = repo_name_map.get(example_type, example_type)
-    repo_url = f"https://github.com/visivo-io/{repo_name}.git"
     project_path = Path(project_dir)
+    project_path.mkdir(parents=True, exist_ok=True)
     env_path = project_path / ".env"
     gitignore_path = project_path / ".gitignore"
-    temp_clone_path = project_path / GIT_TEMP_DIR
 
     Logger.instance().info(f"Loading example project '{example_type}' for '{project_name}'")
 
@@ -92,14 +112,10 @@ def load_example_project(
         if env_path.exists():
             shutil.copy(env_path, project_path / ".env.bak")
 
-        # Clean up any existing temp folder and clone
-        if temp_clone_path.exists():
-            shutil.rmtree(temp_clone_path)
-        Repo.clone_from(repo_url, temp_clone_path)
-
-        # Move files from temp into the main project path, skipping .gitignore and .env
-        for item in temp_clone_path.iterdir():
-            if item.name in [".git", ".gitignore", ".env", "README.md", "LICENSE"]:
+        # Copy bundled sample files into the project directory, skipping
+        # bookkeeping files that should stay with the source tree.
+        for item in src_root.iterdir():
+            if item.name in {".git", ".gitignore", ".env", "README.md", "LICENSE"}:
                 continue
             dest = project_path / item.name
             if item.is_dir():
@@ -107,24 +123,21 @@ def load_example_project(
             else:
                 shutil.copy2(item, dest)
 
-        # Remove the temporary directory
-        shutil.rmtree(temp_clone_path)
-
-        # Restore .gitignore and .env if needed
+        # Restore .gitignore and .env if they were present before
         if (project_path / ".gitignore.bak").exists():
             shutil.move(project_path / ".gitignore.bak", gitignore_path)
         if (project_path / ".env.bak").exists():
             shutil.move(project_path / ".env.bak", env_path)
 
-        # If .env doesn't exist, create it with content based on example type
+        # Otherwise drop a starter .env so any env-driven sample wires up.
         if not env_path.exists():
             env_content = get_env_content_for_example_type(example_type)
             with open(env_path, "w") as fp:
                 fp.write(env_content)
-
             load_env(env_path)
 
-        # Update project name in the YAML file
+        # Update project name in the YAML file so the dashboard reflects
+        # the user-facing name they chose, not the canned one.
         discover = Discover(working_dir=project_path, output_dir=None)
 
         from ruamel.yaml import YAML

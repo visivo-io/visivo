@@ -8,6 +8,7 @@ import ObjectList from '../common/ObjectList';
 import ObjectTypeFilter from '../common/ObjectTypeFilter';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
+import { recordOnboardingAction } from '../../onboarding/onboardingState';
 
 /**
  * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
@@ -533,6 +534,9 @@ const EditorNew = () => {
     clearEdit();
     setIsCreating(true);
     setCreateObjectType(objectType);
+    if (objectType === 'dashboard') {
+      recordOnboardingAction('dashboard_editor_opened');
+    }
   }, [clearEdit]);
 
   // Handle panel close

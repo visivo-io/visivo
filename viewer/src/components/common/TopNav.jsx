@@ -54,6 +54,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
             label="Project"
             to={projectRoute}
             tooltip="View your project as it will look deployed"
+            data-onb-target="top-nav-project"
           />
         </div>
         <div className="flex items-center gap-5 sm:gap-8">
@@ -72,6 +73,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
           )}
           <button
             onClick={onDeployClick}
+            data-onb-target="top-nav-deploy"
             className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] cursor-pointer"
           >
             <div className="flex items-center space-x-1">

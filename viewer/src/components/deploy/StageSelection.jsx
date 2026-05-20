@@ -12,6 +12,7 @@ import {
   faExternalLinkAlt,
   faRedo,
 } from '@fortawesome/free-solid-svg-icons';
+import { readOnboardingState, writeOnboardingState } from '../onboarding/onboardingState';
 
 const StageSelection = ({ status }) => {
   const [stages, setStages] = useState([]);
@@ -73,6 +74,11 @@ const StageSelection = ({ status }) => {
           if (data.project_url) {
             const baseUrl = 'https://app.visivo.io';
             setPreviewUrl(new URL(data.project_url, baseUrl).toString());
+          }
+          // Tap for the onboarding "Deploy to share" checklist row.
+          const persisted = readOnboardingState() || {};
+          if (!persisted.deployed_at) {
+            writeOnboardingState({ ...persisted, deployed_at: new Date().toISOString() });
           }
         } else if ([400, 404, 500].includes(data.status)) {
           clearInterval(interval);

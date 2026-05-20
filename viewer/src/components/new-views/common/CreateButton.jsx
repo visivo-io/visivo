@@ -46,6 +46,7 @@ const CreateButton = ({ objectTypes = getEnabledTypes(), onSelect }) => {
       {/* FAB button */}
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
+        data-onb-target="source-create-button"
         className={`
           w-14 h-14 rounded-full
           ${isMenuOpen ? 'bg-gray-600 hover:bg-gray-700' : 'bg-primary-500 hover:bg-primary-600'}

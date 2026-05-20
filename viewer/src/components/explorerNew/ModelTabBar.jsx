@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { PiPlus, PiX } from 'react-icons/pi';
 import useStore from '../../stores/store';
 import { selectModelStatus } from '../../stores/explorerNewStore';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 /**
  * Determine which model names are referenced by insights currently on the chart.
@@ -198,13 +199,17 @@ const ModelTabBar = () => {
       <div
         className="flex items-center px-3 py-1.5 bg-secondary-50 border-b border-secondary-200"
         data-testid="model-tab-bar"
+        data-onb-target="model-tab-bar"
       >
         <span className="text-xs text-secondary-400" data-testid="no-models-message">
           No models
         </span>
         <button
           type="button"
-          onClick={() => createModelTab()}
+          onClick={() => {
+            createModelTab();
+            recordOnboardingAction('model_tab_created');
+          }}
           className="ml-2 p-0.5 text-secondary-400 hover:text-secondary-600 transition-colors"
           title="Add model"
           data-testid="add-model-tab"
@@ -219,6 +224,7 @@ const ModelTabBar = () => {
     <div
       className="flex items-center gap-1 px-2 py-1 bg-secondary-50 border-b border-secondary-200 overflow-x-auto flex-shrink-0"
       data-testid="model-tab-bar"
+      data-onb-target="model-tab-bar"
     >
       {tabs.map((tabName) => (
         <ModelTab
@@ -241,7 +247,10 @@ const ModelTabBar = () => {
 
       <button
         type="button"
-        onClick={() => createModelTab()}
+        onClick={() => {
+          createModelTab();
+          recordOnboardingAction('model_tab_created');
+        }}
         className="p-1 text-secondary-400 hover:text-secondary-600 transition-colors flex-shrink-0"
         title="Add model"
         data-testid="add-model-tab"
