@@ -10,6 +10,7 @@ const SchemaTreeNode = ({
   isLoading,
   onClick,
   onDoubleClick,
+  onContextMenu,
   actions,
   level = 0,
   children,
@@ -26,6 +27,7 @@ const SchemaTreeNode = ({
         style={{ paddingLeft: level * 16 + 8, paddingRight: 8 }}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
         role="treeitem"
         aria-selected={false}
         aria-expanded={isExpandable ? isExpanded : undefined}

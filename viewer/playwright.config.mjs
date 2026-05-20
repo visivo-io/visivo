@@ -1,5 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
+// Sandbox ports default to :3001 (default sandbox) and :3002 (publish sandbox).
+// Parallel worktrees can override via env vars to point at their own sandbox
+// instances without colliding with the user's primary checkout.
+//   VISIVO_SANDBOX_FRONTEND_PORT       — overrides the default sandbox port
+//   VISIVO_PUBLISH_SANDBOX_FRONTEND_PORT — overrides the publish sandbox port
+const SANDBOX_PORT = process.env.VISIVO_SANDBOX_FRONTEND_PORT || '3001';
+const PUBLISH_SANDBOX_PORT =
+  process.env.VISIVO_PUBLISH_SANDBOX_FRONTEND_PORT || '3002';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
@@ -9,7 +18,7 @@ export default defineConfig({
   retries: 2,
   workers: '75%',
   use: {
-    baseURL: 'http://localhost:3001',
+    baseURL: `http://localhost:${SANDBOX_PORT}`,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
@@ -35,7 +44,7 @@ export default defineConfig({
     {
       name: 'publish',
       testMatch: ['**/explorer-publish-to-files.spec.mjs'],
-      use: { baseURL: 'http://localhost:3002' },
+      use: { baseURL: `http://localhost:${PUBLISH_SANDBOX_PORT}` },
       fullyParallel: false,
       workers: 1,
       // Retries would run against polluted backend cache from the failed

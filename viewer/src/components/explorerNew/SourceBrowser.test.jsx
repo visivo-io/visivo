@@ -20,6 +20,7 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
     isLoading,
     onClick,
     onDoubleClick,
+    onContextMenu,
     children,
     errorMessage,
     errorCollapsed,
@@ -33,6 +34,7 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
         data-badge={badge}
         data-error={errorMessage}
         data-error-collapsed={errorCollapsed}
+        onContextMenu={onContextMenu}
       >
         <button data-testid={`click-${type}-${label}`} onClick={onClick}>
           {label}
@@ -60,6 +62,24 @@ jest.mock('./SchemaBrowser/SchemaTreeNode', () => {
     );
   };
   return MockSchemaTreeNode;
+});
+
+// Mock DataPreviewModal so we don't need to mock fetch in SourceBrowser tests.
+jest.mock('../sources/DataPreviewModal', () => {
+  const MockPreview = ({ source, database, table, schema, onClose }) => (
+    <div
+      data-testid="mock-data-preview-modal"
+      data-source={source}
+      data-database={database}
+      data-table={table}
+      data-schema={schema || ''}
+    >
+      <button data-testid="mock-preview-close" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  );
+  return MockPreview;
 });
 
 const {
@@ -378,6 +398,70 @@ describe('SourceBrowser', () => {
       'true'
     );
     errorSpy.mockRestore();
+  });
+
+  it('right-click on a table opens the context menu', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-postgres_db');
+
+    // Expand to show tables
+    fireEvent.click(screen.getByTestId('click-source-postgres_db'));
+    await screen.findByTestId('tree-node-table-users');
+
+    // Right-click the table tree node (the outer element on the mock node)
+    fireEvent.contextMenu(screen.getByTestId('tree-node-table-users'));
+
+    // Context menu should appear
+    expect(screen.getByTestId('context-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('context-menu-preview')).toHaveTextContent(/Preview 100 rows/);
+  });
+
+  it('selecting "Preview 100 rows" opens DataPreviewModal with the right props', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-postgres_db');
+
+    fireEvent.click(screen.getByTestId('click-source-postgres_db'));
+    await screen.findByTestId('tree-node-table-users');
+
+    fireEvent.contextMenu(screen.getByTestId('tree-node-table-users'));
+    expect(screen.getByTestId('context-menu')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('context-menu-preview'));
+
+    // The modal mock should be visible with the source/table set
+    const modal = await screen.findByTestId('mock-data-preview-modal');
+    expect(modal).toHaveAttribute('data-source', 'postgres_db');
+    expect(modal).toHaveAttribute('data-table', 'users');
+    // Default databaseName fallback
+    expect(modal).toHaveAttribute('data-database', 'main');
+
+    // Context menu should be closed after action
+    expect(screen.queryByTestId('context-menu')).not.toBeInTheDocument();
+  });
+
+  it('closing the preview modal removes it from the DOM', async () => {
+    render(
+      <SourceBrowser searchQuery="" onTableSelect={jest.fn()} onSourcesLoaded={jest.fn()} />
+    );
+
+    await screen.findByTestId('click-source-postgres_db');
+
+    fireEvent.click(screen.getByTestId('click-source-postgres_db'));
+    await screen.findByTestId('tree-node-table-users');
+
+    fireEvent.contextMenu(screen.getByTestId('tree-node-table-users'));
+    fireEvent.click(screen.getByTestId('context-menu-preview'));
+
+    await screen.findByTestId('mock-data-preview-modal');
+
+    fireEvent.click(screen.getByTestId('mock-preview-close'));
+    expect(screen.queryByTestId('mock-data-preview-modal')).not.toBeInTheDocument();
   });
 
   it('clicking an errored source toggles error visibility', async () => {

@@ -4,8 +4,11 @@ import {
   PiTable,
   PiColumns,
   PiArrowClockwise,
+  PiEye,
 } from 'react-icons/pi';
 import SchemaTreeNode from './SchemaBrowser/SchemaTreeNode';
+import ContextMenu from '../common/ContextMenu';
+import DataPreviewModal from '../sources/DataPreviewModal';
 import {
   fetchSourceSchemaJobs,
   fetchSourceTables,
@@ -27,6 +30,11 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
   const [generatingSchemas, setGeneratingSchemas] = useState(new Map());
   const [schemaErrors, setSchemaErrors] = useState(new Map());
   const [expandedErrors, setExpandedErrors] = useState(new Set());
+  // Right-click menu state. ``null`` when no menu is open; otherwise contains
+  // {x, y, sourceName, databaseName, schemaName, tableName}.
+  const [contextMenu, setContextMenu] = useState(null);
+  // Preview-rows modal state. ``null`` when closed.
+  const [previewTarget, setPreviewTarget] = useState(null);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
@@ -218,6 +226,24 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
               errorMessage={getNodeError(colKey)}
               onClick={() => toggleNode(colKey, () => fetchTableColumns(srcName, table.name))}
               onDoubleClick={() => onTableSelect?.({ sourceName: srcName, table: table.name })}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  sourceName: srcName,
+                  // SourceManager's table list does not currently expose the
+                  // owning database/schema; the source-side preview helper
+                  // accepts these as hints, so we pass best-effort defaults.
+                  // This will work for SQLite/DuckDB and PostgreSQL with the
+                  // default 'public' schema; multi-schema sources can extend
+                  // the tree node to carry full context later.
+                  databaseName: table.database || 'main',
+                  schemaName: table.schema || null,
+                  tableName: table.name,
+                });
+              }}
               level={1}
             >
               {renderColumns(loadedData[colKey], table.name)}
@@ -251,8 +277,43 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
     return null;
   }
 
+  const closeContextMenu = () => setContextMenu(null);
+  const closePreview = () => setPreviewTarget(null);
+  const openPreviewFromMenu = () => {
+    if (!contextMenu) return;
+    setPreviewTarget({
+      sourceName: contextMenu.sourceName,
+      databaseName: contextMenu.databaseName,
+      schemaName: contextMenu.schemaName,
+      tableName: contextMenu.tableName,
+    });
+    closeContextMenu();
+  };
+
   return (
     <div data-testid="source-browser">
+      {contextMenu && (
+        <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu}>
+          <button
+            type="button"
+            data-testid="context-menu-preview"
+            onClick={openPreviewFromMenu}
+            className="w-full text-left px-3 py-1.5 text-sm text-secondary-700 hover:bg-primary-50 hover:text-primary-700 flex items-center gap-2"
+          >
+            <PiEye size={14} />
+            Preview 100 rows
+          </button>
+        </ContextMenu>
+      )}
+      {previewTarget && (
+        <DataPreviewModal
+          source={previewTarget.sourceName}
+          database={previewTarget.databaseName}
+          table={previewTarget.tableName}
+          schema={previewTarget.schemaName}
+          onClose={closePreview}
+        />
+      )}
       {filteredSources.map((source) => {
         const sourceKey = `source::${source.source_name}`;
         const errorMsg = getNodeError(sourceKey) || schemaErrors.get(source.source_name);

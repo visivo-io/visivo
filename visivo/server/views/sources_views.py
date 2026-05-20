@@ -2,12 +2,14 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from visivo.logger.logger import Logger
 from visivo.server.source_metadata import (
+    PREVIEW_LIMIT_MAX,
     check_source_connection,
     gather_source_metadata,
     get_database_schemas,
     get_schema_tables,
     get_source_databases,
     get_table_columns,
+    preview_table_rows,
     validate_source_from_config,
 )
 
@@ -115,10 +117,7 @@ def register_source_views(app, flask_app, output_dir):
         try:
             # Use source_manager to include both cached and published sources
             result = get_table_columns(
-                flask_app.source_manager.get_sources_list(),
-                source_name,
-                database_name,
-                table_name,
+                flask_app.source_manager.get_sources_list(), source_name, database_name, table_name,
             )
             if isinstance(result, tuple):  # Error response
                 return jsonify(result[0]), result[1]
@@ -148,6 +147,64 @@ def register_source_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error listing columns: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    def _parse_preview_limit():
+        """Parse and clamp the ``limit`` query parameter for preview endpoints."""
+        try:
+            limit = int(request.args.get("limit", 100))
+        except (TypeError, ValueError):
+            limit = 100
+        if limit < 1:
+            limit = 1
+        if limit > PREVIEW_LIMIT_MAX:
+            limit = PREVIEW_LIMIT_MAX
+        return limit
+
+    @app.route(
+        "/api/project/sources/<source_name>/databases/<database_name>/tables/<table_name>/preview/",
+        methods=["GET"],
+    )
+    def preview_table_rows_no_schema(source_name, database_name, table_name):
+        """Preview rows for a table without a schema (e.g., DuckDB, SQLite)."""
+        try:
+            limit = _parse_preview_limit()
+            result = preview_table_rows(
+                flask_app.source_manager.get_sources_list(),
+                source_name,
+                database_name,
+                table_name,
+                None,
+                limit,
+            )
+            if isinstance(result, tuple):  # Error response
+                return jsonify(result[0]), result[1]
+            return jsonify(result)
+        except Exception as e:
+            Logger.instance().error(f"Error previewing rows for {table_name}: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route(
+        "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/<table_name>/preview/",
+        methods=["GET"],
+    )
+    def preview_table_rows_with_schema(source_name, database_name, schema_name, table_name):
+        """Preview rows for a table within a specific schema."""
+        try:
+            limit = _parse_preview_limit()
+            result = preview_table_rows(
+                flask_app.source_manager.get_sources_list(),
+                source_name,
+                database_name,
+                table_name,
+                schema_name,
+                limit,
+            )
+            if isinstance(result, tuple):  # Error response
+                return jsonify(result[0]), result[1]
+            return jsonify(result)
+        except Exception as e:
+            Logger.instance().error(f"Error previewing rows for {table_name}: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/sources/test-connection/", methods=["POST"])
     def test_source_connection():
