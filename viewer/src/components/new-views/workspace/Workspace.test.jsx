@@ -124,10 +124,12 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-right-rail')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-drag-handle-left')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-drag-handle-right')).toBeInTheDocument();
-    // Library placeholder is visible (real content lands in VIS-C1).
-    expect(
-      screen.getByTestId('workspace-left-rail-placeholder')
-    ).toHaveTextContent('Library coming soon (VIS-C1)');
+    // Library is mounted in the left rail (VIS-769 / Track C C1+).
+    expect(screen.getByTestId('library-section-insert')).toBeInTheDocument();
+    expect(screen.getByTestId('library-section-charts')).toBeInTheDocument();
+    expect(screen.getByTestId('library-section-insights')).toBeInTheDocument();
+    expect(screen.getByTestId('library-section-models')).toBeInTheDocument();
+    expect(screen.getByTestId('library-section-sources')).toBeInTheDocument();
     // Right rail defaults to Edit tab.
     expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
   });
