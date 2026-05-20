@@ -1,24 +1,21 @@
 /**
- * OBJ_KIND — single source of truth for object icon + tone.
+ * OBJ_KIND — single source of truth for an object kind's icon + tone.
  *
- * Used by the Workspace shell's `<TabStrip>`, the right-rail kind chip, and
- * (eventually) lineage nodes and Library row icons. Per the delivered B-1
- * design (`design/cofounder-mockups/`), Phase 0 supports six keys:
- * `project | dashboard | chart | insight | model | source`. Track N (Phase 4)
- * extends the map to all object types — when adding a new type, add it here
- * so every surface stays visually consistent.
+ * Used by the Workspace shell's `<TabStrip>` and the right-rail kind chip.
+ * Per the delivered B-1 design (`design/cofounder-mockups/`), Phase 0 supports
+ * six keys: `project | dashboard | chart | insight | model | source`. Track N
+ * (Phase 4) extends the map to all object types — when adding a new type, add
+ * it here so every surface stays visually consistent.
  *
- * `tone` is a Tailwind background + text pair tuned for the rail chip / tab
- * background; matches the cofounder palette (mulberry for chrome, blue for
- * dashboards, teal for data layer).
+ * Object-type `icon`s are pulled from the app-wide canonical
+ * `objectTypeConfigs.js` (MUI icons) so the tab strip matches the Library,
+ * `/editor`, the lineage nodes, and every edit form. `project` is not a data
+ * object — it keeps a Phosphor icon. `tone` is a Tailwind background + text
+ * pair tuned for the rail chip / tab background; it matches the cofounder
+ * palette (mulberry for chrome, blue for dashboards, teal for data layer).
  */
-import {
-  PiCube,
-  PiSquaresFour,
-  PiChartBar,
-  PiLightbulb,
-  PiDatabase,
-} from 'react-icons/pi';
+import { PiCube } from 'react-icons/pi';
+import { getTypeIcon } from '../common/objectTypeConfigs';
 
 export const OBJ_KIND = {
   project: {
@@ -33,7 +30,7 @@ export const OBJ_KIND = {
     },
   },
   dashboard: {
-    icon: PiSquaresFour,
+    icon: getTypeIcon('dashboard'),
     label: 'Dashboard',
     tone: {
       bg: 'bg-[#e6edf8]',
@@ -44,7 +41,7 @@ export const OBJ_KIND = {
     },
   },
   chart: {
-    icon: PiChartBar,
+    icon: getTypeIcon('chart'),
     label: 'Chart',
     tone: {
       bg: 'bg-[#e2d7dd]',
@@ -55,7 +52,7 @@ export const OBJ_KIND = {
     },
   },
   insight: {
-    icon: PiLightbulb,
+    icon: getTypeIcon('insight'),
     label: 'Insight',
     tone: {
       bg: 'bg-[#d4e1e2]',
@@ -66,7 +63,7 @@ export const OBJ_KIND = {
     },
   },
   model: {
-    icon: PiCube,
+    icon: getTypeIcon('model'),
     label: 'Model',
     tone: {
       bg: 'bg-[#d4e1e2]',
@@ -77,7 +74,7 @@ export const OBJ_KIND = {
     },
   },
   source: {
-    icon: PiDatabase,
+    icon: getTypeIcon('source'),
     label: 'Source',
     tone: {
       bg: 'bg-[#d4e1e2]',

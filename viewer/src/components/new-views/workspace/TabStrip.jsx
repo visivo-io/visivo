@@ -37,7 +37,7 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
         title={tab.name}
         data-testid={`workspace-tab-select-${tab.id}`}
       >
-        <TypeIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+        <TypeIcon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
         <span className="truncate">{tab.name}</span>
         {tab.dirty && (
           <span

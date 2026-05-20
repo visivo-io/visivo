@@ -92,7 +92,7 @@ const LibrarySubsection = ({
             collapsed ? '-rotate-90' : ''
           }`}
         />
-        <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+        <Icon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
         <span className="text-[11.5px] font-semibold uppercase tracking-wider text-gray-600">
           {def.plural}
         </span>

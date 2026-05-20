@@ -1,18 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  PiX,
-  PiArrowSquareOut,
-  PiChartBar,
-  PiLightbulb,
-  PiCube,
-  PiDatabase,
-  PiTreeStructure,
-  PiBracketsCurly,
-  PiSquaresFour,
-  PiArticle,
-  PiFilesFill,
-} from 'react-icons/pi';
+import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
+import { getTypeIcon } from '../../common/objectTypeConfigs';
 
 /**
  * LibraryRowFlipPopover — VIS-776 / Track C C3.
@@ -34,18 +23,6 @@ import useStore from '../../../../stores/store';
  * (chart → first insight → first model → first source). Real upstream
  * traversal lands with the shared MiniLineageCard in VIS-780 (C4).
  */
-const TYPE_ICONS = {
-  chart: PiChartBar,
-  insight: PiLightbulb,
-  model: PiCube,
-  source: PiDatabase,
-  table: PiTreeStructure,
-  markdown: PiArticle,
-  input: PiBracketsCurly,
-  dashboard: PiSquaresFour,
-  insert: PiFilesFill,
-};
-
 const TYPE_TONE = {
   chart: { iconBg: 'bg-[#e2d7dd]/70', iconFg: 'text-[#713b57]', pillBg: 'bg-[#e2d7dd]', pillFg: 'text-[#5a2f45]' },
   insight: { iconBg: 'bg-[#d4e1e2]/70', iconFg: 'text-[#1b4042]', pillBg: 'bg-[#d4e1e2]', pillFg: 'text-[#1b4042]' },
@@ -59,7 +36,9 @@ const TYPE_TONE = {
 };
 
 const getTone = (type) => TYPE_TONE[type] || TYPE_TONE.model;
-const getIcon = (type) => TYPE_ICONS[type] || PiCube;
+// Object-type icons come from the app-wide canonical `objectTypeConfigs.js`
+// (MUI icons); `getTypeIcon` falls back to a sensible default for unknowns.
+const getIcon = (type) => getTypeIcon(type);
 
 /**
  * LineageRow — single node row inside the popover. Mirrors the row layout
@@ -79,7 +58,7 @@ const LineageRow = ({ node, isSubject }) => {
       <span
         className={`relative z-10 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded ${tone.iconBg} ${tone.iconFg}`}
       >
-        <I className="h-2.5 w-2.5" />
+        <I style={{ fontSize: 10 }} />
       </span>
       <span
         className={`inline-flex h-3 shrink-0 items-center rounded-sm px-1 text-[8px] font-bold uppercase tracking-wider ${tone.pillBg} ${tone.pillFg}`}
@@ -251,7 +230,7 @@ const LibraryRowFlipPopover = ({
         <header className="flex h-8 items-center gap-2 border-b border-gray-200 px-3">
           {(() => {
             const I = getIcon(obj.type);
-            return <I className="h-3.5 w-3.5 text-gray-500" />;
+            return <I style={{ fontSize: 14 }} className="text-gray-500" />;
           })()}
           <span
             data-testid={`${testIdPrefix}-name`}

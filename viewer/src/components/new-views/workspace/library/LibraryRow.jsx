@@ -1,21 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import {
-  PiArrowsClockwise,
-  PiDotsThreeOutlineVertical,
-  PiDotsSix,
-  PiChartBar,
-  PiTable,
-  PiArticle,
-  PiTextbox,
-  PiDatabase,
-  PiCube,
-  PiListDashes,
-  PiHash,
-  PiLinkSimple,
-  PiLightbulb,
-} from 'react-icons/pi';
+import { PiArrowsClockwise, PiDotsThreeOutlineVertical, PiDotsSix } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
+import { getTypeIcon } from '../../common/objectTypeConfigs';
 import LibraryRowFlipPopover from './LibraryRowFlipPopover';
 
 /**
@@ -37,48 +24,80 @@ import LibraryRowFlipPopover from './LibraryRowFlipPopover';
  */
 
 // ──────────────────────── Object-type vocabulary ─────────────────────────
-// Single source of truth for icon + label + plural + droppable flag + accent
-// per object type. Mirrors the `TYPE` map in the C-1 `library.jsx` blueprint.
-// Layout types (chart/table/markdown/input) are canvas-droppable with a
-// mulberry accent; Data-layer types are click-to-edit with a teal accent.
+// Label + plural + droppable flag + accent per object type. The `icon` is
+// pulled from the app-wide canonical `objectTypeConfigs.js` (MUI icons) so the
+// Library's object icons match /editor, the lineage nodes, the explorer, and
+// every edit form — see `../../common/objectTypeConfigs.js`. Layout types
+// (chart/table/markdown/input) are canvas-droppable with a mulberry accent;
+// Data-layer types are click-to-edit with a teal accent.
 export const TYPE = {
   // Layout items — droppable on the canvas.
-  chart: { icon: PiChartBar, label: 'Chart', plural: 'Charts', droppable: true, accent: 'mulberry' },
-  table: { icon: PiTable, label: 'Table', plural: 'Tables', droppable: true, accent: 'mulberry' },
+  chart: {
+    icon: getTypeIcon('chart'),
+    label: 'Chart',
+    plural: 'Charts',
+    droppable: true,
+    accent: 'mulberry',
+  },
+  table: {
+    icon: getTypeIcon('table'),
+    label: 'Table',
+    plural: 'Tables',
+    droppable: true,
+    accent: 'mulberry',
+  },
   markdown: {
-    icon: PiArticle,
+    icon: getTypeIcon('markdown'),
     label: 'Markdown',
     plural: 'Markdowns',
     droppable: true,
     accent: 'mulberry',
   },
-  input: { icon: PiTextbox, label: 'Input', plural: 'Inputs', droppable: true, accent: 'mulberry' },
+  input: {
+    icon: getTypeIcon('input'),
+    label: 'Input',
+    plural: 'Inputs',
+    droppable: true,
+    accent: 'mulberry',
+  },
   // Data layer — click-to-edit.
   source: {
-    icon: PiDatabase,
+    icon: getTypeIcon('source'),
     label: 'Source',
     plural: 'Sources',
     droppable: false,
     accent: 'teal',
   },
-  model: { icon: PiCube, label: 'Model', plural: 'Models', droppable: false, accent: 'teal' },
+  model: {
+    icon: getTypeIcon('model'),
+    label: 'Model',
+    plural: 'Models',
+    droppable: false,
+    accent: 'teal',
+  },
   dimension: {
-    icon: PiListDashes,
+    icon: getTypeIcon('dimension'),
     label: 'Dimension',
     plural: 'Dimensions',
     droppable: false,
     accent: 'teal',
   },
-  metric: { icon: PiHash, label: 'Metric', plural: 'Metrics', droppable: false, accent: 'teal' },
+  metric: {
+    icon: getTypeIcon('metric'),
+    label: 'Metric',
+    plural: 'Metrics',
+    droppable: false,
+    accent: 'teal',
+  },
   relation: {
-    icon: PiLinkSimple,
+    icon: getTypeIcon('relation'),
     label: 'Relation',
     plural: 'Relations',
     droppable: false,
     accent: 'teal',
   },
   insight: {
-    icon: PiLightbulb,
+    icon: getTypeIcon('insight'),
     label: 'Insight',
     plural: 'Insights',
     droppable: false,
@@ -123,7 +142,7 @@ const ContextMenuItem = ({ icon: Icon, label, onClick, destructive }) => (
       destructive ? 'text-[#a84738] hover:bg-[#f6ddda]/40' : 'text-gray-800 hover:bg-gray-50',
     ].join(' ')}
   >
-    {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-gray-500" />}
+    {Icon && <Icon className="shrink-0 text-gray-500" style={{ fontSize: 14 }} />}
     <span className="flex-1">{label}</span>
   </button>
 );
@@ -144,7 +163,7 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
         {isInsight && (
           <li>
             <ContextMenuItem
-              icon={PiChartBar}
+              icon={TYPE.chart.icon}
               label="Wrap in Chart…"
               onClick={handle('wrapInChart')}
             />
@@ -294,7 +313,8 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         <StatusDot status={obj.status} />
         <Icon
           aria-hidden="true"
-          className={`h-3.5 w-3.5 shrink-0 ${selected ? 'text-[#5a2f45]' : 'text-gray-500'}`}
+          style={{ fontSize: 14 }}
+          className={`shrink-0 ${selected ? 'text-[#5a2f45]' : 'text-gray-500'}`}
         />
         <span className={`min-w-0 flex-1 truncate ${selected ? 'font-medium' : ''}`}>
           {obj.name}

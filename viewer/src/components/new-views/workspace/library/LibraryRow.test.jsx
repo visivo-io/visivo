@@ -13,6 +13,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
 import LibraryRow, { TYPE } from './LibraryRow';
+import { getTypeIcon } from '../../common/objectTypeConfigs';
 
 const withDnd = (ui) => <DndContext>{ui}</DndContext>;
 
@@ -33,6 +34,26 @@ describe('LibraryRow', () => {
     ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach((t) => {
       expect(TYPE[t]).toBeTruthy();
       expect(TYPE[t].droppable).toBe(false);
+    });
+  });
+
+  test('every TYPE entry sources its icon from the canonical objectTypeConfigs', () => {
+    // The Library must not fork its object-type icons — each type's icon is
+    // the exact MUI component the rest of the app uses (objectTypeConfigs.js),
+    // so Library rows match /editor, lineage nodes, the explorer, and pills.
+    [
+      'chart',
+      'table',
+      'markdown',
+      'input',
+      'source',
+      'model',
+      'dimension',
+      'metric',
+      'relation',
+      'insight',
+    ].forEach((t) => {
+      expect(TYPE[t].icon).toBe(getTypeIcon(t));
     });
   });
 
