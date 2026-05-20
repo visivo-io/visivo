@@ -175,5 +175,18 @@ describe('DataTable', () => {
       expect(root.className).toMatch(/\bw-full\b/);
       expect(root.className).toMatch(/\bmax-w-full\b/);
     });
+
+    // Wide-table fix: the inner scroll surface must have min-w-0 so it can
+    // be narrower than its content (which sets style.minWidth = totalWidth)
+    // and present a horizontal scrollbar instead of leaking min-content up
+    // to the dashboard grid track.
+    it('inner scroll container has min-w-0 and overflow-auto', () => {
+      const { container } = render(<DataTable {...defaultProps} />);
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const scroller = container.querySelector('.overflow-auto');
+      expect(scroller).not.toBeNull();
+      expect(scroller.className).toMatch(/\bmin-w-0\b/);
+      expect(scroller.className).toMatch(/\bflex-1\b/);
+    });
   });
 });

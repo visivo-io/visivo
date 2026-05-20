@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import LazyTooltip from './LazyTooltip';
 import { FiInfo } from 'react-icons/fi';
 
-const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
+const TumblerNavItem = ({ icon: Icon, label, to, tooltip, ...rest }) => {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const location = useLocation();
@@ -27,6 +27,7 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      {...rest}
     >
       {/* Icon tumbles up on hover/focus/active */}
       <span

@@ -87,6 +87,29 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
     assert callable(on_server_ready)
 
 
+def test_serve_new_project_in_empty_dir_does_not_pass_traces(tmp_path):
+    """Regression: visivo serve in an empty dir used to crash with
+    `traces  Extra inputs are not permitted` because the new-project
+    bootstrap passed traces=[] to Project(). Project no longer
+    accepts traces (replaced by Insights in 2.0).
+    """
+    from visivo.models.project import Project
+
+    # Project bootstrap that mirrors what visivo/commands/serve.py builds
+    # when --new is set or when running in a directory without a project.
+    project = Project(
+        name="Quickstart Visivo",
+        sources=[],
+        models=[],
+        charts=[],
+        dashboards=[],
+        defaults=None,
+    )
+    assert project.name == "Quickstart Visivo"
+    assert project.charts == []
+    assert project.dashboards == []
+
+
 def test_serve_command_raises_when_parse_fails(output_dir, tmp_path):
     port = get_test_port()
 

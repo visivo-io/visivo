@@ -70,7 +70,6 @@ def serve(
             name="Quickstart Visivo",
             sources=[],
             models=[],
-            traces=[],
             charts=[],
             dashboards=[],
             defaults=Defaults(source_name=source) if source else None,

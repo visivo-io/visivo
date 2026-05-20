@@ -78,6 +78,18 @@ tasks:
     run: |
       poetry run black --check . --target-version py312
 
+  - key: test-onboarding-samples
+    use: [cli-dependencies]
+    run: |
+      poetry install --with dev
+      poetry run pytest tests/templates/test_samples.py -v --tb=short
+    env:
+      STACKTRACE: true
+    # No `filter:` here — in Mint, `filter:` strips non-matching files from
+    # the workspace, which would drop pyproject.toml / poetry.lock and make
+    # `poetry install` fail with "Poetry could not find a pyproject.toml".
+    # The sample smoke test runs in ~10s; always run it.
+
   - key: yarn
     use: node
     run: npm install --global yarn

@@ -1,0 +1,114 @@
+name: EV Sales
+
+sources:
+  - name: ev_sales_db
+    type: duckdb
+    database: ev_sales.duckdb
+
+defaults:
+  source_name: ev_sales_db
+
+models:
+  - name: ev_sales
+    sql: SELECT * FROM ev_sales
+
+insights:
+  - name: total_units_kpi
+    props:
+      type: indicator
+      mode: number
+      value: ?{ SUM(${ref(ev_sales).units_sold}) }[0]
+      number:
+        valueformat: ".3s"
+        suffix: " units"
+
+  - name: total_revenue_kpi
+    props:
+      type: indicator
+      mode: number
+      value: ?{ SUM(${ref(ev_sales).revenue_usd}) / 1000000000.0 }[0]
+      number:
+        valueformat: ".2f"
+        prefix: "$"
+        suffix: "B"
+
+  - name: units_by_quarter
+    props:
+      type: bar
+      x: ?{ ${ref(ev_sales).quarter} }
+      y: ?{ SUM(${ref(ev_sales).units_sold}) }
+      marker:
+        color: "#713b57"
+    interactions:
+      - sort: ?{ ${ref(ev_sales).quarter} ASC }
+
+  - name: units_by_region
+    props:
+      type: bar
+      x: ?{ ${ref(ev_sales).region} }
+      y: ?{ SUM(${ref(ev_sales).units_sold}) }
+      marker:
+        color: "#d25946"
+    interactions:
+      - sort: ?{ SUM(${ref(ev_sales).units_sold}) DESC }
+
+  - name: powertrain_split
+    props:
+      type: pie
+      labels: ?{ ${ref(ev_sales).powertrain} }
+      values: ?{ SUM(${ref(ev_sales).units_sold}) }
+      marker:
+        colors: ["#713b57", "#d25946"]
+
+charts:
+  - name: total_units_chart
+    insights:
+      - ${ref(total_units_kpi)}
+
+  - name: total_revenue_chart
+    insights:
+      - ${ref(total_revenue_kpi)}
+
+  - name: units_by_quarter_chart
+    insights:
+      - ${ref(units_by_quarter)}
+    layout:
+      title:
+        text: "EV units sold by quarter"
+
+  - name: units_by_region_chart
+    insights:
+      - ${ref(units_by_region)}
+    layout:
+      title:
+        text: "Units sold by region (cumulative)"
+
+  - name: powertrain_split_chart
+    insights:
+      - ${ref(powertrain_split)}
+    layout:
+      title:
+        text: "BEV vs PHEV (cumulative)"
+
+dashboards:
+  - name: EV Sales
+    rows:
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                # EV Sales
+
+                US, Europe, and APAC electric vehicle adoption from 2022 to 2024
+                broken out by region, powertrain, and quarter.
+      - height: small
+        items:
+          - chart: ${ref(total_units_chart)}
+          - chart: ${ref(total_revenue_chart)}
+      - height: medium
+        items:
+          - chart: ${ref(units_by_quarter_chart)}
+      - height: medium
+        items:
+          - chart: ${ref(units_by_region_chart)}
+          - chart: ${ref(powertrain_split_chart)}

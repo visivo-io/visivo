@@ -1,4 +1,5 @@
 import * as modelsApi from '../api/models';
+import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 
 /**
  * Model Store Slice
@@ -36,6 +37,8 @@ const createModelSlice = (set, get) => ({
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
       }
+      // Tap for the onboarding "Build a Model" checklist row.
+      recordOnboardingAction('model_saved');
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

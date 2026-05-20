@@ -202,7 +202,11 @@ const CenterPanel = () => {
   );
 
   const renderEditorSection = () => (
-    <div className="flex flex-col h-full overflow-hidden" data-testid="editor-section">
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      data-testid="editor-section"
+      data-onb-target="sql-editor"
+    >
       {!isEditorCollapsed ? (
         <div className="flex-1 min-h-0">
           <SQLEditor

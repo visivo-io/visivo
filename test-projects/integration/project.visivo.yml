@@ -3,6 +3,7 @@ name: project
 includes:
   - path: models.visivo.yml
   - path: insights.visivo.yml
+  - path: nested_layouts.visivo.yml
   - path: visivo-io/example-include.git@main
 
 defaults:
@@ -848,6 +849,46 @@ dashboards:
       - height: xlarge
         items:
           - chart: ${ ref(surface-chart) }
+
+  # Dashboard used by the table-width-overflow E2E story.
+  # The wide-columns table has 12 long-named columns whose natural
+  # total width (>=3000px) exceeds any laptop viewport, exercising the
+  # horizontal scroll + adaptive sizing fix paths.
+  - name: wide-table-dashboard
+    level: 1
+    tags:
+      - "tables"
+      - "wide"
+    rows:
+      - height: compact
+        items:
+          - markdown:
+              content: |
+                # Wide Table Width Test
+                This dashboard exercises the wide-table fix. The table below has
+                12 long-named columns and should never push the dashboard row
+                past the viewport.
+      - height: large
+        items:
+          - width: 12
+            table:
+              name: wide-columns-overflow-test-table
+              data: ${ref(wide-columns-table)}
+              rows_per_page: 25
+      - height: large
+        items:
+          - width: 6
+            table:
+              name: wide-columns-narrow-slot-test-table
+              data: ${ref(wide-columns-table)}
+              rows_per_page: 25
+          - width: 6
+            markdown:
+              content: |
+                ## Side-by-side
+                The wide table on the left is in a width=6 slot. It must still
+                stay inside its slot — its row's grid track must not expand to
+                the table's intrinsic width.
 tables:
   - name: new_table
     rows_per_page: 25

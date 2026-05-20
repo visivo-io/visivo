@@ -5,6 +5,7 @@ import { selectHasModifications } from '../../stores/explorerNewStore';
 import InsightCRUDSection from './InsightCRUDSection';
 import ChartCRUDSection from './ChartCRUDSection';
 import ExplorerSaveModal from './ExplorerSaveModal';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const ExplorerRightPanel = () => {
   const chartInsightNames = useStore((s) => s.explorerChartInsightNames);
@@ -33,6 +34,7 @@ const ExplorerRightPanel = () => {
 
   const handleAddInsight = useCallback(() => {
     createInsight();
+    recordOnboardingAction('insight_added');
   }, [createInsight]);
 
   return (
@@ -61,6 +63,7 @@ const ExplorerRightPanel = () => {
         {/* Add Insight Button */}
         <button
           data-testid="right-panel-add-insight"
+          data-onb-target="right-panel-add-insight"
           onClick={handleAddInsight}
           className="flex items-center gap-1.5 w-full px-3 py-2 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-md border border-dashed border-purple-300 transition-colors"
         >
@@ -73,6 +76,7 @@ const ExplorerRightPanel = () => {
       <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
         <button
           data-testid="explorer-save-button"
+          data-onb-target="explorer-save-button"
           disabled={!hasChanges}
           onClick={() => setShowSaveModal(true)}
           className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
