@@ -16,15 +16,11 @@ from visivo.server.managers.dashboard_manager import DashboardManager
 
 
 def _make_internal(name: str) -> Dashboard:
-    return Dashboard.model_validate(
-        {"name": name, "type": "internal", "rows": []}
-    )
+    return Dashboard.model_validate({"name": name, "type": "internal", "rows": []})
 
 
 def _make_external(name: str, href: str = "https://example.com") -> ExternalDashboard:
-    return ExternalDashboard.model_validate(
-        {"name": name, "type": "external", "href": href}
-    )
+    return ExternalDashboard.model_validate({"name": name, "type": "external", "href": href})
 
 
 def _dag_with(*nodes) -> nx.DiGraph:
@@ -84,9 +80,7 @@ class TestDashboardManagerValidate:
 
     def test_validate_object_accepts_internal_config(self):
         manager = DashboardManager()
-        dashboard = manager.validate_object(
-            {"name": "Sales", "type": "internal", "rows": []}
-        )
+        dashboard = manager.validate_object({"name": "Sales", "type": "internal", "rows": []})
         assert isinstance(dashboard, Dashboard)
 
     def test_validate_object_accepts_external_config(self):
