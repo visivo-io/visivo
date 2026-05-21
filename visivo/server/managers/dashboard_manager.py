@@ -5,32 +5,47 @@ from pydantic import TypeAdapter, ValidationError
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
+from visivo.models.dashboards.base_dashboard import BaseDashboard
+from visivo.models.dashboards.fields import DashboardField
 from visivo.server.managers.object_manager import ObjectManager, ObjectStatus
 
 
-class DashboardManager(ObjectManager[Dashboard]):
+class DashboardManager(ObjectManager[BaseDashboard]):
     """
     Manages Dashboard objects with draft/published state tracking.
 
     Supports:
-    - Immediate validation using Pydantic TypeAdapter(Dashboard)
-    - Two-tier storage (cached/published) for edit-before-publish workflow
+    - Immediate validation using Pydantic TypeAdapter(DashboardField) which
+      discriminates between internal ``Dashboard`` and ``ExternalDashboard``
+      based on the presence of ``href`` vs ``rows``.
+    - Two-tier storage (cached/published) for edit-before-publish workflow.
+
+    Both internal and external dashboards are first-class — the new project
+    view's listing relies on this. Limiting the walker to ``Dashboard``
+    silently dropped every ``ExternalDashboard`` from
+    ``get_all_dashboards_with_status`` (and therefore from
+    ``GET /api/dashboards/``), so external cards never appeared on the
+    project page.
     """
 
     def __init__(self):
         super().__init__()
-        self._dashboard_adapter = TypeAdapter(Dashboard)
+        self._dashboard_adapter = TypeAdapter(DashboardField)
 
-    def validate_object(self, obj_data: dict) -> Dashboard:
+    def validate_object(self, obj_data: dict) -> BaseDashboard:
         return self._dashboard_adapter.validate_python(obj_data)
 
     def extract_from_dag(self, dag) -> None:
         self._published_objects.clear()
-        for dashboard in all_descendants_of_type(type=Dashboard, dag=dag):
+        # ``BaseDashboard`` is the shared parent for both ``Dashboard``
+        # (internal) and ``ExternalDashboard``; ``isinstance`` matches
+        # both subclasses. Don't narrow to ``Dashboard`` here or
+        # externals get silently dropped from the listing.
+        for dashboard in all_descendants_of_type(type=BaseDashboard, dag=dag):
             if dashboard.name:
                 self._published_objects[dashboard.name] = dashboard
 
-    def save_from_config(self, config: dict) -> Dashboard:
+    def save_from_config(self, config: dict) -> BaseDashboard:
         dashboard = self.validate_object(config)
         self.save(dashboard.name, dashboard)
         return dashboard

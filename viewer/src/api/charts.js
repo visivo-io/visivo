@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all charts with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllCharts = async (projectId = null) => {
   let url = getUrl('chartsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllCharts = async (projectId = null) => {
  * Fetch a single chart by name with status information
  */
 export const fetchChart = async name => {
-  const response = await fetch(getUrl('chartDetail', { name }));
+  const response = await apiFetch(getUrl('chartDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchChart = async name => {
  * Save a chart configuration to cache (draft state)
  */
 export const saveChart = async (name, config) => {
-  const response = await fetch(getUrl('chartSave', { name }), {
+  const response = await apiFetch(getUrl('chartSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveChart = async (name, config) => {
  * Delete a chart from cache (revert to published version)
  */
 export const deleteChart = async name => {
-  const response = await fetch(getUrl('chartDetail', { name }), {
+  const response = await apiFetch(getUrl('chartDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteChart = async name => {
  * Validate a chart configuration without saving
  */
 export const validateChart = async (name, config) => {
-  const response = await fetch(getUrl('chartValidate', { name }), {
+  const response = await apiFetch(getUrl('chartValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

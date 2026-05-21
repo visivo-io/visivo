@@ -12,7 +12,7 @@ describe('usePreviewJob', () => {
     test('returns idle state before any run', () => {
       const { result, unmount } = renderHook(() => usePreviewJob());
 
-      expect(result.current.runInstanceId).toBeNull();
+      expect(result.current.runId).toBeNull();
       expect(result.current.status).toBeNull();
       expect(result.current.progress).toBe(0);
       expect(result.current.progressMessage).toBe('');
@@ -31,7 +31,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-42' }),
+          json: () => Promise.resolve({ run_id: 'run-42' }),
         })
         .mockResolvedValue({
           ok: true,
@@ -58,7 +58,7 @@ describe('usePreviewJob', () => {
           run: true,
         }),
       });
-      expect(result.current.runInstanceId).toBe('run-42');
+      expect(result.current.runId).toBe('run-42');
 
       unmount();
     });
@@ -109,7 +109,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-comp' }),
+          json: () => Promise.resolve({ run_id: 'run-comp' }),
         })
         .mockResolvedValue({
           ok: true,
@@ -138,7 +138,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-fail' }),
+          json: () => Promise.resolve({ run_id: 'run-fail' }),
         })
         .mockResolvedValue({
           ok: true,
@@ -176,7 +176,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-prog' }),
+          json: () => Promise.resolve({ run_id: 'run-prog' }),
         })
         // The useEffect re-fires when status changes (queued → running),
         // triggering another immediate poll. Provide enough running responses
@@ -212,7 +212,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-http-err' }),
+          json: () => Promise.resolve({ run_id: 'run-http-err' }),
         })
         .mockResolvedValue({
           ok: false,
@@ -240,7 +240,7 @@ describe('usePreviewJob', () => {
       fetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ run_instance_id: 'run-reset' }),
+          json: () => Promise.resolve({ run_id: 'run-reset' }),
         })
         .mockResolvedValue({
           ok: true,
@@ -261,7 +261,7 @@ describe('usePreviewJob', () => {
         result.current.resetRun();
       });
 
-      expect(result.current.runInstanceId).toBeNull();
+      expect(result.current.runId).toBeNull();
       expect(result.current.status).toBeNull();
       expect(result.current.progress).toBe(0);
       expect(result.current.progressMessage).toBe('');

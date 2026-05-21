@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all models with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllModels = async (projectId = null) => {
   let url = getUrl('modelsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllModels = async (projectId = null) => {
  * Fetch a single model by name with status information
  */
 export const fetchModel = async name => {
-  const response = await fetch(getUrl('modelDetail', { name }));
+  const response = await apiFetch(getUrl('modelDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchModel = async name => {
  * Save a model configuration to cache (draft state)
  */
 export const saveModel = async (name, config) => {
-  const response = await fetch(getUrl('modelSave', { name }), {
+  const response = await apiFetch(getUrl('modelSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveModel = async (name, config) => {
  * Delete a model from cache (revert to published version)
  */
 export const deleteModel = async name => {
-  const response = await fetch(getUrl('modelDetail', { name }), {
+  const response = await apiFetch(getUrl('modelDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteModel = async name => {
  * Validate a model configuration without saving
  */
 export const validateModel = async (name, config) => {
-  const response = await fetch(getUrl('modelValidate', { name }), {
+  const response = await apiFetch(getUrl('modelValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

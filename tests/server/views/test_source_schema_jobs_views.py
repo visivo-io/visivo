@@ -278,8 +278,8 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 202
         data = response.get_json()
-        assert "run_instance_id" in data
-        assert data["run_instance_id"] == "test-job-id"
+        assert "run_id" in data
+        assert data["run_id"] == "test-job-id"
         mock_thread_instance.start.assert_called_once()
 
     @patch("visivo.server.views.source_schema_jobs_views.PreviewRunManager")
@@ -296,7 +296,7 @@ class TestGenerateSourceSchema(TestSourceSchemaJobsViews):
 
         assert response.status_code == 202
         data = response.get_json()
-        assert data["run_instance_id"] == "existing-job-id"
+        assert data["run_id"] == "existing-job-id"
 
     def test_generate_schema_source_not_found(self, client, app):
         """Test generating schema for non-existent source."""
@@ -358,7 +358,7 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
         mock_run.status = RunStatus.RUNNING
         mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
+            "run_id": "12345678-1234-1234-1234-123456789abc",
             "status": "running",
             "progress": 0.5,
             "progress_message": "Connecting to source",
@@ -382,7 +382,7 @@ class TestGetSchemaGenerationStatus(TestSourceSchemaJobsViews):
         mock_run.status = RunStatus.COMPLETED
         mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
+            "run_id": "12345678-1234-1234-1234-123456789abc",
             "status": "completed",
             "progress": 1.0,
             "progress_message": "Complete",
@@ -476,7 +476,7 @@ class TestSchemaFallbackBehavior(TestSourceSchemaJobsViews):
         mock_run.status = RunStatus.COMPLETED
         mock_run.config = {"source_name": "test_source"}
         mock_run.to_dict.return_value = {
-            "run_instance_id": "12345678-1234-1234-1234-123456789abc",
+            "run_id": "12345678-1234-1234-1234-123456789abc",
             "status": "completed",
             "progress": 1.0,
             "progress_message": "Complete",

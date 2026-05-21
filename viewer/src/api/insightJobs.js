@@ -1,5 +1,6 @@
 import { getUrl } from '../contexts/URLContext';
 import { DEFAULT_RUN_ID } from '../constants';
+import { apiFetch } from './utils';
 
 /**
  * Validates an insight job object has the required structure
@@ -72,8 +73,11 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
     params.push(`project_id=${encodeURIComponent(projectId)}`);
   }
 
-  // Add run_id parameter
-  if (runId) {
+  // Only send ``run_id`` when the caller overrode the default. Cloud
+  // (core) has no per-run namespacing and silently drops the param;
+  // Flask defaults to ``main`` when absent. Sending the default just
+  // adds noise to the URL.
+  if (runId && runId !== DEFAULT_RUN_ID) {
     params.push(`run_id=${encodeURIComponent(runId)}`);
   }
 
@@ -86,7 +90,7 @@ export const fetchInsightJobs = async (projectId, names, runId = DEFAULT_RUN_ID,
     try {
       console.debug(`Fetching insight jobs (attempt ${attempt + 1}/${retries}):`, names);
 
-      const response = await fetch(url);
+      const response = await apiFetch(url);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(

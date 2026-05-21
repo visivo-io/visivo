@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all insights with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllInsights = async (projectId = null) => {
   let url = getUrl('insightsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllInsights = async (projectId = null) => {
  * Fetch a single insight by name with status information
  */
 export const fetchInsight = async name => {
-  const response = await fetch(getUrl('insightDetail', { name }));
+  const response = await apiFetch(getUrl('insightDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchInsight = async name => {
  * Save an insight configuration to cache (draft state)
  */
 export const saveInsight = async (name, config) => {
-  const response = await fetch(getUrl('insightSave', { name }), {
+  const response = await apiFetch(getUrl('insightSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveInsight = async (name, config) => {
  * Delete an insight from cache (revert to published version)
  */
 export const deleteInsight = async name => {
-  const response = await fetch(getUrl('insightDetail', { name }), {
+  const response = await apiFetch(getUrl('insightDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteInsight = async name => {
  * Validate an insight configuration without saving
  */
 export const validateInsight = async (name, config) => {
-  const response = await fetch(getUrl('insightValidate', { name }), {
+  const response = await apiFetch(getUrl('insightValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

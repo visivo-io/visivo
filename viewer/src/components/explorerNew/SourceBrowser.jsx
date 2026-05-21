@@ -84,13 +84,13 @@ const SourceBrowser = ({ searchQuery, onTableSelect, onSourcesLoaded }) => {
     });
 
     try {
-      const { run_instance_id: jobId } = await generateSourceSchema(srcName);
+      const { run_id: runId } = await generateSourceSchema(srcName);
       const maxWaitTime = 120000;
       const pollInterval = 2000;
       const startTime = Date.now();
 
       while (Date.now() - startTime < maxWaitTime) {
-        const status = await fetchSchemaGenerationStatus(jobId);
+        const status = await fetchSchemaGenerationStatus(runId);
         setGeneratingSchemas((prev) =>
           new Map(prev).set(srcName, {
             status: status.status,

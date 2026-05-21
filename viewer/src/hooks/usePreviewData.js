@@ -65,7 +65,7 @@ export const usePreviewData = (type, config, options = {}) => {
     progress,
     progressMessage,
     result,
-    runInstanceId,
+    runId,
   } = usePreviewJob();
 
   const currentHash = useMemo(() => {
@@ -150,7 +150,7 @@ export const usePreviewData = (type, config, options = {}) => {
     progress,
     progressMessage,
     result,
-    runInstanceId,
+    runId,
     needsPreviewRun,
     resetPreview,
     status: jobStatus,
@@ -213,7 +213,7 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     options.projectId,
     insightConfig?.name ? [insightConfig.name] : [],
     previewRunId,
-    { storeKeyPrefix: PREVIEW_STORE_PREFIX, cacheKey: previewState.runInstanceId }
+    { storeKeyPrefix: PREVIEW_STORE_PREFIX, cacheKey: previewState.runId }
   );
 
   useEffect(() => {
@@ -284,7 +284,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     progress,
     progressMessage,
     result,
-    runInstanceId,
+    runId,
   } = usePreviewJob();
 
   // The "run hash" hashes ONLY the parts of the request that affect
@@ -396,7 +396,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
 
   const insightsDataState = useInsightsData(projectId, namesToLoad, previewRunId, {
     storeKeyPrefix: PREVIEW_STORE_PREFIX,
-    cacheKey: runInstanceId,
+    cacheKey: runId,
   });
 
   const resetPreview = useCallback(() => {
@@ -413,7 +413,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     error: localError || jobError || insightsDataState.error,
     progress,
     progressMessage,
-    runInstanceId,
+    runId,
     previewRunId,
     previewInsightKeys: namesToLoad.map(name => PREVIEW_STORE_PREFIX + name),
     status: jobStatus,

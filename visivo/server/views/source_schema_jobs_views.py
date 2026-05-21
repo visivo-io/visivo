@@ -130,7 +130,7 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
             }
 
         Returns:
-            JSON with run_instance_id for polling status (202 Accepted)
+            JSON with run_id for polling status (202 Accepted)
         """
         try:
             Logger.instance().info("Received POST to /api/source-schema-jobs/")
@@ -169,23 +169,23 @@ def register_source_schema_jobs_views(app, flask_app, output_dir):
                 Logger.instance().info(
                     f"Returning existing schema generation run {existing_run_id}"
                 )
-                return jsonify({"run_instance_id": existing_run_id}), 202
+                return jsonify({"run_id": existing_run_id}), 202
 
             Logger.instance().info(f"Invalidating any completed runs for source: {source_name}")
             run_manager.invalidate_completed_runs_for_source(source_name)
 
-            job_id = run_manager.create_run(config, object_type="source_schema")
-            Logger.instance().info(f"Created schema generation run with job_id: {job_id}")
+            run_id = run_manager.create_run(config, object_type="source_schema")
+            Logger.instance().info(f"Created schema generation run with run_id: {run_id}")
 
             thread = threading.Thread(
                 target=execute_source_schema_job,
-                args=(job_id, config, flask_app, output_dir, run_manager),
+                args=(run_id, config, flask_app, output_dir, run_manager),
                 daemon=True,
             )
             thread.start()
 
-            Logger.instance().info(f"Started schema generation job {job_id} for {source_name}")
-            return jsonify({"run_instance_id": job_id}), 202
+            Logger.instance().info(f"Started schema generation run {run_id} for {source_name}")
+            return jsonify({"run_id": run_id}), 202
 
         except Exception as e:
             Logger.instance().error(f"Error creating schema generation job: {str(e)}")

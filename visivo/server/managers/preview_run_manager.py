@@ -56,9 +56,17 @@ class PreviewRun:
         return hashlib.sha256(config_str.encode()).hexdigest()
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize run to dictionary"""
+        """Serialize run to dictionary.
+
+        Field name is ``run_id`` to match the URL path token
+        (``/<endpoint>/<run_id>/``) and to align with the module-level
+        terminology ("These are 'runs' not 'jobs' because each run
+        executes many jobs in a DAG"). The previous ``run_instance_id``
+        wire name was a redundant rename of the same value and confused
+        callers about whether a separate "instance" identifier existed.
+        """
         data = {
-            "run_instance_id": self.run_id,
+            "run_id": self.run_id,
             "object_type": self.object_type,
             "status": self.status.value,
             "created_at": self.created_at.isoformat(),

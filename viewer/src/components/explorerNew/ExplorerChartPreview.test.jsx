@@ -18,7 +18,7 @@ jest.mock('../../hooks/usePreviewData', () => ({
       error: null,
       progress: 0,
       progressMessage: '',
-      runInstanceId: null,
+      runId: null,
       previewRunId: null,
       previewInsightKeys: (previewRequest?.insight_names || []).map(n => `__preview__${n}`),
       status: null,

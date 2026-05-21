@@ -259,7 +259,8 @@ class ObjectManager(ABC, Generic[T]):
         Serialize an object with consistent structure.
 
         Provides a standard format for API responses:
-        - name: Object identifier
+        - id: Object identifier (locally == name; cloud may use a UUID)
+        - name: Human-readable name
         - status: Object state (new, modified, published, deleted)
         - child_item_names: List of dependency names (from child_items())
         - config: Full Pydantic model dump
@@ -273,31 +274,51 @@ class ObjectManager(ABC, Generic[T]):
             Dictionary with consistent structure for API response
         """
         child_names = []
+        seen = set()
+
+        def _add(name_):
+            if name_ and name_ not in seen:
+                seen.add(name_)
+                child_names.append(name_)
+
+        def _collect(child):
+            """Walk a child_items() entry, collecting leaf names.
+
+            Containers like ``Dashboard.rows`` / ``Row.items`` don't carry
+            their own name — they exist only to group named leaves
+            (chart, table, markdown, input). When we hit one, recurse so
+            ``child_item_names`` ends up listing the leaves directly.
+            This matches core's per-dashboard envelope shape and lets a
+            consumer fetch only the resources a given dashboard needs.
+            """
+            if isinstance(child, ContextString):
+                _add(child.get_reference())
+                return
+            if isinstance(child, str):
+                ref_names = extract_ref_names(child)
+                if ref_names:
+                    for ref_name in ref_names:
+                        _add(ref_name)
+                    return
+                match = re.match(REF_FUNCTION_PATTERN, child)
+                if match:
+                    _add(match.group("model_name").strip("'\""))
+                return
+            child_name = getattr(child, "name", None)
+            if child_name:
+                _add(child_name)
+                return
+            # Anonymous container — recurse to its named leaves.
+            if hasattr(child, "child_items"):
+                for grandchild in child.child_items():
+                    _collect(grandchild)
+
         if hasattr(obj, "child_items"):
             for child in obj.child_items():
-                if hasattr(child, "name") and child.name:
-                    # Child is an object with a name attribute
-                    child_names.append(child.name)
-                elif isinstance(child, ContextString):
-                    # Child is a ContextString like ${ref(source_name)}
-                    ref_name = child.get_reference()
-                    if ref_name:
-                        child_names.append(ref_name)
-                elif isinstance(child, str):
-                    # Child could be a ref string in two formats:
-                    # 1. ${ref(source_name)} - context string format
-                    # 2. ref(source_name) - simple ref format
-                    ref_names = extract_ref_names(child)
-                    if ref_names:
-                        child_names.extend(ref_names)
-                    else:
-                        # Try simple ref() format: ref(name)
-                        match = re.match(REF_FUNCTION_PATTERN, child)
-                        if match:
-                            model_name = match.group("model_name").strip("'\"")
-                            child_names.append(model_name)
+                _collect(child)
 
         return {
+            "id": name,
             "name": name,
             "status": status.value if status else None,
             "child_item_names": child_names,

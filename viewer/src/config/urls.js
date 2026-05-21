@@ -128,7 +128,7 @@ const URL_PATTERNS = {
     sourceSchemaJobTables: '/api/source-schema-jobs/{name}/tables/',
     sourceSchemaJobColumns: '/api/source-schema-jobs/{name}/tables/{table}/columns/',
     sourceSchemaJobCreate: '/api/source-schema-jobs/',
-    sourceSchemaJobStatus: '/api/source-schema-jobs/{jobId}/',
+    sourceSchemaJobStatus: '/api/source-schema-jobs/{runId}/',
 
     // Model query jobs endpoints
     modelQueryJobs: '/api/model-query-jobs/',

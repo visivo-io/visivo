@@ -30,7 +30,7 @@ describe('usePreviewData', () => {
     mockStartRun = jest.fn().mockReturnValue(pendingPromise());
     mockResetRun = jest.fn();
     mockPreviewJobBase = {
-      runInstanceId: null,
+      runId: null,
       status: null,
       progress: 0,
       progressMessage: '',
@@ -55,18 +55,18 @@ describe('usePreviewData', () => {
     expect(result.current.isCompleted).toBe(false);
     expect(result.current.isFailed).toBe(false);
     expect(result.current.needsPreviewRun).toBe(false);
-    expect(result.current.runInstanceId).toBeNull();
+    expect(result.current.runId).toBeNull();
     expect(mockStartRun).not.toHaveBeenCalled();
   });
 
-  test('exposes runInstanceId from previewJob', () => {
-    usePreviewJob.mockReturnValue({ ...mockPreviewJobBase, runInstanceId: 'run-456' });
+  test('exposes runId from previewJob', () => {
+    usePreviewJob.mockReturnValue({ ...mockPreviewJobBase, runId: 'run-456' });
 
     const { result } = renderHook(() =>
       usePreviewData('insights', { name: 'test' })
     );
 
-    expect(result.current.runInstanceId).toBe('run-456');
+    expect(result.current.runId).toBe('run-456');
   });
 
   test('does not trigger preview when config matches savedConfig', () => {
@@ -146,7 +146,7 @@ describe('usePreviewData', () => {
       status: 'completed',
       isCompleted: true,
       result: { files: ['data.parquet'] },
-      runInstanceId: 'run-done',
+      runId: 'run-done',
     });
 
     const { result } = renderHook(() =>
@@ -210,7 +210,7 @@ describe('useInsightPreviewData', () => {
   let mockResetRun;
 
   const makePreviewJob = (overrides = {}) => ({
-    runInstanceId: null,
+    runId: null,
     status: null,
     progress: 0,
     progressMessage: '',
@@ -259,7 +259,7 @@ describe('useInsightPreviewData', () => {
 
   test('passes null runId to useInsightsData when preview not completed', () => {
     usePreviewJob.mockReturnValue(
-      makePreviewJob({ runInstanceId: 'run-abc', status: 'running', isRunning: true })
+      makePreviewJob({ runId: 'run-abc', status: 'running', isRunning: true })
     );
 
     renderHook(() =>
@@ -277,7 +277,7 @@ describe('useInsightPreviewData', () => {
   test('passes run_id from result when preview is completed', () => {
     usePreviewJob.mockReturnValue(
       makePreviewJob({
-        runInstanceId: 'run-456',
+        runId: 'run-456',
         status: 'completed',
         isCompleted: true,
         // New contract: backend returns run_id in the polling result
@@ -300,7 +300,7 @@ describe('useInsightPreviewData', () => {
   test('passes null runId when result is completed but has no run_id', () => {
     usePreviewJob.mockReturnValue(
       makePreviewJob({
-        runInstanceId: 'run-456',
+        runId: 'run-456',
         status: 'completed',
         isCompleted: true,
         result: {},
@@ -319,10 +319,10 @@ describe('useInsightPreviewData', () => {
     );
   });
 
-  test('passes runInstanceId as cacheKey to useInsightsData', () => {
+  test('passes runId as cacheKey to useInsightsData', () => {
     usePreviewJob.mockReturnValue(
       makePreviewJob({
-        runInstanceId: 'unique-run-id-789',
+        runId: 'unique-run-id-789',
         status: 'completed',
         isCompleted: true,
       })
@@ -419,7 +419,7 @@ describe('useChartPreviewJob — runHash gating', () => {
   let mockResetRun;
 
   const makePreviewJob = (overrides = {}) => ({
-    runInstanceId: null,
+    runId: null,
     status: null,
     progress: 0,
     progressMessage: '',

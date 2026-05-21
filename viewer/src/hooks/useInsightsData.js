@@ -204,7 +204,7 @@ const processInsight = async (db, insight, inputs, { forceReload = false } = {})
  * @param {string} runId - Run ID to load data from (default: "main")
  * @param {Object} options - Optional configuration
  * @param {string} options.storeKeyPrefix - Prefix for Zustand store keys (e.g., '__preview__')
- * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runInstanceId)
+ * @param {*} options.cacheKey - Extra key for React Query cache busting (e.g., runId)
  * @returns {Object} Insights data and loading state
  */
 export const useInsightsData = (
@@ -291,12 +291,16 @@ export const useInsightsData = (
     return relevantInputs;
   }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata, storeKeyPrefix]);
 
-  // Create a stable string representation of relevant inputs for the queryKey
-  // On initial load (no query metadata yet), use 'initial' to force first fetch
+  // Create a stable string representation of relevant inputs for the
+  // queryKey. ``relevantInputValues`` is ``{}`` until the first fetch
+  // populates query metadata in the store — and stays ``{}`` for any
+  // insight without input dependencies. Using ``JSON.stringify`` for
+  // both states means the key doesn't change on metadata discovery
+  // (no spurious second fetch), and only changes when an insight's
+  // *relevant* input value actually moves.
   const stableRelevantInputs = useMemo(() => {
-    if (!hasQueryMetadata) return 'initial';
     return JSON.stringify(relevantInputValues);
-  }, [hasQueryMetadata, relevantInputValues]);
+  }, [relevantInputValues]);
 
   const isPreviewMode = storeKeyPrefix !== '';
 
@@ -339,7 +343,7 @@ export const useInsightsData = (
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
   // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
   // Also includes runId to separate cache for different runs
-  // Also includes cacheKey for preview cache busting (runInstanceId changes each preview run)
+  // Also includes cacheKey for preview cache busting (runId changes each preview run)
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({

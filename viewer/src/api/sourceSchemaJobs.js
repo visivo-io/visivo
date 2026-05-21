@@ -86,7 +86,7 @@ export const fetchSourceSchema = async (sourceName, runId = null) => {
 /**
  * Trigger on-demand schema generation for a source
  * @param {string} sourceName - Name of the source
- * @returns {Promise<Object>} Object containing run_instance_id
+ * @returns {Promise<Object>} Object containing run_id
  */
 export const generateSourceSchema = async sourceName => {
   if (!isAvailable('sourceSchemaJobCreate')) {
@@ -120,16 +120,16 @@ export const generateSourceSchema = async sourceName => {
 };
 
 /**
- * Fetch the status of a schema generation job
- * @param {string} jobId - Job ID from generateSourceSchema
- * @returns {Promise<Object>} Job status object
+ * Fetch the status of a schema generation run
+ * @param {string} runId - Run ID from generateSourceSchema
+ * @returns {Promise<Object>} Run status object
  */
-export const fetchSchemaGenerationStatus = async jobId => {
+export const fetchSchemaGenerationStatus = async runId => {
   if (!isAvailable('sourceSchemaJobStatus')) {
     throw new Error('Schema generation status not available in this environment');
   }
 
-  const url = getUrl('sourceSchemaJobStatus', { jobId });
+  const url = getUrl('sourceSchemaJobStatus', { runId });
   const response = await fetchWithContext(url, undefined, 'Checking schema generation status');
 
   if (!response.ok) {
@@ -168,14 +168,14 @@ export const fetchOrGenerateSchema = async (sourceName, options = {}) => {
     onProgress('running', 0.0, 'Starting schema generation');
   }
 
-  const { run_instance_id: jobId } = await generateSourceSchema(sourceName);
+  const { run_id: jobRunId } = await generateSourceSchema(sourceName);
 
   // Poll for completion
   const startTime = Date.now();
   const generatedRunId = `preview-${sourceName}`;
 
   while (Date.now() - startTime < maxWaitTime) {
-    const status = await fetchSchemaGenerationStatus(jobId);
+    const status = await fetchSchemaGenerationStatus(jobRunId);
 
     if (onProgress) {
       onProgress(status.status, status.progress || 0, status.progress_message || '');

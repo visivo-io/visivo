@@ -33,7 +33,7 @@ def register_input_jobs_views(app, flask_app, output_dir):
             run_id = request.args.get("run_id", DEFAULT_RUN_ID)
 
             if not input_names:
-                return jsonify({"message": "input_names parameter is required"}), 400
+                return jsonify({"error": "input_names parameter is required"}), 400
 
             inputs = []
             missing_inputs = []
@@ -79,16 +79,16 @@ def register_input_jobs_views(app, flask_app, output_dir):
 
                 except json.JSONDecodeError as e:
                     Logger.instance().error(f"Invalid JSON in input file {input_file}: {str(e)}")
-                    return jsonify({"message": f"Invalid JSON in input '{name}'"}), 500
+                    return jsonify({"error": f"Invalid JSON in input '{name}'"}), 500
                 except Exception as e:
                     Logger.instance().error(f"Error loading input '{name}': {str(e)}")
-                    return jsonify({"message": f"Error loading input '{name}': {str(e)}"}), 500
+                    return jsonify({"error": f"Error loading input '{name}': {str(e)}"}), 500
 
             if missing_inputs:
                 Logger.instance().info(f"Missing input files: {missing_inputs}")
                 if not inputs:
                     return (
-                        jsonify({"message": f"No input files found for: {missing_inputs}"}),
+                        jsonify({"error": f"No input files found for: {missing_inputs}"}),
                         404,
                     )
 
@@ -96,4 +96,4 @@ def register_input_jobs_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error fetching inputs data: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500

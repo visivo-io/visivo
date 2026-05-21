@@ -1,10 +1,21 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
-// ========== Old project endpoint (for backward compatibility) ==========
-export const fetchProject = async (projectId = null) => {
+// ============================================================
+// Legacy bulk-blob endpoint
+// ============================================================
+//
+// `/api/project/` returns the dereferenced project_json blob — the entire
+// project tree as one giant JSON object. Used by ProjectContainer (the
+// legacy view) and the onboarding/commonStore flow. New code should NOT
+// call this; use `fetchProject(id)` to get the canonical per-resource
+// envelope.
+//
+// Will be removed when ProjectContainer is cut over to ProjectNew.
+export const fetchProjectBlob = async (projectId = null) => {
   let url = getUrl('project');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   } else {
@@ -12,16 +23,24 @@ export const fetchProject = async (projectId = null) => {
   }
 };
 
-// ========== New projects CRUD endpoints ==========
+// ============================================================
+// Canonical projects CRUD endpoints
+// ============================================================
 
 /**
- * Fetch all projects with status (list endpoint)
- * Locally returns one project, in cloud can return multiple
+ * List the projects in scope.
+ *
+ * Locally (visivo serve) this returns a list with one element — the
+ * current project. In cloud (core) this returns the projects the
+ * authenticated user can see in the active stage.
+ *
+ * Note: the list endpoint does NOT take a project_id — the concept of
+ * "list, but only this one project" is incoherent. To fetch a single
+ * project, use `fetchProject(id)`.
  */
-export const fetchAllProjects = async (projectId = null) => {
-  let url = getUrl('projectsList');
-  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+export const fetchAllProjects = async () => {
+  const url = getUrl('projectsList');
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -29,26 +48,33 @@ export const fetchAllProjects = async (projectId = null) => {
 };
 
 /**
- * Fetch a single project by name with status information
+ * Fetch a single project by id.
+ *
+ * The id is the project's stable identifier — locally that's the project
+ * name (visivo serve has one project, keyed by name); in cloud (core)
+ * it's a UUID. Either way the URL shape is identical:
+ * `/api/projects/<id>/`.
+ *
+ * Returns the canonical envelope: {id, name, status, config: {defaults}}.
+ * Returns null on 404.
  */
-export const fetchProjectByName = async (name, projectId = null) => {
-  let url = getUrl('projectDetail', { name });
-  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+export const fetchProject = async id => {
+  const url = getUrl('projectDetail', { name: id });
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
   if (response.status === 404) {
     return null;
   }
-  throw new Error(`Failed to fetch project: ${name}`);
+  throw new Error(`Failed to fetch project: ${id}`);
 };
 
 /**
  * Save a project configuration to cache (draft state)
  */
 export const saveProject = async (name, config) => {
-  const response = await fetch(getUrl('projectSave', { name }), {
+  const response = await apiFetch(getUrl('projectSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -66,7 +92,7 @@ export const saveProject = async (name, config) => {
  * Delete a project from cache (revert to published version)
  */
 export const deleteProject = async name => {
-  const response = await fetch(getUrl('projectDetail', { name }), {
+  const response = await apiFetch(getUrl('projectDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -79,7 +105,7 @@ export const deleteProject = async name => {
  * Validate a project configuration without saving
  */
 export const validateProject = async (name, config) => {
-  const response = await fetch(getUrl('projectValidate', { name }), {
+  const response = await apiFetch(getUrl('projectValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
