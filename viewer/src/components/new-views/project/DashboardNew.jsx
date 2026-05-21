@@ -203,8 +203,12 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     return dashboardData.config || dashboardData;
   }, [dashboards, dashboardName]);
 
-  // Height calculation helpers
+  // Height calculation helpers.
+  // `Row.height` accepts either an enum token (compact|xsmall|...|xxlarge) or a
+  // positive integer pixel value (canvas's Shift-modifier fluid-resize gesture
+  // writes ints directly to the same field). See VIS-A1 / specs §5.6.
   const getHeight = height => {
+    if (typeof height === 'number') return height;
     if (height === 'xsmall') return 128;
     if (height === 'small') return 256;
     if (height === 'medium') return 396;
@@ -506,6 +510,7 @@ const DashboardNew = ({ projectId, dashboardName }) => {
         key={`row-${rowIndex}`}
         ref={el => setRowRef(el, rowIndex)}
         data-row-index={rowIndex}
+        data-testid={`dashboard-row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           // Use vertical-only margin so the row stays inside its parent's
