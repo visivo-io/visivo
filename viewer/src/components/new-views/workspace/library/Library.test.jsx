@@ -66,6 +66,20 @@ const seedStore = (extra = {}) => {
       openCreateTableModal: jest.fn(),
       openCreateMarkdownModal: jest.fn(),
       openCreateInputModal: jest.fn(),
+      // Stub the collection loaders so the Library's mount-load effect is a
+      // no-op — this suite seeds the collections directly via setState.
+      fetchCharts: jest.fn(),
+      fetchTables: jest.fn(),
+      fetchMarkdowns: jest.fn(),
+      fetchInputs: jest.fn(),
+      fetchSources: jest.fn(),
+      fetchModels: jest.fn(),
+      fetchCsvScriptModels: jest.fn(),
+      fetchLocalMergeModels: jest.fn(),
+      fetchDimensions: jest.fn(),
+      fetchMetrics: jest.fn(),
+      fetchRelations: jest.fn(),
+      fetchInsights: jest.fn(),
       ...extra,
     });
   });
@@ -208,5 +222,29 @@ describe('Library', () => {
     expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
+  });
+
+  test('fetches every collection it renders on mount', () => {
+    // Regression: the Library only reads the store via useLibraryData —
+    // without a mount-load effect it shows whatever stale subset a prior
+    // route loaded (Sources / Tables / Relations came up empty). It must
+    // fetch all 12 collections it renders.
+    const fetchers = {
+      fetchCharts: jest.fn(),
+      fetchTables: jest.fn(),
+      fetchMarkdowns: jest.fn(),
+      fetchInputs: jest.fn(),
+      fetchSources: jest.fn(),
+      fetchModels: jest.fn(),
+      fetchCsvScriptModels: jest.fn(),
+      fetchLocalMergeModels: jest.fn(),
+      fetchDimensions: jest.fn(),
+      fetchMetrics: jest.fn(),
+      fetchRelations: jest.fn(),
+      fetchInsights: jest.fn(),
+    };
+    seedStore(fetchers);
+    renderLibrary();
+    Object.values(fetchers).forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
   });
 });
