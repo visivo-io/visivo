@@ -1,0 +1,155 @@
+import React, { useCallback, useState } from 'react';
+import { PiCaretDown, PiPlus } from 'react-icons/pi';
+import LibraryRow from './LibraryRow';
+import { getTypeDef } from './LibraryRow';
+
+/**
+ * LibrarySubsection — VIS-769 / Track C C1.
+ *
+ * One per-type collapsible group inside a Library section. Mirrors the
+ * `Subsection` function in the C-1 `library.jsx` blueprint:
+ *
+ *   - A header (caret + type icon + UPPERCASE plural + count) that toggles
+ *     the subsection's collapse.
+ *   - The list of `<LibraryRow>` rows for this type.
+ *   - An italic empty-state line ("No charts yet") when the subsection has
+ *     no rows.
+ *   - A "+ New X" button — only for droppable Layout types
+ *     (chart / table / markdown / input). Data-layer types use a different
+ *     create flow and so render no inline create button.
+ *
+ * Collapse state persists per-type in localStorage under
+ * `library:subsection-collapsed:<typeKey>` (per VIS-773). When a search is
+ * active and the subsection has no matching rows, the parent hides it
+ * entirely; this component handles the "still has rows" case.
+ */
+const STORAGE_PREFIX = 'library:subsection-collapsed:';
+
+function readPersistedCollapsed(typeKey) {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    return window.localStorage.getItem(`${STORAGE_PREFIX}${typeKey}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writePersistedCollapsed(typeKey, collapsed) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    if (collapsed) {
+      window.localStorage.setItem(`${STORAGE_PREFIX}${typeKey}`, '1');
+    } else {
+      window.localStorage.removeItem(`${STORAGE_PREFIX}${typeKey}`);
+    }
+  } catch {
+    // Ignore quota errors — collapsing a subsection is non-critical.
+  }
+}
+
+const LibrarySubsection = ({
+  typeKey,
+  rows = [],
+  selectedRowId = null,
+  onRowClick,
+  onContextAction,
+  onCreate,
+  initialCollapsed,
+}) => {
+  const def = getTypeDef(typeKey);
+  const Icon = def.icon;
+
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof initialCollapsed === 'boolean') return initialCollapsed;
+    return readPersistedCollapsed(typeKey);
+  });
+
+  const handleToggle = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev;
+      writePersistedCollapsed(typeKey, next);
+      return next;
+    });
+  }, [typeKey]);
+
+  return (
+    <div
+      className="flex flex-col"
+      data-testid={`library-subsection-${typeKey}`}
+      data-collapsed={collapsed ? 'true' : 'false'}
+    >
+      <button
+        type="button"
+        onClick={handleToggle}
+        aria-expanded={!collapsed}
+        aria-controls={`library-subsection-${typeKey}-body`}
+        data-testid={`library-subsection-${typeKey}-header`}
+        className="group flex h-7 items-center gap-1.5 rounded px-1.5 text-left transition-colors hover:bg-gray-50"
+      >
+        <PiCaretDown
+          aria-hidden="true"
+          className={`h-3 w-3 shrink-0 text-gray-400 transition-transform ${
+            collapsed ? '-rotate-90' : ''
+          }`}
+        />
+        <Icon aria-hidden="true" style={{ fontSize: 14 }} className="shrink-0 text-gray-500" />
+        <span className="text-[11.5px] font-semibold uppercase tracking-wider text-gray-600">
+          {def.plural}
+        </span>
+        <span
+          className="text-[10.5px] text-gray-400"
+          data-testid={`library-subsection-${typeKey}-count`}
+        >
+          ({rows.length})
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div id={`library-subsection-${typeKey}-body`} data-testid={`library-subsection-${typeKey}-body`}>
+          {rows.length === 0 && (
+            <p
+              className="px-3 py-1.5 text-[11px] italic text-gray-400"
+              data-testid={`library-subsection-${typeKey}-empty`}
+            >
+              No {def.plural.toLowerCase()} yet
+            </p>
+          )}
+          {rows.length > 0 && (
+            <ul
+              className="flex flex-col gap-px"
+              data-testid={`library-subsection-${typeKey}-rows`}
+            >
+              {rows.map(obj => (
+                <li key={obj.id} className="relative">
+                  <LibraryRow
+                    obj={obj}
+                    selected={selectedRowId === obj.id}
+                    draggable={def.droppable}
+                    onClick={onRowClick}
+                    onContextAction={onContextAction}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* "+ New X" — only the droppable Layout types get the inline
+              create button; Data-layer types use a different create flow. */}
+          {def.droppable && (
+            <button
+              type="button"
+              onClick={() => onCreate && onCreate(typeKey)}
+              data-testid={`library-subsection-${typeKey}-create`}
+              className="mt-0.5 inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-[#713b57] hover:bg-[#e2d7dd]/40"
+            >
+              <PiPlus className="h-3 w-3" /> New {def.label}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export { readPersistedCollapsed, writePersistedCollapsed, STORAGE_PREFIX };
+export default LibrarySubsection;
