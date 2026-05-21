@@ -1,8 +1,7 @@
 from visivo.models.base.named_model import NamedModel
-from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from pydantic import Field
-from typing import List
+from pydantic import Field, field_validator
+from typing import List, Union
 from enum import Enum
 from visivo.models.item import Item
 
@@ -22,7 +21,9 @@ class Row(NamedModel, ParentModel):
     Rows are the horizontal component of the dashboard grid and house 1 to many [Items](./Item/).
 
     !!! tip
-        You can set the height of a row using the `height` attribute on a row
+        You can set the height of a row using the `height` attribute on a row. The field
+        accepts either a named enum value or a positive integer pixel value — the canvas's
+        fluid-resize gesture writes pixel values directly.
 
         ??? information "Row Height Options in Pixels"
 
@@ -35,13 +36,29 @@ class Row(NamedModel, ParentModel):
             | large | 512 |
             | xlarge | 768 |
             | xxlarge | 1024 |
+            | `<int>` | the integer itself, in pixels |
     """
 
-    height: HeightEnum = Field(HeightEnum.medium, description="Sets the height of the row.")
+    height: Union[HeightEnum, int] = Field(
+        HeightEnum.medium,
+        description=(
+            "Sets the height of the row. Accepts either an enum token "
+            "(compact | xsmall | small | medium | large | xlarge | xxlarge) "
+            "or a positive integer pixel value. The canvas's Shift-modifier "
+            "fluid-resize gesture writes integer pixel values."
+        ),
+    )
     items: List[Item] = Field(
         None,
         description="A list of items containing tables, charts or markdown. Items are placed in the row in the order that they are listed from left to right.",
     )
+
+    @field_validator("height")
+    @classmethod
+    def validate_height(cls, value):
+        if isinstance(value, int) and not isinstance(value, bool) and value <= 0:
+            raise ValueError("height must be a positive integer when given as a pixel value")
+        return value
 
     def child_items(self):
         return self.items

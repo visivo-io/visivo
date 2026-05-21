@@ -456,4 +456,50 @@ describe('DashboardNew', () => {
       expect(screen.getByText(/Chart not found/)).toBeInTheDocument();
     });
   });
+
+  // ---------- VIS-A1: Row.height accepts Union[HeightEnum, int] ----------
+
+  describe('Row.height numeric (VIS-A1)', () => {
+    const mountDashboardWithRowHeight = (height) => {
+      const dashboard = {
+        name: 'height-test',
+        rows: [
+          { height, items: [{ chart: 'test-chart', width: 1 }] },
+        ],
+      };
+      useStore.mockImplementation((selector) => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn((name) => (name === 'test-chart' ? mockChart : null)),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName="height-test" />
+        </BrowserRouter>
+      );
+    };
+
+    it('honors integer row.height as a literal pixel value', () => {
+      mountDashboardWithRowHeight(320);
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('320px');
+    });
+
+    it('maps enum row.height through the existing pixel table', () => {
+      mountDashboardWithRowHeight('medium');
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('396px');
+    });
+  });
 });
