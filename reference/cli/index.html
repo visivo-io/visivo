@@ -8643,8 +8643,12 @@ This folder can be statically deployed to any web server, hosting service, or bu
 </code></pre></div>
 <h2 id="init">init</h2>
 <p>Initialize a new Visivo project.</p>
-<p>By default, creates a simple project.visivo.yml file with a project name.
-Use --example to load an example project from GitHub.</p>
+<p>By default, creates a scaffolded project.visivo.yml file with commented examples
+and continues into <code>visivo serve</code> to open the in-browser onboarding wizard.</p>
+<p>Use --example to load an example project from GitHub instead of the scaffold.
+Use --bare to skip auto-launching the dev server.
+Use --headless to skip opening the browser.
+Use --no-onboarding to skip the ?onboarding=1 query param when launching the browser.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo init [OPTIONS]
 </code></pre></div>
@@ -8652,6 +8656,14 @@ Use --example to load an example project from GitHub.</p>
 <div class="highlight"><pre><span></span><code>  -pd, --project-dir TEXT         Directory to initialize the project in
   --example [github-releases|ev-sales|college-football]
                                   Load an example project from GitHub
+  --bare                          Only write the project files; do not auto-
+                                  launch the dev server.
+  --headless                      Do not open the browser when the dev server
+                                  starts.
+  --no-onboarding                 When auto-launching the dev server, do not
+                                  append ?onboarding=1 to the URL.
+  -p, --port INTEGER              What port to serve on when auto-launching
+                                  the dev server
   --help                          Show this message and exit.
 </code></pre></div>
 <h2 id="list">list</h2>

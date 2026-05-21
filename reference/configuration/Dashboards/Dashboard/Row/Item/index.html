@@ -8174,6 +8174,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#nested-rows-row-container-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nested rows (row-container items)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8205,8 +8216,8 @@
 
 
 <div><h1 id="item">Item</h1>
-<p>The Item houses a single chart, table, markdown, or input object.</p>
-<p>It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.</p>
+<p>The Item houses a single chart, table, markdown, or input object — or a list of nested rows.</p>
+<p>It also informs the width that the chart, table, markdown, or row-container should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.</p>
 <p>In the example below, the markdown would take up 1/4th of the row and would be positioned on the left edge. The table would also take up 1/4th of the page and would sit to the right of the markdown. The chart would take up 1/2 of the page and would touch the right edge of the row.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">items</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
@@ -8235,6 +8246,29 @@
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">markdown</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(welcome-markdown)</span>
 </code></pre></div>
 <p>Markdown content supports <a href="https://commonmark.org/help/">CommonMark</a> and <a href="https://github.github.com/gfm/">GitHub Flavored Markdown</a>. You can also render raw HTML within your markdown.</p>
+<h2 id="nested-rows-row-container-items">Nested rows (row-container items)</h2>
+<p>An Item can also act as a row-container by setting <code>rows</code> instead of a leaf object. The
+item's <code>rows</code> are a list of nested rows that render as a vertical stack inside the slot
+the parent row reserved for the item. Heights of nested rows are interpreted as
+<em>relative weights</em> inside the parent slot.</p>
+<p>Row-container items live as siblings of leaf items inside a row's <code>items</code>, so a single
+row can mix charts, markdowns, tables, inputs, and row-containers freely.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">rows</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large</span>
+<span class="w">    </span><span class="nt">items</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">        </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(big-chart)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">        </span><span class="nt">rows</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small</span>
+<span class="w">            </span><span class="nt">items</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> chart</span><span class="p">:</span><span class="w"> </span><span class="nv">ref(small-a)</span><span class="w"> </span><span class="p p-Indicator">}]</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small</span>
+<span class="w">            </span><span class="nt">items</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> chart</span><span class="p">:</span><span class="w"> </span><span class="nv">ref(small-b)</span><span class="w"> </span><span class="p p-Indicator">}]</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small</span>
+<span class="w">            </span><span class="nt">items</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt"> chart</span><span class="p">:</span><span class="w"> </span><span class="nv">ref(small-c)</span><span class="w"> </span><span class="p p-Indicator">}]</span>
+</code></pre></div>
+<p><code>rows</code> is mutually exclusive with <code>markdown</code>, <code>chart</code>, <code>table</code>, and <code>input</code> — at most one
+of the five may be set on a given item.</p>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -8293,6 +8327,12 @@
 <td>Any of: <a href="https://docs.visivo.io/reference/configuration/Inputs/MultiSelectInput/">MultiSelectInput</a>, <a href="https://docs.visivo.io/reference/configuration/Inputs/SingleSelectInput/">SingleSelectInput</a>, string or string</td>
 <td>None</td>
 <td>An Input object defined inline or a ${ ref() } to an input.</td>
+</tr>
+<tr>
+<td>rows</td>
+<td>Any of: <a href="https://docs.visivo.io/reference/configuration/Dashboards/Dashboard/Row/">Row</a>, array</td>
+<td>None</td>
+<td>An optional list of nested rows. When set, this item renders as a row-container inside the slot the parent row reserved for it. Mutually exclusive with markdown/chart/table/input. Each sub-row carries its own <code>height</code>, which is interpreted as a relative weight inside the parent slot.</td>
 </tr>
 </tbody>
 </table></div>
