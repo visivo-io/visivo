@@ -13,6 +13,9 @@ import aiofiles
 import httpx
 import os
 import contextvars
+import fnmatch
+import tarfile
+from pathlib import Path
 from time import time
 from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
@@ -29,6 +32,105 @@ semaphore_3 = asyncio.Semaphore(3)
 semaphore_50 = asyncio.Semaphore(50)
 attempt = contextvars.ContextVar("attempt")
 MAX_ATTEMPTS = 3
+
+SOURCE_TARBALL_EXCLUDED_DIRS = {
+    ".git",
+    "target",
+    ".visivo_cache",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "venv12",
+}
+SOURCE_TARBALL_EXCLUDED_FILE_PATTERNS = (
+    "*.pyc",
+    "*.parquet",
+    "*.duckdb",
+    "*.duckdb.wal",
+    "*.sqlite",
+    "*.sqlite-journal",
+)
+SOURCE_TARBALL_MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB; warned-and-skipped
+
+
+def _build_source_tarball(working_dir: str, output_dir: str):
+    """Build a gzipped tarball of the project's YAML source tree.
+
+    The cloud-side runner needs the original YAMLs + any local Python or SQL
+    files that ``CsvScriptModel.args`` may reference. Compiled artifacts
+    (parquet, duckdb) are excluded — the runner regenerates those.
+
+    Returns a tuple ``(tarball_path, skipped_large_files)``. ``skipped_large_files``
+    is a list of ``(relpath, size_bytes)`` tuples; surfaces in the deploy log so
+    the user knows their cloud run will not have those files.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    tarball_path = Path(output_dir) / "source.tar.gz"
+    skipped_large_files: list[tuple[str, int]] = []
+    working_dir_abs = os.path.abspath(working_dir)
+
+    def is_excluded_file(name: str) -> bool:
+        return any(fnmatch.fnmatch(name, p) for p in SOURCE_TARBALL_EXCLUDED_FILE_PATTERNS)
+
+    with tarfile.open(tarball_path, "w:gz") as tar:
+        for root, dirs, files in os.walk(working_dir_abs):
+            # Prune excluded directories in-place so we don't descend into them.
+            dirs[:] = [d for d in dirs if d not in SOURCE_TARBALL_EXCLUDED_DIRS]
+            for fname in files:
+                if is_excluded_file(fname):
+                    continue
+                abs_path = os.path.join(root, fname)
+                # Skip the tarball itself if output_dir lives under working_dir.
+                if os.path.abspath(abs_path) == os.path.abspath(tarball_path):
+                    continue
+                try:
+                    size = os.path.getsize(abs_path)
+                except OSError:
+                    continue
+                rel = os.path.relpath(abs_path, working_dir_abs)
+                if size > SOURCE_TARBALL_MAX_FILE_BYTES:
+                    skipped_large_files.append((rel, size))
+                    continue
+                tar.add(abs_path, arcname=rel)
+
+    return tarball_path, skipped_large_files
+
+
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+def _upload_source_tarball(tarball_path, project_id, json_headers, form_headers, host):
+    """Upload the project source tarball to core via the direct-upload flow.
+
+    Mirrors the existing ``/api/files/direct/start/`` + signed PUT + finish
+    handshake used elsewhere in this file. Returns the ``source_artifact_url``
+    core stored, or ``None`` if core doesn't yet expose the endpoint
+    (graceful fallback so older core deployments still accept the deploy).
+    """
+    start_url = f"{host}/api/projects/{project_id}/source/"
+    start_response = requests.post(start_url, headers=json_headers, json={"filename": "source.tar.gz"})
+    if start_response.status_code == 404:
+        Logger.instance().warning(
+            "Core does not yet support project source uploads "
+            "(404 from /api/projects/<id>/source/). Skipping. "
+            "Cloud-side runs against this project will not be possible until core is upgraded."
+        )
+        return None
+    start_response.raise_for_status()
+    start_data = start_response.json()
+    upload_url = start_data["upload_url"]
+    source_id = start_data["id"]
+
+    with open(tarball_path, "rb") as f:
+        put_headers = dict(form_headers)
+        if "localhost" in upload_url:
+            put_headers["Content-Disposition"] = "inline;filename=source.tar.gz"
+        put_response = requests.put(upload_url, data=f.read(), headers=put_headers)
+        put_response.raise_for_status()
+
+    finish_url = f"{host}/api/projects/{project_id}/source/{source_id}/finish/"
+    finish_response = requests.post(finish_url, headers=json_headers, json={})
+    finish_response.raise_for_status()
+    return finish_response.json().get("source_artifact_url")
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
@@ -740,7 +842,14 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
 
 
 def deploy_phase(
-    working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id=DEFAULT_RUN_ID
+    working_dir,
+    user_dir,
+    output_dir,
+    stage,
+    host,
+    deploy_id=None,
+    run_id=DEFAULT_RUN_ID,
+    skip_source_upload=False,
 ):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
@@ -753,6 +862,9 @@ def deploy_phase(
         host: Deployment host
         deploy_id: Optional deployment ID for tracking
         run_id: Run ID for file organization (default: "main")
+        skip_source_upload: If True, skip uploading the YAML source tarball.
+            Used as an escape hatch when core has not yet shipped the
+            ``/api/projects/<id>/source/`` receiver in this environment.
     """
 
     run_output_dir = f"{output_dir}/{run_id}"
@@ -816,6 +928,38 @@ def deploy_phase(
         project_data = response.json()
         project_id = project_data["id"]
         project_url = project_data["url"]
+
+        if not skip_source_upload:
+            Logger.instance().info("")
+            send_progress("Uploading project source tarball...", "info")
+            source_upload_start_time = time()
+            try:
+                tarball_path, skipped = _build_source_tarball(
+                    working_dir=working_dir, output_dir=run_output_dir
+                )
+                if skipped:
+                    Logger.instance().warning(
+                        f"\tSkipped {len(skipped)} file(s) larger than "
+                        f"{SOURCE_TARBALL_MAX_FILE_BYTES // (1024 * 1024)} MB in source tarball: "
+                        + ", ".join(f"{rel} ({size} bytes)" for rel, size in skipped[:5])
+                        + ("..." if len(skipped) > 5 else "")
+                    )
+                _upload_source_tarball(
+                    tarball_path=tarball_path,
+                    project_id=project_id,
+                    json_headers=json_headers,
+                    form_headers=form_headers,
+                    host=host,
+                )
+                send_progress(
+                    f"Source upload completed in {time() - source_upload_start_time:.2f} seconds",
+                    "info",
+                )
+            except requests.HTTPError as e:
+                raise click.ClickException(
+                    f"Failed to upload project source tarball: {repr(e)}. "
+                    f"Use --skip-source-upload to bypass while core is being upgraded."
+                )
 
         # Process thumbnails
         send_progress("Processing dashboard uploads...", "info")
