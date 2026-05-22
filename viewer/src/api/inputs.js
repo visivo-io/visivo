@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all inputs with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllInputs = async (projectId = null) => {
   let url = getUrl('inputsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllInputs = async (projectId = null) => {
  * Fetch a single input by name with status information
  */
 export const fetchInput = async name => {
-  const response = await fetch(getUrl('inputDetail', { name }));
+  const response = await apiFetch(getUrl('inputDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchInput = async name => {
  * Save an input configuration to cache (draft state)
  */
 export const saveInput = async (name, config) => {
-  const response = await fetch(getUrl('inputSave', { name }), {
+  const response = await apiFetch(getUrl('inputSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveInput = async (name, config) => {
  * Delete an input from cache (revert to published version)
  */
 export const deleteInput = async name => {
-  const response = await fetch(getUrl('inputDetail', { name }), {
+  const response = await apiFetch(getUrl('inputDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteInput = async name => {
  * Validate an input configuration without saving
  */
 export const validateInput = async (name, config) => {
-  const response = await fetch(getUrl('inputValidate', { name }), {
+  const response = await apiFetch(getUrl('inputValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

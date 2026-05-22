@@ -7,25 +7,44 @@ from visivo.logger.logger import Logger
 
 
 def register_dashboard_views(app, flask_app, output_dir):
+    def _attach_thumbnail_url(dashboard_data):
+        """Attach ``signed_thumbnail_file_url`` to a dashboard envelope.
+
+        Sibling key alongside ``id``/``name``/``status`` — never inside
+        ``config``. Resolves to ``/api/dashboards/<name>.png/`` if the
+        thumbnail exists on disk, ``None`` otherwise. Applied to both
+        detail and list responses so the cards page can render without
+        a follow-up per-dashboard fetch.
+        """
+        dashboard_name = dashboard_data["name"]
+        thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
+        thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+        dashboard_data["signed_thumbnail_file_url"] = (
+            f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
+        )
+        return dashboard_data
+
     @app.route("/api/dashboards/<dashboard_name>/", methods=["GET"])
     def get_dashboard_api(dashboard_name):
-        """API endpoint for dashboard data"""
-        try:
-            thumbnail_path = os.path.join("dashboards", f"{dashboard_name}.png")
-            thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+        """Return canonical dashboard envelope plus the thumbnail URL.
 
-            return jsonify(
-                {
-                    "id": dashboard_name,
-                    "name": dashboard_name,
-                    "signed_thumbnail_file_url": (
-                        f"/api/dashboards/{dashboard_name}.png/" if thumbnail_exists else None
-                    ),
-                }
-            )
+        Detail and list responses share the same canonical shape from
+        ``DashboardManager._serialize_object``: ``{id, name, status,
+        child_item_names, config}`` plus the per-dashboard
+        ``signed_thumbnail_file_url`` sibling key.
+        """
+        try:
+            dashboard_data = flask_app.dashboard_manager.get_dashboard_with_status(dashboard_name)
+            if not dashboard_data:
+                return (
+                    jsonify({"error": f"Dashboard '{dashboard_name}' not found"}),
+                    404,
+                )
+
+            return jsonify(_attach_thumbnail_url(dashboard_data))
         except Exception as e:
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/<dashboard_name>.png/", methods=["GET"])
     def get_thumbnail_api(dashboard_name):
@@ -38,17 +57,17 @@ def register_dashboard_views(app, flask_app, output_dir):
             return send_from_directory(output_dir, thumbnail_path)
         except Exception as e:
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/<dashboard_name>.png/", methods=["POST"])
     def create_thumbnail_api(dashboard_name):
         try:
             if "file" not in request.files:
-                return jsonify({"message": "No file provided"}), 400
+                return jsonify({"error": "No file provided"}), 400
 
             file = request.files["file"]
             if file.filename == "" or not file.filename.endswith(".png"):
-                return jsonify({"message": "Invalid file - must be a PNG"}), 400
+                return jsonify({"error": "Invalid file - must be a PNG"}), 400
 
             dashboard_dir = os.path.join(output_dir, "dashboards")
             os.makedirs(dashboard_dir, exist_ok=True)
@@ -65,14 +84,19 @@ def register_dashboard_views(app, flask_app, output_dir):
 
         except Exception as e:
             Logger.instance().error(f"Error creating thumbnail: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dashboards/", methods=["GET"])
     def list_all_dashboards():
-        """List all dashboards (cached + published) with status."""
+        """List all dashboards (cached + published) with status.
+
+        Each element matches the detail GET shape exactly, including the
+        ``signed_thumbnail_file_url`` sibling key — so the cards page can
+        render without a follow-up per-dashboard fetch.
+        """
         try:
             dashboards = flask_app.dashboard_manager.get_all_dashboards_with_status()
-            return jsonify({"dashboards": dashboards})
+            return jsonify({"dashboards": [_attach_thumbnail_url(d) for d in dashboards]})
         except Exception as e:
             Logger.instance().error(f"Error listing dashboards: {str(e)}")
             return jsonify({"error": str(e)}), 500

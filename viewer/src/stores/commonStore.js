@@ -1,4 +1,4 @@
-import { fetchProject } from '../api/project';
+import { fetchProjectBlob } from '../api/project';
 import { fetchProjectFilePath } from '../api/projectFilePath';
 import { hasCompletedOnboarding } from '../components/onboarding/onboardingState';
 
@@ -54,7 +54,12 @@ const createCommonSlice = (set, get) => {
     },
 
     fetchProject: async () => {
-      const project = await fetchProject();
+      // Onboarding/legacy callers expect the bulk project_json blob (used
+      // by `evaluateIsNewProject` and ProjectContainer). The canonical
+      // per-resource endpoint returns a slim envelope and won't satisfy
+      // those consumers. Switch to `fetchProject` from api/project.js
+      // when ProjectContainer + Onboarding are migrated.
+      const project = await fetchProjectBlob();
       set({ project });
       evaluateIsNewProject();
     },

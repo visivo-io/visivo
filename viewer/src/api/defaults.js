@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch the current project defaults
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchDefaults = async (projectId = null) => {
   let url = getUrl('defaultsGet');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchDefaults = async (projectId = null) => {
  * Save defaults configuration to cache (draft state)
  */
 export const saveDefaults = async config => {
-  const response = await fetch(getUrl('defaultsSave'), {
+  const response = await apiFetch(getUrl('defaultsSave'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

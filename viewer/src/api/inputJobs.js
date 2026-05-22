@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Validates an input job metadata object has the required structure
@@ -66,7 +67,7 @@ export const fetchInputJobs = async (projectId, names, retries = 3, retryDelay =
   let lastError;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const response = await fetch(url);
+      const response = await apiFetch(url);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -123,7 +124,7 @@ export const fetchInputJobs = async (projectId, names, retries = 3, retryDelay =
  * @returns {Promise<Object>} - Parsed input data
  */
 export const loadInputJobData = async url => {
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch input job JSON: ${response.status} ${response.statusText}`);
   }

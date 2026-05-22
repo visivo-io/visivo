@@ -245,7 +245,7 @@ describe('SourceBrowser', () => {
   });
 
   it('clicking a source without cached schema triggers schema generation', async () => {
-    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-123' });
+    generateSourceSchema.mockResolvedValue({ run_id: 'job-123' });
     fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed' });
     // After generation completes, fetchSourceSchemaJobs is called again
     fetchSourceSchemaJobs
@@ -295,7 +295,7 @@ describe('SourceBrowser', () => {
   });
 
   it('refresh action triggers schema generation and clears spinner on completion', async () => {
-    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-456' });
+    generateSourceSchema.mockResolvedValue({ run_id: 'job-456' });
     fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed' });
     fetchSourceSchemaJobs
       .mockResolvedValueOnce(mockSources)
@@ -352,7 +352,7 @@ describe('SourceBrowser', () => {
       { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
     ];
     fetchSourceSchemaJobs.mockResolvedValue(sourcesWithError);
-    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-err' });
+    generateSourceSchema.mockResolvedValue({ run_id: 'job-err' });
     fetchSchemaGenerationStatus.mockResolvedValue({
       status: 'failed',
       error: 'Connection refused',
@@ -386,7 +386,7 @@ describe('SourceBrowser', () => {
       { source_name: 'broken_db', has_cached_schema: false, total_tables: null },
     ];
     fetchSourceSchemaJobs.mockResolvedValue(sourcesWithError);
-    generateSourceSchema.mockResolvedValue({ run_instance_id: 'job-err' });
+    generateSourceSchema.mockResolvedValue({ run_id: 'job-err' });
     fetchSchemaGenerationStatus.mockResolvedValue({
       status: 'failed',
       error: 'Connection refused',

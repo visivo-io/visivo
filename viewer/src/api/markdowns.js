@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all markdowns with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllMarkdowns = async (projectId = null) => {
   let url = getUrl('markdownsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllMarkdowns = async (projectId = null) => {
  * Fetch a single markdown by name with status information
  */
 export const fetchMarkdown = async name => {
-  const response = await fetch(getUrl('markdownDetail', { name }));
+  const response = await apiFetch(getUrl('markdownDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchMarkdown = async name => {
  * Save a markdown configuration to cache (draft state)
  */
 export const saveMarkdown = async (name, config) => {
-  const response = await fetch(getUrl('markdownSave', { name }), {
+  const response = await apiFetch(getUrl('markdownSave', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveMarkdown = async (name, config) => {
  * Delete a markdown from cache (revert to published version)
  */
 export const deleteMarkdown = async name => {
-  const response = await fetch(getUrl('markdownDetail', { name }), {
+  const response = await apiFetch(getUrl('markdownDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteMarkdown = async name => {
  * Validate a markdown configuration without saving
  */
 export const validateMarkdown = async (name, config) => {
-  const response = await fetch(getUrl('markdownValidate', { name }), {
+  const response = await apiFetch(getUrl('markdownValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

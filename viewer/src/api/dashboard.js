@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch dashboard data
@@ -16,7 +17,7 @@ export const fetchDashboard = async (projectId, name) => {
     url += `${separator}project_id=${encodeURIComponent(projectId)}`;
   }
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch dashboard data: ${response.status}`);

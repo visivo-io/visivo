@@ -18,7 +18,7 @@ const ErrorPage = props => {
     title = props.status;
   }
   return (
-    <div className="flex justify-center items-center mt-4">
+    <div className="flex justify-center items-center min-h-[calc(100vh-4rem)] px-4 py-12">
       <div className="text-center">
         <h1 className="text-6xl font-medium">{title}</h1>
         <p className="text-xl font-medium m-6">{message}</p>
