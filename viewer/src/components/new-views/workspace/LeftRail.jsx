@@ -17,7 +17,7 @@ import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
  *     the same Library.
  */
 
-const TypeBtn = ({ typeKey }) => {
+const TypeBtn = ({ typeKey, active }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
   return (
@@ -26,7 +26,13 @@ const TypeBtn = ({ typeKey }) => {
       title={def.plural}
       aria-label={def.plural}
       data-testid={`workspace-left-rail-collapsed-${typeKey}`}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+      data-active={active ? 'true' : 'false'}
+      className={[
+        'inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+        active
+          ? 'bg-[#e2d7dd] text-[#5a2f45]'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
+      ].join(' ')}
     >
       <Icon aria-hidden="true" style={{ fontSize: 18 }} />
     </button>
@@ -34,6 +40,11 @@ const TypeBtn = ({ typeKey }) => {
 };
 
 const LeftRailCollapsed = ({ onExpand }) => {
+  // Highlight the type matching the active workspace object so the
+  // collapsed strip reads as "you're inside X" — matches the design's
+  // mulberry pill on the active section.
+  const activeObject = useStore(s => s.workspaceActiveObject);
+  const activeType = activeObject?.type || null;
   return (
     <aside
       data-testid="workspace-left-rail"
@@ -62,12 +73,12 @@ const LeftRailCollapsed = ({ onExpand }) => {
         {/* Layout Items group — droppable types. */}
         <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
         {LAYOUT_TYPES.map(t => (
-          <TypeBtn key={t} typeKey={t} />
+          <TypeBtn key={t} typeKey={t} active={t === activeType} />
         ))}
         {/* Data Layer group — click-to-edit types. */}
         <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
         {DATA_TYPES.map(t => (
-          <TypeBtn key={t} typeKey={t} />
+          <TypeBtn key={t} typeKey={t} active={t === activeType} />
         ))}
       </div>
     </aside>

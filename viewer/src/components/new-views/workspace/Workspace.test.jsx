@@ -187,6 +187,27 @@ describe('VIS-775 Workspace shell', () => {
     }
   });
 
+  test('collapsed left-rail highlights the type matching the active object', () => {
+    // Regression: collapsed strip needs an active-section indicator so the
+    // user can identify their context at a glance. Render first so the
+    // Workspace mount-effect runs (it sets activeObject to project), then
+    // override the state to simulate a chart being active + the rail
+    // collapsed, and assert the chart TypeBtn carries the mulberry pill.
+    renderAt('/workspace');
+    act(() => {
+      useStore.setState({
+        workspaceLeftCollapsed: true,
+        workspaceActiveObject: { type: 'chart', name: 'revenue_chart' },
+      });
+    });
+    expect(
+      screen.getByTestId('workspace-left-rail-collapsed-chart')
+    ).toHaveAttribute('data-active', 'true');
+    expect(
+      screen.getByTestId('workspace-left-rail-collapsed-source')
+    ).toHaveAttribute('data-active', 'false');
+  });
+
   test('fetches every collection on mount (was Library; now route-level)', () => {
     const fetchers = {
       fetchCharts: jest.fn(),
