@@ -5,6 +5,7 @@ import { FaUserCircle } from 'react-icons/fa';
 import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { PiCaretRight } from 'react-icons/pi';
 import logo from '../../../images/logo.png';
+import useStore from '../../../stores/store';
 
 /**
  * TopBar — h-12 navy top bar for the Workspace shell (VIS-775 / Track B B2).
@@ -51,13 +52,20 @@ const IconButton = ({ children, title, href, onClick, testId }) => {
   );
 };
 
-const TopBar = ({
-  projectName,
-  canBuild = true,
-  dirty = 0,
-  onPublishClick,
-  onDeployClick,
-}) => {
+const TopBar = () => {
+  // Reads directly from the store — no prop-drilling from the route container.
+  const project = useStore(s => s.project);
+  const hasUnpublishedChanges = useStore(s => s.hasUnpublishedChanges);
+  const openPublishModal = useStore(s => s.openPublishModal);
+
+  const projectName = project?.project_json?.name || project?.name || 'project';
+  const dirty = hasUnpublishedChanges ? 1 : 0;
+  const canBuild = true; // Phase 0 — every Workspace user can build.
+
+  // Phase 0 stub — the full deploy modal lives in Home.jsx today. Track O /
+  // Track G will wire the deploy CTA from the Workspace TopBar.
+  const handleDeployClick = () => {};
+
   return (
     <header
       data-testid="workspace-top-bar"
@@ -92,7 +100,7 @@ const TopBar = ({
         {dirty > 0 && canBuild && (
           <button
             type="button"
-            onClick={onPublishClick}
+            onClick={openPublishModal}
             data-testid="workspace-top-bar-publish"
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
           >
@@ -104,7 +112,7 @@ const TopBar = ({
         )}
         <button
           type="button"
-          onClick={onDeployClick}
+          onClick={handleDeployClick}
           data-testid="workspace-top-bar-deploy"
           className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
         >

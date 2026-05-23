@@ -9,6 +9,7 @@ import {
   PiSidebar,
 } from 'react-icons/pi';
 import Library from './library/Library';
+import useStore from '../../../stores/store';
 
 /**
  * LeftRail — project-wide Library navigator (VIS-775 / Track B B2, VIS-769 /
@@ -80,11 +81,13 @@ const LeftRailCollapsed = ({ onExpand }) => {
   );
 };
 
-const LeftRail = ({ collapsed = false, onToggleCollapsed }) => {
+const LeftRail = () => {
+  const collapsed = useStore(s => s.workspaceLeftCollapsed);
+  const toggleCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
   return collapsed ? (
-    <LeftRailCollapsed onExpand={onToggleCollapsed} />
+    <LeftRailCollapsed onExpand={toggleCollapsed} />
   ) : (
-    <Library onCollapse={onToggleCollapsed} />
+    <Library />
   );
 };
 

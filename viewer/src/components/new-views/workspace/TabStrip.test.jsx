@@ -1,12 +1,14 @@
 /**
  * TabStrip behaviour (VIS-775 / Track B B2).
  *
- * Pure-presentational tests against the strip. The smart tab state
- * (workspace store hydration, URL sync) is covered in Workspace.test.jsx.
+ * The strip is store-driven (no prop-drilling) — tests seed the workspace
+ * store and spy on the store actions, matching the Library / Workspace test
+ * conventions.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import TabStrip from './TabStrip';
+import useStore from '../../../stores/store';
 
 const sampleTabs = [
   { id: 'project:analytics-platform', type: 'project', name: 'analytics-platform' },
@@ -19,16 +21,39 @@ const sampleTabs = [
   { id: 'chart:revenue_chart', type: 'chart', name: 'revenue_chart' },
 ];
 
+const seedStore = (extra = {}) => {
+  act(() => {
+    useStore.setState({
+      workspaceTabs: sampleTabs,
+      workspaceActiveTabId: null,
+      switchWorkspaceTab: jest.fn(),
+      closeWorkspaceTab: jest.fn(),
+      openWorkspaceTab: jest.fn(),
+      project: { id: 'p1', project_json: { name: 'analytics-platform' } },
+      ...extra,
+    });
+  });
+};
+
 describe('TabStrip', () => {
   test('renders nothing when there are no tabs', () => {
-    const { container } = render(<TabStrip tabs={[]} />);
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        switchWorkspaceTab: jest.fn(),
+        closeWorkspaceTab: jest.fn(),
+        openWorkspaceTab: jest.fn(),
+        project: null,
+      });
+    });
+    const { container } = render(<TabStrip />);
     expect(container).toBeEmptyDOMElement();
   });
 
   test('renders one tab per descriptor with the right active state', () => {
-    render(
-      <TabStrip tabs={sampleTabs} activeId="dashboard:simple-dashboard" />
-    );
+    seedStore({ workspaceActiveTabId: 'dashboard:simple-dashboard' });
+    render(<TabStrip />);
     expect(
       screen.getByTestId('workspace-tab-project:analytics-platform')
     ).toHaveAttribute('data-active', 'false');
@@ -41,7 +66,8 @@ describe('TabStrip', () => {
   });
 
   test('renders the dirty dot on tabs marked dirty', () => {
-    render(<TabStrip tabs={sampleTabs} activeId={null} />);
+    seedStore();
+    render(<TabStrip />);
     expect(
       screen.getByTestId('workspace-tab-dirty-dashboard:simple-dashboard')
     ).toBeInTheDocument();
@@ -50,40 +76,38 @@ describe('TabStrip', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('clicking the tab body calls onSelect with the tab id', () => {
-    const onSelect = jest.fn();
-    render(
-      <TabStrip tabs={sampleTabs} activeId={null} onSelect={onSelect} />
-    );
+  test('clicking the tab body calls switchWorkspaceTab with the tab id', () => {
+    const switchWorkspaceTab = jest.fn();
+    seedStore({ switchWorkspaceTab });
+    render(<TabStrip />);
     fireEvent.click(
       screen.getByTestId('workspace-tab-select-chart:revenue_chart')
     );
-    expect(onSelect).toHaveBeenCalledWith('chart:revenue_chart');
+    expect(switchWorkspaceTab).toHaveBeenCalledWith('chart:revenue_chart');
   });
 
-  test('clicking the close button calls onClose without bubbling to select', () => {
-    const onSelect = jest.fn();
-    const onClose = jest.fn();
-    render(
-      <TabStrip
-        tabs={sampleTabs}
-        activeId={null}
-        onSelect={onSelect}
-        onClose={onClose}
-      />
-    );
+  test('clicking the close button calls closeWorkspaceTab without firing select', () => {
+    const switchWorkspaceTab = jest.fn();
+    const closeWorkspaceTab = jest.fn();
+    seedStore({ switchWorkspaceTab, closeWorkspaceTab });
+    render(<TabStrip />);
     fireEvent.click(
       screen.getByTestId('workspace-tab-close-dashboard:simple-dashboard')
     );
-    expect(onClose).toHaveBeenCalledWith('dashboard:simple-dashboard');
+    expect(closeWorkspaceTab).toHaveBeenCalledWith('dashboard:simple-dashboard');
     // stopPropagation in the close handler prevents the underlying select fire.
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(switchWorkspaceTab).not.toHaveBeenCalled();
   });
 
-  test('clicking the + button calls onNewTab', () => {
-    const onNewTab = jest.fn();
-    render(<TabStrip tabs={sampleTabs} activeId={null} onNewTab={onNewTab} />);
+  test('clicking the + button opens the project tab via openWorkspaceTab', () => {
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
+    render(<TabStrip />);
     fireEvent.click(screen.getByTestId('workspace-tab-new'));
-    expect(onNewTab).toHaveBeenCalled();
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'project:analytics-platform',
+      type: 'project',
+      name: 'analytics-platform',
+    });
   });
 });

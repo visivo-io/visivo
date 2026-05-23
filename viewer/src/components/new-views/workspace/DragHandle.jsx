@@ -1,4 +1,5 @@
 import React from 'react';
+import useStore from '../../../stores/store';
 
 /**
  * DragHandle — rail-resize gutter visual.
@@ -15,11 +16,16 @@ import React from 'react';
  */
 const DragHandle = ({
   side = 'left',
-  active = false,
-  widthLabel = null,
   onPointerDown,
   testId = 'workspace-drag-handle',
 }) => {
+  // Resize state lives in the workspace store — no prop-drilling.
+  const resizing = useStore(s => s.workspaceResizing);
+  const leftWidth = useStore(s => s.workspaceLeftWidth);
+  const rightWidth = useStore(s => s.workspaceRightWidth);
+  const active = resizing === side;
+  const widthLabel = active ? `${side === 'left' ? leftWidth : rightWidth}px` : null;
+
   const base =
     'group relative h-full w-1 shrink-0 cursor-col-resize select-none';
   const tone = active

@@ -1,6 +1,8 @@
 import React from 'react';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import DashboardNew from '../project/DashboardNew';
+import useStore from '../../../stores/store';
+import { useActiveObject } from './useActiveObject';
 
 /**
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
@@ -151,12 +153,13 @@ const PerObjectPane = ({ activeObject, lens, onLensChange, fallbackToLineage = f
   );
 };
 
-const MiddlePane = ({
-  activeObject = null,
-  lens = 'preview',
-  onLensChange,
-  projectId = null,
-}) => {
+const MiddlePane = () => {
+  // Everything the dispatcher needs comes from the store — no prop-drilling.
+  const activeObject = useActiveObject();
+  const lens = useStore(s => s.workspaceLens);
+  const onLensChange = useStore(s => s.setWorkspaceLens);
+  const project = useStore(s => s.project);
+  const projectId = project?.id || null;
   const obj = activeObject || { type: 'project', name: 'project' };
 
   if (obj.type === 'project') {

@@ -1,5 +1,7 @@
 import React from 'react';
 import { PiList, PiPencil, PiSidebar } from 'react-icons/pi';
+import useStore from '../../../stores/store';
+import { useActiveObject } from './useActiveObject';
 
 /**
  * RightRail — Outline / Edit tab host (VIS-775 / Track B B2).
@@ -175,20 +177,20 @@ const RightRailCollapsed = ({ activeTab, onExpand }) => {
   );
 };
 
-const RightRail = ({
-  collapsed = false,
-  activeTab = 'edit',
-  onSelectTab,
-  onToggleCollapsed,
-  activeObject = null,
-}) => {
+const RightRail = () => {
+  // All state + actions come from the workspace store — no prop-drilling.
+  const collapsed = useStore(s => s.workspaceRightCollapsed);
+  const toggleCollapsed = useStore(s => s.toggleWorkspaceRightCollapsed);
+  const activeTab = useStore(s => s.workspaceRightTab);
+  const onSelectTab = useStore(s => s.setWorkspaceRightTab);
+  const activeObject = useActiveObject();
   return collapsed ? (
-    <RightRailCollapsed activeTab={activeTab} onExpand={onToggleCollapsed} />
+    <RightRailCollapsed activeTab={activeTab} onExpand={toggleCollapsed} />
   ) : (
     <RightRailExpanded
       activeTab={activeTab}
       onSelectTab={onSelectTab}
-      onCollapse={onToggleCollapsed}
+      onCollapse={toggleCollapsed}
       activeObject={activeObject}
     />
   );

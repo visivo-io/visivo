@@ -1,9 +1,10 @@
 import React from 'react';
 import { PiX, PiPlus } from 'react-icons/pi';
+import useStore from '../../../stores/store';
 import { getKind } from './objKind';
 
 /**
- * WorkspaceTab — a single tab in the strip.
+ * WorkspaceTab — a single tab in the strip (presentational).
  *
  * Per the delivered B-1 design:
  *   - type icon (from OBJ_KIND) + name + dirty dot + close (×).
@@ -49,7 +50,7 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
       </button>
       <button
         type="button"
-        onClick={(e) => {
+        onClick={e => {
           e.stopPropagation();
           onClose && onClose(tab.id);
         }}
@@ -82,17 +83,31 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
  * This visually signals that tabs scope the active-object area (middle +
  * right rail), not the project-wide Library.
  *
- * Phase 0 supports: open project tab on mount, click-to-switch, close.
- * Drag-to-reorder ships in VIS-O3.
+ * Reads its tabs + active id + actions directly from the workspace store —
+ * no prop-drilling from the route container. Phase 0 supports: open project
+ * tab on mount, click-to-switch, close. Drag-to-reorder ships in VIS-O3.
  */
-const TabStrip = ({
-  tabs = [],
-  activeId,
-  onSelect,
-  onClose,
-  onNewTab,
-}) => {
+const TabStrip = () => {
+  const tabs = useStore(s => s.workspaceTabs);
+  const activeId = useStore(s => s.workspaceActiveTabId);
+  const switchWorkspaceTab = useStore(s => s.switchWorkspaceTab);
+  const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const project = useStore(s => s.project);
+
   if (!tabs || tabs.length === 0) return null;
+
+  const projectName = project?.project_json?.name || project?.name || 'project';
+
+  // Defer real "open in new tab" semantics to VIS-O2; the + button is a
+  // visual affordance for now. Focus the project tab as a sane default.
+  const handleNewTab = () =>
+    openWorkspaceTab({
+      id: `project:${projectName}`,
+      type: 'project',
+      name: projectName,
+    });
+
   return (
     <div
       data-testid="workspace-tab-strip"
@@ -101,18 +116,18 @@ const TabStrip = ({
       className="relative flex h-9 shrink-0 items-stretch border-b border-gray-200 bg-gray-50"
     >
       <div className="flex flex-1 items-stretch overflow-x-auto">
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <WorkspaceTab
             key={tab.id}
             tab={tab}
             active={tab.id === activeId}
-            onSelect={onSelect}
-            onClose={onClose}
+            onSelect={switchWorkspaceTab}
+            onClose={closeWorkspaceTab}
           />
         ))}
         <button
           type="button"
-          onClick={onNewTab}
+          onClick={handleNewTab}
           title="New tab"
           aria-label="New tab"
           data-testid="workspace-tab-new"

@@ -40,11 +40,13 @@ import { emitWorkspaceEvent } from '../telemetry';
  * The drag-preview pill itself is rendered by the workspace `<DragOverlay>`
  * via `<LibraryDragPreview>` — see Track D for the `<DndContext>` wiring.
  */
-const Library = ({ onCollapse }) => {
+const Library = () => {
   const data = useLibraryData();
 
-  // Workspace action — open or focus a tab for the clicked row.
+  // Workspace actions — read from the store directly so the Library has no
+  // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
 
   // Create-modal openers (per-type). Each store registers its own opener;
   // we wire the four droppable Layout types here since only those expose a
@@ -167,7 +169,7 @@ const Library = ({ onCollapse }) => {
         </div>
         <button
           type="button"
-          onClick={onCollapse}
+          onClick={toggleLeftCollapsed}
           title="Collapse left rail"
           aria-label="Collapse left rail"
           data-testid="workspace-left-rail-collapse"

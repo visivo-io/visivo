@@ -5,14 +5,15 @@ import LeftRail from './LeftRail';
 import RightRail from './RightRail';
 import MiddlePane from './MiddlePane';
 import DragHandle from './DragHandle';
+import useStore from '../../../stores/store';
 
 /**
  * WorkspaceShell — VIS-775 (Track B B2).
  *
- * Pure presentational shell — all state arrives as props. The smart
- * `<Workspace>` container reads from the workspace store and URL, wires
- * actions, and passes them down. Splitting smart/dumb makes the shell
- * trivially renderable in Storybook / tests without spinning up the store.
+ * Pure layout container. Every child component is store-driven — no props
+ * are threaded through the shell. The shell itself reads only the
+ * layout-relevant state (collapsed flags + widths) so its outer width divs
+ * resize correctly.
  *
  * Layout (matches the delivered B-1 design's bands + columns):
  *
@@ -30,41 +31,14 @@ import DragHandle from './DragHandle';
  * right rail only, NOT the Library — making it visually obvious that tabs
  * control the editor surface, not the project navigator.
  */
-const WorkspaceShell = ({
-  // Top bar -----------------------------------------------------------------
-  projectName,
-  canBuild = true,
-  dirty = 0,
-  onPublishClick,
-  onDeployClick,
+const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
+  // Layout state — for the shell's own width divs only. Children read their
+  // own state directly from the store.
+  const leftCollapsed = useStore(s => s.workspaceLeftCollapsed);
+  const rightCollapsed = useStore(s => s.workspaceRightCollapsed);
+  const leftWidth = useStore(s => s.workspaceLeftWidth);
+  const rightWidth = useStore(s => s.workspaceRightWidth);
 
-  // Tabs --------------------------------------------------------------------
-  tabs = [],
-  activeTabId = null,
-  onSelectTab,
-  onCloseTab,
-  onNewTab,
-
-  // Middle pane -------------------------------------------------------------
-  activeObject = null,
-  lens = 'preview',
-  onLensChange,
-  projectId = null,
-
-  // Rails -------------------------------------------------------------------
-  leftCollapsed = false,
-  rightCollapsed = false,
-  onToggleLeftCollapsed,
-  onToggleRightCollapsed,
-  rightTab = 'edit',
-  onSelectRightTab,
-  leftWidth = 320,
-  rightWidth = 360,
-  resizing = null,
-
-  // Slot escape hatch for tests that need to peek at internals -------------
-  testId = 'workspace-shell',
-}) => {
   return (
     <div
       data-testid={testId}
@@ -74,13 +48,7 @@ const WorkspaceShell = ({
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      <TopBar
-        projectName={projectName}
-        canBuild={canBuild}
-        dirty={dirty}
-        onPublishClick={onPublishClick}
-        onDeployClick={onDeployClick}
-      />
+      <TopBar />
       <div className="flex min-h-0 flex-1">
         {/* Left rail — project-wide, full-height anchor. */}
         <div
@@ -88,55 +56,27 @@ const WorkspaceShell = ({
           className="shrink-0"
           data-testid="workspace-left-rail-container"
         >
-          <LeftRail
-            collapsed={leftCollapsed}
-            onToggleCollapsed={onToggleLeftCollapsed}
-          />
+          <LeftRail />
         </div>
-        <DragHandle
-          side="left"
-          active={resizing === 'left'}
-          widthLabel={resizing === 'left' ? `${leftWidth}px` : null}
-        />
+        <DragHandle side="left" />
         {/* Tab + middle/right column. The tab strip's width matches exactly
             what the tabs scope (the active-object area). */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <TabStrip
-            tabs={tabs}
-            activeId={activeTabId}
-            onSelect={onSelectTab}
-            onClose={onCloseTab}
-            onNewTab={onNewTab}
-          />
+          <TabStrip />
           <div className="flex min-h-0 flex-1">
             <main
               className="flex min-w-0 flex-1 flex-col"
               data-testid="workspace-middle-container"
             >
-              <MiddlePane
-                activeObject={activeObject}
-                lens={lens}
-                onLensChange={onLensChange}
-                projectId={projectId}
-              />
+              <MiddlePane />
             </main>
-            <DragHandle
-              side="right"
-              active={resizing === 'right'}
-              widthLabel={resizing === 'right' ? `${rightWidth}px` : null}
-            />
+            <DragHandle side="right" />
             <div
               style={{ width: rightCollapsed ? 48 : rightWidth }}
               className="shrink-0"
               data-testid="workspace-right-rail-container"
             >
-              <RightRail
-                collapsed={rightCollapsed}
-                onToggleCollapsed={onToggleRightCollapsed}
-                activeTab={rightTab}
-                onSelectTab={onSelectRightTab}
-                activeObject={activeObject}
-              />
+              <RightRail />
             </div>
           </div>
         </div>
