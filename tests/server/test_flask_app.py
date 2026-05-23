@@ -192,7 +192,7 @@ def test_authorize_device_token_callback_token_valid_token(client):
         auth_id = "test123"
         response = client.get(f"/api/auth/authorize-device-token/callback/{auth_id}/?token=test123")
 
-        mock_store.assert_called_once_with("test123")
+        mock_store.assert_called_once_with("test123", host="https://app.visivo.io")
         mock_html.assert_called_once()
 
         assert response.status_code == 200

@@ -36,10 +36,12 @@ def authorize(host):
     """
     Logger.instance().spinner.stop()
 
-    existing_token = get_existing_token()
+    existing_token = get_existing_token(host=host)
     if existing_token:
-        Logger.instance().info(f"A token already exists in your profile: {existing_token}")
-        if not click.confirm("Do you want to add a new token?"):
+        Logger.instance().info(
+            f"A token already exists in your profile for {host}: {existing_token}"
+        )
+        if not click.confirm("Do you want to replace it with a new token?"):
             Logger.instance().info("Authorization cancelled. Using the existing token.")
             return
 

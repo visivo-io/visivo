@@ -26,13 +26,15 @@ def open_url(url: str) -> bool:
 def generate_success_html_response(
     base_url: str, timeout: int = 5, closePopUp: bool = False
 ) -> str:
-    """
-    Returns an HTML page that will redirect to base_url + '/profile' after `timeout` seconds.
-    If closePopUp is True, it will attempt to close the tab instead.
+    """Return the HTML for the post-authorize landing page.
+
+    After ``timeout`` seconds the page either closes (``closePopUp=True``)
+    or redirects to ``{base_url}/profile``. Styled to match the Visivo
+    design system — solid white card on gray-50, mulberry accents, system
+    sans-serif type. No glassmorphism or gradients.
     """
     redirect_url = f"{base_url}/profile"
 
-    # Handle redirect or close the popup
     js_behavior = f"""
     <script>
       setTimeout(function() {{
@@ -41,147 +43,169 @@ def generate_success_html_response(
     </script>
     """
 
+    redirect_label = (
+        "Redirecting back to your terminal…" if closePopUp else "Redirecting to your profile page…"
+    )
+
     return f"""
     <html>
       <head>
-        <title>Authorization Successful</title>
+        <title>Authorization successful — Visivo</title>
         {js_behavior}
         <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #F5F5F5;
+          :root {{
+            --color-primary-100: #e2d7dd;
+            --color-primary-500: #713b57;
+            --color-primary-600: #5a2f45;
+            --color-gray-50: #f9fafb;
+            --color-gray-100: #f3f4f6;
+            --color-gray-200: #e5e7eb;
+            --color-gray-500: #6b7280;
+            --color-gray-700: #374151;
+            --color-gray-900: #111827;
+            --color-success: #16a34a;
+          }}
+          * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+          body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+              Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+              'Helvetica Neue', sans-serif;
+            background: var(--color-gray-50);
+            color: var(--color-gray-900);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }}
-        .container {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 3rem 2.5rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
-            width: 90%;
+            padding: 1rem;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }}
+          .brand {{
             text-align: center;
-            position: relative;
-            z-index: 2;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }}
-        .success-icon {{
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem;
-            background: linear-gradient(135deg, #10b981, #059669);
-            border-radius: 50%;
+            margin-bottom: 1.5rem;
+          }}
+          .brand-mark {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--color-primary-500);
+            color: #ecefcb;
+            font-family: 'Caveat', 'Brush Script MT', cursive;
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+            padding-bottom: 4px;
+          }}
+          .card {{
+            background: #ffffff;
+            border: 1px solid var(--color-gray-200);
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 480px;
+            width: 100%;
+            padding: 2.5rem 2rem;
+            text-align: center;
+          }}
+          .success-icon {{
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 1.25rem;
+            background: var(--color-primary-100);
+            border-radius: 9999px;
             display: flex;
             align-items: center;
             justify-content: center;
-        }}
-        .checkmark {{
-            width: 20px;
-            height: 20px;
-            color: white;
-            font-weight: bold;
-            font-size: 24px;
-        }}
-        h4 {{
-            color: #713B57;
-            font-size: 2.2rem;
+            color: var(--color-primary-500);
+          }}
+          .success-icon svg {{
+            width: 28px;
+            height: 28px;
+          }}
+          h1 {{
+            color: var(--color-gray-900);
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 1rem;
-            line-height: 1.3;
-        }}
-        .subtitle {{
-            color: #713B57;
-            font-size: 1.1rem;
-            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.5rem;
+          }}
+          .subtitle {{
+            color: var(--color-gray-500);
+            font-size: 0.95rem;
+            line-height: 1.5;
             margin-bottom: 1.5rem;
-            opacity: 0.8;
-        }}
-        .file-path {{
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            color: #374151;
-            margin: 1.5rem 0;
-            word-break: break-all;
-        }}
-        .description {{
-            color: #64748b;
-            font-size: 1rem;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-        }}
-        .redirect-info {{
-            background: #713B57;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            margin-top: 2rem;
-        }}
-        .loading-bar {{
+          }}
+          .file-path {{
+            display: inline-block;
+            background: var(--color-gray-100);
+            border: 1px solid var(--color-gray-200);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: var(--color-gray-700);
+            margin-bottom: 1.5rem;
+          }}
+          .redirect-info {{
+            font-size: 0.8rem;
+            color: var(--color-gray-500);
+            margin-top: 0.5rem;
+          }}
+          .loading-bar {{
             width: 100%;
-            height: 4px;
-            background: rgba(113, 59, 87, 0.2);
-            border-radius: 2px;
-            margin-top: 1rem;
+            height: 3px;
+            background: var(--color-gray-100);
+            border-radius: 9999px;
+            margin-top: 0.75rem;
             overflow: hidden;
-        }}
-        .loading-progress {{
+          }}
+          .loading-progress {{
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #713B57, #875454);
-            border-radius: 2px;
+            background: var(--color-primary-500);
+            border-radius: 9999px;
             animation: loadProgress {timeout}s linear forwards;
-        }}
-        @keyframes loadProgress {{
+          }}
+          @keyframes loadProgress {{
             to {{ width: 100%; }}
-        }}
-        @media (max-width: 768px) {{
-            .container {{
-                padding: 2rem 1.5rem;
-                margin: 1rem;
-            }}
-            h1 {{
-                font-size: 1.8rem;
-            }}
-            .file-path {{
-                font-size: 0.9rem;
-            }}
-        }}
+          }}
+          a {{
+            color: var(--color-primary-500);
+            text-decoration: none;
+            font-weight: 500;
+          }}
+          a:hover {{
+            color: var(--color-primary-600);
+            text-decoration: underline;
+          }}
         </style>
       </head>
       <body>
-        <div class="container">
+        <div>
+          <div class="brand">
+            <span class="brand-mark">v</span>
+          </div>
+          <div class="card">
             <div class="success-icon">
-                <div class="checkmark">✓</div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
             </div>
-            <h4>Authorization Successful!</h4>
-            <p class="subtitle">Your development environment is now configured</p>
-            <div class="file-path">~/.visivo/profile.yml</div>
-            <p class="description">
-                A secure token has been written to your development machine. This will enable seamless integration with your Visivo projects and development workflow.
+            <h1>Device authorized</h1>
+            <p class="subtitle">
+              A token has been written to your development machine. You can manage and revoke
+              tokens any time from your <a href="{redirect_url}">profile page</a>.
             </p>
-            <div class="redirect-info">
-                <strong>{'Redirecting to local server please wait...' if closePopUp else 'Redirecting to your profile page...'}</strong>
-                <br>
-                You'll receive detailed instructions on creating new stages and projects.
-                <div class="loading-bar">
-                    <div class="loading-progress"></div>
-                </div>
+            <div class="file-path">~/.visivo/profile.yml</div>
+            <p class="redirect-info">{redirect_label}</p>
+            <div class="loading-bar" aria-hidden="true">
+              <div class="loading-progress"></div>
             </div>
+          </div>
         </div>
       </body>
     </html>

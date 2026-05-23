@@ -1,7 +1,7 @@
 import os
 import pytest
 import click
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, MagicMock
 from visivo.tokens.token_functions import (
     get_existing_token,
     write_token,
@@ -12,103 +12,108 @@ from visivo.tokens.token_functions import (
 
 @pytest.fixture
 def mock_logger():
-    """
-    Fixture that patches Logger.instance() so debug() and success() calls
-    won't clutter test output. We return the mock logger so tests can assert
-    calls like mock_logger.success.assert_called_once_with(...).
-    """
+    """Patch Logger.instance() so debug()/success() calls don't clutter output."""
     with patch("visivo.tokens.token_functions.Logger.instance") as mock_logger_class:
         mock_logger = MagicMock()
         mock_logger_class.return_value = mock_logger
         yield mock_logger
 
 
+@pytest.fixture
+def profile_path(tmp_path, monkeypatch):
+    """Redirect PROFILE_PATH to a tmp file for the duration of a test."""
+    path = tmp_path / ".visivo" / "profile.yml"
+    monkeypatch.setattr("visivo.tokens.token_functions.PROFILE_PATH", str(path))
+    return path
+
+
 # ------------------ get_existing_token tests ------------------ #
 
 
-@patch("os.path.exists", return_value=False)
-def test_get_existing_token_no_file(mock_exists):
-    """Should return None if the profile file doesn't exist."""
-    token = get_existing_token()
-    assert token is None
-    mock_exists.assert_called_once_with(PROFILE_PATH)
+def test_get_existing_token_no_file(profile_path):
+    assert get_existing_token() is None
+    assert get_existing_token(host="https://app.visivo.io") is None
 
 
-@patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data="token: abc1234567")
-def test_get_existing_token_happy_path(mock_file, mock_exists):
-    """Should return the token if the file exists and has a 'token' key."""
-    token = get_existing_token()
-    assert token == "abc1234567"
-    mock_exists.assert_called_once_with(PROFILE_PATH)
-    mock_file.assert_called_once_with(PROFILE_PATH, "r")
+def test_get_existing_token_host_match(profile_path):
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text(
+        'tokens:\n  "https://app.visivo.io": prod1234567\n'
+        '  "http://localhost:3030": local1234567\n'
+    )
+    assert get_existing_token(host="https://app.visivo.io") == "prod1234567"
+    assert get_existing_token(host="http://localhost:3030") == "local1234567"
 
 
-@patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data="{}")
-def test_get_existing_token_empty_token(mock_file, mock_exists):
-    """Should return None if 'token' key isn't found in the file."""
-    token = get_existing_token()
-    assert token is None
-    mock_exists.assert_called_once_with(PROFILE_PATH)
-    mock_file.assert_called_once_with(PROFILE_PATH, "r")
+def test_get_existing_token_host_miss_returns_none(profile_path):
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text('tokens:\n  "https://app.visivo.io": prod1234567\n')
+    assert get_existing_token(host="http://localhost:9999") is None
+
+
+def test_get_existing_token_legacy_fallback(profile_path):
+    """Legacy single-token profile still works when no host is passed."""
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text("token: legacy123456\n")
+    assert get_existing_token() == "legacy123456"
+
+
+def test_get_existing_token_legacy_with_host_returns_none(profile_path):
+    """A specific host should NOT silently match the legacy token."""
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text("token: legacy123456\n")
+    assert get_existing_token(host="http://localhost:3030") is None
 
 
 # ------------------ write_token tests ------------------ #
 
 
-@patch("os.makedirs")
-@patch("builtins.open", new_callable=mock_open)
-def test_write_token_happy_path(mock_file, mock_makedirs, mock_logger):
-    """Should write the token to PROFILE_PATH and log success."""
-    write_token("testtoken")
-
-    mock_makedirs.assert_called_once_with(os.path.dirname(PROFILE_PATH), exist_ok=True)
-
-    mock_file.assert_called_once_with(PROFILE_PATH, "w")
-
-    handle = mock_file()
-    written_content = "".join(call.args[0] for call in handle.write.mock_calls)
-    assert "testtoken" in written_content
-
-    mock_logger.success.assert_called_once_with("Token written successfully")
+def test_write_token_creates_tokens_map(profile_path, mock_logger):
+    write_token("testtoken1", host="http://localhost:3030")
+    contents = profile_path.read_text()
+    assert "http://localhost:3030" in contents
+    assert "testtoken1" in contents
+    mock_logger.success.assert_called_once_with("Token written for http://localhost:3030")
 
 
-@patch("os.makedirs")
-@patch("builtins.open", side_effect=Exception("Write error"))
-def test_write_token_error(mock_file, mock_makedirs, mock_logger):
-    """Should raise a ClickException if file writing fails."""
-    with pytest.raises(click.ClickException, match="Error writing token"):
-        write_token("testtoken")
+def test_write_token_preserves_existing_hosts(profile_path, mock_logger):
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text('tokens:\n  "https://app.visivo.io": prod1234567\n')
+    write_token("local1234567", host="http://localhost:3030")
+    refetched = get_existing_token(host="https://app.visivo.io")
+    assert refetched == "prod1234567"
+
+
+def test_write_token_migrates_legacy(profile_path, mock_logger):
+    """Writing a host-keyed token on a legacy profile migrates the legacy value
+    to https://app.visivo.io rather than discarding it."""
+    profile_path.parent.mkdir(parents=True)
+    profile_path.write_text("token: legacy1234567\n")
+    write_token("local1234567", host="http://localhost:3030")
+    assert get_existing_token(host="https://app.visivo.io") == "legacy1234567"
+    assert get_existing_token(host="http://localhost:3030") == "local1234567"
+
+
+def test_write_token_requires_host(profile_path, mock_logger):
+    with pytest.raises(click.ClickException, match="host is required"):
+        write_token("testtoken1", host=None)
 
 
 # ------------------ validate_and_store_token tests ------------------ #
 
 
-@patch("visivo.tokens.token_functions.write_token")
-def test_validate_and_store_token_short_token(mock_write):
-    """Should raise ClickException if token is shorter than 10 chars."""
+def test_validate_and_store_token_short_token(profile_path):
     with pytest.raises(click.ClickException, match="Token is too short"):
-        validate_and_store_token("short")
+        validate_and_store_token("short", host="http://localhost:3030")
 
 
-@patch("visivo.tokens.token_functions.write_token")
-@patch("click.prompt", return_value="abcdefghijklmnop")
-def test_validate_and_store_token_none_passed(mock_prompt, mock_write, mock_logger):
-    """
-    If token=None, we prompt for it, then call write_token with the user input.
-    """
-    validate_and_store_token(None)
+def test_validate_and_store_token_none_prompts(profile_path, mock_logger):
+    with patch("click.prompt", return_value="abcdefghijklmnop") as mock_prompt:
+        validate_and_store_token(None, host="http://localhost:3030")
     mock_prompt.assert_called_once_with("Please enter your token")
-    mock_write.assert_called_once_with("abcdefghijklmnop")
-    mock_logger.debug.assert_any_call("Token received")
-    mock_logger.debug.assert_any_call(f"Writing token to {PROFILE_PATH}")
+    assert get_existing_token(host="http://localhost:3030") == "abcdefghijklmnop"
 
 
-@patch("visivo.tokens.token_functions.write_token")
-def test_validate_and_store_token_valid_token(mock_write, mock_logger):
-    """If token is valid, it should call write_token without prompting."""
-    validate_and_store_token("abcdefghij")  # exactly 10 chars
-    mock_write.assert_called_once_with("abcdefghij")
-    mock_logger.debug.assert_any_call("Token received")
-    mock_logger.debug.assert_any_call(f"Writing token to {PROFILE_PATH}")
+def test_validate_and_store_token_valid(profile_path, mock_logger):
+    validate_and_store_token("abcdefghij", host="http://localhost:3030")
+    assert get_existing_token(host="http://localhost:3030") == "abcdefghij"
