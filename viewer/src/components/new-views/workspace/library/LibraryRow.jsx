@@ -297,19 +297,20 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
             className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
           />
         )}
-        {draggable && (
-          <span
-            aria-hidden="true"
-            className={[
-              'inline-flex h-3 w-3 shrink-0 items-center justify-center text-gray-300 transition-opacity',
-              showActions || drag.isDragging ? 'opacity-100' : 'opacity-0',
-            ].join(' ')}
-            title="Drag to canvas"
-            data-testid={`${tid}-drag-handle`}
-          >
-            <PiDotsSix className="h-3 w-3" />
-          </span>
-        )}
+        {/* Reserve the drag-handle slot for every row so Layout-Items and
+            Data-Layer rows share the same icon indent. Only droppable rows
+            fill the slot with the grip dots (visible on hover). */}
+        <span
+          aria-hidden="true"
+          className={[
+            'inline-flex h-3 w-3 shrink-0 items-center justify-center text-gray-300 transition-opacity',
+            draggable && (showActions || drag.isDragging) ? 'opacity-100' : 'opacity-0',
+          ].join(' ')}
+          title={draggable ? 'Drag to canvas' : undefined}
+          data-testid={draggable ? `${tid}-drag-handle` : undefined}
+        >
+          {draggable && <PiDotsSix className="h-3 w-3" />}
+        </span>
         <StatusDot status={obj.status} />
         <Icon
           aria-hidden="true"
