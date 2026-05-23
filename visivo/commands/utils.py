@@ -43,7 +43,16 @@ def get_source_types():
     ]
 
 
-def get_profile_token(profile_file):
+def get_profile_token(profile_file, host: str = None):
+    """Return the API token for ``host`` (or ``VISIVO_TOKEN`` env if set).
+
+    Lookup order:
+      1. ``VISIVO_TOKEN`` env var (wins over everything for CI).
+      2. ``tokens[host]`` if a ``tokens`` map is present and the host matches —
+         a mismatched host raises so we never silently send a wrong token.
+      3. legacy single ``token`` value (only when there is no ``tokens`` map),
+         so pre-migration profiles keep working until the user re-authorizes.
+    """
     profile_token = os.getenv("VISIVO_TOKEN")
     if profile_token:
         return profile_token
@@ -52,11 +61,26 @@ def get_profile_token(profile_file):
     if profile_file:
         profile = load_yaml_file(profile_file)
 
-    if not profile or "token" not in profile:
-        raise click.ClickException(
-            f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}"
-        )
-    return profile["token"]
+    if not profile:
+        raise click.ClickException(f"{PROFILE_FILE_NAME} not present")
+
+    tokens = profile.get("tokens") or {}
+    if tokens:
+        if host and host in tokens:
+            return tokens[host]
+        if host:
+            raise click.ClickException(
+                f"No token in {PROFILE_FILE_NAME} for {host}. "
+                f"Run `visivo authorize -h {host}` to add one."
+            )
+        return next(iter(tokens.values()))
+
+    if "token" in profile:
+        return profile["token"]
+
+    raise click.ClickException(
+        f"{PROFILE_FILE_NAME} present but no token found. Run `visivo authorize` to add one."
+    )
 
 
 def get_profile_file(home_dir=os.path.expanduser("~")):

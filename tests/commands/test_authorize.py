@@ -66,14 +66,16 @@ def mock_file_writes(monkeypatch):
     """
     Patch the token storage function so that it does nothing.
     """
-    monkeypatch.setattr("visivo.tokens.server.validate_and_store_token", lambda token: None)
+    monkeypatch.setattr(
+        "visivo.tokens.server.validate_and_store_token", lambda token, host=None: None
+    )
 
 
 def test_authorize_successful_callback(monkeypatch):
     """
     Test that when no token exists the authorize command completes normally.
     """
-    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda: None)
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
     monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
 
     runner = CliRunner()
@@ -89,7 +91,9 @@ def test_authorize_timeout_cancel(monkeypatch):
     The command prompts to add a new token, then later asks if the user wants
     to cancel. We simulate a timeout by forcing token_received_event.wait to always return False.
     """
-    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda: "abc1234567")
+    monkeypatch.setattr(
+        "visivo.commands.authorize.get_existing_token", lambda host=None: "abc1234567"
+    )
     monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: False)
 
     runner = CliRunner()
@@ -103,7 +107,9 @@ def test_authorize_existing_token_no_overwrite(monkeypatch):
     Test the case where a token already exists and the user opts not to
     overwrite it. The command should cancel authorization immediately.
     """
-    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda: "abc1234567")
+    monkeypatch.setattr(
+        "visivo.commands.authorize.get_existing_token", lambda host=None: "abc1234567"
+    )
 
     runner = CliRunner()
     result = runner.invoke(authorize, ["--host", "http://localhost:3030"], input="n\n")
@@ -117,7 +123,9 @@ def test_authorize_existing_token_overwrite(monkeypatch):
     Test the case where a token already exists and the user opts to add a new token.
     In this case the command should continue to wait for a callback.
     """
-    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda: "abc1234567")
+    monkeypatch.setattr(
+        "visivo.commands.authorize.get_existing_token", lambda host=None: "abc1234567"
+    )
     monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
 
     runner = CliRunner()

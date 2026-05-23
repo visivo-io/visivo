@@ -771,7 +771,7 @@ def deploy_phase(
     # Retrieve profile token for authentication
     send_progress("Retrieving profile token...", "debug", 202)
     profile_file = get_profile_file(home_dir=user_dir)
-    profile_token = get_profile_token(profile_file)
+    profile_token = get_profile_token(profile_file, host=host)
     send_progress(f"Found Profile token: {profile_file}", "info")
 
     # Discover and parse project details

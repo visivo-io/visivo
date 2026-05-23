@@ -13,7 +13,7 @@ from visivo.server.store import background_jobs, background_jobs_lock
 def register_cloud_views(app, flask_app, output_dir):
     @app.route("/api/cloud/stages/", methods=["GET"])
     def cloud_stages():
-        token = get_existing_token()
+        token = get_existing_token(host=VISIVO_HOST)
 
         json_headers = {
             "content-type": "application/json",
@@ -35,7 +35,7 @@ def register_cloud_views(app, flask_app, output_dir):
         data = request.get_json()
         name = data.get("name", "")
 
-        token = get_existing_token()
+        token = get_existing_token(host=VISIVO_HOST)
 
         if name == "":
             return jsonify({"message": "Name is required"}), 400

@@ -33,11 +33,11 @@ def authorize_device_callback():
     if not token:
         return jsonify({"error": "Token not provided"}), 400
 
+    base_url = callback_server.config.get("BASE_URL")
     Logger.instance().success("Received token via callback: " + token)
-    validate_and_store_token(token)
+    validate_and_store_token(token, host=base_url)
     token_received_event.set()
 
-    base_url = callback_server.config.get("BASE_URL")
     html_content = generate_success_html_response(base_url, timeout=5)
 
     threading.Thread(target=shutdown_server).start()

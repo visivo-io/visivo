@@ -17,7 +17,7 @@ FLASK_DEFAULT_PORT = 8000
 def register_auth_views(app, flask_app, output_dir):
     @app.route("/api/auth/status/", methods=["POST"])
     def authorize_status():
-        existing_token = get_existing_token()
+        existing_token = get_existing_token(host=VISIVO_HOST)
         if existing_token:
             return (
                 jsonify(
@@ -67,7 +67,7 @@ def register_auth_views(app, flask_app, output_dir):
             return jsonify({"error": "Token not provided"}), 400
 
         Logger.instance().success("Received token via callback: " + token)
-        validate_and_store_token(token)
+        validate_and_store_token(token, host=VISIVO_HOST)
 
         html_content = generate_success_html_response(VISIVO_HOST, timeout=5, closePopUp=True)
 

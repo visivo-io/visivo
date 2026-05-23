@@ -41,7 +41,7 @@ def test_deploy_with_no_profile():
         ],
     )
 
-    assert "not present or token not present in" in response.output
+    assert "no token found" in response.output or "No token in profile.yml" in response.output
     assert response.exit_code == 1
 
 

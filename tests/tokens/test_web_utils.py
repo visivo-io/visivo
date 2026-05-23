@@ -54,11 +54,12 @@ def test_generate_success_html_response_redirect():
     timeout = 10
     html = generate_success_html_response(base_url, timeout=timeout, closePopUp=False)
 
-    assert "<title>Authorization Successful</title>" in html
+    assert "Authorization successful" in html
+    assert "Device authorized" in html
     assert "~/.visivo/profile.yml" in html
     assert f"window.location.href = '{base_url}/profile';" in html
     assert f"animation: loadProgress {timeout}s linear forwards;" in html
-    assert "Redirecting to your profile page..." in html
+    assert "Redirecting to your profile page" in html
 
 
 def test_generate_success_html_response_closes_popup():
@@ -69,8 +70,9 @@ def test_generate_success_html_response_closes_popup():
     timeout = 5
     html = generate_success_html_response(base_url, timeout=timeout, closePopUp=True)
 
-    assert "<title>Authorization Successful</title>" in html
+    assert "Authorization successful" in html
+    assert "Device authorized" in html
     assert "~/.visivo/profile.yml" in html
     assert "window.close();" in html
     assert f"animation: loadProgress {timeout}s linear forwards;" in html
-    assert "Redirecting to local server please wait..." in html
+    assert "Redirecting back to your terminal" in html

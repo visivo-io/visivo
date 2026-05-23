@@ -56,11 +56,11 @@ def test_authorize_device_callback_with_token(
     response = client.get(f"/authorize-device-token?token={test_token}")
 
     assert response.status_code == 200
-    mock_validate.assert_called_once_with(test_token)
+    mock_validate.assert_called_once_with(test_token, host=None)
     assert token_received_event.is_set()
 
     response_data = response.data.decode("utf-8")
-    assert "Authorization Successful" in response_data
+    assert "Authorization successful" in response_data
 
     mock_thread.assert_called_once()
     thread_instance = mock_thread.return_value
