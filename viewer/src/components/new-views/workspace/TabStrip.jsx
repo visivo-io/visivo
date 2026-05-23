@@ -1,7 +1,13 @@
 import React from 'react';
-import { PiX, PiPlus } from 'react-icons/pi';
+import { PiX, PiPlus, PiCube } from 'react-icons/pi';
 import useStore from '../../../stores/store';
-import { getKind } from './objKind';
+import { getTypeIcon } from '../common/objectTypeConfigs';
+
+// Tab icons come from the canonical `objectTypeConfigs.js` for the 13 data-
+// object types. `project` is workspace-chrome — not a data object — so it
+// keeps its Phosphor glyph here as a one-line special case.
+const PROJECT_TAB_ICON = PiCube;
+const getTabIcon = type => (type === 'project' ? PROJECT_TAB_ICON : getTypeIcon(type));
 
 /**
  * WorkspaceTab — a single tab in the strip (presentational).
@@ -16,8 +22,7 @@ import { getKind } from './objKind';
  * Project is just another tab with the cube icon — no special chrome.
  */
 const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
-  const kind = getKind(tab.type);
-  const TypeIcon = kind.icon;
+  const TypeIcon = getTabIcon(tab.type);
   return (
     <div
       role="tab"

@@ -15,7 +15,8 @@
  * Each tab descriptor: `{ id, type, name, dirty }` where:
  *   - `id`    — stable per-tab string identifier (e.g. `project:<projectName>`
  *               or `dashboard:simple-dashboard`).
- *   - `type`  — one of `OBJ_KIND` keys (`project | dashboard | chart |
+ *   - `type`  — `project` for the workspace-chrome project tab, or any of
+ *     the 13 canonical data-object types from `objectTypeConfigs.js` (e.g.,
  *               insight | model | source`).
  *   - `name`  — display name (also the underlying object name for non-project
  *               types).
