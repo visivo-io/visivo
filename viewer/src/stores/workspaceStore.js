@@ -160,6 +160,24 @@ const createWorkspaceSlice = (set, get) => ({
     set({ workspaceLens: lens });
   },
 
+  // ------------------------------------------------------------------------
+  // Rail-resize actions — min/max clamps centralised here so DragHandle just
+  // hands over the raw mouse-derived width.
+  // ------------------------------------------------------------------------
+
+  setWorkspaceLeftWidth: (width) => {
+    set({ workspaceLeftWidth: Math.min(Math.max(width, 240), 480) });
+  },
+
+  setWorkspaceRightWidth: (width) => {
+    set({ workspaceRightWidth: Math.min(Math.max(width, 280), 560) });
+  },
+
+  setWorkspaceResizing: (value) => {
+    if (value !== null && value !== 'left' && value !== 'right') return;
+    set({ workspaceResizing: value });
+  },
+
   /**
    * Replace the entire tab set in one shot. Used by the Workspace shell on
    * mount to hydrate a project tab from the loaded project. Avoids the

@@ -134,6 +134,36 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceRightCollapsed).toBe(true);
   });
 
+  test('setWorkspaceLeftWidth clamps to [240, 480]', () => {
+    act(() => useStore.getState().setWorkspaceLeftWidth(100));
+    expect(useStore.getState().workspaceLeftWidth).toBe(240);
+    act(() => useStore.getState().setWorkspaceLeftWidth(600));
+    expect(useStore.getState().workspaceLeftWidth).toBe(480);
+    act(() => useStore.getState().setWorkspaceLeftWidth(320));
+    expect(useStore.getState().workspaceLeftWidth).toBe(320);
+  });
+
+  test('setWorkspaceRightWidth clamps to [280, 560]', () => {
+    act(() => useStore.getState().setWorkspaceRightWidth(100));
+    expect(useStore.getState().workspaceRightWidth).toBe(280);
+    act(() => useStore.getState().setWorkspaceRightWidth(700));
+    expect(useStore.getState().workspaceRightWidth).toBe(560);
+    act(() => useStore.getState().setWorkspaceRightWidth(420));
+    expect(useStore.getState().workspaceRightWidth).toBe(420);
+  });
+
+  test('setWorkspaceResizing only accepts left/right/null', () => {
+    act(() => useStore.getState().setWorkspaceResizing('left'));
+    expect(useStore.getState().workspaceResizing).toBe('left');
+    act(() => useStore.getState().setWorkspaceResizing(null));
+    expect(useStore.getState().workspaceResizing).toBeNull();
+    act(() => useStore.getState().setWorkspaceResizing('right'));
+    expect(useStore.getState().workspaceResizing).toBe('right');
+    // Invalid values are rejected.
+    act(() => useStore.getState().setWorkspaceResizing('top'));
+    expect(useStore.getState().workspaceResizing).toBe('right');
+  });
+
   test('setWorkspaceRightTab only accepts known tab keys', () => {
     act(() => {
       useStore.getState().setWorkspaceRightTab('outline');

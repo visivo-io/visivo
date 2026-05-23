@@ -1,30 +1,64 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import useStore from '../../../stores/store';
 
 /**
- * DragHandle — rail-resize gutter visual.
+ * DragHandle — rail-resize gutter.
  *
  * 4 px hot zone (the outer `w-1` band), 1 px gray line in the middle,
- * mulberry on hover/active. When `active` is true a navy width tooltip
- * surfaces the current width (used by the s5 artboard "rail resize, drag
- * active" state).
+ * mulberry on hover/active. Pointer-drag resizes the rail:
  *
- * Phase 0 ships the visual only — actual pointer-drag resize behaviour is
- * deferred. Hooking up the resize is straightforward (pointermove diffing
- * against `onDragWidthChange`) and lands when the rails grow editable
- * content that needs the user-controllable width.
+ *   - `pointerdown` flags `workspaceResizing` for this side.
+ *   - A document-level `pointermove` listener updates the rail width via
+ *     the store action (clamped to [240, 480] for the left rail and
+ *     [280, 560] for the right).
+ *   - `pointerup` clears the flag.
+ *
+ * When `active`, a navy width tooltip surfaces the current width (matches
+ * the s5 artboard's "rail resize, drag active" state in the B-1 design).
  */
-const DragHandle = ({
-  side = 'left',
-  onPointerDown,
-  testId = 'workspace-drag-handle',
-}) => {
+const DragHandle = ({ side = 'left', testId = 'workspace-drag-handle' }) => {
   // Resize state lives in the workspace store — no prop-drilling.
   const resizing = useStore(s => s.workspaceResizing);
   const leftWidth = useStore(s => s.workspaceLeftWidth);
   const rightWidth = useStore(s => s.workspaceRightWidth);
+  const setWorkspaceResizing = useStore(s => s.setWorkspaceResizing);
+  const setLeftWidth = useStore(s => s.setWorkspaceLeftWidth);
+  const setRightWidth = useStore(s => s.setWorkspaceRightWidth);
+
   const active = resizing === side;
-  const widthLabel = active ? `${side === 'left' ? leftWidth : rightWidth}px` : null;
+  const widthLabel = active
+    ? `${side === 'left' ? leftWidth : rightWidth}px`
+    : null;
+
+  const handlePointerDown = useCallback(
+    e => {
+      e.preventDefault();
+      setWorkspaceResizing(side);
+    },
+    [side, setWorkspaceResizing]
+  );
+
+  useEffect(() => {
+    if (!active) return undefined;
+    const handlePointerMove = e => {
+      if (side === 'left') {
+        setLeftWidth(e.clientX);
+      } else {
+        setRightWidth(window.innerWidth - e.clientX);
+      }
+    };
+    const handlePointerUp = () => setWorkspaceResizing(null);
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+    // Suppress text selection during the drag.
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [active, side, setLeftWidth, setRightWidth, setWorkspaceResizing]);
 
   const base =
     'group relative h-full w-1 shrink-0 cursor-col-resize select-none';
@@ -42,7 +76,7 @@ const DragHandle = ({
       data-testid={`${testId}-${side}`}
       role="separator"
       aria-orientation="vertical"
-      onPointerDown={onPointerDown}
+      onPointerDown={handlePointerDown}
       className={`${base} ${tone}`}
     >
       <div className={`${lineBase} ${lineTone}`} />
