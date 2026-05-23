@@ -1,22 +1,15 @@
 import React from 'react';
-import {
-  PiList,
-  PiPencil,
-  PiClockCounterClockwise,
-  PiSidebar,
-} from 'react-icons/pi';
+import { PiList, PiPencil, PiSidebar } from 'react-icons/pi';
 
 /**
- * RightRail — Outline / Edit / History tab host (VIS-775 / Track B B2).
+ * RightRail — Outline / Edit tab host (VIS-775 / Track B B2).
  *
- * Three tabs (mulberry underline indicator on the active one):
+ * Two tabs (mulberry underline indicator on the active one):
  *   - **Outline** — compact tree of the active object (project for the
  *     unscoped surface, dashboard structure for a scoped dashboard, etc.).
  *     Real tree ships in VIS-F3.
  *   - **Edit** — selection-driven property editor. Real form ships in
  *     VIS-G1 (and the per-object forms in Track G).
- *   - **History** — deferred to v1.x. The slot exists so the visual is
- *     present and the right-rail tab bar's three-way symmetry holds.
  *
  * The active object's `name` is surfaced in the Edit-tab placeholder so the
  * shell visibly reacts to tab/selection changes during Phase 0.
@@ -25,7 +18,6 @@ import {
 const TABS = [
   { key: 'outline', label: 'Outline', icon: PiList },
   { key: 'edit', label: 'Edit', icon: PiPencil },
-  { key: 'history', label: 'History', icon: PiClockCounterClockwise },
 ];
 
 const TabBtn = ({ tab, active, onClick }) => {
@@ -71,45 +63,30 @@ const RightRailBody = ({ activeTab, activeObject }) => {
       </div>
     );
   }
-  if (activeTab === 'edit') {
-    return (
-      <div
-        data-testid="workspace-right-rail-edit"
-        className="flex flex-1 items-start justify-center px-6 py-8 text-center"
-      >
-        <div className="text-gray-500">
-          <PiPencil aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
-          <p className="text-[12px] leading-relaxed">
-            Edit form coming soon (VIS-G1)
-            {activeObject && (
-              <>
-                {' '}
-                — selected:{' '}
-                <span
-                  className="font-medium text-gray-700"
-                  data-testid="workspace-right-rail-edit-active-name"
-                >
-                  {activeObject.name}
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  // history
+  // Edit is the default tab — also the fallthrough so any unknown tab key
+  // still renders the editor surface rather than a blank panel.
   return (
     <div
-      data-testid="workspace-right-rail-history"
+      data-testid="workspace-right-rail-edit"
       className="flex flex-1 items-start justify-center px-6 py-8 text-center"
     >
       <div className="text-gray-500">
-        <PiClockCounterClockwise
-          aria-hidden="true"
-          className="mx-auto mb-2 h-5 w-5 text-gray-400"
-        />
-        <p className="text-[12px] leading-relaxed">Coming in v1.x</p>
+        <PiPencil aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
+        <p className="text-[12px] leading-relaxed">
+          Edit form coming soon (VIS-G1)
+          {activeObject && (
+            <>
+              {' '}
+              — selected:{' '}
+              <span
+                className="font-medium text-gray-700"
+                data-testid="workspace-right-rail-edit-active-name"
+              >
+                {activeObject.name}
+              </span>
+            </>
+          )}
+        </p>
       </div>
     </div>
   );

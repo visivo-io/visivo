@@ -38,7 +38,7 @@ const createWorkspaceSlice = (set, get) => ({
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
   workspaceRightCollapsed: false,
-  workspaceRightTab: 'edit', // 'outline' | 'edit' | 'history'
+  workspaceRightTab: 'edit', // 'outline' | 'edit'
 
   // Lens (sub-bar segmented) ------------------------------------------------
   workspaceLens: 'preview', // 'preview' | 'lineage'
@@ -131,7 +131,7 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   setWorkspaceRightTab: (tab) => {
-    if (!['outline', 'edit', 'history'].includes(tab)) return;
+    if (!['outline', 'edit'].includes(tab)) return;
     set({ workspaceRightTab: tab });
   },
 

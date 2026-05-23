@@ -21,8 +21,8 @@ import DragHandle from './DragHandle';
  *   │            │ TabStrip (h-9 white, scoped to active obj)│
  *   │ LeftRail   ├──────────────────────────┬───────────────┤
  *   │ (full-h)   │ MiddlePane               │ RightRail     │
- *   │            │ (sub-bar + variant body) │ (Outline/Edit/│
- *   │            │                          │  History)     │
+ *   │            │ (sub-bar + variant body) │ (Outline/Edit)│
+ *   │            │                          │               │
  *   └────────────┴──────────────────────────┴───────────────┘
  *
  * Key insight: the **left rail anchors full-height** (from the TopBar to
