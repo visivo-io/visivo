@@ -1,42 +1,37 @@
 import React from 'react';
-import {
-  PiMagnifyingGlass,
-  PiPlus,
-  PiChartBar,
-  PiLightbulb,
-  PiCube,
-  PiDatabase,
-  PiSidebar,
-} from 'react-icons/pi';
+import { PiMagnifyingGlass, PiSidebar } from 'react-icons/pi';
 import Library from './library/Library';
 import useStore from '../../../stores/store';
+import { LAYOUT_TYPES, DATA_TYPES, getTypeDef } from './library/LibraryRow';
 
 /**
  * LeftRail — project-wide Library navigator (VIS-775 / Track B B2, VIS-769 /
  * Track C C1).
  *
- * Track B B2 shipped the shell. Track C C1 + C2 + C3 fills it with the real
- * Library:
- *
- *   - Five sections: Insert · Charts · Insights · Models · Sources.
- *   - Per-section debounced search + scope chips (`All` · `Used here` ·
- *     `Compatible`).
- *   - Drag-source rows (Insert / Charts / Insights) for the canvas drop
- *     target (Track D).
- *   - Hover-revealed flip popover with an inline mini-lineage preview.
- *   - Persisted section collapse (localStorage `library:section-collapsed:*`).
- *
- * Collapsed mode (48-px icon strip) is unchanged from B-2: shows one icon
- * per section so the user can quickly re-expand.
+ *   - Expanded: mounts the full Library (Track C C1+).
+ *   - Collapsed (48-px icon strip): one icon per subsection so the user
+ *     can identify what's in the rail at a glance. The two-section
+ *     vocabulary matches the Library — Layout Items above the divider,
+ *     Data Layer below. Icons come from the canonical `objectTypeConfigs.js`
+ *     (MUI) via `getTypeDef`, so the collapsed and expanded views read as
+ *     the same Library.
  */
 
-const SECTIONS = [
-  { key: 'insert', label: 'Insert', icon: PiPlus, hint: 'layout primitives' },
-  { key: 'charts', label: 'Charts', icon: PiChartBar },
-  { key: 'insights', label: 'Insights', icon: PiLightbulb },
-  { key: 'models', label: 'Models', icon: PiCube },
-  { key: 'sources', label: 'Sources', icon: PiDatabase },
-];
+const TypeBtn = ({ typeKey }) => {
+  const def = getTypeDef(typeKey);
+  const Icon = def.icon;
+  return (
+    <button
+      type="button"
+      title={def.plural}
+      aria-label={def.plural}
+      data-testid={`workspace-left-rail-collapsed-${typeKey}`}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+    >
+      <Icon aria-hidden="true" style={{ fontSize: 18 }} />
+    </button>
+  );
+};
 
 const LeftRailCollapsed = ({ onExpand }) => {
   return (
@@ -64,17 +59,15 @@ const LeftRailCollapsed = ({ onExpand }) => {
         >
           <PiMagnifyingGlass className="h-[18px] w-[18px]" />
         </button>
-        {SECTIONS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            title={label}
-            aria-label={label}
-            data-testid={`workspace-left-rail-collapsed-${key}`}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <Icon className="h-[18px] w-[18px]" />
-          </button>
+        {/* Layout Items group — droppable types. */}
+        <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
+        {LAYOUT_TYPES.map(t => (
+          <TypeBtn key={t} typeKey={t} />
+        ))}
+        {/* Data Layer group — click-to-edit types. */}
+        <div className="my-1 h-px w-6 bg-gray-200" aria-hidden="true" />
+        {DATA_TYPES.map(t => (
+          <TypeBtn key={t} typeKey={t} />
         ))}
       </div>
     </aside>
