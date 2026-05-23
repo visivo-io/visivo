@@ -48,6 +48,11 @@ const Library = () => {
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
 
+  // The active workspace tab's id is the selected row's id — both are
+  // `${type}:${name}`. Surfacing it here drives LibraryRow's mulberry-bar +
+  // tinted-bg selected state through the section → subsection → row chain.
+  const selectedRowId = useStore(s => s.workspaceActiveTabId);
+
   // Create-modal openers (per-type). Each store registers its own opener;
   // we wire the four droppable Layout types here since only those expose a
   // "+ New X" button in the rail.
@@ -186,6 +191,7 @@ const Library = () => {
           subtitle="Drag onto the canvas"
           types={LAYOUT_TYPES}
           rowsByType={data.layoutItems}
+          selectedRowId={selectedRowId}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
           onCreate={handleCreate}
@@ -196,6 +202,7 @@ const Library = () => {
           subtitle="Click to edit"
           types={DATA_TYPES}
           rowsByType={data.dataLayer}
+          selectedRowId={selectedRowId}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
         />

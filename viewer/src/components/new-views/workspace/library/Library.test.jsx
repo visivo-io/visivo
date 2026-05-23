@@ -45,6 +45,8 @@ const renderLibrary = (entry = '/workspace') => {
 const seedStore = (extra = {}) => {
   act(() => {
     useStore.setState({
+      // Default no row selected — tests that need a selection override this.
+      workspaceActiveTabId: null,
       // Layout-item collections.
       charts: [{ name: 'waterfall' }, { name: 'fibonacci_chart' }],
       tables: [{ name: 'revenue_rows' }],
@@ -222,6 +224,23 @@ describe('Library', () => {
     expect(screen.getByTestId('library-subsection-table')).toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-chart')).not.toBeInTheDocument();
     expect(screen.queryByTestId('library-subsection-markdown')).not.toBeInTheDocument();
+  });
+
+  test('highlights the row corresponding to the active workspace tab', () => {
+    // Regression: Library never threaded selectedRowId into its sections, so
+    // the selected row had no visual highlight even though LibraryRow already
+    // wired the mulberry-bar + tinted-bg styles. Library now reads
+    // workspaceActiveTabId from the store and passes it down.
+    seedStore({ workspaceActiveTabId: 'chart:waterfall' });
+    renderLibrary();
+    expect(screen.getByTestId('library-row-chart-waterfall')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('library-row-table-revenue_rows')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
   });
 
   test('fetches every collection it renders on mount', () => {
