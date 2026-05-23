@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
@@ -26,15 +26,70 @@ const Workspace = () => {
   const checkPublishStatus = useStore(s => s.checkPublishStatus);
   const scope = useWorkspaceScope();
 
+  // Collection loaders — hoisted here from the Library so the rail is a
+  // pure consumer and other workspace surfaces (canvas, outline, project
+  // editor) can rely on the same fetch on the route container's mount.
+  const fetchCharts = useStore(s => s.fetchCharts);
+  const fetchTables = useStore(s => s.fetchTables);
+  const fetchMarkdowns = useStore(s => s.fetchMarkdowns);
+  const fetchInputs = useStore(s => s.fetchInputs);
+  const fetchSources = useStore(s => s.fetchSources);
+  const fetchModels = useStore(s => s.fetchModels);
+  const fetchCsvScriptModels = useStore(s => s.fetchCsvScriptModels);
+  const fetchLocalMergeModels = useStore(s => s.fetchLocalMergeModels);
+  const fetchDimensions = useStore(s => s.fetchDimensions);
+  const fetchMetrics = useStore(s => s.fetchMetrics);
+  const fetchRelations = useStore(s => s.fetchRelations);
+  const fetchInsights = useStore(s => s.fetchInsights);
+
   const projectName = project?.project_json?.name || project?.name || 'project';
 
-  // Hydrate tabs from URL on mount + when route changes.
+  // Fire every collection load when the workspace mounts. Per-slice fetches
+  // record their own errors; the `.catch` just guards against an unhandled
+  // promise rejection.
   useEffect(() => {
-    openWorkspaceTab({
-      id: `project:${projectName}`,
-      type: 'project',
-      name: projectName,
-    });
+    Promise.all([
+      fetchCharts(),
+      fetchTables(),
+      fetchMarkdowns(),
+      fetchInputs(),
+      fetchSources(),
+      fetchModels(),
+      fetchCsvScriptModels(),
+      fetchLocalMergeModels(),
+      fetchDimensions(),
+      fetchMetrics(),
+      fetchRelations(),
+      fetchInsights(),
+    ]).catch(() => {});
+  }, [
+    fetchCharts,
+    fetchTables,
+    fetchMarkdowns,
+    fetchInputs,
+    fetchSources,
+    fetchModels,
+    fetchCsvScriptModels,
+    fetchLocalMergeModels,
+    fetchDimensions,
+    fetchMetrics,
+    fetchRelations,
+    fetchInsights,
+  ]);
+
+  // Auto-hydrate the project tab once, after `project` resolves (so the tab
+  // doesn't carry a stale name from the pre-load default). After that, the
+  // project tab is user-managed — closing it should stick across navigation.
+  const projectTabHydrated = useRef(false);
+  useEffect(() => {
+    if (project && !projectTabHydrated.current) {
+      projectTabHydrated.current = true;
+      openWorkspaceTab({
+        id: `project:${projectName}`,
+        type: 'project',
+        name: projectName,
+      });
+    }
     if (dashboardName) {
       openWorkspaceTab({
         id: `dashboard:${dashboardName}`,
@@ -42,7 +97,7 @@ const Workspace = () => {
         name: dashboardName,
       });
     }
-  }, [projectName, dashboardName, openWorkspaceTab]);
+  }, [project, projectName, dashboardName, openWorkspaceTab]);
 
   // Check publish status so the Publish · N button has accurate count.
   useEffect(() => {

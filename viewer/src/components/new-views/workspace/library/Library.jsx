@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { PiSidebar } from 'react-icons/pi';
 import LibrarySection from './LibrarySection';
 import useLibraryData from './useLibraryData';
@@ -60,57 +60,6 @@ const Library = () => {
   const openCreateTableModal = useStore(s => s.openCreateTableModal);
   const openCreateMarkdownModal = useStore(s => s.openCreateMarkdownModal);
   const openCreateInputModal = useStore(s => s.openCreateInputModal);
-
-  // Collection loaders. The Library only *reads* the store (via
-  // `useLibraryData`); nothing else on the `/workspace` route fetches the
-  // project's objects, so without this the rail shows whatever stale subset
-  // a previously-visited route happened to load (and an empty rail on a
-  // fresh load). Fetch every collection the Library renders on mount —
-  // mirrors the load effect in `LineageNew`.
-  const fetchCharts = useStore(s => s.fetchCharts);
-  const fetchTables = useStore(s => s.fetchTables);
-  const fetchMarkdowns = useStore(s => s.fetchMarkdowns);
-  const fetchInputs = useStore(s => s.fetchInputs);
-  const fetchSources = useStore(s => s.fetchSources);
-  const fetchModels = useStore(s => s.fetchModels);
-  const fetchCsvScriptModels = useStore(s => s.fetchCsvScriptModels);
-  const fetchLocalMergeModels = useStore(s => s.fetchLocalMergeModels);
-  const fetchDimensions = useStore(s => s.fetchDimensions);
-  const fetchMetrics = useStore(s => s.fetchMetrics);
-  const fetchRelations = useStore(s => s.fetchRelations);
-  const fetchInsights = useStore(s => s.fetchInsights);
-
-  useEffect(() => {
-    // Each per-slice `fetch*` action records its own error; the `.catch`
-    // here only guards against an unhandled promise rejection.
-    Promise.all([
-      fetchCharts(),
-      fetchTables(),
-      fetchMarkdowns(),
-      fetchInputs(),
-      fetchSources(),
-      fetchModels(),
-      fetchCsvScriptModels(),
-      fetchLocalMergeModels(),
-      fetchDimensions(),
-      fetchMetrics(),
-      fetchRelations(),
-      fetchInsights(),
-    ]).catch(() => {});
-  }, [
-    fetchCharts,
-    fetchTables,
-    fetchMarkdowns,
-    fetchInputs,
-    fetchSources,
-    fetchModels,
-    fetchCsvScriptModels,
-    fetchLocalMergeModels,
-    fetchDimensions,
-    fetchMetrics,
-    fetchRelations,
-    fetchInsights,
-  ]);
 
   const handleRowClick = useCallback(
     obj => {

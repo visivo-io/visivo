@@ -50,6 +50,20 @@ const resetWorkspaceStore = () => {
       // Workspace mount effect doesn't throw.
       checkPublishStatus: jest.fn(),
       openPublishModal: jest.fn(),
+      // Stub the 12 collection fetches that the route container fires on
+      // mount — keeps the test focused on shell behaviour, not data load.
+      fetchCharts: jest.fn(),
+      fetchTables: jest.fn(),
+      fetchMarkdowns: jest.fn(),
+      fetchInputs: jest.fn(),
+      fetchSources: jest.fn(),
+      fetchModels: jest.fn(),
+      fetchCsvScriptModels: jest.fn(),
+      fetchLocalMergeModels: jest.fn(),
+      fetchDimensions: jest.fn(),
+      fetchMetrics: jest.fn(),
+      fetchRelations: jest.fn(),
+      fetchInsights: jest.fn(),
     });
   });
 };
@@ -171,6 +185,50 @@ describe('VIS-775 Workspace shell', () => {
     } finally {
       unsubscribe();
     }
+  });
+
+  test('fetches every collection on mount (was Library; now route-level)', () => {
+    const fetchers = {
+      fetchCharts: jest.fn(),
+      fetchTables: jest.fn(),
+      fetchMarkdowns: jest.fn(),
+      fetchInputs: jest.fn(),
+      fetchSources: jest.fn(),
+      fetchModels: jest.fn(),
+      fetchCsvScriptModels: jest.fn(),
+      fetchLocalMergeModels: jest.fn(),
+      fetchDimensions: jest.fn(),
+      fetchMetrics: jest.fn(),
+      fetchRelations: jest.fn(),
+      fetchInsights: jest.fn(),
+    };
+    act(() => { useStore.setState(fetchers); });
+    renderAt('/workspace');
+    Object.values(fetchers).forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
+  });
+
+  test('project tab does not auto-reopen after the user closes it (regression: re-opens on nav)', () => {
+    renderAt('/workspace');
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toBeInTheDocument();
+    // User closes the project tab.
+    act(() => {
+      useStore.getState().closeWorkspaceTab('project:analytics-platform');
+    });
+    expect(
+      screen.queryByTestId('workspace-tab-project:analytics-platform')
+    ).not.toBeInTheDocument();
+    // The hydration ref means subsequent renders don't re-open it. (Full
+    // route navigation is exercised by react-router under the hood; we just
+    // assert the closed state survives a re-rendered cycle by re-running
+    // the active actions.)
+    act(() => {
+      useStore.setState({ workspaceLens: 'lineage' }); // any unrelated dep flip
+    });
+    expect(
+      screen.queryByTestId('workspace-tab-project:analytics-platform')
+    ).not.toBeInTheDocument();
   });
 
   test('fires workspace_mode_entered telemetry with null dashboardName when unscoped', () => {
