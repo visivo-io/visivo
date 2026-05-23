@@ -5,9 +5,13 @@
  * always editing — `/workspace` and `/project` are separate routes, not a
  * mode toggle. State held here:
  *
- *   - `workspaceTabs`        — ordered array of tab descriptors.
- *   - `workspaceActiveTabId` — id of the currently active tab (drives the
- *                              middle pane + right rail content).
+ *   - `workspaceTabs`         — ordered array of tab descriptors.
+ *   - `workspaceActiveTabId`  — id of the currently active tab.
+ *   - `workspaceActiveObject` — `{ type, name }` mirror of the active tab,
+ *                               maintained in sync by the tab actions so
+ *                               consumers (RightRail, MiddlePane, collapsed-
+ *                               rail indicators, etc.) can read it directly
+ *                               without a derivation hook.
  *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse.
  *   - `workspaceRightTab`    — which right-rail tab is active.
  *   - `workspaceLens`        — sub-bar lens for the active object.
@@ -35,6 +39,7 @@ const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
   workspaceTabs: [],
   workspaceActiveTabId: null,
+  workspaceActiveObject: null, // `{ type, name }` mirror of the active tab.
 
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
@@ -64,8 +69,9 @@ const createWorkspaceSlice = (set, get) => ({
     const id = tab.id || `${tab.type}:${tab.name}`;
     const state = get();
     const existing = state.workspaceTabs.find((t) => t.id === id);
+    const activeObject = { type: tab.type, name: tab.name };
     if (existing) {
-      set({ workspaceActiveTabId: id });
+      set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject });
       return id;
     }
     const next = {
@@ -77,6 +83,7 @@ const createWorkspaceSlice = (set, get) => ({
     set({
       workspaceTabs: [...state.workspaceTabs, next],
       workspaceActiveTabId: id,
+      workspaceActiveObject: activeObject,
     });
     return id;
   },
@@ -84,8 +91,12 @@ const createWorkspaceSlice = (set, get) => ({
   /** Focus a tab by id without opening anything new. No-op if id unknown. */
   switchWorkspaceTab: (tabId) => {
     const state = get();
-    if (!state.workspaceTabs.some((t) => t.id === tabId)) return;
-    set({ workspaceActiveTabId: tabId });
+    const tab = state.workspaceTabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    set({
+      workspaceActiveTabId: tabId,
+      workspaceActiveObject: { type: tab.type, name: tab.name },
+    });
   },
 
   /**
@@ -99,13 +110,21 @@ const createWorkspaceSlice = (set, get) => ({
     if (idx === -1) return;
     const remaining = state.workspaceTabs.filter((t) => t.id !== tabId);
     let activeId = state.workspaceActiveTabId;
+    let activeObject = state.workspaceActiveObject;
     if (activeId === tabId) {
-      if (remaining.length === 0) activeId = null;
-      else activeId = remaining[Math.max(0, idx - 1)].id;
+      if (remaining.length === 0) {
+        activeId = null;
+        activeObject = null;
+      } else {
+        const newActive = remaining[Math.max(0, idx - 1)];
+        activeId = newActive.id;
+        activeObject = { type: newActive.type, name: newActive.name };
+      }
     }
     set({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
+      workspaceActiveObject: activeObject,
     });
   },
 
@@ -148,9 +167,15 @@ const createWorkspaceSlice = (set, get) => ({
    * tab strip should look like.
    */
   hydrateWorkspaceTabs: (tabs, activeTabId) => {
+    const safeTabs = tabs || [];
+    const activeId = activeTabId || (safeTabs[0] ? safeTabs[0].id : null);
+    const activeTab = safeTabs.find((t) => t.id === activeId) || null;
     set({
-      workspaceTabs: tabs || [],
-      workspaceActiveTabId: activeTabId || (tabs && tabs[0] ? tabs[0].id : null),
+      workspaceTabs: safeTabs,
+      workspaceActiveTabId: activeId,
+      workspaceActiveObject: activeTab
+        ? { type: activeTab.type, name: activeTab.name }
+        : null,
     });
   },
 });
