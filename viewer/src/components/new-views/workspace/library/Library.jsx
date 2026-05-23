@@ -114,7 +114,7 @@ const Library = () => {
     <aside
       data-testid="workspace-left-rail"
       data-collapsed="false"
-      className="relative flex h-full flex-col overflow-hidden border-r border-gray-200 bg-white text-gray-800"
+      className="relative flex h-full flex-col overflow-visible border-r border-gray-200 bg-white text-gray-800"
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-gray-200 px-3">
         <div className="flex items-center gap-1.5">

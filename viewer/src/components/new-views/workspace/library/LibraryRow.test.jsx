@@ -96,6 +96,23 @@ describe('LibraryRow', () => {
     ).not.toHaveTextContent('Wrap in Chart');
   });
 
+  test('context menu carries the Open-in-new-tab + Delete items and kbd hints', () => {
+    // Regression: menu was missing Open-in-new-tab + Delete… (with divider)
+    // and the keyboard hints per the C-1 design.
+    render(withDnd(<LibraryRow obj={MODEL} />));
+    fireEvent.mouseEnter(screen.getByTestId('library-row-model-monthly_revenue'));
+    fireEvent.click(screen.getByTestId('library-row-model-monthly_revenue-kebab'));
+    const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
+    expect(menu).toHaveTextContent('Open in right rail');
+    expect(menu).toHaveTextContent('Open in new tab');
+    expect(menu).toHaveTextContent('Show lineage');
+    expect(menu).toHaveTextContent('Delete…');
+    // Keyboard hints — the design's discoverability cue.
+    expect(menu).toHaveTextContent('↵');
+    expect(menu).toHaveTextContent('⌘↵');
+    expect(menu).toHaveTextContent('⌫');
+  });
+
   test('right-click opens the context menu (preventing the native one)', () => {
     render(withDnd(<LibraryRow obj={CHART} />));
     const row = screen.getByTestId('library-row-chart-waterfall');

@@ -1,6 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { PiArrowsClockwise, PiDotsThreeOutlineVertical, PiDotsSix } from 'react-icons/pi';
+import {
+  PiArrowsClockwise,
+  PiDotsThreeOutlineVertical,
+  PiDotsSix,
+  PiPencil,
+  PiArrowSquareOut,
+  PiTrash,
+} from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
 import { getTypeIcon } from '../../common/objectTypeConfigs';
 import LibraryRowFlipPopover from './LibraryRowFlipPopover';
@@ -132,7 +139,7 @@ const StatusDot = ({ status }) => {
   );
 };
 
-const ContextMenuItem = ({ icon: Icon, label, onClick, destructive }) => (
+const ContextMenuItem = ({ icon: Icon, label, hint, onClick, destructive }) => (
   <button
     type="button"
     onMouseDown={e => e.preventDefault()} // prevent row losing focus on click
@@ -142,9 +149,33 @@ const ContextMenuItem = ({ icon: Icon, label, onClick, destructive }) => (
       destructive ? 'text-[#a84738] hover:bg-[#f6ddda]/40' : 'text-gray-800 hover:bg-gray-50',
     ].join(' ')}
   >
-    {Icon && <Icon className="shrink-0 text-gray-500" style={{ fontSize: 14 }} />}
+    {Icon && (
+      <Icon
+        className={[
+          'shrink-0',
+          destructive ? 'text-[#a84738]' : 'text-gray-500',
+        ].join(' ')}
+        style={{ fontSize: 14 }}
+      />
+    )}
     <span className="flex-1">{label}</span>
+    {hint && (
+      <span
+        aria-hidden="true"
+        className="shrink-0 font-mono text-[10.5px] text-gray-400"
+      >
+        {hint}
+      </span>
+    )}
   </button>
+);
+
+const MenuDivider = () => (
+  <li
+    aria-hidden="true"
+    role="separator"
+    className="my-0.5 border-t border-gray-200"
+  />
 );
 
 const ContextMenu = ({ obj, onAction, onDismiss }) => {
@@ -157,7 +188,7 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
     <div
       role="menu"
       data-testid={`library-row-${obj.type}-${obj.name}-context-menu`}
-      className="absolute right-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-gray-200"
+      className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-gray-200"
     >
       <ul className="flex flex-col py-1">
         {isInsight && (
@@ -165,22 +196,43 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
             <ContextMenuItem
               icon={TYPE.chart.icon}
               label="Wrap in Chart…"
+              hint="⌘⇧W"
               onClick={handle('wrapInChart')}
             />
           </li>
         )}
         <li>
           <ContextMenuItem
-            icon={PiArrowsClockwise}
-            label="Show lineage"
-            onClick={handle('showLineage')}
+            icon={PiPencil}
+            label="Open in right rail"
+            hint="↵"
+            onClick={handle('edit')}
           />
         </li>
         <li>
           <ContextMenuItem
-            icon={PiDotsThreeOutlineVertical}
-            label="Open in right rail"
-            onClick={handle('edit')}
+            icon={PiArrowSquareOut}
+            label="Open in new tab"
+            hint="⌘↵"
+            onClick={handle('openInNewTab')}
+          />
+        </li>
+        <li>
+          <ContextMenuItem
+            icon={PiArrowsClockwise}
+            label="Show lineage"
+            hint="F"
+            onClick={handle('showLineage')}
+          />
+        </li>
+        <MenuDivider />
+        <li>
+          <ContextMenuItem
+            icon={PiTrash}
+            label="Delete…"
+            hint="⌫"
+            destructive
+            onClick={handle('delete')}
           />
         </li>
       </ul>
