@@ -99,6 +99,34 @@ describe('TabStrip', () => {
     expect(switchWorkspaceTab).not.toHaveBeenCalled();
   });
 
+  test('drag-and-drop dispatches reorderWorkspaceTabs', () => {
+    const reorderWorkspaceTabs = jest.fn();
+    seedStore({ reorderWorkspaceTabs });
+    render(<TabStrip />);
+    // dnd-kit isn't used here (native HTML5 drag) — fire the synthetic
+    // events with a hand-rolled dataTransfer.
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      _data: '',
+      setData(_, v) {
+        this._data = v;
+      },
+      getData() {
+        return this._data;
+      },
+    };
+    const source = screen.getByTestId('workspace-tab-wrapper-chart:revenue_chart');
+    const target = screen.getByTestId('workspace-tab-wrapper-project:analytics-platform');
+    fireEvent.dragStart(source, { dataTransfer });
+    fireEvent.dragOver(target, { dataTransfer });
+    fireEvent.drop(target, { dataTransfer });
+    expect(reorderWorkspaceTabs).toHaveBeenCalledWith(
+      'chart:revenue_chart',
+      'project:analytics-platform'
+    );
+  });
+
   test('clicking the + button opens the project tab via openWorkspaceTab', () => {
     const openWorkspaceTab = jest.fn();
     seedStore({ openWorkspaceTab });

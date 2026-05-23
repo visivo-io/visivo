@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PiX, PiPlus, PiCube } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import { getTypeIcon } from '../common/objectTypeConfigs';
@@ -13,15 +13,13 @@ const getTabIcon = type => (type === 'project' ? PROJECT_TAB_ICON : getTypeIcon(
  * WorkspaceTab — a single tab in the strip (presentational).
  *
  * Per the delivered B-1 design:
- *   - type icon (from OBJ_KIND) + name + dirty dot + close (×).
+ *   - type icon + name + dirty dot + close (×).
  *   - Active tab: white background, dark text, mulberry bottom underline.
  *   - Inactive tab: gray track, lighter text; hover lifts to white.
- *   - Close button: always visible when active or dirty (so the user can
- *     dismiss the dirty dot); fades in on hover otherwise.
- *
- * Project is just another tab with the cube icon — no special chrome.
+ *   - Dragging tab: opacity-60 ghost in place.
+ *   - Close button: always visible when active or dirty; fades in on hover otherwise.
  */
-const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
+const WorkspaceTab = ({ tab, active, onSelect, onClose, isDragging }) => {
   const TypeIcon = getTabIcon(tab.type);
   return (
     <div
@@ -29,11 +27,13 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
       aria-selected={active}
       data-testid={`workspace-tab-${tab.id}`}
       data-active={active ? 'true' : 'false'}
+      data-dragging={isDragging ? 'true' : 'false'}
       className={[
         'group/tab relative flex h-9 min-w-0 max-w-[220px] shrink-0 items-center gap-1.5 border-r border-gray-200 px-3 text-[12.5px] transition-colors',
         active
           ? 'bg-white text-gray-900 font-medium'
           : 'bg-gray-50 text-gray-600 hover:bg-white/70 hover:text-gray-900',
+        isDragging ? 'opacity-60 ring-1 ring-inset ring-primary' : '',
       ].join(' ')}
     >
       <button
@@ -55,6 +55,7 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
       </button>
       <button
         type="button"
+        draggable={false}
         onClick={e => {
           e.stopPropagation();
           onClose && onClose(tab.id);
@@ -88,17 +89,24 @@ const WorkspaceTab = ({ tab, active, onSelect, onClose }) => {
  * This visually signals that tabs scope the active-object area (middle +
  * right rail), not the project-wide Library.
  *
- * Reads its tabs + active id + actions directly from the workspace store —
- * no prop-drilling from the route container. Phase 0 supports: open project
- * tab on mount, click-to-switch, close. Drag-to-reorder ships in VIS-O3.
+ * Reads tabs + active id + actions directly from the workspace store — no
+ * prop-drilling from the route container. Phase 0 supports: open project
+ * tab on mount, click-to-switch, close, AND drag-to-reorder (native HTML5
+ * drag, no extra dep — dispatches `reorderWorkspaceTabs` on drop). Per the
+ * B-1 design, the dragged tab gets the ghost styling and the drop target
+ * gets a 2-px mulberry slot indicator on its left edge.
  */
 const TabStrip = () => {
   const tabs = useStore(s => s.workspaceTabs);
   const activeId = useStore(s => s.workspaceActiveTabId);
   const switchWorkspaceTab = useStore(s => s.switchWorkspaceTab);
   const closeWorkspaceTab = useStore(s => s.closeWorkspaceTab);
+  const reorderWorkspaceTabs = useStore(s => s.reorderWorkspaceTabs);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const project = useStore(s => s.project);
+
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
 
   if (!tabs || tabs.length === 0) return null;
 
@@ -113,6 +121,34 @@ const TabStrip = () => {
       name: projectName,
     });
 
+  const handleDragStart = (e, tab) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tab.id);
+    setDraggedId(tab.id);
+  };
+  const handleDragOver = (e, tab) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (tab.id !== draggedId && dragOverId !== tab.id) {
+      setDragOverId(tab.id);
+    }
+  };
+  const handleDrop = (e, tab) => {
+    e.preventDefault();
+    const sourceId =
+      (e.dataTransfer && e.dataTransfer.getData && e.dataTransfer.getData('text/plain')) ||
+      draggedId;
+    if (sourceId && sourceId !== tab.id) {
+      reorderWorkspaceTabs(sourceId, tab.id);
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   return (
     <div
       data-testid="workspace-tab-strip"
@@ -121,15 +157,37 @@ const TabStrip = () => {
       className="relative flex h-9 shrink-0 items-stretch border-b border-gray-200 bg-gray-50"
     >
       <div className="flex flex-1 items-stretch overflow-x-auto">
-        {tabs.map(tab => (
-          <WorkspaceTab
-            key={tab.id}
-            tab={tab}
-            active={tab.id === activeId}
-            onSelect={switchWorkspaceTab}
-            onClose={closeWorkspaceTab}
-          />
-        ))}
+        {tabs.map(tab => {
+          const isDragging = tab.id === draggedId;
+          const isDropTarget = tab.id === dragOverId && dragOverId !== draggedId;
+          return (
+            <div
+              key={tab.id}
+              draggable
+              onDragStart={e => handleDragStart(e, tab)}
+              onDragOver={e => handleDragOver(e, tab)}
+              onDrop={e => handleDrop(e, tab)}
+              onDragEnd={handleDragEnd}
+              data-testid={`workspace-tab-wrapper-${tab.id}`}
+              className="relative"
+            >
+              {isDropTarget && (
+                <span
+                  aria-hidden="true"
+                  data-testid={`workspace-tab-drop-slot-${tab.id}`}
+                  className="pointer-events-none absolute inset-y-1 left-0 z-10 w-0.5 rounded-full bg-primary"
+                />
+              )}
+              <WorkspaceTab
+                tab={tab}
+                active={tab.id === activeId}
+                onSelect={switchWorkspaceTab}
+                onClose={closeWorkspaceTab}
+                isDragging={isDragging}
+              />
+            </div>
+          );
+        })}
         <button
           type="button"
           onClick={handleNewTab}

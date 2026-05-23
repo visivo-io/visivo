@@ -134,6 +134,31 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceRightCollapsed).toBe(true);
   });
 
+  test('reorderWorkspaceTabs moves a tab to the over slot', () => {
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [
+          { id: 'a', type: 'project', name: 'a' },
+          { id: 'b', type: 'dashboard', name: 'b' },
+          { id: 'c', type: 'chart', name: 'c' },
+        ],
+      });
+    });
+    // Drag c onto a → [c, a, b].
+    act(() => useStore.getState().reorderWorkspaceTabs('c', 'a'));
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['c', 'a', 'b']);
+    // Drag a onto b → [c, b, a]. (Splice semantics: a removed, then inserted
+    // at b's index — which after removal is index 1; result is [c, b, a].)
+    act(() => useStore.getState().reorderWorkspaceTabs('a', 'b'));
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['c', 'b', 'a']);
+    // Same-id is a no-op.
+    act(() => useStore.getState().reorderWorkspaceTabs('a', 'a'));
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['c', 'b', 'a']);
+    // Unknown id is a no-op.
+    act(() => useStore.getState().reorderWorkspaceTabs('a', 'zzz'));
+    expect(useStore.getState().workspaceTabs.map(t => t.id)).toEqual(['c', 'b', 'a']);
+  });
+
   test('setWorkspaceLeftWidth clamps to [240, 480]', () => {
     act(() => useStore.getState().setWorkspaceLeftWidth(100));
     expect(useStore.getState().workspaceLeftWidth).toBe(240);

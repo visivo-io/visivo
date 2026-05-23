@@ -128,6 +128,23 @@ const createWorkspaceSlice = (set, get) => ({
     });
   },
 
+  /**
+   * Reorder a tab — move `activeId` to the slot currently occupied by
+   * `overId`. No-op when the ids are the same or either is unknown. Used
+   * by the TabStrip's drag-reorder gesture.
+   */
+  reorderWorkspaceTabs: (activeId, overId) => {
+    if (!activeId || activeId === overId) return;
+    const state = get();
+    const fromIdx = state.workspaceTabs.findIndex((t) => t.id === activeId);
+    const toIdx = state.workspaceTabs.findIndex((t) => t.id === overId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const next = [...state.workspaceTabs];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    set({ workspaceTabs: next });
+  },
+
   /** Mark a tab dirty/clean — drives the mulberry dot in the tab strip. */
   setWorkspaceTabDirty: (tabId, dirty) => {
     const state = get();
