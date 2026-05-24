@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import {
   PiArrowsClockwise,
@@ -244,6 +244,9 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
   const [hovered, setHovered] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Anchor for the portal-rendered flip popover (escapes the rail's
+  // overflow-y-auto clipping ancestor).
+  const rowAnchorRef = useRef(null);
 
   const def = getTypeDef(obj.type);
   const Icon = def.icon;
@@ -312,7 +315,7 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
   const tid = testId || `library-row-${obj.type}-${obj.name}`;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rowAnchorRef}>
       <div
         {...dragProps}
         data-testid={tid}
@@ -413,7 +416,12 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
         </div>
       </div>
       {popoverOpen && (
-        <LibraryRowFlipPopover obj={obj} onClose={handlePopoverClose} testIdPrefix={`${tid}-popover`} />
+        <LibraryRowFlipPopover
+          obj={obj}
+          anchorRef={rowAnchorRef}
+          onClose={handlePopoverClose}
+          testIdPrefix={`${tid}-popover`}
+        />
       )}
       {menuOpen && (
         <ContextMenu obj={obj} onAction={onContextAction} onDismiss={handleMenuDismiss} />

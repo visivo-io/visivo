@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon } from '../../common/objectTypeConfigs';
@@ -159,13 +160,49 @@ function appendSource(model, storeApi, chain, seen) {
   }
 }
 
+// Fallback position used when no anchorRef is supplied (tests render the
+// popover in isolation without a row to anchor to).
+const FALLBACK_POSITION = { top: 100, left: 100 };
+
+const computeAnchoredPosition = (anchorEl) => {
+  if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') {
+    return FALLBACK_POSITION;
+  }
+  const rect = anchorEl.getBoundingClientRect();
+  return {
+    top: rect.top + rect.height / 2,
+    left: rect.right + 12, // 12 px gap matches the design's `ml-3`
+  };
+};
+
 const LibraryRowFlipPopover = ({
   obj,
-  anchorTop = 0,
+  anchorRef,
   onClose,
   testIdPrefix = 'library-flip-popover',
 }) => {
   const popoverRef = useRef(null);
+
+  // Track anchor position so the popover follows the row across scroll +
+  // resize. Rendered into document.body via portal (so the Library's
+  // `overflow-y-auto` ancestor doesn't clip it horizontally — CSS coerces
+  // a `visible` axis to `auto` when the other axis is `auto`).
+  const [position, setPosition] = useState(() =>
+    computeAnchoredPosition(anchorRef?.current)
+  );
+
+  useEffect(() => {
+    if (!anchorRef?.current) return undefined;
+    const update = () => setPosition(computeAnchoredPosition(anchorRef.current));
+    update();
+    // Capture phase to catch scrolls in any ancestor container.
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [anchorRef]);
 
   // Pull the lineage data from the store. We use refs into the store to
   // avoid re-renders on unrelated changes; the chain is computed once on
@@ -213,14 +250,19 @@ const LibraryRowFlipPopover = ({
     : '+';
   const isEmpty = chain.length === 0 && obj.type !== 'insert';
 
-  return (
+  return createPortal(
     <div
       ref={popoverRef}
       data-testid={testIdPrefix}
       role="dialog"
       aria-label={`Lineage preview for ${obj.name}`}
-      className="absolute left-full top-1/2 z-30 ml-3 -translate-y-1/2"
-      style={{ width: 280, top: anchorTop || undefined }}
+      className="fixed z-50"
+      style={{
+        top: position.top,
+        left: position.left,
+        width: 280,
+        transform: 'translateY(-50%)',
+      }}
     >
       <span
         aria-hidden="true"
@@ -307,7 +349,8 @@ const LibraryRowFlipPopover = ({
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

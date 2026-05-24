@@ -6,7 +6,7 @@
  * is deferred to VIS-780 (blocked by D-6).
  */
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, within, act, fireEvent } from '@testing-library/react';
 import useStore from '../../../../stores/store';
 import LibraryRowFlipPopover, { buildChainFromStore } from './LibraryRowFlipPopover';
 
@@ -68,6 +68,20 @@ describe('LibraryRowFlipPopover', () => {
     expect(screen.getByTestId('library-flip-popover-deferred-note')).toHaveTextContent(
       'VIS-780'
     );
+  });
+
+  test('renders into document.body via portal so the rail overflow does not clip it', () => {
+    // Regression: the rail's `overflow-y-auto` ancestor coerces horizontal
+    // overflow to `auto` per the CSS spec, which clipped the popover when
+    // it was rendered inside the rail's React subtree. The popover now
+    // escapes via createPortal into document.body — verify by asserting
+    // it's NOT inside testing-library's render container but IS in the
+    // document.
+    const { container } = render(
+      <LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />
+    );
+    expect(within(container).queryByTestId('library-flip-popover')).toBeNull();
+    expect(screen.getByTestId('library-flip-popover')).toBeInTheDocument();
   });
 
   test('fires onClose when the × button is clicked', () => {
