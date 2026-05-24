@@ -6,12 +6,13 @@
  *   - per-type subsections rendering in order
  *   - search filters rows and hides empty subsections
  *   - type-filter chip hides non-matching subsections
- *   - section-level collapse toggle + localStorage persistence
+ *   - section-level collapse toggle + persisted Zustand slice
  */
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import LibrarySection, { STORAGE_PREFIX } from './LibrarySection';
+import LibrarySection from './LibrarySection';
+import useStore from '../../../../stores/store';
 
 const withDnd = ui => <DndContext>{ui}</DndContext>;
 
@@ -43,7 +44,12 @@ const renderSection = (props = {}) =>
 
 describe('LibrarySection', () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    act(() => {
+      useStore.setState({
+        libraryCollapsedSections: {},
+        libraryCollapsedSubsections: {},
+      });
+    });
   });
 
   test('renders the section header with the total count across every type', () => {
@@ -99,7 +105,7 @@ describe('LibrarySection', () => {
     }
   });
 
-  test('toggles collapse on header click and persists to localStorage', () => {
+  test('toggles collapse on header click and writes to the persisted store slice', () => {
     renderSection();
     const header = screen.getByTestId('library-section-layout-header');
     const section = screen.getByTestId('library-section-layout');
@@ -109,15 +115,17 @@ describe('LibrarySection', () => {
     fireEvent.click(header);
     expect(section).toHaveAttribute('data-collapsed', 'true');
     expect(screen.queryByTestId('library-section-layout-body')).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}layout`)).toBe('1');
+    expect(useStore.getState().libraryCollapsedSections.layout).toBe(true);
 
     fireEvent.click(header);
     expect(section).toHaveAttribute('data-collapsed', 'false');
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}layout`)).toBeNull();
+    expect(useStore.getState().libraryCollapsedSections.layout).toBe(false);
   });
 
-  test('reads persisted collapse state on mount', () => {
-    window.localStorage.setItem(`${STORAGE_PREFIX}layout`, '1');
+  test('reads persisted collapse state from the store on mount', () => {
+    act(() => {
+      useStore.setState({ libraryCollapsedSections: { layout: true } });
+    });
     renderSection();
     expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
       'data-collapsed',

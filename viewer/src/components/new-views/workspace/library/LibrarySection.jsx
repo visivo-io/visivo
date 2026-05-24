@@ -4,6 +4,7 @@ import LibrarySearch from './LibrarySearch';
 import LibraryFilterChips from './LibraryFilterChips';
 import LibrarySubsection from './LibrarySubsection';
 import useLibraryFilter from './useLibraryFilter';
+import useStore from '../../../../stores/store';
 
 /**
  * LibrarySection — VIS-769 / Track C C1.
@@ -24,33 +25,10 @@ import useLibraryFilter from './useLibraryFilter';
  *   - When the search is non-empty, rows are filtered by name and any
  *     subsection left with zero matches is hidden.
  *
- * Section-level collapse persists per-section in localStorage under
- * `library:section-collapsed:<key>` (per VIS-773).
+ * Section-level collapse persists in the `library-prefs-storage` Zustand
+ * slice (`libraryPrefsStore`), which uses Zustand's `persist` middleware so
+ * the rail remembers what was collapsed across reloads.
  */
-const STORAGE_PREFIX = 'library:section-collapsed:';
-
-function readPersistedCollapsed(key) {
-  if (typeof window === 'undefined' || !window.localStorage) return false;
-  try {
-    return window.localStorage.getItem(`${STORAGE_PREFIX}${key}`) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function writePersistedCollapsed(key, collapsed) {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    if (collapsed) {
-      window.localStorage.setItem(`${STORAGE_PREFIX}${key}`, '1');
-    } else {
-      window.localStorage.removeItem(`${STORAGE_PREFIX}${key}`);
-    }
-  } catch {
-    // Ignore quota errors — collapsing the section is non-critical.
-  }
-}
-
 const LibrarySection = ({
   sectionKey,
   title,
@@ -63,22 +41,15 @@ const LibrarySection = ({
   onRowClick,
   onContextAction,
   onCreate,
-  initialCollapsed,
 }) => {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof initialCollapsed === 'boolean') return initialCollapsed;
-    return readPersistedCollapsed(sectionKey);
-  });
+  const collapsed = useStore(s => !!s.libraryCollapsedSections[sectionKey]);
+  const toggleSectionCollapsed = useStore(s => s.toggleLibrarySectionCollapsed);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState(null);
 
   const handleToggleCollapsed = useCallback(() => {
-    setCollapsed(prev => {
-      const next = !prev;
-      writePersistedCollapsed(sectionKey, next);
-      return next;
-    });
-  }, [sectionKey]);
+    toggleSectionCollapsed(sectionKey);
+  }, [sectionKey, toggleSectionCollapsed]);
 
   // Flat list of every row across the section's types — used both for the
   // header count and as the input to the search/type-filter.
@@ -169,5 +140,4 @@ const LibrarySection = ({
   );
 };
 
-export { readPersistedCollapsed, writePersistedCollapsed, STORAGE_PREFIX };
 export default LibrarySection;

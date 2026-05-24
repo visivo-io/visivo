@@ -5,12 +5,13 @@
  *   - per-type header (caret + type icon + UPPERCASE plural + count)
  *   - row rendering + empty-state placeholder
  *   - "+ New X" present for droppable Layout types, absent for Data types
- *   - collapse toggle + localStorage persistence
+ *   - collapse toggle + persisted Zustand slice
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import LibrarySubsection, { STORAGE_PREFIX } from './LibrarySubsection';
+import LibrarySubsection from './LibrarySubsection';
+import useStore from '../../../../stores/store';
 
 const withDnd = ui => <DndContext>{ui}</DndContext>;
 
@@ -21,7 +22,12 @@ const CHART_ROWS = [
 
 describe('LibrarySubsection', () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    act(() => {
+      useStore.setState({
+        libraryCollapsedSections: {},
+        libraryCollapsedSubsections: {},
+      });
+    });
   });
 
   test('renders the per-type header, count and rows', () => {
@@ -63,7 +69,7 @@ describe('LibrarySubsection', () => {
     expect(onCreate).toHaveBeenCalledWith('table');
   });
 
-  test('toggles collapse on header click and persists to localStorage', () => {
+  test('toggles collapse on header click and writes to the persisted store slice', () => {
     render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
     const header = screen.getByTestId('library-subsection-chart-header');
     const subsection = screen.getByTestId('library-subsection-chart');
@@ -73,15 +79,17 @@ describe('LibrarySubsection', () => {
     fireEvent.click(header);
     expect(subsection).toHaveAttribute('data-collapsed', 'true');
     expect(screen.queryByTestId('library-subsection-chart-body')).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}chart`)).toBe('1');
+    expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(true);
 
     fireEvent.click(header);
     expect(subsection).toHaveAttribute('data-collapsed', 'false');
-    expect(window.localStorage.getItem(`${STORAGE_PREFIX}chart`)).toBeNull();
+    expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(false);
   });
 
-  test('reads persisted collapse state on mount', () => {
-    window.localStorage.setItem(`${STORAGE_PREFIX}chart`, '1');
+  test('reads persisted collapse state from the store on mount', () => {
+    act(() => {
+      useStore.setState({ libraryCollapsedSubsections: { chart: true } });
+    });
     render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
     expect(screen.getByTestId('library-subsection-chart')).toHaveAttribute(
       'data-collapsed',

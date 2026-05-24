@@ -47,6 +47,9 @@ const seedStore = (extra = {}) => {
     useStore.setState({
       // Default no row selected — tests that need a selection override this.
       workspaceActiveTabId: null,
+      // Reset Library collapse prefs so tests don't bleed into one another.
+      libraryCollapsedSections: {},
+      libraryCollapsedSubsections: {},
       // Layout-item collections.
       charts: [{ name: 'waterfall' }, { name: 'fibonacci_chart' }],
       tables: [{ name: 'revenue_rows' }],
@@ -75,7 +78,6 @@ const seedStore = (extra = {}) => {
 
 describe('Library', () => {
   beforeEach(() => {
-    window.localStorage.clear();
     seedStore();
   });
 

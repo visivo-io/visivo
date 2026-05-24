@@ -1,7 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { PiCaretDown, PiPlus } from 'react-icons/pi';
 import LibraryRow from './LibraryRow';
 import { getTypeDef } from './LibraryRow';
+import useStore from '../../../../stores/store';
 
 /**
  * LibrarySubsection — VIS-769 / Track C C1.
@@ -18,35 +19,11 @@ import { getTypeDef } from './LibraryRow';
  *     (chart / table / markdown / input). Data-layer types use a different
  *     create flow and so render no inline create button.
  *
- * Collapse state persists per-type in localStorage under
- * `library:subsection-collapsed:<typeKey>` (per VIS-773). When a search is
- * active and the subsection has no matching rows, the parent hides it
- * entirely; this component handles the "still has rows" case.
+ * Collapse state persists in the `library-prefs-storage` Zustand slice
+ * (`libraryPrefsStore`). When a search is active and the subsection has no
+ * matching rows, the parent hides it entirely; this component handles the
+ * "still has rows" case.
  */
-const STORAGE_PREFIX = 'library:subsection-collapsed:';
-
-function readPersistedCollapsed(typeKey) {
-  if (typeof window === 'undefined' || !window.localStorage) return false;
-  try {
-    return window.localStorage.getItem(`${STORAGE_PREFIX}${typeKey}`) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function writePersistedCollapsed(typeKey, collapsed) {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    if (collapsed) {
-      window.localStorage.setItem(`${STORAGE_PREFIX}${typeKey}`, '1');
-    } else {
-      window.localStorage.removeItem(`${STORAGE_PREFIX}${typeKey}`);
-    }
-  } catch {
-    // Ignore quota errors — collapsing a subsection is non-critical.
-  }
-}
-
 const LibrarySubsection = ({
   typeKey,
   rows = [],
@@ -54,23 +31,16 @@ const LibrarySubsection = ({
   onRowClick,
   onContextAction,
   onCreate,
-  initialCollapsed,
 }) => {
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
 
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof initialCollapsed === 'boolean') return initialCollapsed;
-    return readPersistedCollapsed(typeKey);
-  });
+  const collapsed = useStore(s => !!s.libraryCollapsedSubsections[typeKey]);
+  const toggleSubsectionCollapsed = useStore(s => s.toggleLibrarySubsectionCollapsed);
 
   const handleToggle = useCallback(() => {
-    setCollapsed(prev => {
-      const next = !prev;
-      writePersistedCollapsed(typeKey, next);
-      return next;
-    });
-  }, [typeKey]);
+    toggleSubsectionCollapsed(typeKey);
+  }, [typeKey, toggleSubsectionCollapsed]);
 
   return (
     <div
@@ -151,5 +121,4 @@ const LibrarySubsection = ({
   );
 };
 
-export { readPersistedCollapsed, writePersistedCollapsed, STORAGE_PREFIX };
 export default LibrarySubsection;
