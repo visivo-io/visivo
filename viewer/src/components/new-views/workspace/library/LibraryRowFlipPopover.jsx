@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon } from '../../common/objectTypeConfigs';
+import { LAYOUT_TYPES } from './LibraryRow';
 
 /**
  * LibraryRowFlipPopover — VIS-776 / Track C C3.
@@ -24,19 +25,25 @@ import { getTypeIcon } from '../../common/objectTypeConfigs';
  * (chart → first insight → first model → first source). Real upstream
  * traversal lands with the shared MiniLineageCard in VIS-780 (C4).
  */
-const TYPE_TONE = {
-  chart: { iconBg: 'bg-[#e2d7dd]/70', iconFg: 'text-[#713b57]', pillBg: 'bg-[#e2d7dd]', pillFg: 'text-[#5a2f45]' },
-  insight: { iconBg: 'bg-[#d4e1e2]/70', iconFg: 'text-[#1b4042]', pillBg: 'bg-[#d4e1e2]', pillFg: 'text-[#1b4042]' },
-  model: { iconBg: 'bg-[#d4e1e2]/70', iconFg: 'text-[#1b4042]', pillBg: 'bg-[#d4e1e2]', pillFg: 'text-[#1b4042]' },
-  source: { iconBg: 'bg-[#d4e1e2]/70', iconFg: 'text-[#1b4042]', pillBg: 'bg-[#d4e1e2]', pillFg: 'text-[#1b4042]' },
-  table: { iconBg: 'bg-[#e2d7dd]/70', iconFg: 'text-[#713b57]', pillBg: 'bg-[#e2d7dd]', pillFg: 'text-[#5a2f45]' },
-  markdown: { iconBg: 'bg-[#e2d7dd]/70', iconFg: 'text-[#713b57]', pillBg: 'bg-[#e2d7dd]', pillFg: 'text-[#5a2f45]' },
-  input: { iconBg: 'bg-[#e2d7dd]/70', iconFg: 'text-[#713b57]', pillBg: 'bg-[#e2d7dd]', pillFg: 'text-[#5a2f45]' },
-  dashboard: { iconBg: 'bg-[#e6edf8]/70', iconFg: 'text-[#1e3a5f]', pillBg: 'bg-[#e6edf8]', pillFg: 'text-[#1e3a5f]' },
-  insert: { iconBg: 'bg-gray-100', iconFg: 'text-gray-600', pillBg: 'bg-gray-100', pillFg: 'text-gray-700' },
+// There are only two real tones in this surface — mulberry for the Layout
+// section (chart/table/markdown/input) and teal for the Data section
+// (sources, models, dimensions, metrics, relations, insights). Anything
+// that isn't a Layout type (dashboard/insert/etc.) defaults to teal, which
+// is the data-layer baseline used elsewhere in the popover.
+const MULBERRY_TONE = {
+  iconBg: 'bg-[#e2d7dd]/70',
+  iconFg: 'text-[#713b57]',
+  pillBg: 'bg-[#e2d7dd]',
+  pillFg: 'text-[#5a2f45]',
+};
+const TEAL_TONE = {
+  iconBg: 'bg-[#d4e1e2]/70',
+  iconFg: 'text-[#1b4042]',
+  pillBg: 'bg-[#d4e1e2]',
+  pillFg: 'text-[#1b4042]',
 };
 
-const getTone = (type) => TYPE_TONE[type] || TYPE_TONE.model;
+const getTone = (type) => (LAYOUT_TYPES.includes(type) ? MULBERRY_TONE : TEAL_TONE);
 // Object-type icons come from the app-wide canonical `objectTypeConfigs.js`
 // (MUI icons); `getTypeIcon` falls back to a sensible default for unknowns.
 const getIcon = (type) => getTypeIcon(type);
