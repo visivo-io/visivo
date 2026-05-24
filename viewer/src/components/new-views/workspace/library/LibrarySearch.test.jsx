@@ -1,7 +1,7 @@
 /**
  * LibrarySearch behaviour (VIS-773 / Track C C2).
  *
- * Verifies the debounced input fires onChange after ~150 ms, exposes a
+ * Verifies the debounced input fires onChange after ~250 ms, exposes a
  * clear button when populated, and stays controlled from the parent.
  */
 import React from 'react';
@@ -35,7 +35,7 @@ describe('LibrarySearch', () => {
     // Hasn't fired yet (debounce).
     expect(onChange).not.toHaveBeenCalled();
     act(() => {
-      jest.advanceTimersByTime(160);
+      jest.advanceTimersByTime(260);
     });
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith('fib');
@@ -49,7 +49,7 @@ describe('LibrarySearch', () => {
     fireEvent.change(input, { target: { value: 'fi' } });
     fireEvent.change(input, { target: { value: 'fib' } });
     act(() => {
-      jest.advanceTimersByTime(160);
+      jest.advanceTimersByTime(260);
     });
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith('fib');

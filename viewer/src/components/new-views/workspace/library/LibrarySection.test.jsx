@@ -86,7 +86,7 @@ describe('LibrarySection', () => {
         target: { value: 'fib' },
       });
       act(() => {
-        jest.advanceTimersByTime(200);
+        jest.advanceTimersByTime(300);
       });
       // The chart subsection keeps the matching row.
       expect(screen.getByTestId('library-row-chart-fibonacci_growth')).toBeInTheDocument();

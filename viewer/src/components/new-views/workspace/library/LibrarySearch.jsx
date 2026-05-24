@@ -6,16 +6,16 @@ import { PiMagnifyingGlass, PiX } from 'react-icons/pi';
  *
  * Debounced search input scoped to a single Library section. Matches the
  * design in `library.jsx` (h-7 input, gray bg by default, focused ring +
- * mulberry halo when populated). Debounce is ~150 ms — enough to avoid
- * rendering on every keystroke when the project has hundreds of rows, but
- * short enough to feel live.
+ * mulberry halo when populated). Debounce is ~250 ms — still feels
+ * responsive while meaningfully cutting render churn on large projects
+ * (where every keystroke can re-filter hundreds of rows).
  *
  * Controlled state lives in the parent so other consumers (e.g. the
  * subsection header empty-state text) can react to the committed query.
  * Local state holds the typed-but-not-yet-committed value so the debounce
  * doesn't lag the input.
  */
-const DEBOUNCE_MS = 150;
+const DEBOUNCE_MS = 250;
 
 const LibrarySearch = ({
   sectionKey,
