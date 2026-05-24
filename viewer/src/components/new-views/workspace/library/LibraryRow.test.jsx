@@ -12,8 +12,8 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
-import LibraryRow, { TYPE } from './LibraryRow';
-import { getTypeIcon } from '../../common/objectTypeConfigs';
+import LibraryRow, { getTypeDef } from './LibraryRow';
+import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
 
 const withDnd = (ui) => <DndContext>{ui}</DndContext>;
 
@@ -26,21 +26,25 @@ const INSIGHT = {
 const MODEL = { id: 'model:monthly_revenue', type: 'model', name: 'monthly_revenue' };
 
 describe('LibraryRow', () => {
-  test('the TYPE map covers every C-1 leaf type with an icon + droppable flag', () => {
+  test('getTypeDef covers every C-1 leaf type with the right droppable flag', () => {
     ['chart', 'table', 'markdown', 'input'].forEach((t) => {
-      expect(TYPE[t]).toBeTruthy();
-      expect(TYPE[t].droppable).toBe(true);
+      const def = getTypeDef(t);
+      expect(def).toBeTruthy();
+      expect(def.droppable).toBe(true);
+      expect(def.accent).toBe('mulberry');
     });
     ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach((t) => {
-      expect(TYPE[t]).toBeTruthy();
-      expect(TYPE[t].droppable).toBe(false);
+      const def = getTypeDef(t);
+      expect(def).toBeTruthy();
+      expect(def.droppable).toBe(false);
+      expect(def.accent).toBe('teal');
     });
   });
 
-  test('every TYPE entry sources its icon from the canonical objectTypeConfigs', () => {
-    // The Library must not fork its object-type icons — each type's icon is
-    // the exact MUI component the rest of the app uses (objectTypeConfigs.js),
-    // so Library rows match /editor, lineage nodes, the explorer, and pills.
+  test('getTypeDef derives icon + label + plural from the canonical objectTypeConfigs', () => {
+    // The Library must not fork per-type metadata — every type's icon, label
+    // and plural come from the app-wide canonical `objectTypeConfigs.js` so
+    // Library rows match /editor, lineage nodes, the explorer, and pills.
     [
       'chart',
       'table',
@@ -53,7 +57,11 @@ describe('LibraryRow', () => {
       'relation',
       'insight',
     ].forEach((t) => {
-      expect(TYPE[t].icon).toBe(getTypeIcon(t));
+      const def = getTypeDef(t);
+      const cfg = getTypeByValue(t);
+      expect(def.icon).toBe(getTypeIcon(t));
+      expect(def.label).toBe(cfg.singularLabel);
+      expect(def.plural).toBe(cfg.label);
     });
   });
 

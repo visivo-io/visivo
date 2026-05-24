@@ -9,7 +9,7 @@ import {
   PiTrash,
 } from 'react-icons/pi';
 import { ObjectStatus } from '../../../../stores/store';
-import { getTypeIcon } from '../../common/objectTypeConfigs';
+import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
 import LibraryRowFlipPopover from './LibraryRowFlipPopover';
 
 /**
@@ -31,98 +31,26 @@ import LibraryRowFlipPopover from './LibraryRowFlipPopover';
  */
 
 // ──────────────────────── Object-type vocabulary ─────────────────────────
-// Label + plural + droppable flag + accent per object type. The `icon` is
-// pulled from the app-wide canonical `objectTypeConfigs.js` (MUI icons) so the
-// Library's object icons match /editor, the lineage nodes, the explorer, and
-// every edit form — see `../../common/objectTypeConfigs.js`. Layout types
-// (chart/table/markdown/input) are canvas-droppable with a mulberry accent;
-// Data-layer types are click-to-edit with a teal accent.
-export const TYPE = {
-  // Layout items — droppable on the canvas.
-  chart: {
-    icon: getTypeIcon('chart'),
-    label: 'Chart',
-    plural: 'Charts',
-    droppable: true,
-    accent: 'mulberry',
-  },
-  table: {
-    icon: getTypeIcon('table'),
-    label: 'Table',
-    plural: 'Tables',
-    droppable: true,
-    accent: 'mulberry',
-  },
-  markdown: {
-    icon: getTypeIcon('markdown'),
-    label: 'Markdown',
-    plural: 'Markdowns',
-    droppable: true,
-    accent: 'mulberry',
-  },
-  input: {
-    icon: getTypeIcon('input'),
-    label: 'Input',
-    plural: 'Inputs',
-    droppable: true,
-    accent: 'mulberry',
-  },
-  // Data layer — click-to-edit.
-  source: {
-    icon: getTypeIcon('source'),
-    label: 'Source',
-    plural: 'Sources',
-    droppable: false,
-    accent: 'teal',
-  },
-  model: {
-    icon: getTypeIcon('model'),
-    label: 'Model',
-    plural: 'Models',
-    droppable: false,
-    accent: 'teal',
-  },
-  dimension: {
-    icon: getTypeIcon('dimension'),
-    label: 'Dimension',
-    plural: 'Dimensions',
-    droppable: false,
-    accent: 'teal',
-  },
-  metric: {
-    icon: getTypeIcon('metric'),
-    label: 'Metric',
-    plural: 'Metrics',
-    droppable: false,
-    accent: 'teal',
-  },
-  relation: {
-    icon: getTypeIcon('relation'),
-    label: 'Relation',
-    plural: 'Relations',
-    droppable: false,
-    accent: 'teal',
-  },
-  insight: {
-    icon: getTypeIcon('insight'),
-    label: 'Insight',
-    plural: 'Insights',
-    droppable: false,
-    accent: 'teal',
-  },
-};
-
+// The Library never forks per-type metadata: `getTypeDef` derives everything
+// (icon, singular label, plural label) from the app-wide canonical
+// `objectTypeConfigs.js`, so a Library row matches the icons + names used in
+// /editor, the lineage nodes, the explorer, and every edit form. The only
+// Library-specific knobs are which section a type belongs to (Layout vs.
+// Data) and the resulting droppable flag + visual accent.
 export const LAYOUT_TYPES = ['chart', 'table', 'markdown', 'input'];
 export const DATA_TYPES = ['source', 'model', 'dimension', 'metric', 'relation', 'insight'];
 
-// Resolve a type definition, defaulting to chart so an unknown type still
-// renders rather than crashing.
-export const getTypeDef = type => TYPE[type] || TYPE.chart;
-
-// Back-compat alias — older imports referenced `TYPE_ICON`.
-export const TYPE_ICON = Object.fromEntries(
-  Object.entries(TYPE).map(([key, def]) => [key, def.icon])
-);
+export const getTypeDef = type => {
+  const cfg = getTypeByValue(type);
+  const droppable = LAYOUT_TYPES.includes(type);
+  return {
+    icon: cfg?.icon || getTypeIcon(type),
+    label: cfg?.singularLabel || type,
+    plural: cfg?.label || `${type}s`,
+    droppable,
+    accent: droppable ? 'mulberry' : 'teal',
+  };
+};
 
 const StatusDot = ({ status }) => {
   if (!status || status === ObjectStatus.PUBLISHED) return null;
@@ -194,7 +122,7 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
         {isInsight && (
           <li>
             <ContextMenuItem
-              icon={TYPE.chart.icon}
+              icon={getTypeDef('chart').icon}
               label="Wrap in Chart…"
               hint="⌘⇧W"
               onClick={handle('wrapInChart')}
