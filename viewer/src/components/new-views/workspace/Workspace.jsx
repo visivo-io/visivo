@@ -1,53 +1,131 @@
-import React from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import useStore from '../../../stores/store';
+import WorkspaceShell from './WorkspaceShell';
+import { emitWorkspaceEvent } from './telemetry';
+import { useWorkspaceScope } from './useWorkspaceScope';
 
 /**
- * Workspace — placeholder shell mounted by `/workspace` and `/workspace/dashboard/<name>`.
+ * Workspace — route container for `/workspace` and
+ * `/workspace/dashboard/:dashboardName` (VIS-775 / Track B B2).
  *
- * VIS-772 (Track B B1) only adds the routes + redirects from `/editor` and `/lineage`.
- * The actual shell (top bar, tab strip, three rails, sub-bar, middle pane variants per
- * the delivered B-1 design) ships in VIS-775 (Track B B2). This stub exists so the new
- * routes have something to mount and so redirects land on a real component instead of
- * 404ing.
+ * Owns only ROUTE-DRIVEN side effects:
+ *   1. Hydrate the project tab on mount (and a dashboard tab when the URL
+ *      is scoped) so opening `/workspace` always shows a project tab.
+ *   2. Check publish status so the Publish · N button has an accurate count.
+ *   3. Fire the `workspace_mode_entered` telemetry event on mount and on
+ *      scope changes.
  *
- * See `specs/dashboard-building/implementation/design/cofounder-mockups/` for the
- * delivered B-1 design that B2 will implement against.
+ * Every visual surface — `<WorkspaceShell>` and its children — subscribes
+ * to the workspace store directly. No props are threaded through the shell.
  */
 const Workspace = () => {
   const { dashboardName } = useParams();
-  const [searchParams] = useSearchParams();
-  const view = searchParams.get('view');
-  const edit = searchParams.get('edit');
+  const project = useStore(s => s.project);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const checkPublishStatus = useStore(s => s.checkPublishStatus);
+  const scope = useWorkspaceScope();
 
+  // Collection loaders — hoisted here from the Library so the rail is a
+  // pure consumer and other workspace surfaces (canvas, outline, project
+  // editor) can rely on the same fetch on the route container's mount.
+  const fetchCharts = useStore(s => s.fetchCharts);
+  const fetchTables = useStore(s => s.fetchTables);
+  const fetchMarkdowns = useStore(s => s.fetchMarkdowns);
+  const fetchInputs = useStore(s => s.fetchInputs);
+  const fetchSources = useStore(s => s.fetchSources);
+  const fetchModels = useStore(s => s.fetchModels);
+  const fetchCsvScriptModels = useStore(s => s.fetchCsvScriptModels);
+  const fetchLocalMergeModels = useStore(s => s.fetchLocalMergeModels);
+  const fetchDimensions = useStore(s => s.fetchDimensions);
+  const fetchMetrics = useStore(s => s.fetchMetrics);
+  const fetchRelations = useStore(s => s.fetchRelations);
+  const fetchInsights = useStore(s => s.fetchInsights);
+
+  const projectName = project?.project_json?.name || project?.name || 'project';
+
+  // Fire every collection load when the workspace mounts. Per-slice fetches
+  // record their own errors; the `.catch` just guards against an unhandled
+  // promise rejection.
+  useEffect(() => {
+    Promise.all([
+      fetchCharts(),
+      fetchTables(),
+      fetchMarkdowns(),
+      fetchInputs(),
+      fetchSources(),
+      fetchModels(),
+      fetchCsvScriptModels(),
+      fetchLocalMergeModels(),
+      fetchDimensions(),
+      fetchMetrics(),
+      fetchRelations(),
+      fetchInsights(),
+    ]).catch(() => {});
+  }, [
+    fetchCharts,
+    fetchTables,
+    fetchMarkdowns,
+    fetchInputs,
+    fetchSources,
+    fetchModels,
+    fetchCsvScriptModels,
+    fetchLocalMergeModels,
+    fetchDimensions,
+    fetchMetrics,
+    fetchRelations,
+    fetchInsights,
+  ]);
+
+  // Auto-hydrate the project tab once, after `project` resolves (so the tab
+  // doesn't carry a stale name from the pre-load default). After that, the
+  // project tab is user-managed — closing it should stick across navigation.
+  const projectTabHydrated = useRef(false);
+  useEffect(() => {
+    if (project && !projectTabHydrated.current) {
+      projectTabHydrated.current = true;
+      openWorkspaceTab({
+        id: `project:${projectName}`,
+        type: 'project',
+        name: projectName,
+      });
+    }
+    if (dashboardName) {
+      openWorkspaceTab({
+        id: `dashboard:${dashboardName}`,
+        type: 'dashboard',
+        name: dashboardName,
+      });
+    }
+  }, [project, projectName, dashboardName, openWorkspaceTab]);
+
+  // Check publish status so the Publish · N button has accurate count.
+  useEffect(() => {
+    if (typeof checkPublishStatus === 'function') {
+      checkPublishStatus();
+    }
+  }, [checkPublishStatus]);
+
+  // Telemetry — fire on mount and on scope changes only.
+  useEffect(() => {
+    emitWorkspaceEvent('workspace_mode_entered', {
+      dashboardName: dashboardName || null,
+      scope: scope.scope,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardName]);
+
+  // The shell is full-viewport. Home wraps every route in a `pt-12`
+  // container to reserve space for its fixed `<TopNav>`. The Workspace
+  // shell renders its own TopBar (per the delivered B-1 design), so we
+  // anchor the shell to `top-0 bottom-0` to occupy the full viewport
+  // height and visually replace the outer nav.
   return (
     <div
-      data-testid="workspace-shell-stub"
-      className="flex h-full w-full items-center justify-center bg-gray-50 text-gray-600"
+      className="fixed inset-0 z-40 bg-white"
+      data-testid="workspace-route-root"
     >
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-medium text-gray-900">Workspace</h1>
-        <p className="mt-2 text-sm">
-          Workspace shell coming soon (VIS-775). This route + redirect plumbing ships in VIS-772.
-        </p>
-        <dl className="mt-4 inline-block rounded-md border border-gray-200 bg-white px-4 py-2 text-left text-xs text-gray-500">
-          <div className="flex gap-2">
-            <dt className="font-medium text-gray-700">dashboardName:</dt>
-            <dd data-testid="workspace-scope-dashboard">{dashboardName ?? '(unscoped)'}</dd>
-          </div>
-          {view && (
-            <div className="flex gap-2">
-              <dt className="font-medium text-gray-700">?view=</dt>
-              <dd data-testid="workspace-query-view">{view}</dd>
-            </div>
-          )}
-          {edit && (
-            <div className="flex gap-2">
-              <dt className="font-medium text-gray-700">?edit=</dt>
-              <dd data-testid="workspace-query-edit">{edit}</dd>
-            </div>
-          )}
-        </dl>
-      </div>
+      <WorkspaceShell />
     </div>
   );
 };

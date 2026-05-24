@@ -22,6 +22,8 @@ import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerNewSlice from './explorerNewStore';
 import createModelJobsSlice from './modelJobsStore';
+import createWorkspaceSlice from './workspaceStore';
+import createLibraryPrefsSlice from './libraryPrefsStore';
 
 // Re-export ObjectStatus for convenience
 export { ObjectStatus };
@@ -48,10 +50,27 @@ const useStore = create(
     ...createLocalMergeModelSlice(...a),
     ...createExplorerNewSlice(...a),
     ...createModelJobsSlice(...a),
-    ...persist(createCommonSlice, {
-      name: 'common-storage',
-      partialize: state => ({ scrollPositions: state.scrollPositions }),
-    })(...a),
+    ...createWorkspaceSlice(...a),
+    // Persisted slices — Zustand 5's `persist` middleware can only be applied
+    // once per store API (calling it twice at the same level silently breaks
+    // the second). We compose every persisted slice into a single `persist`
+    // call and partialize-select the keys each slice owns. The storage key
+    // stays `common-storage` so existing users' persisted `scrollPositions`
+    // entries continue to hydrate cleanly.
+    ...persist(
+      (set, get, api) => ({
+        ...createCommonSlice(set, get, api),
+        ...createLibraryPrefsSlice(set, get, api),
+      }),
+      {
+        name: 'common-storage',
+        partialize: state => ({
+          scrollPositions: state.scrollPositions,
+          libraryCollapsedSections: state.libraryCollapsedSections,
+          libraryCollapsedSubsections: state.libraryCollapsedSubsections,
+        }),
+      }
+    )(...a),
   }))
 );
 
