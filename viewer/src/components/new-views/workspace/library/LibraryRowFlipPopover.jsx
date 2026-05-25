@@ -109,6 +109,21 @@ function getChildItemNames(obj) {
   return obj.child_item_names.filter(Boolean);
 }
 
+/**
+ * Models that don't list any upstream child explicitly inherit the project's
+ * default source. Returns a list of child names augmented with the default
+ * source when the object is a model with no existing source upstream.
+ */
+function effectiveChildNames(entryType, obj, defaultSourceName, sourceNames) {
+  const raw = getChildItemNames(obj);
+  if (entryType !== 'model' || !defaultSourceName) return raw;
+  // If the model already references *some* source via child_item_names,
+  // respect that explicit choice instead of falling back to the default.
+  const hasExplicitSource = raw.some(n => sourceNames.has(n));
+  if (hasExplicitSource) return raw;
+  return [...raw, defaultSourceName];
+}
+
 function buildTypeIndex(storeApi) {
   const lookup = new Map();
   const register = (type, list) => {
@@ -210,21 +225,20 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
   const subjectEntry = index.get(subject.name);
   if (!subjectEntry) return [];
 
+  const defaultSourceName = storeApi.defaults?.source_name || null;
+  const sourceNames = new Set(
+    (storeApi.sources || []).map(s => s && s.name).filter(Boolean)
+  );
+
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
 
-  // Track which displayed node each upstream came in through so the
-  // connector overlay can draw the actual DAG edges (parent.icon →
-  // child.icon) instead of a generic chain.
   const visit = (name, depth, fromChildName) => {
     if (depth > maxDepth) return;
     const entry = index.get(name);
     if (!entry) return;
     const key = `${entry.type}:${name}`;
     if (seen.has(key)) {
-      // Even if we've already pushed this node, record the additional
-      // edge so a shared parent (e.g. one source feeding two models)
-      // connects to every child that lists it.
       const existing = out.find(n => n.type === entry.type && n.name === name);
       if (existing && fromChildName && !existing.childNames.includes(fromChildName)) {
         existing.childNames.push(fromChildName);
@@ -232,10 +246,10 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
       return;
     }
     seen.add(key);
-    // DFS: deepest node lands at the TOP of the output. We push the
-    // current node AFTER recursing into its own upstreams so the row
-    // order in the popover mirrors a topological walk.
-    getChildItemNames(entry.obj).forEach(child => visit(child, depth + 1, name));
+    // DFS: deepest node lands at the TOP of the output. Models that
+    // don't reference a source explicitly inherit the project default.
+    const childs = effectiveChildNames(entry.type, entry.obj, defaultSourceName, sourceNames);
+    childs.forEach(child => visit(child, depth + 1, name));
     out.push({
       type: entry.type,
       name,
@@ -245,9 +259,15 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
     });
   };
 
-  getChildItemNames(subjectEntry.obj).forEach(child =>
-    visit(child, 1, /* fromChildName */ subject.name)
+  // For the subject itself we follow the same rule — a model subject with
+  // no explicit source still inherits the default.
+  const subjChilds = effectiveChildNames(
+    subjectEntry.type,
+    subjectEntry.obj,
+    defaultSourceName,
+    sourceNames
   );
+  subjChilds.forEach(child => visit(child, 1, subject.name));
   return out;
 }
 
@@ -477,6 +497,8 @@ const LibraryRowFlipPopover = ({
   const fetchDashboards = useStore(s => s.fetchDashboards);
   const csvScriptModels = useStore(s => s.csvScriptModels);
   const localMergeModels = useStore(s => s.localMergeModels);
+  const defaults = useStore(s => s.defaults);
+  const fetchDefaults = useStore(s => s.fetchDefaults);
 
   // The Workspace shell preloads charts/insights/models/etc. via their
   // own slices, but `dashboards` only loads on demand. Without it the
@@ -490,6 +512,9 @@ const LibraryRowFlipPopover = ({
       typeof fetchDashboards === 'function'
     ) {
       fetchDashboards();
+    }
+    if (!defaults && typeof fetchDefaults === 'function') {
+      fetchDefaults();
     }
     // We intentionally run only once per mount — refetches handled
     // elsewhere by save flows.
@@ -534,6 +559,7 @@ const LibraryRowFlipPopover = ({
         allDashboards: dashboardsForWalker,
         csvScriptModels,
         localMergeModels,
+        defaults,
       },
       scope
     );
@@ -553,6 +579,7 @@ const LibraryRowFlipPopover = ({
     dashboardsForWalker,
     csvScriptModels,
     localMergeModels,
+    defaults,
   ]);
 
   useEffect(() => {
@@ -678,9 +705,11 @@ const LibraryRowFlipPopover = ({
   const connectorPath = ({ parentX, parentY, childX, childY }) =>
     `M ${parentX} ${parentY + ICON_H / 2} L ${parentX} ${childY} L ${childX} ${childY}`;
 
-  // Dotted Γ-connector from each direct ancestor's [type] pill down and
-  // then right onto the subject row's icon column. Drawn as a single
-  // L-path in the SVG overlay so the corner joins cleanly.
+  // Dotted Γ-connector from each direct ancestor's [type] pill across
+  // to the subject icon column and then DOWN to the top of the subject
+  // pill. The corner sits at the top-left of the gamma — horizontal
+  // segment first, then vertical — so the line reads as a header
+  // bracket dropping onto the subject rather than an L-bend.
   const dottedConnectors = [];
   if (ancestorsOpen) {
     ancestors.forEach((node, i) => {
@@ -688,15 +717,12 @@ const LibraryRowFlipPopover = ({
       const rowLeft = ancestorMarginLeft(node);
       const startX = rowLeft - 4; // just left of the [type] pill
       const startY = ancestorRowY(i);
-      // The L turns at the top of the subject row so the horizontal
-      // segment lands at the subject icon column (icon center = 16:
-      // subject row paddingLeft 6 + ICON_W/2).
       const subjectTopY = N * (ROW_HEIGHT + ROW_GAP);
       const subjectIconX = 6 + ICON_W / 2;
       dottedConnectors.push({
         key: `dotted-${node.name}`,
         name: node.name,
-        d: `M ${startX} ${startY} L ${startX} ${subjectTopY} L ${subjectIconX} ${subjectTopY}`,
+        d: `M ${startX} ${startY} L ${subjectIconX} ${startY} L ${subjectIconX} ${subjectTopY}`,
       });
     });
   }
