@@ -656,6 +656,13 @@ const LibraryRowFlipPopover = ({
   const descendantRowY = j =>
     subjectBottomY + ROW_GAP + j * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2;
 
+  // Trunk offset: how far OUTSIDE the icon column the connector trunk
+  // sits. Without this, the connector lines would draw straight through
+  // the icons; the offset pulls the vertical trunk into the gutter so
+  // the tree wraps around the icons (entering each from the icon's
+  // right edge for ancestors / left edge for descendants).
+  const TRUNK_OFFSET = 8;
+
   const ancestorConnectors = [];
   if (ancestorsOpen) {
     ancestors.forEach((parent, parentIdx) => {
@@ -702,7 +709,29 @@ const LibraryRowFlipPopover = ({
     });
   }
 
-  const connectorPath = ({ parentX, parentY, childX, childY }) =>
+  // Ancestors live on the RIGHT side of each row, so the connector
+  // trunk sits at `parent.iconRight + TRUNK_OFFSET` — out in the gutter
+  // past every icon. Path: enter from the parent icon's RIGHT edge,
+  // bend right into the trunk, drop down to the child row, then bend
+  // back LEFT to enter the child icon from the right.
+  const ancestorConnectorPath = ({ parentX, parentY, childX, childY }) => {
+    const trunkX = parentX + ICON_W / 2 + TRUNK_OFFSET;
+    const parentRightEdge = parentX + ICON_W / 2;
+    const childRightEdge = childX + ICON_W / 2;
+    return (
+      `M ${parentRightEdge} ${parentY}` +
+      ` L ${trunkX} ${parentY}` +
+      ` L ${trunkX} ${childY}` +
+      ` L ${childRightEdge} ${childY}`
+    );
+  };
+
+  // Descendants live on the LEFT side of each row. The connector reads
+  // naturally as a drop from the parent icon's bottom into the child
+  // icon's top — no wrap-around needed because there's nothing in the
+  // way (the icons are first in their rows so the L bend lands cleanly
+  // on the child icon's left edge).
+  const descendantConnectorPath = ({ parentX, parentY, childX, childY }) =>
     `M ${parentX} ${parentY + ICON_H / 2} L ${parentX} ${childY} L ${childX} ${childY}`;
 
   // Dotted Γ-connector from each direct ancestor's [type] pill across
@@ -821,7 +850,7 @@ const LibraryRowFlipPopover = ({
                   {ancestorConnectors.map(c => (
                     <path
                       key={c.key}
-                      d={connectorPath(c)}
+                      d={ancestorConnectorPath(c)}
                       stroke="#9ca3af"
                       strokeWidth={1.5}
                       fill="none"
@@ -832,7 +861,7 @@ const LibraryRowFlipPopover = ({
                   {descendantConnectors.map(c => (
                     <path
                       key={c.key}
-                      d={connectorPath(c)}
+                      d={descendantConnectorPath(c)}
                       stroke="#9ca3af"
                       strokeWidth={1.5}
                       fill="none"
