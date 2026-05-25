@@ -209,21 +209,41 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
 
-  const visit = (name, depth) => {
+  // Track which displayed node each upstream came in through so the
+  // connector overlay can draw the actual DAG edges (parent.icon →
+  // child.icon) instead of a generic chain.
+  const visit = (name, depth, fromChildName) => {
     if (depth > maxDepth) return;
     const entry = index.get(name);
     if (!entry) return;
     const key = `${entry.type}:${name}`;
-    if (seen.has(key)) return;
+    if (seen.has(key)) {
+      // Even if we've already pushed this node, record the additional
+      // edge so a shared parent (e.g. one source feeding two models)
+      // connects to every child that lists it.
+      const existing = out.find(n => n.type === entry.type && n.name === name);
+      if (existing && fromChildName && !existing.childNames.includes(fromChildName)) {
+        existing.childNames.push(fromChildName);
+      }
+      return;
+    }
     seen.add(key);
     // DFS: deepest node lands at the TOP of the output. We push the
     // current node AFTER recursing into its own upstreams so the row
     // order in the popover mirrors a topological walk.
-    getChildItemNames(entry.obj).forEach(child => visit(child, depth + 1));
-    out.push({ type: entry.type, name, depth, isDirect: depth === 1 });
+    getChildItemNames(entry.obj).forEach(child => visit(child, depth + 1, name));
+    out.push({
+      type: entry.type,
+      name,
+      depth,
+      isDirect: depth === 1,
+      childNames: fromChildName ? [fromChildName] : [],
+    });
   };
 
-  getChildItemNames(subjectEntry.obj).forEach(child => visit(child, 1));
+  getChildItemNames(subjectEntry.obj).forEach(child =>
+    visit(child, 1, /* fromChildName */ subject.name)
+  );
   return out;
 }
 
@@ -234,22 +254,36 @@ function buildDescendants(subject, storeApi, maxDepth = UNBOUNDED) {
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
 
-  const visit = (name, type, depth) => {
+  const visit = (name, type, depth, parentName) => {
     if (depth > maxDepth) return;
     const key = `${type}:${name}`;
-    if (seen.has(key)) return;
+    if (seen.has(key)) {
+      const existing = out.find(n => n.type === type && n.name === name);
+      if (existing && parentName && !existing.parentNames.includes(parentName)) {
+        existing.parentNames.push(parentName);
+      }
+      return;
+    }
     seen.add(key);
-    out.push({ type, name, depth, isDirect: depth === 1 });
-    (reverse.get(name) || []).forEach(p => visit(p.name, p.type, depth + 1));
+    out.push({
+      type,
+      name,
+      depth,
+      isDirect: depth === 1,
+      parentNames: parentName ? [parentName] : [],
+    });
+    (reverse.get(name) || []).forEach(p => visit(p.name, p.type, depth + 1, name));
     dashMembers
       .filter(m => m.member === name)
-      .forEach(m => visit(m.dashboard, 'dashboard', depth + 1));
+      .forEach(m => visit(m.dashboard, 'dashboard', depth + 1, name));
   };
 
-  (reverse.get(subject.name) || []).forEach(p => visit(p.name, p.type, 1));
+  (reverse.get(subject.name) || []).forEach(p =>
+    visit(p.name, p.type, 1, subject.name)
+  );
   dashMembers
     .filter(m => m.member === subject.name)
-    .forEach(m => visit(m.dashboard, 'dashboard', 1));
+    .forEach(m => visit(m.dashboard, 'dashboard', 1, subject.name));
   return out;
 }
 
@@ -607,6 +641,77 @@ const LibraryRowFlipPopover = ({
     return rowsToSubject * (ROW_HEIGHT + ROW_GAP) - ROW_HEIGHT / 2;
   };
 
+  // SVG connector overlay — draws the actual DAG edges so the icon
+  // staircase visually reads as the lineage tree it represents.
+  const ICON_W = 20;
+  const ICON_H = 20;
+  const ancestorIconCenter = node => ({
+    x: ancestorMarginLeft(node) + ROW_WIDTH - ICON_W / 2,
+  });
+  const descendantIconCenter = node => ({
+    x: descendantMarginLeft(node) + ICON_W / 2,
+  });
+
+  const ancestorByName = new Map();
+  ancestors.forEach((node, i) => ancestorByName.set(node.name, { node, index: i }));
+  const descendantByName = new Map();
+  descendants.forEach((node, j) => descendantByName.set(node.name, { node, index: j }));
+
+  const ancestorRowY = i => i * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2;
+  const subjectY = N * (ROW_HEIGHT + ROW_GAP) + (ROW_HEIGHT + 4) / 2;
+  const subjectBottomY = N * (ROW_HEIGHT + ROW_GAP) + (ROW_HEIGHT + 4);
+  const descendantRowY = j =>
+    subjectBottomY + ROW_GAP + j * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2;
+
+  const ancestorConnectors = [];
+  if (ancestorsOpen) {
+    ancestors.forEach((parent, parentIdx) => {
+      (parent.childNames || []).forEach(childName => {
+        if (childName === obj.name) return; // direct → handled by dotted line
+        const child = ancestorByName.get(childName);
+        if (!child) return;
+        ancestorConnectors.push({
+          key: `anc-edge-${parent.name}-${childName}`,
+          parentX: ancestorIconCenter(parent).x,
+          parentY: ancestorRowY(parentIdx),
+          childX: ancestorIconCenter(child.node).x,
+          childY: ancestorRowY(child.index),
+        });
+      });
+    });
+  }
+
+  const descendantConnectors = [];
+  if (descendantsOpen) {
+    descendants.forEach((node, idx) => {
+      if (node.isDirect) {
+        descendantConnectors.push({
+          key: `dsc-edge-subject-${node.name}`,
+          parentX: 6 + ICON_W / 2, // subject row icon center (paddingLeft 6 + half-icon)
+          parentY: subjectY,
+          childX: descendantIconCenter(node).x,
+          childY: descendantRowY(idx),
+        });
+      } else {
+        (node.parentNames || []).forEach(parentName => {
+          if (parentName === obj.name) return; // handled above as direct
+          const parent = descendantByName.get(parentName);
+          if (!parent) return;
+          descendantConnectors.push({
+            key: `dsc-edge-${parentName}-${node.name}`,
+            parentX: descendantIconCenter(parent.node).x,
+            parentY: descendantRowY(parent.index),
+            childX: descendantIconCenter(node).x,
+            childY: descendantRowY(idx),
+          });
+        });
+      }
+    });
+  }
+
+  const connectorPath = ({ parentX, parentY, childX, childY }) =>
+    `M ${parentX} ${parentY + ICON_H / 2} L ${parentX} ${childY} L ${childX} ${childY}`;
+
   return createPortal(
     <div
       ref={popoverRef}
@@ -686,11 +791,45 @@ const LibraryRowFlipPopover = ({
               No lineage available for this object.
             </p>
           ) : (
-            <ul
-              className="flex flex-col"
-              style={{ rowGap: ROW_GAP }}
-              data-testid={`${testIdPrefix}-chain`}
-            >
+            <div className="relative" data-testid={`${testIdPrefix}-chain-wrap`}>
+              {(ancestorConnectors.length > 0 || descendantConnectors.length > 0) && (
+                <svg
+                  aria-hidden="true"
+                  data-testid={`${testIdPrefix}-connectors`}
+                  className="pointer-events-none absolute inset-0"
+                  width="100%"
+                  height="100%"
+                  style={{ overflow: 'visible' }}
+                >
+                  {ancestorConnectors.map(c => (
+                    <path
+                      key={c.key}
+                      d={connectorPath(c)}
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ))}
+                  {descendantConnectors.map(c => (
+                    <path
+                      key={c.key}
+                      d={connectorPath(c)}
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ))}
+                </svg>
+              )}
+              <ul
+                className="relative flex flex-col"
+                style={{ rowGap: ROW_GAP }}
+                data-testid={`${testIdPrefix}-chain`}
+              >
               {N > 0 && (
                 <li
                   data-testid={`${testIdPrefix}-ancestors`}
@@ -777,7 +916,8 @@ const LibraryRowFlipPopover = ({
                   </button>
                 </li>
               )}
-            </ul>
+              </ul>
+            </div>
           )}
         </div>
 
