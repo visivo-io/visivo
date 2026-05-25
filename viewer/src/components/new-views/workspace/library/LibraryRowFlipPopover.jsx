@@ -2,106 +2,109 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PiX, PiArrowSquareOut } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
-import { getTypeIcon } from '../../common/objectTypeConfigs';
-import { LAYOUT_TYPES } from './LibraryRow';
+import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 
 /**
  * LibraryRowFlipPopover — VIS-776 / Track C C3 (refined design).
  *
  * Anchored popover that flips out from a Library row to show the row's
- * lineage neighbourhood as a ladder: ancestors above (right-aligned,
- * widening toward the subject), the selected subject row in the middle
- * (full width), and descendants below (left-aligned, widening away from
- * the subject). The two ladders meet at the subject row.
+ * full lineage neighbourhood as a ladder:
  *
- * Layout rules (per the final mock):
- *   1. Ancestor row order  : [type] [name] [icon] — right-aligned.
- *   2. Descendant row order: [icon] [name] [type] — left-aligned.
- *   3. Each successive ancestor row (top → bottom) shifts left by `STEP`.
- *   4. The deepest-nested ancestor row's left edge matches the first
- *      descendant row's left edge, so the two ladders mirror at the
- *      subject row.
- *   5. A dotted line drops from the left of each direct-ancestor's
- *      `[type]` pill down to the top of the subject row's icon column.
- *   6. The subject row pins `[icon]` left, `[type]` right, and centres
- *      `[name]` between them. No `THIS` chip.
+ *   - Ancestors above the subject, each row `[type] [name] [icon]`,
+ *     stepping LEFT as it approaches the subject so the icons form a
+ *     staircase. The deepest ancestor sits at the top, furthest right.
+ *   - Subject row in the middle, full-width, `[icon] [name] [type]`.
+ *   - Descendants below, each row `[icon] [name] [type]`, stepping
+ *     RIGHT as it gets deeper so the icons mirror the ancestor
+ *     staircase.
  *
- * Behaviour:
- *   - Click the ancestors region → collapses ancestors.
- *   - Click the descendants region → collapses descendants.
- *   - The body is `overflow-y-auto` with a fixed max-height; the
- *     collapse + scroll combination keeps complex DAGs usable in a
- *     small surface.
+ * The deepest-direct-ancestor's row aligns its left edge with the
+ * first-descendant row's left edge — the two ladders meet at the
+ * subject. Direct ancestors drop a dotted L-shaped connector from
+ * the left of their `[type]` pill down and inward to the subject's
+ * `[icon]`.
  *
- * The data walker is intentionally a subset of the full Lineage DAG —
- * it's the C-3 placeholder until VIS-D6 ships the shared
- * `<MiniLineageCard>` and VIS-780 (C-4) migrates this popover to it.
+ * The selector input at the top is the user-editable handle for
+ * scope: default `+name+` (both directions, unbounded). Editing it
+ * (e.g. `+2name+1`) clamps the walker's depth.
+ *
+ * Colour + icon for every type comes from the shared
+ * `objectTypeConfigs` palette so the popover matches every other
+ * lineage / library / canvas surface.
  */
 
-// Two tone palettes mirror the Library section colours: mulberry for
-// Layout-section types (chart / table / markdown / input) and teal for
-// Data-section types (sources, models, dimensions, metrics, relations,
-// insights). Dashboards default to mulberry since they belong to the
-// layout side of the world.
-const MULBERRY_TONE = {
-  iconBg: 'bg-[#e2d7dd]/70',
-  iconFg: 'text-[#713b57]',
-  pillBg: 'bg-[#e2d7dd]',
-  pillFg: 'text-[#5a2f45]',
-};
-const TEAL_TONE = {
-  iconBg: 'bg-[#d4e1e2]/70',
-  iconFg: 'text-[#1b4042]',
-  pillBg: 'bg-[#d4e1e2]',
-  pillFg: 'text-[#1b4042]',
-};
-
-// Sources sit in the data layer but get a warm highlight in the mock so
-// the originating system stands out at the top of the chain.
-const ORANGE_TONE = {
-  iconBg: 'bg-[#f4d6cc]/80',
-  iconFg: 'text-[#a44326]',
-  pillBg: 'bg-[#f4d6cc]',
-  pillFg: 'text-[#a44326]',
-};
-
-const getTone = type => {
-  if (type === 'source') return ORANGE_TONE;
-  if (LAYOUT_TYPES.includes(type) || type === 'dashboard') return MULBERRY_TONE;
-  return TEAL_TONE;
-};
-
-const getIcon = type => getTypeIcon(type);
-
-// Ladder geometry. ROW_HEIGHT × ROW_GAP must stay in sync with the
-// classes on the row containers below — the dotted-connector heights
-// are computed analytically from these constants.
-const ROW_HEIGHT = 22; // h-[22px]
-const ROW_GAP = 2; // gap-[2px]
-const STEP = 18; // per-rung left/right shift
-const BASE_INDENT = 12; // where the lowest ancestor + first descendant align
+// Ladder geometry — chosen so even a 5–6 deep chain fits inside the
+// 340 px card without horizontal scroll. The row width itself is fixed
+// so each rung "floats" right (ancestors) or left (descendants) by a
+// constant offset, producing the staircase.
 const CARD_WIDTH = 340;
+const CARD_PAD_X = 12;
+const ROW_HEIGHT = 24;
+const ROW_GAP = 4;
+const ROW_WIDTH = 200;
+const MAX_STEP = 22;
+const MIN_STEP = 10;
+const BASE_INDENT = 6;
 
 // ---------------------------------------------------------------------------
-// Relations walker
+// Selector parsing — Visivo selector syntax `[+N]name[+M]`
 // ---------------------------------------------------------------------------
 
-// Lineage edges come straight from each store object's `child_item_names`
-// array — that's the canonical "what does this depend on" list the backend
-// already publishes for every chart / table / insight / model / source.
-// Walking it gives us the full upstream DAG without having to inspect the
-// per-type config blobs (which embed refs as `${ref(name).column}` and
-// would otherwise need SQL-style ref parsing).
+const UNBOUNDED = Number.POSITIVE_INFINITY;
+
+function defaultSelector(name) {
+  return `+${name}+`;
+}
+
+/**
+ * Parse a Visivo selector string into `{ name, ancestors, descendants }`.
+ *
+ * Examples:
+ *   "+revenue_chart+"   → unbounded ancestors + unbounded descendants
+ *   "+2revenue_chart+1" → 2 ancestor levels, 1 descendant level
+ *   "+revenue_chart"    → unbounded ancestors, no descendants
+ *   "revenue_chart"     → just the subject row
+ */
+function parseSelector(text, fallbackName) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) {
+    return { name: fallbackName, ancestors: 0, descendants: 0 };
+  }
+  const re = /^(\+(\d*))?([^+]+?)(\+(\d*))?$/;
+  const m = trimmed.match(re);
+  if (!m) {
+    return { name: fallbackName, ancestors: 0, descendants: 0 };
+  }
+  const ancHasPlus = Boolean(m[1]);
+  const ancDigits = m[2] || '';
+  const subjName = (m[3] || '').trim() || fallbackName;
+  const desHasPlus = Boolean(m[4]);
+  const desDigits = m[5] || '';
+
+  const depth = (hasPlus, digits) => {
+    if (!hasPlus) return 0;
+    if (!digits) return UNBOUNDED;
+    const n = parseInt(digits, 10);
+    return Number.isFinite(n) && n >= 0 ? n : UNBOUNDED;
+  };
+
+  return {
+    name: subjName,
+    ancestors: depth(ancHasPlus, ancDigits),
+    descendants: depth(desHasPlus, desDigits),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Lineage walker — uses `child_item_names` (the canonical upstream-edge
+// list the backend already exposes for every object).
+// ---------------------------------------------------------------------------
+
 function getChildItemNames(obj) {
   if (!obj || !Array.isArray(obj.child_item_names)) return [];
   return obj.child_item_names.filter(Boolean);
 }
 
-/**
- * Build a name → type index over every collection the store exposes. Lets
- * us resolve a raw `child_item_names` entry back to its typed object so the
- * walker can keep traversing upstream.
- */
 function buildTypeIndex(storeApi) {
   const lookup = new Map();
   const register = (type, list) => {
@@ -128,43 +131,6 @@ function buildTypeIndex(storeApi) {
   return lookup;
 }
 
-/**
- * Walk upstream from the subject via `child_item_names`. The traversal is
- * topological-on-the-fly: a parent node is only emitted once all of its own
- * upstreams have been emitted, so direct ancestors land last (closest to
- * the subject in the rendered ladder).
- */
-function buildAncestors(subject, storeApi) {
-  if (!subject) return [];
-  const index = buildTypeIndex(storeApi);
-  const subjectEntry = index.get(subject.name);
-  const subjectObj = subjectEntry?.obj;
-  if (!subjectObj) return [];
-
-  const directNames = new Set(getChildItemNames(subjectObj));
-  const out = [];
-  const seen = new Set([`${subject.type}:${subject.name}`]);
-
-  const visit = name => {
-    const entry = index.get(name);
-    if (!entry) return;
-    const key = `${entry.type}:${name}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    // Emit upstreams first so the deepest node sits at the top of the
-    // ladder; direct children of the subject sit just above the subject.
-    getChildItemNames(entry.obj).forEach(visit);
-    out.push({ type: entry.type, name, isDirect: directNames.has(name) });
-  };
-
-  directNames.forEach(visit);
-  return out;
-}
-
-/**
- * Build a reverse adjacency — for any name, who lists it as a child? Lets
- * us walk descendants in O(N) regardless of which type the subject is.
- */
 function buildReverseIndex(storeApi) {
   const reverse = new Map();
   const add = (parentName, childName, parentType) => {
@@ -192,196 +158,248 @@ function buildReverseIndex(storeApi) {
   return reverse;
 }
 
-/**
- * Some dashboards aren't surfaced through `child_item_names` on their
- * descendants — the relationship lives in the dashboard's `rows`/`items`
- * tree. Scan once and produce a flat list of `(dashboardName → memberName)`
- * edges so descendant traversal can include them.
- */
+// Dashboard items reference their members through Visivo's templated
+// `${ ref(name) }` syntax, plain names, or inline object literals. This
+// unwraps every variant down to the bare name so the descendant walker
+// can match against the type index.
+const REF_PATTERN = /\$\{\s*ref\(([^)]+)\)\s*\}/;
+
+function unwrapRefName(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'object') return ref.name || ref.ref || null;
+  if (typeof ref !== 'string') return null;
+  const m = ref.match(REF_PATTERN);
+  if (m) return m[1].trim();
+  return ref.trim();
+}
+
 function dashboardMembership(allDashboards) {
   const out = [];
   if (!Array.isArray(allDashboards)) return out;
-  allDashboards.forEach(d => {
-    if (!d || !Array.isArray(d.rows)) return;
-    d.rows.forEach(row => {
+  const walk = (rows, dashboardName) => {
+    if (!Array.isArray(rows)) return;
+    rows.forEach(row => {
       if (!row || !Array.isArray(row.items)) return;
       row.items.forEach(item => {
         if (!item) return;
-        ['chart', 'table', 'markdown'].forEach(key => {
-          const ref = item[key];
-          if (!ref) return;
-          const refName = typeof ref === 'string' ? ref : ref.name || ref.ref;
-          if (refName) out.push({ dashboard: d.name, member: refName });
+        ['chart', 'table', 'markdown', 'input'].forEach(key => {
+          const name = unwrapRefName(item[key]);
+          if (name) out.push({ dashboard: dashboardName, member: name });
         });
+        // Items may nest further rows (containers); recurse.
+        if (Array.isArray(item.rows)) walk(item.rows, dashboardName);
       });
     });
+  };
+  allDashboards.forEach(d => {
+    if (!d || !d.name) return;
+    // Live API returns the structure under `config.rows`; the test seed
+    // mirrors the legacy `rows` shape. Both are honored.
+    walk(d.rows || d.config?.rows, d.name);
   });
   return out;
 }
 
-function buildDescendants(subject, storeApi) {
-  if (!subject) return [];
+function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
+  if (!subject || maxDepth <= 0) return [];
+  const index = buildTypeIndex(storeApi);
+  const subjectEntry = index.get(subject.name);
+  if (!subjectEntry) return [];
+
+  const out = [];
+  const seen = new Set([`${subject.type}:${subject.name}`]);
+
+  const visit = (name, depth) => {
+    if (depth > maxDepth) return;
+    const entry = index.get(name);
+    if (!entry) return;
+    const key = `${entry.type}:${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    // DFS: deepest node lands at the TOP of the output. We push the
+    // current node AFTER recursing into its own upstreams so the row
+    // order in the popover mirrors a topological walk.
+    getChildItemNames(entry.obj).forEach(child => visit(child, depth + 1));
+    out.push({ type: entry.type, name, depth, isDirect: depth === 1 });
+  };
+
+  getChildItemNames(subjectEntry.obj).forEach(child => visit(child, 1));
+  return out;
+}
+
+function buildDescendants(subject, storeApi, maxDepth = UNBOUNDED) {
+  if (!subject || maxDepth <= 0) return [];
   const reverse = buildReverseIndex(storeApi);
   const dashMembers = dashboardMembership(storeApi.allDashboards);
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
 
-  const directParents = reverse.get(subject.name) || [];
-  const directDashboards = dashMembers
-    .filter(m => m.member === subject.name)
-    .map(m => ({ name: m.dashboard, type: 'dashboard' }));
-  const directSet = new Set(
-    [...directParents, ...directDashboards].map(p => `${p.type}:${p.name}`)
-  );
-
-  const visit = (name, type) => {
+  const visit = (name, type, depth) => {
+    if (depth > maxDepth) return;
     const key = `${type}:${name}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ type, name, isDirect: directSet.has(key) });
-    // Recurse: anything that lists `name` as a child is a deeper descendant.
-    (reverse.get(name) || []).forEach(p => visit(p.name, p.type));
+    out.push({ type, name, depth, isDirect: depth === 1 });
+    (reverse.get(name) || []).forEach(p => visit(p.name, p.type, depth + 1));
     dashMembers
       .filter(m => m.member === name)
-      .forEach(m => visit(m.dashboard, 'dashboard'));
+      .forEach(m => visit(m.dashboard, 'dashboard', depth + 1));
   };
 
-  directParents.forEach(p => visit(p.name, p.type));
-  directDashboards.forEach(d => visit(d.name, d.type));
+  (reverse.get(subject.name) || []).forEach(p => visit(p.name, p.type, 1));
+  dashMembers
+    .filter(m => m.member === subject.name)
+    .forEach(m => visit(m.dashboard, 'dashboard', 1));
   return out;
 }
 
-function buildLineageRelations(subject, storeApi) {
+function buildLineageRelations(subject, storeApi, scope = {}) {
+  const ancestorDepth = scope.ancestors ?? UNBOUNDED;
+  const descendantDepth = scope.descendants ?? UNBOUNDED;
   return {
-    ancestors: buildAncestors(subject, storeApi),
-    descendants: buildDescendants(subject, storeApi),
+    ancestors: buildAncestors(subject, storeApi, ancestorDepth),
+    descendants: buildDescendants(subject, storeApi, descendantDepth),
   };
 }
 
-// Backward-compat: VIS-780 will replace this with `<MiniLineageCard>`.
+// Back-compat — VIS-780 will replace this with `<MiniLineageCard>`.
 function buildChainFromStore(subject, storeApi) {
-  return buildAncestors(subject, storeApi);
+  return buildAncestors(subject, storeApi, UNBOUNDED);
 }
 
 // ---------------------------------------------------------------------------
-// Row primitives
+// Row primitives — pull tone classes straight from `objectTypeConfigs`
+// so this surface stays colour-locked with the rest of the viewer.
 // ---------------------------------------------------------------------------
 
-const TypePill = ({ type, tone, alignRight }) => (
-  <span
-    className={[
-      'inline-flex h-3 shrink-0 items-center rounded-sm px-1 text-[8px] font-bold uppercase tracking-wider',
-      tone.pillBg,
-      tone.pillFg,
-    ].join(' ')}
-    style={alignRight ? { marginLeft: 'auto' } : undefined}
-  >
-    {type}
-  </span>
-);
+function toneFor(type) {
+  const c = getTypeColors(type) || {};
+  return {
+    pill: `${c.bg || 'bg-gray-100'} ${c.text || 'text-gray-800'}`,
+    tile: `${c.node || 'bg-gray-50 border-gray-200'} ${c.text || 'text-gray-800'}`,
+  };
+}
 
-const IconTile = ({ Icon, tone }) => (
-  <span
-    className={[
-      'relative z-10 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded',
-      tone.iconBg,
-      tone.iconFg,
-    ].join(' ')}
-  >
-    <Icon style={{ fontSize: 10 }} />
-  </span>
-);
-
-const NameLabel = ({ name, align = 'left' }) => (
-  <span
-    className={[
-      'min-w-0 truncate text-[11.5px] font-medium text-gray-800',
-      align === 'center' ? 'flex-1 text-center' : 'flex-1',
-    ].join(' ')}
-  >
-    {name}
-  </span>
-);
-
-const AncestorRow = ({ node, leftPad, dottedHeight, testIdPrefix }) => {
-  const tone = getTone(node.type);
-  const Icon = getIcon(node.type);
+const TypePill = ({ type }) => {
+  const tone = toneFor(type);
   return (
-    <li
-      data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
-      data-direction="ancestor"
-      data-direct={node.isDirect ? 'true' : 'false'}
-      className="relative flex items-center gap-1.5 self-stretch"
-      style={{
-        height: ROW_HEIGHT,
-        paddingLeft: leftPad,
-        paddingRight: 4,
-      }}
+    <span
+      className={[
+        'inline-flex h-4 shrink-0 items-center rounded-sm px-1 text-[8.5px] font-bold uppercase tracking-wider',
+        tone.pill,
+      ].join(' ')}
     >
-      {/* Dotted connector: drops from the left of the [type] pill down
-          past every row beneath it to the top of the subject's icon. */}
-      {node.isDirect && dottedHeight > 0 && (
+      {type}
+    </span>
+  );
+};
+
+const IconTile = ({ type }) => {
+  const tone = toneFor(type);
+  const Icon = getTypeIcon(type);
+  return (
+    <span
+      className={[
+        'relative z-10 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border',
+        tone.tile,
+      ].join(' ')}
+    >
+      <Icon style={{ fontSize: 12 }} />
+    </span>
+  );
+};
+
+const AncestorRow = ({ node, marginLeft, dottedHeight, testIdPrefix }) => (
+  <li
+    data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
+    data-direction="ancestor"
+    data-direct={node.isDirect ? 'true' : 'false'}
+    className="relative flex items-center gap-2"
+    style={{
+      height: ROW_HEIGHT,
+      width: ROW_WIDTH,
+      marginLeft,
+    }}
+  >
+    {/* Dotted L-connector: drops from the left of the [type] pill down to
+        the top of the subject row, then bends inward to the subject's
+        [icon]. The horizontal nib lands ~half a row above the subject
+        icon and stops at the subject's left edge (paddingLeft + icon
+        width / 2) so it visually terminates on the icon column. */}
+    {node.isDirect && dottedHeight > 0 && (
+      <>
         <span
           aria-hidden="true"
           data-testid={`${testIdPrefix}-dotted-${node.name}`}
           className="absolute"
           style={{
-            left: leftPad - 5,
+            left: -4,
             top: ROW_HEIGHT / 2,
             height: dottedHeight,
             width: 2,
-            // Repeating gradient gives a crisp, visible dotted line at
-            // small widths where CSS `border-style: dotted` renders as
-            // a near-invisible hairline.
             backgroundImage:
               'repeating-linear-gradient(to bottom, #6b7280 0, #6b7280 2px, transparent 2px, transparent 5px)',
           }}
         />
-      )}
-      <TypePill type={node.type} tone={tone} />
-      <NameLabel name={node.name} />
-      <IconTile Icon={Icon} tone={tone} />
-    </li>
-  );
-};
+        <span
+          aria-hidden="true"
+          className="absolute"
+          style={{
+            left: -4,
+            top: ROW_HEIGHT / 2 + dottedHeight,
+            width: Math.max(0, marginLeft - CARD_PAD_X - 4 + 12),
+            height: 2,
+            backgroundImage:
+              'repeating-linear-gradient(to right, #6b7280 0, #6b7280 2px, transparent 2px, transparent 5px)',
+          }}
+        />
+      </>
+    )}
+    <TypePill type={node.type} />
+    <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
+      {node.name}
+    </span>
+    <IconTile type={node.type} />
+  </li>
+);
 
-const DescendantRow = ({ node, leftPad, testIdPrefix }) => {
-  const tone = getTone(node.type);
-  const Icon = getIcon(node.type);
-  return (
-    <li
-      data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
-      data-direction="descendant"
-      data-direct={node.isDirect ? 'true' : 'false'}
-      className="relative flex items-center gap-1.5 self-stretch"
-      style={{
-        height: ROW_HEIGHT,
-        paddingLeft: leftPad,
-        paddingRight: 4,
-      }}
-    >
-      <IconTile Icon={Icon} tone={tone} />
-      <NameLabel name={node.name} />
-      <TypePill type={node.type} tone={tone} alignRight />
-    </li>
-  );
-};
+const DescendantRow = ({ node, marginLeft, testIdPrefix }) => (
+  <li
+    data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
+    data-direction="descendant"
+    data-direct={node.isDirect ? 'true' : 'false'}
+    className="relative flex items-center gap-2"
+    style={{
+      height: ROW_HEIGHT,
+      width: ROW_WIDTH,
+      marginLeft,
+    }}
+  >
+    <IconTile type={node.type} />
+    <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
+      {node.name}
+    </span>
+    <TypePill type={node.type} />
+  </li>
+);
 
 const SubjectRow = ({ subject, testIdPrefix }) => {
-  const tone = getTone(subject.type);
-  const Icon = getIcon(subject.type);
+  const tone = toneFor(subject.type);
   return (
     <li
       data-testid={`${testIdPrefix}-lineage-subject`}
       data-direction="subject"
-      className="relative flex items-center self-stretch rounded-md ring-1 ring-[#713b57]/40 bg-[#e2d7dd]/40"
+      className={[
+        'relative flex items-center self-stretch rounded-md ring-1 ring-[#713b57]/40',
+        tone.pill,
+      ].join(' ')}
       style={{ height: ROW_HEIGHT + 4, paddingLeft: 6, paddingRight: 6 }}
     >
-      <IconTile Icon={Icon} tone={tone} />
+      <IconTile type={subject.type} />
       <span className="flex-1 text-center text-[11.5px] font-semibold text-gray-900 truncate min-w-0 px-2">
         {subject.name}
       </span>
-      <TypePill type={subject.type} tone={tone} />
+      <TypePill type={subject.type} />
     </li>
   );
 };
@@ -420,6 +438,13 @@ const LibraryRowFlipPopover = ({
   );
   const [ancestorsOpen, setAncestorsOpen] = useState(true);
   const [descendantsOpen, setDescendantsOpen] = useState(true);
+  const [selectorText, setSelectorText] = useState(() => defaultSelector(obj?.name || ''));
+
+  // Reset selector if the underlying object identity changes (e.g. the
+  // popover is reused for a different row mid-mount).
+  useEffect(() => {
+    setSelectorText(defaultSelector(obj?.name || ''));
+  }, [obj?.name]);
 
   useEffect(() => {
     if (!anchorRef?.current) return undefined;
@@ -444,27 +469,73 @@ const LibraryRowFlipPopover = ({
   const markdowns = useStore(s => s.markdowns);
   const inputs = useStore(s => s.inputs);
   const allDashboards = useStore(s => s.allDashboards);
+  const dashboardsFromStore = useStore(s => s.dashboards);
+  const fetchDashboards = useStore(s => s.fetchDashboards);
   const csvScriptModels = useStore(s => s.csvScriptModels);
   const localMergeModels = useStore(s => s.localMergeModels);
 
-  const lineage = useMemo(() => {
-    return buildLineageRelations(obj, {
-      charts,
-      insights,
-      models,
-      tables,
-      sources,
-      dimensions,
-      metrics,
-      relations: relationsList,
-      markdowns,
-      inputs,
-      allDashboards,
-      csvScriptModels,
-      localMergeModels,
+  // The Workspace shell preloads charts/insights/models/etc. via their
+  // own slices, but `dashboards` only loads on demand. Without it the
+  // descendant walker can't surface "this chart is in dashboard X".
+  // Trigger a one-shot fetch when the popover mounts so descendants
+  // appear on first open.
+  useEffect(() => {
+    if (
+      (!Array.isArray(allDashboards) || allDashboards.length === 0) &&
+      (!Array.isArray(dashboardsFromStore) || dashboardsFromStore.length === 0) &&
+      typeof fetchDashboards === 'function'
+    ) {
+      fetchDashboards();
+    }
+    // We intentionally run only once per mount — refetches handled
+    // elsewhere by save flows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Coalesce the two dashboard sources so the walker sees membership
+  // edges no matter which slice happens to be populated.
+  const dashboardsForWalker = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    [allDashboards, dashboardsFromStore].forEach(list => {
+      if (!Array.isArray(list)) return;
+      list.forEach(d => {
+        if (!d || !d.name || seen.has(d.name)) return;
+        seen.add(d.name);
+        out.push(d);
+      });
     });
+    return out;
+  }, [allDashboards, dashboardsFromStore]);
+
+  const scope = useMemo(
+    () => parseSelector(selectorText, obj?.name || ''),
+    [selectorText, obj?.name]
+  );
+
+  const lineage = useMemo(() => {
+    return buildLineageRelations(
+      obj,
+      {
+        charts,
+        insights,
+        models,
+        tables,
+        sources,
+        dimensions,
+        metrics,
+        relations: relationsList,
+        markdowns,
+        inputs,
+        allDashboards: dashboardsForWalker,
+        csvScriptModels,
+        localMergeModels,
+      },
+      scope
+    );
   }, [
     obj,
+    scope,
     charts,
     insights,
     models,
@@ -475,7 +546,7 @@ const LibraryRowFlipPopover = ({
     relationsList,
     markdowns,
     inputs,
-    allDashboards,
+    dashboardsForWalker,
     csvScriptModels,
     localMergeModels,
   ]);
@@ -499,30 +570,41 @@ const LibraryRowFlipPopover = ({
 
   if (!obj) return null;
 
-  const selectorRendered = obj.name
-    ? `+${String(obj.name).toLowerCase().replace(/[^a-z0-9_]+/g, '_')}`
-    : '+';
-
   const ancestors = lineage.ancestors;
   const descendants = lineage.descendants;
   const N = ancestors.length;
-  const isEmpty = N === 0 && descendants.length === 0;
+  const M = descendants.length;
+  const isEmpty = N === 0 && M === 0;
 
-  // Compute each ancestor row's left padding so that:
-  //   - the bottom-most ancestor (index N-1) sits at BASE_INDENT
-  //   - each row above shifts left by STEP (i.e. its padding grows)
-  // That mirrors the descendant ladder, which starts at BASE_INDENT and
-  // grows by STEP per row downward.
-  const ancestorLeftPad = i => BASE_INDENT + (N - 1 - i) * STEP;
-  const descendantLeftPad = j => BASE_INDENT + j * STEP;
+  // Positioning is depth-based, not display-index-based. Every node at
+  // the same lineage depth (e.g. two sibling insights that both feed
+  // the subject directly) shares the same horizontal slot — that's
+  // what makes a true staircase. The marginLeft grows by STEP for each
+  // additional depth level so the deepest ancestor sits furthest right
+  // and the direct level shares its left edge with the first descendant.
+  const cardContentWidth = CARD_WIDTH - CARD_PAD_X * 2;
+  const availableShift = Math.max(0, cardContentWidth - ROW_WIDTH - BASE_INDENT);
+  const stepForMaxDepth = maxDepth => {
+    if (maxDepth <= 1) return 0;
+    return Math.max(MIN_STEP, Math.min(MAX_STEP, Math.floor(availableShift / (maxDepth - 1))));
+  };
+  const ancestorMaxDepth = ancestors.reduce((acc, n) => Math.max(acc, n.depth || 1), 1);
+  const descendantMaxDepth = descendants.reduce((acc, n) => Math.max(acc, n.depth || 1), 1);
+  const ancestorStep = stepForMaxDepth(ancestorMaxDepth);
+  const descendantStep = stepForMaxDepth(descendantMaxDepth);
 
-  // Dotted line drops from the [type] pill of a direct ancestor down to
-  // the top of the subject row. Each row contributes ROW_HEIGHT + ROW_GAP
-  // of vertical distance; the line should reach the top of the subject
-  // row (which sits just below the last ancestor row).
-  const dottedHeightFor = i => {
-    const rowsBetween = N - i; // includes this row + every row below + the gap to subject
-    return rowsBetween * (ROW_HEIGHT + ROW_GAP) - ROW_HEIGHT / 2;
+  const ancestorMarginLeft = node =>
+    BASE_INDENT + ((node.depth || 1) - 1) * ancestorStep;
+  const descendantMarginLeft = node =>
+    BASE_INDENT + ((node.depth || 1) - 1) * descendantStep;
+
+  // Dotted L-connector height: drops from the direct ancestor's row mid
+  // down past every row between it and the subject. Walking by display
+  // index keeps the geometry correct even when multiple ancestors share
+  // a depth (siblings at the same level).
+  const dottedHeightFor = displayIndex => {
+    const rowsToSubject = N - displayIndex;
+    return rowsToSubject * (ROW_HEIGHT + ROW_GAP) - ROW_HEIGHT / 2;
   };
 
   return createPortal(
@@ -546,8 +628,8 @@ const LibraryRowFlipPopover = ({
       <div className="relative rounded-lg bg-white shadow-lg ring-1 ring-gray-200">
         <header className="flex h-8 items-center gap-2 border-b border-gray-200 px-3">
           {(() => {
-            const I = getIcon(obj.type);
-            return <I style={{ fontSize: 14 }} className="text-gray-500" />;
+            const Icon = getTypeIcon(obj.type);
+            return <Icon style={{ fontSize: 14 }} className="text-gray-500" />;
           })()}
           <span
             data-testid={`${testIdPrefix}-name`}
@@ -572,26 +654,33 @@ const LibraryRowFlipPopover = ({
 
         <div className="shrink-0 px-3 pt-2">
           <div
-            className="flex h-7 items-center gap-1.5 rounded-md bg-gray-50 px-2 ring-1 ring-gray-200"
+            className="flex h-7 items-center gap-1.5 rounded-md bg-gray-50 px-2 ring-1 ring-gray-200 focus-within:ring-[#713b57]/40"
             data-testid={`${testIdPrefix}-selector`}
           >
             <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400">
               sel
             </span>
-            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-gray-800">
-              {selectorRendered}
-            </span>
+            <input
+              type="text"
+              value={selectorText}
+              onChange={e => setSelectorText(e.target.value)}
+              spellCheck={false}
+              aria-label="Lineage selector — edit to change depth in either direction"
+              data-testid={`${testIdPrefix}-selector-input`}
+              className="min-w-0 flex-1 truncate bg-transparent font-mono text-[11px] text-gray-800 placeholder-gray-400 outline-none"
+              placeholder={defaultSelector(obj.name)}
+            />
           </div>
         </div>
 
         <div
-          className="flex-1 min-h-0 overflow-y-auto px-3 py-2"
-          style={{ maxHeight: 260 }}
+          className="flex-1 min-h-0 overflow-y-auto py-2"
+          style={{ maxHeight: 320, paddingLeft: CARD_PAD_X, paddingRight: CARD_PAD_X }}
           data-testid={`${testIdPrefix}-body`}
         >
           {isEmpty ? (
             <p
-              className="px-1 text-[11px] italic text-gray-500"
+              className="px-1 py-2 text-[11px] italic text-gray-500"
               data-testid={`${testIdPrefix}-empty`}
             >
               No lineage available for this object.
@@ -626,7 +715,7 @@ const LibraryRowFlipPopover = ({
                           <AncestorRow
                             key={`anc-${node.type}-${node.name}-${i}`}
                             node={node}
-                            leftPad={ancestorLeftPad(i)}
+                            marginLeft={ancestorMarginLeft(node)}
                             dottedHeight={node.isDirect ? dottedHeightFor(i) : 0}
                             testIdPrefix={testIdPrefix}
                           />
@@ -646,7 +735,7 @@ const LibraryRowFlipPopover = ({
 
               <SubjectRow subject={obj} testIdPrefix={testIdPrefix} />
 
-              {descendants.length > 0 && (
+              {M > 0 && (
                 <li
                   data-testid={`${testIdPrefix}-descendants`}
                   data-collapsed={descendantsOpen ? 'false' : 'true'}
@@ -672,7 +761,7 @@ const LibraryRowFlipPopover = ({
                           <DescendantRow
                             key={`desc-${node.type}-${node.name}-${j}`}
                             node={node}
-                            leftPad={descendantLeftPad(j)}
+                            marginLeft={descendantMarginLeft(node)}
                             testIdPrefix={testIdPrefix}
                           />
                         ))}
@@ -682,7 +771,7 @@ const LibraryRowFlipPopover = ({
                         className="inline-flex h-4 items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500"
                         style={{ marginLeft: BASE_INDENT }}
                       >
-                        +{descendants.length} downstream
+                        +{M} downstream
                       </span>
                     )}
                   </button>
@@ -716,11 +805,12 @@ const LibraryRowFlipPopover = ({
 export {
   buildChainFromStore,
   buildLineageRelations,
-  getIcon,
-  getTone,
+  parseSelector,
+  defaultSelector,
   ROW_HEIGHT,
   ROW_GAP,
-  STEP,
+  ROW_WIDTH,
   BASE_INDENT,
+  UNBOUNDED,
 };
 export default LibraryRowFlipPopover;

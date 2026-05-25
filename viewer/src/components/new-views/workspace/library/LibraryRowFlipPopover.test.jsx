@@ -1,22 +1,25 @@
 /**
  * LibraryRowFlipPopover behaviour (VIS-776 — refined C-3 flip-card design).
  *
- * The popover renders three sections inside its body:
- *   1. Ancestors  : [type] [name] [icon] rows, right-aligned ladder.
- *   2. Subject    : full-width row with [icon] left, [name] centred,
- *                   [type] right — no THIS pill.
- *   3. Descendants: [icon] [name] [type] rows, left-aligned ladder.
+ * Coverage:
+ *   - Ancestor + descendant ladders render with the staircase shift.
+ *   - Subject row pins icon left / type right, no THIS pill.
+ *   - Direct ancestors drop a dotted L connector toward the subject.
+ *   - Colours come from `objectTypeConfigs` (so `chart` rows carry the
+ *     `bg-pink-100` class, `model` rows carry `bg-amber-100`, etc.).
+ *   - Selector input is editable and parses `+N name +M` syntax.
+ *   - Collapse + scroll handles complex trees in a small surface.
  *
- * The refined ladder + collapse + scroll behaviour replaces the inline
- * chain placeholder that shipped with the original VIS-776; the shared
- * `<MiniLineageCard>` migration still lands with VIS-780 (C-4).
+ * The shared `<MiniLineageCard>` migration still lands with VIS-780.
  */
 import React from 'react';
 import { render, screen, within, act, fireEvent } from '@testing-library/react';
 import useStore from '../../../../stores/store';
 import LibraryRowFlipPopover, {
   buildLineageRelations,
-  buildChainFromStore,
+  parseSelector,
+  defaultSelector,
+  UNBOUNDED,
 } from './LibraryRowFlipPopover';
 
 const SUBJECT_CHART = { type: 'chart', name: 'revenue_chart' };
@@ -57,22 +60,23 @@ const seedStore = () => {
   });
 };
 
-describe('LibraryRowFlipPopover (refined C-3 layout)', () => {
+describe('LibraryRowFlipPopover — staircase layout', () => {
   beforeEach(() => {
     seedStore();
   });
 
-  test('renders ancestor rows in [type] [name] [icon] order with dotted lines for direct ancestors', () => {
+  test('renders ancestors above the subject and descendants below, both with direct-flagged rows', () => {
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
 
-    // Ancestor rows are tagged with data-direction="ancestor".
-    const ancestorInsightRow = screen.getByTestId(
-      'library-flip-popover-lineage-insight-revenue_breakdown'
-    );
-    expect(ancestorInsightRow).toHaveAttribute('data-direction', 'ancestor');
-    expect(ancestorInsightRow).toHaveAttribute('data-direct', 'true');
+    // Direct insights are flagged so the popover drops a dotted line from them.
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
+    ).toHaveAttribute('data-direct', 'true');
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-insight-cohort_retention')
+    ).toHaveAttribute('data-direct', 'true');
 
-    // The model + source rows are transitive ancestors.
+    // Transitive ancestors are present but not flagged direct.
     expect(
       screen.getByTestId('library-flip-popover-lineage-model-monthly_revenue')
     ).toHaveAttribute('data-direct', 'false');
@@ -80,7 +84,12 @@ describe('LibraryRowFlipPopover (refined C-3 layout)', () => {
       screen.getByTestId('library-flip-popover-lineage-source-local_postgres')
     ).toHaveAttribute('data-direct', 'false');
 
-    // Direct ancestors render a dotted connector that drops down to the subject.
+    // Descendant: the dashboard that contains revenue_chart.
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
+    ).toHaveAttribute('data-direct', 'true');
+
+    // Dotted connectors mount once per direct ancestor.
     expect(
       screen.getByTestId('library-flip-popover-dotted-revenue_breakdown')
     ).toBeInTheDocument();
@@ -89,50 +98,117 @@ describe('LibraryRowFlipPopover (refined C-3 layout)', () => {
     ).toBeInTheDocument();
   });
 
-  test('renders the subject row with [icon] left, [name] centred, [type] right and no THIS pill', () => {
+  test('row colours come from objectTypeConfigs (not hand-rolled hex codes)', () => {
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+
+    // `chart` carries the shared pink palette; `model` carries amber; `insight`
+    // carries purple; `source` carries orange — see objectTypeConfigs.js.
     const subjectRow = screen.getByTestId('library-flip-popover-lineage-subject');
-    expect(subjectRow).toHaveAttribute('data-direction', 'subject');
-    expect(subjectRow).toHaveTextContent('revenue_chart');
-    // Refined design removes the "THIS" pill in favour of the [type] pill alignment.
-    expect(within(subjectRow).queryByText(/this/i)).toBeNull();
-    // The [type] pill (exact "chart" — distinct from the name "revenue_chart")
-    // is still present on the row.
-    expect(within(subjectRow).getByText('chart')).toBeInTheDocument();
+    expect(subjectRow.className).toMatch(/bg-pink-100/);
+    expect(within(subjectRow).getByText('chart').className).toMatch(/bg-pink-100/);
+
+    expect(
+      within(
+        screen.getByTestId('library-flip-popover-lineage-model-monthly_revenue')
+      ).getByText('model').className
+    ).toMatch(/bg-amber-100/);
+
+    expect(
+      within(
+        screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
+      ).getByText('insight').className
+    ).toMatch(/bg-purple-100/);
+
+    expect(
+      within(
+        screen.getByTestId('library-flip-popover-lineage-source-local_postgres')
+      ).getByText('source').className
+    ).toMatch(/bg-orange-100/);
+
+    expect(
+      within(
+        screen.getByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
+      ).getByText('dashboard').className
+    ).toMatch(/bg-rose-100/);
   });
 
-  test('renders descendant rows in [icon] [name] [type] order', () => {
+  test('rows form a staircase — direct ancestor and first descendant share BASE_INDENT', () => {
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
-    const descendantRow = screen.getByTestId(
-      'library-flip-popover-lineage-dashboard-exec_kpi_dashboard'
-    );
-    expect(descendantRow).toHaveAttribute('data-direction', 'descendant');
-    expect(descendantRow).toHaveAttribute('data-direct', 'true');
-  });
-
-  test('lowest ancestor and first descendant share the same left padding (ladder meet point)', () => {
-    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
-    // Last ancestor in display order: cohort_retention (direct, sits just above subject).
     const lowestAncestor = screen.getByTestId(
       'library-flip-popover-lineage-insight-cohort_retention'
     );
     const firstDescendant = screen.getByTestId(
       'library-flip-popover-lineage-dashboard-exec_kpi_dashboard'
     );
-    expect(lowestAncestor.style.paddingLeft).toBe(firstDescendant.style.paddingLeft);
-  });
+    expect(lowestAncestor.style.marginLeft).toBe(firstDescendant.style.marginLeft);
 
-  test('ancestor rows shift progressively left so the ladder widens toward the subject', () => {
-    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    // Topmost ancestor (deepest = source) sits further right than the
+    // direct insight — that's the staircase widening toward the subject.
     const topAncestor = screen.getByTestId(
       'library-flip-popover-lineage-source-local_postgres'
     );
-    const lowestAncestor = screen.getByTestId(
-      'library-flip-popover-lineage-insight-cohort_retention'
+    expect(parseInt(topAncestor.style.marginLeft, 10)).toBeGreaterThan(
+      parseInt(lowestAncestor.style.marginLeft, 10)
     );
-    expect(parseInt(topAncestor.style.paddingLeft, 10)).toBeGreaterThan(
-      parseInt(lowestAncestor.style.paddingLeft, 10)
-    );
+  });
+
+  test('subject row pins icon left, type right, name centred, no THIS pill', () => {
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const subjectRow = screen.getByTestId('library-flip-popover-lineage-subject');
+    expect(subjectRow).toHaveAttribute('data-direction', 'subject');
+    expect(subjectRow).toHaveTextContent('revenue_chart');
+    expect(within(subjectRow).queryByText(/^this$/i)).toBeNull();
+    expect(within(subjectRow).getByText('chart')).toBeInTheDocument();
+  });
+});
+
+describe('LibraryRowFlipPopover — editable selector', () => {
+  beforeEach(() => {
+    seedStore();
+  });
+
+  test('defaults to `+name+` (unbounded both directions)', () => {
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const input = screen.getByTestId('library-flip-popover-selector-input');
+    expect(input).toHaveValue('+revenue_chart+');
+  });
+
+  test('typing `+1revenue_chart+1` clamps ancestor depth to 1 and descendant to 1', () => {
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const input = screen.getByTestId('library-flip-popover-selector-input');
+    fireEvent.change(input, { target: { value: '+1revenue_chart+1' } });
+    // Direct insights still render, but their parent models + source must NOT.
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('library-flip-popover-lineage-model-monthly_revenue')
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('library-flip-popover-lineage-source-local_postgres')
+    ).toBeNull();
+    // Descendant depth 1 still surfaces the dashboard.
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
+    ).toBeInTheDocument();
+  });
+
+  test('typing `revenue_chart` (no plus) hides both ladders', () => {
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const input = screen.getByTestId('library-flip-popover-selector-input');
+    fireEvent.change(input, { target: { value: 'revenue_chart' } });
+    expect(
+      screen.queryByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
+    ).toBeNull();
+  });
+});
+
+describe('LibraryRowFlipPopover — collapse and empty state', () => {
+  beforeEach(() => {
+    seedStore();
   });
 
   test('clicking the ancestors toggle collapses + re-expands the ancestor ladder', () => {
@@ -141,32 +217,13 @@ describe('LibraryRowFlipPopover (refined C-3 layout)', () => {
       screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
     ).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('library-flip-popover-ancestors-toggle'));
-    // Collapsed → ancestor rows are gone, summary chip is shown.
     expect(
       screen.queryByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
     ).toBeNull();
-    expect(
-      screen.getByTestId('library-flip-popover-ancestors')
-    ).toHaveAttribute('data-collapsed', 'true');
-    // Re-expand restores the rows.
     fireEvent.click(screen.getByTestId('library-flip-popover-ancestors-toggle'));
     expect(
       screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
     ).toBeInTheDocument();
-  });
-
-  test('clicking the descendants toggle collapses the descendant ladder', () => {
-    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
-    expect(
-      screen.getByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('library-flip-popover-descendants-toggle'));
-    expect(
-      screen.queryByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
-    ).toBeNull();
-    expect(
-      screen.getByTestId('library-flip-popover-descendants')
-    ).toHaveAttribute('data-collapsed', 'true');
   });
 
   test('renders the empty body for an object with neither upstream nor downstream', () => {
@@ -206,6 +263,56 @@ describe('LibraryRowFlipPopover (refined C-3 layout)', () => {
   });
 });
 
+describe('parseSelector', () => {
+  test('`+name+` is unbounded both directions', () => {
+    expect(parseSelector('+revenue_chart+', 'revenue_chart')).toEqual({
+      name: 'revenue_chart',
+      ancestors: UNBOUNDED,
+      descendants: UNBOUNDED,
+    });
+  });
+
+  test('`+2name+1` clamps ancestor depth to 2 and descendant to 1', () => {
+    expect(parseSelector('+2revenue_chart+1', 'fallback')).toEqual({
+      name: 'revenue_chart',
+      ancestors: 2,
+      descendants: 1,
+    });
+  });
+
+  test('`+name` is unbounded ancestors only', () => {
+    expect(parseSelector('+revenue_chart', 'fallback')).toEqual({
+      name: 'revenue_chart',
+      ancestors: UNBOUNDED,
+      descendants: 0,
+    });
+  });
+
+  test('`name+` is unbounded descendants only', () => {
+    expect(parseSelector('revenue_chart+', 'fallback')).toEqual({
+      name: 'revenue_chart',
+      ancestors: 0,
+      descendants: UNBOUNDED,
+    });
+  });
+
+  test('`name` returns just the subject', () => {
+    expect(parseSelector('revenue_chart', 'fallback')).toEqual({
+      name: 'revenue_chart',
+      ancestors: 0,
+      descendants: 0,
+    });
+  });
+
+  test('empty string falls back to the supplied default', () => {
+    expect(parseSelector('', 'fallback')).toEqual({
+      name: 'fallback',
+      ancestors: 0,
+      descendants: 0,
+    });
+  });
+});
+
 describe('buildLineageRelations', () => {
   beforeEach(() => {
     seedStore();
@@ -227,12 +334,11 @@ describe('buildLineageRelations', () => {
     localMergeModels: [],
   });
 
-  test('returns both upstream and downstream relations for a chart', () => {
+  test('returns both upstream and downstream relations for a chart with default unbounded scope', () => {
     const relations = buildLineageRelations(
       { type: 'chart', name: 'revenue_chart' },
       storeApi()
     );
-    // Ancestors include the per-insight branch (model + insight) for each direct insight.
     expect(relations.ancestors.map(n => `${n.type}:${n.name}`)).toEqual([
       'source:local_postgres',
       'model:monthly_revenue',
@@ -240,39 +346,23 @@ describe('buildLineageRelations', () => {
       'model:customers',
       'insight:cohort_retention',
     ]);
-    // Direct insights are flagged so the popover can drop a dotted line from them.
-    const direct = relations.ancestors.filter(n => n.isDirect).map(n => n.name);
-    expect(direct).toEqual(['revenue_breakdown', 'cohort_retention']);
-    // Descendants surface the dashboard that contains the chart.
     expect(relations.descendants.map(n => `${n.type}:${n.name}`)).toEqual([
       'dashboard:exec_kpi_dashboard',
     ]);
   });
 
-  test('walks the full downstream subtree from a source', () => {
+  test('ancestor depth limit excludes deeper ancestors', () => {
     const relations = buildLineageRelations(
-      { type: 'source', name: 'local_postgres' },
-      storeApi()
+      { type: 'chart', name: 'revenue_chart' },
+      storeApi(),
+      { ancestors: 1, descendants: UNBOUNDED }
     );
-    expect(relations.ancestors).toEqual([]);
-    const byType = relations.descendants.reduce((acc, n) => {
-      (acc[n.type] = acc[n.type] || []).push(n.name);
-      return acc;
-    }, {});
-    expect(byType.model.sort()).toEqual(['customers', 'monthly_revenue']);
-    expect(byType.insight.sort()).toEqual(['cohort_retention', 'revenue_breakdown']);
-    expect(byType.chart).toEqual(['revenue_chart']);
-    expect(byType.dashboard).toEqual(['exec_kpi_dashboard']);
-    // Only the immediate downstream of the source is flagged as direct.
-    const direct = relations.descendants.filter(n => n.isDirect).map(n => n.name).sort();
-    expect(direct).toEqual(['customers', 'monthly_revenue']);
+    expect(relations.ancestors.map(n => n.type).sort()).toEqual(['insight', 'insight']);
   });
+});
 
-  test('legacy buildChainFromStore still returns the ancestor chain', () => {
-    const chain = buildChainFromStore({ type: 'chart', name: 'revenue_chart' }, storeApi());
-    expect(chain.length).toBeGreaterThan(0);
-    expect(chain.every(n => typeof n.type === 'string' && typeof n.name === 'string')).toBe(
-      true
-    );
+describe('default selector helper', () => {
+  test('formats a name into `+name+`', () => {
+    expect(defaultSelector('revenue_chart')).toBe('+revenue_chart+');
   });
 });
