@@ -86,202 +86,168 @@ const CARD_WIDTH = 340;
 // Relations walker
 // ---------------------------------------------------------------------------
 
-function findByName(list, name) {
-  if (!Array.isArray(list) || !name) return null;
-  return list.find(o => o && o.name === name) || null;
-}
-
-function refValue(ref) {
-  if (!ref) return null;
-  if (typeof ref === 'string') return ref;
-  return ref.name || ref.ref || null;
-}
-
-function pickInsightRefs(chart) {
-  const list = chart?.insights || chart?.config?.insights || [];
-  if (!Array.isArray(list)) return [];
-  return list.map(refValue).filter(Boolean);
-}
-
-function pickModelRef(insight) {
-  return refValue(insight?.model || insight?.config?.model);
-}
-
-function pickSourceRef(model) {
-  return refValue(model?.source || model?.config?.source);
+// Lineage edges come straight from each store object's `child_item_names`
+// array — that's the canonical "what does this depend on" list the backend
+// already publishes for every chart / table / insight / model / source.
+// Walking it gives us the full upstream DAG without having to inspect the
+// per-type config blobs (which embed refs as `${ref(name).column}` and
+// would otherwise need SQL-style ref parsing).
+function getChildItemNames(obj) {
+  if (!obj || !Array.isArray(obj.child_item_names)) return [];
+  return obj.child_item_names.filter(Boolean);
 }
 
 /**
- * Walk a chart's upstream chain. Each direct insight is pushed first,
- * followed by its model and source (deduped). This gives the mock's
- * interleaved ladder (source · model · insight · model · insight · subject).
+ * Build a name → type index over every collection the store exposes. Lets
+ * us resolve a raw `child_item_names` entry back to its typed object so the
+ * walker can keep traversing upstream.
  */
-function pushChartAncestors(chart, storeApi, push, seen) {
-  const refs = pickInsightRefs(chart);
-  refs.forEach(insightRef => {
-    const insight = storeApi.getInsightByName?.(insightRef);
-    if (!insight) return;
-    pushInsightAncestors(insight, storeApi, push, seen, /* isInsightDirect */ true);
-  });
-}
-
-function pushInsightAncestors(insight, storeApi, push, seen, isInsightDirect = true) {
-  const modelRef = pickModelRef(insight);
-  if (modelRef) {
-    const model =
-      storeApi.getModelByName?.(modelRef) ||
-      findByName(storeApi.csvScriptModels, modelRef) ||
-      findByName(storeApi.localMergeModels, modelRef);
-    if (model) {
-      pushModelAncestors(model, storeApi, push, seen, /* isModelDirect */ false);
-    } else {
-      push({ type: 'model', name: modelRef, isDirect: false }, seen);
-    }
-  }
-  push({ type: 'insight', name: insight.name, isDirect: isInsightDirect }, seen);
-}
-
-function pushModelAncestors(model, storeApi, push, seen, isModelDirect = true) {
-  const sourceRef = pickSourceRef(model);
-  if (sourceRef) {
-    push({ type: 'source', name: sourceRef, isDirect: false }, seen);
-  }
-  push({ type: 'model', name: model.name, isDirect: isModelDirect }, seen);
-}
-
-// ---------------------------------------------------------------------------
-// Descendant walkers — scan the store for objects that reference the subject.
-// ---------------------------------------------------------------------------
-
-function collectDashboardsReferencing(name, dashboards) {
-  if (!Array.isArray(dashboards)) return [];
-  const hits = [];
-  dashboards.forEach(d => {
-    if (!d || !Array.isArray(d.rows)) return;
-    const matches = d.rows.some(row => {
-      if (!row || !Array.isArray(row.items)) return false;
-      return row.items.some(item => {
-        if (!item) return false;
-        const itemRef = refValue(item.chart) || refValue(item.table) || refValue(item.markdown);
-        return itemRef === name;
-      });
-    });
-    if (matches) hits.push(d.name);
-  });
-  return hits;
-}
-
-function collectChartsReferencing(insightName, charts) {
-  if (!Array.isArray(charts)) return [];
-  return charts
-    .filter(c => pickInsightRefs(c).includes(insightName))
-    .map(c => c.name)
-    .filter(Boolean);
-}
-
-function collectInsightsReferencing(modelName, insights) {
-  if (!Array.isArray(insights)) return [];
-  return insights
-    .filter(i => pickModelRef(i) === modelName)
-    .map(i => i.name)
-    .filter(Boolean);
-}
-
-function collectModelsReferencing(sourceName, ...modelLists) {
-  const hits = [];
-  modelLists.forEach(list => {
+function buildTypeIndex(storeApi) {
+  const lookup = new Map();
+  const register = (type, list) => {
     if (!Array.isArray(list)) return;
-    list.forEach(m => {
-      if (m && pickSourceRef(m) === sourceName) hits.push(m.name);
+    list.forEach(obj => {
+      if (obj && obj.name && !lookup.has(obj.name)) {
+        lookup.set(obj.name, { type, obj });
+      }
     });
-  });
-  return hits;
+  };
+  register('source', storeApi.sources);
+  register('model', storeApi.models);
+  register('model', storeApi.csvScriptModels);
+  register('model', storeApi.localMergeModels);
+  register('dimension', storeApi.dimensions);
+  register('metric', storeApi.metrics);
+  register('relation', storeApi.relations);
+  register('insight', storeApi.insights);
+  register('chart', storeApi.charts);
+  register('table', storeApi.tables);
+  register('markdown', storeApi.markdowns);
+  register('input', storeApi.inputs);
+  register('dashboard', storeApi.allDashboards);
+  return lookup;
 }
 
+/**
+ * Walk upstream from the subject via `child_item_names`. The traversal is
+ * topological-on-the-fly: a parent node is only emitted once all of its own
+ * upstreams have been emitted, so direct ancestors land last (closest to
+ * the subject in the rendered ladder).
+ */
 function buildAncestors(subject, storeApi) {
   if (!subject) return [];
+  const index = buildTypeIndex(storeApi);
+  const subjectEntry = index.get(subject.name);
+  const subjectObj = subjectEntry?.obj;
+  if (!subjectObj) return [];
+
+  const directNames = new Set(getChildItemNames(subjectObj));
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
-  const push = (node, seenSet) => {
-    const key = `${node.type}:${node.name}`;
-    if (seenSet.has(key)) return;
-    seenSet.add(key);
-    out.push(node);
+
+  const visit = name => {
+    const entry = index.get(name);
+    if (!entry) return;
+    const key = `${entry.type}:${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    // Emit upstreams first so the deepest node sits at the top of the
+    // ladder; direct children of the subject sit just above the subject.
+    getChildItemNames(entry.obj).forEach(visit);
+    out.push({ type: entry.type, name, isDirect: directNames.has(name) });
   };
 
-  if (subject.type === 'chart' || subject.type === 'table') {
-    const obj =
-      subject.type === 'chart'
-        ? storeApi.getChartByName?.(subject.name)
-        : findByName(storeApi.tables, subject.name);
-    if (obj) pushChartAncestors(obj, storeApi, push, seen);
-  } else if (subject.type === 'insight') {
-    const insight = storeApi.getInsightByName?.(subject.name);
-    if (insight) {
-      // Subject itself is the "direct" node — its parents are model/source.
-      const modelRef = pickModelRef(insight);
-      if (modelRef) {
-        const model =
-          storeApi.getModelByName?.(modelRef) ||
-          findByName(storeApi.csvScriptModels, modelRef) ||
-          findByName(storeApi.localMergeModels, modelRef);
-        if (model) pushModelAncestors(model, storeApi, push, seen, true);
-        else push({ type: 'model', name: modelRef, isDirect: true }, seen);
-      }
-    }
-  } else if (subject.type === 'model') {
-    const model =
-      storeApi.getModelByName?.(subject.name) ||
-      findByName(storeApi.csvScriptModels, subject.name) ||
-      findByName(storeApi.localMergeModels, subject.name);
-    if (model) {
-      const sourceRef = pickSourceRef(model);
-      if (sourceRef) push({ type: 'source', name: sourceRef, isDirect: true }, seen);
-    }
-  }
-  // sources, dashboards, markdowns, inputs, inserts have no upstream.
+  directNames.forEach(visit);
+  return out;
+}
 
+/**
+ * Build a reverse adjacency — for any name, who lists it as a child? Lets
+ * us walk descendants in O(N) regardless of which type the subject is.
+ */
+function buildReverseIndex(storeApi) {
+  const reverse = new Map();
+  const add = (parentName, childName, parentType) => {
+    if (!reverse.has(childName)) reverse.set(childName, []);
+    reverse.get(childName).push({ name: parentName, type: parentType });
+  };
+  const scan = (type, list) => {
+    if (!Array.isArray(list)) return;
+    list.forEach(obj => {
+      if (!obj || !obj.name) return;
+      getChildItemNames(obj).forEach(childName => add(obj.name, childName, type));
+    });
+  };
+  scan('model', storeApi.models);
+  scan('model', storeApi.csvScriptModels);
+  scan('model', storeApi.localMergeModels);
+  scan('insight', storeApi.insights);
+  scan('chart', storeApi.charts);
+  scan('table', storeApi.tables);
+  scan('markdown', storeApi.markdowns);
+  scan('input', storeApi.inputs);
+  scan('dimension', storeApi.dimensions);
+  scan('metric', storeApi.metrics);
+  scan('relation', storeApi.relations);
+  return reverse;
+}
+
+/**
+ * Some dashboards aren't surfaced through `child_item_names` on their
+ * descendants — the relationship lives in the dashboard's `rows`/`items`
+ * tree. Scan once and produce a flat list of `(dashboardName → memberName)`
+ * edges so descendant traversal can include them.
+ */
+function dashboardMembership(allDashboards) {
+  const out = [];
+  if (!Array.isArray(allDashboards)) return out;
+  allDashboards.forEach(d => {
+    if (!d || !Array.isArray(d.rows)) return;
+    d.rows.forEach(row => {
+      if (!row || !Array.isArray(row.items)) return;
+      row.items.forEach(item => {
+        if (!item) return;
+        ['chart', 'table', 'markdown'].forEach(key => {
+          const ref = item[key];
+          if (!ref) return;
+          const refName = typeof ref === 'string' ? ref : ref.name || ref.ref;
+          if (refName) out.push({ dashboard: d.name, member: refName });
+        });
+      });
+    });
+  });
   return out;
 }
 
 function buildDescendants(subject, storeApi) {
   if (!subject) return [];
+  const reverse = buildReverseIndex(storeApi);
+  const dashMembers = dashboardMembership(storeApi.allDashboards);
   const out = [];
   const seen = new Set([`${subject.type}:${subject.name}`]);
-  const push = node => {
-    const key = `${node.type}:${node.name}`;
+
+  const directParents = reverse.get(subject.name) || [];
+  const directDashboards = dashMembers
+    .filter(m => m.member === subject.name)
+    .map(m => ({ name: m.dashboard, type: 'dashboard' }));
+  const directSet = new Set(
+    [...directParents, ...directDashboards].map(p => `${p.type}:${p.name}`)
+  );
+
+  const visit = (name, type) => {
+    const key = `${type}:${name}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push(node);
+    out.push({ type, name, isDirect: directSet.has(key) });
+    // Recurse: anything that lists `name` as a child is a deeper descendant.
+    (reverse.get(name) || []).forEach(p => visit(p.name, p.type));
+    dashMembers
+      .filter(m => m.member === name)
+      .forEach(m => visit(m.dashboard, 'dashboard'));
   };
 
-  if (subject.type === 'source') {
-    const models = collectModelsReferencing(
-      subject.name,
-      storeApi.models,
-      storeApi.csvScriptModels,
-      storeApi.localMergeModels
-    );
-    models.forEach(name => push({ type: 'model', name, isDirect: true }));
-  } else if (subject.type === 'model') {
-    collectInsightsReferencing(subject.name, storeApi.insights).forEach(name =>
-      push({ type: 'insight', name, isDirect: true })
-    );
-  } else if (subject.type === 'insight') {
-    collectChartsReferencing(subject.name, storeApi.charts).forEach(name =>
-      push({ type: 'chart', name, isDirect: true })
-    );
-  } else if (
-    subject.type === 'chart' ||
-    subject.type === 'table' ||
-    subject.type === 'markdown'
-  ) {
-    collectDashboardsReferencing(subject.name, storeApi.allDashboards).forEach(name =>
-      push({ type: 'dashboard', name, isDirect: true })
-    );
-  }
-  // dashboards / inserts / inputs have no downstream we track here.
-
+  directParents.forEach(p => visit(p.name, p.type));
+  directDashboards.forEach(d => visit(d.name, d.type));
   return out;
 }
 
@@ -293,8 +259,6 @@ function buildLineageRelations(subject, storeApi) {
 }
 
 // Backward-compat: VIS-780 will replace this with `<MiniLineageCard>`.
-// The legacy chain (subject's upstream-only chain, deepest-first → direct)
-// is still useful in places that imported it from this module.
 function buildChainFromStore(subject, storeApi) {
   return buildAncestors(subject, storeApi);
 }
@@ -360,11 +324,17 @@ const AncestorRow = ({ node, leftPad, dottedHeight, testIdPrefix }) => {
         <span
           aria-hidden="true"
           data-testid={`${testIdPrefix}-dotted-${node.name}`}
-          className="absolute border-l border-dotted border-gray-400"
+          className="absolute"
           style={{
-            left: leftPad - 4,
+            left: leftPad - 5,
             top: ROW_HEIGHT / 2,
             height: dottedHeight,
+            width: 2,
+            // Repeating gradient gives a crisp, visible dotted line at
+            // small widths where CSS `border-style: dotted` renders as
+            // a near-invisible hairline.
+            backgroundImage:
+              'repeating-linear-gradient(to bottom, #6b7280 0, #6b7280 2px, transparent 2px, transparent 5px)',
           }}
         />
       )}
@@ -463,39 +433,48 @@ const LibraryRowFlipPopover = ({
     };
   }, [anchorRef]);
 
-  const getChartByName = useStore(s => s.getChartByName);
-  const getInsightByName = useStore(s => s.getInsightByName);
-  const getModelByName = useStore(s => s.getModelByName);
   const charts = useStore(s => s.charts);
   const insights = useStore(s => s.insights);
   const models = useStore(s => s.models);
   const tables = useStore(s => s.tables);
+  const sources = useStore(s => s.sources);
+  const dimensions = useStore(s => s.dimensions);
+  const metrics = useStore(s => s.metrics);
+  const relationsList = useStore(s => s.relations);
+  const markdowns = useStore(s => s.markdowns);
+  const inputs = useStore(s => s.inputs);
   const allDashboards = useStore(s => s.allDashboards);
   const csvScriptModels = useStore(s => s.csvScriptModels);
   const localMergeModels = useStore(s => s.localMergeModels);
 
-  const relations = useMemo(() => {
+  const lineage = useMemo(() => {
     return buildLineageRelations(obj, {
-      getChartByName,
-      getInsightByName,
-      getModelByName,
       charts,
       insights,
       models,
       tables,
+      sources,
+      dimensions,
+      metrics,
+      relations: relationsList,
+      markdowns,
+      inputs,
       allDashboards,
       csvScriptModels,
       localMergeModels,
     });
   }, [
     obj,
-    getChartByName,
-    getInsightByName,
-    getModelByName,
     charts,
     insights,
     models,
     tables,
+    sources,
+    dimensions,
+    metrics,
+    relationsList,
+    markdowns,
+    inputs,
     allDashboards,
     csvScriptModels,
     localMergeModels,
@@ -524,8 +503,8 @@ const LibraryRowFlipPopover = ({
     ? `+${String(obj.name).toLowerCase().replace(/[^a-z0-9_]+/g, '_')}`
     : '+';
 
-  const ancestors = relations.ancestors;
-  const descendants = relations.descendants;
+  const ancestors = lineage.ancestors;
+  const descendants = lineage.descendants;
   const N = ancestors.length;
   const isEmpty = N === 0 && descendants.length === 0;
 

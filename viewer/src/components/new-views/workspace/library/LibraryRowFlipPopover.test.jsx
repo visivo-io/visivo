@@ -27,21 +27,26 @@ const seedStore = () => {
       charts: [
         {
           name: 'revenue_chart',
-          insights: ['revenue_breakdown', 'cohort_retention'],
+          child_item_names: ['revenue_breakdown', 'cohort_retention'],
         },
       ],
       insights: [
-        { name: 'revenue_breakdown', model: 'monthly_revenue' },
-        { name: 'cohort_retention', model: 'customers' },
+        { name: 'revenue_breakdown', child_item_names: ['monthly_revenue'] },
+        { name: 'cohort_retention', child_item_names: ['customers'] },
       ],
       models: [
-        { name: 'monthly_revenue', source: 'local_postgres' },
-        { name: 'customers', source: 'local_postgres' },
+        { name: 'monthly_revenue', child_item_names: ['local_postgres'] },
+        { name: 'customers', child_item_names: ['local_postgres'] },
       ],
       csvScriptModels: [],
       localMergeModels: [],
-      sources: [{ name: 'local_postgres' }],
+      sources: [{ name: 'local_postgres', child_item_names: [] }],
       tables: [],
+      markdowns: [],
+      inputs: [],
+      dimensions: [],
+      metrics: [],
+      relations: [],
       allDashboards: [
         {
           name: 'exec_kpi_dashboard',
@@ -207,13 +212,16 @@ describe('buildLineageRelations', () => {
   });
 
   const storeApi = () => ({
-    getChartByName: useStore.getState().getChartByName,
-    getInsightByName: useStore.getState().getInsightByName,
-    getModelByName: useStore.getState().getModelByName,
     charts: useStore.getState().charts,
     insights: useStore.getState().insights,
     models: useStore.getState().models,
     tables: useStore.getState().tables,
+    sources: useStore.getState().sources,
+    dimensions: useStore.getState().dimensions,
+    metrics: useStore.getState().metrics,
+    relations: useStore.getState().relations,
+    markdowns: useStore.getState().markdowns,
+    inputs: useStore.getState().inputs,
     allDashboards: useStore.getState().allDashboards,
     csvScriptModels: [],
     localMergeModels: [],
@@ -241,16 +249,23 @@ describe('buildLineageRelations', () => {
     ]);
   });
 
-  test('returns models as downstream for a source', () => {
+  test('walks the full downstream subtree from a source', () => {
     const relations = buildLineageRelations(
       { type: 'source', name: 'local_postgres' },
       storeApi()
     );
     expect(relations.ancestors).toEqual([]);
-    expect(relations.descendants.map(n => n.name).sort()).toEqual([
-      'customers',
-      'monthly_revenue',
-    ]);
+    const byType = relations.descendants.reduce((acc, n) => {
+      (acc[n.type] = acc[n.type] || []).push(n.name);
+      return acc;
+    }, {});
+    expect(byType.model.sort()).toEqual(['customers', 'monthly_revenue']);
+    expect(byType.insight.sort()).toEqual(['cohort_retention', 'revenue_breakdown']);
+    expect(byType.chart).toEqual(['revenue_chart']);
+    expect(byType.dashboard).toEqual(['exec_kpi_dashboard']);
+    // Only the immediate downstream of the source is flagged as direct.
+    const direct = relations.descendants.filter(n => n.isDirect).map(n => n.name).sort();
+    expect(direct).toEqual(['customers', 'monthly_revenue']);
   });
 
   test('legacy buildChainFromStore still returns the ancestor chain', () => {
