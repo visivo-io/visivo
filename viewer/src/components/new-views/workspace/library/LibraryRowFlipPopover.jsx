@@ -37,14 +37,18 @@ import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 // 340 px card without horizontal scroll. The row width itself is fixed
 // so each rung "floats" right (ancestors) or left (descendants) by a
 // constant offset, producing the staircase.
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 360;
 const CARD_PAD_X = 12;
 const ROW_HEIGHT = 24;
-const ROW_GAP = 4;
-const ROW_WIDTH = 200;
-const MAX_STEP = 22;
-const MIN_STEP = 10;
-const BASE_INDENT = 6;
+const ROW_GAP = 6;
+const ROW_WIDTH = 210;
+const MAX_STEP = 28;
+const MIN_STEP = 14;
+// Direct ancestors and the first descendant row both start at this left
+// offset. It sits to the RIGHT of the subject row's icon (paddingLeft 6
+// + icon width 20 = subject-icon-right at x=26) so the L-shaped tree
+// branching from the subject icon has somewhere to land.
+const BASE_INDENT = 34;
 
 // ---------------------------------------------------------------------------
 // Selector parsing — Visivo selector syntax `[+N]name[+M]`
