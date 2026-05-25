@@ -343,7 +343,7 @@ const IconTile = ({ type }) => {
   );
 };
 
-const AncestorRow = ({ node, marginLeft, dottedHeight, testIdPrefix }) => (
+const AncestorRow = ({ node, marginLeft, testIdPrefix }) => (
   <li
     data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
     data-direction="ancestor"
@@ -355,40 +355,6 @@ const AncestorRow = ({ node, marginLeft, dottedHeight, testIdPrefix }) => (
       marginLeft,
     }}
   >
-    {/* Dotted L-connector: drops from the left of the [type] pill down to
-        the top of the subject row, then bends inward to the subject's
-        [icon]. The horizontal nib lands ~half a row above the subject
-        icon and stops at the subject's left edge (paddingLeft + icon
-        width / 2) so it visually terminates on the icon column. */}
-    {node.isDirect && dottedHeight > 0 && (
-      <>
-        <span
-          aria-hidden="true"
-          data-testid={`${testIdPrefix}-dotted-${node.name}`}
-          className="absolute"
-          style={{
-            left: -4,
-            top: ROW_HEIGHT / 2,
-            height: dottedHeight,
-            width: 2,
-            backgroundImage:
-              'repeating-linear-gradient(to bottom, #6b7280 0, #6b7280 2px, transparent 2px, transparent 5px)',
-          }}
-        />
-        <span
-          aria-hidden="true"
-          className="absolute"
-          style={{
-            left: -4,
-            top: ROW_HEIGHT / 2 + dottedHeight,
-            width: Math.max(0, marginLeft - CARD_PAD_X - 4 + 12),
-            height: 2,
-            backgroundImage:
-              'repeating-linear-gradient(to right, #6b7280 0, #6b7280 2px, transparent 2px, transparent 5px)',
-          }}
-        />
-      </>
-    )}
     <TypePill type={node.type} />
     <span className="min-w-0 flex-1 truncate text-center text-[11.5px] font-medium text-gray-800">
       {node.name}
@@ -622,24 +588,20 @@ const LibraryRowFlipPopover = ({
     if (maxDepth <= 1) return 0;
     return Math.max(MIN_STEP, Math.min(MAX_STEP, Math.floor(availableShift / (maxDepth - 1))));
   };
+  // Unified step across both ladders — the direct-ancestor row and the
+  // direct-descendant row must share the same left edge (rule 4), and
+  // each successive depth step must move the same distance regardless
+  // of which side of the subject the row is on.
   const ancestorMaxDepth = ancestors.reduce((acc, n) => Math.max(acc, n.depth || 1), 1);
   const descendantMaxDepth = descendants.reduce((acc, n) => Math.max(acc, n.depth || 1), 1);
-  const ancestorStep = stepForMaxDepth(ancestorMaxDepth);
-  const descendantStep = stepForMaxDepth(descendantMaxDepth);
+  const sharedMaxDepth = Math.max(ancestorMaxDepth, descendantMaxDepth);
+  const STEP = stepForMaxDepth(sharedMaxDepth);
 
   const ancestorMarginLeft = node =>
-    BASE_INDENT + ((node.depth || 1) - 1) * ancestorStep;
+    BASE_INDENT + ((node.depth || 1) - 1) * STEP;
   const descendantMarginLeft = node =>
-    BASE_INDENT + ((node.depth || 1) - 1) * descendantStep;
+    BASE_INDENT + ((node.depth || 1) - 1) * STEP;
 
-  // Dotted L-connector height: drops from the direct ancestor's row mid
-  // down past every row between it and the subject. Walking by display
-  // index keeps the geometry correct even when multiple ancestors share
-  // a depth (siblings at the same level).
-  const dottedHeightFor = displayIndex => {
-    const rowsToSubject = N - displayIndex;
-    return rowsToSubject * (ROW_HEIGHT + ROW_GAP) - ROW_HEIGHT / 2;
-  };
 
   // SVG connector overlay — draws the actual DAG edges so the icon
   // staircase visually reads as the lineage tree it represents.
@@ -711,6 +673,29 @@ const LibraryRowFlipPopover = ({
 
   const connectorPath = ({ parentX, parentY, childX, childY }) =>
     `M ${parentX} ${parentY + ICON_H / 2} L ${parentX} ${childY} L ${childX} ${childY}`;
+
+  // Dotted Γ-connector from each direct ancestor's [type] pill down and
+  // then right onto the subject row's icon column. Drawn as a single
+  // L-path in the SVG overlay so the corner joins cleanly.
+  const dottedConnectors = [];
+  if (ancestorsOpen) {
+    ancestors.forEach((node, i) => {
+      if (!node.isDirect) return;
+      const rowLeft = ancestorMarginLeft(node);
+      const startX = rowLeft - 4; // just left of the [type] pill
+      const startY = ancestorRowY(i);
+      // The L turns at the top of the subject row so the horizontal
+      // segment lands at the subject icon column (icon center = 16:
+      // subject row paddingLeft 6 + ICON_W/2).
+      const subjectTopY = N * (ROW_HEIGHT + ROW_GAP);
+      const subjectIconX = 6 + ICON_W / 2;
+      dottedConnectors.push({
+        key: `dotted-${node.name}`,
+        name: node.name,
+        d: `M ${startX} ${startY} L ${startX} ${subjectTopY} L ${subjectIconX} ${subjectTopY}`,
+      });
+    });
+  }
 
   return createPortal(
     <div
@@ -792,7 +777,9 @@ const LibraryRowFlipPopover = ({
             </p>
           ) : (
             <div className="relative" data-testid={`${testIdPrefix}-chain-wrap`}>
-              {(ancestorConnectors.length > 0 || descendantConnectors.length > 0) && (
+              {(ancestorConnectors.length > 0 ||
+                descendantConnectors.length > 0 ||
+                dottedConnectors.length > 0) && (
                 <svg
                   aria-hidden="true"
                   data-testid={`${testIdPrefix}-connectors`}
@@ -818,6 +805,19 @@ const LibraryRowFlipPopover = ({
                       d={connectorPath(c)}
                       stroke="#9ca3af"
                       strokeWidth={1.5}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ))}
+                  {dottedConnectors.map(c => (
+                    <path
+                      key={c.key}
+                      d={c.d}
+                      data-testid={`${testIdPrefix}-dotted-${c.name}`}
+                      stroke="#6b7280"
+                      strokeWidth={1.5}
+                      strokeDasharray="2 3"
                       fill="none"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -855,7 +855,6 @@ const LibraryRowFlipPopover = ({
                             key={`anc-${node.type}-${node.name}-${i}`}
                             node={node}
                             marginLeft={ancestorMarginLeft(node)}
-                            dottedHeight={node.isDirect ? dottedHeightFor(i) : 0}
                             testIdPrefix={testIdPrefix}
                           />
                         ))}
