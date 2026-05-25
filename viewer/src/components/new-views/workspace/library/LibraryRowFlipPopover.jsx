@@ -6,30 +6,43 @@ import { getTypeIcon } from '../../common/objectTypeConfigs';
 import { LAYOUT_TYPES } from './LibraryRow';
 
 /**
- * LibraryRowFlipPopover — VIS-776 / Track C C3.
+ * LibraryRowFlipPopover — VIS-776 / Track C C3 (refined design).
  *
  * Anchored popover that flips out from a Library row to show the row's
- * lineage neighbourhood. Per the design, the popover frame chrome
- * (anchor arrow, header, footer) belongs to Track C; the inner lineage
- * card is shared with the canvas item flip surface (D-5) and will be
- * extracted as `<MiniLineageCard>` once VIS-D6 (full lineage modal)
- * stabilises the data shape. For C3 we render an inline mini-chain
- * placeholder driven by the existing store (no new API calls).
+ * lineage neighbourhood as a ladder: ancestors above (right-aligned,
+ * widening toward the subject), the selected subject row in the middle
+ * (full width), and descendants below (left-aligned, widening away from
+ * the subject). The two ladders meet at the subject row.
  *
- * Geometry: ~280 × 260, anchored to the right of the row with an
- * anchor-arrow at the left edge. Closes on outside click, Escape, or
- * the × button. The popover anchor is the parent `<LibraryRow>`;
- * position is `absolute top-0 left-full` so siblings don't reflow.
+ * Layout rules (per the final mock):
+ *   1. Ancestor row order  : [type] [name] [icon] — right-aligned.
+ *   2. Descendant row order: [icon] [name] [type] — left-aligned.
+ *   3. Each successive ancestor row (top → bottom) shifts left by `STEP`.
+ *   4. The deepest-nested ancestor row's left edge matches the first
+ *      descendant row's left edge, so the two ladders mirror at the
+ *      subject row.
+ *   5. A dotted line drops from the left of each direct-ancestor's
+ *      `[type]` pill down to the top of the subject row's icon column.
+ *   6. The subject row pins `[icon]` left, `[type]` right, and centres
+ *      `[name]` between them. No `THIS` chip.
  *
- * NOTE: For C3 the lineage chain is computed locally from the store
- * (chart → first insight → first model → first source). Real upstream
- * traversal lands with the shared MiniLineageCard in VIS-780 (C4).
+ * Behaviour:
+ *   - Click the ancestors region → collapses ancestors.
+ *   - Click the descendants region → collapses descendants.
+ *   - The body is `overflow-y-auto` with a fixed max-height; the
+ *     collapse + scroll combination keeps complex DAGs usable in a
+ *     small surface.
+ *
+ * The data walker is intentionally a subset of the full Lineage DAG —
+ * it's the C-3 placeholder until VIS-D6 ships the shared
+ * `<MiniLineageCard>` and VIS-780 (C-4) migrates this popover to it.
  */
-// There are only two real tones in this surface — mulberry for the Layout
-// section (chart/table/markdown/input) and teal for the Data section
-// (sources, models, dimensions, metrics, relations, insights). Anything
-// that isn't a Layout type (dashboard/insert/etc.) defaults to teal, which
-// is the data-layer baseline used elsewhere in the popover.
+
+// Two tone palettes mirror the Library section colours: mulberry for
+// Layout-section types (chart / table / markdown / input) and teal for
+// Data-section types (sources, models, dimensions, metrics, relations,
+// insights). Dashboards default to mulberry since they belong to the
+// layout side of the world.
 const MULBERRY_TONE = {
   iconBg: 'bg-[#e2d7dd]/70',
   iconFg: 'text-[#713b57]',
@@ -43,144 +56,386 @@ const TEAL_TONE = {
   pillFg: 'text-[#1b4042]',
 };
 
-const getTone = (type) => (LAYOUT_TYPES.includes(type) ? MULBERRY_TONE : TEAL_TONE);
-// Object-type icons come from the app-wide canonical `objectTypeConfigs.js`
-// (MUI icons); `getTypeIcon` falls back to a sensible default for unknowns.
-const getIcon = (type) => getTypeIcon(type);
-
-/**
- * LineageRow — single node row inside the popover. Mirrors the row layout
- * shipped by `mini-lineage-card.jsx` (icon tile + type pill + name).
- */
-const LineageRow = ({ node, isSubject }) => {
-  const tone = getTone(node.type);
-  const I = getIcon(node.type);
-  return (
-    <li
-      data-testid={`library-flip-popover-lineage-${node.type}-${node.name}`}
-      className={[
-        'group flex w-full items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-0 text-left',
-        isSubject ? 'ring-1 ring-[#713b57]/30 bg-[#e2d7dd]/30' : '',
-      ].join(' ')}
-    >
-      <span
-        className={`relative z-10 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded ${tone.iconBg} ${tone.iconFg}`}
-      >
-        <I style={{ fontSize: 10 }} />
-      </span>
-      <span
-        className={`inline-flex h-3 shrink-0 items-center rounded-sm px-1 text-[8px] font-bold uppercase tracking-wider ${tone.pillBg} ${tone.pillFg}`}
-      >
-        {node.type}
-      </span>
-      <span
-        className={`min-w-0 flex-1 truncate text-[11.5px] ${
-          isSubject ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'
-        }`}
-      >
-        {node.name}
-      </span>
-      {isSubject && (
-        <span className="shrink-0 inline-flex h-3 items-center rounded-sm bg-[#713b57] px-1 text-[8px] font-bold uppercase tracking-wider text-white">
-          this
-        </span>
-      )}
-    </li>
-  );
+// Sources sit in the data layer but get a warm highlight in the mock so
+// the originating system stands out at the top of the chain.
+const ORANGE_TONE = {
+  iconBg: 'bg-[#f4d6cc]/80',
+  iconFg: 'text-[#a44326]',
+  pillBg: 'bg-[#f4d6cc]',
+  pillFg: 'text-[#a44326]',
 };
 
-/**
- * Build a small ancestor chain for the given subject by walking the simplest
- * relationships exposed in the existing store. This is intentionally a
- * subset of what the full lineage modal (D-6) will surface — it covers the
- * common cases (chart → insight → model → source) so the popover is useful
- * even before VIS-780 wires the shared `<MiniLineageCard>`.
- */
+const getTone = type => {
+  if (type === 'source') return ORANGE_TONE;
+  if (LAYOUT_TYPES.includes(type) || type === 'dashboard') return MULBERRY_TONE;
+  return TEAL_TONE;
+};
+
+const getIcon = type => getTypeIcon(type);
+
+// Ladder geometry. ROW_HEIGHT × ROW_GAP must stay in sync with the
+// classes on the row containers below — the dotted-connector heights
+// are computed analytically from these constants.
+const ROW_HEIGHT = 22; // h-[22px]
+const ROW_GAP = 2; // gap-[2px]
+const STEP = 18; // per-rung left/right shift
+const BASE_INDENT = 12; // where the lowest ancestor + first descendant align
+const CARD_WIDTH = 340;
+
+// ---------------------------------------------------------------------------
+// Relations walker
+// ---------------------------------------------------------------------------
+
 function findByName(list, name) {
   if (!Array.isArray(list) || !name) return null;
-  return list.find((o) => o && o.name === name) || null;
+  return list.find(o => o && o.name === name) || null;
 }
 
-function buildChainFromStore(subject, storeApi) {
-  if (!subject) return [];
-  const chain = [];
-  const seen = new Set([`${subject.type}:${subject.name}`]);
+function refValue(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'string') return ref;
+  return ref.name || ref.ref || null;
+}
 
-  if (subject.type === 'chart') {
-    const chart = storeApi.getChartByName?.(subject.name);
-    const insightRef = pickInsightRef(chart);
-    if (insightRef) {
-      const insight = storeApi.getInsightByName?.(insightRef);
-      if (insight && !seen.has(`insight:${insight.name}`)) {
-        chain.push({ type: 'insight', name: insight.name });
-        seen.add(`insight:${insight.name}`);
-        appendModelAndSource(insight, storeApi, chain, seen);
-      }
+function pickInsightRefs(chart) {
+  const list = chart?.insights || chart?.config?.insights || [];
+  if (!Array.isArray(list)) return [];
+  return list.map(refValue).filter(Boolean);
+}
+
+function pickModelRef(insight) {
+  return refValue(insight?.model || insight?.config?.model);
+}
+
+function pickSourceRef(model) {
+  return refValue(model?.source || model?.config?.source);
+}
+
+/**
+ * Walk a chart's upstream chain. Each direct insight is pushed first,
+ * followed by its model and source (deduped). This gives the mock's
+ * interleaved ladder (source · model · insight · model · insight · subject).
+ */
+function pushChartAncestors(chart, storeApi, push, seen) {
+  const refs = pickInsightRefs(chart);
+  refs.forEach(insightRef => {
+    const insight = storeApi.getInsightByName?.(insightRef);
+    if (!insight) return;
+    pushInsightAncestors(insight, storeApi, push, seen, /* isInsightDirect */ true);
+  });
+}
+
+function pushInsightAncestors(insight, storeApi, push, seen, isInsightDirect = true) {
+  const modelRef = pickModelRef(insight);
+  if (modelRef) {
+    const model =
+      storeApi.getModelByName?.(modelRef) ||
+      findByName(storeApi.csvScriptModels, modelRef) ||
+      findByName(storeApi.localMergeModels, modelRef);
+    if (model) {
+      pushModelAncestors(model, storeApi, push, seen, /* isModelDirect */ false);
+    } else {
+      push({ type: 'model', name: modelRef, isDirect: false }, seen);
     }
+  }
+  push({ type: 'insight', name: insight.name, isDirect: isInsightDirect }, seen);
+}
+
+function pushModelAncestors(model, storeApi, push, seen, isModelDirect = true) {
+  const sourceRef = pickSourceRef(model);
+  if (sourceRef) {
+    push({ type: 'source', name: sourceRef, isDirect: false }, seen);
+  }
+  push({ type: 'model', name: model.name, isDirect: isModelDirect }, seen);
+}
+
+// ---------------------------------------------------------------------------
+// Descendant walkers — scan the store for objects that reference the subject.
+// ---------------------------------------------------------------------------
+
+function collectDashboardsReferencing(name, dashboards) {
+  if (!Array.isArray(dashboards)) return [];
+  const hits = [];
+  dashboards.forEach(d => {
+    if (!d || !Array.isArray(d.rows)) return;
+    const matches = d.rows.some(row => {
+      if (!row || !Array.isArray(row.items)) return false;
+      return row.items.some(item => {
+        if (!item) return false;
+        const itemRef = refValue(item.chart) || refValue(item.table) || refValue(item.markdown);
+        return itemRef === name;
+      });
+    });
+    if (matches) hits.push(d.name);
+  });
+  return hits;
+}
+
+function collectChartsReferencing(insightName, charts) {
+  if (!Array.isArray(charts)) return [];
+  return charts
+    .filter(c => pickInsightRefs(c).includes(insightName))
+    .map(c => c.name)
+    .filter(Boolean);
+}
+
+function collectInsightsReferencing(modelName, insights) {
+  if (!Array.isArray(insights)) return [];
+  return insights
+    .filter(i => pickModelRef(i) === modelName)
+    .map(i => i.name)
+    .filter(Boolean);
+}
+
+function collectModelsReferencing(sourceName, ...modelLists) {
+  const hits = [];
+  modelLists.forEach(list => {
+    if (!Array.isArray(list)) return;
+    list.forEach(m => {
+      if (m && pickSourceRef(m) === sourceName) hits.push(m.name);
+    });
+  });
+  return hits;
+}
+
+function buildAncestors(subject, storeApi) {
+  if (!subject) return [];
+  const out = [];
+  const seen = new Set([`${subject.type}:${subject.name}`]);
+  const push = (node, seenSet) => {
+    const key = `${node.type}:${node.name}`;
+    if (seenSet.has(key)) return;
+    seenSet.add(key);
+    out.push(node);
+  };
+
+  if (subject.type === 'chart' || subject.type === 'table') {
+    const obj =
+      subject.type === 'chart'
+        ? storeApi.getChartByName?.(subject.name)
+        : findByName(storeApi.tables, subject.name);
+    if (obj) pushChartAncestors(obj, storeApi, push, seen);
   } else if (subject.type === 'insight') {
     const insight = storeApi.getInsightByName?.(subject.name);
-    if (insight) appendModelAndSource(insight, storeApi, chain, seen);
+    if (insight) {
+      // Subject itself is the "direct" node — its parents are model/source.
+      const modelRef = pickModelRef(insight);
+      if (modelRef) {
+        const model =
+          storeApi.getModelByName?.(modelRef) ||
+          findByName(storeApi.csvScriptModels, modelRef) ||
+          findByName(storeApi.localMergeModels, modelRef);
+        if (model) pushModelAncestors(model, storeApi, push, seen, true);
+        else push({ type: 'model', name: modelRef, isDirect: true }, seen);
+      }
+    }
   } else if (subject.type === 'model') {
     const model =
       storeApi.getModelByName?.(subject.name) ||
       findByName(storeApi.csvScriptModels, subject.name) ||
       findByName(storeApi.localMergeModels, subject.name);
-    if (model) appendSource(model, storeApi, chain, seen);
-  } else if (subject.type === 'source') {
-    // Sources have no upstream; the chain is just the subject row.
-  } else if (subject.type === 'insert') {
-    // Layout primitives have no lineage.
+    if (model) {
+      const sourceRef = pickSourceRef(model);
+      if (sourceRef) push({ type: 'source', name: sourceRef, isDirect: true }, seen);
+    }
   }
+  // sources, dashboards, markdowns, inputs, inserts have no upstream.
 
-  return chain;
+  return out;
 }
 
-function pickInsightRef(chart) {
-  if (!chart) return null;
-  // Charts reference one or more insights via `insights: [{ ref|name }]`.
-  // We pick the first reference that looks like a name.
-  const list = chart.insights || chart.config?.insights || [];
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const first = list[0];
-  if (typeof first === 'string') return first;
-  return first?.name || first?.ref || null;
-}
+function buildDescendants(subject, storeApi) {
+  if (!subject) return [];
+  const out = [];
+  const seen = new Set([`${subject.type}:${subject.name}`]);
+  const push = node => {
+    const key = `${node.type}:${node.name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(node);
+  };
 
-function appendModelAndSource(insight, storeApi, chain, seen) {
-  const modelRef = insight?.model || insight?.config?.model;
-  if (modelRef && !seen.has(`model:${modelRef}`)) {
-    const model =
-      storeApi.getModelByName?.(modelRef) ||
-      findByName(storeApi.csvScriptModels, modelRef) ||
-      findByName(storeApi.localMergeModels, modelRef);
-    chain.push({ type: 'model', name: modelRef });
-    seen.add(`model:${modelRef}`);
-    if (model) appendSource(model, storeApi, chain, seen);
+  if (subject.type === 'source') {
+    const models = collectModelsReferencing(
+      subject.name,
+      storeApi.models,
+      storeApi.csvScriptModels,
+      storeApi.localMergeModels
+    );
+    models.forEach(name => push({ type: 'model', name, isDirect: true }));
+  } else if (subject.type === 'model') {
+    collectInsightsReferencing(subject.name, storeApi.insights).forEach(name =>
+      push({ type: 'insight', name, isDirect: true })
+    );
+  } else if (subject.type === 'insight') {
+    collectChartsReferencing(subject.name, storeApi.charts).forEach(name =>
+      push({ type: 'chart', name, isDirect: true })
+    );
+  } else if (
+    subject.type === 'chart' ||
+    subject.type === 'table' ||
+    subject.type === 'markdown'
+  ) {
+    collectDashboardsReferencing(subject.name, storeApi.allDashboards).forEach(name =>
+      push({ type: 'dashboard', name, isDirect: true })
+    );
   }
+  // dashboards / inserts / inputs have no downstream we track here.
+
+  return out;
 }
 
-function appendSource(model, storeApi, chain, seen) {
-  const sourceRef = model?.source || model?.config?.source;
-  if (sourceRef && !seen.has(`source:${sourceRef}`)) {
-    chain.push({ type: 'source', name: sourceRef });
-    seen.add(`source:${sourceRef}`);
-  }
+function buildLineageRelations(subject, storeApi) {
+  return {
+    ancestors: buildAncestors(subject, storeApi),
+    descendants: buildDescendants(subject, storeApi),
+  };
 }
 
-// Fallback position used when no anchorRef is supplied (tests render the
-// popover in isolation without a row to anchor to).
+// Backward-compat: VIS-780 will replace this with `<MiniLineageCard>`.
+// The legacy chain (subject's upstream-only chain, deepest-first → direct)
+// is still useful in places that imported it from this module.
+function buildChainFromStore(subject, storeApi) {
+  return buildAncestors(subject, storeApi);
+}
+
+// ---------------------------------------------------------------------------
+// Row primitives
+// ---------------------------------------------------------------------------
+
+const TypePill = ({ type, tone, alignRight }) => (
+  <span
+    className={[
+      'inline-flex h-3 shrink-0 items-center rounded-sm px-1 text-[8px] font-bold uppercase tracking-wider',
+      tone.pillBg,
+      tone.pillFg,
+    ].join(' ')}
+    style={alignRight ? { marginLeft: 'auto' } : undefined}
+  >
+    {type}
+  </span>
+);
+
+const IconTile = ({ Icon, tone }) => (
+  <span
+    className={[
+      'relative z-10 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded',
+      tone.iconBg,
+      tone.iconFg,
+    ].join(' ')}
+  >
+    <Icon style={{ fontSize: 10 }} />
+  </span>
+);
+
+const NameLabel = ({ name, align = 'left' }) => (
+  <span
+    className={[
+      'min-w-0 truncate text-[11.5px] font-medium text-gray-800',
+      align === 'center' ? 'flex-1 text-center' : 'flex-1',
+    ].join(' ')}
+  >
+    {name}
+  </span>
+);
+
+const AncestorRow = ({ node, leftPad, dottedHeight, testIdPrefix }) => {
+  const tone = getTone(node.type);
+  const Icon = getIcon(node.type);
+  return (
+    <li
+      data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
+      data-direction="ancestor"
+      data-direct={node.isDirect ? 'true' : 'false'}
+      className="relative flex items-center gap-1.5 self-stretch"
+      style={{
+        height: ROW_HEIGHT,
+        paddingLeft: leftPad,
+        paddingRight: 4,
+      }}
+    >
+      {/* Dotted connector: drops from the left of the [type] pill down
+          past every row beneath it to the top of the subject's icon. */}
+      {node.isDirect && dottedHeight > 0 && (
+        <span
+          aria-hidden="true"
+          data-testid={`${testIdPrefix}-dotted-${node.name}`}
+          className="absolute border-l border-dotted border-gray-400"
+          style={{
+            left: leftPad - 4,
+            top: ROW_HEIGHT / 2,
+            height: dottedHeight,
+          }}
+        />
+      )}
+      <TypePill type={node.type} tone={tone} />
+      <NameLabel name={node.name} />
+      <IconTile Icon={Icon} tone={tone} />
+    </li>
+  );
+};
+
+const DescendantRow = ({ node, leftPad, testIdPrefix }) => {
+  const tone = getTone(node.type);
+  const Icon = getIcon(node.type);
+  return (
+    <li
+      data-testid={`${testIdPrefix}-lineage-${node.type}-${node.name}`}
+      data-direction="descendant"
+      data-direct={node.isDirect ? 'true' : 'false'}
+      className="relative flex items-center gap-1.5 self-stretch"
+      style={{
+        height: ROW_HEIGHT,
+        paddingLeft: leftPad,
+        paddingRight: 4,
+      }}
+    >
+      <IconTile Icon={Icon} tone={tone} />
+      <NameLabel name={node.name} />
+      <TypePill type={node.type} tone={tone} alignRight />
+    </li>
+  );
+};
+
+const SubjectRow = ({ subject, testIdPrefix }) => {
+  const tone = getTone(subject.type);
+  const Icon = getIcon(subject.type);
+  return (
+    <li
+      data-testid={`${testIdPrefix}-lineage-subject`}
+      data-direction="subject"
+      className="relative flex items-center self-stretch rounded-md ring-1 ring-[#713b57]/40 bg-[#e2d7dd]/40"
+      style={{ height: ROW_HEIGHT + 4, paddingLeft: 6, paddingRight: 6 }}
+    >
+      <IconTile Icon={Icon} tone={tone} />
+      <span className="flex-1 text-center text-[11.5px] font-semibold text-gray-900 truncate min-w-0 px-2">
+        {subject.name}
+      </span>
+      <TypePill type={subject.type} tone={tone} />
+    </li>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Anchoring
+// ---------------------------------------------------------------------------
+
 const FALLBACK_POSITION = { top: 100, left: 100 };
 
-const computeAnchoredPosition = (anchorEl) => {
+const computeAnchoredPosition = anchorEl => {
   if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') {
     return FALLBACK_POSITION;
   }
   const rect = anchorEl.getBoundingClientRect();
   return {
     top: rect.top + rect.height / 2,
-    left: rect.right + 12, // 12 px gap matches the design's `ml-3`
+    left: rect.right + 12,
   };
 };
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 const LibraryRowFlipPopover = ({
   obj,
@@ -190,19 +445,16 @@ const LibraryRowFlipPopover = ({
 }) => {
   const popoverRef = useRef(null);
 
-  // Track anchor position so the popover follows the row across scroll +
-  // resize. Rendered into document.body via portal (so the Library's
-  // `overflow-y-auto` ancestor doesn't clip it horizontally — CSS coerces
-  // a `visible` axis to `auto` when the other axis is `auto`).
   const [position, setPosition] = useState(() =>
     computeAnchoredPosition(anchorRef?.current)
   );
+  const [ancestorsOpen, setAncestorsOpen] = useState(true);
+  const [descendantsOpen, setDescendantsOpen] = useState(true);
 
   useEffect(() => {
     if (!anchorRef?.current) return undefined;
     const update = () => setPosition(computeAnchoredPosition(anchorRef.current));
     update();
-    // Capture phase to catch scrolls in any ancestor container.
     window.addEventListener('scroll', update, true);
     window.addEventListener('resize', update);
     return () => {
@@ -211,33 +463,49 @@ const LibraryRowFlipPopover = ({
     };
   }, [anchorRef]);
 
-  // Pull the lineage data from the store. We use refs into the store to
-  // avoid re-renders on unrelated changes; the chain is computed once on
-  // mount (since the popover is short-lived).
-  const getChartByName = useStore((s) => s.getChartByName);
-  const getInsightByName = useStore((s) => s.getInsightByName);
-  const getModelByName = useStore((s) => s.getModelByName);
-  const csvScriptModels = useStore((s) => s.csvScriptModels);
-  const localMergeModels = useStore((s) => s.localMergeModels);
+  const getChartByName = useStore(s => s.getChartByName);
+  const getInsightByName = useStore(s => s.getInsightByName);
+  const getModelByName = useStore(s => s.getModelByName);
+  const charts = useStore(s => s.charts);
+  const insights = useStore(s => s.insights);
+  const models = useStore(s => s.models);
+  const tables = useStore(s => s.tables);
+  const allDashboards = useStore(s => s.allDashboards);
+  const csvScriptModels = useStore(s => s.csvScriptModels);
+  const localMergeModels = useStore(s => s.localMergeModels);
 
-  const chain = useMemo(() => {
-    return buildChainFromStore(obj, {
+  const relations = useMemo(() => {
+    return buildLineageRelations(obj, {
       getChartByName,
       getInsightByName,
       getModelByName,
+      charts,
+      insights,
+      models,
+      tables,
+      allDashboards,
       csvScriptModels,
       localMergeModels,
     });
-  }, [obj, getChartByName, getInsightByName, getModelByName, csvScriptModels, localMergeModels]);
+  }, [
+    obj,
+    getChartByName,
+    getInsightByName,
+    getModelByName,
+    charts,
+    insights,
+    models,
+    tables,
+    allDashboards,
+    csvScriptModels,
+    localMergeModels,
+  ]);
 
-  // Close on outside click or Escape.
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        onClose && onClose();
-      }
+    const onKey = e => {
+      if (e.key === 'Escape') onClose && onClose();
     };
-    const onDoc = (e) => {
+    const onDoc = e => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
         onClose && onClose();
       }
@@ -255,7 +523,28 @@ const LibraryRowFlipPopover = ({
   const selectorRendered = obj.name
     ? `+${String(obj.name).toLowerCase().replace(/[^a-z0-9_]+/g, '_')}`
     : '+';
-  const isEmpty = chain.length === 0 && obj.type !== 'insert';
+
+  const ancestors = relations.ancestors;
+  const descendants = relations.descendants;
+  const N = ancestors.length;
+  const isEmpty = N === 0 && descendants.length === 0;
+
+  // Compute each ancestor row's left padding so that:
+  //   - the bottom-most ancestor (index N-1) sits at BASE_INDENT
+  //   - each row above shifts left by STEP (i.e. its padding grows)
+  // That mirrors the descendant ladder, which starts at BASE_INDENT and
+  // grows by STEP per row downward.
+  const ancestorLeftPad = i => BASE_INDENT + (N - 1 - i) * STEP;
+  const descendantLeftPad = j => BASE_INDENT + j * STEP;
+
+  // Dotted line drops from the [type] pill of a direct ancestor down to
+  // the top of the subject row. Each row contributes ROW_HEIGHT + ROW_GAP
+  // of vertical distance; the line should reach the top of the subject
+  // row (which sits just below the last ancestor row).
+  const dottedHeightFor = i => {
+    const rowsBetween = N - i; // includes this row + every row below + the gap to subject
+    return rowsBetween * (ROW_HEIGHT + ROW_GAP) - ROW_HEIGHT / 2;
+  };
 
   return createPortal(
     <div
@@ -267,7 +556,7 @@ const LibraryRowFlipPopover = ({
       style={{
         top: position.top,
         left: position.left,
-        width: 280,
+        width: CARD_WIDTH,
         transform: 'translateY(-50%)',
       }}
     >
@@ -318,6 +607,7 @@ const LibraryRowFlipPopover = ({
 
         <div
           className="flex-1 min-h-0 overflow-y-auto px-3 py-2"
+          style={{ maxHeight: 260 }}
           data-testid={`${testIdPrefix}-body`}
         >
           {isEmpty ? (
@@ -325,17 +615,100 @@ const LibraryRowFlipPopover = ({
               className="px-1 text-[11px] italic text-gray-500"
               data-testid={`${testIdPrefix}-empty`}
             >
-              No upstream dependencies for this object.
+              No lineage available for this object.
             </p>
           ) : (
             <ul
-              className="flex flex-col gap-0.5"
+              className="flex flex-col"
+              style={{ rowGap: ROW_GAP }}
               data-testid={`${testIdPrefix}-chain`}
             >
-              <LineageRow node={{ type: obj.type, name: obj.name }} isSubject />
-              {chain.map((node, idx) => (
-                <LineageRow key={`${node.type}:${node.name}:${idx}`} node={node} />
-              ))}
+              {N > 0 && (
+                <li
+                  data-testid={`${testIdPrefix}-ancestors`}
+                  data-collapsed={ancestorsOpen ? 'false' : 'true'}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setAncestorsOpen(v => !v)}
+                    aria-expanded={ancestorsOpen}
+                    aria-label={
+                      ancestorsOpen ? 'Collapse ancestors' : 'Expand ancestors'
+                    }
+                    data-testid={`${testIdPrefix}-ancestors-toggle`}
+                    className="block w-full cursor-pointer text-left"
+                  >
+                    {ancestorsOpen ? (
+                      <ul
+                        className="flex flex-col"
+                        style={{ rowGap: ROW_GAP }}
+                      >
+                        {ancestors.map((node, i) => (
+                          <AncestorRow
+                            key={`anc-${node.type}-${node.name}-${i}`}
+                            node={node}
+                            leftPad={ancestorLeftPad(i)}
+                            dottedHeight={node.isDirect ? dottedHeightFor(i) : 0}
+                            testIdPrefix={testIdPrefix}
+                          />
+                        ))}
+                      </ul>
+                    ) : (
+                      <span
+                        className="inline-flex h-4 items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500"
+                        style={{ marginLeft: BASE_INDENT }}
+                      >
+                        +{N} upstream
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )}
+
+              <SubjectRow subject={obj} testIdPrefix={testIdPrefix} />
+
+              {descendants.length > 0 && (
+                <li
+                  data-testid={`${testIdPrefix}-descendants`}
+                  data-collapsed={descendantsOpen ? 'false' : 'true'}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDescendantsOpen(v => !v)}
+                    aria-expanded={descendantsOpen}
+                    aria-label={
+                      descendantsOpen
+                        ? 'Collapse descendants'
+                        : 'Expand descendants'
+                    }
+                    data-testid={`${testIdPrefix}-descendants-toggle`}
+                    className="block w-full cursor-pointer text-left"
+                  >
+                    {descendantsOpen ? (
+                      <ul
+                        className="flex flex-col"
+                        style={{ rowGap: ROW_GAP }}
+                      >
+                        {descendants.map((node, j) => (
+                          <DescendantRow
+                            key={`desc-${node.type}-${node.name}-${j}`}
+                            node={node}
+                            leftPad={descendantLeftPad(j)}
+                            testIdPrefix={testIdPrefix}
+                          />
+                        ))}
+                      </ul>
+                    ) : (
+                      <span
+                        className="inline-flex h-4 items-center rounded bg-gray-100 px-1.5 text-[9.5px] font-medium uppercase tracking-wider text-gray-500"
+                        style={{ marginLeft: BASE_INDENT }}
+                      >
+                        +{descendants.length} downstream
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )}
             </ul>
           )}
         </div>
@@ -361,5 +734,14 @@ const LibraryRowFlipPopover = ({
   );
 };
 
-export { buildChainFromStore, getIcon, getTone };
+export {
+  buildChainFromStore,
+  buildLineageRelations,
+  getIcon,
+  getTone,
+  ROW_HEIGHT,
+  ROW_GAP,
+  STEP,
+  BASE_INDENT,
+};
 export default LibraryRowFlipPopover;
