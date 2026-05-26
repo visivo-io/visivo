@@ -756,26 +756,44 @@ const LibraryRowFlipPopover = ({
   const descendantConnectorPath = ({ parentX, parentY, childX, childY }) =>
     `M ${parentX} ${parentY + ICON_H / 2} L ${parentX} ${childY} L ${childX} ${childY}`;
 
-  // Dotted Γ-connector from each direct ancestor's [type] pill across
+  // Dotted Γ-connectors from each direct ancestor's [type] pill across
   // to the subject icon column and then DOWN to the top of the subject
-  // pill. The corner sits at the top-left of the gamma — horizontal
-  // segment first, then vertical — so the line reads as a header
-  // bracket dropping onto the subject rather than an L-bend.
+  // pill. When more than one direct ancestor exists we draw ONE shared
+  // vertical trunk at the subject icon column and just one horizontal
+  // arm per ancestor — otherwise multiple independent Γs overlap their
+  // vertical segments and produce a solid stripe rather than a tree.
   const dottedConnectors = [];
   if (ancestorsOpen) {
-    ancestors.forEach((node, i) => {
-      if (!node.isDirect) return;
-      const rowLeft = ancestorMarginLeft(node);
-      const startX = rowLeft - 4; // just left of the [type] pill
-      const startY = ancestorRowY(i);
-      const subjectTopY = N * (ROW_HEIGHT + ROW_GAP);
+    const directs = ancestors
+      .map((node, i) => ({ node, i }))
+      .filter(entry => entry.node.isDirect);
+    if (directs.length > 0) {
       const subjectIconX = 6 + ICON_W / 2;
+      const subjectTopY = N * (ROW_HEIGHT + ROW_GAP);
+      const topmostDirectY = ancestorRowY(directs[0].i);
+
+      // Shared vertical "trunk" drops from the topmost direct ancestor's
+      // row mid down to the top of the subject row, then meets the
+      // subject icon column.
       dottedConnectors.push({
-        key: `dotted-${node.name}`,
-        name: node.name,
-        d: `M ${startX} ${startY} L ${subjectIconX} ${startY} L ${subjectIconX} ${subjectTopY}`,
+        key: 'dotted-trunk',
+        name: 'trunk',
+        d: `M ${subjectIconX} ${topmostDirectY} L ${subjectIconX} ${subjectTopY}`,
       });
-    });
+
+      // One horizontal arm per direct ancestor — meets the trunk at the
+      // ancestor row's mid.
+      directs.forEach(({ node, i }) => {
+        const rowLeft = ancestorMarginLeft(node);
+        const startX = rowLeft - 4;
+        const rowMidY = ancestorRowY(i);
+        dottedConnectors.push({
+          key: `dotted-${node.name}`,
+          name: node.name,
+          d: `M ${startX} ${rowMidY} L ${subjectIconX} ${rowMidY}`,
+        });
+      });
+    }
   }
 
   const headerIconType = subjectForRender.type;
