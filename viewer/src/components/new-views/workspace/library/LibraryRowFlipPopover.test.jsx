@@ -403,6 +403,37 @@ describe('buildLineageRelations', () => {
     );
     expect(relations.ancestors.map(n => n.type).sort()).toEqual(['insight', 'insight']);
   });
+
+  test('flags terminal ancestors (no upstream of their own) for layout bumping', () => {
+    // Seed: insight has both a model AND an input as direct ancestors.
+    // The model has a source upstream → not terminal. The input has
+    // nothing upstream → terminal. Both are at depth 1.
+    act(() => {
+      useStore.setState({
+        ...useStore.getState(),
+        charts: [],
+        insights: [
+          {
+            name: 'date_insight',
+            child_item_names: ['daily_metrics', 'autocomplete_date'],
+          },
+        ],
+        models: [{ name: 'daily_metrics', child_item_names: ['local_postgres'] }],
+        sources: [{ name: 'local_postgres', child_item_names: [] }],
+        inputs: [{ name: 'autocomplete_date', child_item_names: [] }],
+      });
+    });
+    const relations = buildLineageRelations(
+      { type: 'insight', name: 'date_insight' },
+      storeApi()
+    );
+    const model = relations.ancestors.find(n => n.name === 'daily_metrics');
+    const input = relations.ancestors.find(n => n.name === 'autocomplete_date');
+    const source = relations.ancestors.find(n => n.name === 'local_postgres');
+    expect(model.isTerminal).toBe(false); // has source upstream
+    expect(input.isTerminal).toBe(true);  // nothing upstream
+    expect(source.isTerminal).toBe(true);
+  });
 });
 
 describe('default selector helper', () => {

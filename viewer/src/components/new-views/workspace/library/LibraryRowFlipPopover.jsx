@@ -265,6 +265,7 @@ function buildAncestors(subject, storeApi, maxDepth = UNBOUNDED) {
       name,
       depth,
       isDirect: depth === 1,
+      isTerminal: childs.length === 0,
       childNames: fromChildName ? [fromChildName] : [],
     });
   };
@@ -650,8 +651,17 @@ const LibraryRowFlipPopover = ({
   const sharedMaxDepth = Math.max(ancestorMaxDepth, descendantMaxDepth);
   const STEP = stepForMaxDepth(sharedMaxDepth);
 
+  // Terminal ancestors (nodes with no upstream of their own) align to
+  // the deepest visual column regardless of their actual distance from
+  // the subject. Otherwise a direct ancestor with no parent would sit
+  // at depth 1 directly under whatever ancestor happens to be at
+  // depth 2 above it, which falsely implies a chain. Bumping terminals
+  // to the rightmost column makes "this is a leaf of the upstream
+  // tree" the visual reading.
+  const ancestorEffectiveDepth = node =>
+    node.isTerminal ? ancestorMaxDepth : (node.depth || 1);
   const ancestorMarginLeft = node =>
-    BASE_INDENT + ((node.depth || 1) - 1) * STEP;
+    BASE_INDENT + (ancestorEffectiveDepth(node) - 1) * STEP;
   const descendantMarginLeft = node =>
     BASE_INDENT + ((node.depth || 1) - 1) * STEP;
 
