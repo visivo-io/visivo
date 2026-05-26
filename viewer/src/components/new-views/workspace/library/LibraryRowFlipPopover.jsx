@@ -63,18 +63,28 @@ function defaultSelector(name) {
 /**
  * Parse a Visivo selector string into `{ name, ancestors, descendants }`.
  *
- * Examples:
- *   "+revenue_chart+"   → unbounded ancestors + unbounded descendants
- *   "+2revenue_chart+1" → 2 ancestor levels, 1 descendant level
- *   "+revenue_chart"    → unbounded ancestors, no descendants
- *   "revenue_chart"     → just the subject row
+ * Syntax: depth digits sit OUTSIDE the `+`, the `+` always touches the
+ * object name. `+` alone means "unbounded in that direction", a missing
+ * `+` means "no traversal in that direction", and `N+` / `+N` clamps to
+ * N levels.
+ *
+ *   "+revenue_chart+"    → unbounded ancestors + unbounded descendants
+ *   "2+revenue_chart+1"  → 2 ancestor levels, 1 descendant level
+ *   "+revenue_chart"     → unbounded ancestors, no descendants
+ *   "2+revenue_chart"    → 2 ancestor levels, no descendants
+ *   "revenue_chart"      → just the subject row
+ *   "+monthly_revenue+"  → SWAPS the subject to `monthly_revenue` and
+ *                          shows its full upstream + downstream
  */
 function parseSelector(text, fallbackName) {
   const trimmed = String(text || '').trim();
   if (!trimmed) {
     return { name: fallbackName, ancestors: 0, descendants: 0 };
   }
-  const re = /^(\+(\d*))?([^+]+?)(\+(\d*))?$/;
+  // ((\d+)?\+)?   optional leading-depth + `+`
+  // ([^+]+?)      the object name (non-greedy, no `+`)
+  // (\+(\d+)?)?   optional trailing `+` + descendant-depth
+  const re = /^((\d+)?\+)?([^+]+?)(\+(\d+)?)?$/;
   const m = trimmed.match(re);
   if (!m) {
     return { name: fallbackName, ancestors: 0, descendants: 0 };
@@ -542,45 +552,56 @@ const LibraryRowFlipPopover = ({
     [selectorText, obj?.name]
   );
 
+  const storeApi = useMemo(
+    () => ({
+      charts,
+      insights,
+      models,
+      tables,
+      sources,
+      dimensions,
+      metrics,
+      relations: relationsList,
+      markdowns,
+      inputs,
+      allDashboards: dashboardsForWalker,
+      csvScriptModels,
+      localMergeModels,
+      defaults,
+    }),
+    [
+      charts,
+      insights,
+      models,
+      tables,
+      sources,
+      dimensions,
+      metrics,
+      relationsList,
+      markdowns,
+      inputs,
+      dashboardsForWalker,
+      csvScriptModels,
+      localMergeModels,
+      defaults,
+    ]
+  );
+
+  // The selector input is allowed to swap the SUBJECT in addition to
+  // clamping depths. When the parsed name resolves to an object in the
+  // store and isn't the row's own name, we render that object as the
+  // subject (so a user can chase a name they spot in the lineage).
+  const effectiveSubject = useMemo(() => {
+    if (!scope.name || !obj || scope.name === obj.name) return obj;
+    const index = buildTypeIndex(storeApi);
+    const hit = index.get(scope.name);
+    if (hit) return { type: hit.type, name: scope.name };
+    return obj;
+  }, [scope.name, obj, storeApi]);
+
   const lineage = useMemo(() => {
-    return buildLineageRelations(
-      obj,
-      {
-        charts,
-        insights,
-        models,
-        tables,
-        sources,
-        dimensions,
-        metrics,
-        relations: relationsList,
-        markdowns,
-        inputs,
-        allDashboards: dashboardsForWalker,
-        csvScriptModels,
-        localMergeModels,
-        defaults,
-      },
-      scope
-    );
-  }, [
-    obj,
-    scope,
-    charts,
-    insights,
-    models,
-    tables,
-    sources,
-    dimensions,
-    metrics,
-    relationsList,
-    markdowns,
-    inputs,
-    dashboardsForWalker,
-    csvScriptModels,
-    localMergeModels,
-    defaults,
-  ]);
+    return buildLineageRelations(effectiveSubject, storeApi, scope);
+  }, [effectiveSubject, scope, storeApi]);
 
   useEffect(() => {
     const onKey = e => {
@@ -601,6 +622,7 @@ const LibraryRowFlipPopover = ({
 
   if (!obj) return null;
 
+  const subjectForRender = effectiveSubject || obj;
   const ancestors = lineage.ancestors;
   const descendants = lineage.descendants;
   const N = ancestors.length;
@@ -667,7 +689,7 @@ const LibraryRowFlipPopover = ({
   if (ancestorsOpen) {
     ancestors.forEach((parent, parentIdx) => {
       (parent.childNames || []).forEach(childName => {
-        if (childName === obj.name) return; // direct → handled by dotted line
+        if (childName === subjectForRender.name) return; // direct → handled by dotted line
         const child = ancestorByName.get(childName);
         if (!child) return;
         ancestorConnectors.push({
@@ -694,7 +716,7 @@ const LibraryRowFlipPopover = ({
         });
       } else {
         (node.parentNames || []).forEach(parentName => {
-          if (parentName === obj.name) return; // handled above as direct
+          if (parentName === subjectForRender.name) return; // handled above as direct
           const parent = descendantByName.get(parentName);
           if (!parent) return;
           descendantConnectors.push({
@@ -756,12 +778,14 @@ const LibraryRowFlipPopover = ({
     });
   }
 
+  const headerIconType = subjectForRender.type;
+
   return createPortal(
     <div
       ref={popoverRef}
       data-testid={testIdPrefix}
       role="dialog"
-      aria-label={`Lineage preview for ${obj.name}`}
+      aria-label={`Lineage preview for ${subjectForRender.name}`}
       className="fixed z-50"
       style={{
         top: position.top,
@@ -777,14 +801,14 @@ const LibraryRowFlipPopover = ({
       <div className="relative rounded-lg bg-white shadow-lg ring-1 ring-gray-200">
         <header className="flex h-8 items-center gap-2 border-b border-gray-200 px-3">
           {(() => {
-            const Icon = getTypeIcon(obj.type);
+            const Icon = getTypeIcon(headerIconType);
             return <Icon style={{ fontSize: 14 }} className="text-gray-500" />;
           })()}
           <span
             data-testid={`${testIdPrefix}-name`}
             className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-gray-900"
           >
-            {obj.name}
+            {subjectForRender.name}
           </span>
           <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-gray-400">
             lineage
@@ -930,7 +954,7 @@ const LibraryRowFlipPopover = ({
                 </li>
               )}
 
-              <SubjectRow subject={obj} testIdPrefix={testIdPrefix} />
+              <SubjectRow subject={subjectForRender} testIdPrefix={testIdPrefix} />
 
               {M > 0 && (
                 <li

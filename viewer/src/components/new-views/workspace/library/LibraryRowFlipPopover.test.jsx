@@ -173,10 +173,10 @@ describe('LibraryRowFlipPopover — editable selector', () => {
     expect(input).toHaveValue('+revenue_chart+');
   });
 
-  test('typing `+1revenue_chart+1` clamps ancestor depth to 1 and descendant to 1', () => {
+  test('typing `1+revenue_chart+1` clamps ancestor depth to 1 and descendant to 1', () => {
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
     const input = screen.getByTestId('library-flip-popover-selector-input');
-    fireEvent.change(input, { target: { value: '+1revenue_chart+1' } });
+    fireEvent.change(input, { target: { value: '1+revenue_chart+1' } });
     // Direct insights still render, but their parent models + source must NOT.
     expect(
       screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
@@ -203,6 +203,42 @@ describe('LibraryRowFlipPopover — editable selector', () => {
     expect(
       screen.queryByTestId('library-flip-popover-lineage-dashboard-exec_kpi_dashboard')
     ).toBeNull();
+  });
+
+  test('changing the selector to a different object name swaps the subject', () => {
+    // Popover opens for revenue_chart; user retypes the selector to
+    // `+monthly_revenue+` — the popover should now render
+    // monthly_revenue's lineage (its own upstream source + its
+    // downstream insight) rather than revenue_chart's.
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const input = screen.getByTestId('library-flip-popover-selector-input');
+    fireEvent.change(input, { target: { value: '+monthly_revenue+' } });
+    // The header + subject row swap to monthly_revenue.
+    expect(screen.getByTestId('library-flip-popover-name')).toHaveTextContent(
+      'monthly_revenue'
+    );
+    const subjectRow = screen.getByTestId('library-flip-popover-lineage-subject');
+    expect(subjectRow).toHaveTextContent('monthly_revenue');
+    // monthly_revenue's downstream insight surfaces (it didn't before).
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-insight-revenue_breakdown')
+    ).toHaveAttribute('data-direction', 'descendant');
+    // monthly_revenue's upstream source surfaces as an ancestor.
+    expect(
+      screen.getByTestId('library-flip-popover-lineage-source-local_postgres')
+    ).toHaveAttribute('data-direction', 'ancestor');
+  });
+
+  test('selector with an unknown name falls back to the original subject', () => {
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
+    const input = screen.getByTestId('library-flip-popover-selector-input');
+    fireEvent.change(input, { target: { value: '+definitely_does_not_exist+' } });
+    // Header keeps the original row name; the lineage list collapses
+    // because the typed name doesn't resolve and the original subject's
+    // depth limits still apply (unbounded here).
+    expect(screen.getByTestId('library-flip-popover-name')).toHaveTextContent(
+      'revenue_chart'
+    );
   });
 });
 
@@ -272,11 +308,19 @@ describe('parseSelector', () => {
     });
   });
 
-  test('`+2name+1` clamps ancestor depth to 2 and descendant to 1', () => {
-    expect(parseSelector('+2revenue_chart+1', 'fallback')).toEqual({
+  test('`2+name+1` clamps ancestor depth to 2 and descendant to 1', () => {
+    expect(parseSelector('2+revenue_chart+1', 'fallback')).toEqual({
       name: 'revenue_chart',
       ancestors: 2,
       descendants: 1,
+    });
+  });
+
+  test('`2+name+` clamps ancestor depth to 2 and leaves descendants unbounded', () => {
+    expect(parseSelector('2+revenue_chart+', 'fallback')).toEqual({
+      name: 'revenue_chart',
+      ancestors: 2,
+      descendants: UNBOUNDED,
     });
   });
 
