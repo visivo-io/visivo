@@ -678,13 +678,6 @@ const LibraryRowFlipPopover = ({
   const descendantRowY = j =>
     subjectBottomY + ROW_GAP + j * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2;
 
-  // Trunk offset: how far OUTSIDE the icon column the connector trunk
-  // sits. Without this, the connector lines would draw straight through
-  // the icons; the offset pulls the vertical trunk into the gutter so
-  // the tree wraps around the icons (entering each from the icon's
-  // right edge for ancestors / left edge for descendants).
-  const TRUNK_OFFSET = 8;
-
   const ancestorConnectors = [];
   if (ancestorsOpen) {
     ancestors.forEach((parent, parentIdx) => {
@@ -731,19 +724,16 @@ const LibraryRowFlipPopover = ({
     });
   }
 
-  // Ancestors live on the RIGHT side of each row, so the connector
-  // trunk sits at `parent.iconRight + TRUNK_OFFSET` — out in the gutter
-  // past every icon. Path: enter from the parent icon's RIGHT edge,
-  // bend right into the trunk, drop down to the child row, then bend
-  // back LEFT to enter the child icon from the right.
+  // Ancestor edges read as an inverse-L: drop straight down from the
+  // parent icon's bottom-center, then bend LEFT into the child icon's
+  // right edge. When several children share a parent they all hang off
+  // the same vertical "trunk" (the parent icon's center X) and each
+  // gets its own horizontal arm — a real downward branching tree.
   const ancestorConnectorPath = ({ parentX, parentY, childX, childY }) => {
-    const trunkX = parentX + ICON_W / 2 + TRUNK_OFFSET;
-    const parentRightEdge = parentX + ICON_W / 2;
     const childRightEdge = childX + ICON_W / 2;
     return (
-      `M ${parentRightEdge} ${parentY}` +
-      ` L ${trunkX} ${parentY}` +
-      ` L ${trunkX} ${childY}` +
+      `M ${parentX} ${parentY + ICON_H / 2}` +
+      ` L ${parentX} ${childY}` +
       ` L ${childRightEdge} ${childY}`
     );
   };
