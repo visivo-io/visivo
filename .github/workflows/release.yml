@@ -61,6 +61,10 @@ jobs:
       - name: Build Artifact
         run: poetry run build
 
+      - name: Smoke test built binary
+        shell: bash
+        run: bash scripts/smoke_test_binary.sh dist/visivo
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
