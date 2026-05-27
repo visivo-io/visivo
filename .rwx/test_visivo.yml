@@ -183,6 +183,41 @@ tasks:
       DEBUG: true
     filter: [test-projects/integration]
 
+  - key: binary-init-smoke
+    # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
+    # `visivo init` in an empty directory — the exact path that crashed
+    # in v2.0.2 with `cannot import name 'EmailOptions' from
+    # 'jsonschema_rs.jsonschema_rs'`. Other binary tests in this file only
+    # exercise `visivo run`, which lazy-loads a different import graph and
+    # missed the bundling regression.
+    use: visivo-install
+    run: |
+      BIN="$PWD/dist/visivo/visivo"
+      test -x "$BIN" || (echo "binary not found at $BIN" && exit 1)
+      SMOKE_DIR=$(mktemp -d)
+
+      # --bare: exercise the full model import graph without binding a port.
+      (cd "$SMOKE_DIR" && "$BIN" init --bare)
+      test -f "$SMOKE_DIR/project.visivo.yml" || (echo "project.visivo.yml not written" && exit 1)
+
+      # Full serve path: confirm Flask boots and the onboarding page responds.
+      SERVE_DIR=$(mktemp -d)
+      (cd "$SERVE_DIR" && "$BIN" init --headless --port 8765) &
+      SERVE_PID=$!
+      trap 'kill $SERVE_PID 2>/dev/null || true' EXIT
+      for i in $(seq 1 30); do
+        if curl -fsS "http://localhost:8765/" >/dev/null 2>&1; then
+          echo "onboarding page is up after ${i}s"
+          break
+        fi
+        sleep 1
+      done
+      curl -fsS "http://localhost:8765/" >/dev/null \
+        || (echo "init+serve never responded on :8765" && exit 1)
+    env:
+      STACKTRACE: true
+    filter: [dist]
+
   - key: postgres-packages
     run: |
       sudo apt-get update
