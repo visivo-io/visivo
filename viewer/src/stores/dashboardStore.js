@@ -41,6 +41,38 @@ const createDashboardSlice = (set, get) => ({
     }
   },
 
+  /**
+   * Reassign a dashboard to a different level (draft edit).
+   *
+   * The Project Editor's drag-between-levels gesture calls this. It persists
+   * the change through the same draft cache path as `saveDashboard` — the
+   * dashboard's stored config gets its `level` field updated (or removed for
+   * the Unassigned group, signalled by a `null` / `undefined` level) — so the
+   * publish flow picks it up like any other unpublished edit.
+   *
+   * Returns `{ success, result|error }`. No-op (success: false) when the
+   * dashboard isn't found or already sits in the target level.
+   */
+  reassignDashboardLevel: async (name, level) => {
+    const dashboards = get().dashboards || [];
+    const dashboard = dashboards.find(d => d.name === name);
+    if (!dashboard) {
+      return { success: false, error: `Dashboard "${name}" not found` };
+    }
+    const currentLevel = dashboard.config?.level ?? null;
+    const nextLevel = level ?? null;
+    if (currentLevel === nextLevel) {
+      return { success: false, error: 'unchanged' };
+    }
+    const nextConfig = { ...(dashboard.config || {}) };
+    if (nextLevel === null) {
+      delete nextConfig.level;
+    } else {
+      nextConfig.level = nextLevel;
+    }
+    return get().saveDashboard(name, nextConfig);
+  },
+
   // Mark dashboard for deletion
   deleteDashboard: async name => {
     try {
