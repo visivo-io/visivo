@@ -105,12 +105,12 @@ const LineageCanvas = () => {
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <span
           data-testid="lineage-canvas-scope-pill"
-          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-[#e2d7dd] px-2 text-[12px] font-medium text-[#5a2f45]"
+          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary-100 px-2 text-[12px] font-medium text-primary-600"
         >
           <PiTreeStructure className="h-3.5 w-3.5" />
           <span className="font-semibold">{scopeLabel}</span>
           {scopeKind && (
-            <span className="text-[10px] uppercase tracking-wider text-[#5a2f45]/70">
+            <span className="text-[10px] uppercase tracking-wider text-primary-600/70">
               {scopeKind}
             </span>
           )}
