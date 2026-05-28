@@ -1,6 +1,8 @@
 import React from 'react';
 import { PiList, PiPencil, PiSidebar } from 'react-icons/pi';
 import useStore from '../../../stores/store';
+import OutlineTreePanel from './OutlineTreePanel';
+import { emitWorkspaceEvent } from './telemetry';
 
 /**
  * RightRail — Outline / Edit tab host (VIS-775 / Track B B2).
@@ -50,19 +52,8 @@ const TabBtn = ({ tab, active, onClick }) => {
 
 const RightRailBody = ({ activeTab, activeObject }) => {
   if (activeTab === 'outline') {
-    return (
-      <div
-        data-testid="workspace-right-rail-outline"
-        className="flex flex-1 items-start justify-center px-6 py-8 text-center"
-      >
-        <div className="text-gray-500">
-          <PiList aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
-          <p className="text-[12px] leading-relaxed">
-            Outline tree coming soon (VIS-F3)
-          </p>
-        </div>
-      </div>
-    );
+    // VIS-793 / Track F F-3 — the real Outline tree of the scoped dashboard.
+    return <OutlineTreePanel />;
   }
   // Edit is the default tab — also the fallthrough so any unknown tab key
   // still renders the editor surface rather than a blank panel.
@@ -181,8 +172,21 @@ const RightRail = () => {
   const collapsed = useStore(s => s.workspaceRightCollapsed);
   const toggleCollapsed = useStore(s => s.toggleWorkspaceRightCollapsed);
   const activeTab = useStore(s => s.workspaceRightTab);
-  const onSelectTab = useStore(s => s.setWorkspaceRightTab);
+  const setRightTab = useStore(s => s.setWorkspaceRightTab);
   const activeObject = useStore(s => s.workspaceActiveObject);
+
+  // Wrap the store setter so the right-rail tab switch fires telemetry
+  // (VIS-793). Only emit when the tab actually changes — re-clicking the
+  // active tab is a no-op.
+  const onSelectTab = React.useCallback(
+    tab => {
+      if (tab === activeTab) return;
+      setRightTab(tab);
+      emitWorkspaceEvent('right_rail_tab_switched', { tab });
+    },
+    [activeTab, setRightTab]
+  );
+
   return collapsed ? (
     <RightRailCollapsed activeTab={activeTab} onExpand={toggleCollapsed} />
   ) : (
