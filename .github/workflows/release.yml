@@ -41,6 +41,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
 
@@ -48,14 +53,14 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
-          cd viewer 
-          yarn install --network-timeout 600000 && yarn deploy 
+          cd viewer
+          yarn install --network-timeout 600000 && yarn deploy
           cd ..
           poetry install
           poetry run write-schema-json
           poetry run copy-install-script
           poetry version ${{ inputs.version }}
-          ls 
+          ls
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
 
       - name: Build Artifact
@@ -82,6 +87,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9

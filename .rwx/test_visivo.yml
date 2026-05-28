@@ -183,6 +183,47 @@ tasks:
       DEBUG: true
     filter: [test-projects/integration]
 
+  - key: binary-init-smoke
+    # Runs the PyInstaller bundle (dist/visivo/visivo) end-to-end against
+    # `visivo init` in an empty directory — the exact path that crashed
+    # in v2.0.2 with `cannot import name 'EmailOptions' from
+    # 'jsonschema_rs.jsonschema_rs'`. Other binary tests in this file only
+    # exercise `visivo run`, which lazy-loads a different import graph and
+    # missed the bundling regression.
+    #
+    # The auto-launched dev server is a foreground, never-exiting process, so
+    # it runs as a Mint background-process (which Mint tears down). Inlining it
+    # in `run` with `&` orphaned the PyInstaller child and hung the task to the
+    # 10-minute timeout.
+    use: visivo-install
+    background-processes:
+      - key: init-serve
+        # `init --headless` scaffolds a fresh project in an empty dir and then
+        # boots `visivo serve`. A broken bundle crashes here on import, so the
+        # ready-check never passes and the task fails fast (instead of hanging).
+        run: |
+          BIN="$(pwd)/dist/visivo/visivo"
+          SERVE_DIR=$(mktemp -d)
+          cd "$SERVE_DIR"
+          "$BIN" init --headless --port 8765
+        ready-check: curl -fsS http://localhost:8765/ >/dev/null
+    run: |
+      BIN="$PWD/dist/visivo/visivo"
+      test -x "$BIN" || (echo "binary not found at $BIN" && exit 1)
+
+      # --bare: exercise the full model import graph without binding a port.
+      SMOKE_DIR=$(mktemp -d)
+      (cd "$SMOKE_DIR" && "$BIN" init --bare)
+      test -f "$SMOKE_DIR/project.visivo.yml" || (echo "project.visivo.yml not written" && exit 1)
+
+      # The init-serve background process passed its ready-check (Flask booted
+      # and served the onboarding page); assert it once more explicitly.
+      curl -fsS http://localhost:8765/ >/dev/null \
+        || (echo "init+serve not reachable on :8765" && exit 1)
+    env:
+      STACKTRACE: true
+    filter: [dist]
+
   - key: postgres-packages
     run: |
       sudo apt-get update
