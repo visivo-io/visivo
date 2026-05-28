@@ -37,6 +37,11 @@ jobs:
         with:
           node-version: 24
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
 
@@ -90,6 +95,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
 
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9

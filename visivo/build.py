@@ -34,6 +34,16 @@ def build():
         "sqlglot",
         "--collect-submodules",
         "snowflake.connector",
+        # pyo3 abi3 wheels: collect-all forces PyInstaller to take the .so and
+        # .py from a single matched install. Without this it can merge stale
+        # .so files from other site-packages on the build runner — see v2.0.2
+        # where `visivo init` crashed with `cannot import name 'EmailOptions'
+        # from 'jsonschema_rs.jsonschema_rs'` because three different versions
+        # of the .so ended up in _internal/jsonschema_rs/.
+        "--collect-all",
+        "jsonschema_rs",
+        "--collect-all",
+        "pydantic_core",
         "-n",
         "visivo",
         "--add-data",
