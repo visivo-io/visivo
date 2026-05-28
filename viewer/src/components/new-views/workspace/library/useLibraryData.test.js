@@ -2,8 +2,9 @@
  * useLibraryData behaviour (VIS-769 / Track C C1).
  *
  * Verifies the hook partitions the project's collections into the C-1
- * design's two sections — Layout Items (chart · table · markdown · input)
- * and Data Layer (source · model · dimension · metric · relation · insight)
+ * design's two sections — Layout Items (chart · table · markdown · input ·
+ * dashboard) and Data Layer (source · model · dimension · metric · relation ·
+ * insight)
  * — with stable ids and `model` being the union of sql_model +
  * csv_script_model + local_merge_model.
  */
@@ -18,6 +19,7 @@ const resetStore = () => {
       tables: [],
       markdowns: [],
       inputs: [],
+      dashboards: [],
       sources: [],
       models: [],
       csvScriptModels: [],
@@ -39,6 +41,7 @@ describe('useLibraryData', () => {
     const { result } = renderHook(() => useLibraryData());
     expect(Object.keys(result.current.layoutItems).sort()).toEqual([
       'chart',
+      'dashboard',
       'input',
       'markdown',
       'table',
@@ -71,6 +74,22 @@ describe('useLibraryData', () => {
     ]);
     expect(result.current.layoutItems.markdown[0].type).toBe('markdown');
     expect(result.current.layoutItems.input[0].type).toBe('input');
+  });
+
+  test('maps dashboards into Layout-Item rows with stable ids (VIS-824)', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [
+          { name: 'overview', status: 'published' },
+          { name: 'sales', status: 'new' },
+        ],
+      });
+    });
+    const { result } = renderHook(() => useLibraryData());
+    expect(result.current.layoutItems.dashboard).toEqual([
+      { id: 'dashboard:overview', type: 'dashboard', name: 'overview', status: 'published' },
+      { id: 'dashboard:sales', type: 'dashboard', name: 'sales', status: 'new' },
+    ]);
   });
 
   test('maps the data-layer collections into typed rows', () => {
@@ -145,6 +164,7 @@ describe('useLibraryData', () => {
         tables: undefined,
         markdowns: undefined,
         inputs: undefined,
+        dashboards: undefined,
         sources: undefined,
         models: undefined,
         csvScriptModels: undefined,
@@ -158,6 +178,7 @@ describe('useLibraryData', () => {
     const { result } = renderHook(() => useLibraryData());
     expect(result.current.layoutItems.chart).toEqual([]);
     expect(result.current.layoutItems.table).toEqual([]);
+    expect(result.current.layoutItems.dashboard).toEqual([]);
     expect(result.current.dataLayer.model).toEqual([]);
     expect(result.current.dataLayer.insight).toEqual([]);
   });

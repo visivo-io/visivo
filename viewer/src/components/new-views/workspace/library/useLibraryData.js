@@ -8,8 +8,10 @@ import useStore from '../../../../stores/store';
  * collection from the zustand store and partitions them into the two
  * sections of the C-1 design:
  *
- *   - Layout Items — canvas-droppable types: Charts · Tables · Markdowns ·
- *                    Inputs.
+ *   - Layout Items — Charts · Tables · Markdowns · Inputs (canvas-droppable)
+ *                    plus Dashboards. Dashboards aren't dropped onto a canvas;
+ *                    clicking one scopes the middle pane to that dashboard
+ *                    (VIS-824).
  *   - Data Layer   — click-to-edit types: Sources · Models · Dimensions ·
  *                    Metrics · Relations · Insights.
  *
@@ -23,8 +25,9 @@ import useStore from '../../../../stores/store';
  *     layoutItems: {
  *       chart:    { id, type, name, status }[],
  *       table:    { id, type, name, status }[],
- *       markdown: { id, type, name, status }[],
- *       input:    { id, type, name, status }[],
+ *       markdown:  { id, type, name, status }[],
+ *       input:     { id, type, name, status }[],
+ *       dashboard: { id, type, name, status }[],
  *     },
  *     dataLayer: {
  *       source:    { id, type, name, status, subtype }[],
@@ -56,6 +59,7 @@ export function useLibraryData() {
   const tables = useStore(s => s.tables);
   const markdowns = useStore(s => s.markdowns);
   const inputs = useStore(s => s.inputs);
+  const dashboards = useStore(s => s.dashboards);
 
   // Data-layer collections.
   const sources = useStore(s => s.sources);
@@ -108,6 +112,7 @@ export function useLibraryData() {
         table: mapRows(tables, 'table'),
         markdown: mapRows(markdowns, 'markdown'),
         input: mapRows(inputs, 'input'),
+        dashboard: mapRows(dashboards, 'dashboard'),
       },
       dataLayer: {
         source: sourceRows,
@@ -123,6 +128,7 @@ export function useLibraryData() {
     tables,
     markdowns,
     inputs,
+    dashboards,
     sources,
     models,
     csvScriptModels,
