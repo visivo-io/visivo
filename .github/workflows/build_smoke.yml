@@ -26,6 +26,9 @@ jobs:
         uses: Gr1N/setup-poetry@v9
 
       - name: Build viewer + install
+        # Force bash so windows-latest matches macOS/Linux (default windows
+        # shell is pwsh, which has different escaping and operator semantics).
+        shell: bash
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
@@ -36,6 +39,7 @@ jobs:
           poetry run write-schema-json
 
       - name: Build Artifact
+        shell: bash
         run: poetry run build
 
       - name: Smoke test built binary

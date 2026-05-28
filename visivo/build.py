@@ -1,9 +1,14 @@
+import os
 import PyInstaller.__main__
 from pathlib import Path
 import sys
 
 HERE = Path(__file__).parent.absolute()
 path_to_main = str(HERE / "command_line.py")
+
+# PyInstaller's --add-data separator is os.pathsep: ':' on Linux/macOS, ';' on
+# Windows. Hardcoding ':' silently mis-bundles data files on Windows.
+_SEP = os.pathsep
 
 
 def build():
@@ -32,9 +37,9 @@ def build():
         "-n",
         "visivo",
         "--add-data",
-        "visivo/schema/*.json:visivo/schema",
+        f"visivo/schema/*.json{_SEP}visivo/schema",
         "--add-data",
-        "visivo/viewers/*:visivo/viewers",
+        f"visivo/viewers/*{_SEP}visivo/viewers",
     ]
 
     if debug_mode:

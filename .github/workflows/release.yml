@@ -22,14 +22,10 @@ jobs:
         include:
           - os: macos-latest
             artifact_name: darwin-arm64
-            version_file: visivo/version.py
           - os: windows-latest
             artifact_name: windows-x86
-            version_file: visivo\\version.py
-            shell: bash
           - os: ubuntu-latest
             artifact_name: linux-x86
-            version_file: visivo/version.py
 
     steps:
       - name: Checkout
@@ -45,18 +41,26 @@ jobs:
         uses: Gr1N/setup-poetry@v9
 
       - name: Build App
+        # Force bash on all OSes so `\"` escapes consistently. On windows-latest
+        # the default shell is pwsh, where `\"` is literal (not an escape) -- it
+        # silently wrote invalid Python to visivo/version.py and PyInstaller
+        # then dropped the module, causing ModuleNotFoundError at runtime.
+        shell: bash
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          cd viewer 
-          yarn install --network-timeout 600000 && yarn deploy 
+          cd viewer
+          yarn install --network-timeout 600000 && yarn deploy
           cd ..
           poetry install
           poetry run write-schema-json
           poetry run copy-install-script
-          poetry version ${{ inputs.version }}
-          ls 
-          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
+          poetry version "$RELEASE_VERSION"
+          echo "VISIVO_VERSION = \"$RELEASE_VERSION\"" > visivo/version.py
+          # Guard against future shell-quoting regressions: fail fast if the
+          # file we just wrote isn't valid Python.
+          poetry run python -c "import ast, pathlib; ast.parse(pathlib.Path('visivo/version.py').read_text())"
 
       - name: Build Artifact
         run: poetry run build
