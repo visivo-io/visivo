@@ -63,7 +63,7 @@ jobs:
 
       - name: Smoke test built binary
         shell: bash
-        run: bash scripts/smoke_test_binary.sh dist/visivo
+        run: bash scripts/smoke_test_binary.sh dist/visivo test-projects/docs-examples
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7

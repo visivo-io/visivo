@@ -1,24 +1,27 @@
 #!/bin/bash
-# Smoke-test the PyInstaller-built Visivo binary.
+# Smoke-test the PyInstaller-built Visivo binary by running a REAL command.
 #
 # Unit tests (e.g. tests/commands/test_version.py) invoke the CLI through
 # Click's CliRunner *in the dev Python environment*. They import visivo from
 # source against a consistent set of installed dependencies, so they cannot
 # catch defects that only exist in the bundled artifact -- for example a
-# compiled extension (jsonschema_rs.abi3.so) that was bundled at a different
-# version than its pure-Python __init__.py, which fails at import time with
+# compiled extension (jsonschema_rs.abi3.so) bundled at a different version
+# than its pure-Python __init__.py, which fails at import time with
 # "cannot import name 'EmailOptions'".
 #
-# This script runs the ACTUAL built executable so import-time breakage in the
-# bundle fails the release build instead of shipping to users.
+# This script runs the ACTUAL built executable against a real project so that
+# both import-time breakage and end-to-end execution failures fail the build
+# instead of shipping to users.
 #
 # Usage:
-#   bash scripts/smoke_test_binary.sh [path-to-dist-dir]
-# Defaults to dist/visivo (PyInstaller --onedir output).
+#   bash scripts/smoke_test_binary.sh [dist-dir] [project-dir]
+#   dist-dir     PyInstaller --onedir output  (default: dist/visivo)
+#   project-dir  a runnable visivo project     (default: test-projects/docs-examples)
 
 set -euo pipefail
 
 DIST_DIR="${1:-dist/visivo}"
+PROJECT_DIR="${2:-test-projects/docs-examples}"
 
 if [ -f "$DIST_DIR/visivo.exe" ]; then
   BIN="$DIST_DIR/visivo.exe"
@@ -30,11 +33,15 @@ else
   exit 1
 fi
 
+# Resolve to an absolute path so the binary still works after we cd into the
+# project directory.
+BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+
 echo "Smoke-testing built binary: $BIN"
 
-# `--version` and `--help` both force command_line.py to import every
-# subcommand (serve, run, compile, ...), which transitively imports the full
-# model tree and native extensions. Any bundled import error surfaces here.
+# `--version` forces command_line.py to import every subcommand (serve, run,
+# compile, ...), which transitively imports the full model tree and native
+# extensions. Any bundled import error surfaces here.
 echo "--- visivo --version ---"
 version_output="$("$BIN" --version)"
 echo "$version_output"
@@ -43,7 +50,18 @@ if ! echo "$version_output" | grep -q "visivo, version"; then
   exit 1
 fi
 
-echo "--- visivo --help ---"
-"$BIN" --help >/dev/null
+# Run a real command against a real project. This exercises the whole pipeline
+# (parse -> compile -> DAG -> query execution -> data files), catching bundle
+# defects that only manifest during actual execution rather than at startup.
+if [ ! -d "$PROJECT_DIR" ]; then
+  echo "ERROR: project dir '$PROJECT_DIR' not found." >&2
+  exit 1
+fi
 
-echo "Smoke test passed: built binary starts and imports cleanly."
+echo "--- visivo compile (project: $PROJECT_DIR) ---"
+( cd "$PROJECT_DIR" && "$BIN" compile )
+
+echo "--- visivo run (project: $PROJECT_DIR) ---"
+( cd "$PROJECT_DIR" && "$BIN" run )
+
+echo "Smoke test passed: built binary starts, imports cleanly, and runs a project."
