@@ -107,7 +107,24 @@ test.describe('Lineage Context Scope', () => {
     );
   });
 
-  test('Step 5: no console errors during the flow', async () => {
+  test('Step 5: selecting a non-dashboard node defaults the middle pane to the universal Lineage lens (VIS-779)', async () => {
+    // Round-trip a node click into the workspace selection. The clicked object
+    // becomes the active (non-dashboard) object, and PerObjectPane defaults to
+    // the universal Lineage lens — so LineageCanvas stays mounted (no Track N
+    // placeholder) without the user touching the lens picker.
+    const node = page.locator('.react-flow__node').first();
+    await node.waitFor({ timeout: WAIT_FOR_PAGE });
+    await node.click();
+
+    await expect(page.getByTestId('lineage-canvas')).toBeVisible({
+      timeout: WAIT_FOR_PAGE,
+    });
+    await expect(
+      page.getByText(/Per-object preview coming soon \(Track N\)/i)
+    ).toHaveCount(0);
+  });
+
+  test('Step 6: no console errors during the flow', async () => {
     const realErrors = page._consoleErrors.filter(
       e =>
         !e.includes('favicon') &&

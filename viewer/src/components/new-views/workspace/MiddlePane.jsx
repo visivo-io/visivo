@@ -9,10 +9,11 @@ import useStore from '../../../stores/store';
  *
  *   project    → ProjectEditorPlaceholder (Track M ships the polished surface)
  *   dashboard  → DashboardNew (existing renderer) when scoped, placeholder
- *                otherwise
- *   chart      → PerObjectPreviewPlaceholder (Track N)
- *   model      → PerObjectPreviewPlaceholder (Track N) — lineage fallback in n2
- *   _          → UnknownObjectPlaceholder
+ *                otherwise; the Lineage lens mounts <LineageCanvas>
+ *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
+ *                source/dimension/metric/relation/unknown). The Lineage lens is
+ *                universal (VIS-779) and the per-object default — it mounts
+ *                <LineageCanvas>; the Preview lens shows the Track N placeholder.
  *
  * Each variant renders the `<SubBar>` above its viewport so the lens picker
  * stays close to the surface it switches the view of (per the chat
@@ -110,10 +111,17 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   );
 };
 
-const PerObjectPane = ({ activeObject, lens, onLensChange, fallbackToLineage = false }) => {
+const PerObjectPane = ({ activeObject }) => {
   const name = activeObject?.name || '(unnamed)';
   const type = activeObject?.type || 'object';
-  const lensEffective = fallbackToLineage ? 'lineage' : lens;
+  // No custom previews exist yet (Track N), so Lineage is the default lens for
+  // any selected non-dashboard object — selecting one immediately shows its DAG
+  // via <LineageCanvas> (scoped through useWorkspaceScope). The shared store
+  // lens defaults to 'preview' (the dashboard *canvas* default), which is not a
+  // meaningful default for objects with no preview surface, so the per-object
+  // lens is tracked locally and defaults to 'lineage'. Preview stays selectable
+  // in the picker (it shows the Track N placeholder until custom previews ship).
+  const [lensEffective, setLensEffective] = React.useState('lineage');
   return (
     <section
       data-testid={`workspace-middle-${type}`}
@@ -126,30 +134,30 @@ const PerObjectPane = ({ activeObject, lens, onLensChange, fallbackToLineage = f
             <span className="font-semibold text-gray-900">{name}</span>
             <span className="text-gray-400">·</span>
             <span className="text-gray-500">{type}</span>
-            {fallbackToLineage && (
-              <>
-                <span className="text-gray-400">·</span>
-                <span className="text-[11px] font-medium text-amber-700">
-                  No preview yet — showing lineage
-                </span>
-              </>
-            )}
           </div>
         }
         right={
           <PreviewLensPicker
             value={lensEffective}
-            onChange={onLensChange}
+            onChange={setLensEffective}
             previewLabel="Preview"
-            previewDisabled={fallbackToLineage}
           />
         }
       />
-      <Placeholder
-        testId={`workspace-middle-${type}-placeholder`}
-        title="Per-object preview coming soon (Track N)"
-        body={`Custom previews for ${type}s ship in Phase 4. Phase 0 falls back to the lineage view for object types without a renderer.`}
-      />
+      {lensEffective === 'lineage' ? (
+        <div
+          data-testid={`workspace-middle-${type}-lineage`}
+          className="flex flex-1 min-h-0"
+        >
+          <LineageCanvas />
+        </div>
+      ) : (
+        <Placeholder
+          testId={`workspace-middle-${type}-placeholder`}
+          title="Per-object preview coming soon (Track N)"
+          body={`Custom previews for ${type}s ship in Phase 4. The Lineage lens shows this object's DAG today.`}
+        />
+      )}
     </section>
   );
 };
@@ -176,34 +184,10 @@ const MiddlePane = () => {
       />
     );
   }
-  if (obj.type === 'chart') {
-    return (
-      <PerObjectPane
-        activeObject={obj}
-        lens={lens}
-        onLensChange={onLensChange}
-      />
-    );
-  }
-  if (obj.type === 'model') {
-    // Lineage fallback — no chart-preview component yet.
-    return (
-      <PerObjectPane
-        activeObject={obj}
-        lens={lens}
-        onLensChange={onLensChange}
-        fallbackToLineage
-      />
-    );
-  }
-  // Unknown — still mount the sub-bar so the shell visual is consistent.
-  return (
-    <PerObjectPane
-      activeObject={obj}
-      lens={lens}
-      onLensChange={onLensChange}
-    />
-  );
+  // Every non-dashboard object (chart, model, insight, input, table, markdown,
+  // source, dimension, metric, relation, unknown) routes through PerObjectPane,
+  // which defaults to the universal Lineage lens (VIS-779).
+  return <PerObjectPane activeObject={obj} />;
 };
 
 export default MiddlePane;
