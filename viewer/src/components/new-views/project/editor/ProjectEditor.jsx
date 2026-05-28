@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { PiMagnifyingGlass, PiPlus } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
-import { getTypeIcon } from '../../common/objectTypeConfigs';
+import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import {
   groupDashboardsByLevel,
@@ -35,6 +35,7 @@ import LevelGroup from './LevelGroup';
 const SEARCH_THRESHOLD = 5;
 
 const DashboardIcon = getTypeIcon('dashboard');
+const DASH_COLORS = getTypeColors('dashboard');
 const InsightIcon = getTypeIcon('insight');
 const ModelIcon = getTypeIcon('model');
 const SourceIcon = getTypeIcon('source');
@@ -50,13 +51,14 @@ const HealthRow = ({ summary }) => (
   <div className="grid grid-cols-2 gap-4 sm:grid-cols-4" data-testid="project-editor-health">
     {['dashboards', 'insights', 'models', 'sources'].map(key => {
       const Icon = HEALTH_ICONS[key];
+      const colors = getTypeColors(key.slice(0, -1));
       return (
         <div
           key={key}
           data-testid={`project-editor-health-${key}`}
           className="flex items-center gap-3 rounded-lg bg-white p-3 ring-1 ring-gray-200"
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-[#e6edf8] text-[#1e3a5f]">
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${colors.bg} ${colors.text}`}>
             <Icon style={{ fontSize: 18 }} />
           </span>
           <div className="flex flex-col">
@@ -303,7 +305,7 @@ const ProjectEditor = () => {
                 e.stopPropagation();
                 handleCreateDashboard();
               }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#713b57] px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a2f45]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
             >
               <PiPlus className="h-3.5 w-3.5" /> New Dashboard
             </button>
@@ -319,7 +321,7 @@ const ProjectEditor = () => {
                 data-testid="project-editor-empty"
                 className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-white/60 px-12 py-16 text-center"
               >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#e6edf8] text-[#1e3a5f]">
+                <span className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${DASH_COLORS.bg} ${DASH_COLORS.text}`}>
                   <DashboardIcon style={{ fontSize: 26 }} />
                 </span>
                 <h2 className="mt-4 text-[18px] font-semibold text-gray-900">
@@ -335,7 +337,7 @@ const ProjectEditor = () => {
                     e.stopPropagation();
                     handleCreateDashboard();
                   }}
-                  className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-md bg-[#713b57] px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-[#5a2f45]"
+                  className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white shadow-sm hover:bg-primary-600"
                 >
                   <PiPlus className="h-4 w-4" /> New Dashboard
                 </button>
@@ -365,8 +367,8 @@ const ProjectEditor = () => {
                 })}
                 <DragOverlay>
                   {activeDrag ? (
-                    <div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-semibold text-gray-900 shadow-lg ring-2 ring-[#713b57]">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[#e6edf8] text-[#1e3a5f]">
+                    <div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-semibold text-gray-900 shadow-lg ring-2 ring-primary">
+                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${DASH_COLORS.bg} ${DASH_COLORS.text}`}>
                         <DashboardIcon style={{ fontSize: 12 }} />
                       </span>
                       {activeDrag.name}

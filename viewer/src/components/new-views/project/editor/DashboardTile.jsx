@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { PiDotsSix } from 'react-icons/pi';
-import { getTypeIcon } from '../../common/objectTypeConfigs';
+import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 
 /**
  * DashboardTile — VIS-805 / Track M M-1.
@@ -17,6 +17,7 @@ import { getTypeIcon } from '../../common/objectTypeConfigs';
  */
 
 const DashboardIcon = getTypeIcon('dashboard');
+const DASH_COLORS = getTypeColors('dashboard');
 
 const DashboardTile = ({ tile, selected = false, onSelect }) => {
   const drag = useDraggable({
@@ -58,9 +59,9 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
       tabIndex={0}
       style={{ transform: dragStyle, touchAction: 'none' }}
       className={[
-        'group/tile relative flex h-[124px] cursor-grab flex-col rounded-lg bg-white p-3 shadow-sm transition-all outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-[#713b57]/40',
-        selected ? 'ring-2 ring-[#713b57]' : 'ring-1 ring-gray-200 hover:ring-[#c6b0bb] hover:shadow-md',
-        drag.isDragging ? 'opacity-50 ring-2 ring-[#713b57]' : '',
+        'group/tile relative flex h-[124px] cursor-grab flex-col rounded-lg bg-white p-3 shadow-sm transition-all outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-primary/40',
+        selected ? 'ring-2 ring-primary' : 'ring-1 ring-gray-200 hover:ring-primary-200 hover:shadow-md',
+        drag.isDragging ? 'opacity-50 ring-2 ring-primary' : '',
       ].join(' ')}
     >
       <span
@@ -72,7 +73,7 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
       </span>
 
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#e6edf8] text-[#1e3a5f]">
+        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded ${DASH_COLORS.bg} ${DASH_COLORS.text}`}>
           <DashboardIcon style={{ fontSize: 14 }} />
         </span>
         <span className="truncate text-[13px] font-semibold text-gray-900">{tile.name}</span>
@@ -83,7 +84,7 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
           {tags.map(t => (
             <span
               key={t}
-              className="inline-flex h-4 items-center rounded-full bg-[#e2d7dd] px-1.5 text-[10px] font-medium text-[#5a2f45]"
+              className="inline-flex h-4 items-center rounded-full bg-primary-100 px-1.5 text-[10px] font-medium text-primary-600"
             >
               {t}
             </span>
