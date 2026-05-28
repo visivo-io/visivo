@@ -269,11 +269,34 @@ describe('LibraryRowFlipPopover — collapse and empty state', () => {
     expect(screen.getByTestId('library-flip-popover-empty')).toBeInTheDocument();
   });
 
-  test('still renders the deferred-card footer note pointing at VIS-780', () => {
+  test('footer note advertises opening the full lineage', () => {
     render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={jest.fn()} />);
     expect(screen.getByTestId('library-flip-popover-deferred-note')).toHaveTextContent(
-      'VIS-780'
+      'Open full lineage'
     );
+  });
+
+  test('Expand button is enabled and opens the subject in the workspace lineage lens', () => {
+    const openWorkspaceTab = jest.fn();
+    const setWorkspaceLens = jest.fn();
+    act(() => {
+      useStore.setState({ openWorkspaceTab, setWorkspaceLens });
+    });
+    const onClose = jest.fn();
+    render(<LibraryRowFlipPopover obj={SUBJECT_CHART} onClose={onClose} />);
+
+    const expand = screen.getByTestId('library-flip-popover-expand');
+    expect(expand).not.toBeDisabled();
+
+    fireEvent.click(expand);
+
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'chart:revenue_chart',
+      type: 'chart',
+      name: 'revenue_chart',
+    });
+    expect(setWorkspaceLens).toHaveBeenCalledWith('lineage');
+    expect(onClose).toHaveBeenCalled();
   });
 
   test('renders into document.body via portal so the rail overflow does not clip it', () => {

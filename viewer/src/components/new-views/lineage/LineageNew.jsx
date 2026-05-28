@@ -66,6 +66,13 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
   const fetchInputs = useStore(state => state.fetchInputs);
   const fetchDefaults = useStore(state => state.fetchDefaults);
 
+  // When embedded in the Workspace, the host route already loads most
+  // collections. We read the two slices the Workspace route does NOT
+  // preload (dashboards + defaults) so we can lazily fill them without
+  // re-fetching everything.
+  const dashboards = useStore(state => state.dashboards);
+  const defaults = useStore(state => state.defaults);
+
   // Navigation stack for editing - supports drilling into embedded objects
   // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
   // applyToParent is provided by parent forms for embedded objects
@@ -84,7 +91,12 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
   // selector when the *scope* changes — not on every render. This is what lets
   // the manual input override the scope until the scope itself changes again.
   const lastScopeRef = useRef(scopeSelector);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  // `embedded` means a host (the Workspace via <LineageCanvas>) supplies the
+  // scope and has already loaded the project's collections at the route level.
+  // In that mode we skip our own fetch-on-mount and render the DAG immediately
+  // from the store the host populated. Standalone (`/editor`) still fetches.
+  const embedded = scopeSelector != null;
+  const [initialLoadDone, setInitialLoadDone] = useState(embedded);
   const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
   // Navigation stack helpers
@@ -109,8 +121,22 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
 
   // Note: Individual save functions are now handled by useObjectSave hook
 
-  // Fetch all object types on mount; mark initial load done when all complete
+  // Standalone (`/editor`): fetch every collection on mount and flip
+  // `initialLoadDone` once they all resolve. Embedded (Workspace): the host
+  // route already loaded the collections, so we skip the redundant fetch and
+  // render the DAG immediately (initialLoadDone is seeded true). We only
+  // lazily fill the two slices the Workspace route does NOT preload —
+  // dashboards and defaults — and only when they're still empty.
   useEffect(() => {
+    if (embedded) {
+      if (!dashboards || dashboards.length === 0) {
+        fetchDashboards();
+      }
+      if (defaults == null) {
+        fetchDefaults();
+      }
+      return;
+    }
     Promise.all([
       fetchSources(),
       fetchModels(),
@@ -127,7 +153,8 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
       fetchInputs(),
       fetchDefaults(),
     ]).then(() => setInitialLoadDone(true));
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
 
   // Re-seed the internal selector when the externally-supplied scope changes.
   // The manual input mutates `selector` freely between scope changes; this
