@@ -45,7 +45,11 @@ echo "Smoke-testing built binary: $BIN"
 echo "--- visivo --version ---"
 version_output="$("$BIN" --version)"
 echo "$version_output"
-if ! echo "$version_output" | grep -q "visivo, version"; then
+# Click's --version uses sys.argv[0] as the program name, so the executable
+# prints "visivo, version X" on Linux/macOS but "visivo.exe, version X" on
+# Windows. Accept either, and require a digit after "version " so the
+# assertion still catches garbage output.
+if ! echo "$version_output" | grep -Eq "visivo(\.exe)?, version [0-9]"; then
   echo "ERROR: '--version' did not print expected output." >&2
   exit 1
 fi
