@@ -1,6 +1,7 @@
 import React from 'react';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import DashboardNew from '../project/DashboardNew';
+import LineageCanvas from '../lineage/LineageCanvas';
 import useStore from '../../../stores/store';
 
 /**
@@ -85,11 +86,12 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
         }
       />
       {lens === 'lineage' ? (
-        <Placeholder
-          testId="workspace-middle-dashboard-lineage"
-          title="Lineage view coming soon (Track E)"
-          body={`Showing the +${name || ''} neighbourhood in the DAG.`}
-        />
+        <div
+          data-testid="workspace-middle-dashboard-lineage"
+          className="flex flex-1 min-h-0"
+        >
+          <LineageCanvas />
+        </div>
       ) : name && projectId ? (
         <div
           data-testid="workspace-middle-dashboard-canvas"
