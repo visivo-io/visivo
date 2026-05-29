@@ -74,4 +74,15 @@ const useStore = create(
   }))
 );
 
+// Expose the store on `window` outside production so end-to-end tests
+// (Playwright) can read live state — e.g. the workspace selection and draft
+// dashboard levels — without coupling assertions to DOM internals. Guarded so
+// production builds never attach a debug handle.
+if (
+  typeof window !== 'undefined' &&
+  !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production')
+) {
+  window.useStore = useStore;
+}
+
 export default useStore;

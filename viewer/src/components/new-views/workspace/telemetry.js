@@ -28,6 +28,18 @@ let listener = null;
 export function emitWorkspaceEvent(eventName, payload = {}) {
   if (!eventName) return;
   const event = { eventName, payload, ts: Date.now() };
+  // Outside production, mirror emissions onto a window buffer so end-to-end
+  // tests (Playwright) can assert telemetry without a real analytics sink.
+  // Guarded so production builds never attach a debug buffer.
+  if (
+    typeof window !== 'undefined' &&
+    !(typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production')
+  ) {
+    if (!Array.isArray(window.__VISIVO_WORKSPACE_EVENTS__)) {
+      window.__VISIVO_WORKSPACE_EVENTS__ = [];
+    }
+    window.__VISIVO_WORKSPACE_EVENTS__.push(event);
+  }
   // In tests `listener` is set by `setWorkspaceTelemetryListener` to capture
   // emissions without going through a console.
   if (listener) {
