@@ -154,8 +154,16 @@ main() {
 
   # Create directories
   mkdir -p "$VISIVO_DIR"
+
+  # Wipe any previously-installed binary before extracting. `unzip -o` only
+  # overwrites files that exist in the new archive; it never removes files
+  # that were dropped between releases. A stale, version-specific extension
+  # (e.g. jsonschema_rs.cpython-312-darwin.so left over from an older build
+  # that now ships only as abi3) would otherwise shadow the new one and crash
+  # `visivo` on import. Removing the dir guarantees a clean install on upgrade.
+  rm -rf "$VISIVO_BIN_DIR"
   mkdir -p "$VISIVO_BIN_DIR"
-  
+
   # Download and extract
   curl -# -L "$DOWNLOAD_URL" -o "$VISIVO_DIR/visivo.zip"
 
