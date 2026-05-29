@@ -28,6 +28,16 @@ let listener = null;
 export function emitWorkspaceEvent(eventName, payload = {}) {
   if (!eventName) return;
   const event = { eventName, payload, ts: Date.now() };
+  // Browser-observable buffer — lets e2e (Playwright) assert that an event
+  // fired without a real analytics sink. Mirrors the onboarding telemetry's
+  // `window.__visivoOnbDebug` escape hatch. No-op in non-browser (jsdom unit
+  // tests use `setWorkspaceTelemetryListener` instead).
+  if (typeof window !== 'undefined') {
+    if (!Array.isArray(window.__visivoWorkspaceTelemetry)) {
+      window.__visivoWorkspaceTelemetry = [];
+    }
+    window.__visivoWorkspaceTelemetry.push(event);
+  }
   // In tests `listener` is set by `setWorkspaceTelemetryListener` to capture
   // emissions without going through a console.
   if (listener) {
