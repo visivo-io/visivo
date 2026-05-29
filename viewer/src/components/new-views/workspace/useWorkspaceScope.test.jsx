@@ -157,24 +157,57 @@ describe('useWorkspaceScope', () => {
     );
   });
 
-  test('URL dashboard scope takes precedence over an active tab', () => {
+  test('an active dashboard tab on a dashboard URL keeps dashboard scope', () => {
+    // The dashboard route opens a matching dashboard tab; the tab and the URL
+    // agree, so the scope is the dashboard either way.
     act(() => {
       useStore.setState({
         workspaceTabs: [
           {
-            id: 'model:monthly_revenue',
-            type: 'model',
-            name: 'monthly_revenue',
+            id: 'dashboard:simple-dashboard',
+            type: 'dashboard',
+            name: 'simple-dashboard',
             dirty: false,
           },
         ],
-        workspaceActiveTabId: 'model:monthly_revenue',
+        workspaceActiveTabId: 'dashboard:simple-dashboard',
       });
     });
     renderAt('/workspace/dashboard/simple-dashboard');
-    // URL wins.
     expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
     expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
+      'simple-dashboard'
+    );
+  });
+
+  test('an active non-dashboard tab takes precedence over a lingering dashboard URL (VIS-779 universal lineage)', () => {
+    // When a user expands a chart/model/etc. (Library flip-popover "Expand" or
+    // a Lineage node click) the route param stays put (E-1 requires the route
+    // not to change), but the explicitly-focused object must scope the Lineage
+    // lens to ITS OWN DAG — not the dashboard's. `dashboardName` is still
+    // surfaced so callers know which dashboard the user came from.
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [
+          {
+            id: 'chart:fibonacci',
+            type: 'chart',
+            name: 'fibonacci',
+            dirty: false,
+          },
+        ],
+        workspaceActiveTabId: 'chart:fibonacci',
+      });
+    });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('item');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('+fibonacci');
+    expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('chart');
+    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent(
+      'fibonacci'
+    );
+    // The originating dashboard is still surfaced.
+    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent(
       'simple-dashboard'
     );
   });

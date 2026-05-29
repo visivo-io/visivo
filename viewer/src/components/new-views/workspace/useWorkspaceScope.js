@@ -51,6 +51,24 @@ export function useWorkspaceScope() {
   );
 
   return useMemo(() => {
+    // Active workspace tab pointing at a non-dashboard, non-project object
+    // takes precedence over a lingering `:dashboardName` URL param. When a
+    // user expands a chart/model/insight/etc. (via the Library flip-popover
+    // "Expand" or a Lineage node click) while still on a
+    // `/workspace/dashboard/:name` route, the route param does NOT change
+    // (E-1 requires the route to stay put), but the explicitly-focused
+    // object must scope the Lineage lens to ITS OWN DAG — not the dashboard's
+    // (VIS-779 universal lineage). Dashboards and the project keep deferring
+    // to the URL param below, so the initial dashboard load is unaffected.
+    if (activeTab && activeTab.type !== 'project' && activeTab.type !== 'dashboard') {
+      return {
+        scope: 'item',
+        selector: `+${activeTab.name}`,
+        dashboardName: dashboardName || null,
+        selectedItem: { type: activeTab.type, name: activeTab.name },
+      };
+    }
+
     // Dashboard scope — URL is canonical.
     if (dashboardName) {
       return {

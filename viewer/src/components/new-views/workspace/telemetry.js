@@ -38,8 +38,23 @@ export function emitWorkspaceEvent(eventName, payload = {}) {
     }
     return;
   }
+  // Browser-side fan-out so out-of-process observers (E2E tests, a future
+  // analytics sink) can subscribe without coupling to the in-memory listener
+  // or to `process.env` (undefined under Vite). Wrapped in a guard so it's a
+  // no-op in jsdom/SSR where `window.dispatchEvent`/`CustomEvent` may be
+  // absent, and so a faulty subscriber can't break the shell.
+  if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function') {
+    try {
+      window.dispatchEvent(new window.CustomEvent('visivo:workspace-telemetry', { detail: event }));
+    } catch {
+      // ignore — telemetry must never throw into the render path.
+    }
+  }
   // Dev visibility only — keep silent in CI/test to avoid the
-  // setupTests.js "unexpected console call" guard.
+  // setupTests.js "unexpected console call" guard. Under Vite `process` is
+  // undefined in the browser, so out-of-process observers must use the
+  // `visivo:workspace-telemetry` CustomEvent above; this console line is a
+  // best-effort jest/SSR convenience only.
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
     // eslint-disable-next-line no-console
     console.debug(`[workspace-telemetry] ${eventName}`, payload);
