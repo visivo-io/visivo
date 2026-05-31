@@ -1,23 +1,40 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import DashboardNew from '../DashboardNew';
+import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 
 /**
- * ProjectCanvas (VIS-D1 / VIS-767) — render-only foundation for the Workspace
- * dashboard canvas (a.k.a. the "Canvas"/preview lens).
+ * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
+ * Workspace dashboard canvas (a.k.a. the "Canvas"/preview lens).
  *
- * At rest it is intentionally indistinguishable from View mode (`/project/<name>`):
- * it simply wraps <DashboardNew> and forwards `projectId` / `dashboardName` with
- * NO editing affordances (no selection, hover, gestures or chrome). Those build-mode
- * overlays arrive in later D-track tickets — D-1 is the parity baseline.
+ * The canvas IS the dashboard: it wraps the render-only <DashboardNew> so at
+ * rest it stays pixel-identical to View mode (`/project/<name>`). VIS-D2 adds
+ * an editing-affordance OVERLAY layer ON TOP of that render — never mutating
+ * it. The overlay (<CanvasSelectionOverlay>):
  *
- * This is the *build* surface by construction (it is only mounted inside the
- * Workspace's dashboard-scoped canvas lens). View mode is the separate `/project`
- * route, so there is deliberately no build/view-mode flag here.
+ *   - Writes the workspace selection (`workspaceOutlineSelectedKey`) on click,
+ *     using the SAME key scheme as the OutlineTreePanel so the canvas + tree
+ *     are one selection source of truth.
+ *   - Paints hover outlines (+ a resize-handle PLACEHOLDER, no gesture yet —
+ *     D-3) and a persistent mulberry selection ring per the D-1 design states.
+ *
+ * The right rail is NOT mounted here (that's G-1); D-2 only SETS selection
+ * state + renders overlays. This is the *build* surface by construction (only
+ * mounted inside the Workspace's dashboard-scoped canvas lens), so there is no
+ * build/view-mode flag.
  */
 const ProjectCanvas = ({ projectId, dashboardName }) => {
+  // The overlay measures + delegates pointer events against this positioned
+  // root, so the rings land exactly over DashboardNew's rows/items.
+  const rootRef = useRef(null);
+
   return (
-    <div data-testid="project-canvas" className="flex flex-1 min-h-0 w-full max-w-full">
+    <div
+      ref={rootRef}
+      data-testid="project-canvas"
+      className="relative flex flex-1 min-h-0 w-full max-w-full"
+    >
       <DashboardNew projectId={projectId} dashboardName={dashboardName} />
+      <CanvasSelectionOverlay rootRef={rootRef} />
     </div>
   );
 };

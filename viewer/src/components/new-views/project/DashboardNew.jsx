@@ -533,6 +533,12 @@ const DashboardNew = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}`}
+            // Additive selection anchors consumed by the Workspace canvas's
+            // overlay layer (VIS-768). These data attributes are inert in View
+            // mode and keep DashboardNew's render at parity — the overlay reads
+            // them via event delegation + getBoundingClientRect to place
+            // hover/selection rings, never mutating this render.
+            data-canvas-item-index={itemIndex}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
