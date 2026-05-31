@@ -29,11 +29,18 @@ const BASE_URL = process.env.PROJECT_EDITOR_BASE_URL || 'http://localhost:3003';
 const WORKSPACE_URL = `${BASE_URL}/workspace`;
 const WAIT_FOR_PAGE = 20000;
 
-const readEvents = page =>
-  page.evaluate(() => window.__VISIVO_WORKSPACE_EVENTS__ || []);
+// Workspace telemetry is observed via the canonical `visivo:workspace-telemetry`
+// CustomEvent. The collector is installed as an init script so it survives the
+// in-test navigations (`page.goto`) and captures every emission into `window.__evts`.
+const installEventCollector = page =>
+  page.addInitScript(() => {
+    window.__evts = [];
+    window.addEventListener('visivo:workspace-telemetry', e => window.__evts.push(e.detail));
+  });
+const readEvents = page => page.evaluate(() => window.__evts || []);
 const clearEvents = page =>
   page.evaluate(() => {
-    window.__VISIVO_WORKSPACE_EVENTS__ = [];
+    window.__evts = [];
   });
 // Read the live workspace-store selection through the zustand store exposed on
 // window by the viewer (`window.useStore`); fall back to the DOM if absent.
@@ -56,6 +63,10 @@ test.describe('Project Editor (M-1)', () => {
     page.on('console', msg => {
       if (msg.type() === 'error') page._consoleErrors.push(msg.text());
     });
+
+    // Install the telemetry CustomEvent collector before any navigation so it
+    // is re-applied on every page load (including the in-test `page.goto`s).
+    await installEventCollector(page);
 
     await page.goto(WORKSPACE_URL);
     await page.waitForLoadState('networkidle');
