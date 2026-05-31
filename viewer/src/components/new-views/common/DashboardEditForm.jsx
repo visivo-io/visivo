@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore from '../../../stores/store';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import { getTypeByValue } from './objectTypeConfigs';
-import { parseRefValue, formatRef } from '../../../utils/refString';
-
-const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'];
+import { formatRef } from '../../../utils/refString';
+import RowEditForm from './RowEditForm';
 
 /**
  * DashboardEditForm - Form for creating/editing Dashboard
@@ -21,10 +17,7 @@ const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge
 const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const deleteDashboard = useStore(state => state.deleteDashboard);
   const checkPublishStatus = useStore(state => state.checkPublishStatus);
-  const charts = useStore(state => state.charts);
-  const tables = useStore(state => state.tables);
-  const markdowns = useStore(state => state.markdowns);
-  const inputs = useStore(state => state.inputs);
+  const openWorkspaceTab = useStore(state => state.openWorkspaceTab);
 
   const [name, setName] = useState('');
   const [rows, setRows] = useState([]);
@@ -33,24 +26,6 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // Build available objects list grouped by type
-  const availableObjects = useMemo(() => {
-    const groups = [];
-    if (charts?.length) {
-      groups.push({ label: 'Charts', type: 'chart', items: charts.map(c => c.name) });
-    }
-    if (tables?.length) {
-      groups.push({ label: 'Tables', type: 'table', items: tables.map(t => t.name) });
-    }
-    if (markdowns?.length) {
-      groups.push({ label: 'Markdowns', type: 'markdown', items: markdowns.map(m => m.name) });
-    }
-    if (inputs?.length) {
-      groups.push({ label: 'Inputs', type: 'input', items: inputs.map(i => i.name) });
-    }
-    return groups;
-  }, [charts, tables, markdowns, inputs]);
 
   useEffect(() => {
     if (dashboard) {
@@ -184,33 +159,11 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   };
 
   /**
-   * Get the combined "type:name" value for the current item selection
+   * Set or clear the object reference held by an item. `ref` is `{ type, name }`
+   * to set, or `null` to clear. Mutually-exclusive ref fields are reset so only
+   * one type is ever populated (matching the dashboard item model).
    */
-  const getSelectedValue = item => {
-    for (const field of ['chart', 'table', 'markdown', 'input']) {
-      const val = item[field];
-      if (val) {
-        const objName = parseRefValue(val);
-        return `${field}:${objName}`;
-      }
-    }
-    return '';
-  };
-
-  /**
-   * Get the object type of the currently selected item (for icon display)
-   */
-  const getSelectedType = item => {
-    for (const field of ['chart', 'table', 'markdown', 'input']) {
-      if (item[field]) return field;
-    }
-    return null;
-  };
-
-  /**
-   * Handle object selection from the dropdown
-   */
-  const handleObjectSelect = (rowIndex, itemIndex, combinedValue) => {
+  const handleItemRefChange = (rowIndex, itemIndex, ref) => {
     const updated = [...rows];
     const item = {
       ...updated[rowIndex].items[itemIndex],
@@ -220,19 +173,23 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
       selector: '',
       input: '',
     };
-
-    if (combinedValue) {
-      const colonIdx = combinedValue.indexOf(':');
-      const type = combinedValue.substring(0, colonIdx);
-      const objName = combinedValue.substring(colonIdx + 1);
-      item[type] = formatRef(objName);
+    if (ref && ref.type && ref.name) {
+      item[ref.type] = formatRef(ref.name);
     }
-
     updated[rowIndex] = {
       ...updated[rowIndex],
       items: updated[rowIndex].items.map((it, i) => (i === itemIndex ? item : it)),
     };
     setRows(updated);
+  };
+
+  /**
+   * Pill click → focus the referenced object in the workspace.
+   */
+  const handleSelectRef = ref => {
+    if (ref && ref.type && ref.name && openWorkspaceTab) {
+      openWorkspaceTab({ type: ref.type, name: ref.name });
+    }
   };
 
   const isValid = name.trim();
@@ -279,102 +236,19 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
           ) : (
             <div className="space-y-3">
               {rows.map((row, rowIndex) => (
-                <div key={rowIndex} className="p-3 bg-gray-50 border border-gray-200 rounded-md space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-500">Row {rowIndex + 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeRow(rowIndex)}
-                      className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <RemoveIcon fontSize="small" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600">Height:</label>
-                    <select
-                      value={row.height}
-                      onChange={e => updateRowHeight(rowIndex, e.target.value)}
-                      className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      {HEIGHT_OPTIONS.map(h => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Items */}
-                  <div className="space-y-2 pl-2 border-l-2 border-gray-300">
-                    {row.items.map((item, itemIndex) => {
-                      const selectedType = getSelectedType(item);
-                      const typeConfig = selectedType ? getTypeByValue(selectedType) : null;
-                      const ItemIcon = typeConfig?.icon || DashboardIcon;
-                      const iconColor = typeConfig?.colors?.text || 'text-gray-400';
-
-                      return (
-                        <div key={itemIndex} className="p-2 bg-white border border-gray-200 rounded space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Item {itemIndex + 1}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeItem(rowIndex, itemIndex)}
-                              className="p-0.5 text-red-400 hover:text-red-600 rounded"
-                            >
-                              <RemoveIcon style={{ fontSize: 14 }} />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Width:</label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.width}
-                              onChange={e => updateItemWidth(rowIndex, itemIndex, e.target.value)}
-                              className="w-14 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            />
-                          </div>
-                          <div className="relative">
-                            <select
-                              value={getSelectedValue(item)}
-                              onChange={e => handleObjectSelect(rowIndex, itemIndex, e.target.value)}
-                              className="block w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none cursor-pointer"
-                            >
-                              <option value="">Select object...</option>
-                              {availableObjects.map(group => (
-                                <optgroup key={group.type} label={group.label}>
-                                  {group.items.map(objName => (
-                                    <option key={`${group.type}:${objName}`} value={`${group.type}:${objName}`}>
-                                      {objName}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                              <ItemIcon style={{ fontSize: 16 }} className={iconColor} />
-                            </div>
-                            <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                              <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => addItem(rowIndex)}
-                      className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      <AddIcon style={{ fontSize: 14 }} />
-                      Add Item
-                    </button>
-                  </div>
-                </div>
+                <RowEditForm
+                  key={rowIndex}
+                  row={row}
+                  rowId={rowIndex}
+                  rowIndex={rowIndex}
+                  onRemoveRow={() => removeRow(rowIndex)}
+                  onHeightChange={height => updateRowHeight(rowIndex, height)}
+                  onAddItem={() => addItem(rowIndex)}
+                  onRemoveItem={itemIndex => removeItem(rowIndex, itemIndex)}
+                  onItemWidthChange={(itemIndex, width) => updateItemWidth(rowIndex, itemIndex, width)}
+                  onItemRefChange={(itemIndex, ref) => handleItemRefChange(rowIndex, itemIndex, ref)}
+                  onSelectRef={handleSelectRef}
+                />
               ))}
             </div>
           )}
