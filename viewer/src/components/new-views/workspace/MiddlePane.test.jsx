@@ -5,12 +5,12 @@
  *   - project chrome / unscoped → mounts the real `<ProjectEditor>` (M-1),
  *     replacing the old "coming soon" placeholder.
  *   - dashboard + lineage lens → mounts `<LineageCanvas>` (VIS-E1); the canvas
- *     lens renders `<DashboardNew>`.
+ *     lens renders `<ProjectCanvas>` (render-only DashboardNew wrapper, VIS-767).
  *   - any non-dashboard object → `<PerObjectPane>`, which defaults to the
  *     universal Lineage lens (VIS-779) and keeps Preview as the Track N
  *     placeholder.
  *
- * Child surfaces (ProjectEditor, DashboardNew, LineageCanvas) are mocked so this
+ * Child surfaces (ProjectEditor, ProjectCanvas, LineageCanvas) are mocked so this
  * stays a focused dispatcher test, not the heavy React Flow / Plotly trees.
  */
 import React from 'react';
@@ -24,9 +24,9 @@ jest.mock('../project/editor/ProjectEditor', () => {
   return { __esModule: true, default: Mock };
 });
 
-jest.mock('../project/DashboardNew', () => {
-  const Mock = () => <div data-testid="dashboard-new-mock" />;
-  Mock.displayName = 'MockDashboardNew';
+jest.mock('../project/canvas/ProjectCanvas', () => {
+  const Mock = () => <div data-testid="project-canvas-mock" />;
+  Mock.displayName = 'MockProjectCanvas';
   return { __esModule: true, default: Mock };
 });
 
@@ -79,7 +79,9 @@ describe('MiddlePane — dashboard lineage lens (VIS-E1)', () => {
     seed({ workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-dashboard-canvas')).toBeInTheDocument();
-    expect(screen.getByTestId('dashboard-new-mock')).toBeInTheDocument();
+    // The canvas lens now mounts ProjectCanvas (render-only DashboardNew
+    // wrapper, VIS-767) rather than DashboardNew directly.
+    expect(screen.getByTestId('project-canvas-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
   });
 });
