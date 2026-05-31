@@ -39,10 +39,16 @@ jest.mock('../../../hooks/useVisibleRows', () => ({
   })),
 }));
 
-// Mock the item components
+// Mock the item components.
+// `data-insights` exposes the resolved insights array DashboardNew hands the
+// Chart so VIS-827 normalization (string refs -> {name} objects) is assertable.
 jest.mock('../../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart }) => <div data-testid="chart">{chart.name || 'Chart'}</div>,
+  default: ({ chart }) => (
+    <div data-testid="chart" data-insights={JSON.stringify(chart.insights || [])}>
+      {chart.name || 'Chart'}
+    </div>
+  ),
 }));
 
 jest.mock('../../items/Table', () => ({
@@ -502,4 +508,112 @@ describe('DashboardNew', () => {
       expect(row.style.height).toBe('396px');
     });
   });
+
+  // ---------- VIS-827: normalize chart insight string refs ----------
+  //
+  // When the dashboard comes from the /api/dashboards/ store endpoint (the path
+  // <DashboardNew> uses on both /project-new and the Workspace canvas lens),
+  // embedded chart objects carry their `insights` as un-resolved context-string
+  // refs ("${ref(name)}"). Chart.jsx derives the names it loads via
+  // `chart.insights.map(i => i.name)`, so without normalization the names are
+  // undefined and the chart spins forever. resolveItem must convert string refs
+  // into { name } objects for BOTH the string-ref chart branch and the embedded
+  // chart-object branch.
+  //
+  // The literal "${ref(name)}" fixtures below are deliberate context-string
+  // refs (the exact un-resolved shape the API returns), not template literals.
+  /* eslint-disable no-template-curly-in-string */
+  describe('chart insight ref normalization (VIS-827)', () => {
+    const renderWithDashboard = (dashboard, charts = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+        </BrowserRouter>
+      );
+    };
+
+    const insightsOf = () =>
+      JSON.parse(screen.getByTestId('chart').getAttribute('data-insights'));
+
+    it('normalizes string-ref insights on an embedded chart object', () => {
+      const dashboard = {
+        name: 'embedded-chart',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'embedded',
+                  insights: ['${ref(fibonacci-waterfall)}', '${ref(example-indicator)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([
+        { name: 'fibonacci-waterfall' },
+        { name: 'example-indicator' },
+      ]);
+    });
+
+    it('normalizes string-ref insights when the chart is resolved by name', () => {
+      const dashboard = {
+        name: 'ref-chart',
+        rows: [{ height: 'medium', items: [{ width: 1, chart: 'by-name' }] }],
+      };
+      const charts = {
+        'by-name': { name: 'by-name', config: { name: 'by-name', insights: ['${ref(simple-line)}'] } },
+      };
+      renderWithDashboard(dashboard, charts);
+      expect(insightsOf()).toEqual([{ name: 'simple-line' }]);
+    });
+
+    it('preserves embedded insight objects (name/props/interactions) untouched', () => {
+      const embeddedInsight = {
+        name: 'double-simple-line',
+        props: { type: 'scatter', x: '?{${ref(m).x}}' },
+        interactions: [{ sort: '?{${ref(m).x} ASC}' }],
+      };
+      const dashboard = {
+        name: 'mixed-insights',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'mixed',
+                  insights: [embeddedInsight, '${ref(simple-line)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([embeddedInsight, { name: 'simple-line' }]);
+    });
+  });
+  /* eslint-enable no-template-curly-in-string */
 });
