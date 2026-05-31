@@ -361,4 +361,52 @@ describe('LineageNew', () => {
       expect(mockFetchSources).toHaveBeenCalled();
     });
   });
+
+  describe('embedded mode (scopeSelector provided)', () => {
+    it('does NOT re-fetch the collections the host route already loaded', async () => {
+      useLineageDag.mockReturnValue({
+        nodes: [{ id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source' } }],
+        edges: [],
+      });
+
+      render(<LineageNew scopeSelector="*" />);
+
+      // The DAG renders immediately from the host-populated store.
+      expect(await screen.findByTestId('node-source-db')).toBeInTheDocument();
+
+      // None of the host-preloaded fetchers fire again.
+      expect(mockFetchSources).not.toHaveBeenCalled();
+      expect(mockFetchModels).not.toHaveBeenCalled();
+      expect(mockFetchCharts).not.toHaveBeenCalled();
+      expect(mockFetchInsights).not.toHaveBeenCalled();
+    });
+
+    it('lazily fills dashboards + defaults (slices the route does not preload) only when empty', async () => {
+      render(<LineageNew scopeSelector="*" />);
+
+      await waitFor(() => {
+        expect(mockFetchDashboards).toHaveBeenCalledTimes(1);
+      });
+      expect(mockFetchDefaults).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fetch dashboards/defaults when those slices are already populated', async () => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          ...defaultStoreState,
+          dashboards: [{ name: 'd1' }],
+          defaults: { source_name: 's' },
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      });
+
+      render(<LineageNew scopeSelector="*" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('react-flow')).toBeInTheDocument();
+      });
+      expect(mockFetchDashboards).not.toHaveBeenCalled();
+      expect(mockFetchDefaults).not.toHaveBeenCalled();
+    });
+  });
 });
