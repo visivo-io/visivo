@@ -126,8 +126,7 @@ test.describe('Outline Tree Panel (VIS-793)', () => {
     // Dispatch reached the workspace store (canvas would read this key in
     // Track D). The store action sets `workspaceOutlineSelectedKey = 'row.1'`.
     const selectedKey = await page.evaluate(() => {
-      const buf = window.__visivoWorkspaceTelemetry;
-      // Prefer the data-attribute as the canonical selection signal.
+      // The data-attribute is the canonical selection signal.
       const el = document.querySelector(
         '[data-testid="outline-tree-node-row.1"]'
       );
@@ -169,9 +168,13 @@ test.describe('Outline Tree Panel (VIS-793)', () => {
     await page.goto(`${BASE}/workspace/dashboard/${DASHBOARD}`);
     await page.waitForLoadState('networkidle');
 
-    // Reset the telemetry buffer so we only see the tab-switch event below.
+    // Subscribe to the workspace telemetry CustomEvent before the action so we
+    // only observe the tab-switch event triggered below.
     await page.evaluate(() => {
-      window.__visivoWorkspaceTelemetry = [];
+      window.__evts = [];
+      window.addEventListener('visivo:workspace-telemetry', e =>
+        window.__evts.push(e.detail)
+      );
     });
 
     // Default right tab is "edit" — switch to "outline" to trigger the event.
@@ -180,7 +183,7 @@ test.describe('Outline Tree Panel (VIS-793)', () => {
     });
 
     const event = await page.evaluate(() =>
-      (window.__visivoWorkspaceTelemetry || []).find(
+      (window.__evts || []).find(
         e => e.eventName === 'right_rail_tab_switched'
       )
     );
