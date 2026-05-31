@@ -39,6 +39,11 @@ describe('LibraryRow', () => {
       expect(def.droppable).toBe(false);
       expect(def.accent).toBe('teal');
     });
+    // Dashboards (VIS-824) sit in the Layout Items section but are NOT
+    // canvas-droppable — clicking one scopes the middle pane instead.
+    const dashboardDef = getTypeDef('dashboard');
+    expect(dashboardDef).toBeTruthy();
+    expect(dashboardDef.droppable).toBe(false);
   });
 
   test('getTypeDef derives icon + label + plural from the canonical objectTypeConfigs', () => {

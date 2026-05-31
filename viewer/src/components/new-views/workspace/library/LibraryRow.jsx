@@ -37,12 +37,18 @@ import LibraryRowFlipPopover from './LibraryRowFlipPopover';
 // /editor, the lineage nodes, the explorer, and every edit form. The only
 // Library-specific knobs are which section a type belongs to (Layout vs.
 // Data) and the resulting droppable flag + visual accent.
-export const LAYOUT_TYPES = ['chart', 'table', 'markdown', 'input'];
+export const LAYOUT_TYPES = ['chart', 'table', 'markdown', 'input', 'dashboard'];
 export const DATA_TYPES = ['source', 'model', 'dimension', 'metric', 'relation', 'insight'];
+
+// Of the Layout-Items types, only these four are canvas-droppable drag sources
+// with an inline "+ New X" CTA. Dashboards live in the Layout Items section so
+// the Library offers a dashboard navigation path (VIS-824), but a dashboard is
+// not a canvas-droppable item — clicking it scopes the middle pane instead.
+export const DROPPABLE_TYPES = ['chart', 'table', 'markdown', 'input'];
 
 export const getTypeDef = type => {
   const cfg = getTypeByValue(type);
-  const droppable = LAYOUT_TYPES.includes(type);
+  const droppable = DROPPABLE_TYPES.includes(type);
   return {
     icon: cfg?.icon || getTypeIcon(type),
     label: cfg?.singularLabel || type,

@@ -55,6 +55,7 @@ const seedStore = (extra = {}) => {
       tables: [{ name: 'revenue_rows' }],
       markdowns: [{ name: 'project_notes' }],
       inputs: [{ name: 'date_range' }],
+      dashboards: [{ name: 'overview' }],
       // Data-layer collections.
       sources: [{ name: 'local-duck', type: 'duckdb' }],
       models: [{ name: 'monthly_revenue' }],
@@ -95,15 +96,15 @@ describe('Library', () => {
 
   test('section counts sum the per-type collections', () => {
     renderLibrary();
-    // Layout: 2 charts + 1 table + 1 markdown + 1 input = 5.
-    expect(screen.getByTestId('library-section-layout-count')).toHaveTextContent('(5)');
+    // Layout: 2 charts + 1 table + 1 markdown + 1 input + 1 dashboard = 6.
+    expect(screen.getByTestId('library-section-layout-count')).toHaveTextContent('(6)');
     // Data: 1 source + 1 model + 1 dimension + 1 metric + 1 relation + 1 insight = 6.
     expect(screen.getByTestId('library-section-data-count')).toHaveTextContent('(6)');
   });
 
-  test('renders the four Layout-Item subsections and the six Data-Layer subsections', () => {
+  test('renders the five Layout-Item subsections and the six Data-Layer subsections', () => {
     renderLibrary();
-    ['chart', 'table', 'markdown', 'input'].forEach(t => {
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t => {
       expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument();
     });
     ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t => {
@@ -119,6 +120,8 @@ describe('Library', () => {
       'New Markdown'
     );
     expect(screen.getByTestId('library-subsection-input-create')).toHaveTextContent('New Input');
+    // Dashboards live in Layout Items but are not droppable — no inline create.
+    expect(screen.queryByTestId('library-subsection-dashboard-create')).not.toBeInTheDocument();
     // Data-layer subsections have no inline create button.
     ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t => {
       expect(screen.queryByTestId(`library-subsection-${t}-create`)).not.toBeInTheDocument();
@@ -163,6 +166,26 @@ describe('Library', () => {
       type: 'source',
       name: 'local-duck',
     });
+  });
+
+  test('clicking a dashboard row scopes the workspace to that dashboard (VIS-824)', () => {
+    const openWorkspaceTab = jest.fn();
+    seedStore({ openWorkspaceTab });
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-row-dashboard-overview'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'dashboard:overview',
+      type: 'dashboard',
+      name: 'overview',
+    });
+  });
+
+  test('dashboard rows are not droppable drag sources (VIS-824)', () => {
+    renderLibrary();
+    fireEvent.mouseEnter(screen.getByTestId('library-row-dashboard-overview'));
+    expect(
+      screen.queryByTestId('library-row-dashboard-overview-drag-handle')
+    ).not.toBeInTheDocument();
   });
 
   test('"+ New Chart" calls the chart create-modal opener', () => {
