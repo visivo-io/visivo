@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { PiCaretDown, PiPlus, PiList, PiRows, PiStack } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
@@ -64,6 +64,8 @@ const Node = ({
   selectionKey,
   onSelect,
   testId,
+  collapsed = false,
+  onToggle,
   children,
 }) => {
   const Icon =
@@ -113,9 +115,24 @@ const Node = ({
             className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
           />
         )}
-        {/* Disclosure caret — parents only; items get a spacer to align icons. */}
+        {/* Disclosure caret — parents toggle collapse; items get a spacer to align icons. */}
         {hasChildren ? (
-          <PiCaretDown aria-hidden="true" className="h-3 w-3 shrink-0 text-gray-400" />
+          <button
+            type="button"
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+            aria-expanded={!collapsed}
+            data-testid={`${testId}-toggle`}
+            onClick={e => {
+              e.stopPropagation();
+              onToggle && onToggle();
+            }}
+            className="-ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-200/70 hover:text-gray-600"
+          >
+            <PiCaretDown
+              aria-hidden="true"
+              className={`h-3 w-3 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
         ) : (
           <span aria-hidden="true" className="h-3 w-3 shrink-0" />
         )}
@@ -140,7 +157,7 @@ const Node = ({
           </span>
         )}
       </div>
-      {hasChildren && <div className="flex flex-col">{children}</div>}
+      {hasChildren && !collapsed && <div className="flex flex-col">{children}</div>}
     </div>
   );
 };
@@ -190,6 +207,18 @@ const OutlineTreePanel = () => {
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
   const addDashboardRow = useStore(s => s.addDashboardRow);
 
+  // Collapse/expand state for parent nodes (dashboard / row / container), keyed
+  // by selection key. Default-expanded; the disclosure caret toggles a key.
+  const [collapsedKeys, setCollapsedKeys] = useState(() => new Set());
+  const toggleCollapsed = useCallback(key => {
+    setCollapsedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   // Resolve the scoped dashboard's rows from the same store source the canvas
   // reads, so structural edits there flow into the tree automatically.
   const rows = useMemo(() => {
@@ -226,6 +255,8 @@ const OutlineTreePanel = () => {
           selected={selectedKey === itemKey}
           selectionKey={itemKey}
           onSelect={setSelectedKey}
+          collapsed={collapsedKeys.has(itemKey)}
+          onToggle={() => toggleCollapsed(itemKey)}
           testId={`outline-tree-node-${itemKey}`}
         >
           {nestedRows.map((row, ri) => renderRowNode(row, ri, itemKey, level + 1))}
@@ -265,6 +296,8 @@ const OutlineTreePanel = () => {
         selected={selectedKey === rowKey}
         selectionKey={rowKey}
         onSelect={setSelectedKey}
+        collapsed={collapsedKeys.has(rowKey)}
+        onToggle={() => toggleCollapsed(rowKey)}
         testId={`outline-tree-node-${rowKey}`}
       >
         {items.map((item, ii) => renderItemNode(item, ii, rowKey, level + 1))}
@@ -305,6 +338,8 @@ const OutlineTreePanel = () => {
             selected={selectedKey === 'dashboard'}
             selectionKey="dashboard"
             onSelect={setSelectedKey}
+            collapsed={collapsedKeys.has('dashboard')}
+            onToggle={() => toggleCollapsed('dashboard')}
             testId="outline-tree-node-dashboard"
           >
             {rows.map((row, ri) => renderRowNode(row, ri, '', 1))}

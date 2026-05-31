@@ -254,5 +254,44 @@ describe('OutlineTreePanel', () => {
         'row.0.item.1.row.1.item.0.row.0.item.0'
       );
     });
+
+    test('collapsing a container hides its nested children; expanding restores them', () => {
+      resetStore(nestedRows);
+      renderPanel();
+
+      // Nested children visible by default.
+      expect(
+        screen.getByTestId('outline-tree-node-row.0.item.1.row.0.item.0')
+      ).toBeInTheDocument();
+
+      // Collapse the container via its disclosure caret (not the row body —
+      // that would select, not collapse).
+      fireEvent.click(
+        screen.getByTestId('outline-tree-node-row.0.item.1-toggle')
+      );
+      expect(
+        screen.queryByTestId('outline-tree-node-row.0.item.1.row.0.item.0')
+      ).not.toBeInTheDocument();
+      // The container node itself stays.
+      expect(
+        screen.getByTestId('outline-tree-node-row.0.item.1')
+      ).toBeInTheDocument();
+
+      // Toggling the caret again re-expands.
+      fireEvent.click(
+        screen.getByTestId('outline-tree-node-row.0.item.1-toggle')
+      );
+      expect(
+        screen.getByTestId('outline-tree-node-row.0.item.1.row.0.item.0')
+      ).toBeInTheDocument();
+    });
+
+    test('caret toggle does not change selection (collapse and select are distinct)', () => {
+      resetStore(nestedRows);
+      renderPanel();
+      const before = useStore.getState().workspaceOutlineSelectedKey;
+      fireEvent.click(screen.getByTestId('outline-tree-node-row.0-toggle'));
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe(before);
+    });
   });
 });

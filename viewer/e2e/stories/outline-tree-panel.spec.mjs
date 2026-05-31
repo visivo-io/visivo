@@ -307,4 +307,34 @@ test.describe('Outline Tree Panel — nested Item.rows layouts (VIS-825)', () =>
       path: `${SCREENS}/vis825-nested-selected.png`,
     });
   });
+
+  test('the disclosure caret collapses/expands a container without selecting it', async ({
+    page,
+  }) => {
+    await openNestedOutline(page);
+
+    const nestedChild = page.getByTestId(
+      'outline-tree-node-row.1.item.1.row.0.item.0'
+    );
+    await expect(nestedChild).toBeVisible({ timeout: WAIT_FOR_PAGE });
+
+    const toggle = page.getByTestId('outline-tree-node-row.1.item.1-toggle');
+    const selectedBefore = await page.evaluate(
+      () => window.useStore.getState().workspaceOutlineSelectedKey
+    );
+
+    // Collapse → nested children removed, container stays, selection unchanged.
+    await toggle.click();
+    await expect(nestedChild).toHaveCount(0);
+    await expect(page.getByTestId('outline-tree-node-row.1.item.1')).toBeVisible();
+    const selectedAfter = await page.evaluate(
+      () => window.useStore.getState().workspaceOutlineSelectedKey
+    );
+    expect(selectedAfter).toBe(selectedBefore);
+    await page.screenshot({ path: `${SCREENS}/vis825-collapsed.png` });
+
+    // Expand → children restored.
+    await toggle.click();
+    await expect(nestedChild).toBeVisible();
+  });
 });
