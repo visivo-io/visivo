@@ -1,21 +1,28 @@
 /**
- * MiddlePane dispatch behaviour (VIS-775 + VIS-E1 / VIS-779).
+ * MiddlePane dispatcher (VIS-775 + VIS-805 + VIS-E1 / VIS-779).
  *
- * MiddlePane dispatches on `workspaceActiveObject.type` + `workspaceLens`.
- * These tests pin two changes:
- *   - VIS-E1: the dashboard lineage lens mounts `<LineageCanvas>` (replacing
- *     the Track-E placeholder), while the canvas lens renders the dashboard.
- *   - VIS-779: the Lineage lens is universal for non-dashboard objects — it is
- *     the per-object default and mounts `<LineageCanvas>`, while the Preview
- *     lens keeps the Track N placeholder.
+ * MiddlePane dispatches on `workspaceActiveObject.type` + `workspaceLens`:
+ *   - project chrome / unscoped → mounts the real `<ProjectEditor>` (M-1),
+ *     replacing the old "coming soon" placeholder.
+ *   - dashboard + lineage lens → mounts `<LineageCanvas>` (VIS-E1); the canvas
+ *     lens renders `<DashboardNew>`.
+ *   - any non-dashboard object → `<PerObjectPane>`, which defaults to the
+ *     universal Lineage lens (VIS-779) and keeps Preview as the Track N
+ *     placeholder.
  *
- * Child surfaces (DashboardNew, LineageCanvas) are mocked so the test exercises
- * the dispatcher, not the heavy React Flow / Plotly trees beneath it.
+ * Child surfaces (ProjectEditor, DashboardNew, LineageCanvas) are mocked so this
+ * stays a focused dispatcher test, not the heavy React Flow / Plotly trees.
  */
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import MiddlePane from './MiddlePane';
 import useStore from '../../../stores/store';
+
+jest.mock('../project/editor/ProjectEditor', () => {
+  const Mock = () => <div data-testid="mock-project-editor" />;
+  Mock.displayName = 'MockProjectEditor';
+  return { __esModule: true, default: Mock };
+});
 
 jest.mock('../project/DashboardNew', () => {
   const Mock = () => <div data-testid="dashboard-new-mock" />;
@@ -34,11 +41,29 @@ const seed = (extra = {}) => {
     useStore.setState({
       workspaceActiveObject: { type: 'dashboard', name: 'sales' },
       workspaceLens: 'preview',
-      project: { id: 'proj-1' },
+      setWorkspaceLens: jest.fn(),
+      project: { id: 'proj-1', name: 'proj' },
       ...extra,
     });
   });
 };
+
+describe('MiddlePane project variant (VIS-805)', () => {
+  test('mounts ProjectEditor when no object is scoped (defaults to project)', () => {
+    seed({ workspaceActiveObject: null });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-project')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-project-editor')).toBeInTheDocument();
+    // The old placeholder is gone.
+    expect(screen.queryByTestId('workspace-middle-project-placeholder')).not.toBeInTheDocument();
+  });
+
+  test('mounts ProjectEditor when the active object is the project chrome', () => {
+    seed({ workspaceActiveObject: { type: 'project', name: 'proj' } });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('mock-project-editor')).toBeInTheDocument();
+  });
+});
 
 describe('MiddlePane — dashboard lineage lens (VIS-E1)', () => {
   test('mounts LineageCanvas when the dashboard lens is "lineage"', () => {

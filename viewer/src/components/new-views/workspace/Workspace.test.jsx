@@ -103,11 +103,9 @@ describe('VIS-775 Workspace shell', () => {
     expect(
       screen.getByTestId('workspace-tab-project:analytics-platform')
     ).toHaveAttribute('data-active', 'true');
-    // Middle pane shows the Project Editor placeholder.
+    // Middle pane mounts the Project Editor surface (M-1, VIS-805).
     expect(screen.getByTestId('workspace-middle-project')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('workspace-middle-project-placeholder')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('project-editor')).toBeInTheDocument();
   });
 
   test('mounts the shell at /workspace/dashboard/<name> and focuses the dashboard tab', () => {

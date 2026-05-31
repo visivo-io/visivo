@@ -1,13 +1,14 @@
 import React from 'react';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import DashboardNew from '../project/DashboardNew';
+import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
 import useStore from '../../../stores/store';
 
 /**
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
  *
- *   project    → ProjectEditorPlaceholder (Track M ships the polished surface)
+ *   project    → ProjectEditor (Track M M-1 — health row + level groups)
  *   dashboard  → DashboardNew (existing renderer) when scoped, placeholder
  *                otherwise; the Lineage lens mounts <LineageCanvas>
  *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
@@ -53,11 +54,7 @@ const ProjectPane = ({ activeObject }) => {
           </div>
         }
       />
-      <Placeholder
-        testId="workspace-middle-project-placeholder"
-        title="Project Editor coming soon (Track M)"
-        body="The unscoped Workspace surface ships in Wave 2 as VIS-M1 — health row, level groups, and recent edits."
-      />
+      <ProjectEditor />
     </section>
   );
 };
