@@ -64,6 +64,18 @@ const resetWorkspaceStore = () => {
       fetchMetrics: jest.fn(),
       fetchRelations: jest.fn(),
       fetchInsights: jest.fn(),
+      fetchDashboards: jest.fn(),
+      // Right-rail Edit routing (VIS-802) reads the scoped dashboard's draft
+      // config from `dashboards` and auto-saves via `saveDashboard`.
+      dashboards: [
+        { name: 'simple-dashboard', config: { name: 'simple-dashboard', rows: [] } },
+      ],
+      saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
+      // Collections the Edit panel may read for Library-row leaf forms.
+      charts: [],
+      tables: [],
+      markdowns: [],
+      inputs: [],
     });
   });
 };
@@ -144,11 +156,16 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
   });
 
-  test('right rail Edit tab surfaces the active object name', () => {
+  test('right rail Edit tab routes to a selection-driven form with a chip (VIS-802)', () => {
     renderAt('/workspace/dashboard/simple-dashboard');
-    expect(
-      screen.getByTestId('workspace-right-rail-edit-active-name')
-    ).toHaveTextContent('simple-dashboard');
+    // The Edit tab now mounts the real selection-driven editor (VIS-802 / G-1)
+    // rather than the old "coming soon" placeholder. Scoped to a dashboard with
+    // the default Outline key ('dashboard'), it shows the dashboard-chrome form
+    // fronted by a selection chip carrying the dashboard name.
+    expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
+    const chip = screen.getByTestId('right-rail-selection-chip');
+    expect(chip).toHaveTextContent('simple-dashboard');
+    expect(chip).toHaveAttribute('data-object-type', 'dashboard');
   });
 
   test('Publish · N button only renders when dirty > 0', () => {

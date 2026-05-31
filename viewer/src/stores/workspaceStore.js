@@ -201,6 +201,30 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
+   * Optimistically replace a dashboard's draft config in the in-memory
+   * `dashboards` list WITHOUT persisting. The right-rail Edit forms (VIS-802)
+   * call this on every change so the Outline tree, canvas, and the form's own
+   * RefDropZones reflect the edit immediately; the debounced `saveDashboard`
+   * runs separately. No-op (returns false) when the dashboard isn't found.
+   *
+   * Mirrors `addDashboardRow`'s optimistic write but decoupled from the save so
+   * the UI never has to wait on (or be blocked by) a backend round-trip.
+   */
+  updateDashboardConfigOptimistic: (dashboardName, nextConfig) => {
+    if (!dashboardName) return false;
+    const state = get();
+    const list = state.dashboards || [];
+    const idx = list.findIndex((d) => d.name === dashboardName);
+    if (idx === -1) return false;
+    const entry = list[idx];
+    const nextEntry = entry.config ? { ...entry, config: nextConfig } : nextConfig;
+    const nextList = [...list];
+    nextList[idx] = nextEntry;
+    set({ dashboards: nextList });
+    return true;
+  },
+
+  /**
    * Append an empty row to a dashboard's draft config and persist it via the
    * dashboard draft cache. Optimistically updates the in-memory `dashboards`
    * list so the Outline tree (and canvas) reflect the new row immediately,

@@ -5,6 +5,7 @@ import LeftRail from './LeftRail';
 import RightRail from './RightRail';
 import MiddlePane from './MiddlePane';
 import DragHandle from './DragHandle';
+import WorkspaceDndContext from './WorkspaceDndContext';
 import useStore from '../../../stores/store';
 
 /**
@@ -49,38 +50,45 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
       }}
     >
       <TopBar />
-      <div className="flex min-h-0 flex-1">
-        {/* Left rail — project-wide, full-height anchor. */}
-        <div
-          style={{ width: leftCollapsed ? 48 : leftWidth }}
-          className="shrink-0"
-          data-testid="workspace-left-rail-container"
-        >
-          <LeftRail />
-        </div>
-        <DragHandle side="left" />
-        {/* Tab + middle/right column. The tab strip's width matches exactly
-            what the tabs scope (the active-object area). */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <TabStrip />
-          <div className="flex min-h-0 flex-1">
-            <main
-              className="flex min-w-0 flex-1 flex-col"
-              data-testid="workspace-middle-container"
-            >
-              <MiddlePane />
-            </main>
-            <DragHandle side="right" />
-            <div
-              style={{ width: rightCollapsed ? 48 : rightWidth }}
-              className="shrink-0"
-              data-testid="workspace-right-rail-container"
-            >
-              <RightRail />
+      {/* Single shared dnd-kit context (VIS-802 / G-1) — spans the Library
+          (drag source, left rail) AND the right-rail RefDropZones so a Library
+          row dragged onto a form field reaches its drop target. It SUBSUMES
+          ProjectEditor's former context (which is why the middle pane is inside
+          it too); see WorkspaceDndContext for the routing decision. */}
+      <WorkspaceDndContext>
+        <div className="flex min-h-0 flex-1">
+          {/* Left rail — project-wide, full-height anchor. */}
+          <div
+            style={{ width: leftCollapsed ? 48 : leftWidth }}
+            className="shrink-0"
+            data-testid="workspace-left-rail-container"
+          >
+            <LeftRail />
+          </div>
+          <DragHandle side="left" />
+          {/* Tab + middle/right column. The tab strip's width matches exactly
+              what the tabs scope (the active-object area). */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <TabStrip />
+            <div className="flex min-h-0 flex-1">
+              <main
+                className="flex min-w-0 flex-1 flex-col"
+                data-testid="workspace-middle-container"
+              >
+                <MiddlePane />
+              </main>
+              <DragHandle side="right" />
+              <div
+                style={{ width: rightCollapsed ? 48 : rightWidth }}
+                className="shrink-0"
+                data-testid="workspace-right-rail-container"
+              >
+                <RightRail />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </WorkspaceDndContext>
     </div>
   );
 };

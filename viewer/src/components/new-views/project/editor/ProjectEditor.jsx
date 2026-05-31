@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { PiMagnifyingGlass, PiPlus } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import {
   groupDashboardsByLevel,
   buildHealthSummary,
@@ -30,6 +30,15 @@ import LevelGroup from './LevelGroup';
  *
  * Right-rail forms (dashboard / level / defaults) are deferred to M-2/M-3 —
  * this surface only DISPATCHES selections, it does not mount the forms.
+ *
+ * ### DndContext (VIS-802 / G-1)
+ *
+ * This surface NO LONGER mounts its own `<DndContext>`. The Workspace shell's
+ * single shared `<WorkspaceDndContext>` (G-1) owns drag handling for the whole
+ * workspace so Library-row drags can reach right-rail RefDropZones. The
+ * drag-between-levels `onDragEnd` now lives in that shared handler; this surface
+ * only declares its drop targets (`<LevelGroup>` `useDroppable`) and reads the
+ * live drag via `useWorkspaceDrag()` for the source-group dimming + tile ghost.
  */
 
 const SEARCH_THRESHOLD = 5;
@@ -128,13 +137,18 @@ const ProjectEditor = () => {
   const sources = useStore(s => s.sources);
   const defaults = useStore(s => s.defaults);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
-  const reassignDashboardLevel = useStore(s => s.reassignDashboardLevel);
   const activeObject = useStore(s => s.workspaceActiveObject);
   const openCreateDashboardModal = useStore(s => s.openCreateDashboardModal);
 
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
-  const [activeDrag, setActiveDrag] = useState(null);
+
+  // The live shell-level drag (VIS-802 / G-1). When a ProjectEditor tile is in
+  // flight this is `{ kind: 'dashboard', name, level }`; the source-group dimming
+  // + the shell's shared <DragOverlay> read from it.
+  const workspaceDrag = useWorkspaceDrag();
+  const activeDrag =
+    workspaceDrag?.kind === 'dashboard' ? workspaceDrag : null;
 
   // The Project Editor may mount before the workspace route's collection
   // fetch resolves; guard with a self-fetch so a direct visit still renders.
@@ -195,10 +209,6 @@ const ProjectEditor = () => {
   const selectedDashboardName =
     activeObject?.type === 'dashboard' ? activeObject.name : null;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
-
   const dispatchDashboardSelection = useCallback(
     tile => {
       if (openWorkspaceTab) {
@@ -226,37 +236,6 @@ const ProjectEditor = () => {
     }
     emitWorkspaceEvent('project_editor_action', { kind: 'select_chrome' });
   }, [openWorkspaceTab, projectName]);
-
-  const handleDragStart = useCallback(event => {
-    const data = event.active?.data?.current;
-    if (data?.type === 'dashboard') {
-      setActiveDrag({ name: data.name, level: data.level });
-    }
-  }, []);
-
-  const handleDragEnd = useCallback(
-    event => {
-      const { active, over } = event;
-      setActiveDrag(null);
-      if (!over) return;
-      const dragData = active?.data?.current;
-      const dropData = over?.data?.current;
-      if (!dragData || dragData.type !== 'dashboard' || !dropData) return;
-
-      const target = groups.find(g => g.levelKey === dropData.levelKey);
-      if (!target) return;
-
-      if (reassignDashboardLevel) {
-        reassignDashboardLevel(dragData.name, target.levelValue);
-      }
-      emitWorkspaceEvent('project_editor_action', {
-        kind: 'reassign_level',
-        name: dragData.name,
-        level: target.levelValue,
-      });
-    },
-    [groups, reassignDashboardLevel]
-  );
 
   const handleToggle = useCallback(levelKey => {
     setCollapsed(prev => ({ ...prev, [levelKey]: !prev[levelKey] }));
@@ -343,12 +322,11 @@ const ProjectEditor = () => {
                 </button>
               </div>
             ) : (
-              <DndContext
-                sensors={sensors}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragCancel={() => setActiveDrag(null)}
-              >
+              // The shell's shared <WorkspaceDndContext> (G-1) is the dnd-kit
+              // provider; this surface only declares its drop targets and reads
+              // the live drag for source-group dimming. The drag overlay lives
+              // in the shared context too.
+              <>
                 {groups.map(group => {
                   const isActiveSourceGroup =
                     !!activeDrag && group.dashboards.some(t => t.name === activeDrag.name);
@@ -365,17 +343,7 @@ const ProjectEditor = () => {
                     />
                   );
                 })}
-                <DragOverlay>
-                  {activeDrag ? (
-                    <div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-semibold text-gray-900 shadow-lg ring-2 ring-primary">
-                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded ${DASH_COLORS.bg} ${DASH_COLORS.text}`}>
-                        <DashboardIcon style={{ fontSize: 12 }} />
-                      </span>
-                      {activeDrag.name}
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+              </>
             )}
           </div>
 
