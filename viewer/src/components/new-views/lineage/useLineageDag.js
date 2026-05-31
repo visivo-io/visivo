@@ -80,25 +80,36 @@ function getEdgeId(sourceType, sourceName, targetType, targetName) {
 /**
  * Extract referenced object names from a dashboard's config rows/items.
  * Items can reference charts, tables, markdowns, selectors, or inputs via ref() strings or inline objects.
+ *
+ * Container items nest further layout via `item.rows[].items[]` (the Item.rows
+ * nesting from VIS-747/748), so we recurse into nested rows to arbitrary depth
+ * and collect every leaf ref at all nesting levels.
  */
 function extractDashboardItemRefs(config) {
   const refs = [];
-  const rows = config?.rows || [];
-  rows.forEach(row => {
-    const items = row.items || [];
-    items.forEach(item => {
-      ['chart', 'table', 'markdown', 'input'].forEach(field => {
-        const val = item[field];
-        if (val) {
-          if (typeof val === 'string') {
-            refs.push(parseRefValue(val));
-          } else if (typeof val === 'object' && val.name) {
-            refs.push(val.name);
+
+  const collectFromRows = rows => {
+    (rows || []).forEach(row => {
+      (row.items || []).forEach(item => {
+        ['chart', 'table', 'markdown', 'input'].forEach(field => {
+          const val = item[field];
+          if (val) {
+            if (typeof val === 'string') {
+              refs.push(parseRefValue(val));
+            } else if (typeof val === 'object' && val.name) {
+              refs.push(val.name);
+            }
           }
+        });
+        // Container items nest further rows — recurse to capture nested members.
+        if (Array.isArray(item.rows)) {
+          collectFromRows(item.rows);
         }
       });
     });
-  });
+  };
+
+  collectFromRows(config?.rows);
   return refs;
 }
 
