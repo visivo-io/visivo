@@ -27,8 +27,22 @@ import { formatRefExpression } from '../../../utils/refString';
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
  * Supports drag-to-connect edges between sources and models
+ *
+ * Props (all optional — the component works standalone at `/editor`):
+ *   - `scopeSelector`  — externally-derived selector string (e.g. `*`,
+ *                        `+dashboardName`). When provided it seeds the
+ *                        internal selector and re-syncs whenever the prop
+ *                        changes (so the Workspace scope drives the DAG).
+ *                        The manual selector input still overrides it until
+ *                        the prop changes again.
+ *   - `onNodeSelect`   — called with `{ type, name }` when a node is clicked,
+ *                        so a host (the Workspace MiddlePane) can round-trip
+ *                        the selection into its own selection state.
+ *   - `headerSlot`     — optional React node rendered to the left of the
+ *                        selector input bar (used by `<LineageCanvas>` to
+ *                        mount the scope-indicator chrome).
  */
-const LineageNew = () => {
+const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = null } = {}) => {
   // Sources
   const fetchSources = useStore(state => state.fetchSources);
   const sourcesError = useStore(state => state.sourcesError);
@@ -52,14 +66,37 @@ const LineageNew = () => {
   const fetchInputs = useStore(state => state.fetchInputs);
   const fetchDefaults = useStore(state => state.fetchDefaults);
 
+  // When embedded in the Workspace, the host route already loads most
+  // collections. We read the two slices the Workspace route does NOT
+  // preload (dashboards + defaults) so we can lazily fill them without
+  // re-fetching everything.
+  const dashboards = useStore(state => state.dashboards);
+  const defaults = useStore(state => state.defaults);
+
   // Navigation stack for editing - supports drilling into embedded objects
   // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
   // applyToParent is provided by parent forms for embedded objects
   const [editStack, setEditStack] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [createObjectType, setCreateObjectType] = useState('source');
-  const [selector, setSelector] = useState('');
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  // `*` is the unscoped sentinel from the Workspace scope hook — LineageNew's
+  // own grammar treats an empty selector as "show everything", so we normalise
+  // `*` to `''` before it ever reaches `parseSelector`.
+  const normaliseSelector = useCallback(
+    (value) => (!value || value === '*' ? '' : value),
+    []
+  );
+  const [selector, setSelector] = useState(() => normaliseSelector(scopeSelector));
+  // Track the last scope prop we applied so we only re-seed the internal
+  // selector when the *scope* changes — not on every render. This is what lets
+  // the manual input override the scope until the scope itself changes again.
+  const lastScopeRef = useRef(scopeSelector);
+  // `embedded` means a host (the Workspace via <LineageCanvas>) supplies the
+  // scope and has already loaded the project's collections at the route level.
+  // In that mode we skip our own fetch-on-mount and render the DAG immediately
+  // from the store the host populated. Standalone (`/editor`) still fetches.
+  const embedded = scopeSelector != null;
+  const [initialLoadDone, setInitialLoadDone] = useState(embedded);
   const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
   // Navigation stack helpers
@@ -84,8 +121,22 @@ const LineageNew = () => {
 
   // Note: Individual save functions are now handled by useObjectSave hook
 
-  // Fetch all object types on mount; mark initial load done when all complete
+  // Standalone (`/editor`): fetch every collection on mount and flip
+  // `initialLoadDone` once they all resolve. Embedded (Workspace): the host
+  // route already loaded the collections, so we skip the redundant fetch and
+  // render the DAG immediately (initialLoadDone is seeded true). We only
+  // lazily fill the two slices the Workspace route does NOT preload —
+  // dashboards and defaults — and only when they're still empty.
   useEffect(() => {
+    if (embedded) {
+      if (!dashboards || dashboards.length === 0) {
+        fetchDashboards();
+      }
+      if (defaults == null) {
+        fetchDefaults();
+      }
+      return;
+    }
     Promise.all([
       fetchSources(),
       fetchModels(),
@@ -102,7 +153,19 @@ const LineageNew = () => {
       fetchInputs(),
       fetchDefaults(),
     ]).then(() => setInitialLoadDone(true));
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
+
+  // Re-seed the internal selector when the externally-supplied scope changes.
+  // The manual input mutates `selector` freely between scope changes; this
+  // effect only fires when the *scope prop itself* changes value.
+  useEffect(() => {
+    if (scopeSelector !== lastScopeRef.current) {
+      lastScopeRef.current = scopeSelector;
+      setSelector(normaliseSelector(scopeSelector));
+      setFixedNode(null);
+    }
+  }, [scopeSelector, normaliseSelector]);
 
   // Get DAG data
   const { nodes: dagNodes, edges: dagEdges } = useLineageDag();
@@ -351,7 +414,13 @@ const LineageNew = () => {
     const storeObject = node.data[storeObjectKey] ?? node.data;
     clearEdit();
     pushEdit(objectType, storeObject);
-  }, [clearEdit, pushEdit]);
+
+    // Round-trip the selection to the host (Workspace MiddlePane) so clicking
+    // a node in the lineage view updates the workspace selection.
+    if (onNodeSelect) {
+      onNodeSelect({ type: objectType, name: nodeName });
+    }
+  }, [clearEdit, pushEdit, onNodeSelect]);
 
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
@@ -447,7 +516,10 @@ const LineageNew = () => {
   const isPanelOpen = editStack.length > 0 || isCreating;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)]">
+    <div className={`flex flex-col ${headerSlot ? 'h-full' : 'h-[calc(100vh-48px)]'}`}>
+      {/* Host-supplied chrome (e.g. LineageCanvas scope-indicator strip) */}
+      {headerSlot}
+
       {/* Selector input bar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
         <Button

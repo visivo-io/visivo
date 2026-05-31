@@ -506,6 +506,8 @@ const LibraryRowFlipPopover = ({
   const allDashboards = useStore(s => s.allDashboards);
   const dashboardsFromStore = useStore(s => s.dashboards);
   const fetchDashboards = useStore(s => s.fetchDashboards);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const csvScriptModels = useStore(s => s.csvScriptModels);
   const localMergeModels = useStore(s => s.localMergeModels);
   const defaults = useStore(s => s.defaults);
@@ -624,6 +626,21 @@ const LibraryRowFlipPopover = ({
   if (!obj) return null;
 
   const subjectForRender = effectiveSubject || obj;
+
+  // "Expand" hands the current subject off to the Workspace middle pane's
+  // universal lineage lens (E-1): open the subject as a workspace tab, flip
+  // the lens to lineage, then dismiss the popover. This replaces the never-
+  // built VIS-D6 standalone lineage modal.
+  const handleExpand = () => {
+    const { type, name } = subjectForRender;
+    if (typeof openWorkspaceTab === 'function') {
+      openWorkspaceTab({ id: `${type}:${name}`, type, name });
+    }
+    if (typeof setWorkspaceLens === 'function') {
+      setWorkspaceLens('lineage');
+    }
+    onClose && onClose();
+  };
   const ancestors = lineage.ancestors;
   const descendants = lineage.descendants;
   const N = ancestors.length;
@@ -1023,14 +1040,15 @@ const LibraryRowFlipPopover = ({
 
         <footer className="flex h-8 items-center justify-between border-t border-gray-200 px-2.5 text-[11px]">
           <span className="text-gray-400" data-testid={`${testIdPrefix}-deferred-note`}>
-            Full lineage in VIS-780
+            Open full lineage
           </span>
           <button
             type="button"
-            disabled
-            title="Open the full lineage modal (VIS-D6)"
+            onClick={handleExpand}
+            title="Open this object's full lineage in the workspace lineage lens"
+            aria-label="Open full lineage in the workspace lineage lens"
             data-testid={`${testIdPrefix}-expand`}
-            className="inline-flex h-6 items-center gap-1 rounded px-1.5 text-[11px] font-medium text-gray-400 disabled:opacity-60"
+            className="inline-flex h-6 items-center gap-1 rounded px-1.5 text-[11px] font-medium text-primary-600 hover:bg-primary-50"
           >
             <PiArrowSquareOut className="h-3 w-3" />
             Expand
