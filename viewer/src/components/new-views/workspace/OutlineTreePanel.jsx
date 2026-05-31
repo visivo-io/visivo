@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { PiCaretDown, PiPlus, PiList, PiRows } from 'react-icons/pi';
+import { PiCaretDown, PiPlus, PiList, PiRows, PiStack } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
 import { getTypeIcon } from '../common/objectTypeConfigs';
@@ -71,7 +71,9 @@ const Node = ({
       ? getTypeIcon('dashboard')
       : kind === 'row'
         ? PiRows
-        : getTypeIcon(itemType);
+        : kind === 'container'
+          ? PiStack
+          : getTypeIcon(itemType);
 
   const indent = 6 + level * 14;
   const hasChildren = React.Children.count(children) > 0;
@@ -203,6 +205,73 @@ const OutlineTreePanel = () => {
     addDashboardRow(dashboardName);
   }, [addDashboardRow, dashboardName]);
 
+  // Recursively render an Item. A leaf item (chart/table/markdown/input)
+  // renders a single node; a container item (`item.rows` present) renders a
+  // distinguishable "container" node whose children are its nested rows. Keys
+  // extend the existing scheme by appending `.row.<ri>.item.<ii>` per level,
+  // e.g. `row.0.item.1.row.0.item.0`, so a click on any depth writes a fully
+  // qualified, nested selection key.
+  const renderItemNode = (item, ii, parentKey, level) => {
+    const itemKey = `${parentKey}.item.${ii}`;
+    const nestedRows = Array.isArray(item?.rows) ? item.rows : null;
+
+    if (nestedRows && nestedRows.length > 0) {
+      return (
+        <Node
+          key={ii}
+          level={level}
+          kind="container"
+          label={`Container ${ii + 1}`}
+          meta={`${nestedRows.length} row${nestedRows.length === 1 ? '' : 's'} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
+          selected={selectedKey === itemKey}
+          selectionKey={itemKey}
+          onSelect={setSelectedKey}
+          testId={`outline-tree-node-${itemKey}`}
+        >
+          {nestedRows.map((row, ri) => renderRowNode(row, ri, itemKey, level + 1))}
+        </Node>
+      );
+    }
+
+    const { type, name } = resolveItem(item);
+    return (
+      <Node
+        key={ii}
+        level={level}
+        kind="item"
+        itemType={type}
+        label={name}
+        meta={`${type} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
+        selected={selectedKey === itemKey}
+        selectionKey={itemKey}
+        onSelect={setSelectedKey}
+        testId={`outline-tree-node-${itemKey}`}
+      />
+    );
+  };
+
+  // Recursively render a Row and its items. `parentKey` is the dashboard root
+  // ('') for top-level rows or a container item key for nested rows.
+  const renderRowNode = (row, ri, parentKey, level) => {
+    const rowKey = parentKey ? `${parentKey}.row.${ri}` : `row.${ri}`;
+    const items = Array.isArray(row?.items) ? row.items : [];
+    return (
+      <Node
+        key={ri}
+        level={level}
+        kind="row"
+        label={`Row ${ri + 1}`}
+        meta={`${row?.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
+        selected={selectedKey === rowKey}
+        selectionKey={rowKey}
+        onSelect={setSelectedKey}
+        testId={`outline-tree-node-${rowKey}`}
+      >
+        {items.map((item, ii) => renderItemNode(item, ii, rowKey, level + 1))}
+      </Node>
+    );
+  };
+
   if (!dashboardName) {
     return (
       <div
@@ -238,42 +307,7 @@ const OutlineTreePanel = () => {
             onSelect={setSelectedKey}
             testId="outline-tree-node-dashboard"
           >
-            {rows.map((row, ri) => {
-              const rowKey = `row.${ri}`;
-              const items = Array.isArray(row?.items) ? row.items : [];
-              return (
-                <Node
-                  key={ri}
-                  level={1}
-                  kind="row"
-                  label={`Row ${ri + 1}`}
-                  meta={`${row?.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
-                  selected={selectedKey === rowKey}
-                  selectionKey={rowKey}
-                  onSelect={setSelectedKey}
-                  testId={`outline-tree-node-${rowKey}`}
-                >
-                  {items.map((item, ii) => {
-                    const itemKey = `${rowKey}.item.${ii}`;
-                    const { type, name } = resolveItem(item);
-                    return (
-                      <Node
-                        key={ii}
-                        level={2}
-                        kind="item"
-                        itemType={type}
-                        label={name}
-                        meta={`${type} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
-                        selected={selectedKey === itemKey}
-                        selectionKey={itemKey}
-                        onSelect={setSelectedKey}
-                        testId={`outline-tree-node-${itemKey}`}
-                      />
-                    );
-                  })}
-                </Node>
-              );
-            })}
+            {rows.map((row, ri) => renderRowNode(row, ri, '', 1))}
           </Node>
 
           <button
