@@ -41,6 +41,7 @@ const Workspace = () => {
   const fetchMetrics = useStore(s => s.fetchMetrics);
   const fetchRelations = useStore(s => s.fetchRelations);
   const fetchInsights = useStore(s => s.fetchInsights);
+  const fetchDashboards = useStore(s => s.fetchDashboards);
 
   const projectName = project?.project_json?.name || project?.name || 'project';
 
@@ -61,6 +62,7 @@ const Workspace = () => {
       fetchMetrics(),
       fetchRelations(),
       fetchInsights(),
+      fetchDashboards(),
     ]).catch(() => {});
   }, [
     fetchCharts,
@@ -75,6 +77,7 @@ const Workspace = () => {
     fetchMetrics,
     fetchRelations,
     fetchInsights,
+    fetchDashboards,
   ]);
 
   // Auto-hydrate the project tab once, after `project` resolves (so the tab

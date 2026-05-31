@@ -15,6 +15,10 @@
  *   - `workspaceLeftCollapsed` / `workspaceRightCollapsed` — rail collapse.
  *   - `workspaceRightTab`    — which right-rail tab is active.
  *   - `workspaceLens`        — sub-bar lens for the active object.
+ *   - `workspaceOutlineSelectedKey` — which Outline-tree node is selected
+ *     (`'dashboard'` | `'row.N'` | `'row.N.item.M'`). Drives the mulberry
+ *     selection highlight in `<OutlineTreePanel>`; the canvas (Track D) will
+ *     consume the same key to highlight the matching node once it lands.
  *
  * Each tab descriptor: `{ id, type, name, dirty }` where:
  *   - `id`    — stable per-tab string identifier (e.g. `project:<projectName>`
@@ -48,6 +52,11 @@ const createWorkspaceSlice = (set, get) => ({
 
   // Lens (sub-bar segmented) ------------------------------------------------
   workspaceLens: 'preview', // 'preview' | 'lineage'
+
+  // Outline tree (right-rail Outline tab, VIS-793 / Track F F-3) ------------
+  // Selected node key — `'dashboard'` | `'row.N'` | `'row.N.item.M'`. Defaults
+  // to the dashboard root so the scoped dashboard reads as selected on entry.
+  workspaceOutlineSelectedKey: 'dashboard',
 
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
@@ -175,6 +184,62 @@ const createWorkspaceSlice = (set, get) => ({
   setWorkspaceLens: (lens) => {
     if (!['preview', 'lineage'].includes(lens)) return;
     set({ workspaceLens: lens });
+  },
+
+  // ------------------------------------------------------------------------
+  // Outline-tree actions (VIS-793 / Track F F-3)
+  // ------------------------------------------------------------------------
+
+  /**
+   * Select an Outline-tree node. `key` is one of `'dashboard'`, `'row.N'`,
+   * `'row.N.item.M'`. Persisted on the workspace slice so the canvas (Track D)
+   * can highlight the same node once it lands.
+   */
+  setWorkspaceOutlineSelectedKey: (key) => {
+    if (typeof key !== 'string' || !key) return;
+    set({ workspaceOutlineSelectedKey: key });
+  },
+
+  /**
+   * Append an empty row to a dashboard's draft config and persist it via the
+   * dashboard draft cache. Optimistically updates the in-memory `dashboards`
+   * list so the Outline tree (and canvas) reflect the new row immediately,
+   * then calls `saveDashboard` to write the draft. No-op if the dashboard
+   * can't be found. Returns the new row index, or `null` on no-op.
+   */
+  addDashboardRow: (dashboardName) => {
+    if (!dashboardName) return null;
+    const state = get();
+    const list = state.dashboards || [];
+    const idx = list.findIndex((d) => d.name === dashboardName);
+    if (idx === -1) return null;
+
+    const entry = list[idx];
+    const config = entry.config || entry;
+    const rows = Array.isArray(config.rows) ? config.rows : [];
+    const newRow = { height: 'medium', items: [] };
+    const nextRows = [...rows, newRow];
+    const nextConfig = { ...config, rows: nextRows };
+
+    const nextEntry = entry.config
+      ? { ...entry, config: nextConfig }
+      : nextConfig;
+    const nextList = [...list];
+    nextList[idx] = nextEntry;
+
+    const newRowIndex = nextRows.length - 1;
+    set({
+      dashboards: nextList,
+      workspaceOutlineSelectedKey: `row.${newRowIndex}`,
+    });
+
+    // Persist the draft. saveDashboard re-fetches, which reconciles the
+    // optimistic update above with the server's canonical config.
+    if (typeof state.saveDashboard === 'function') {
+      state.saveDashboard(dashboardName, nextConfig);
+    }
+
+    return newRowIndex;
   },
 
   // ------------------------------------------------------------------------

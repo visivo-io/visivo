@@ -211,4 +211,57 @@ describe('workspace store slice', () => {
     });
     expect(useStore.getState().workspaceLens).toBe('lineage');
   });
+
+  // Outline tree (VIS-793 / Track F F-3) ------------------------------------
+
+  test('setWorkspaceOutlineSelectedKey updates the selection key', () => {
+    act(() => {
+      useStore.getState().setWorkspaceOutlineSelectedKey('row.2.item.0');
+    });
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
+    // Falsy / non-string inputs are ignored.
+    act(() => {
+      useStore.getState().setWorkspaceOutlineSelectedKey('');
+    });
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
+  });
+
+  test('addDashboardRow appends an empty row, selects it, and persists the draft', () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        dashboards: [
+          { name: 'd1', config: { name: 'd1', rows: [{ height: 'small', items: [] }] } },
+        ],
+        saveDashboard,
+      });
+    });
+
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('d1');
+    });
+
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows).toHaveLength(2);
+    expect(dash.config.rows[1]).toEqual({ height: 'medium', items: [] });
+    expect(returned).toBe(1);
+    expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
+    expect(saveDashboard).toHaveBeenCalledWith(
+      'd1',
+      expect.objectContaining({ rows: expect.any(Array) })
+    );
+  });
+
+  test('addDashboardRow is a no-op for an unknown dashboard', () => {
+    act(() => {
+      useStore.setState({ dashboards: [], saveDashboard: jest.fn() });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().addDashboardRow('missing');
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
+  });
 });
