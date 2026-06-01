@@ -78,4 +78,41 @@ test.describe('Workspace Canvas lens renders charts (VIS-827)', () => {
       fullPage: true,
     });
   });
+
+  test('Step 4: nested dashboard renders ALL charts — no perpetual Loading spinners', async ({
+    page,
+  }) => {
+    // Strict regression guard for the row-visibility lazy-load bug. The canvas
+    // scrolls inside an inner overflow-auto container, so the useVisibleRows
+    // IntersectionObserver never marked rows past the initial fold visible and
+    // their charts (every nested + deep-section chart) spun forever even though
+    // the insight data was already in the store. Step 2 above is too weak — it
+    // passes as soon as ONE chart (the top section) renders. This step opens a
+    // dashboard with nested/deep rows and asserts the WHOLE canvas resolves.
+    const NESTED = 'nested-layouts-dashboard';
+    await page.goto(`${BASE_URL}/workspace/dashboard/${NESTED}`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('workspace-middle-dashboard-canvas')).toBeVisible({
+      timeout: 15000,
+    });
+
+    // No chart may stay in a loading spinner once the data pipeline settles.
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('.loading-spinner').length), {
+        timeout: 30000,
+        message: 'charts stuck on Loading… spinners (row-visibility regression — VIS-827)',
+      })
+      .toBe(0);
+
+    // And many charts actually drew their plot surfaces. With the bug only the
+    // first rows ({0,1,2}, ~4 plots) rendered; the nested clusters and deep
+    // sections were stuck — so a healthy canvas draws well above that.
+    const drawn = await page.evaluate(() => ({
+      plots: document.querySelectorAll('.js-plotly-plot').length,
+      drawn: document.querySelectorAll('.js-plotly-plot svg.main-svg, .js-plotly-plot canvas')
+        .length,
+    }));
+    expect(drawn.plots).toBeGreaterThanOrEqual(8);
+    expect(drawn.drawn).toBeGreaterThanOrEqual(8);
+  });
 });

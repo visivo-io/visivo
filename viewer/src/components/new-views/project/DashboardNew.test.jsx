@@ -44,8 +44,12 @@ jest.mock('../../../hooks/useVisibleRows', () => ({
 // Chart so VIS-827 normalization (string refs -> {name} objects) is assertable.
 jest.mock('../../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart }) => (
-    <div data-testid="chart" data-insights={JSON.stringify(chart.insights || [])}>
+  default: ({ chart, shouldLoad }) => (
+    <div
+      data-testid="chart"
+      data-insights={JSON.stringify(chart.insights || [])}
+      data-should-load={String(shouldLoad)}
+    >
       {chart.name || 'Chart'}
     </div>
   ),
@@ -135,6 +139,67 @@ describe('DashboardNew', () => {
     );
 
     expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+  });
+
+  // ---------- VIS-827: eager-load all rows on the new renderer ----------
+  //
+  // The Workspace canvas mounts <DashboardNew> inside an inner overflow-auto
+  // scroll container, where the useVisibleRows IntersectionObserver never fires
+  // for rows below the initial fold. With lazy gating that left those rows'
+  // charts on a permanent "Loading…" spinner even though the data was already
+  // in the store. eagerLoad (default true) makes every row loadable.
+  describe('eager-load all rows (VIS-827)', () => {
+    const twoRowDashboard = {
+      name: 'two-row',
+      rows: [
+        { height: 'medium', items: [{ chart: 'chart-top', width: 1 }] },
+        { height: 'medium', items: [{ chart: 'chart-low', width: 1 }] },
+      ],
+    };
+    const chartConfigs = {
+      'chart-top': { name: 'chart-top', config: { name: 'chart-top', insights: [] } },
+      'chart-low': { name: 'chart-low', config: { name: 'chart-low', insights: [] } },
+    };
+    const renderTwoRow = (props = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [twoRowDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => chartConfigs[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName="two-row" {...props} />
+        </BrowserRouter>
+      );
+    };
+
+    it('passes shouldLoad=true to charts in rows beyond the visible set (eager default)', () => {
+      // useVisibleRows is mocked to report only row 0 visible; eagerLoad should
+      // override that so the row-1 chart still loads instead of spinning forever.
+      renderTwoRow();
+      const chartEls = screen.getAllByTestId('chart');
+      expect(chartEls).toHaveLength(2);
+      chartEls.forEach(c => expect(c.getAttribute('data-should-load')).toBe('true'));
+    });
+
+    it('falls back to row-visibility gating when eagerLoad is false', () => {
+      renderTwoRow({ eagerLoad: false });
+      const chartEls = screen.getAllByTestId('chart');
+      // row 0 is in the mocked visible set ({0}), row 1 is not
+      expect(chartEls[0].getAttribute('data-should-load')).toBe('true');
+      expect(chartEls[1].getAttribute('data-should-load')).toBe('false');
+    });
   });
 
   it('renders empty state when dashboard has no rows', () => {

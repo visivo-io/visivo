@@ -172,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ projectId, dashboardName }) => {
+const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -524,7 +524,14 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
-    const shouldLoad = visibleRows.has(rowIndex);
+    // VIS-827: eager-load by default. The row-visibility lazy-loader
+    // (useVisibleRows) relies on an IntersectionObserver that does not fire
+    // inside the Workspace canvas's inner overflow-auto scroll container, so
+    // rows past the initial seed never become "visible" and their charts spin
+    // forever even though the insight data is already in the store. Eager-loading
+    // the new renderer renders every row; callers can pass eagerLoad={false} to
+    // opt back into lazy loading once the observer is wired to the scroll root.
+    const shouldLoad = eagerLoad || visibleRows.has(rowIndex);
 
     return (
       <div
