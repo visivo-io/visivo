@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useEffect } from 'react';
+import isEqual from 'lodash/isEqual';
 import { useQuery } from '@tanstack/react-query';
 import { useFetchInsightJobs } from '../contexts/QueryContext';
 import { loadInsightParquetFiles, runDuckDBQuery, prepPostQuery } from '../duckdb/queries';
@@ -225,18 +226,6 @@ export const useInsightsData = (
     return [...new Set(insightNames)].sort(); // Dedupe and sort
   }, [insightNames]);
 
-  // Check if we have query metadata for all requested insights
-  // This is used to determine if we can compute input dependencies
-  // Use storeKeyPrefix to look up the correct keys (e.g., '__preview__' prefix in preview mode)
-  const hasQueryMetadata = useMemo(() => {
-    if (!stableInsightNames.length) return false;
-    if (!storeInsightData) return false;
-
-    return stableInsightNames.every(
-      name => storeInsightData[storeKeyPrefix + name]?.query !== undefined
-    );
-  }, [storeInsightData, stableInsightNames, storeKeyPrefix]);
-
   // Check if we have complete data for all requested insights
   // This is used to determine the hasAllInsightData return value
   // data: null means waiting for inputs, data: [] means empty result (which is complete)
@@ -250,54 +239,65 @@ export const useInsightsData = (
     });
   }, [storeInsightData, stableInsightNames, storeKeyPrefix]);
 
-  // Check if any insights are waiting for inputs that are now available
-  // This triggers a refetch when inputs become ready
-  const pendingInsightInputsReady = useMemo(() => {
-    if (!storeInsightData || !getInputs) return false;
-
-    for (const insightName of stableInsightNames) {
-      const insight = storeInsightData[storeKeyPrefix + insightName];
-      if (insight?.pendingInputs?.length) {
-        // Check if all pending inputs are now available
-        const allReady = insight.pendingInputs.every(inputName => getInputs[inputName]);
-        if (allReady) {
-          return true; // At least one insight is now ready to process
-        }
-      }
-    }
-    return false;
-  }, [storeInsightData, getInputs, stableInsightNames, storeKeyPrefix]);
-
-  // Compute relevant input values based on which inputs each insight actually uses
-  // This enables selective refetch - only refetch when inputs that matter change
+  // Compute the relevant input values for every requested insight: the current
+  // store values of the inputs each insight's query/static_props actually
+  // reference, PLUS any inputs an insight is still pending on. This is the
+  // SOLE refetch trigger for input-driven insights, and it is derived purely
+  // from input *values* and insight *query metadata* — never from the
+  // pending/resolved status the query result writes back. That distinction is
+  // what prevents the VIS-831 feedback loop: a previous design also keyed the
+  // query on a `pendingInsightInputsReady` boolean derived from the data the
+  // query produced, so each store write flipped the key, swapped react-query
+  // cache buckets (pending-vs-resolved `data`), and re-fired the store-write
+  // effect indefinitely. By keying only on monotonic input values, the query
+  // re-runs exactly when (a) metadata for an input-driven insight first lands
+  // and (b) a relevant input value genuinely changes — and then settles.
+  //
+  // Folding pending inputs in preserves the original "refetch when a pending
+  // insight's inputs become available" behaviour: when those inputs arrive,
+  // their values enter this map and the key changes once.
+  //
+  // Unlike the prior implementation this does NOT bail to `{}` when some
+  // requested name lacks insight metadata (e.g. a model-data table whose name
+  // is grouped with insight names by the dashboard). Such names simply
+  // contribute nothing here instead of zeroing out the whole map and silently
+  // disabling the value-change refetch trigger.
   const relevantInputValues = useMemo(() => {
-    if (!getInputs) return {};
-    if (!hasQueryMetadata || !storeInsightData) return {};
+    if (!getInputs || !storeInsightData) return {};
 
     const knownInputNames = Object.keys(getInputs);
     const relevantInputs = {};
 
-    // Check each insight's query and static_props for input dependencies
     for (const insightName of stableInsightNames) {
       const insight = storeInsightData[storeKeyPrefix + insightName];
-      if (insight?.query || insight?.static_props) {
-        const deps = extractInputDependencies(insight.query, insight.static_props, knownInputNames);
+      if (!insight) continue;
+
+      if (insight.query || insight.static_props) {
+        const deps = extractInputDependencies(
+          insight.query,
+          insight.static_props,
+          knownInputNames
+        );
         deps.forEach(inputName => {
+          relevantInputs[inputName] = getInputs[inputName];
+        });
+      }
+
+      // Inputs an insight is still waiting on: track their values too so the
+      // pending→ready transition re-keys the query exactly once.
+      if (insight.pendingInputs?.length) {
+        insight.pendingInputs.forEach(inputName => {
           relevantInputs[inputName] = getInputs[inputName];
         });
       }
     }
 
     return relevantInputs;
-  }, [getInputs, storeInsightData, stableInsightNames, hasQueryMetadata, storeKeyPrefix]);
+  }, [getInputs, storeInsightData, stableInsightNames, storeKeyPrefix]);
 
-  // Create a stable string representation of relevant inputs for the
-  // queryKey. ``relevantInputValues`` is ``{}`` until the first fetch
-  // populates query metadata in the store — and stays ``{}`` for any
-  // insight without input dependencies. Using ``JSON.stringify`` for
-  // both states means the key doesn't change on metadata discovery
-  // (no spurious second fetch), and only changes when an insight's
-  // *relevant* input value actually moves.
+  // Stable string representation of relevant inputs for the queryKey. Only
+  // changes when an insight's relevant input *value* actually moves (or first
+  // arrives), so the query re-runs deterministically and then settles.
   const stableRelevantInputs = useMemo(() => {
     return JSON.stringify(relevantInputValues);
   }, [relevantInputValues]);
@@ -340,23 +340,16 @@ export const useInsightsData = (
   }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode]);
 
   // React Query for data fetching
-  // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change
-  // Also includes pendingInsightInputsReady to trigger refetch when pending inputs become available
-  // Also includes runId to separate cache for different runs
-  // Also includes cacheKey for preview cache busting (runId changes each preview run)
+  // The queryKey includes stableRelevantInputs to trigger refetch when relevant
+  // inputs change (or first arrive for an input-driven insight). It deliberately
+  // does NOT include any store-derived pending/resolved status: keying on a value
+  // the query result writes back creates a feedback loop (VIS-831). Also includes
+  // runId to separate cache for different runs and cacheKey for preview cache
+  // busting (runId changes each preview run).
   const queryEnabled = !!projectId && stableInsightNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [
-      'insights',
-      projectId,
-      runId,
-      stableInsightNames,
-      !!db,
-      stableRelevantInputs,
-      pendingInsightInputsReady,
-      cacheKey,
-    ],
+    queryKey: ['insights', projectId, runId, stableInsightNames, !!db, stableRelevantInputs, cacheKey],
     queryFn,
     enabled: queryEnabled,
     staleTime: Infinity,
@@ -366,19 +359,32 @@ export const useInsightsData = (
     retry: 1,
   });
 
-  // Update store when data arrives
+  // Update store when data arrives.
+  //
+  // Structural-equality guard (VIS-831 defense-in-depth): only write to the
+  // store when the freshly-fetched jobs differ in CONTENT from what's already
+  // there. react-query can hand back a new `data` object reference for the same
+  // logical result (e.g. when the active cache bucket changes), and
+  // `setInsightJobs` always produces a new `insightJobs` reference, which other
+  // memos in this hook subscribe to. Bailing on content-equal writes keeps a
+  // referentially-fresh-but-identical `data` from churning the store — while
+  // still writing whenever the data genuinely changes (input/data refresh).
   useEffect(() => {
-    if (data && Object.keys(data).length > 0) {
-      if (storeKeyPrefix) {
-        const prefixed = {};
-        for (const [key, value] of Object.entries(data)) {
-          prefixed[storeKeyPrefix + key] = value;
-        }
-        setInsightJobs(prefixed);
-      } else {
-        setInsightJobs(data);
-      }
-    }
+    if (!data || Object.keys(data).length === 0) return;
+
+    const prefixed = storeKeyPrefix
+      ? Object.fromEntries(
+          Object.entries(data).map(([key, value]) => [storeKeyPrefix + key, value])
+        )
+      : data;
+
+    const current = useStore.getState().insightJobs || {};
+    const unchanged = Object.entries(prefixed).every(([key, value]) =>
+      isEqual(current[key], value)
+    );
+    if (unchanged) return;
+
+    setInsightJobs(prefixed);
   }, [data, setInsightJobs, storeKeyPrefix]);
 
   const returnValue = {
