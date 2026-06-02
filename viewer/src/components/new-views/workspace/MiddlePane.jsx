@@ -1,6 +1,6 @@
 import React from 'react';
 import SubBar, { PreviewLensPicker } from './SubBar';
-import DashboardNew from '../project/DashboardNew';
+import ProjectCanvas from '../project/canvas/ProjectCanvas';
 import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
 import useStore from '../../../stores/store';
@@ -9,8 +9,8 @@ import useStore from '../../../stores/store';
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
  *
  *   project    → ProjectEditor (Track M M-1 — health row + level groups)
- *   dashboard  → DashboardNew (existing renderer) when scoped, placeholder
- *                otherwise; the Lineage lens mounts <LineageCanvas>
+ *   dashboard  → ProjectCanvas (render-only DashboardNew wrapper, VIS-767) when
+ *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
  *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
  *                source/dimension/metric/relation/unknown). The Lineage lens is
  *                universal (VIS-779) and the per-object default — it mounts
@@ -95,7 +95,7 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
           data-testid="workspace-middle-dashboard-canvas"
           className="flex-1 overflow-auto"
         >
-          <DashboardNew projectId={projectId} dashboardName={name} />
+          <ProjectCanvas projectId={projectId} dashboardName={name} />
         </div>
       ) : (
         <Placeholder
