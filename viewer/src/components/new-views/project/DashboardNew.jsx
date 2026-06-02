@@ -12,6 +12,35 @@ import { useVisibleRows } from '../../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../../utils/refString';
 
 /**
+ * Normalize a chart/table `insights` array so Chart/Table always receive
+ * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
+ * (`"${ref(insight-name)}"`).
+ *
+ * Chart.jsx derives the insight names it loads via `chart.insights.map(i => i.name)`.
+ * When the dashboard comes from the `/api/dashboards/` store endpoint (the path
+ * used by both ProjectNew and the Workspace canvas, via <DashboardNew>), embedded
+ * chart objects carry their `insights` as un-resolved string refs. Without this
+ * normalization `i.name` is `undefined`, no insight data is ever matched, and the
+ * chart spins forever (VIS-827). The old `project_json` route pre-resolves insights
+ * into objects, which is why that route was unaffected.
+ *
+ * Returns a new config object (never mutates the store's object) when insights
+ * are present; otherwise returns the config unchanged.
+ */
+const normalizeInsightRefs = config => {
+  if (!config || !Array.isArray(config.insights)) return config;
+  return {
+    ...config,
+    insights: config.insights.map(insight => {
+      if (typeof insight === 'string') {
+        return { name: parseRefValue(insight) };
+      }
+      return insight; // Already an object (may carry name/props/interactions)
+    }),
+  };
+};
+
+/**
  * Resolve an item reference (chart, table, markdown, input) from the store.
  * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
  * Transforms insight/input string references to object format expected by components.
@@ -29,21 +58,13 @@ const resolveItem = (itemRef, getItemByName) => {
 
     // Transform insights array from string references to objects with name property
     // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
-    if (config.insights && Array.isArray(config.insights)) {
-      config.insights = config.insights.map(insight => {
-        if (typeof insight === 'string') {
-          const insightName = parseRefValue(insight);
-          return { name: insightName };
-        }
-        return insight; // Already an object
-      });
-    }
-
-    return config;
+    return normalizeInsightRefs(config);
   }
 
-  // Legacy: If it's already an object, use it directly
-  return itemRef;
+  // Legacy/embedded: the chart/table object lives inline in the dashboard row.
+  // Its `insights` are still un-resolved string refs from the API, so normalize
+  // them the same way as the string-ref branch above (VIS-827).
+  return normalizeInsightRefs(itemRef);
 };
 
 /**
@@ -151,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ projectId, dashboardName }) => {
+const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -503,7 +524,14 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
-    const shouldLoad = visibleRows.has(rowIndex);
+    // VIS-827: eager-load by default. The row-visibility lazy-loader
+    // (useVisibleRows) relies on an IntersectionObserver that does not fire
+    // inside the Workspace canvas's inner overflow-auto scroll container, so
+    // rows past the initial seed never become "visible" and their charts spin
+    // forever even though the insight data is already in the store. Eager-loading
+    // the new renderer renders every row; callers can pass eagerLoad={false} to
+    // opt back into lazy loading once the observer is wired to the scroll root.
+    const shouldLoad = eagerLoad || visibleRows.has(rowIndex);
 
     return (
       <div
