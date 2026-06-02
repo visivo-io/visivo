@@ -172,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
+const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint = 1024 }) => {
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -204,8 +204,29 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
     },
   });
 
-  const widthBreakpoint = 1024;
-  const isColumn = width < widthBreakpoint;
+  // Stacking breakpoint. `width` is CONTAINER-relative — it comes from the
+  // ResizeObserver (`observe`) attached to the dashboard root div below, NOT
+  // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
+  // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
+  // for readability on genuinely narrow windows; the Workspace canvas passes
+  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
+  // left + right rails, so a 1024 threshold made every row collapse into a
+  // single column even on a wide screen (the "everything stacks" bug). The
+  // threshold is applied per-container (top-level + each nested slot) via
+  // `shouldStack`, so nesting decisions stay slot-relative.
+  const widthBreakpoint = stackBreakpoint;
+
+  // Decide whether a container of `containerWidth` pixels should stack its items
+  // vertically. Falls back to the dashboard width when no explicit slot width is
+  // provided (top-level rows). A nested slot that is only a fraction of the
+  // dashboard width can stack independently of its (wider) parent.
+  const shouldStack = containerWidth => {
+    const effective =
+      typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    return effective < widthBreakpoint;
+  };
+
+  const isColumn = shouldStack(width);
 
   // Fetch item data on mount (dashboards fetched by ProjectNew container)
   useEffect(() => {
@@ -477,13 +498,22 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    // Slot-relative stacking: a nested row only occupies its parent slot's
+    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
+    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
+    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
+    // (b) stacked everything once the dashboard dipped below the breakpoint.
+    // Compare the slot width instead so each nested container stacks on its own
+    // terms. See VIS-829.
+    const nestedIsColumn = shouldStack(slotPixelWidth);
     return (
       <div
-        className={`dashboard-nested-row w-full h-full ${isColumn ? 'flex' : 'grid'}`}
+        className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
+        data-testid="dashboard-nested-row"
         style={{
-          display: isColumn ? 'flex' : 'grid',
-          flexDirection: isColumn ? 'column' : undefined,
-          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          display: nestedIsColumn ? 'flex' : 'grid',
+          flexDirection: nestedIsColumn ? 'column' : undefined,
+          gridTemplateColumns: nestedIsColumn ? undefined : `repeat(${totalWidth}, minmax(0, 1fr))`,
           gap: '0.5rem',
           minWidth: 0,
           minHeight: 0,
@@ -492,10 +522,10 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
         {visibleItems.map((item, itemIdx) => (
           <div
             key={`${keyPrefix}item-${itemIdx}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
+            className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
-              width: isColumn ? '100%' : 'auto',
+              gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
+              width: nestedIsColumn ? '100%' : 'auto',
               minWidth: 0,
               minHeight: 0,
             }}

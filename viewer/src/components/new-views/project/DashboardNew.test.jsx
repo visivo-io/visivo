@@ -14,12 +14,19 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () => [new URLSearchParams(), jest.fn()],
 }));
 
-// Mock the dimension hook
+// Mock the dimension hook. `mockDimensionWidth` lets individual tests drive the
+// CONTAINER width that DashboardNew measures via the ResizeObserver-backed
+// `useDimensions` hook, so we can exercise the stacking breakpoint at different
+// container widths (VIS-829).
+let mockDimensionWidth = 1200;
 jest.mock('react-cool-dimensions', () => ({
   __esModule: true,
   default: () => ({
     observe: jest.fn(),
-    width: 1200,
+    // eslint-disable-next-line no-undef
+    get width() {
+      return mockDimensionWidth;
+    },
   }),
 }));
 
@@ -95,6 +102,8 @@ describe('DashboardNew', () => {
   };
 
   beforeEach(() => {
+    // Default to a wide container; stacking tests override per-test.
+    mockDimensionWidth = 1200;
     // Mock store selectors
     useStore.mockImplementation((selector) => {
       const state = {
@@ -331,7 +340,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -608,7 +617,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -681,4 +690,227 @@ describe('DashboardNew', () => {
     });
   });
   /* eslint-enable no-template-curly-in-string */
+
+  // ---------- VIS-829: container-relative stacking breakpoint ----------
+
+  describe('stacking breakpoint (VIS-829)', () => {
+    const twoChart = () => ({
+      name: 'two-item-dash',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 1, chart: 'chart-a' },
+            { width: 1, chart: 'chart-b' },
+          ],
+        },
+      ],
+    });
+
+    const charts = {
+      'chart-a': { name: 'chart-a', config: { name: 'chart-a', insights: [] } },
+      'chart-b': { name: 'chart-b', config: { name: 'chart-b', insights: [] } },
+    };
+
+    const mountAtWidth = (containerWidth, dashboard) => {
+      mockDimensionWidth = containerWidth;
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
+        </BrowserRouter>
+      );
+    };
+
+    it('lays out a multi-item row side-by-side (grid) at a wide container width', () => {
+      mountAtWidth(1200, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+      expect(row.style.flexDirection).toBe('');
+      expect(row.style.gridTemplateColumns).toContain('repeat(2');
+    });
+
+    it('keeps a multi-item row side-by-side just above the new 768px breakpoint', () => {
+      // 900px would have STACKED under the old 1024 threshold; with 768 it stays
+      // side-by-side. This is the core regression the lowered breakpoint fixes.
+      mountAtWidth(900, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+    });
+
+    it('stacks a multi-item row into a column on a genuinely narrow container', () => {
+      mountAtWidth(600, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('flex');
+      expect(row.style.flexDirection).toBe('column');
+    });
+
+    it('stacks exactly at the breakpoint boundary (width < 768 stacks)', () => {
+      mountAtWidth(767, twoChart());
+      const rowStacked = screen.getByTestId('dashboard-row-0');
+      expect(rowStacked.style.display).toBe('flex');
+    });
+
+    it('does NOT stack at exactly 768px (boundary is exclusive)', () => {
+      mountAtWidth(768, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+    });
+
+    it('uses the default 1024 breakpoint when no stackBreakpoint prop is passed (static viewing)', () => {
+      // Static surfaces (/project-new, and /project once VIS-833 routes it
+      // through DashboardNew) mount with no stackBreakpoint, so the 1024 default
+      // applies: a 900px container STACKS here, whereas the canvas
+      // (stackBreakpoint=768) keeps the same row side-by-side at 900px.
+      const dash = twoChart();
+      mockDimensionWidth = 900;
+      useStore.mockImplementation(selector =>
+        selector({
+          project: mockProject,
+          dashboards: [dash],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        })
+      );
+      render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dash.name} />
+        </BrowserRouter>
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.display).toBe('flex');
+    });
+  });
+
+  // ---------- VIS-829: slot-relative nested-container stacking ----------
+
+  describe('nested-container slot-relative stacking (VIS-829)', () => {
+    const charts = {
+      'kpi-a': { name: 'kpi-a', config: { name: 'kpi-a', insights: [] } },
+      'kpi-b': { name: 'kpi-b', config: { name: 'kpi-b', insights: [] } },
+    };
+
+    // A wide dashboard with a multi-item NESTED row inside a narrow 1/4 slot.
+    // The nested row must stack (its slot is ~1/4 of the dashboard) even though
+    // the dashboard itself is wide.
+    const narrowSlotDashboard = {
+      name: 'narrow-slot',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 3, chart: 'kpi-a' },
+            {
+              width: 1,
+              rows: [
+                {
+                  height: 'small',
+                  items: [
+                    { width: 1, chart: 'kpi-a' },
+                    { width: 1, chart: 'kpi-b' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    // A wide dashboard with the nested multi-item row inside a wide slot.
+    const wideSlotDashboard = {
+      name: 'wide-slot',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            {
+              width: 1,
+              rows: [
+                {
+                  height: 'small',
+                  items: [
+                    { width: 1, chart: 'kpi-a' },
+                    { width: 1, chart: 'kpi-b' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const mountAtWidth = (containerWidth, dashboard) => {
+      mockDimensionWidth = containerWidth;
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
+        </BrowserRouter>
+      );
+    };
+
+    it('stacks a nested multi-item row when its slot is narrow even on a wide dashboard', () => {
+      // Dashboard 1200px; nested slot is 1/4 → ~300px < 768 → stack.
+      mountAtWidth(1200, narrowSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('flex');
+      expect(nestedRow.style.flexDirection).toBe('column');
+    });
+
+    it('lays a nested multi-item row side-by-side when its slot is wide', () => {
+      // Dashboard 1200px; nested slot is the full width (single item, width 1)
+      // → ~1200px ≥ 768 → grid side-by-side.
+      mountAtWidth(1200, wideSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('grid');
+      expect(nestedRow.style.gridTemplateColumns).toContain('repeat(2');
+    });
+
+    it('stacks the nested row when the whole dashboard is narrow', () => {
+      mountAtWidth(600, wideSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('flex');
+    });
+  });
 });

@@ -17,7 +17,7 @@ import DashboardNew from '../DashboardNew';
 const ProjectCanvas = ({ projectId, dashboardName }) => {
   return (
     <div data-testid="project-canvas" className="flex flex-1 min-h-0 w-full max-w-full">
-      <DashboardNew projectId={projectId} dashboardName={dashboardName} />
+      <DashboardNew projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
     </div>
   );
 };
