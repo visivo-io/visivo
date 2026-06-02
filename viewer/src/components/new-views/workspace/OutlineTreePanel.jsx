@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { PiCaretDown, PiPlus, PiList, PiRows } from 'react-icons/pi';
+import React, { useMemo, useCallback, useState } from 'react';
+import { PiCaretDown, PiPlus, PiList, PiRows, PiStack } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
 import { getTypeIcon } from '../common/objectTypeConfigs';
@@ -64,6 +64,8 @@ const Node = ({
   selectionKey,
   onSelect,
   testId,
+  collapsed = false,
+  onToggle,
   children,
 }) => {
   const Icon =
@@ -71,7 +73,9 @@ const Node = ({
       ? getTypeIcon('dashboard')
       : kind === 'row'
         ? PiRows
-        : getTypeIcon(itemType);
+        : kind === 'container'
+          ? PiStack
+          : getTypeIcon(itemType);
 
   const indent = 6 + level * 14;
   const hasChildren = React.Children.count(children) > 0;
@@ -111,9 +115,24 @@ const Node = ({
             className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r bg-[#713b57]"
           />
         )}
-        {/* Disclosure caret — parents only; items get a spacer to align icons. */}
+        {/* Disclosure caret — parents toggle collapse; items get a spacer to align icons. */}
         {hasChildren ? (
-          <PiCaretDown aria-hidden="true" className="h-3 w-3 shrink-0 text-gray-400" />
+          <button
+            type="button"
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+            aria-expanded={!collapsed}
+            data-testid={`${testId}-toggle`}
+            onClick={e => {
+              e.stopPropagation();
+              onToggle && onToggle();
+            }}
+            className="-ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-200/70 hover:text-gray-600"
+          >
+            <PiCaretDown
+              aria-hidden="true"
+              className={`h-3 w-3 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
         ) : (
           <span aria-hidden="true" className="h-3 w-3 shrink-0" />
         )}
@@ -138,7 +157,7 @@ const Node = ({
           </span>
         )}
       </div>
-      {hasChildren && <div className="flex flex-col">{children}</div>}
+      {hasChildren && !collapsed && <div className="flex flex-col">{children}</div>}
     </div>
   );
 };
@@ -188,6 +207,18 @@ const OutlineTreePanel = () => {
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
   const addDashboardRow = useStore(s => s.addDashboardRow);
 
+  // Collapse/expand state for parent nodes (dashboard / row / container), keyed
+  // by selection key. Default-expanded; the disclosure caret toggles a key.
+  const [collapsedKeys, setCollapsedKeys] = useState(() => new Set());
+  const toggleCollapsed = useCallback(key => {
+    setCollapsedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   // Resolve the scoped dashboard's rows from the same store source the canvas
   // reads, so structural edits there flow into the tree automatically.
   const rows = useMemo(() => {
@@ -202,6 +233,77 @@ const OutlineTreePanel = () => {
     if (!dashboardName) return;
     addDashboardRow(dashboardName);
   }, [addDashboardRow, dashboardName]);
+
+  // Recursively render an Item. A leaf item (chart/table/markdown/input)
+  // renders a single node; a container item (`item.rows` present) renders a
+  // distinguishable "container" node whose children are its nested rows. Keys
+  // extend the existing scheme by appending `.row.<ri>.item.<ii>` per level,
+  // e.g. `row.0.item.1.row.0.item.0`, so a click on any depth writes a fully
+  // qualified, nested selection key.
+  const renderItemNode = (item, ii, parentKey, level) => {
+    const itemKey = `${parentKey}.item.${ii}`;
+    const nestedRows = Array.isArray(item?.rows) ? item.rows : null;
+
+    if (nestedRows && nestedRows.length > 0) {
+      return (
+        <Node
+          key={ii}
+          level={level}
+          kind="container"
+          label={`Container ${ii + 1}`}
+          meta={`${nestedRows.length} row${nestedRows.length === 1 ? '' : 's'} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
+          selected={selectedKey === itemKey}
+          selectionKey={itemKey}
+          onSelect={setSelectedKey}
+          collapsed={collapsedKeys.has(itemKey)}
+          onToggle={() => toggleCollapsed(itemKey)}
+          testId={`outline-tree-node-${itemKey}`}
+        >
+          {nestedRows.map((row, ri) => renderRowNode(row, ri, itemKey, level + 1))}
+        </Node>
+      );
+    }
+
+    const { type, name } = resolveItem(item);
+    return (
+      <Node
+        key={ii}
+        level={level}
+        kind="item"
+        itemType={type}
+        label={name}
+        meta={`${type} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
+        selected={selectedKey === itemKey}
+        selectionKey={itemKey}
+        onSelect={setSelectedKey}
+        testId={`outline-tree-node-${itemKey}`}
+      />
+    );
+  };
+
+  // Recursively render a Row and its items. `parentKey` is the dashboard root
+  // ('') for top-level rows or a container item key for nested rows.
+  const renderRowNode = (row, ri, parentKey, level) => {
+    const rowKey = parentKey ? `${parentKey}.row.${ri}` : `row.${ri}`;
+    const items = Array.isArray(row?.items) ? row.items : [];
+    return (
+      <Node
+        key={ri}
+        level={level}
+        kind="row"
+        label={`Row ${ri + 1}`}
+        meta={`${row?.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
+        selected={selectedKey === rowKey}
+        selectionKey={rowKey}
+        onSelect={setSelectedKey}
+        collapsed={collapsedKeys.has(rowKey)}
+        onToggle={() => toggleCollapsed(rowKey)}
+        testId={`outline-tree-node-${rowKey}`}
+      >
+        {items.map((item, ii) => renderItemNode(item, ii, rowKey, level + 1))}
+      </Node>
+    );
+  };
 
   if (!dashboardName) {
     return (
@@ -236,44 +338,11 @@ const OutlineTreePanel = () => {
             selected={selectedKey === 'dashboard'}
             selectionKey="dashboard"
             onSelect={setSelectedKey}
+            collapsed={collapsedKeys.has('dashboard')}
+            onToggle={() => toggleCollapsed('dashboard')}
             testId="outline-tree-node-dashboard"
           >
-            {rows.map((row, ri) => {
-              const rowKey = `row.${ri}`;
-              const items = Array.isArray(row?.items) ? row.items : [];
-              return (
-                <Node
-                  key={ri}
-                  level={1}
-                  kind="row"
-                  label={`Row ${ri + 1}`}
-                  meta={`${row?.height || 'medium'} · ${items.length} item${items.length === 1 ? '' : 's'}`}
-                  selected={selectedKey === rowKey}
-                  selectionKey={rowKey}
-                  onSelect={setSelectedKey}
-                  testId={`outline-tree-node-${rowKey}`}
-                >
-                  {items.map((item, ii) => {
-                    const itemKey = `${rowKey}.item.${ii}`;
-                    const { type, name } = resolveItem(item);
-                    return (
-                      <Node
-                        key={ii}
-                        level={2}
-                        kind="item"
-                        itemType={type}
-                        label={name}
-                        meta={`${type} · ${item?.width || 1} col${(item?.width || 1) === 1 ? '' : 's'}`}
-                        selected={selectedKey === itemKey}
-                        selectionKey={itemKey}
-                        onSelect={setSelectedKey}
-                        testId={`outline-tree-node-${itemKey}`}
-                      />
-                    );
-                  })}
-                </Node>
-              );
-            })}
+            {rows.map((row, ri) => renderRowNode(row, ri, '', 1))}
           </Node>
 
           <button

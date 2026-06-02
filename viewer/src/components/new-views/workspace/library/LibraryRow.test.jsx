@@ -11,9 +11,16 @@
  */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DndContext } from '@dnd-kit/core';
+import { DndContext, useDraggable } from '@dnd-kit/core';
 import LibraryRow, { getTypeDef } from './LibraryRow';
 import { getTypeByValue, getTypeIcon } from '../../common/objectTypeConfigs';
+
+// Wrap the real dnd-kit so existing tests keep their real draggable wiring,
+// while individual tests can override useDraggable (e.g. to simulate mid-drag).
+jest.mock('@dnd-kit/core', () => {
+  const actual = jest.requireActual('@dnd-kit/core');
+  return { __esModule: true, ...actual, useDraggable: jest.fn(actual.useDraggable) };
+});
 
 const withDnd = (ui) => <DndContext>{ui}</DndContext>;
 
@@ -171,5 +178,22 @@ describe('LibraryRow', () => {
     expect(
       screen.getByTestId('library-row-chart-waterfall-drag-handle')
     ).toBeInTheDocument();
+  });
+
+  // VIS-836: the source row must NOT translate with the cursor during a drag —
+  // the shared <DragOverlay> renders the preview. Translating the source slid it
+  // right, grew the Library rail's scroll width, and let dnd-kit auto-scroll the
+  // rail horizontally until it went blank.
+  test('draggable source row does not apply a translate transform while dragging', () => {
+    useDraggable.mockReturnValueOnce({
+      transform: { x: 180, y: 12, scaleX: 1, scaleY: 1 },
+      setNodeRef: jest.fn(),
+      listeners: {},
+      attributes: {},
+      isDragging: true,
+    });
+    render(withDnd(<LibraryRow obj={CHART} draggable />));
+    const row = screen.getByTestId('library-row-chart-waterfall');
+    expect(row.style.transform || '').not.toMatch(/translate/);
   });
 });

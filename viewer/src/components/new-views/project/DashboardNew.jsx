@@ -12,6 +12,35 @@ import { useVisibleRows } from '../../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../../utils/refString';
 
 /**
+ * Normalize a chart/table `insights` array so Chart/Table always receive
+ * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
+ * (`"${ref(insight-name)}"`).
+ *
+ * Chart.jsx derives the insight names it loads via `chart.insights.map(i => i.name)`.
+ * When the dashboard comes from the `/api/dashboards/` store endpoint (the path
+ * used by both ProjectNew and the Workspace canvas, via <DashboardNew>), embedded
+ * chart objects carry their `insights` as un-resolved string refs. Without this
+ * normalization `i.name` is `undefined`, no insight data is ever matched, and the
+ * chart spins forever (VIS-827). The old `project_json` route pre-resolves insights
+ * into objects, which is why that route was unaffected.
+ *
+ * Returns a new config object (never mutates the store's object) when insights
+ * are present; otherwise returns the config unchanged.
+ */
+const normalizeInsightRefs = config => {
+  if (!config || !Array.isArray(config.insights)) return config;
+  return {
+    ...config,
+    insights: config.insights.map(insight => {
+      if (typeof insight === 'string') {
+        return { name: parseRefValue(insight) };
+      }
+      return insight; // Already an object (may carry name/props/interactions)
+    }),
+  };
+};
+
+/**
  * Resolve an item reference (chart, table, markdown, input) from the store.
  * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
  * Transforms insight/input string references to object format expected by components.
@@ -29,21 +58,13 @@ const resolveItem = (itemRef, getItemByName) => {
 
     // Transform insights array from string references to objects with name property
     // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
-    if (config.insights && Array.isArray(config.insights)) {
-      config.insights = config.insights.map(insight => {
-        if (typeof insight === 'string') {
-          const insightName = parseRefValue(insight);
-          return { name: insightName };
-        }
-        return insight; // Already an object
-      });
-    }
-
-    return config;
+    return normalizeInsightRefs(config);
   }
 
-  // Legacy: If it's already an object, use it directly
-  return itemRef;
+  // Legacy/embedded: the chart/table object lives inline in the dashboard row.
+  // Its `insights` are still un-resolved string refs from the API, so normalize
+  // them the same way as the string-ref branch above (VIS-827).
+  return normalizeInsightRefs(itemRef);
 };
 
 /**
@@ -151,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ projectId, dashboardName }) => {
+const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint = 1024 }) => {
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -183,8 +204,29 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     },
   });
 
-  const widthBreakpoint = 1024;
-  const isColumn = width < widthBreakpoint;
+  // Stacking breakpoint. `width` is CONTAINER-relative — it comes from the
+  // ResizeObserver (`observe`) attached to the dashboard root div below, NOT
+  // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
+  // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
+  // for readability on genuinely narrow windows; the Workspace canvas passes
+  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
+  // left + right rails, so a 1024 threshold made every row collapse into a
+  // single column even on a wide screen (the "everything stacks" bug). The
+  // threshold is applied per-container (top-level + each nested slot) via
+  // `shouldStack`, so nesting decisions stay slot-relative.
+  const widthBreakpoint = stackBreakpoint;
+
+  // Decide whether a container of `containerWidth` pixels should stack its items
+  // vertically. Falls back to the dashboard width when no explicit slot width is
+  // provided (top-level rows). A nested slot that is only a fraction of the
+  // dashboard width can stack independently of its (wider) parent.
+  const shouldStack = containerWidth => {
+    const effective =
+      typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    return effective < widthBreakpoint;
+  };
+
+  const isColumn = shouldStack(width);
 
   // Fetch item data on mount (dashboards fetched by ProjectNew container)
   useEffect(() => {
@@ -456,13 +498,22 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    // Slot-relative stacking: a nested row only occupies its parent slot's
+    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
+    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
+    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
+    // (b) stacked everything once the dashboard dipped below the breakpoint.
+    // Compare the slot width instead so each nested container stacks on its own
+    // terms. See VIS-829.
+    const nestedIsColumn = shouldStack(slotPixelWidth);
     return (
       <div
-        className={`dashboard-nested-row w-full h-full ${isColumn ? 'flex' : 'grid'}`}
+        className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
+        data-testid="dashboard-nested-row"
         style={{
-          display: isColumn ? 'flex' : 'grid',
-          flexDirection: isColumn ? 'column' : undefined,
-          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          display: nestedIsColumn ? 'flex' : 'grid',
+          flexDirection: nestedIsColumn ? 'column' : undefined,
+          gridTemplateColumns: nestedIsColumn ? undefined : `repeat(${totalWidth}, minmax(0, 1fr))`,
           gap: '0.5rem',
           minWidth: 0,
           minHeight: 0,
@@ -471,10 +522,10 @@ const DashboardNew = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIdx) => (
           <div
             key={`${keyPrefix}item-${itemIdx}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
+            className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
-              width: isColumn ? '100%' : 'auto',
+              gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
+              width: nestedIsColumn ? '100%' : 'auto',
               minWidth: 0,
               minHeight: 0,
             }}
@@ -503,7 +554,14 @@ const DashboardNew = ({ projectId, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
-    const shouldLoad = visibleRows.has(rowIndex);
+    // VIS-827: eager-load by default. The row-visibility lazy-loader
+    // (useVisibleRows) relies on an IntersectionObserver that does not fire
+    // inside the Workspace canvas's inner overflow-auto scroll container, so
+    // rows past the initial seed never become "visible" and their charts spin
+    // forever even though the insight data is already in the store. Eager-loading
+    // the new renderer renders every row; callers can pass eagerLoad={false} to
+    // opt back into lazy loading once the observer is wired to the scroll root.
+    const shouldLoad = eagerLoad || visibleRows.has(rowIndex);
 
     return (
       <div

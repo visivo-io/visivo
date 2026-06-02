@@ -20,6 +20,13 @@ const LevelGroup = ({
   onSelectTile,
   activeDragName,
   isActiveSourceGroup,
+  editable = false,
+  canMoveUp = false,
+  canMoveDown = false,
+  onRename,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: group.levelKey,
@@ -36,6 +43,13 @@ const LevelGroup = ({
         collapsed={collapsed}
         onToggle={onToggle}
         testId={`level-group-header-${group.levelKey}`}
+        editable={editable}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        onRename={onRename}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        onDelete={onDelete}
       />
       {!collapsed && (
         <div
