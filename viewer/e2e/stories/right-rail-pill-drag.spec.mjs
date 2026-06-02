@@ -75,6 +75,13 @@ test.describe('Right-rail pill-and-drag (G-1)', () => {
     await page.goto(`${WORKSPACE_URL}/dashboard/insights-dashboard`);
     await page.waitForLoadState('networkidle');
     await page.getByTestId('workspace-right-rail').waitFor({ timeout: WAIT_FOR_PAGE });
+    // Library subsections default to COLLAPSED (VIS-828), so the chart rows
+    // aren't rendered until the Charts subsection is expanded.
+    const chartHeader = page.getByTestId('library-subsection-chart-header');
+    await chartHeader.waitFor({ timeout: WAIT_FOR_PAGE });
+    if (!(await page.getByTestId(`library-row-chart-${CHART_NAME}`).count())) {
+      await chartHeader.click();
+    }
     await page.getByTestId(`library-row-chart-${CHART_NAME}`).waitFor({ timeout: WAIT_FOR_PAGE });
   });
 
