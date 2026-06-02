@@ -15,10 +15,32 @@
  *   libraryCollapsedSections    — { [sectionKey: string]: boolean }
  *   libraryCollapsedSubsections — { [typeKey:    string]: boolean }
  *
+ * Default-collapsed semantics differ between the two maps (VIS-828):
+ *   - SECTIONS default to EXPANDED: absence of an entry means expanded, so
+ *     the two top sections (Layout Items / Data Layer) stay open on first
+ *     visit.
+ *   - SUBSECTIONS default to COLLAPSED: absence of an entry means collapsed,
+ *     so the long per-type lists stay tucked away until the user opens them.
+ *     Only EXPLICIT deviations are stored — an `undefined` entry is treated
+ *     as collapsed (see `isLibrarySubsectionCollapsed`), and an explicitly
+ *     persisted `false` keeps a user-expanded subsection open across reloads.
+ *
  * Migration note: existing users with the old per-key localStorage entries
- * get a fresh default (start uncollapsed). The old keys are abandoned —
- * we don't ship a migration shim since collapse state is non-critical.
+ * get a fresh default (sections expanded, subsections collapsed). The old
+ * keys are abandoned — we don't ship a migration shim since collapse state
+ * is non-critical.
  */
+
+/**
+ * Effective collapsed state for a per-type subsection. `undefined` (no saved
+ * preference) is treated as collapsed; an explicit boolean wins. Shared by the
+ * component selector and the toggle action so both agree on the default.
+ */
+export const isLibrarySubsectionCollapsed = (collapsedMap, typeKey) => {
+  const value = collapsedMap?.[typeKey];
+  return value === undefined ? true : !!value;
+};
+
 const createLibraryPrefsSlice = (set, _get) => ({
   libraryCollapsedSections: {},
   libraryCollapsedSubsections: {},
@@ -54,7 +76,9 @@ const createLibraryPrefsSlice = (set, _get) => ({
     set(s => ({
       libraryCollapsedSubsections: {
         ...s.libraryCollapsedSubsections,
-        [key]: !s.libraryCollapsedSubsections[key],
+        // Subsections default collapsed, so flip the *effective* state —
+        // an absent entry reads as collapsed and toggles to expanded.
+        [key]: !isLibrarySubsectionCollapsed(s.libraryCollapsedSubsections, key),
       },
     }));
   },

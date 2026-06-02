@@ -3,6 +3,7 @@ import { PiCaretDown, PiPlus } from 'react-icons/pi';
 import LibraryRow from './LibraryRow';
 import { getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
+import { isLibrarySubsectionCollapsed } from '../../../../stores/libraryPrefsStore';
 
 /**
  * LibrarySubsection — VIS-769 / Track C C1.
@@ -19,10 +20,13 @@ import useStore from '../../../../stores/store';
  *     (chart / table / markdown / input). Data-layer types use a different
  *     create flow and so render no inline create button.
  *
- * Collapse state persists in the `library-prefs-storage` Zustand slice
- * (`libraryPrefsStore`). When a search is active and the subsection has no
- * matching rows, the parent hides it entirely; this component handles the
- * "still has rows" case.
+ * Collapse state persists in the `libraryPrefsStore` Zustand slice. Per
+ * VIS-828 subsections default to COLLAPSED — with no saved preference the
+ * user sees only the type headers + counts and expands a type on demand —
+ * while an explicitly-expanded subsection (persisted `false`) stays open
+ * across reloads. When a search is active and the subsection has no matching
+ * rows, the parent hides it entirely; this component handles the "still has
+ * rows" case.
  */
 const LibrarySubsection = ({
   typeKey,
@@ -35,7 +39,12 @@ const LibrarySubsection = ({
   const def = getTypeDef(typeKey);
   const Icon = def.icon;
 
-  const collapsed = useStore(s => !!s.libraryCollapsedSubsections[typeKey]);
+  // Subsections default to COLLAPSED (VIS-828): absence of a saved preference
+  // reads as collapsed; an explicit `false` keeps a user-expanded subsection
+  // open across reloads.
+  const collapsed = useStore(s =>
+    isLibrarySubsectionCollapsed(s.libraryCollapsedSubsections, typeKey)
+  );
   const toggleSubsectionCollapsed = useStore(s => s.toggleLibrarySubsectionCollapsed);
 
   const handleToggle = useCallback(() => {

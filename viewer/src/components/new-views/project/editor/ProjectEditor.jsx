@@ -7,8 +7,15 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import {
   groupDashboardsByLevel,
   buildHealthSummary,
+  UNASSIGNED_KEY,
 } from './useProjectEditorData';
 import LevelGroup from './LevelGroup';
+
+const levelIndexFromKey = levelKey => {
+  if (typeof levelKey !== 'string') return -1;
+  const match = levelKey.match(/^level:(\d+)$/);
+  return match ? Number(match[1]) : -1;
+};
 
 /**
  * ProjectEditor — VIS-805 / Track M M-1.
@@ -129,6 +136,10 @@ const ProjectEditor = () => {
   const defaults = useStore(s => s.defaults);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const reassignDashboardLevel = useStore(s => s.reassignDashboardLevel);
+  const createLevel = useStore(s => s.createLevel);
+  const renameLevel = useStore(s => s.renameLevel);
+  const reorderLevel = useStore(s => s.reorderLevel);
+  const deleteLevel = useStore(s => s.deleteLevel);
   const activeObject = useStore(s => s.workspaceActiveObject);
   const openCreateDashboardModal = useStore(s => s.openCreateDashboardModal);
 
@@ -262,6 +273,53 @@ const ProjectEditor = () => {
     setCollapsed(prev => ({ ...prev, [levelKey]: !prev[levelKey] }));
   }, []);
 
+  const handleCreateLevel = useCallback(() => {
+    if (createLevel) createLevel();
+    emitWorkspaceEvent('project_editor_action', { kind: 'level_create' });
+  }, [createLevel]);
+
+  const handleRenameLevel = useCallback(
+    (index, nextTitle) => {
+      if (renameLevel) renameLevel(index, nextTitle);
+      emitWorkspaceEvent('project_editor_action', {
+        kind: 'level_rename',
+        index,
+        title: nextTitle,
+      });
+    },
+    [renameLevel]
+  );
+
+  const handleReorderLevel = useCallback(
+    (index, direction) => {
+      if (reorderLevel) reorderLevel(index, direction);
+      emitWorkspaceEvent('project_editor_action', {
+        kind: 'level_reorder',
+        index,
+        direction,
+      });
+    },
+    [reorderLevel]
+  );
+
+  const handleDeleteLevel = useCallback(
+    index => {
+      if (deleteLevel) deleteLevel(index);
+      emitWorkspaceEvent('project_editor_action', { kind: 'level_delete', index });
+    },
+    [deleteLevel]
+  );
+
+  // The highest configured-level index currently rendered — used to disable the
+  // "move down" arrow on the last reorderable group (the trailing Unassigned
+  // bucket isn't a configured level).
+  const maxLevelIndex = useMemo(() => {
+    const indices = groups
+      .map(g => levelIndexFromKey(g.levelKey))
+      .filter(i => i >= 0);
+    return indices.length ? Math.max(...indices) : -1;
+  }, [groups]);
+
   const handleCreateDashboard = useCallback(() => {
     emitWorkspaceEvent('inline_create_used', { source: 'project-editor', kind: 'dashboard' });
     if (openCreateDashboardModal) openCreateDashboardModal();
@@ -352,6 +410,9 @@ const ProjectEditor = () => {
                 {groups.map(group => {
                   const isActiveSourceGroup =
                     !!activeDrag && group.dashboards.some(t => t.name === activeDrag.name);
+                  const levelIndex = levelIndexFromKey(group.levelKey);
+                  const editable =
+                    group.levelKey !== UNASSIGNED_KEY && levelIndex >= 0;
                   return (
                     <LevelGroup
                       key={group.levelKey}
@@ -362,9 +423,27 @@ const ProjectEditor = () => {
                       onSelectTile={dispatchDashboardSelection}
                       activeDragName={activeDrag?.name || null}
                       isActiveSourceGroup={isActiveSourceGroup}
+                      editable={editable}
+                      canMoveUp={editable && levelIndex > 0}
+                      canMoveDown={editable && levelIndex < maxLevelIndex}
+                      onRename={nextTitle => handleRenameLevel(levelIndex, nextTitle)}
+                      onMoveUp={() => handleReorderLevel(levelIndex, -1)}
+                      onMoveDown={() => handleReorderLevel(levelIndex, 1)}
+                      onDelete={() => handleDeleteLevel(levelIndex)}
                     />
                   );
                 })}
+                <button
+                  type="button"
+                  data-testid="project-editor-add-level"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleCreateLevel();
+                  }}
+                  className="mt-1 flex w-full items-center gap-1.5 rounded-lg border-2 border-dashed border-gray-300 px-3 py-2.5 text-[12.5px] font-medium text-gray-500 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary"
+                >
+                  <PiPlus className="h-3.5 w-3.5" /> Add level
+                </button>
                 <DragOverlay>
                   {activeDrag ? (
                     <div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-semibold text-gray-900 shadow-lg ring-2 ring-primary">

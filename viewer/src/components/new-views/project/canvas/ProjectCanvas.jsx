@@ -21,6 +21,9 @@ import CanvasSelectionOverlay from './CanvasSelectionOverlay';
  * state + renders overlays. This is the *build* surface by construction (only
  * mounted inside the Workspace's dashboard-scoped canvas lens), so there is no
  * build/view-mode flag.
+ *
+ * `stackBreakpoint={768}` (VIS-829): the canvas loses ~600px to the rails, so
+ * it stacks at a lower container width than static View mode (default 1024).
  */
 const ProjectCanvas = ({ projectId, dashboardName }) => {
   // The overlay measures + delegates pointer events against this positioned
@@ -33,7 +36,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       data-testid="project-canvas"
       className="relative flex flex-1 min-h-0 w-full max-w-full"
     >
-      <DashboardNew projectId={projectId} dashboardName={dashboardName} />
+      <DashboardNew projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
       <CanvasSelectionOverlay rootRef={rootRef} />
     </div>
   );

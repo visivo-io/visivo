@@ -1,0 +1,252 @@
+import React from 'react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { DndContext } from '@dnd-kit/core';
+import ItemEditForm, {
+  getItemLeafRef,
+  isContainerItem,
+  ALLOWED_LEAF_TYPES,
+} from './ItemEditForm';
+import RowEditForm from './RowEditForm';
+
+const leafItem = { width: 2, chart: 'ref(rev_chart)', table: '', markdown: '', selector: '', input: '' };
+const emptyItem = { width: 1, chart: '', table: '', markdown: '', selector: '', input: '' };
+const containerItem = {
+  width: 1,
+  rows: [
+    { height: 'small', items: [{ width: 1, chart: 'ref(small_a)' }] },
+    { height: 'small', items: [{ width: 1, chart: 'ref(small_b)' }] },
+  ],
+};
+
+const renderItem = (props = {}) =>
+  render(
+    <DndContext>
+      <ItemEditForm
+        item={leafItem}
+        itemId="row-0-item-0"
+        itemIndex={0}
+        onChange={() => {}}
+        onRemove={() => {}}
+        onSelectRef={() => {}}
+        RowComponent={RowEditForm}
+        {...props}
+      />
+    </DndContext>
+  );
+
+describe('helpers', () => {
+  test('getItemLeafRef resolves chart/table refs and null for empty/container', () => {
+    expect(getItemLeafRef({ chart: 'ref(c1)' })).toEqual({ type: 'chart', name: 'c1' });
+    expect(getItemLeafRef({ table: 'ref(t1)' })).toEqual({ type: 'table', name: 't1' });
+    expect(getItemLeafRef(emptyItem)).toBeNull();
+    expect(getItemLeafRef(containerItem)).toBeNull();
+    expect(getItemLeafRef(null)).toBeNull();
+  });
+  test('isContainerItem true only when rows is an array', () => {
+    expect(isContainerItem(containerItem)).toBe(true);
+    expect(isContainerItem(leafItem)).toBe(false);
+    expect(isContainerItem(null)).toBe(false);
+  });
+  test('ALLOWED_LEAF_TYPES is the 4 leaf types', () => {
+    expect(ALLOWED_LEAF_TYPES).toEqual(['chart', 'table', 'markdown', 'input']);
+  });
+});
+
+describe('ItemEditForm — leaf variant (standalone)', () => {
+  test('renders width input, mode toggle, and a leaf RefDropZone', () => {
+    renderItem();
+    expect(screen.getByLabelText('Item 1 width')).toHaveValue(2);
+    expect(screen.getByTestId('item-row-0-item-0-mode-leaf')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('item-row-0-item-0-mode-container')).toHaveAttribute('aria-checked', 'false');
+    // Default leaf id is item-<itemId>-leaf.
+    expect(screen.getByTestId('ref-dropzone-item-row-0-item-0-leaf')).toBeInTheDocument();
+  });
+
+  test('a filled leaf renders the EmbeddedPill for the ref', () => {
+    renderItem();
+    const slot = screen.getByTestId('ref-dropzone-item-row-0-item-0-leaf');
+    expect(slot).toHaveAttribute('data-filled', 'true');
+    expect(screen.getByText('rev_chart')).toBeInTheDocument();
+  });
+
+  test('an empty leaf renders the empty drop-zone visual', () => {
+    renderItem({ item: emptyItem });
+    const slot = screen.getByTestId('ref-dropzone-item-row-0-item-0-leaf');
+    expect(slot).toHaveAttribute('data-filled', 'false');
+  });
+
+  test('leafDropZoneId override is honored (bundled legacy id)', () => {
+    renderItem({ leafDropZoneId: 'row-0-item-0' });
+    expect(screen.getByTestId('ref-dropzone-row-0-item-0')).toBeInTheDocument();
+  });
+
+  test('width change reports nextItem via onChange', () => {
+    const onChange = jest.fn();
+    renderItem({ onChange });
+    fireEvent.change(screen.getByLabelText('Item 1 width'), { target: { value: '4' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ width: '4', chart: 'ref(rev_chart)' }));
+  });
+
+  test('removing the pill clears the leaf ref', () => {
+    const onChange = jest.fn();
+    renderItem({ onChange });
+    fireEvent.click(screen.getByTestId('pill-remove'));
+    const next = onChange.mock.calls[0][0];
+    expect(getItemLeafRef(next)).toBeNull();
+    expect(next.rows).toBeUndefined();
+  });
+
+  test('clicking the pill calls onSelectRef with the referenced object', () => {
+    const onSelectRef = jest.fn();
+    renderItem({ onSelectRef });
+    fireEvent.click(screen.getByText('rev_chart'));
+    expect(onSelectRef).toHaveBeenCalledWith({ type: 'chart', name: 'rev_chart' });
+  });
+
+  test('onRemove fires from the remove-item button', () => {
+    const onRemove = jest.fn();
+    renderItem({ onRemove });
+    fireEvent.click(screen.getByLabelText('Remove item 1'));
+    expect(onRemove).toHaveBeenCalled();
+  });
+});
+
+describe('ItemEditForm — mutual exclusion (validate_unique_item_types)', () => {
+  test('dropping a second-type ref clears the existing leaf first (only one type set)', () => {
+    // Exercise the exact path the shell drop (G-1) will use: RefDropZone's
+    // `onChange({ type, name })`. Start from a *chart* leaf and write a *table*
+    // ref; ItemEditForm must reset all leaf fields so only `table` survives.
+    let capturedOnChange;
+    jest.isolateModules(() => {
+      jest.doMock('./RefDropZone', () => ({
+        __esModule: true,
+        default: ({ onChange }) => {
+          capturedOnChange = onChange;
+          return <div data-testid="mock-refdropzone" />;
+        },
+      }));
+      const Item = require('./ItemEditForm').default;
+      const onChange = jest.fn();
+      render(
+        <DndContext>
+          <Item
+            item={leafItem}
+            itemId="row-0-item-0"
+            itemIndex={0}
+            onChange={onChange}
+            RowComponent={RowEditForm}
+          />
+        </DndContext>
+      );
+      capturedOnChange({ type: 'table', name: 'sales_table' });
+      const next = onChange.mock.calls[0][0];
+      expect(next.chart).toBe('');
+      expect(next.table).toBe('ref(sales_table)');
+      expect(next.markdown).toBe('');
+      expect(next.input).toBe('');
+      expect(next.rows).toBeUndefined();
+    });
+  });
+
+  test('switching to container drops the leaf ref; switching back drops rows', () => {
+    const onChange = jest.fn();
+    renderItem({ onChange, item: leafItem });
+    fireEvent.click(screen.getByTestId('item-row-0-item-0-mode-container'));
+    const asContainer = onChange.mock.calls[0][0];
+    expect(Array.isArray(asContainer.rows)).toBe(true);
+    expect(getItemLeafRef(asContainer)).toBeNull();
+
+    cleanup();
+    onChange.mockClear();
+    renderItem({ onChange, item: containerItem });
+    fireEvent.click(screen.getByTestId('item-row-0-item-0-mode-leaf'));
+    const asLeaf = onChange.mock.calls[0][0];
+    expect(asLeaf.rows).toBeUndefined();
+    expect(getItemLeafRef(asLeaf)).toBeNull();
+  });
+});
+
+describe('ItemEditForm — container variant (Item.rows)', () => {
+  const renderContainer = (props = {}) =>
+    render(
+      <DndContext>
+        <ItemEditForm
+          item={containerItem}
+          itemId="row-0-item-0"
+          itemIndex={0}
+          onChange={() => {}}
+          onSelectRef={() => {}}
+          RowComponent={RowEditForm}
+          {...props}
+        />
+      </DndContext>
+    );
+
+  test('renders nested rows via RowComponent and marks container mode active', () => {
+    renderContainer();
+    expect(screen.getByTestId('item-row-0-item-0-mode-container')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('item-row-0-item-0-rows')).toBeInTheDocument();
+    // Two nested rows rendered through RowEditForm.
+    expect(screen.getByTestId('row-edit-form-row-0-item-0-0')).toBeInTheDocument();
+    expect(screen.getByTestId('row-edit-form-row-0-item-0-1')).toBeInTheDocument();
+    expect(screen.getByText('small_a')).toBeInTheDocument();
+    expect(screen.getByText('small_b')).toBeInTheDocument();
+  });
+
+  test('Add Nested Row appends a sub-row', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.click(screen.getByText('+ Add Nested Row'));
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows).toHaveLength(3);
+  });
+
+  test('removing a nested row drops it from rows', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.click(screen.getByLabelText('Remove row 1'));
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows).toHaveLength(1);
+    expect(next.rows[0].items[0].chart).toBe('ref(small_b)');
+  });
+
+  test('reorder: move row 1 down swaps the two nested rows', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.click(screen.getByLabelText('Move nested row 1 down'));
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].items[0].chart).toBe('ref(small_b)');
+    expect(next.rows[1].items[0].chart).toBe('ref(small_a)');
+  });
+
+  test('move up is disabled for the first row, move down for the last', () => {
+    renderContainer();
+    expect(screen.getByLabelText('Move nested row 1 up')).toBeDisabled();
+    expect(screen.getByLabelText('Move nested row 2 down')).toBeDisabled();
+  });
+
+  test('editing a nested row height reports the updated container item', () => {
+    const onChange = jest.fn();
+    renderContainer({ onChange });
+    fireEvent.change(screen.getByLabelText('Row 1 height'), { target: { value: 'large' } });
+    const next = onChange.mock.calls[0][0];
+    expect(next.rows[0].height).toBe('large');
+  });
+});
+
+describe('ItemEditForm — render-safe with no DndContext ancestor', () => {
+  test('mounts without throwing (RefDropZone inert until G-1 shell DndContext)', () => {
+    expect(() =>
+      render(
+        <ItemEditForm
+          item={leafItem}
+          itemId="solo-0"
+          itemIndex={0}
+          onChange={() => {}}
+          RowComponent={RowEditForm}
+        />
+      )
+    ).not.toThrow();
+    expect(screen.getByText('rev_chart')).toBeInTheDocument();
+  });
+});

@@ -30,7 +30,18 @@ describe('LibrarySubsection', () => {
     });
   });
 
-  test('renders the per-type header, count and rows', () => {
+  // Subsections default to COLLAPSED (VIS-828). To exercise the header/row/
+  // create affordances below we explicitly expand the subsection first.
+  const expand = typeKey => {
+    act(() => {
+      useStore.setState(s => ({
+        libraryCollapsedSubsections: { ...s.libraryCollapsedSubsections, [typeKey]: false },
+      }));
+    });
+  };
+
+  test('renders the per-type header, count and rows when expanded', () => {
+    expand('chart');
     render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
     expect(screen.getByTestId('library-subsection-chart-header')).toHaveTextContent('Charts');
     expect(screen.getByTestId('library-subsection-chart-count')).toHaveTextContent('(2)');
@@ -39,6 +50,7 @@ describe('LibrarySubsection', () => {
   });
 
   test('renders the empty placeholder when the subsection has no rows', () => {
+    expand('model');
     render(withDnd(<LibrarySubsection typeKey="model" rows={[]} />));
     expect(screen.getByTestId('library-subsection-model-empty')).toHaveTextContent(
       'No models yet'
@@ -46,11 +58,13 @@ describe('LibrarySubsection', () => {
   });
 
   test('shows "+ New X" for a droppable Layout type', () => {
+    expand('chart');
     render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
     expect(screen.getByTestId('library-subsection-chart-create')).toHaveTextContent('New Chart');
   });
 
   test('hides "+ New X" for a non-droppable Data-layer type', () => {
+    expand('source');
     render(
       withDnd(
         <LibrarySubsection
@@ -63,27 +77,54 @@ describe('LibrarySubsection', () => {
   });
 
   test('"+ New X" delegates to onCreate with the type key', () => {
+    expand('table');
     const onCreate = jest.fn();
     render(withDnd(<LibrarySubsection typeKey="table" rows={[]} onCreate={onCreate} />));
     fireEvent.click(screen.getByTestId('library-subsection-table-create'));
     expect(onCreate).toHaveBeenCalledWith('table');
   });
 
-  test('toggles collapse on header click and writes to the persisted store slice', () => {
+  test('defaults to collapsed with no saved preference (VIS-828)', () => {
+    render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
+    const subsection = screen.getByTestId('library-subsection-chart');
+    // Header + count stay visible, the row list stays hidden.
+    expect(subsection).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.getByTestId('library-subsection-chart-header')).toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-chart-count')).toHaveTextContent('(2)');
+    expect(screen.queryByTestId('library-subsection-chart-body')).not.toBeInTheDocument();
+  });
+
+  test('an explicitly-expanded subsection stays expanded (persisted false)', () => {
+    act(() => {
+      useStore.setState({ libraryCollapsedSubsections: { chart: false } });
+    });
+    render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
+    expect(screen.getByTestId('library-subsection-chart')).toHaveAttribute(
+      'data-collapsed',
+      'false'
+    );
+    expect(screen.getByTestId('library-subsection-chart-body')).toBeInTheDocument();
+  });
+
+  test('toggles from the collapsed default to expanded and back, persisting each step', () => {
     render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
     const header = screen.getByTestId('library-subsection-chart-header');
     const subsection = screen.getByTestId('library-subsection-chart');
+    // Starts collapsed by default (no saved pref).
+    expect(subsection).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.queryByTestId('library-subsection-chart-body')).not.toBeInTheDocument();
+
+    // First click expands it and persists an explicit `false`.
+    fireEvent.click(header);
     expect(subsection).toHaveAttribute('data-collapsed', 'false');
     expect(screen.getByTestId('library-subsection-chart-body')).toBeInTheDocument();
+    expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(false);
 
+    // Second click collapses it again, persisting `true`.
     fireEvent.click(header);
     expect(subsection).toHaveAttribute('data-collapsed', 'true');
     expect(screen.queryByTestId('library-subsection-chart-body')).not.toBeInTheDocument();
     expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(true);
-
-    fireEvent.click(header);
-    expect(subsection).toHaveAttribute('data-collapsed', 'false');
-    expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(false);
   });
 
   test('reads persisted collapse state from the store on mount', () => {
