@@ -9,18 +9,21 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
  * <ProjectCanvas> wraps the render-only <DashboardNew>; this component sits
  * ABOVE that render (a sibling absolutely-positioned layer) and:
  *
- *   1. Reads the rendered DashboardNew DOM via event delegation. Rows carry
- *      `data-row-index` (set by DashboardNew); top-level item slots carry
- *      `data-canvas-item-index` (additive marker — inert in View mode). The
- *      overlay never mutates that render — it measures it with
- *      getBoundingClientRect and paints rings on top.
+ *   1. Reads the rendered DashboardNew DOM via event delegation. Every row
+ *      container and item slot — at ANY nesting depth — carries a composite
+ *      `data-canvas-path` (additive marker, inert in View mode). The overlay
+ *      never mutates that render — it measures it with getBoundingClientRect
+ *      and paints rings on top.
  *
  *   2. Writes the workspace selection to `workspaceOutlineSelectedKey` — the
- *      SAME key the OutlineTreePanel uses. Key scheme (matching the base):
- *        - `dashboard`            → dashboard-chrome (click empty canvas)
- *        - `row.N`                → row N (click a row gutter / row chrome)
- *        - `row.N.item.M`         → item M in row N
- *      This makes the canvas + Outline tree ONE selection source of truth.
+ *      SAME composite key the OutlineTreePanel uses. Key scheme (matching base):
+ *        - `dashboard`                          → dashboard-chrome
+ *        - `row.N`                              → row N
+ *        - `row.N.item.M`                       → item M in row N
+ *        - `row.N.item.M.row.P.item.Q…`         → arbitrarily nested rows/items
+ *      Click→key uses `closest('[data-canvas-path]')` (innermost wins) and
+ *      key→box uses a direct attribute query, so nested layouts round-trip 1:1
+ *      in BOTH directions. Canvas + Outline tree are ONE selection source.
  *
  *   3. Paints overlays per the D-1 selection-state design
  *      (design/cofounder-mockups/D-1 Project Canvas.html):
@@ -37,44 +40,46 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
  */
 
 // --- Selection key helpers (mirror OutlineTreePanel's scheme) --------------
-const dashboardKey = () => 'dashboard';
-const rowKey = ri => `row.${ri}`;
-const itemKey = (ri, ii) => `row.${ri}.item.${ii}`;
+// The selection key is a composite path matching OutlineTreePanel exactly:
+//   `dashboard`                          → dashboard chrome
+//   `row.<ri>`                           → a (possibly nested) row
+//   `row.<ri>.item.<ii>`                 → an item
+//   `row.<ri>.item.<ii>.row.<ri>.item.<ii>…` → arbitrarily nested rows/items
+// DashboardNew emits the same string on each row container / item slot as
+// `data-canvas-path`, so the overlay resolves a click → key (closest) and a
+// key → box (querySelector) by direct attribute match at ANY depth — no
+// index parsing, so nested layouts round-trip 1:1 in both directions.
+
+// Classify a composite key as item / row / chrome for ring styling. A key whose
+// penultimate segment is `item` is an item; otherwise it's a row (`dashboard`
+// is chrome).
+const kindForKey = key => {
+  if (!key || key === 'dashboard') return 'chrome';
+  const parts = key.split('.');
+  return parts[parts.length - 2] === 'item' ? 'item' : 'row';
+};
 
 /**
  * Resolve a pointer event's target to a selection target descriptor:
- *   `{ kind: 'item', row, item }` | `{ kind: 'row', row }` | `{ kind: 'chrome' }`
+ *   `{ kind, key, el }` — kind ∈ item | row | chrome.
  *
- * Walks up from the event target: the nearest `[data-canvas-item-index]` with
- * a `[data-row-index]` ancestor is an item; a `[data-row-index]` with no item
- * is the row chrome; anything else inside the canvas is dashboard chrome.
+ * Walks up from the event target to the nearest element carrying a
+ * `data-canvas-path` (the innermost wins, so a click inside a nested item slot
+ * resolves to that leaf's full composite path). Anything else inside the canvas
+ * is dashboard chrome.
  */
 const resolveTarget = (eventTarget, rootEl) => {
   if (!eventTarget || !rootEl || !rootEl.contains(eventTarget)) return null;
 
-  const itemEl = eventTarget.closest('[data-canvas-item-index]');
-  const rowEl = eventTarget.closest('[data-row-index]');
-
-  if (itemEl && rowEl && rowEl.contains(itemEl)) {
-    const ri = Number(rowEl.getAttribute('data-row-index'));
-    const ii = Number(itemEl.getAttribute('data-canvas-item-index'));
-    if (Number.isInteger(ri) && Number.isInteger(ii)) {
-      return { kind: 'item', row: ri, item: ii, el: itemEl };
-    }
+  const el = eventTarget.closest('[data-canvas-path]');
+  if (el && rootEl.contains(el)) {
+    const key = el.getAttribute('data-canvas-path');
+    if (key) return { kind: kindForKey(key), key, el };
   }
-  if (rowEl) {
-    const ri = Number(rowEl.getAttribute('data-row-index'));
-    if (Number.isInteger(ri)) return { kind: 'row', row: ri, el: rowEl };
-  }
-  return { kind: 'chrome', el: rootEl };
+  return { kind: 'chrome', key: 'dashboard', el: rootEl };
 };
 
-const keyForTarget = target => {
-  if (!target) return null;
-  if (target.kind === 'item') return itemKey(target.row, target.item);
-  if (target.kind === 'row') return rowKey(target.row);
-  return dashboardKey();
-};
+const keyForTarget = target => target?.key ?? null;
 
 // Measure a node's box relative to the overlay root (so we can absolutely
 // position a ring over it inside the same positioned ancestor).
@@ -108,23 +113,17 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       setSelectedBox(selectedKey === 'dashboard' ? { kind: 'chrome', rect: null } : null);
       return;
     }
-    // `row.N` or `row.N.item.M`
-    const parts = selectedKey.split('.');
-    const ri = Number(parts[1]);
-    const rowEl = root.querySelector(`[data-row-index="${ri}"]`);
-    if (!rowEl) {
+    // Direct composite-path match — works at any nesting depth. The same string
+    // is emitted by DashboardNew (`data-canvas-path`) and produced by the
+    // Outline tree, so a nested key like `row.0.item.1.row.0.item.0` rings the
+    // exact nested leaf rather than its top-level container.
+    const el = root.querySelector(`[data-canvas-path="${selectedKey}"]`);
+    if (!el) {
       setSelectedBox(null);
       return;
     }
-    if (parts[2] === 'item') {
-      const ii = Number(parts[3]);
-      const itemEl = rowEl.querySelector(`[data-canvas-item-index="${ii}"]`);
-      const rect = measure(itemEl, root);
-      setSelectedBox(rect ? { kind: 'item', rect } : null);
-      return;
-    }
-    const rect = measure(rowEl, root);
-    setSelectedBox(rect ? { kind: 'row', rect } : null);
+    const rect = measure(el, root);
+    setSelectedBox(rect ? { kind: kindForKey(selectedKey), rect } : null);
   }, [rootRef, selectedKey]);
 
   // Recompute selection geometry whenever the key changes or the canvas

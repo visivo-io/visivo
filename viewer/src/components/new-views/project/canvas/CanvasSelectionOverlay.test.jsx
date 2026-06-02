@@ -1,12 +1,13 @@
 /**
  * CanvasSelectionOverlay (VIS-D2 / VIS-768).
  *
- * The overlay reads the rendered DashboardNew DOM via event delegation
- * (`data-row-index` rows, `data-canvas-item-index` item slots), writes the
- * workspace selection to `workspaceOutlineSelectedKey` (the SAME key the
- * OutlineTreePanel uses), and paints hover/selection rings. These tests drive
- * the real workspace store and a fake dashboard DOM so the click→key mapping,
- * the chrome fallback, and the overlay surfaces are all exercised.
+ * The overlay reads the rendered DashboardNew DOM via event delegation — every
+ * row container and item slot, at ANY nesting depth, carries a composite
+ * `data-canvas-path` (the SAME key the OutlineTreePanel uses). It writes the
+ * workspace selection to `workspaceOutlineSelectedKey` and paints
+ * hover/selection rings. These tests drive the real workspace store and a fake
+ * dashboard DOM so the click→key mapping (flat AND nested), the key→box
+ * resolution, the chrome fallback, and the overlay surfaces are all exercised.
  */
 import React, { useRef } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
@@ -32,25 +33,55 @@ const stubRect = (el, rect) => {
 
 /**
  * Harness: a positioned root that mimics ProjectCanvas — a fake DashboardNew
- * DOM (two rows, items with `data-canvas-item-index`) plus the overlay wired
- * to the same root ref.
+ * DOM (two rows, items carrying the composite `data-canvas-path`) plus the
+ * overlay wired to the same root ref.
  */
 const Harness = () => {
   const rootRef = useRef(null);
   return (
     <div ref={rootRef} data-testid="root" style={{ position: 'relative' }}>
       <div data-testid="dash">
-        <div data-testid="dashboard-row-0" data-row-index="0">
-          <div data-testid="slot-0-0" data-canvas-item-index="0">
+        <div data-testid="dashboard-row-0" data-row-index="0" data-canvas-path="row.0">
+          <div data-testid="slot-0-0" data-canvas-item-index="0" data-canvas-path="row.0.item.0">
             chart a
           </div>
-          <div data-testid="slot-0-1" data-canvas-item-index="1">
+          <div data-testid="slot-0-1" data-canvas-item-index="1" data-canvas-path="row.0.item.1">
             chart b
           </div>
         </div>
-        <div data-testid="dashboard-row-1" data-row-index="1">
-          <div data-testid="slot-1-0" data-canvas-item-index="0">
+        <div data-testid="dashboard-row-1" data-row-index="1" data-canvas-path="row.1">
+          <div data-testid="slot-1-0" data-canvas-item-index="0" data-canvas-path="row.1.item.0">
             chart c
+          </div>
+        </div>
+      </div>
+      <CanvasSelectionOverlay rootRef={rootRef} />
+    </div>
+  );
+};
+
+/**
+ * NestedHarness: mirrors the DOM DashboardNew emits for a nested-layout
+ * dashboard — a container item (`row.2.item.0`) whose nested row
+ * (`row.2.item.0.row.0`) holds two deep leaves. The deep leaf slot is nested
+ * INSIDE the container slot, exactly as the real render nests them, so
+ * `closest('[data-canvas-path]')` must resolve to the innermost (deep) path.
+ */
+const NestedHarness = () => {
+  const rootRef = useRef(null);
+  return (
+    <div ref={rootRef} data-testid="root" style={{ position: 'relative' }}>
+      <div data-testid="dash">
+        <div data-testid="dashboard-row-2" data-row-index="2" data-canvas-path="row.2">
+          <div data-testid="container-2-0" data-canvas-item-index="0" data-canvas-path="row.2.item.0">
+            <div data-testid="nested-row-2-0-0" data-canvas-path="row.2.item.0.row.0">
+              <div data-testid="deep-leaf-0" data-canvas-path="row.2.item.0.row.0.item.0">
+                nested chart a
+              </div>
+              <div data-testid="deep-leaf-1" data-canvas-path="row.2.item.0.row.0.item.1">
+                nested chart b
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -73,6 +104,17 @@ const measureFakeDom = () => {
   stubRect(screen.getByTestId('slot-0-0'), { top: 12, left: 12, width: 480, height: 196 });
   stubRect(screen.getByTestId('slot-0-1'), { top: 12, left: 508, width: 480, height: 196 });
   stubRect(screen.getByTestId('slot-1-0'), { top: 222, left: 12, width: 976, height: 196 });
+};
+
+const measureNestedDom = () => {
+  stubRect(screen.getByTestId('root'), { top: 0, left: 0, width: 1000, height: 600 });
+  stubRect(screen.getByTestId('dashboard-row-2'), { top: 0, left: 0, width: 1000, height: 400 });
+  // The container slot and its deep leaf get DELIBERATELY DISTINCT boxes so the
+  // ring's geometry proves which element was resolved (container vs deep leaf).
+  stubRect(screen.getByTestId('container-2-0'), { top: 0, left: 0, width: 1000, height: 400 });
+  stubRect(screen.getByTestId('nested-row-2-0-0'), { top: 5, left: 5, width: 990, height: 390 });
+  stubRect(screen.getByTestId('deep-leaf-0'), { top: 8, left: 8, width: 490, height: 384 });
+  stubRect(screen.getByTestId('deep-leaf-1'), { top: 8, left: 502, width: 490, height: 384 });
 };
 
 // The overlay binds NATIVE listeners (so DashboardNew's own interactivity is
@@ -187,5 +229,50 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     // Canvas writes; the same field updates for the tree.
     dispatch(fireEvent.click, screen.getByTestId('slot-1-0'));
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1.item.0');
+  });
+
+  // --- Nested-layout selection (the VIS-768 hold) --------------------------
+  describe('nested layouts (composite keys)', () => {
+    test('clicking a nested leaf writes its FULL composite path, not the container', () => {
+      render(<NestedHarness />);
+      measureNestedDom();
+      dispatch(fireEvent.click, screen.getByTestId('deep-leaf-1'));
+      // Must be the deep leaf, NOT the top-level container `row.2.item.0`.
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0.row.0.item.1');
+    });
+
+    test('emits the composite key + item kind on a nested click', () => {
+      const events = [];
+      setWorkspaceTelemetryListener(e => events.push(e));
+      render(<NestedHarness />);
+      measureNestedDom();
+      dispatch(fireEvent.click, screen.getByTestId('deep-leaf-0'));
+      const evt = events.find(e => e.eventName === 'canvas_selection_changed');
+      expect(evt.payload.key).toBe('row.2.item.0.row.0.item.0');
+      expect(evt.payload.kind).toBe('item');
+    });
+
+    test('Outline→canvas: a nested composite key rings the deep leaf, not the container', () => {
+      render(<NestedHarness />);
+      measureNestedDom();
+      // The Outline tree sets the deep composite key.
+      act(() => {
+        useStore.getState().setWorkspaceOutlineSelectedKey('row.2.item.0.row.0.item.1');
+      });
+      const ring = screen.getByTestId('canvas-overlay-selected-item');
+      // Smoking gun: the ring's geometry must match the DEEP LEAF box
+      // (top 8 / left 502), NOT the container box (top 0 / left 0). The old
+      // index-parsing resolver ringed the container — this asserts the fix.
+      expect(ring.style.top).toBe('8px');
+      expect(ring.style.left).toBe('502px');
+      expect(ring.style.width).toBe('490px');
+    });
+
+    test('clicking a nested row (between leaves) writes the nested row path', () => {
+      render(<NestedHarness />);
+      measureNestedDom();
+      dispatch(fireEvent.click, screen.getByTestId('nested-row-2-0-0'));
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0.row.0');
+    });
   });
 });

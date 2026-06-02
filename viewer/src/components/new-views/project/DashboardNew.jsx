@@ -350,7 +350,7 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '') => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
 
     // Pixel width this item slot was given by its parent row. Used for chart
@@ -390,7 +390,7 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
                   height: subHeightPx,
                 }}
               >
-                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`)}
+                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`, itemPath)}
               </div>
             );
           })}
@@ -494,10 +494,16 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
   // as a top-level row, but height is governed by the parent slot's flex
   // allocation rather than the row's pixel-mapped HeightEnum. Reuses renderItem
   // so leaf-vs-row-container handling is shared with the top level.
-  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
+  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix, parentItemPath = '') => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    // Composite selection path (VIS-768): mirrors OutlineTreePanel's recursive
+    // key scheme `row.<ri>.item.<ii>[.row.<ri>.item.<ii>]…` so the canvas overlay
+    // and Outline tree share ONE selection key at any nesting depth.
+    const subRowPath = parentItemPath
+      ? `${parentItemPath}.row.${subRowIndex}`
+      : `row.${subRowIndex}`;
     // Slot-relative stacking: a nested row only occupies its parent slot's
     // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
     // breakpoint either (a) kept nested multi-item rows side-by-side inside a
@@ -510,6 +516,7 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
       <div
         className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
         data-testid="dashboard-nested-row"
+        data-canvas-path={subRowPath}
         style={{
           display: nestedIsColumn ? 'flex' : 'grid',
           flexDirection: nestedIsColumn ? 'column' : undefined,
@@ -522,6 +529,10 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
         {visibleItems.map((item, itemIdx) => (
           <div
             key={`${keyPrefix}item-${itemIdx}`}
+            // Composite selection anchor (VIS-768): nested item slots carry their
+            // full path so a click at any depth resolves to the exact leaf the
+            // Outline tree would, and an Outline→canvas selection rings it.
+            data-canvas-path={`${subRowPath}.item.${itemIdx}`}
             className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
@@ -541,6 +552,7 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
                 slotPixelHeight,
                 slotPixelWidth,
                 keyPrefix,
+                `${subRowPath}.item.${itemIdx}`,
               )}
             </div>
           </div>
@@ -568,6 +580,7 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
         key={`row-${rowIndex}`}
         ref={el => setRowRef(el, rowIndex)}
         data-row-index={rowIndex}
+        data-canvas-path={`row.${rowIndex}`}
         data-testid={`dashboard-row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
@@ -595,8 +608,11 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
             // overlay layer (VIS-768). These data attributes are inert in View
             // mode and keep DashboardNew's render at parity — the overlay reads
             // them via event delegation + getBoundingClientRect to place
-            // hover/selection rings, never mutating this render.
+            // hover/selection rings, never mutating this render. `data-canvas-path`
+            // is the composite key (matches OutlineTreePanel) the overlay resolves
+            // in both directions; `data-canvas-item-index` is kept for back-compat.
             data-canvas-item-index={itemIndex}
+            data-canvas-path={`row.${rowIndex}.item.${itemIndex}`}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
@@ -621,6 +637,8 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
                 visibleItems,
                 row.height !== 'compact' ? getHeight(row.height) : undefined,
                 width, // top-level container width = dashboard width
+                '', // keyPrefix (top level needs none)
+                `row.${rowIndex}.item.${itemIndex}`,
               )}
             </div>
           </div>
