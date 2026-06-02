@@ -193,17 +193,17 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
     disabled: !draggable,
   });
 
-  const dragStyle = drag.transform
-    ? `translate3d(${drag.transform.x}px, ${drag.transform.y}px, 0)`
-    : undefined;
-
+  // The shared <DragOverlay> (WorkspaceDndContext) renders the drag preview, so
+  // the source row must NOT also translate with the cursor. Applying the dnd-kit
+  // transform here too made the source slide right with the pointer, which grew
+  // the Library rail's scroll width and let dnd-kit auto-scroll the rail
+  // horizontally until it went blank during a drag (VIS-836).
   const dragProps = draggable
     ? {
         ref: drag.setNodeRef,
         ...drag.listeners,
         ...drag.attributes,
         style: {
-          transform: dragStyle,
           touchAction: 'none',
         },
       }
