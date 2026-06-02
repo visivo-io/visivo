@@ -11,7 +11,7 @@ import FilterBar from '../project/FilterBar';
 /**
  * Project - Container component for the new project view
  * Fetches data from stores and passes to Dashboard
- * Similar to ProjectContainer but uses stores instead of project_json
+ * Reads dashboards from the store instead of a project_json blob
  */
 function Project() {
   const { dashboardName } = useParams();
@@ -32,7 +32,7 @@ function Project() {
     fetchDashboards();
   }, [fetchDashboards]);
 
-  // Transform dashboards for navigation (similar to ProjectContainer)
+  // Transform dashboards for navigation
   const dashboardsList = useMemo(() => {
     if (!dashboards) {
       return [];
