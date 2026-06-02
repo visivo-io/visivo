@@ -4,7 +4,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 
 /**
  * SourceSearch - Search input for filtering sources
- * Used by EditorNew view
+ * Used by Editor view
  */
 const SourceSearch = ({ value, onChange, placeholder = 'Search sources...' }) => {
   return (

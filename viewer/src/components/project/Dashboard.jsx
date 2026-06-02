@@ -1,22 +1,60 @@
+import React, { useEffect, useMemo, useCallback } from 'react';
+import useDimensions from 'react-cool-dimensions';
+import useStore from '../../stores/store';
 import Chart from '../items/Chart';
 import Table from '../items/Table';
-import useDimensions from 'react-cool-dimensions';
-import { throwError } from '../../api/utils';
 import Markdown from '../items/Markdown';
 import Input from '../items/Input';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useInsightsData } from '../../hooks/useInsightsData';
 import { useModelsData } from '../../hooks/useModelsData';
 import { useInputsData } from '../../hooks/useInputsData';
 import { useVisibleRows } from '../../hooks/useVisibleRows';
-import { extractRefNamesFromStrings } from '../../utils/refString';
-import { captureDashboardThumbnail } from './captureDashboardThumbnail';
+import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
+/**
+ * Resolve an item reference (chart, table, markdown, input) from the store.
+ * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
+ * Transforms insight/input string references to object format expected by components.
+ */
+const resolveItem = (itemRef, getItemByName) => {
+  if (!itemRef) return null;
+
+  // If it's a string, parse the ref and look up from store
+  if (typeof itemRef === 'string') {
+    const name = parseRefValue(itemRef);
+    const item = getItemByName(name);
+    const config = item?.config || null;
+
+    if (!config) return null;
+
+    // Transform insights array from string references to objects with name property
+    // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
+    if (config.insights && Array.isArray(config.insights)) {
+      config.insights = config.insights.map(insight => {
+        if (typeof insight === 'string') {
+          const insightName = parseRefValue(insight);
+          return { name: insightName };
+        }
+        return insight; // Already an object
+      });
+    }
+
+    return config;
+  }
+
+  // Legacy: If it's already an object, use it directly
+  return itemRef;
+};
+
+/**
+ * Collect all insight names from visible rows for centralized prefetching.
+ */
 const isModelData = data => data && (data.sql || data.args || data.models);
 
 /**
- * Walk every Item across a list of rows, descending through `item.rows`
- * row-containers so nested charts/tables/inputs are also reached.
+ * Recursively yield every Item across a list of rows, descending through
+ * `item.rows` row-containers. Used by the data-collection helpers below so
+ * nested charts/tables/inputs are also prefetched.
  */
 const forEachItemDeep = (rows, callback) => {
   if (!rows) return;
@@ -31,29 +69,44 @@ const forEachItemDeep = (rows, callback) => {
   }
 };
 
-const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightNames = new Set()) => {
+const collectDataNames = (rows, visibleRowIndices, shouldShowItem, getChartByName, getTableByName, knownInsightNames = new Set()) => {
   const insightNames = new Set();
   const modelNames = new Set();
   const pivotRefStrings = [];
 
+  // Visible top-level rows define the seed; once we descend into an item's nested rows,
+  // every item in that subtree is treated as visible (the parent slot's visibility
+  // implies its children are loaded).
   const visibleSeed = visibleRowIndices
     .map(idx => rows[idx])
     .filter(row => row);
 
   forEachItemDeep(visibleSeed, item => {
     if (shouldShowItem && !shouldShowItem(item)) return;
-    item.chart?.insights?.forEach(i => insightNames.add(i.name));
-    if (item.table?.data?.name) {
-      if (isModelData(item.table.data)) {
-        modelNames.add(item.table.data.name);
-      } else {
-        insightNames.add(item.table.data.name);
+
+    const chart = resolveItem(item.chart, getChartByName);
+    chart?.insights?.forEach(i => {
+      const insightName = typeof i === 'string' ? parseRefValue(i) : i?.name;
+      if (insightName) insightNames.add(insightName);
+    });
+
+    const table = resolveItem(item.table, getTableByName);
+    if (table?.data) {
+      const tableData = typeof table.data === 'string' ? table.data : table.data;
+      const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
+      if (name) {
+        if (typeof tableData === 'object' && isModelData(tableData)) {
+          modelNames.add(name);
+        } else {
+          insightNames.add(name);
+        }
       }
     }
+    const tableConfig = table?.config || table || {};
     pivotRefStrings.push(
-      ...(item.table?.columns || []),
-      ...(item.table?.rows || []),
-      ...(item.table?.values || []),
+      ...(tableConfig.columns || []),
+      ...(tableConfig.rows || []),
+      ...(tableConfig.values || []),
     );
   });
 
@@ -70,6 +123,10 @@ const collectDataNames = (rows, visibleRowIndices, shouldShowItem, knownInsightN
   return { insightNames: [...insightNames], modelNames: [...modelNames] };
 };
 
+/**
+ * Collect all input names from visible rows for centralized prefetching.
+ * Recurses through nested `item.rows` row-containers.
+ */
 const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
   const inputNames = new Set();
   const visibleSeed = visibleRowIndices
@@ -78,19 +135,48 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
 
   forEachItemDeep(visibleSeed, item => {
     if (shouldShowItem && !shouldShowItem(item)) return;
-    if (item.input?.name) {
-      inputNames.add(item.input.name);
+    if (item.input) {
+      const inputName = typeof item.input === 'string'
+        ? parseRefValue(item.input)
+        : item.input?.name;
+      if (inputName) {
+        inputNames.add(inputName);
+      }
     }
   });
   return [...inputNames];
 };
 
-const Dashboard = ({ project, dashboardName }) => {
-  const dashboardRootRef = useRef(null);
+/**
+ * Dashboard - Renders a single dashboard using data from stores
+ * Shows draft versions of objects merged with published versions
+ */
+const Dashboard = ({ projectId, dashboardName }) => {
+  // Dashboard store (fetched by Project container)
+  const dashboards = useStore(state => state.dashboards);
+
+  // Chart store
+  const fetchCharts = useStore(state => state.fetchCharts);
+  const charts = useStore(state => state.charts);
+  const getChartByName = useStore(state => state.getChartByName);
+
+  // Table store
+  const fetchTables = useStore(state => state.fetchTables);
+  const tables = useStore(state => state.tables);
+  const getTableByName = useStore(state => state.getTableByName);
+
+  // Markdown store
+  const fetchMarkdowns = useStore(state => state.fetchMarkdowns);
+  const getMarkdownByName = useStore(state => state.getMarkdownByName);
+
+  // Input store
+  const fetchInputs = useStore(state => state.fetchInputs);
+  const getInputByName = useStore(state => state.getInputByName);
 
   // Viewport-based loading: Track which rows are visible
   const { visibleRows, setRowRef } = useVisibleRows(dashboardName);
 
+  // Responsive width tracking
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
       observe();
@@ -100,26 +186,38 @@ const Dashboard = ({ project, dashboardName }) => {
   const widthBreakpoint = 1024;
   const isColumn = width < widthBreakpoint;
 
+  // Fetch item data on mount (dashboards fetched by Project container)
+  useEffect(() => {
+    fetchCharts();
+    fetchTables();
+    fetchMarkdowns();
+    fetchInputs();
+  }, [fetchCharts, fetchTables, fetchMarkdowns, fetchInputs]);
+
+  // Find the current dashboard and extract its config
+  const dashboard = useMemo(() => {
+    const dashboardData = dashboards?.find(d => d.name === dashboardName);
+    if (!dashboardData) return null;
+
+    // Dashboard data from API has rows in config field
+    return dashboardData.config || dashboardData;
+  }, [dashboards, dashboardName]);
+
+  // Height calculation helpers
   const getHeight = height => {
-    if (height === 'xsmall') {
-      return 128;
-    } else if (height === 'small') {
-      return 256;
-    } else if (height === 'medium') {
-      return 396;
-    } else if (height === 'large') {
-      return 512;
-    } else if (height === 'xlarge') {
-      return 768;
-    } else {
-      return 1024;
-    }
+    if (height === 'xsmall') return 128;
+    if (height === 'small') return 256;
+    if (height === 'medium') return 396;
+    if (height === 'large') return 512;
+    if (height === 'xlarge') return 768;
+    return 1024;
   };
 
   // Relative-weight mapping for sub-rows nested inside an Item's `rows` field.
-  // Top-level rows interpret `height` as absolute pixels (getHeight). Nested
-  // sub-rows reuse the same enum as a relative weight that divides the parent
-  // slot's height. See specs/dashboard-building/04-open-questions.md Q9.
+  // When a Row appears at the top level its `height` is interpreted as absolute
+  // pixels via getHeight() above. When nested inside an Item, the same enum
+  // becomes a relative weight that divides the parent slot's height.
+  // See specs/dashboard-building/04-open-questions.md Q9.
   const heightToWeight = height => {
     if (height === 'compact') return 1;
     if (height === 'xsmall') return 1;
@@ -130,10 +228,13 @@ const Dashboard = ({ project, dashboardName }) => {
     return 8; // xxlarge
   };
 
-  // `containerPixelWidth` is the row's own pixel width — the dashboard width at
-  // the top level, but the parent item slot's width inside a nested row. Without
-  // threading this down, nested charts size to the dashboard width and overflow
-  // their slot, which then collapses sibling grid tracks.
+  // Compute the pixel width an item should use for chart/table sizing.
+  // `containerPixelWidth` is the pixel width of the row this item lives in —
+  // the dashboard's measured width at the top level, but the item's parent
+  // slot inside a nested row-container. Without this, nested charts size
+  // themselves to the dashboard width and overflow their slot, which then
+  // collapses sibling grid tracks (CSS grid resolves min-content overflow
+  // by stealing track width from siblings).
   const getWidth = (items, item, containerPixelWidth) => {
     const containerWidth =
       typeof containerPixelWidth === 'number' && containerPixelWidth > 0
@@ -142,113 +243,77 @@ const Dashboard = ({ project, dashboardName }) => {
     if (containerWidth < widthBreakpoint) {
       return containerWidth;
     }
-    const totalWidth = items.reduce((partialSum, i) => {
-      const itemWidth = i.width ? i.width : 1;
-      return partialSum + itemWidth;
-    }, 0) || 1;
-
-    const itemWidth = item.width ? item.width : 1;
+    const totalWidth = items.reduce((sum, i) => sum + (i.width || 1), 0) || 1;
+    const itemWidth = item.width || 1;
     return containerWidth * (itemWidth / totalWidth);
   };
 
-  const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName);
-  if (!dashboard) {
-    throwError(`Dashboard with name ${dashboardName} not found.`, 404);
-  }
+  // Item visibility logic (no selector support needed)
+  const shouldShowItem = useCallback(() => true, []);
 
-  // Capture-on-view: once the user actually opens a dashboard and it has
-  // finished rendering, snapshot it for the cards listing. This replaces the
-  // old offscreen-render queue that tried to bulk-generate thumbnails for
-  // every dashboard at once. Only runs when there's no existing thumbnail.
-  useEffect(() => {
-    let cancelled = false;
-    captureDashboardThumbnail({
-      dashboardName,
-      getElement: () => dashboardRootRef.current,
-      isCancelled: () => cancelled,
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [dashboardName]);
+  // Centralized input prefetching - fetch for ALL rows (optimize later)
+  const visibleInputNames = useMemo(() => {
+    if (!dashboard?.rows) return [];
+    const allRowIndices = dashboard.rows.map((_, idx) => idx);
+    return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
+  }, [dashboard?.rows, shouldShowItem]);
 
-  const shouldShowNamedModel = useCallback(
-    namedModel => {
-      if (!namedModel || !namedModel.name) {
-        return true;
-      }
-      return true;
-    },
-    []
-  );
-
-  const shouldShowItem = useCallback(
-    item => {
-      if (!shouldShowNamedModel(item)) {
-        return false;
-      }
-      let object;
-      if (item.chart) {
-        object = item.chart;
-      } else if (item.table) {
-        object = item.table;
-      } else if (item.input) {
-        object = item.input;
-      }
-      return shouldShowNamedModel(object);
-    },
-    [shouldShowNamedModel]
-  );
-
-  // Centralized input prefetching: Collect all input names from visible rows
-  // and load them in a single batch BEFORE insights (so inputs are ready for insight queries).
-  const visibleInputNames = useMemo(
-    () => collectInputNames(dashboard.rows || [], [...visibleRows], shouldShowItem),
-    [dashboard.rows, visibleRows, shouldShowItem]
-  );
-
-  // Single batch fetch for all visible inputs (stores results in Zustand)
-  useInputsData(project.id, visibleInputNames);
+  useInputsData(projectId, visibleInputNames);
 
   const knownInsightNames = useMemo(() => {
     const names = new Set();
-    forEachItemDeep(dashboard.rows || [], item => {
-      item.chart?.insights?.forEach(i => { if (i.name) names.add(i.name); });
-      if (item.table?.data?.name && !isModelData(item.table.data)) {
-        names.add(item.table.data.name);
+    forEachItemDeep(dashboard?.rows, item => {
+      const chart = resolveItem(item.chart, getChartByName);
+      chart?.insights?.forEach(i => {
+        const n = typeof i === 'string' ? parseRefValue(i) : i?.name;
+        if (n) names.add(n);
+      });
+      const table = resolveItem(item.table, getTableByName);
+      if (table?.data) {
+        const tableData = typeof table.data === 'string' ? table.data : table.data;
+        const name = typeof tableData === 'string' ? parseRefValue(tableData) : tableData?.name;
+        if (name && !(typeof tableData === 'object' && isModelData(tableData))) {
+          names.add(name);
+        }
       }
     });
     return names;
-  }, [dashboard.rows]);
+  }, [dashboard?.rows, getChartByName, getTableByName]);
 
   const { visibleInsightNames, visibleModelNames } = useMemo(() => {
+    if (!dashboard?.rows) return { visibleInsightNames: [], visibleModelNames: [] };
+    const allRowIndices = dashboard.rows.map((_, idx) => idx);
     const { insightNames, modelNames } = collectDataNames(
-      dashboard.rows || [],
-      [...visibleRows],
+      dashboard.rows,
+      allRowIndices,
       shouldShowItem,
+      getChartByName,
+      getTableByName,
       knownInsightNames
     );
     return { visibleInsightNames: insightNames, visibleModelNames: modelNames };
-  }, [dashboard.rows, visibleRows, shouldShowItem, knownInsightNames]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboard?.rows, charts, tables, getChartByName, getTableByName, shouldShowItem]);
 
-  useInsightsData(project.id, visibleInsightNames);
-  useModelsData(project.id, visibleModelNames);
+  useInsightsData(projectId, visibleInsightNames);
+  useModelsData(projectId, visibleModelNames);
 
-  // Render a single dashboard item.
+  // Render a dashboard item.
   // `slotPixelHeight` is the pixel height the parent row reserved for this slot;
-  // it sizes the chart/table inside the slot AND sub-rows when the item is a
-  // row-container. `slotPixelWidth` is the parent row's pixel width; threaded
-  // so nested charts size from the slot, not the dashboard. `keyPrefix`
-  // namespaces children when rendered inside nested-rows.
+  // it's used to size the chart/table inside the slot AND to size sub-rows when
+  // the item is a row-container. `keyPrefix` namespaces children when the item
+  // is being rendered inside a nested-rows context (so React keys stay unique
+  // across multiple flips of the same dashboard).
   const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
-    if (items.indexOf(item) < 0) {
-      return null;
-    }
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
+
+    // Pixel width this item slot was given by its parent row. Used for chart
+    // sizing on leaves AND threaded down into nested rows so nested charts
+    // size from the slot, not the dashboard.
     const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
 
     // Row-container item: render nested rows as a vertical flex stack with
-    // weight-based heights (Q9 — sub-row heights are relative weights inside
+    // weight-based heights (see Q9 — sub-row heights are relative weights inside
     // the parent slot, not absolute pixels).
     if (item.rows && item.rows.length > 0) {
       const subRows = item.rows;
@@ -287,60 +352,102 @@ const Dashboard = ({ project, dashboardName }) => {
       );
     }
 
+    if (item.input) {
+      const input = resolveItem(item.input, getInputByName);
+      if (!input) {
+        return (
+          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Input not found: {typeof item.input === 'string' ? item.input : 'unknown'}
+          </div>
+        );
+      }
+      return (
+        <Input
+          key={key}
+          input={input}
+          projectId={projectId}
+          itemWidth={item.width}
+        />
+      );
+    }
+
+    // Slot-aware pixel height: nested renders pass an override based on the
+    // parent slot's allotted space; top-level renders fall back to the row's
+    // enum-mapped pixel height (existing behavior).
     const effectiveSlotHeight = typeof slotPixelHeight === 'number' && slotPixelHeight > 0
       ? slotPixelHeight
       : getHeight(row.height);
 
-    if (item.input) {
-      return (
-        <Input
-          input={item.input}
-          project={project}
-          itemWidth={item.width}
-          key={key}
-        ></Input>
-      );
-    } else if (item.table) {
-      return (
-        <Table
-          table={item.table}
-          project={project}
-          itemWidth={item.width}
-          width={effectiveSlotWidth}
-          height={effectiveSlotHeight}
-          shouldLoad={shouldLoad}
-          key={key}
-        />
-      );
-    } else if (item.chart) {
+    if (item.chart) {
+      const chart = resolveItem(item.chart, getChartByName);
+      if (!chart) {
+        return (
+          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Chart not found: {typeof item.chart === 'string' ? item.chart : 'unknown'}
+          </div>
+        );
+      }
       return (
         <Chart
-          chart={item.chart}
-          project={project}
+          key={key}
+          chart={chart}
+          projectId={projectId}
           height={effectiveSlotHeight - 8}
           width={effectiveSlotWidth}
           itemWidth={item.width}
           shouldLoad={shouldLoad}
-          key={key}
         />
       );
-    } else if (item.markdown) {
+    }
+
+    if (item.table) {
+      const table = resolveItem(item.table, getTableByName);
+      if (!table) {
+        return (
+          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Table not found: {typeof item.table === 'string' ? item.table : 'unknown'}
+          </div>
+        );
+      }
+      return (
+        <Table
+          key={key}
+          table={table}
+          projectId={projectId}
+          itemWidth={item.width}
+          width={effectiveSlotWidth}
+          height={effectiveSlotHeight}
+          shouldLoad={shouldLoad}
+        />
+      );
+    }
+
+    if (item.markdown) {
+      const markdown = resolveItem(item.markdown, getMarkdownByName);
+      if (!markdown) {
+        return (
+          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Markdown not found: {typeof item.markdown === 'string' ? item.markdown : 'unknown'}
+          </div>
+        );
+      }
       return (
         <Markdown
           key={key}
-          markdown={item.markdown}
+          markdown={markdown}
           row={row}
           height={effectiveSlotHeight}
         />
       );
     }
+
     return null;
   };
 
-  // Sub-row that lives inside an Item's `rows` field. Same grid layout as a
-  // top-level row, but height is governed by the parent slot's flex allocation
-  // rather than the row's pixel-mapped HeightEnum. Reuses renderItem so leaf-
-  // vs-row-container handling stays shared.
+  // Render a sub-row that lives inside an Item's `rows` field. Same grid layout
+  // as a top-level row, but height is governed by the parent slot's flex
+  // allocation rather than the row's pixel-mapped HeightEnum. Reuses renderItem
+  // so leaf-vs-row-container handling is shared with the top level.
   const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
@@ -387,13 +494,11 @@ const Dashboard = ({ project, dashboardName }) => {
     );
   };
 
+  // Render a dashboard row
   const renderRow = (row, rowIndex) => {
-    if (!shouldShowNamedModel(row)) {
-      return null;
-    }
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
-    const rowStyle = isColumn ? {} : getHeightStyle(row);
+    const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
     const shouldLoad = visibleRows.has(rowIndex);
 
     return (
@@ -403,10 +508,13 @@ const Dashboard = ({ project, dashboardName }) => {
         data-row-index={rowIndex}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
-          // Vertical-only margin so the row stays inside the wrapper's
-          // horizontal padding. The previous all-side `margin: 0.5rem`
+          // Use vertical-only margin so the row stays inside its parent's
+          // horizontal padding. The previous `margin: 0.5rem` (all four sides)
           // combined with `width: 100%` pushed the row 8px past the wrapper's
-          // right padding edge, producing asymmetric left/right gaps.
+          // right padding edge, producing asymmetric left/right gaps
+          // (~24px left vs ~8px right). Keeping vertical spacing between rows
+          // and letting the wrapper's `px-6` handle horizontal padding gives
+          // a symmetric ~24px on both sides.
           marginTop: '0.5rem',
           marginBottom: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
@@ -419,17 +527,18 @@ const Dashboard = ({ project, dashboardName }) => {
       >
         {visibleItems.map((item, itemIndex) => (
           <div
-            key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path}`}
+            key={`item-${rowIndex}-${itemIndex}`}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
-              // Grid items default to min-width: auto (== min-content). If a
-              // child (e.g. Plotly chart at fixed pixel width) exceeds 1/N of
-              // the row, CSS grid will steal track width from siblings to fit.
+              // CRITICAL: grid items default to min-width: auto, which equals
+              // their content's intrinsic min-content width. If a child (e.g.
+              // a Plotly chart with a fixed pixel width) exceeds 1/N of the
+              // row, CSS grid will steal track width from siblings to fit.
               // min-width: 0 lets grid distribute the row by `fr` units even
-              // when content overflows; the chart's pixel width is constrained
-              // by `effectiveSlotWidth` inside renderItem.
+              // when content overflows; the chart's pixel width is then
+              // constrained by `effectiveSlotWidth` inside renderItem.
               minWidth: 0,
             }}
           >
@@ -442,7 +551,7 @@ const Dashboard = ({ project, dashboardName }) => {
                 shouldLoad,
                 visibleItems,
                 row.height !== 'compact' ? getHeight(row.height) : undefined,
-                width,
+                width, // top-level container width = dashboard width
               )}
             </div>
           </div>
@@ -451,29 +560,44 @@ const Dashboard = ({ project, dashboardName }) => {
     );
   };
 
-  const getHeightStyle = row => {
-    if (row.height !== 'compact') {
-      return { height: getHeight(row.height) };
-    } else {
-      return null;
-    }
-  };
+  // Loading state
+  if (!dashboard) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  // Empty dashboard state
+  if (!dashboard.rows || dashboard.rows.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-400">This dashboard is empty</div>
+      </div>
+    );
+  }
 
   return (
     <div
-      ref={el => {
-        dashboardRootRef.current = el;
-        observe(el);
-      }}
+      ref={observe}
       data-testid={`dashboard_${dashboardName}`}
       // overflow-x-clip (NOT overflow-x-hidden) keeps horizontal-overflow
-      // protection without forcing the browser to set overflow-y to auto,
-      // which would create an inner scroll trap on tall dashboards.
-      // px-6: symmetric 24px horizontal padding. pb-8: 32px bottom padding so
-      // the last row isn't flush against the page edge.
+      // protection without forcing the browser to set overflow-y to auto.
+      // With overflow-x-hidden, the browser silently switches overflow-y from
+      // visible to auto, creating an inner scroll area on the dashboard div
+      // that traps the bottom of tall dashboards (last rows clipped at the
+      // wrapper's measured height, e.g. Section 4 of nested-layouts-dashboard
+      // ending 88px below the wrapper's auto-sized scroll bottom).
+      // overflow-x-clip is Tailwind v4+ and clips without changing Y.
+      //
+      // px-6: symmetric 24px horizontal padding on every dashboard.
+      // pb-8:  32px bottom padding so the last row isn't flush against the
+      //        page edge (longstanding pet peeve). Top padding is handled by
+      //        the parent route's pt-12.
       className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-clip px-6 pb-8"
     >
-      {(dashboard.rows || []).map(renderRow)}
+      {dashboard.rows.map(renderRow)}
     </div>
   );
 };

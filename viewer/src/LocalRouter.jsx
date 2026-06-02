@@ -4,13 +4,12 @@ import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
 import { loadError } from './loaders/error';
 import Home from './components/Home';
-import ProjectContainer from './components/project/ProjectContainer';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
 import LineageNew from './components/new-views/lineage/LineageNew';
-import EditorNew from './components/new-views/editor/EditorNew';
-import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
+import Editor from './components/editor/Editor';
+import Project from './components/project/Project';
 import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
@@ -47,23 +46,10 @@ const LocalRouter = createBrowserRouter(
         <Route
           id="editor"
           path="/editor"
-          element={<EditorNew />}
+          element={<Editor />}
           loader={loadProject}
           handle={{
             crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
-          }}
-        />
-        <Route
-          id="project-new"
-          path="/project-new/:dashboardName?"
-          element={<ProjectNew />}
-          loader={loadProject}
-          handle={{
-            crumb: match => (
-              <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
-                {match.params.dashboardName ? `${match.params.dashboardName} (New)` : 'Project (New)'}
-              </BreadcrumbLink>
-            ),
           }}
         />
         <Route
@@ -77,7 +63,7 @@ const LocalRouter = createBrowserRouter(
         <Route
           id="project"
           path="/project"
-          element={<ProjectContainer />}
+          element={<Project />}
           errorElement={<ErrorPage />}
           shouldRevalidate={() => false}
           loader={loadProject}
@@ -85,10 +71,10 @@ const LocalRouter = createBrowserRouter(
             crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink>,
           }}
         >
-          <Route index element={<ProjectContainer />} />
+          <Route index element={<Project />} />
           <Route
             path=":dashboardName?/*"
-            element={<ProjectContainer />}
+            element={<Project />}
             loader={loadProject}
             shouldRevalidate={() => false}
             handle={{

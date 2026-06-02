@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import EditorNew from './EditorNew';
-import useStore from '../../../stores/store';
+import Editor from './Editor';
+import useStore from '../../stores/store';
 
 // Mock the store
-jest.mock('../../../stores/store');
+jest.mock('../../stores/store');
 
 // Mock Material UI icons used in child components
 jest.mock('@mui/icons-material/Storage', () => () => <span data-testid="storage-icon" />);
@@ -17,7 +17,7 @@ jest.mock('@mui/icons-material/CheckCircle', () => () => <span data-testid="chec
 jest.mock('@mui/icons-material/ErrorOutline', () => () => <span data-testid="error-icon" />);
 
 // Mock EditPanel since it has complex dependencies
-jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
+jest.mock('../new-views/common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
   <div data-testid="edit-panel">
     {editItem?.type === 'source' && <span>Editing source: {editItem.object?.name}</span>}
     {editItem?.type === 'model' && <span>Editing model: {editItem.object?.name}</span>}
@@ -26,7 +26,7 @@ jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
   </div>
 ));
 
-describe('EditorNew', () => {
+describe('Editor', () => {
   const mockFetchProject = jest.fn();
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
@@ -127,14 +127,14 @@ describe('EditorNew', () => {
   });
 
   it('renders empty state when no sources or models exist', () => {
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(screen.getByText('Select an object to edit')).toBeInTheDocument();
     expect(screen.getByText('or click the + button to create a new object')).toBeInTheDocument();
   });
 
   it('fetches sources, models, dimensions, metrics, and relations on mount', () => {
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(mockFetchSources).toHaveBeenCalled();
     expect(mockFetchModels).toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -160,7 +160,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(screen.getByText(/Failed to fetch sources/)).toBeInTheDocument();
   });
@@ -176,7 +176,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(screen.getByText('source1')).toBeInTheDocument();
     expect(screen.getByText('source2')).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     expect(screen.getByText('model1')).toBeInTheDocument();
     expect(screen.getByText('model2')).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     const sourceButton = screen.getByText('test_source');
     fireEvent.click(sourceButton);
@@ -226,7 +226,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     const modelButton = screen.getByText('test_model');
     fireEvent.click(modelButton);
@@ -249,7 +249,7 @@ describe('EditorNew', () => {
     });
 
     const user = userEvent.setup();
-    render(<EditorNew />);
+    render(<Editor />);
 
     // Both sources should be visible initially
     expect(screen.getByText('production_db')).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('EditorNew', () => {
     });
 
     const user = userEvent.setup();
-    render(<EditorNew />);
+    render(<Editor />);
 
     // Both models should be visible initially
     expect(screen.getByText('user_model')).toBeInTheDocument();
@@ -299,7 +299,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     // Open the panel
     fireEvent.click(screen.getByText('test_source'));
@@ -326,7 +326,7 @@ describe('EditorNew', () => {
       return typeof selector === 'function' ? selector(state) : state;
     });
 
-    render(<EditorNew />);
+    render(<Editor />);
 
     // Check that the counts are displayed (Sources (2) and Models (1))
     expect(screen.getByText('Sources (2)')).toBeInTheDocument();

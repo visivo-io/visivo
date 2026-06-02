@@ -5,7 +5,7 @@ const createProjectSlice = (set, get) => ({
   searchTerm: '',
   selectedTags: [],
 
-  // Dashboard organization (allDashboards is the transformed list from ProjectNew)
+  // Dashboard organization (allDashboards is the transformed list from Project)
   allDashboards: [],
   filteredDashboards: [],
   dashboardsByLevel: [],

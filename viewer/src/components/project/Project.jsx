@@ -1,108 +1,96 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import useStore from '../../stores/store';
 import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
-import DashboardSection from './DashboardSection';
-import FilterBar from './FilterBar';
-import useStore from '../../stores/store';
-import { throttle } from 'lodash';
-import { useSearchParams } from 'react-router-dom';
-import { SINGLE_SELECT, MULTI_SELECT } from '../items/Input';
+import DashboardSection from '../project/DashboardSection';
+import FilterBar from '../project/FilterBar';
 
-function Project(props) {
-  const [searchParams] = useSearchParams();
-  const elementId = searchParams.get('element_id');
-  const setScrollPosition = useStore(state => state.setScrollPosition);
-  const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
-  const setDefaultInputJobValues = useStore(state => state.setDefaultInputJobValues);
-  const throttleRef = useRef();
-  const [windowPosition, setWindowPosition] = useState('');
+/**
+ * Project - Container component for the new project view
+ * Fetches data from stores and passes to Dashboard
+ * Reads dashboards from the store instead of a project_json blob
+ */
+function Project() {
+  const { dashboardName } = useParams();
 
-  const { dashboardName } = props;
+  // Store access
+  const project = useStore(state => state.project);
+  const dashboards = useStore(state => state.dashboards);
+  const dashboardsLoading = useStore(state => state.dashboardsLoading);
+  const fetchDashboards = useStore(state => state.fetchDashboards);
 
-  useEffect(() => {
-    if (elementId && windowPosition === '') {
-      setWindowPosition(elementId);
-    }
-  }, [elementId, windowPosition]);
-
-  useEffect(() => {
-    throttleRef.current = throttle(name => {
-      setScrollPosition(name, window.scrollY);
-    }, 100);
-  }, [setScrollPosition]);
-
-  useEffect(() => {
-    const handleScroll = () => throttleRef.current(dashboardName);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [dashboardName]);
-
-  useEffect(() => {
-    const savedPos = scrollPositions || 0;
-    if (!window.location.hash) {
-      if (windowPosition && windowPosition !== '') {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, windowPosition);
-          setWindowPosition(null);
-        });
-      } else {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, savedPos);
-        });
-      }
-    }
-  }, [props.dashboardName, scrollPositions, windowPosition, searchParams]);
-
+  // Filtering state from store
   const filteredDashboards = useStore(state => state.filteredDashboards);
   const dashboardsByLevel = useStore(state => state.dashboardsByLevel);
   const initializeDashboardView = useStore(state => state.initializeDashboardView);
 
-  // Consolidated initialization effect - combines input defaults, dashboards, and current name
+  // Fetch dashboards on mount
   useEffect(() => {
-    // Collect all input defaults first, then set them in a single batch
-    const inputDefaults = [];
-    if (props.project?.project_json?.dashboards) {
-      props.project.project_json.dashboards.forEach(dashboard => {
-        if (!dashboard.rows) return;
-        dashboard.rows.forEach(row => {
-          if (!row.items) return;
-          row.items.forEach(item => {
-            if (item?.input) {
-              const input = item.input;
-              if ((input.type === SINGLE_SELECT || input.type === MULTI_SELECT) && input?.default) {
-                inputDefaults.push({
-                  name: input.name,
-                  value: input.default,
-                  type: input.type,
-                });
-              }
-            }
-          });
-        });
-      });
+    fetchDashboards();
+  }, [fetchDashboards]);
+
+  // Transform dashboards for navigation
+  const dashboardsList = useMemo(() => {
+    if (!dashboards) {
+      return [];
     }
+    return dashboards.map(dashboard => ({
+      name: dashboard.name,
+      description: dashboard.config?.description,
+      tags: dashboard.config?.tags ?? [],
+      level: dashboard.config?.level,
+      type: dashboard.config?.type,
+      href: dashboard.config?.href ?? null,
+      path: '',
+    }));
+  }, [dashboards]);
 
-    // Set all input defaults in a single batch
-    if (inputDefaults.length > 0) {
-      setDefaultInputJobValues(inputDefaults);
+  // Project defaults can live in either of two envelope shapes:
+  //   - visivo Studio: ``project.project_json.defaults`` (full project_json blob)
+  //   - core's canonical envelope: ``project.config.defaults``
+  // Read both so the dashboard filter init works against either backend
+  // without forcing the wrapper to adapt.
+  const projectDefaults = project?.config?.defaults ?? project?.project_json?.defaults;
+
+  // Initialize dashboard filtering system when dashboards load
+  useEffect(() => {
+    if (dashboardsList.length > 0) {
+      initializeDashboardView(
+        dashboardsList,
+        dashboardName,
+        projectDefaults
+      );
     }
+  }, [dashboardsList, dashboardName, projectDefaults, initializeDashboardView]);
 
-    // Initialize dashboards in store with single batched update
-    initializeDashboardView(
-      props.dashboards,
-      props.dashboardName,
-      props.project?.project_json?.defaults
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.project, props.dashboards, props.dashboardName]);
-
-  const renderLoading = () => {
+  // Loading state
+  if (dashboardsLoading) {
     return <Loading />;
-  };
+  }
 
-  const renderDashboardList = () => {
+  // No project
+  if (!project) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">No project loaded</div>
+      </div>
+    );
+  }
+
+  // No dashboards
+  if (!dashboards || dashboards.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-400">No dashboards found</div>
+      </div>
+    );
+  }
+
+  // Render dashboard list when no specific dashboard is selected
+  if (!dashboardName) {
     return (
       <Container className="min-h-screen">
         <div className="max-w-[2000px] w-full mx-auto pt-1 px-4 sm:px-6 h-full">
@@ -113,12 +101,10 @@ function Project(props) {
               <DashboardSection
                 key={level}
                 title={level}
-                dashboards={dashboards.map(dashboard => ({
-                  ...dashboard,
-                }))}
-                projectId={props.project.id}
-                hasLevels={Object.keys(dashboardsByLevel).length > 0}
-                projectDefaults={props.project?.project_json?.defaults}
+                dashboards={dashboards}
+                projectId={project.id}
+                hasLevels={Object.keys(dashboardsByLevel).length > 1}
+                projectDefaults={projectDefaults}
               />
             ))}
 
@@ -135,19 +121,15 @@ function Project(props) {
         </div>
       </Container>
     );
-  };
-
-  const renderDashboard = project => {
-    return <Dashboard project={project} dashboardName={props.dashboardName} />;
-  };
-
-  if (props.project && !props.dashboardName) {
-    return renderDashboardList(props.project);
-  } else if (props.project && props.dashboardName) {
-    return renderDashboard(props.project);
-  } else {
-    return renderLoading();
   }
+
+  // Render specific dashboard
+  return (
+    <Dashboard
+      projectId={project.id}
+      dashboardName={dashboardName}
+    />
+  );
 }
 
 export default Project;

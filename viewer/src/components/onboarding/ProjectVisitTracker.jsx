@@ -9,7 +9,7 @@ import { hasCompletedOnboarding, readOnboardingState, writeOnboardingState } fro
  * `persisted.visited_project_route` so this is the signal that ticks
  * that item over from a click-only stub to a real outcome predicate.
  *
- * Mounts inside ProjectContainer (or the dist-mode equivalent) so it
+ * Mounts inside the project route so it
  * fires once per project route entry and never on /editor or /explorer.
  */
 export default function ProjectVisitTracker() {

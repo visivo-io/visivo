@@ -6,12 +6,10 @@ import { apiFetch } from './utils';
 // ============================================================
 //
 // `/api/project/` returns the dereferenced project_json blob — the entire
-// project tree as one giant JSON object. Used by ProjectContainer (the
-// legacy view) and the onboarding/commonStore flow. New code should NOT
-// call this; use `fetchProject(id)` to get the canonical per-resource
-// envelope.
-//
-// Will be removed when ProjectContainer is cut over to ProjectNew.
+// project tree as one giant JSON object. Used by the project loader
+// (loaders/project.js) and the onboarding/commonStore flow. New code should
+// NOT call this; use `fetchProject(id)` to get the canonical per-resource
+// envelope. Candidate for removal once the loader moves to fetchProject(id).
 export const fetchProjectBlob = async (projectId = null) => {
   let url = getUrl('project');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
