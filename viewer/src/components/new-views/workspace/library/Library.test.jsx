@@ -42,6 +42,25 @@ const renderLibrary = (entry = '/workspace') => {
   return render(<RouterProvider router={router} future={futureFlags} />);
 };
 
+// Subsections default to COLLAPSED (VIS-828). The behavioural tests below
+// exercise rows / create buttons / drag handles that only render when a
+// subsection is expanded, so seed every type with an explicit `false`
+// (expanded). A dedicated test asserts the collapsed-by-default behaviour
+// with an empty `libraryCollapsedSubsections` map.
+const ALL_EXPANDED = [
+  'chart',
+  'table',
+  'markdown',
+  'input',
+  'dashboard',
+  'source',
+  'model',
+  'dimension',
+  'metric',
+  'relation',
+  'insight',
+].reduce((acc, t) => ({ ...acc, [t]: false }), {});
+
 const seedStore = (extra = {}) => {
   act(() => {
     useStore.setState({
@@ -49,7 +68,7 @@ const seedStore = (extra = {}) => {
       workspaceActiveTabId: null,
       // Reset Library collapse prefs so tests don't bleed into one another.
       libraryCollapsedSections: {},
-      libraryCollapsedSubsections: {},
+      libraryCollapsedSubsections: { ...ALL_EXPANDED },
       // Layout-item collections.
       charts: [{ name: 'waterfall' }, { name: 'fibonacci_chart' }],
       tables: [{ name: 'revenue_rows' }],
@@ -110,6 +129,58 @@ describe('Library', () => {
     ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t => {
       expect(screen.getByTestId(`library-subsection-${t}`)).toBeInTheDocument();
     });
+  });
+
+  test('per-type subsections default to collapsed; sections stay expanded (VIS-828)', () => {
+    // Empty subsection prefs = no saved deviations = collapsed by default.
+    seedStore({ libraryCollapsedSubsections: {} });
+    renderLibrary();
+
+    // Both top sections stay expanded so their toolbars + subsection headers
+    // are visible.
+    expect(screen.getByTestId('library-section-layout')).toHaveAttribute(
+      'data-collapsed',
+      'false'
+    );
+    expect(screen.getByTestId('library-section-data')).toHaveAttribute('data-collapsed', 'false');
+
+    // Every per-type subsection renders collapsed: header + count visible,
+    // body (rows / empty placeholder / create button) hidden.
+    ['chart', 'table', 'markdown', 'input', 'dashboard'].forEach(t => {
+      expect(screen.getByTestId(`library-subsection-${t}`)).toHaveAttribute(
+        'data-collapsed',
+        'true'
+      );
+      expect(screen.getByTestId(`library-subsection-${t}-header`)).toBeInTheDocument();
+      expect(screen.queryByTestId(`library-subsection-${t}-body`)).not.toBeInTheDocument();
+    });
+    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t => {
+      expect(screen.getByTestId(`library-subsection-${t}`)).toHaveAttribute(
+        'data-collapsed',
+        'true'
+      );
+    });
+
+    // No item rows or inline create buttons are rendered while collapsed.
+    expect(screen.queryByTestId('library-row-chart-waterfall')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('library-subsection-chart-create')).not.toBeInTheDocument();
+  });
+
+  test('an explicitly-expanded subsection stays expanded across the default-collapsed siblings (VIS-828)', () => {
+    seedStore({ libraryCollapsedSubsections: { chart: false } });
+    renderLibrary();
+    // The user-expanded chart subsection shows its rows...
+    expect(screen.getByTestId('library-subsection-chart')).toHaveAttribute(
+      'data-collapsed',
+      'false'
+    );
+    expect(screen.getByTestId('library-row-chart-waterfall')).toBeInTheDocument();
+    // ...while a sibling with no saved pref stays collapsed.
+    expect(screen.getByTestId('library-subsection-table')).toHaveAttribute(
+      'data-collapsed',
+      'true'
+    );
+    expect(screen.queryByTestId('library-row-table-revenue_rows')).not.toBeInTheDocument();
   });
 
   test('"+ New X" buttons appear only on the four droppable Layout subsections', () => {

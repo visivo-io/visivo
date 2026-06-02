@@ -10,6 +10,7 @@
  */
 import { act } from '@testing-library/react';
 import useStore from './store';
+import { isLibrarySubsectionCollapsed } from './libraryPrefsStore';
 
 const reset = () => {
   act(() => {
@@ -65,18 +66,33 @@ describe('library prefs store slice', () => {
       expect(useStore.getState().libraryCollapsedSubsections.chart).toBe(false);
     });
 
-    test('toggleLibrarySubsectionCollapsed flips the subsection flag', () => {
-      act(() => useStore.getState().toggleLibrarySubsectionCollapsed('source'));
-      expect(useStore.getState().libraryCollapsedSubsections.source).toBe(true);
+    test('toggleLibrarySubsectionCollapsed flips from the collapsed default (VIS-828)', () => {
+      // No saved pref → effectively collapsed → first toggle expands (false).
       act(() => useStore.getState().toggleLibrarySubsectionCollapsed('source'));
       expect(useStore.getState().libraryCollapsedSubsections.source).toBe(false);
+      // Second toggle collapses again (true).
+      act(() => useStore.getState().toggleLibrarySubsectionCollapsed('source'));
+      expect(useStore.getState().libraryCollapsedSubsections.source).toBe(true);
     });
 
     test('section + subsection maps are independent', () => {
       act(() => useStore.getState().toggleLibrarySectionCollapsed('layout'));
+      // Toggling a default-collapsed subsection expands it (explicit false).
       act(() => useStore.getState().toggleLibrarySubsectionCollapsed('chart'));
       expect(useStore.getState().libraryCollapsedSections).toEqual({ layout: true });
-      expect(useStore.getState().libraryCollapsedSubsections).toEqual({ chart: true });
+      expect(useStore.getState().libraryCollapsedSubsections).toEqual({ chart: false });
+    });
+  });
+
+  describe('isLibrarySubsectionCollapsed (default-collapsed semantics)', () => {
+    test('treats a missing entry as collapsed', () => {
+      expect(isLibrarySubsectionCollapsed({}, 'chart')).toBe(true);
+      expect(isLibrarySubsectionCollapsed(undefined, 'chart')).toBe(true);
+    });
+
+    test('honours an explicit boolean preference', () => {
+      expect(isLibrarySubsectionCollapsed({ chart: false }, 'chart')).toBe(false);
+      expect(isLibrarySubsectionCollapsed({ chart: true }, 'chart')).toBe(true);
     });
   });
 });

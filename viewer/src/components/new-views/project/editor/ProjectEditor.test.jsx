@@ -28,6 +28,10 @@ const seed = (extra = {}) => {
       workspaceActiveObject: null,
       openWorkspaceTab: jest.fn(),
       reassignDashboardLevel: jest.fn(),
+      createLevel: jest.fn(),
+      renameLevel: jest.fn(),
+      reorderLevel: jest.fn(),
+      deleteLevel: jest.fn(),
       fetchDashboards: jest.fn(),
       openCreateDashboardModal: jest.fn(),
       ...extra,
@@ -149,5 +153,99 @@ describe('ProjectEditor', () => {
     render(<ProjectEditor />);
     expect(screen.getByTestId('project-tile-sales')).toHaveAttribute('data-selected', 'true');
     expect(screen.getByTestId('project-tile-exec')).toHaveAttribute('data-selected', 'false');
+  });
+
+  // --- VIS-807 M-2a: inline level affordances + Add level ---------------------
+
+  test('+ Add level row invokes createLevel + telemetry', () => {
+    const createLevel = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ createLevel });
+      render(<ProjectEditor />);
+      fireEvent.click(screen.getByTestId('project-editor-add-level'));
+      expect(createLevel).toHaveBeenCalledTimes(1);
+      expect(
+        events.some(
+          e => e.eventName === 'project_editor_action' && e.payload.kind === 'level_create'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
+
+  test('inline rename of a configured level invokes renameLevel + telemetry', () => {
+    const renameLevel = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ renameLevel });
+      render(<ProjectEditor />);
+      const title = screen.getByTestId('level-group-header-level:0-title');
+      fireEvent.doubleClick(title);
+      const input = screen.getByTestId('level-group-header-level:0-rename-input');
+      fireEvent.change(input, { target: { value: 'Company' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(renameLevel).toHaveBeenCalledWith(0, 'Company');
+      expect(
+        events.some(
+          e => e.eventName === 'project_editor_action' && e.payload.kind === 'level_rename'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
+
+  test('reorder down invokes reorderLevel + telemetry', () => {
+    const reorderLevel = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ reorderLevel });
+      render(<ProjectEditor />);
+      fireEvent.click(screen.getByTestId('level-group-header-level:0-move-down'));
+      expect(reorderLevel).toHaveBeenCalledWith(0, 1);
+      expect(
+        events.some(
+          e => e.eventName === 'project_editor_action' && e.payload.kind === 'level_reorder'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
+
+  test('delete-with-confirm invokes deleteLevel + telemetry', () => {
+    const deleteLevel = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ deleteLevel });
+      render(<ProjectEditor />);
+      fireEvent.click(screen.getByTestId('level-group-header-level:0-delete'));
+      expect(deleteLevel).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('level-group-header-level:0-delete-confirm-btn'));
+      expect(deleteLevel).toHaveBeenCalledWith(0);
+      expect(
+        events.some(
+          e => e.eventName === 'project_editor_action' && e.payload.kind === 'level_delete'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
+
+  test('the Unassigned group is not editable (no affordances)', () => {
+    render(<ProjectEditor />);
+    expect(
+      screen.queryByTestId('level-group-header-__unassigned__-actions')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('level-group-header-__unassigned__-delete')
+    ).not.toBeInTheDocument();
   });
 });

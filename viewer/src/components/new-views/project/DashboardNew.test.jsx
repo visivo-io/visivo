@@ -46,10 +46,20 @@ jest.mock('../../../hooks/useVisibleRows', () => ({
   })),
 }));
 
-// Mock the item components
+// Mock the item components.
+// `data-insights` exposes the resolved insights array DashboardNew hands the
+// Chart so VIS-827 normalization (string refs -> {name} objects) is assertable.
 jest.mock('../../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart }) => <div data-testid="chart">{chart.name || 'Chart'}</div>,
+  default: ({ chart, shouldLoad }) => (
+    <div
+      data-testid="chart"
+      data-insights={JSON.stringify(chart.insights || [])}
+      data-should-load={String(shouldLoad)}
+    >
+      {chart.name || 'Chart'}
+    </div>
+  ),
 }));
 
 jest.mock('../../items/Table', () => ({
@@ -138,6 +148,67 @@ describe('DashboardNew', () => {
     );
 
     expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+  });
+
+  // ---------- VIS-827: eager-load all rows on the new renderer ----------
+  //
+  // The Workspace canvas mounts <DashboardNew> inside an inner overflow-auto
+  // scroll container, where the useVisibleRows IntersectionObserver never fires
+  // for rows below the initial fold. With lazy gating that left those rows'
+  // charts on a permanent "Loading…" spinner even though the data was already
+  // in the store. eagerLoad (default true) makes every row loadable.
+  describe('eager-load all rows (VIS-827)', () => {
+    const twoRowDashboard = {
+      name: 'two-row',
+      rows: [
+        { height: 'medium', items: [{ chart: 'chart-top', width: 1 }] },
+        { height: 'medium', items: [{ chart: 'chart-low', width: 1 }] },
+      ],
+    };
+    const chartConfigs = {
+      'chart-top': { name: 'chart-top', config: { name: 'chart-top', insights: [] } },
+      'chart-low': { name: 'chart-low', config: { name: 'chart-low', insights: [] } },
+    };
+    const renderTwoRow = (props = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [twoRowDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => chartConfigs[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName="two-row" {...props} />
+        </BrowserRouter>
+      );
+    };
+
+    it('passes shouldLoad=true to charts in rows beyond the visible set (eager default)', () => {
+      // useVisibleRows is mocked to report only row 0 visible; eagerLoad should
+      // override that so the row-1 chart still loads instead of spinning forever.
+      renderTwoRow();
+      const chartEls = screen.getAllByTestId('chart');
+      expect(chartEls).toHaveLength(2);
+      chartEls.forEach(c => expect(c.getAttribute('data-should-load')).toBe('true'));
+    });
+
+    it('falls back to row-visibility gating when eagerLoad is false', () => {
+      renderTwoRow({ eagerLoad: false });
+      const chartEls = screen.getAllByTestId('chart');
+      // row 0 is in the mocked visible set ({0}), row 1 is not
+      expect(chartEls[0].getAttribute('data-should-load')).toBe('true');
+      expect(chartEls[1].getAttribute('data-should-load')).toBe('false');
+    });
   });
 
   it('renders empty state when dashboard has no rows', () => {
@@ -511,6 +582,114 @@ describe('DashboardNew', () => {
       expect(row.style.height).toBe('396px');
     });
   });
+
+  // ---------- VIS-827: normalize chart insight string refs ----------
+  //
+  // When the dashboard comes from the /api/dashboards/ store endpoint (the path
+  // <DashboardNew> uses on both /project-new and the Workspace canvas lens),
+  // embedded chart objects carry their `insights` as un-resolved context-string
+  // refs ("${ref(name)}"). Chart.jsx derives the names it loads via
+  // `chart.insights.map(i => i.name)`, so without normalization the names are
+  // undefined and the chart spins forever. resolveItem must convert string refs
+  // into { name } objects for BOTH the string-ref chart branch and the embedded
+  // chart-object branch.
+  //
+  // The literal "${ref(name)}" fixtures below are deliberate context-string
+  // refs (the exact un-resolved shape the API returns), not template literals.
+  /* eslint-disable no-template-curly-in-string */
+  describe('chart insight ref normalization (VIS-827)', () => {
+    const renderWithDashboard = (dashboard, charts = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+        </BrowserRouter>
+      );
+    };
+
+    const insightsOf = () =>
+      JSON.parse(screen.getByTestId('chart').getAttribute('data-insights'));
+
+    it('normalizes string-ref insights on an embedded chart object', () => {
+      const dashboard = {
+        name: 'embedded-chart',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'embedded',
+                  insights: ['${ref(fibonacci-waterfall)}', '${ref(example-indicator)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([
+        { name: 'fibonacci-waterfall' },
+        { name: 'example-indicator' },
+      ]);
+    });
+
+    it('normalizes string-ref insights when the chart is resolved by name', () => {
+      const dashboard = {
+        name: 'ref-chart',
+        rows: [{ height: 'medium', items: [{ width: 1, chart: 'by-name' }] }],
+      };
+      const charts = {
+        'by-name': { name: 'by-name', config: { name: 'by-name', insights: ['${ref(simple-line)}'] } },
+      };
+      renderWithDashboard(dashboard, charts);
+      expect(insightsOf()).toEqual([{ name: 'simple-line' }]);
+    });
+
+    it('preserves embedded insight objects (name/props/interactions) untouched', () => {
+      const embeddedInsight = {
+        name: 'double-simple-line',
+        props: { type: 'scatter', x: '?{${ref(m).x}}' },
+        interactions: [{ sort: '?{${ref(m).x} ASC}' }],
+      };
+      const dashboard = {
+        name: 'mixed-insights',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'mixed',
+                  insights: [embeddedInsight, '${ref(simple-line)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([embeddedInsight, { name: 'simple-line' }]);
+    });
+  });
+  /* eslint-enable no-template-curly-in-string */
 
   // ---------- VIS-829: container-relative stacking breakpoint ----------
 

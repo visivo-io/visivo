@@ -1,30 +1,16 @@
 import React from 'react';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
-import RefDropZone from './RefDropZone';
-import { parseRefValue } from '../../../utils/refString';
+import ItemEditForm, { getItemLeafRef } from './ItemEditForm';
 
 const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'];
 
-const ITEM_REF_FIELDS = ['chart', 'table', 'markdown', 'input'];
-const ALLOWED_ITEM_TYPES = ['chart', 'table', 'markdown', 'input'];
-
 /**
- * Resolve the `{ type, name }` reference currently held by a dashboard item,
- * inspecting the per-type ref fields the dashboard model uses
- * (`chart` / `table` / `markdown` / `input`).
+ * Resolve the `{ type, name }` reference currently held by a dashboard item.
+ * Retained as a re-export of <ItemEditForm>'s `getItemLeafRef` so existing
+ * callers/tests that import `getItemRef` from RowEditForm keep working.
  */
-export const getItemRef = item => {
-  if (!item) return null;
-  for (const field of ITEM_REF_FIELDS) {
-    const val = item[field];
-    if (val) {
-      const name = parseRefValue(val);
-      if (name) return { type: field, name };
-    }
-  }
-  return null;
-};
+export const getItemRef = getItemLeafRef;
 
 /**
  * RowEditForm — VIS-783 / Track F F-1.
@@ -52,6 +38,12 @@ export const getItemRef = item => {
  *   - onItemWidthChange (fn(itemIndex, width))
  *   - onItemRefChange   (fn(itemIndex, { type, name } | null)) — set/clear the
  *                                        item ref (clear passes null).
+ *   - onItemChange (fn(itemIndex, nextItem)) — (optional) full-item update used
+ *                                        for container (Item.rows) edits. When
+ *                                        omitted, RowEditForm derives width/ref
+ *                                        changes and routes them to the legacy
+ *                                        onItemWidthChange / onItemRefChange
+ *                                        callbacks (bundled-form path).
  *   - onSelectRef  (fn({ type, name })) — pill click → workspace selection.
  */
 const RowEditForm = ({
@@ -64,9 +56,32 @@ const RowEditForm = ({
   onRemoveItem,
   onItemWidthChange,
   onItemRefChange,
+  onItemChange,
   onSelectRef,
 }) => {
   const items = row?.items || [];
+
+  /**
+   * Bridge <ItemEditForm>'s single `onChange(nextItem)` back to RowEditForm's
+   * existing callback API so the bundled <DashboardEditForm> contract is
+   * unchanged. If the caller supplied an `onItemChange`, prefer it (it carries
+   * full-item updates including container `rows`). Otherwise derive the width /
+   * leaf-ref change and route it to the legacy callbacks.
+   */
+  const handleItemChange = (itemIndex, nextItem) => {
+    if (onItemChange) {
+      onItemChange(itemIndex, nextItem);
+      return;
+    }
+    const prev = items[itemIndex] || {};
+    if (`${nextItem.width ?? ''}` !== `${prev.width ?? ''}`) {
+      onItemWidthChange && onItemWidthChange(itemIndex, nextItem.width);
+      return;
+    }
+    if (onItemRefChange) {
+      onItemRefChange(itemIndex, getItemLeafRef(nextItem));
+    }
+  };
 
   return (
     <div className="p-3 bg-gray-50 border border-gray-200 rounded-md space-y-2" data-testid={`row-edit-form-${rowId}`}>
@@ -100,45 +115,19 @@ const RowEditForm = ({
 
       {/* Items */}
       <div className="space-y-2 pl-2 border-l-2 border-gray-300">
-        {items.map((item, itemIndex) => {
-          const dropZoneId = `row-${rowId}-item-${itemIndex}`;
-          const itemRef = getItemRef(item);
-          return (
-            <div key={itemIndex} className="p-2 bg-white border border-gray-200 rounded space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Item {itemIndex + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => onRemoveItem(itemIndex)}
-                  className="p-0.5 text-red-400 hover:text-red-600 rounded"
-                  aria-label={`Remove item ${itemIndex + 1}`}
-                >
-                  <RemoveIcon style={{ fontSize: 14 }} />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Width:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={item.width}
-                  onChange={e => onItemWidthChange(itemIndex, e.target.value)}
-                  className="w-14 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  aria-label={`Item ${itemIndex + 1} width`}
-                />
-              </div>
-              <RefDropZone
-                id={dropZoneId}
-                allowedTypes={ALLOWED_ITEM_TYPES}
-                value={itemRef}
-                onClear={() => onItemRefChange(itemIndex, null)}
-                onChange={ref => onItemRefChange(itemIndex, ref)}
-                onSelectRef={onSelectRef}
-                hint="Drop a chart, table, markdown, or input"
-              />
-            </div>
-          );
-        })}
+        {items.map((item, itemIndex) => (
+          <ItemEditForm
+            key={itemIndex}
+            item={item}
+            itemId={`row-${rowId}-item-${itemIndex}`}
+            itemIndex={itemIndex}
+            leafDropZoneId={`row-${rowId}-item-${itemIndex}`}
+            onRemove={() => onRemoveItem(itemIndex)}
+            onChange={nextItem => handleItemChange(itemIndex, nextItem)}
+            onSelectRef={onSelectRef}
+            RowComponent={RowEditForm}
+          />
+        ))}
         <button
           type="button"
           onClick={onAddItem}
