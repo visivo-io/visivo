@@ -340,7 +340,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -617,7 +617,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -732,7 +732,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -770,6 +770,36 @@ describe('DashboardNew', () => {
       mountAtWidth(768, twoChart());
       const row = screen.getByTestId('dashboard-row-0');
       expect(row.style.display).toBe('grid');
+    });
+
+    it('uses the default 1024 breakpoint when no stackBreakpoint prop is passed (static viewing)', () => {
+      // Static surfaces (/project-new, and /project once VIS-833 routes it
+      // through DashboardNew) mount with no stackBreakpoint, so the 1024 default
+      // applies: a 900px container STACKS here, whereas the canvas
+      // (stackBreakpoint=768) keeps the same row side-by-side at 900px.
+      const dash = twoChart();
+      mockDimensionWidth = 900;
+      useStore.mockImplementation(selector =>
+        selector({
+          project: mockProject,
+          dashboards: [dash],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        })
+      );
+      render(
+        <BrowserRouter future={futureFlags}>
+          <DashboardNew project={mockProject} dashboardName={dash.name} />
+        </BrowserRouter>
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.display).toBe('flex');
     });
   });
 
@@ -852,7 +882,7 @@ describe('DashboardNew', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <DashboardNew project={mockProject} dashboardName={dashboard.name} />
+          <DashboardNew project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };

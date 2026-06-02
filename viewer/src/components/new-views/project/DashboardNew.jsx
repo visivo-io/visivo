@@ -172,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * DashboardNew - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
+const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint = 1024 }) => {
   // Dashboard store (fetched by ProjectNew container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -206,16 +206,15 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true }) => {
 
   // Stacking breakpoint. `width` is CONTAINER-relative — it comes from the
   // ResizeObserver (`observe`) attached to the dashboard root div below, NOT
-  // the viewport. The previous 1024 threshold was too aggressive: the Workspace
-  // canvas sits between the left + right rails, so its measured container width
-  // is routinely < 1024px even on a wide screen, which forced every row to
-  // collapse into a single vertical column (the "everything stacks" bug). 768px
-  // keeps items side-by-side at normal canvas widths while still stacking
-  // gracefully on genuinely narrow containers, matching the /project View-mode
-  // layout. The same threshold is applied per-container (top-level + each nested
-  // slot) via `shouldStack` so nesting decisions are slot-relative, not gated by
-  // the full dashboard width. See VIS-829.
-  const widthBreakpoint = 768;
+  // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
+  // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
+  // for readability on genuinely narrow windows; the Workspace canvas passes
+  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
+  // left + right rails, so a 1024 threshold made every row collapse into a
+  // single column even on a wide screen (the "everything stacks" bug). The
+  // threshold is applied per-container (top-level + each nested slot) via
+  // `shouldStack`, so nesting decisions stay slot-relative.
+  const widthBreakpoint = stackBreakpoint;
 
   // Decide whether a container of `containerWidth` pixels should stack its items
   // vertically. Falls back to the dashboard width when no explicit slot width is
