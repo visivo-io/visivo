@@ -31,6 +31,20 @@ jest.mock('../project/DashboardNew', () => ({
   ),
 }));
 
+// The right rail's Edit tab now renders the real leaf/data-layer edit forms
+// inline (VIS-802 GAP-2). Those pull in preview machinery + their own collection
+// fetches, which is out of scope for the shell mount tests — stub them so e.g. a
+// `chart` active object doesn't mount the full ChartEditForm here.
+const stubLeafForm = label => ({ __esModule: true, default: () => <div data-testid={label} /> });
+jest.mock('../common/ChartEditForm', () => stubLeafForm('chart-edit-form-stub'));
+jest.mock('../common/TableEditForm', () => stubLeafForm('table-edit-form-stub'));
+jest.mock('../common/SourceEditForm', () => stubLeafForm('source-edit-form-stub'));
+jest.mock('../common/InsightEditForm', () => stubLeafForm('insight-edit-form-stub'));
+jest.mock('../common/ModelEditForm', () => stubLeafForm('model-edit-form-stub'));
+jest.mock('../common/DimensionEditForm', () => stubLeafForm('dimension-edit-form-stub'));
+jest.mock('../common/MetricEditForm', () => stubLeafForm('metric-edit-form-stub'));
+jest.mock('../common/RelationEditForm', () => stubLeafForm('relation-edit-form-stub'));
+
 const resetWorkspaceStore = () => {
   act(() => {
     useStore.setState({

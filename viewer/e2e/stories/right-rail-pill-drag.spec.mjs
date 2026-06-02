@@ -149,24 +149,18 @@ test.describe('Right-rail pill-and-drag (G-1)', () => {
     expect(tb).toBeTruthy();
   });
 
-  test('no UNEXPECTED console errors during the drop', async () => {
-    // The test deliberately scaffolds an EMPTY row + EMPTY item before the
-    // drop, so the debounced auto-save of that intermediate (content-less)
-    // dashboard state is legitimately rejected by the backend with a 400 —
-    // that is the auto-save working + the backend validating, NOT a frontend
-    // bug. The drop itself writes a valid chart ref. We filter that expected
-    // 400 and assert there are no OTHER console errors (e.g. React throws).
-    const realErrors = page._consoleErrors.filter(
-      e =>
-        !e.includes('favicon') &&
-        !e.includes('DevTools') &&
-        !e.includes('react-cool') &&
-        !e.includes('ResizeObserver') &&
-        !e.includes('Download the React DevTools') &&
-        // Expected: auto-save of the intentionally-incomplete scaffold row.
-        !e.includes('400') &&
-        !e.toLowerCase().includes('bad request')
+  test('GAP-3: no console errors AND no auto-save 400 during the empty-scaffold drop', async () => {
+    // The test scaffolds an EMPTY row + EMPTY item before the drop. Pre-fix the
+    // debounced auto-save POSTed that invalid intermediate (empty-string leaf
+    // fields) and the backend rejected it with a 400. GAP-3 sanitizes the
+    // payload so the empty slot persists as a valid empty item — so we now GATE
+    // the bug: there must be NO 400 / "bad request" at all.
+    const NOISE = ['favicon', 'DevTools', 'react-cool', 'ResizeObserver', 'Download the React DevTools'];
+    const realErrors = page._consoleErrors.filter(e => !NOISE.some(n => e.includes(n)));
+    const saveFailures = page._consoleErrors.filter(
+      e => e.includes('400') || e.toLowerCase().includes('bad request')
     );
+    expect(saveFailures, 'auto-save must not POST invalid scaffold state (GAP-3)').toHaveLength(0);
     expect(realErrors).toHaveLength(0);
   });
 });

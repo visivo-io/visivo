@@ -31,6 +31,23 @@ jest.mock('../common/InputEditForm', () => ({
     <div data-testid="input-edit-form-stub">in:{input?.name || 'none'}</div>
   ),
 }));
+// The richer leaf / data-layer forms now render INLINE in the rail (VIS-802
+// GAP-1/GAP-2). Stub them so routing assertions stay focused (and don't mount
+// the heavy preview machinery). Each stub echoes the resolved record name.
+const stubForm = (testid, prop) => ({
+  __esModule: true,
+  default: props => (
+    <div data-testid={testid}>{`${testid}:${props?.[prop]?.name || 'none'}`}</div>
+  ),
+});
+jest.mock('../common/ChartEditForm', () => stubForm('chart-edit-form-stub', 'chart'));
+jest.mock('../common/TableEditForm', () => stubForm('table-edit-form-stub', 'table'));
+jest.mock('../common/SourceEditForm', () => stubForm('source-edit-form-stub', 'source'));
+jest.mock('../common/InsightEditForm', () => stubForm('insight-edit-form-stub', 'insight'));
+jest.mock('../common/ModelEditForm', () => stubForm('model-edit-form-stub', 'model'));
+jest.mock('../common/DimensionEditForm', () => stubForm('dimension-edit-form-stub', 'dimension'));
+jest.mock('../common/MetricEditForm', () => stubForm('metric-edit-form-stub', 'metric'));
+jest.mock('../common/RelationEditForm', () => stubForm('relation-edit-form-stub', 'relation'));
 
 const SIMPLE_DASHBOARD = {
   name: 'simple-dashboard',
@@ -95,13 +112,41 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     expect(screen.getByTestId('right-rail-selection-chip')).toHaveTextContent('Row 1');
   });
 
-  test('item with a leaf ref (row.0.item.0 → chart) → that leaf object surface', () => {
+  test('item with a string-ref chart leaf (row.0.item.0) → inline ChartEditForm', () => {
     resetStore({ workspaceOutlineSelectedKey: 'row.0.item.0' });
     renderPanel();
-    // chart leaf → the "open in its own surface" affordance, chip = chart.
+    // chart leaf → the inline chart edit form (GAP-2), chip = chart.
     const chip = screen.getByTestId('right-rail-selection-chip');
     expect(chip).toHaveAttribute('data-object-type', 'chart');
     expect(chip).toHaveTextContent('rev_chart');
+    expect(screen.getByTestId('right-rail-edit-leaf-form')).toBeInTheDocument();
+    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
+    // The old "open in its own surface" stub is gone for charts.
+    expect(screen.queryByTestId('right-rail-edit-leaf-open')).not.toBeInTheDocument();
+  });
+
+  test('GAP-1: item with an OBJECT-stored chart leaf → inline ChartEditForm (not empty slot)', () => {
+    // Real compiled dashboards carry the leaf as an object, not a ref string.
+    const objectLeafDash = {
+      name: 'simple-dashboard',
+      config: {
+        name: 'simple-dashboard',
+        rows: [
+          {
+            height: 'medium',
+            items: [{ width: 1, chart: { name: 'rev_chart', path: 'charts.rev_chart', insights: [] } }],
+          },
+        ],
+      },
+    };
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0.item.0',
+      dashboards: [objectLeafDash],
+    });
+    renderPanel();
+    // Must resolve to the chart leaf form — NOT mis-route as an empty ItemEditForm.
+    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
+    expect(screen.queryByTestId('right-rail-edit-item')).not.toBeInTheDocument();
   });
 
   test('item with a markdown leaf (row.1.item.0) → MarkdownEditForm', () => {
@@ -172,5 +217,47 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     const [name, config] = saveDashboard.mock.calls[0];
     expect(name).toBe('simple-dashboard');
     expect(config.rows[0].height).toBe('large');
+  });
+
+  test('GAP-3: auto-save sanitizes empty-string scaffold items so the payload is backend-valid', async () => {
+    const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
+    // A row whose item is the invalid scaffold the forms produce
+    // ({ chart:'', table:'', markdown:'', input:'', selector:'' }). The backend
+    // counts every empty string as "set" and 400s; the persisted payload must
+    // be sanitized to a clean empty slot before it leaves the client.
+    const scaffoldDash = {
+      name: 'simple-dashboard',
+      config: {
+        name: 'simple-dashboard',
+        rows: [
+          {
+            height: 'medium',
+            items: [{ width: 1, chart: '', table: '', markdown: '', input: '', selector: '' }],
+          },
+        ],
+      },
+    };
+    resetStore({
+      workspaceOutlineSelectedKey: 'row.0',
+      saveDashboard,
+      dashboards: [scaffoldDash],
+    });
+    renderPanel();
+
+    // Any edit (row height) triggers a save of the full config.
+    fireEvent.change(screen.getByLabelText('Row 1 height'), { target: { value: 'large' } });
+    await act(async () => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [, config] = saveDashboard.mock.calls[0];
+    const item = config.rows[0].items[0];
+    // Empty leaf fields + the non-model `selector` key are stripped → exactly
+    // zero leaf types set (a valid empty slot), so no >1 / extra-field 400.
+    expect(item).toEqual({ width: 1 });
+    ['chart', 'table', 'markdown', 'input', 'selector'].forEach(k =>
+      expect(k in item).toBe(false)
+    );
   });
 });

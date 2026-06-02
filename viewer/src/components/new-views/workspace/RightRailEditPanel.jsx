@@ -8,8 +8,18 @@ import RowEditForm from '../common/RowEditForm';
 import ItemEditForm, { getItemLeafRef } from '../common/ItemEditForm';
 import MarkdownEditForm from '../common/MarkdownEditForm';
 import InputEditForm from '../common/InputEditForm';
+import ChartEditForm from '../common/ChartEditForm';
+import TableEditForm from '../common/TableEditForm';
+import SourceEditForm from '../common/SourceEditForm';
+import InsightEditForm from '../common/InsightEditForm';
+import ModelEditForm from '../common/ModelEditForm';
+import DimensionEditForm from '../common/DimensionEditForm';
+import MetricEditForm from '../common/MetricEditForm';
+import RelationEditForm from '../common/RelationEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { formatRef } from '../../../utils/refString';
+import { useObjectSave } from '../../../hooks/useObjectSave';
+import sanitizeDashboardConfig from './sanitizeDashboardConfig';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
@@ -171,10 +181,17 @@ const RightRailEditPanel = () => {
    */
   const persistConfig = useCallback(
     (nextConfig, meta) => {
+      // GAP-3: never optimistic-update OR POST an invalid intermediate scaffold.
+      // The forms scaffold items with empty-string leaf fields (+ a spurious
+      // `selector`), which the backend Item validator rejects with a 400.
+      // Normalising here keeps the store, canvas, Outline, AND the persisted
+      // YAML always backend-valid — the empty slot stays an empty slot until a
+      // real ref is dropped in.
+      const cleanConfig = sanitizeDashboardConfig(nextConfig);
       if (updateDashboardConfigOptimistic) {
-        updateDashboardConfigOptimistic(dashboardName, nextConfig);
+        updateDashboardConfigOptimistic(dashboardName, cleanConfig);
       }
-      scheduleSave(nextConfig);
+      scheduleSave(cleanConfig);
       emitWorkspaceEvent('right_rail_autosave_scheduled', {
         object: 'dashboard',
         name: dashboardName,
@@ -457,7 +474,7 @@ const RightRailEditPanel = () => {
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
           <SelectionChip
-            type="chart"
+            type="dashboard"
             name={`Item ${sel.itemIndex + 1}`}
             subtitle={`Row ${sel.rowIndex + 1} · empty slot`}
             saveStatus={saveStatus}
@@ -502,16 +519,34 @@ const RightRailEditPanel = () => {
 
 /**
  * LeafObjectForm — resolves the live object record for a leaf / Library-row
- * object and renders that type's existing edit form. The reused forms bring
- * their own footer (incl. a Save button); we still front them with a
- * <SelectionChip> so the header stays consistent across the Edit tab.
+ * object and renders that type's existing edit form INLINE in the right rail,
+ * fronted by a <SelectionChip>. This is the Q25 "Library row / item leaf → that
+ * type's edit form" contract and matches the G-1 design artboard 03 (a chart
+ * item selects → an inline ChartEditForm), per VIS-802 GAP-1/GAP-2.
  *
- * Charts / tables use richer forms (ChartEditForm / TableEditForm) that pull in
- * heavy preview machinery; to keep G-1 lean and avoid pulling the explorer
- * stack into the right rail, those two render a "open to edit" affordance for
- * now (full drill-in is wired alongside the canvas work). Markdown + Input have
- * lightweight self-contained forms and render inline.
+ * Saves go through the shared `useObjectSave` handler (the same one EditorNew /
+ * LineageNew use), so editing a chart/table/insight/etc. here persists to the
+ * backend exactly as it does elsewhere. There is no modal to close in the rail,
+ * so `onClose`/`onCancel`/embedded-nav are no-ops; the forms keep their own Save
+ * footer. A handful of compound data-layer types (dashboard, csv/local-merge
+ * models) still open in their own surface — they have no lightweight in-rail
+ * form yet.
  */
+const INLINE_LEAF_FORMS = {
+  chart: (record, common) => <ChartEditForm chart={record} {...common} />,
+  table: (record, common) => <TableEditForm table={record} {...common} />,
+  markdown: (record, common) => <MarkdownEditForm markdown={record} {...common} />,
+  input: (record, common) => <InputEditForm input={record} {...common} />,
+  source: (record, common) => <SourceEditForm source={record} {...common} />,
+  insight: (record, common) => <InsightEditForm insight={record} {...common} />,
+  model: (record, common) => (
+    <ModelEditForm model={record} onSave={common.onSave} onCancel={common.onClose} />
+  ),
+  dimension: (record, common) => <DimensionEditForm dimension={record} {...common} />,
+  metric: (record, common) => <MetricEditForm metric={record} {...common} />,
+  relation: (record, common) => <RelationEditForm relation={record} {...common} />,
+};
+
 const LeafObjectForm = ({ type, name, onSelectRef }) => {
   const collectionKey = COLLECTION_KEY[type];
   const collection = useStore(s => (collectionKey ? s[collectionKey] : null));
@@ -521,34 +556,35 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     [collection, name]
   );
   const typeDef = getTypeByValue(type);
-
-  const noop = useCallback(() => {}, []);
-
-  if (type === 'markdown') {
-    return (
-      <>
-        <SelectionChip type="markdown" name={name} />
-        <div className="flex-1 overflow-hidden">
-          <MarkdownEditForm markdown={record} isCreate={false} onClose={noop} onSave={noop} />
-        </div>
-      </>
-    );
-  }
-  if (type === 'input') {
-    return (
-      <>
-        <SelectionChip type="input" name={name} />
-        <div className="flex-1 overflow-hidden">
-          <InputEditForm input={record} isCreate={false} onClose={noop} onSave={noop} />
-        </div>
-      </>
-    );
-  }
-
-  // Chart / Table / Data-Layer objects: front with the chip + an affordance to
-  // open the object as its own tab (its full editor surface lives in the middle
-  // pane / explorer). This keeps the right rail's bundle lean.
   const singular = typeDef?.singularLabel || type;
+
+  // Standalone (non-embedded) save: the same unified handler EditorNew uses,
+  // routed to the right per-type store action. currentEdit=null keeps it on the
+  // standalone-save path (no edit stack in the rail).
+  const noop = useCallback(() => {}, []);
+  const handleObjectSave = useObjectSave(null, noop, undefined);
+
+  const renderForm = INLINE_LEAF_FORMS[type];
+  if (renderForm) {
+    const common = {
+      isCreate: false,
+      onClose: noop,
+      onSave: handleObjectSave,
+      onNavigateToEmbedded: noop,
+      onGoBack: noop,
+    };
+    return (
+      <>
+        <SelectionChip type={type} name={name} subtitle={singular} />
+        <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
+          {renderForm(record, common)}
+        </div>
+      </>
+    );
+  }
+
+  // Compound types without a lightweight in-rail form (dashboard, csv/local
+  // merge models) — front with the chip + an affordance to open their own tab.
   return (
     <>
       <SelectionChip type={type} name={name} subtitle={singular} />

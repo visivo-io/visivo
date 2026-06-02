@@ -124,11 +124,40 @@ test.describe('Right-rail routing (G-1)', () => {
     });
   });
 
-  test('item selection with a chart leaf → that leaf surface (chip = chart)', async () => {
-    await setOutlineKey(page, 'row.0.item.0');
-    await page.getByTestId('right-rail-selection-chip').waitFor({ timeout: 10000 });
+  test('item with a chart leaf → inline ChartEditForm (GAP-1/GAP-2, not empty slot)', async () => {
+    // Discover a REAL top-level chart-leaf item from the live store. In compiled
+    // project.json the leaf is stored as an OBJECT, not a ref string — GAP-1
+    // must still resolve it (the pre-fix code mis-routed it as an empty slot).
+    const found = await page.evaluate(() => {
+      const dashboards = window.useStore.getState().dashboards || [];
+      for (const d of dashboards) {
+        const rows = (d.config || d).rows || [];
+        for (let ri = 0; ri < rows.length; ri++) {
+          const items = (rows[ri] && rows[ri].items) || [];
+          for (let ii = 0; ii < items.length; ii++) {
+            if (items[ii] && items[ii].chart) return { dashboard: d.name, key: `row.${ri}.item.${ii}` };
+          }
+        }
+      }
+      return null;
+    });
+    expect(found, 'the project should contain a top-level chart-leaf item').toBeTruthy();
+
+    // Scope to that dashboard, select the chart item via the Outline key.
+    await page.goto(`${WORKSPACE_URL}/dashboard/${found.dashboard}`);
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('workspace-right-rail').waitFor({ timeout: WAIT_FOR_PAGE });
+    await selectObject(page, 'dashboard', found.dashboard);
+    await setRightTab(page, 'edit');
+    await setOutlineKey(page, found.key);
+
+    // GAP-2: the inline leaf edit form mounts (not the old "Open Chart" stub).
+    await page.getByTestId('right-rail-edit-leaf-form').waitFor({ timeout: 10000 });
     const chip = page.getByTestId('right-rail-selection-chip');
     await expect(chip).toHaveAttribute('data-object-type', 'chart');
+    await expect(page.getByTestId('right-rail-edit-leaf-open')).toHaveCount(0);
+    // GAP-1: a real chart-leaf item must NOT mis-route to the empty ItemEditForm.
+    await expect(page.getByTestId('right-rail-edit-item')).toHaveCount(0);
     await page.getByTestId('workspace-right-rail').screenshot({
       path: `${SCREENS}/vis802-04-edit-item-leaf.png`,
     });
