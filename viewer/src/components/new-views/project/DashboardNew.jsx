@@ -374,7 +374,17 @@ const DashboardNew = ({ projectId, dashboardName, eagerLoad = true, stackBreakpo
           key={key}
           className="dashboard-nested-rows flex flex-col w-full h-full"
           data-testid="dashboard-nested-rows"
-          style={{ gap: '0.5rem', minWidth: 0, minHeight: 0 }}
+          // Floor the container at its intended pixel height. In GRID (side-by-
+          // side) mode the row has an explicit height, so the grid cell stretches
+          // and `h-full` already resolves correctly (≥ this floor, no change). In
+          // STACKED/column mode the row has NO definite height, so `h-full`
+          // (a percentage of a content-driven parent) collapses to 0 and every
+          // nested sub-row/leaf renders at 0px. The minHeight gives the flex
+          // column a definite height to distribute, fixing the collapse without
+          // touching the working grid path. (VIS-829-adjacent: stacked-mode
+          // nested-container height; affects /project View mode at narrow widths
+          // too, since DashboardNew is the shared renderer.)
+          style={{ gap: '0.5rem', minWidth: 0, minHeight: parentPixelHeight || 0 }}
         >
           {subRows.map((subRow, subIdx) => {
             const subHeightPx = parentPixelHeight * (heightToWeight(subRow.height) / totalWeight);

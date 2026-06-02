@@ -399,6 +399,38 @@ describe('DashboardNew', () => {
       expect(subRows).toHaveLength(2);
     });
 
+    it('floors the nested-rows container at a definite minHeight in STACKED mode (no 0-height collapse)', () => {
+      // Narrow container → column/stacked mode (< the 768 breakpoint). The row
+      // has no definite CSS height when stacked, so the nested-rows wrapper's
+      // `h-full` would collapse to 0 (and every nested sub-row/leaf with it).
+      // The minHeight floor must give it a definite, non-zero height instead.
+      mockDimensionWidth = 600;
+      const dashboard = {
+        name: 'stacked-nested',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { width: 1, chart: 'big-chart' },
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'small', items: [{ chart: 'small-b' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      const wrapper = screen.getByTestId('dashboard-nested-rows');
+      const minHeight = wrapper.style.minHeight;
+      expect(minHeight).toBeTruthy();
+      expect(parseInt(minHeight, 10)).toBeGreaterThan(0);
+    });
+
     it('assigns equal flex weights to two equal-height sub-rows', () => {
       const dashboard = {
         name: 'equal-weights',
