@@ -47,7 +47,13 @@ describe('LibrarySection', () => {
     act(() => {
       useStore.setState({
         libraryCollapsedSections: {},
-        libraryCollapsedSubsections: {},
+        // Subsections default to collapsed (VIS-828). These section-level
+        // tests assert section collapse + search/filter behaviour against
+        // expanded subsections, so explicitly expand the Layout types here.
+        libraryCollapsedSubsections: LAYOUT_TYPES.reduce(
+          (acc, t) => ({ ...acc, [t]: false }),
+          {}
+        ),
       });
     });
   });

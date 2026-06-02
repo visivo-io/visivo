@@ -1,5 +1,6 @@
 import Loading from '../common/Loading';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import isEqual from 'lodash/isEqual';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
 import PivotableTable from './PivotableTable';
@@ -72,8 +73,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     })
   );
 
-  const [columns, setColumns] = useState([]);
-  const [tableData, setTableData] = useState([]);
   const [searchIsVisible, setSearchIsVisible] = useState(false);
 
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
@@ -91,21 +90,26 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
       .replace(/\b\w/g, char => char.toUpperCase());
   };
 
-  useEffect(() => {
-    if (!dataName || !sourceData) return;
+  // Derive columns/tableData via useMemo (keyed on the actual data + props_mapping)
+  // rather than setState-inside-useEffect. The store re-creates job objects with a
+  // fresh `data` array reference on every input-driven refresh, so a setState effect
+  // keyed on the unstable `sourceData` ref would re-render → re-fire → re-render in an
+  // unbounded loop ("Maximum update depth exceeded"). useMemo recomputes during render
+  // and never schedules an extra render, so it is loop-proof while still updating
+  // whenever the underlying data genuinely changes. (VIS-830)
+  const data = sourceData?.data || sourceData?.insight;
+  const propsMapping = sourceData?.props_mapping;
 
-    const data = sourceData?.data || sourceData?.insight;
-    if (!data || data.length === 0) {
-      setColumns([]);
-      setTableData([]);
-      return;
+  const computed = useMemo(() => {
+    if (!dataName || !data || data.length === 0) {
+      return { columns: [], tableData: [] };
     }
 
     const firstRow = data[0];
 
     const reverseMapping = {};
-    if (sourceData.props_mapping) {
-      for (const [propPath, columnKey] of Object.entries(sourceData.props_mapping)) {
+    if (propsMapping) {
+      for (const [propPath, columnKey] of Object.entries(propsMapping)) {
         const displayName = propPath
           .replace(/^props\./, '')
           .replace(/\./g, ' ')
@@ -122,8 +126,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
       markdown: false,
     }));
 
-    setColumns(autoColumns);
-
     const transformedData = data.map((row, idx) => {
       const transformedRow = { id: idx };
       Object.entries(row).forEach(([key, value]) => {
@@ -132,8 +134,20 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
       return transformedRow;
     });
 
-    setTableData(transformedData);
-  }, [dataName, sourceData]);
+    return { columns: autoColumns, tableData: transformedData };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataName, data, propsMapping]);
+
+  // Preserve referential identity when the underlying data is unchanged. The store
+  // hands us a fresh `data` array (new ref, same content) on every input refresh; if
+  // we passed a brand-new columns/tableData object to MRT each time it would force
+  // material-react-table's own internal effects to re-sync, re-rendering needlessly.
+  // Returning the previous deep-equal value keeps the table stable. (VIS-830)
+  const stableRef = useRef(computed);
+  if (!isEqual(stableRef.current, computed)) {
+    stableRef.current = computed;
+  }
+  const { columns, tableData } = stableRef.current;
 
 
   const handleExportData = () => {
@@ -157,24 +171,52 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
 
   const toggleSearch = () => setSearchIsVisible(!searchIsVisible);
 
+  // material-react-table (MRT) is the legacy renderer used ONLY for the non-data-ref
+  // table path below. Every data-ref / pivot table (dataName truthy) is rendered by
+  // PivotableTable, which returns before the MRT JSX. However `useMaterialReactTable`
+  // is a hook and runs on every render regardless of the early returns, so when a
+  // data-backed table feeds MRT a column set that churns (the store re-supplies job
+  // data on input refreshes / canvas polling), MRT's internal columnOrder-sync effect
+  // (`getDefaultColumnOrderIds` unions stale + new ids) flaps `setColumnOrder`
+  // → re-render → effect → "Maximum update depth exceeded" (VIS-830). Since MRT's
+  // output is discarded for those tables, feed it empty columns/data whenever a
+  // PivotableTable will render. This removes the churn entirely with no visible change.
+  const usesPivotableRenderer = isPivotableTable;
+
+  // Memoize the columns passed to MRT. `columns.map(...)` builds a brand-new array
+  // (with fresh Cell closures) each render; a new ref every render would itself
+  // re-trigger MRT's columnOrder effect, so this is keyed on the (stable) `columns`.
+  const mrtColumns = useMemo(
+    () =>
+      usesPivotableRenderer
+        ? []
+        : columns.map(column => ({
+            ...column,
+            Cell: ({ cell }) => {
+              const value = cell.getValue();
+              if (column.markdown) {
+                return (
+                  <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                    {value}
+                  </Markdown>
+                );
+              } else if (typeof value === 'number' && `${value}`.length < 18) {
+                return new Intl.NumberFormat(navigator.language).format(value);
+              }
+              return value;
+            },
+          })),
+    [columns, usesPivotableRenderer]
+  );
+
+  const mrtData = useMemo(
+    () => (usesPivotableRenderer ? [] : tableData),
+    [tableData, usesPivotableRenderer]
+  );
+
   const useTable = useMaterialReactTable({
-    columns: columns.map(column => ({
-      ...column,
-      Cell: ({ cell }) => {
-        const value = cell.getValue();
-        if (column.markdown) {
-          return (
-            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-              {value}
-            </Markdown>
-          );
-        } else if (typeof value === 'number' && `${value}`.length < 18) {
-          return new Intl.NumberFormat(navigator.language).format(value);
-        }
-        return value;
-      },
-    })),
-    data: tableData,
+    columns: mrtColumns,
+    data: mrtData,
     enableRowSelection: true,
     enableGlobalFilter: true,
     enableTopToolbar: true,
