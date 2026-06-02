@@ -5,7 +5,7 @@ import { getEnabledTypes } from './objectTypeConfigs';
 
 /**
  * CreateButton - Floating action button with object type menu
- * Used by both LineageNew and EditorNew views
+ * Used by both LineageNew and Editor views
  */
 const CreateButton = ({ objectTypes = getEnabledTypes(), onSelect }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

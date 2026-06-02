@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import useStore from '../../../stores/store';
-import { useObjectSave } from '../../../hooks/useObjectSave';
+import useStore from '../../stores/store';
+import { useObjectSave } from '../../hooks/useObjectSave';
 import SourceSearch from './SourceSearch';
-import EditPanel from '../common/EditPanel';
-import CreateButton from '../common/CreateButton';
-import ObjectList from '../common/ObjectList';
-import ObjectTypeFilter from '../common/ObjectTypeFilter';
+import EditPanel from '../new-views/common/EditPanel';
+import CreateButton from '../new-views/common/CreateButton';
+import ObjectList from '../new-views/common/ObjectList';
+import ObjectTypeFilter from '../new-views/common/ObjectTypeFilter';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { getTypeByValue, DEFAULT_COLORS } from '../common/objectTypeConfigs';
-import { recordOnboardingAction } from '../../onboarding/onboardingState';
+import { getTypeByValue, DEFAULT_COLORS } from '../new-views/common/objectTypeConfigs';
+import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 /**
- * EditorNew - New editor view for sources, models, dimensions, metrics, relations, and insights
+ * Editor - New editor view for sources, models, dimensions, metrics, relations, and insights
  * Completely independent of namedChildren/editorStore
  */
-const EditorNew = () => {
+const Editor = () => {
   // Sources
   const sources = useStore(state => state.sources);
   const fetchSources = useStore(state => state.fetchSources);
@@ -894,4 +894,4 @@ const EditorNew = () => {
   );
 };
 
-export default EditorNew;
+export default Editor;

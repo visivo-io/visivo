@@ -22,7 +22,7 @@ import InputEditForm from './InputEditForm';
 
 /**
  * EditPanel - Shared right-side panel for editing/creating sources, models, and semantic objects
- * Used by both LineageNew and EditorNew views
+ * Used by both LineageNew and Editor views
  *
  * This component is a thin wrapper that handles the panel layout and header,
  * delegating to specific form components for each object type.

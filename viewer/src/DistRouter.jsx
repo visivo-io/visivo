@@ -2,8 +2,7 @@ import React from 'react';
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
-import ProjectContainer from './components/project/ProjectContainer';
-import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
+import Project from './components/project/Project';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
@@ -34,7 +33,7 @@ const DistRouter = createBrowserRouter(
     >
       <Route
         path={root}
-        element={<ProjectContainer />}
+        element={<Project />}
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}
         loader={loadProject}
@@ -42,11 +41,11 @@ const DistRouter = createBrowserRouter(
           crumb: () => <BreadcrumbLink to="/">Project</BreadcrumbLink>,
         }}
       >
-        <Route index element={<ProjectContainer />} />
+        <Route index element={<Project />} />
         <Route
           id="project"
           path=":dashboardName?/*"
-          element={<ProjectContainer />}
+          element={<Project />}
           loader={loadProject}
           shouldRevalidate={() => false}
           handle={{
@@ -58,18 +57,6 @@ const DistRouter = createBrowserRouter(
           }}
         />
       </Route>
-      <Route
-        id="project-new"
-        path="project-new/:dashboardName?"
-        element={<ProjectNew />}
-        handle={{
-          crumb: match => (
-            <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
-              {match.params.dashboardName ? `${match.params.dashboardName} (New)` : 'Project (New)'}
-            </BreadcrumbLink>
-          ),
-        }}
-      />
     </Route>
   ),
   {

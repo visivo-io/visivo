@@ -129,7 +129,7 @@ const ObjectListRow = ({
 
 /**
  * ObjectList - Displays a list of objects with status indicators
- * Used by EditorNew view
+ * Used by Editor view
  */
 const ObjectList = ({
   objects,
