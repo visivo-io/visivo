@@ -12,9 +12,7 @@ const URL_PATTERNS = {
     schema: '/api/schema/',
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
-    insightJobData: '/api/insight-jobs/{hash}/',
     inputJobsQuery: '/api/input-jobs/',
-    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/api/dashboards/{name}/',
     dashboardThumbnail: '/api/dashboards/{name}.png/',
 
@@ -139,9 +137,7 @@ const URL_PATTERNS = {
     schema: '/data/schema.json',
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
-    insightJobData: '/data/insights/{hash}.json',
     inputJobsQuery: '/data/inputs.json',
-    inputJobData: '/data/inputs/{hash}.json',
     dashboardQuery: '/data/dashboards/{name}.json',
     dashboardThumbnail: '/data/dashboards/{name}.png',
 
