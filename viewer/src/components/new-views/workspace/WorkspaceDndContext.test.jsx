@@ -142,3 +142,134 @@ describe('routeWorkspaceDragEnd (VIS-802)', () => {
     expect(result).toBe('noop');
   });
 });
+
+describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
+  const canvasConfig = () => ({
+    rows: [
+      { height: 'medium', items: [{ width: 6, chart: 'ref(a)' }, { width: 6, table: 'ref(b)' }] },
+      { height: 'small', items: [{ width: 12, chart: 'ref(c)' }] },
+    ],
+  });
+
+  const overCanvas = target => ({
+    data: {
+      current: { kind: 'canvas-drop', dashboardName: 'dash', config: canvasConfig(), target },
+    },
+  });
+
+  test('canvas item drag → between-items on the same row reorders the items', () => {
+    const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 } },
+        },
+        // Drop before index 2 (after item 1) → item 0 moves to the end of the row.
+        over: overCanvas({ kind: 'between-items', rowPath: 'row.0', index: 2 }),
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_reorder_items');
+    expect(commitCanvasConfig).toHaveBeenCalledTimes(1);
+    const [name, nextConfig] = commitCanvasConfig.mock.calls[0];
+    expect(name).toBe('dash');
+    const order = nextConfig.rows[0].items.map(it => it.chart || it.table);
+    expect(order).toEqual(['ref(b)', 'ref(a)']);
+    expect(emit).toHaveBeenCalledWith('canvas_dnd', expect.objectContaining({ kind: 'reorder_items' }));
+  });
+
+  test('canvas item drag → end-of-row appends the item to the end', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 } },
+        },
+        over: overCanvas({ kind: 'end-of-row', rowPath: 'row.0' }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('canvas_reorder_items');
+    const order = commitCanvasConfig.mock.calls[0][1].rows[0].items.map(it => it.chart || it.table);
+    expect(order).toEqual(['ref(b)', 'ref(a)']);
+  });
+
+  test('canvas item drag onto a DIFFERENT row is a noop (cross-row move not supported)', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 } },
+        },
+        over: overCanvas({ kind: 'between-items', rowPath: 'row.1', index: 0 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
+  test('canvas row drag → between-rows reorders the top-level rows', () => {
+    const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowIndex: 1, rowPath: 'row.1' } } },
+        // Drop before index 0 → row 1 moves to the top.
+        over: overCanvas({ kind: 'between-rows', index: 0 }),
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_reorder_rows');
+    const heights = commitCanvasConfig.mock.calls[0][1].rows.map(r => r.height);
+    expect(heights).toEqual(['small', 'medium']);
+    expect(emit).toHaveBeenCalledWith('canvas_dnd', expect.objectContaining({ kind: 'reorder_rows' }));
+  });
+
+  test('library drag → canvas between-items inserts a new item referencing the object', () => {
+    const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'new-chart' } } },
+        over: overCanvas({ kind: 'between-items', rowPath: 'row.0', index: 1 }),
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_library_insert');
+    const items = commitCanvasConfig.mock.calls[0][1].rows[0].items;
+    expect(items).toHaveLength(3);
+    expect(items[1].chart).toBe('ref(new-chart)');
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_dnd',
+      expect.objectContaining({ kind: 'library_insert', type: 'chart', name: 'new-chart' })
+    );
+  });
+
+  test('library drag → canvas between-rows inserts a new top-level row', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'table', name: 't1' } } },
+        over: overCanvas({ kind: 'between-rows', index: 1 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('canvas_library_insert');
+    const rows = commitCanvasConfig.mock.calls[0][1].rows;
+    expect(rows).toHaveLength(3);
+    expect(rows[1].items[0].table).toBe('ref(t1)');
+  });
+
+  test('canvas-drop without a commit callback is a safe noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'canvas', kind: 'row', rowIndex: 0, rowPath: 'row.0' } } },
+        over: overCanvas({ kind: 'between-rows', index: 1 }),
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+});

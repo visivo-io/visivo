@@ -11,6 +11,13 @@ import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
 import LibraryDragPreview from './library/LibraryDragPreview';
 import { groupDashboardsByLevel } from '../project/editor/useProjectEditorData';
 import { emitWorkspaceEvent } from './telemetry';
+import sanitizeDashboardConfig from './sanitizeDashboardConfig';
+import {
+  reorderItemsInRow,
+  reorderTopLevelRows,
+  insertItemAtTarget,
+  buildLibraryItem,
+} from '../project/canvas/canvasReorder';
 
 /**
  * WorkspaceDndContext — VIS-802 / Track G G-1.
@@ -59,13 +66,18 @@ export const useWorkspaceDrag = () => useContext(WorkspaceDragContext);
  * @param {Array}  deps.dashboards    current dashboards list (for level groups).
  * @param {object} deps.projectDefaults defaults used to resolve level groups.
  * @param {Function} deps.reassignDashboardLevel store action.
+ * @param {Function} deps.commitCanvasConfig  applies a next dashboard config
+ *                   (sanitize → optimistic → save) for canvas D-3 mutations:
+ *                   `(dashboardName, nextConfig, meta) => void`.
  * @param {Function} deps.emit        telemetry emitter.
  * @returns {string} a short tag describing the routed action (for tests):
- *          'reassign_level' | 'ref_accepted' | 'ref_rejected' | 'noop'.
+ *          'reassign_level' | 'ref_accepted' | 'ref_rejected' |
+ *          'canvas_reorder_items' | 'canvas_reorder_rows' |
+ *          'canvas_library_insert' | 'noop'.
  */
 export const routeWorkspaceDragEnd = (
   event,
-  { dashboards, projectDefaults, reassignDashboardLevel, emit }
+  { dashboards, projectDefaults, reassignDashboardLevel, commitCanvasConfig, emit }
 ) => {
   const { active, over } = event || {};
   if (!over) return 'noop';
@@ -107,6 +119,78 @@ export const routeWorkspaceDragEnd = (
     return 'ref_accepted';
   }
 
+  // ── Branch 3: Canvas drop zones (VIS-771 / D-3) ──────────────────────────
+  // Canvas droppables carry `{ kind: 'canvas-drop', target, dashboardName,
+  // config }`. `target` is the normalised insertion / reorder descriptor (see
+  // canvasReorder.insertItemAtTarget). The live dashboard config is snapshotted
+  // onto the droppable's `data` so the router transforms the same object the
+  // canvas rendered, then commits it through the shared save path.
+  if (dropData.kind === 'canvas-drop') {
+    const { target, dashboardName, config } = dropData;
+    if (!target || !dashboardName || !config) return 'noop';
+    if (typeof commitCanvasConfig !== 'function') return 'noop';
+
+    // 3a. Canvas → canvas reorder (item within a row, or top-level rows).
+    if (dragData.source === 'canvas') {
+      // Item reorder: drag item path + drop a `between-items`/`end-of-row`
+      // target on the SAME row → move the item inside that row.
+      if (
+        dragData.kind === 'item' &&
+        (target.kind === 'between-items' || target.kind === 'end-of-row') &&
+        target.rowPath === dragData.rowPath
+      ) {
+        const fromIndex = dragData.itemIndex;
+        let toIndex =
+          target.kind === 'end-of-row'
+            ? Number.MAX_SAFE_INTEGER
+            : target.index;
+        // Dropping just after the source slot is a no-op; normalise so a 1-step
+        // right move lands correctly (splice removes the source first).
+        if (target.kind === 'between-items' && toIndex > fromIndex) toIndex -= 1;
+        const next = reorderItemsInRow(config, dragData.rowPath, fromIndex, toIndex);
+        if (next === config) return 'noop';
+        commitCanvasConfig(dashboardName, next, { kind: 'reorder_items' });
+        emit &&
+          emit('canvas_dnd', {
+            kind: 'reorder_items',
+            rowPath: dragData.rowPath,
+            from: fromIndex,
+          });
+        return 'canvas_reorder_items';
+      }
+
+      // Row reorder: drag a top-level row + drop a `between-rows` target.
+      if (dragData.kind === 'row' && target.kind === 'between-rows') {
+        const fromIndex = dragData.rowIndex;
+        let toIndex = target.index;
+        if (toIndex > fromIndex) toIndex -= 1;
+        const next = reorderTopLevelRows(config, fromIndex, toIndex);
+        if (next === config) return 'noop';
+        commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
+        emit && emit('canvas_dnd', { kind: 'reorder_rows', from: fromIndex, to: toIndex });
+        return 'canvas_reorder_rows';
+      }
+
+      return 'noop';
+    }
+
+    // 3b. Library → canvas insert (creates a new item referencing the object).
+    if (dragData.source === 'library') {
+      const newItem = buildLibraryItem(dragData.type, dragData.name);
+      const next = insertItemAtTarget(config, target, newItem);
+      if (next === config) return 'noop';
+      commitCanvasConfig(dashboardName, next, { kind: 'library_insert' });
+      emit &&
+        emit('canvas_dnd', {
+          kind: 'library_insert',
+          type: dragData.type,
+          name: dragData.name,
+          target: target.kind,
+        });
+      return 'canvas_library_insert';
+    }
+  }
+
   return 'noop';
 };
 
@@ -129,10 +213,31 @@ const WorkspaceDndContext = ({ children }) => {
   const defaults = useStore(s => s.defaults);
   const project = useStore(s => s.project);
   const reassignDashboardLevel = useStore(s => s.reassignDashboardLevel);
+  const saveDashboard = useStore(s => s.saveDashboard);
+  const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
 
   // `activeDrag` mirrors the dnd-kit `active` payload in a shape both overlays
   // and consumers (ProjectEditor) can read: `{ kind, name, level, type }`.
   const [activeDrag, setActiveDrag] = useState(null);
+
+  // Commit a canvas-driven config mutation (D-3): sanitize so the payload is
+  // always backend-valid (GAP-3 — see sanitizeDashboardConfig), optimistically
+  // swap the store config so the canvas + Outline reflect it immediately, then
+  // persist through the shared dashboard save path (the SAME path the right-rail
+  // forms use via RightRailEditPanel.persistConfig).
+  const commitCanvasConfig = useCallback(
+    (dashboardName, nextConfig) => {
+      if (!dashboardName) return;
+      const clean = sanitizeDashboardConfig(nextConfig);
+      if (updateDashboardConfigOptimistic) {
+        updateDashboardConfigOptimistic(dashboardName, clean);
+      }
+      if (typeof saveDashboard === 'function') {
+        saveDashboard(dashboardName, clean);
+      }
+    },
+    [updateDashboardConfigOptimistic, saveDashboard]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -152,6 +257,19 @@ const WorkspaceDndContext = ({ children }) => {
     }
     if (data.source === 'library') {
       setActiveDrag({ kind: 'library', name: data.name, type: data.type, data });
+      return;
+    }
+    // Canvas item/row drag (VIS-771 / D-3). The drag preview IS the source pill
+    // (no thumbnail, per architecture §2.6) — for an item we render the same
+    // Library-style pill keyed on the referenced object's type + name.
+    if (data.source === 'canvas') {
+      setActiveDrag({
+        kind: 'canvas',
+        canvasKind: data.kind,
+        name: data.label || data.name,
+        type: data.refType || 'chart',
+        data: { source: 'library', type: data.refType || 'chart', name: data.label || data.name },
+      });
     }
   }, []);
 
@@ -164,10 +282,11 @@ const WorkspaceDndContext = ({ children }) => {
         dashboards,
         projectDefaults,
         reassignDashboardLevel,
+        commitCanvasConfig,
         emit: emitWorkspaceEvent,
       });
     },
-    [dashboards, projectDefaults, reassignDashboardLevel]
+    [dashboards, projectDefaults, reassignDashboardLevel, commitCanvasConfig]
   );
 
   return (
@@ -182,7 +301,9 @@ const WorkspaceDndContext = ({ children }) => {
         <DragOverlay dropAnimation={null}>
           {activeDrag?.kind === 'dashboard' ? (
             <DashboardTilePreview name={activeDrag.name} />
-          ) : activeDrag?.kind === 'library' ? (
+          ) : activeDrag?.kind === 'library' || activeDrag?.kind === 'canvas' ? (
+            // Canvas item/row drags reuse the SAME pill shape as a Library drag
+            // (architecture §2.6: "the drag preview IS the source pill").
             <LibraryDragPreview data={activeDrag.data} />
           ) : null}
         </DragOverlay>
