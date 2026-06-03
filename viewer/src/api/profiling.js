@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch profile statistics for a model's columns.
@@ -9,7 +10,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchModelProfile = async (modelName, tier = 2) => {
   const baseUrl = getUrl('modelProfile', { name: modelName });
   const url = `${baseUrl}?tier=${tier}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -26,7 +27,7 @@ export const fetchModelProfile = async (modelName, tier = 2) => {
 export const fetchModelHistogram = async (modelName, column, bins = 20) => {
   const baseUrl = getUrl('modelHistogram', { name: modelName, column });
   const url = `${baseUrl}?bins=${bins}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }

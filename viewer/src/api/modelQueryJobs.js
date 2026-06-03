@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext.jsx';
+import { apiFetch } from './utils';
 
 /**
  * Start a new SQL query execution job
@@ -9,7 +10,7 @@ import { getUrl } from '../contexts/URLContext.jsx';
 export const startModelQueryJob = async (sourceName, sql) => {
   const url = getUrl('modelQueryJobs');
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -36,7 +37,7 @@ export const startModelQueryJob = async (sourceName, sql) => {
 export const getModelQueryJobStatus = async jobId => {
   const url = getUrl('modelQueryJobDetail', { jobId });
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -54,7 +55,7 @@ export const getModelQueryJobStatus = async jobId => {
 export const cancelModelQueryJob = async jobId => {
   const url = getUrl('modelQueryJobDetail', { jobId });
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
 

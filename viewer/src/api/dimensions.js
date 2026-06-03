@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all dimensions with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllDimensions = async (projectId = null) => {
   let url = getUrl('dimensionsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllDimensions = async (projectId = null) => {
  * Fetch a single dimension by name with status information
  */
 export const fetchDimension = async name => {
-  const response = await fetch(getUrl('dimensionDetail', { name }));
+  const response = await apiFetch(getUrl('dimensionDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchDimension = async name => {
  * Save a dimension configuration to cache (draft state)
  */
 export const saveDimension = async (name, config) => {
-  const response = await fetch(getUrl('dimensionDetail', { name }), {
+  const response = await apiFetch(getUrl('dimensionDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveDimension = async (name, config) => {
  * Delete a dimension from cache (revert to published version)
  */
 export const deleteDimension = async name => {
-  const response = await fetch(getUrl('dimensionDetail', { name }), {
+  const response = await apiFetch(getUrl('dimensionDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteDimension = async name => {
  * Validate a dimension configuration without saving
  */
 export const validateDimension = async (name, config) => {
-  const response = await fetch(getUrl('dimensionValidate', { name }), {
+  const response = await apiFetch(getUrl('dimensionValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

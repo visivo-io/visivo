@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all CsvScriptModels with their status
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllCsvScriptModels = async (projectId = null) => {
   let url = getUrl('csvScriptModelsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllCsvScriptModels = async (projectId = null) => {
  * Save a CsvScriptModel configuration to cache (draft state)
  */
 export const saveCsvScriptModel = async (name, config) => {
-  const response = await fetch(getUrl('csvScriptModelDetail', { name }), {
+  const response = await apiFetch(getUrl('csvScriptModelDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export const saveCsvScriptModel = async (name, config) => {
  * Delete a CsvScriptModel (mark for deletion)
  */
 export const deleteCsvScriptModel = async name => {
-  const response = await fetch(getUrl('csvScriptModelDetail', { name }), {
+  const response = await apiFetch(getUrl('csvScriptModelDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -48,7 +49,7 @@ export const deleteCsvScriptModel = async name => {
  * Validate a CsvScriptModel configuration without saving
  */
 export const validateCsvScriptModel = async (name, config) => {
-  const response = await fetch(getUrl('csvScriptModelValidate', { name }), {
+  const response = await apiFetch(getUrl('csvScriptModelValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

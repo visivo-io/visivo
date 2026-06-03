@@ -1,10 +1,11 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Check if there are any unpublished changes
  */
 export const getPublishStatus = async () => {
-  const response = await fetch(getUrl('publishStatus'));
+  const response = await apiFetch(getUrl('publishStatus'));
   if (response.status === 200) {
     return await response.json();
   }
@@ -15,7 +16,7 @@ export const getPublishStatus = async () => {
  * Get all pending changes (objects with NEW, MODIFIED, or DELETED status)
  */
 export const getPendingChanges = async () => {
-  const response = await fetch(getUrl('publishPending'));
+  const response = await apiFetch(getUrl('publishPending'));
   if (response.status === 200) {
     return await response.json();
   }
@@ -26,7 +27,7 @@ export const getPendingChanges = async () => {
  * Publish all cached changes to YAML files
  */
 export const publishChanges = async () => {
-  const response = await fetch(getUrl('publish'), {
+  const response = await apiFetch(getUrl('publish'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

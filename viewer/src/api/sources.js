@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all sources with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllSources = async (projectId = null) => {
   let url = getUrl('sourcesList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllSources = async (projectId = null) => {
  * Fetch a single source by name with status information
  */
 export const fetchSource = async name => {
-  const response = await fetch(getUrl('sourceDetail', { name }));
+  const response = await apiFetch(getUrl('sourceDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchSource = async name => {
  * Save a source configuration to cache (draft state)
  */
 export const saveSource = async (name, config) => {
-  const response = await fetch(getUrl('sourceDetail', { name }), {
+  const response = await apiFetch(getUrl('sourceDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveSource = async (name, config) => {
  * Delete a source from cache (revert to published version)
  */
 export const deleteSource = async name => {
-  const response = await fetch(getUrl('sourceDetail', { name }), {
+  const response = await apiFetch(getUrl('sourceDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteSource = async name => {
  * Validate a source configuration without saving
  */
 export const validateSource = async (name, config) => {
-  const response = await fetch(getUrl('sourceValidate', { name }), {
+  const response = await apiFetch(getUrl('sourceValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,7 +78,7 @@ export const validateSource = async (name, config) => {
  * Test a source connection from configuration
  */
 export const testSourceConnection = async config => {
-  const response = await fetch(getUrl('sourceTestConnection'), {
+  const response = await apiFetch(getUrl('sourceTestConnection'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

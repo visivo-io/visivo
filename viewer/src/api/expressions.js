@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Translate SQL expressions from a source dialect to DuckDB dialect.
@@ -19,7 +20,7 @@ export const translateExpressions = async (expressions, sourceDialect) => {
     };
   }
 
-  const response = await fetch(getUrl('expressionsTranslate'), {
+  const response = await apiFetch(getUrl('expressionsTranslate'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ expressions, source_dialect: sourceDialect }),
