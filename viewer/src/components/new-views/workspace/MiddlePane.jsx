@@ -9,7 +9,7 @@ import useStore from '../../../stores/store';
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
  *
  *   project    → ProjectEditor (Track M M-1 — health row + level groups)
- *   dashboard  → ProjectCanvas (render-only DashboardNew wrapper, VIS-767) when
+ *   dashboard  → ProjectCanvas (render-only Dashboard wrapper, VIS-767) when
  *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
  *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
  *                source/dimension/metric/relation/unknown). The Lineage lens is

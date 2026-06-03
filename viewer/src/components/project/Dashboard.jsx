@@ -12,6 +12,35 @@ import { useVisibleRows } from '../../hooks/useVisibleRows';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
 
 /**
+ * Normalize a chart/table `insights` array so Chart/Table always receive
+ * `[{ name: 'insight-name' }]` objects rather than raw context-string refs
+ * (`"${ref(insight-name)}"`).
+ *
+ * Chart.jsx derives the insight names it loads via `chart.insights.map(i => i.name)`.
+ * When the dashboard comes from the `/api/dashboards/` store endpoint (the path
+ * used by both Project and the Workspace canvas, via <Dashboard>), embedded
+ * chart objects carry their `insights` as un-resolved string refs. Without this
+ * normalization `i.name` is `undefined`, no insight data is ever matched, and the
+ * chart spins forever (VIS-827). The old `project_json` route pre-resolves insights
+ * into objects, which is why that route was unaffected.
+ *
+ * Returns a new config object (never mutates the store's object) when insights
+ * are present; otherwise returns the config unchanged.
+ */
+const normalizeInsightRefs = config => {
+  if (!config || !Array.isArray(config.insights)) return config;
+  return {
+    ...config,
+    insights: config.insights.map(insight => {
+      if (typeof insight === 'string') {
+        return { name: parseRefValue(insight) };
+      }
+      return insight; // Already an object (may carry name/props/interactions)
+    }),
+  };
+};
+
+/**
  * Resolve an item reference (chart, table, markdown, input) from the store.
  * Handles both string references (names), context strings (${ ref(...) }), and legacy embedded objects.
  * Transforms insight/input string references to object format expected by components.
@@ -29,21 +58,13 @@ const resolveItem = (itemRef, getItemByName) => {
 
     // Transform insights array from string references to objects with name property
     // Chart/Table components expect insights to be [{name: 'insight-name'}] not ["${ref(insight-name)}"]
-    if (config.insights && Array.isArray(config.insights)) {
-      config.insights = config.insights.map(insight => {
-        if (typeof insight === 'string') {
-          const insightName = parseRefValue(insight);
-          return { name: insightName };
-        }
-        return insight; // Already an object
-      });
-    }
-
-    return config;
+    return normalizeInsightRefs(config);
   }
 
-  // Legacy: If it's already an object, use it directly
-  return itemRef;
+  // Legacy/embedded: the chart/table object lives inline in the dashboard row.
+  // Its `insights` are still un-resolved string refs from the API, so normalize
+  // them the same way as the string-ref branch above (VIS-827).
+  return normalizeInsightRefs(itemRef);
 };
 
 /**
@@ -151,7 +172,7 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * Dashboard - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const Dashboard = ({ projectId, dashboardName }) => {
+const Dashboard = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint = 1024 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -183,8 +204,29 @@ const Dashboard = ({ projectId, dashboardName }) => {
     },
   });
 
-  const widthBreakpoint = 1024;
-  const isColumn = width < widthBreakpoint;
+  // Stacking breakpoint. `width` is CONTAINER-relative — it comes from the
+  // ResizeObserver (`observe`) attached to the dashboard root div below, NOT
+  // the viewport. It is PER-SURFACE (VIS-829): static viewing (/project-new and,
+  // once VIS-833 lands, /project) keeps the default 1024 so rows stack earlier
+  // for readability on genuinely narrow windows; the Workspace canvas passes
+  // `stackBreakpoint={768}` (via ProjectCanvas) because it loses ~600px to the
+  // left + right rails, so a 1024 threshold made every row collapse into a
+  // single column even on a wide screen (the "everything stacks" bug). The
+  // threshold is applied per-container (top-level + each nested slot) via
+  // `shouldStack`, so nesting decisions stay slot-relative.
+  const widthBreakpoint = stackBreakpoint;
+
+  // Decide whether a container of `containerWidth` pixels should stack its items
+  // vertically. Falls back to the dashboard width when no explicit slot width is
+  // provided (top-level rows). A nested slot that is only a fraction of the
+  // dashboard width can stack independently of its (wider) parent.
+  const shouldStack = containerWidth => {
+    const effective =
+      typeof containerWidth === 'number' && containerWidth > 0 ? containerWidth : width;
+    return effective < widthBreakpoint;
+  };
+
+  const isColumn = shouldStack(width);
 
   // Fetch item data on mount (dashboards fetched by Project container)
   useEffect(() => {
@@ -203,8 +245,12 @@ const Dashboard = ({ projectId, dashboardName }) => {
     return dashboardData.config || dashboardData;
   }, [dashboards, dashboardName]);
 
-  // Height calculation helpers
+  // Height calculation helpers.
+  // `Row.height` accepts either an enum token (compact|xsmall|...|xxlarge) or a
+  // positive integer pixel value (canvas's Shift-modifier fluid-resize gesture
+  // writes ints directly to the same field). See VIS-A1 / specs §5.6.
   const getHeight = height => {
+    if (typeof height === 'number') return height;
     if (height === 'xsmall') return 128;
     if (height === 'small') return 256;
     if (height === 'medium') return 396;
@@ -304,7 +350,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
   // the item is a row-container. `keyPrefix` namespaces children when the item
   // is being rendered inside a nested-rows context (so React keys stay unique
   // across multiple flips of the same dashboard).
-  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '') => {
+  const renderItem = (item, row, itemIndex, rowIndex, shouldLoad, items, slotPixelHeight, slotPixelWidth, keyPrefix = '', itemPath = '') => {
     const key = `${keyPrefix}dashboardRow${rowIndex}Item${itemIndex}`;
 
     // Pixel width this item slot was given by its parent row. Used for chart
@@ -328,7 +374,17 @@ const Dashboard = ({ projectId, dashboardName }) => {
           key={key}
           className="dashboard-nested-rows flex flex-col w-full h-full"
           data-testid="dashboard-nested-rows"
-          style={{ gap: '0.5rem', minWidth: 0, minHeight: 0 }}
+          // Floor the container at its intended pixel height. In GRID (side-by-
+          // side) mode the row has an explicit height, so the grid cell stretches
+          // and `h-full` already resolves correctly (≥ this floor, no change). In
+          // STACKED/column mode the row has NO definite height, so `h-full`
+          // (a percentage of a content-driven parent) collapses to 0 and every
+          // nested sub-row/leaf renders at 0px. The minHeight gives the flex
+          // column a definite height to distribute, fixing the collapse without
+          // touching the working grid path. (VIS-829-adjacent: stacked-mode
+          // nested-container height; affects /project View mode at narrow widths
+          // too, since Dashboard is the shared renderer.)
+          style={{ gap: '0.5rem', minWidth: 0, minHeight: parentPixelHeight || 0 }}
         >
           {subRows.map((subRow, subIdx) => {
             const subHeightPx = parentPixelHeight * (heightToWeight(subRow.height) / totalWeight);
@@ -344,7 +400,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
                   height: subHeightPx,
                 }}
               >
-                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`)}
+                {renderNestedRow(subRow, subIdx, itemIndex, rowIndex, shouldLoad, subHeightPx, effectiveSlotWidth, `${key}-sub-${subIdx}-`, itemPath)}
               </div>
             );
           })}
@@ -448,17 +504,33 @@ const Dashboard = ({ projectId, dashboardName }) => {
   // as a top-level row, but height is governed by the parent slot's flex
   // allocation rather than the row's pixel-mapped HeightEnum. Reuses renderItem
   // so leaf-vs-row-container handling is shared with the top level.
-  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix) => {
+  const renderNestedRow = (subRow, subRowIndex, parentItemIndex, parentRowIndex, shouldLoad, slotPixelHeight, slotPixelWidth, keyPrefix, parentItemPath = '') => {
     if (!subRow || !subRow.items) return null;
     const visibleItems = subRow.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0) || 1;
+    // Composite selection path (VIS-768): mirrors OutlineTreePanel's recursive
+    // key scheme `row.<ri>.item.<ii>[.row.<ri>.item.<ii>]…` so the canvas overlay
+    // and Outline tree share ONE selection key at any nesting depth.
+    const subRowPath = parentItemPath
+      ? `${parentItemPath}.row.${subRowIndex}`
+      : `row.${subRowIndex}`;
+    // Slot-relative stacking: a nested row only occupies its parent slot's
+    // width, not the full dashboard. Deciding `isColumn` from the dashboard-wide
+    // breakpoint either (a) kept nested multi-item rows side-by-side inside a
+    // narrow slot (overflow — e.g. a 2x2 KPI cluster crammed into a 1/4 slot) or
+    // (b) stacked everything once the dashboard dipped below the breakpoint.
+    // Compare the slot width instead so each nested container stacks on its own
+    // terms. See VIS-829.
+    const nestedIsColumn = shouldStack(slotPixelWidth);
     return (
       <div
-        className={`dashboard-nested-row w-full h-full ${isColumn ? 'flex' : 'grid'}`}
+        className={`dashboard-nested-row w-full h-full ${nestedIsColumn ? 'flex' : 'grid'}`}
+        data-testid="dashboard-nested-row"
+        data-canvas-path={subRowPath}
         style={{
-          display: isColumn ? 'flex' : 'grid',
-          flexDirection: isColumn ? 'column' : undefined,
-          gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+          display: nestedIsColumn ? 'flex' : 'grid',
+          flexDirection: nestedIsColumn ? 'column' : undefined,
+          gridTemplateColumns: nestedIsColumn ? undefined : `repeat(${totalWidth}, minmax(0, 1fr))`,
           gap: '0.5rem',
           minWidth: 0,
           minHeight: 0,
@@ -467,10 +539,14 @@ const Dashboard = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIdx) => (
           <div
             key={`${keyPrefix}item-${itemIdx}`}
-            className={isColumn ? 'w-full max-w-full' : ''}
+            // Composite selection anchor (VIS-768): nested item slots carry their
+            // full path so a click at any depth resolves to the exact leaf the
+            // Outline tree would, and an Outline→canvas selection rings it.
+            data-canvas-path={`${subRowPath}.item.${itemIdx}`}
+            className={nestedIsColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
-              gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
-              width: isColumn ? '100%' : 'auto',
+              gridColumn: nestedIsColumn ? undefined : `span ${item.width || 1}`,
+              width: nestedIsColumn ? '100%' : 'auto',
               minWidth: 0,
               minHeight: 0,
             }}
@@ -486,6 +562,7 @@ const Dashboard = ({ projectId, dashboardName }) => {
                 slotPixelHeight,
                 slotPixelWidth,
                 keyPrefix,
+                `${subRowPath}.item.${itemIdx}`,
               )}
             </div>
           </div>
@@ -499,13 +576,22 @@ const Dashboard = ({ projectId, dashboardName }) => {
     const visibleItems = row.items.filter(shouldShowItem);
     const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
     const rowStyle = isColumn ? {} : { height: row.height !== 'compact' ? getHeight(row.height) : undefined };
-    const shouldLoad = visibleRows.has(rowIndex);
+    // VIS-827: eager-load by default. The row-visibility lazy-loader
+    // (useVisibleRows) relies on an IntersectionObserver that does not fire
+    // inside the Workspace canvas's inner overflow-auto scroll container, so
+    // rows past the initial seed never become "visible" and their charts spin
+    // forever even though the insight data is already in the store. Eager-loading
+    // the new renderer renders every row; callers can pass eagerLoad={false} to
+    // opt back into lazy loading once the observer is wired to the scroll root.
+    const shouldLoad = eagerLoad || visibleRows.has(rowIndex);
 
     return (
       <div
         key={`row-${rowIndex}`}
         ref={el => setRowRef(el, rowIndex)}
         data-row-index={rowIndex}
+        data-canvas-path={`row.${rowIndex}`}
+        data-testid={`dashboard-row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           // Use vertical-only margin so the row stays inside its parent's
@@ -528,6 +614,15 @@ const Dashboard = ({ projectId, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}`}
+            // Additive selection anchors consumed by the Workspace canvas's
+            // overlay layer (VIS-768). These data attributes are inert in View
+            // mode and keep Dashboard's render at parity — the overlay reads
+            // them via event delegation + getBoundingClientRect to place
+            // hover/selection rings, never mutating this render. `data-canvas-path`
+            // is the composite key (matches OutlineTreePanel) the overlay resolves
+            // in both directions; `data-canvas-item-index` is kept for back-compat.
+            data-canvas-item-index={itemIndex}
+            data-canvas-path={`row.${rowIndex}.item.${itemIndex}`}
             className={isColumn ? 'w-full max-w-full min-w-0' : 'min-w-0 overflow-hidden'}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
@@ -552,6 +647,8 @@ const Dashboard = ({ projectId, dashboardName }) => {
                 visibleItems,
                 row.height !== 'compact' ? getHeight(row.height) : undefined,
                 width, // top-level container width = dashboard width
+                '', // keyPrefix (top level needs none)
+                `row.${rowIndex}.item.${itemIndex}`,
               )}
             </div>
           </div>

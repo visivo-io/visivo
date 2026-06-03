@@ -6,10 +6,10 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
  * CanvasSelectionOverlay — VIS-D2 / VIS-768.
  *
  * The editing-affordance overlay layer for the Workspace dashboard canvas.
- * <ProjectCanvas> wraps the render-only <DashboardNew>; this component sits
+ * <ProjectCanvas> wraps the render-only <Dashboard>; this component sits
  * ABOVE that render (a sibling absolutely-positioned layer) and:
  *
- *   1. Reads the rendered DashboardNew DOM via event delegation. Every row
+ *   1. Reads the rendered Dashboard DOM via event delegation. Every row
  *      container and item slot — at ANY nesting depth — carries a composite
  *      `data-canvas-path` (additive marker, inert in View mode). The overlay
  *      never mutates that render — it measures it with getBoundingClientRect
@@ -45,7 +45,7 @@ import { emitWorkspaceEvent } from '../../workspace/telemetry';
 //   `row.<ri>`                           → a (possibly nested) row
 //   `row.<ri>.item.<ii>`                 → an item
 //   `row.<ri>.item.<ii>.row.<ri>.item.<ii>…` → arbitrarily nested rows/items
-// DashboardNew emits the same string on each row container / item slot as
+// Dashboard emits the same string on each row container / item slot as
 // `data-canvas-path`, so the overlay resolves a click → key (closest) and a
 // key → box (querySelector) by direct attribute match at ANY depth — no
 // index parsing, so nested layouts round-trip 1:1 in both directions.
@@ -99,7 +99,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
 
-  // Hovered + selected box geometry, measured from the live DashboardNew DOM.
+  // Hovered + selected box geometry, measured from the live Dashboard DOM.
   const [hoverBox, setHoverBox] = useState(null); // { rect, kind }
   const [selectedBox, setSelectedBox] = useState(null); // { rect, kind }
   const hoverTargetRef = useRef(null); // last resolved hover target descriptor
@@ -114,7 +114,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       return;
     }
     // Direct composite-path match — works at any nesting depth. The same string
-    // is emitted by DashboardNew (`data-canvas-path`) and produced by the
+    // is emitted by Dashboard (`data-canvas-path`) and produced by the
     // Outline tree, so a nested key like `row.0.item.1.row.0.item.0` rings the
     // exact nested leaf rather than its top-level container.
     const el = root.querySelector(`[data-canvas-path="${selectedKey}"]`);
@@ -207,7 +207,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
   );
 
   // Bind pointer handlers to the canvas root (delegation) rather than an
-  // overlapping transparent layer, so DashboardNew's own interactive content
+  // overlapping transparent layer, so Dashboard's own interactive content
   // (Plotly hover, table scroll, links) keeps working. The overlay <div>s we
   // paint are pointer-events-none.
   useEffect(() => {

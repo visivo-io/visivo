@@ -8,7 +8,6 @@ import Project from './components/project/Project';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
-import ProjectNew from './components/new-views/project/ProjectNew'; // Container component
 import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
 import Workspace from './components/new-views/workspace/Workspace';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
@@ -80,19 +79,6 @@ const LocalRouter = createBrowserRouter(
             crumb: match => (
               <BreadcrumbLink to={`/workspace/dashboard/${match.params.dashboardName}`}>
                 {match.params.dashboardName}
-              </BreadcrumbLink>
-            ),
-          }}
-        />
-        <Route
-          id="project-new"
-          path="/project-new/:dashboardName?"
-          element={<ProjectNew />}
-          loader={loadProject}
-          handle={{
-            crumb: match => (
-              <BreadcrumbLink to={match.params.dashboardName ? `/project-new/${match.params.dashboardName}` : '/project-new'}>
-                {match.params.dashboardName ? `${match.params.dashboardName} (New)` : 'Project (New)'}
               </BreadcrumbLink>
             ),
           }}

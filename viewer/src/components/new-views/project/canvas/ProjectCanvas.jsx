@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
-import DashboardNew from '../DashboardNew';
+import Dashboard from '../../../project/Dashboard';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
  * Workspace dashboard canvas (a.k.a. the "Canvas"/preview lens).
  *
- * The canvas IS the dashboard: it wraps the render-only <DashboardNew> so at
+ * The canvas IS the dashboard: it wraps the render-only <Dashboard> so at
  * rest it stays pixel-identical to View mode (`/project/<name>`). VIS-D2 adds
  * an editing-affordance OVERLAY layer ON TOP of that render — never mutating
  * it. The overlay (<CanvasSelectionOverlay>):
@@ -27,7 +27,7 @@ import CanvasSelectionOverlay from './CanvasSelectionOverlay';
  */
 const ProjectCanvas = ({ projectId, dashboardName }) => {
   // The overlay measures + delegates pointer events against this positioned
-  // root, so the rings land exactly over DashboardNew's rows/items.
+  // root, so the rings land exactly over Dashboard's rows/items.
   const rootRef = useRef(null);
 
   return (
@@ -36,7 +36,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       data-testid="project-canvas"
       className="relative flex flex-1 min-h-0 w-full max-w-full"
     >
-      <DashboardNew projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
+      <Dashboard projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
       <CanvasSelectionOverlay rootRef={rootRef} />
     </div>
   );

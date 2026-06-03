@@ -1,7 +1,7 @@
 /**
  * CanvasSelectionOverlay (VIS-D2 / VIS-768).
  *
- * The overlay reads the rendered DashboardNew DOM via event delegation — every
+ * The overlay reads the rendered Dashboard DOM via event delegation — every
  * row container and item slot, at ANY nesting depth, carries a composite
  * `data-canvas-path` (the SAME key the OutlineTreePanel uses). It writes the
  * workspace selection to `workspaceOutlineSelectedKey` and paints
@@ -32,7 +32,7 @@ const stubRect = (el, rect) => {
 };
 
 /**
- * Harness: a positioned root that mimics ProjectCanvas — a fake DashboardNew
+ * Harness: a positioned root that mimics ProjectCanvas — a fake Dashboard
  * DOM (two rows, items carrying the composite `data-canvas-path`) plus the
  * overlay wired to the same root ref.
  */
@@ -61,7 +61,7 @@ const Harness = () => {
 };
 
 /**
- * NestedHarness: mirrors the DOM DashboardNew emits for a nested-layout
+ * NestedHarness: mirrors the DOM Dashboard emits for a nested-layout
  * dashboard — a container item (`row.2.item.0`) whose nested row
  * (`row.2.item.0.row.0`) holds two deep leaves. The deep leaf slot is nested
  * INSIDE the container slot, exactly as the real render nests them, so
@@ -117,7 +117,7 @@ const measureNestedDom = () => {
   stubRect(screen.getByTestId('deep-leaf-1'), { top: 8, left: 502, width: 490, height: 384 });
 };
 
-// The overlay binds NATIVE listeners (so DashboardNew's own interactivity is
+// The overlay binds NATIVE listeners (so Dashboard's own interactivity is
 // preserved), so the state updates they trigger fall outside React's synthetic
 // batching — wrap every dispatch in act() to flush them.
 const dispatch = (fn, ...args) =>

@@ -20,13 +20,13 @@ import Workspace from './Workspace';
 import useStore from '../../../stores/store';
 import { setWorkspaceTelemetryListener } from './telemetry';
 
-// DashboardNew has heavy dependencies (insights data, plotly, etc.) — stub
+// Dashboard has heavy dependencies (insights data, plotly, etc.) — stub
 // it out so the Workspace shell render stays focused on shell behaviour.
-jest.mock('../project/DashboardNew', () => ({
+jest.mock('../../project/Dashboard', () => ({
   __esModule: true,
   default: ({ projectId, dashboardName }) => (
     <div data-testid="dashboard-new-stub">
-      DashboardNew {projectId}:{dashboardName}
+      Dashboard {projectId}:{dashboardName}
     </div>
   ),
 }));
@@ -152,7 +152,7 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-middle-dashboard')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-middle-dashboard-canvas')).toBeInTheDocument();
     expect(screen.getByTestId('dashboard-new-stub')).toHaveTextContent(
-      'DashboardNew p1:simple-dashboard'
+      'Dashboard p1:simple-dashboard'
     );
   });
 

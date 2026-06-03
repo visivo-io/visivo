@@ -153,7 +153,7 @@ test.describe('Dashboard stacking breakpoint (VIS-829)', () => {
     page,
   }) => {
     await page.setViewportSize(WIDE);
-    await page.goto('/project-new/simple-dashboard');
+    await page.goto('/project/simple-dashboard');
     await page.waitForLoadState('networkidle');
 
     const dashboard = page.getByTestId('dashboard_simple-dashboard');

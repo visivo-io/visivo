@@ -5,7 +5,7 @@
  *   - project chrome / unscoped → mounts the real `<ProjectEditor>` (M-1),
  *     replacing the old "coming soon" placeholder.
  *   - dashboard + lineage lens → mounts `<LineageCanvas>` (VIS-E1); the canvas
- *     lens renders `<ProjectCanvas>` (render-only DashboardNew wrapper, VIS-767).
+ *     lens renders `<ProjectCanvas>` (render-only Dashboard wrapper, VIS-767).
  *   - any non-dashboard object → `<PerObjectPane>`, which defaults to the
  *     universal Lineage lens (VIS-779) and keeps Preview as the Track N
  *     placeholder.
@@ -79,8 +79,8 @@ describe('MiddlePane — dashboard lineage lens (VIS-E1)', () => {
     seed({ workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-dashboard-canvas')).toBeInTheDocument();
-    // The canvas lens now mounts ProjectCanvas (render-only DashboardNew
-    // wrapper, VIS-767) rather than DashboardNew directly.
+    // The canvas lens now mounts ProjectCanvas (render-only Dashboard
+    // wrapper, VIS-767) rather than Dashboard directly.
     expect(screen.getByTestId('project-canvas-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
   });

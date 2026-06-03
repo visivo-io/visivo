@@ -14,12 +14,19 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () => [new URLSearchParams(), jest.fn()],
 }));
 
-// Mock the dimension hook
+// Mock the dimension hook. `mockDimensionWidth` lets individual tests drive the
+// CONTAINER width that Dashboard measures via the ResizeObserver-backed
+// `useDimensions` hook, so we can exercise the stacking breakpoint at different
+// container widths (VIS-829).
+let mockDimensionWidth = 1200;
 jest.mock('react-cool-dimensions', () => ({
   __esModule: true,
   default: () => ({
     observe: jest.fn(),
-    width: 1200,
+    // eslint-disable-next-line no-undef
+    get width() {
+      return mockDimensionWidth;
+    },
   }),
 }));
 
@@ -39,10 +46,20 @@ jest.mock('../../hooks/useVisibleRows', () => ({
   })),
 }));
 
-// Mock the item components
+// Mock the item components.
+// `data-insights` exposes the resolved insights array Dashboard hands the
+// Chart so VIS-827 normalization (string refs -> {name} objects) is assertable.
 jest.mock('../items/Chart', () => ({
   __esModule: true,
-  default: ({ chart }) => <div data-testid="chart">{chart.name || 'Chart'}</div>,
+  default: ({ chart, shouldLoad }) => (
+    <div
+      data-testid="chart"
+      data-insights={JSON.stringify(chart.insights || [])}
+      data-should-load={String(shouldLoad)}
+    >
+      {chart.name || 'Chart'}
+    </div>
+  ),
 }));
 
 jest.mock('../items/Table', () => ({
@@ -85,6 +102,8 @@ describe('Dashboard', () => {
   };
 
   beforeEach(() => {
+    // Default to a wide container; stacking tests override per-test.
+    mockDimensionWidth = 1200;
     // Mock store selectors
     useStore.mockImplementation((selector) => {
       const state = {
@@ -129,6 +148,67 @@ describe('Dashboard', () => {
     );
 
     expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+  });
+
+  // ---------- VIS-827: eager-load all rows on the new renderer ----------
+  //
+  // The Workspace canvas mounts <Dashboard> inside an inner overflow-auto
+  // scroll container, where the useVisibleRows IntersectionObserver never fires
+  // for rows below the initial fold. With lazy gating that left those rows'
+  // charts on a permanent "Loading…" spinner even though the data was already
+  // in the store. eagerLoad (default true) makes every row loadable.
+  describe('eager-load all rows (VIS-827)', () => {
+    const twoRowDashboard = {
+      name: 'two-row',
+      rows: [
+        { height: 'medium', items: [{ chart: 'chart-top', width: 1 }] },
+        { height: 'medium', items: [{ chart: 'chart-low', width: 1 }] },
+      ],
+    };
+    const chartConfigs = {
+      'chart-top': { name: 'chart-top', config: { name: 'chart-top', insights: [] } },
+      'chart-low': { name: 'chart-low', config: { name: 'chart-low', insights: [] } },
+    };
+    const renderTwoRow = (props = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [twoRowDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => chartConfigs[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName="two-row" {...props} />
+        </BrowserRouter>
+      );
+    };
+
+    it('passes shouldLoad=true to charts in rows beyond the visible set (eager default)', () => {
+      // useVisibleRows is mocked to report only row 0 visible; eagerLoad should
+      // override that so the row-1 chart still loads instead of spinning forever.
+      renderTwoRow();
+      const chartEls = screen.getAllByTestId('chart');
+      expect(chartEls).toHaveLength(2);
+      chartEls.forEach(c => expect(c.getAttribute('data-should-load')).toBe('true'));
+    });
+
+    it('falls back to row-visibility gating when eagerLoad is false', () => {
+      renderTwoRow({ eagerLoad: false });
+      const chartEls = screen.getAllByTestId('chart');
+      // row 0 is in the mocked visible set ({0}), row 1 is not
+      expect(chartEls[0].getAttribute('data-should-load')).toBe('true');
+      expect(chartEls[1].getAttribute('data-should-load')).toBe('false');
+    });
   });
 
   it('renders empty state when dashboard has no rows', () => {
@@ -260,7 +340,7 @@ describe('Dashboard', () => {
       });
       return render(
         <BrowserRouter future={futureFlags}>
-          <Dashboard project={mockProject} dashboardName={dashboard.name} />
+          <Dashboard project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
         </BrowserRouter>
       );
     };
@@ -317,6 +397,38 @@ describe('Dashboard', () => {
       // Two sub-rows inside this wrapper.
       const subRows = screen.getAllByTestId('dashboard-nested-subrow');
       expect(subRows).toHaveLength(2);
+    });
+
+    it('floors the nested-rows container at a definite minHeight in STACKED mode (no 0-height collapse)', () => {
+      // Narrow container → column/stacked mode (< the 768 breakpoint). The row
+      // has no definite CSS height when stacked, so the nested-rows wrapper's
+      // `h-full` would collapse to 0 (and every nested sub-row/leaf with it).
+      // The minHeight floor must give it a definite, non-zero height instead.
+      mockDimensionWidth = 600;
+      const dashboard = {
+        name: 'stacked-nested',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              { width: 1, chart: 'big-chart' },
+              {
+                width: 1,
+                rows: [
+                  { height: 'small', items: [{ chart: 'small-a' }] },
+                  { height: 'small', items: [{ chart: 'small-b' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+
+      const wrapper = screen.getByTestId('dashboard-nested-rows');
+      const minHeight = wrapper.style.minHeight;
+      expect(minHeight).toBeTruthy();
+      expect(parseInt(minHeight, 10)).toBeGreaterThan(0);
     });
 
     it('assigns equal flex weights to two equal-height sub-rows', () => {
@@ -454,6 +566,383 @@ describe('Dashboard', () => {
 
       // The "Chart not found" placeholder should appear inside the nested slot.
       expect(screen.getByText(/Chart not found/)).toBeInTheDocument();
+    });
+  });
+
+  // ---------- VIS-A1: Row.height accepts Union[HeightEnum, int] ----------
+
+  describe('Row.height numeric (VIS-A1)', () => {
+    const mountDashboardWithRowHeight = (height) => {
+      const dashboard = {
+        name: 'height-test',
+        rows: [
+          { height, items: [{ chart: 'test-chart', width: 1 }] },
+        ],
+      };
+      useStore.mockImplementation((selector) => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn((name) => (name === 'test-chart' ? mockChart : null)),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName="height-test" />
+        </BrowserRouter>
+      );
+    };
+
+    it('honors integer row.height as a literal pixel value', () => {
+      mountDashboardWithRowHeight(320);
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('320px');
+    });
+
+    it('maps enum row.height through the existing pixel table', () => {
+      mountDashboardWithRowHeight('medium');
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.height).toBe('396px');
+    });
+  });
+
+  // ---------- VIS-827: normalize chart insight string refs ----------
+  //
+  // When the dashboard comes from the /api/dashboards/ store endpoint (the path
+  // <Dashboard> uses on both /project-new and the Workspace canvas lens),
+  // embedded chart objects carry their `insights` as un-resolved context-string
+  // refs ("${ref(name)}"). Chart.jsx derives the names it loads via
+  // `chart.insights.map(i => i.name)`, so without normalization the names are
+  // undefined and the chart spins forever. resolveItem must convert string refs
+  // into { name } objects for BOTH the string-ref chart branch and the embedded
+  // chart-object branch.
+  //
+  // The literal "${ref(name)}" fixtures below are deliberate context-string
+  // refs (the exact un-resolved shape the API returns), not template literals.
+  /* eslint-disable no-template-curly-in-string */
+  describe('chart insight ref normalization (VIS-827)', () => {
+    const renderWithDashboard = (dashboard, charts = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
+        </BrowserRouter>
+      );
+    };
+
+    const insightsOf = () =>
+      JSON.parse(screen.getByTestId('chart').getAttribute('data-insights'));
+
+    it('normalizes string-ref insights on an embedded chart object', () => {
+      const dashboard = {
+        name: 'embedded-chart',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'embedded',
+                  insights: ['${ref(fibonacci-waterfall)}', '${ref(example-indicator)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([
+        { name: 'fibonacci-waterfall' },
+        { name: 'example-indicator' },
+      ]);
+    });
+
+    it('normalizes string-ref insights when the chart is resolved by name', () => {
+      const dashboard = {
+        name: 'ref-chart',
+        rows: [{ height: 'medium', items: [{ width: 1, chart: 'by-name' }] }],
+      };
+      const charts = {
+        'by-name': { name: 'by-name', config: { name: 'by-name', insights: ['${ref(simple-line)}'] } },
+      };
+      renderWithDashboard(dashboard, charts);
+      expect(insightsOf()).toEqual([{ name: 'simple-line' }]);
+    });
+
+    it('preserves embedded insight objects (name/props/interactions) untouched', () => {
+      const embeddedInsight = {
+        name: 'double-simple-line',
+        props: { type: 'scatter', x: '?{${ref(m).x}}' },
+        interactions: [{ sort: '?{${ref(m).x} ASC}' }],
+      };
+      const dashboard = {
+        name: 'mixed-insights',
+        rows: [
+          {
+            height: 'medium',
+            items: [
+              {
+                width: 1,
+                chart: {
+                  name: 'mixed',
+                  insights: [embeddedInsight, '${ref(simple-line)}'],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      renderWithDashboard(dashboard);
+      expect(insightsOf()).toEqual([embeddedInsight, { name: 'simple-line' }]);
+    });
+  });
+  /* eslint-enable no-template-curly-in-string */
+
+  // ---------- VIS-829: container-relative stacking breakpoint ----------
+
+  describe('stacking breakpoint (VIS-829)', () => {
+    const twoChart = () => ({
+      name: 'two-item-dash',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 1, chart: 'chart-a' },
+            { width: 1, chart: 'chart-b' },
+          ],
+        },
+      ],
+    });
+
+    const charts = {
+      'chart-a': { name: 'chart-a', config: { name: 'chart-a', insights: [] } },
+      'chart-b': { name: 'chart-b', config: { name: 'chart-b', insights: [] } },
+    };
+
+    const mountAtWidth = (containerWidth, dashboard) => {
+      mockDimensionWidth = containerWidth;
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
+        </BrowserRouter>
+      );
+    };
+
+    it('lays out a multi-item row side-by-side (grid) at a wide container width', () => {
+      mountAtWidth(1200, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+      expect(row.style.flexDirection).toBe('');
+      expect(row.style.gridTemplateColumns).toContain('repeat(2');
+    });
+
+    it('keeps a multi-item row side-by-side just above the new 768px breakpoint', () => {
+      // 900px would have STACKED under the old 1024 threshold; with 768 it stays
+      // side-by-side. This is the core regression the lowered breakpoint fixes.
+      mountAtWidth(900, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+    });
+
+    it('stacks a multi-item row into a column on a genuinely narrow container', () => {
+      mountAtWidth(600, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('flex');
+      expect(row.style.flexDirection).toBe('column');
+    });
+
+    it('stacks exactly at the breakpoint boundary (width < 768 stacks)', () => {
+      mountAtWidth(767, twoChart());
+      const rowStacked = screen.getByTestId('dashboard-row-0');
+      expect(rowStacked.style.display).toBe('flex');
+    });
+
+    it('does NOT stack at exactly 768px (boundary is exclusive)', () => {
+      mountAtWidth(768, twoChart());
+      const row = screen.getByTestId('dashboard-row-0');
+      expect(row.style.display).toBe('grid');
+    });
+
+    it('uses the default 1024 breakpoint when no stackBreakpoint prop is passed (static viewing)', () => {
+      // Static surfaces (/project-new, and /project once VIS-833 routes it
+      // through Dashboard) mount with no stackBreakpoint, so the 1024 default
+      // applies: a 900px container STACKS here, whereas the canvas
+      // (stackBreakpoint=768) keeps the same row side-by-side at 900px.
+      const dash = twoChart();
+      mockDimensionWidth = 900;
+      useStore.mockImplementation(selector =>
+        selector({
+          project: mockProject,
+          dashboards: [dash],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        })
+      );
+      render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName={dash.name} />
+        </BrowserRouter>
+      );
+      expect(screen.getByTestId('dashboard-row-0').style.display).toBe('flex');
+    });
+  });
+
+  // ---------- VIS-829: slot-relative nested-container stacking ----------
+
+  describe('nested-container slot-relative stacking (VIS-829)', () => {
+    const charts = {
+      'kpi-a': { name: 'kpi-a', config: { name: 'kpi-a', insights: [] } },
+      'kpi-b': { name: 'kpi-b', config: { name: 'kpi-b', insights: [] } },
+    };
+
+    // A wide dashboard with a multi-item NESTED row inside a narrow 1/4 slot.
+    // The nested row must stack (its slot is ~1/4 of the dashboard) even though
+    // the dashboard itself is wide.
+    const narrowSlotDashboard = {
+      name: 'narrow-slot',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            { width: 3, chart: 'kpi-a' },
+            {
+              width: 1,
+              rows: [
+                {
+                  height: 'small',
+                  items: [
+                    { width: 1, chart: 'kpi-a' },
+                    { width: 1, chart: 'kpi-b' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    // A wide dashboard with the nested multi-item row inside a wide slot.
+    const wideSlotDashboard = {
+      name: 'wide-slot',
+      rows: [
+        {
+          height: 'medium',
+          items: [
+            {
+              width: 1,
+              rows: [
+                {
+                  height: 'small',
+                  items: [
+                    { width: 1, chart: 'kpi-a' },
+                    { width: 1, chart: 'kpi-b' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const mountAtWidth = (containerWidth, dashboard) => {
+      mockDimensionWidth = containerWidth;
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [dashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          getChartByName: jest.fn(name => charts[name] ?? null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName={dashboard.name} stackBreakpoint={768} />
+        </BrowserRouter>
+      );
+    };
+
+    it('stacks a nested multi-item row when its slot is narrow even on a wide dashboard', () => {
+      // Dashboard 1200px; nested slot is 1/4 → ~300px < 768 → stack.
+      mountAtWidth(1200, narrowSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('flex');
+      expect(nestedRow.style.flexDirection).toBe('column');
+    });
+
+    it('lays a nested multi-item row side-by-side when its slot is wide', () => {
+      // Dashboard 1200px; nested slot is the full width (single item, width 1)
+      // → ~1200px ≥ 768 → grid side-by-side.
+      mountAtWidth(1200, wideSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('grid');
+      expect(nestedRow.style.gridTemplateColumns).toContain('repeat(2');
+    });
+
+    it('stacks the nested row when the whole dashboard is narrow', () => {
+      mountAtWidth(600, wideSlotDashboard);
+      const nestedRow = screen.getAllByTestId('dashboard-nested-row')[0];
+      expect(nestedRow).toBeTruthy();
+      expect(nestedRow.style.display).toBe('flex');
     });
   });
 });
