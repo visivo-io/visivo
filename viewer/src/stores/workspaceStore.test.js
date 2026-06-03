@@ -264,4 +264,37 @@ describe('workspace store slice', () => {
     expect(returned).toBeNull();
     expect(useStore.getState().saveDashboard).not.toHaveBeenCalled();
   });
+
+  test('updateDashboardConfigOptimistic replaces the draft config without saving (VIS-802)', () => {
+    const saveDashboard = jest.fn();
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
+        saveDashboard,
+      });
+    });
+
+    const nextConfig = { name: 'd1', rows: [{ height: 'large', items: [] }] };
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('d1', nextConfig);
+    });
+
+    expect(returned).toBe(true);
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows[0].height).toBe('large');
+    // It only mutates the in-memory list — never persists.
+    expect(saveDashboard).not.toHaveBeenCalled();
+  });
+
+  test('updateDashboardConfigOptimistic is a no-op for an unknown dashboard (VIS-802)', () => {
+    act(() => {
+      useStore.setState({ dashboards: [] });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateDashboardConfigOptimistic('missing', { rows: [] });
+    });
+    expect(returned).toBe(false);
+  });
 });

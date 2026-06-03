@@ -10,15 +10,20 @@ export const ALLOWED_LEAF_TYPES = ['chart', 'table', 'markdown', 'input'];
  * inspecting the per-type ref fields the dashboard model uses
  * (`chart` / `table` / `markdown` / `input`). Returns null when the item holds
  * no leaf ref (empty leaf, or a row-container).
+ *
+ * A leaf may be stored two ways and BOTH must resolve (VIS-802 GAP-1):
+ *   - a ref STRING  — `ref(name)` / `${ref(name)}` / a bare name (authoring), or
+ *   - a compiled OBJECT — `{ name, path, insights, … }` (what real dashboards
+ *     carry in project.json). The object form is the common case; treating only
+ *     strings as leaves mis-routed every real chart/table item as an empty slot.
  */
 export const getItemLeafRef = item => {
   if (!item) return null;
   for (const field of LEAF_REF_FIELDS) {
     const val = item[field];
-    if (val) {
-      const name = parseRefValue(val);
-      if (name) return { type: field, name };
-    }
+    if (!val) continue;
+    const name = typeof val === 'object' ? val.name || parseRefValue(val.path) : parseRefValue(val);
+    if (name) return { type: field, name };
   }
   return null;
 };

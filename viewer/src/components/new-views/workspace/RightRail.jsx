@@ -2,20 +2,20 @@ import React from 'react';
 import { PiList, PiPencil, PiSidebar } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import OutlineTreePanel from './OutlineTreePanel';
+import RightRailEditPanel from './RightRailEditPanel';
 import { emitWorkspaceEvent } from './telemetry';
 
 /**
- * RightRail — Outline / Edit tab host (VIS-775 / Track B B2).
+ * RightRail — Outline / Edit tab host (VIS-775 / Track B B2; VIS-802 / G-1).
  *
- * Two tabs (mulberry underline indicator on the active one):
- *   - **Outline** — compact tree of the active object (project for the
- *     unscoped surface, dashboard structure for a scoped dashboard, etc.).
- *     Real tree ships in VIS-F3.
- *   - **Edit** — selection-driven property editor. Real form ships in
- *     VIS-G1 (and the per-object forms in Track G).
- *
- * The active object's `name` is surfaced in the Edit-tab placeholder so the
- * shell visibly reacts to tab/selection changes during Phase 0.
+ * EXACTLY two tabs — Outline + Edit (NO History tab/stub, per the 2026-05-31
+ * decision). The active one gets a mulberry underline.
+ *   - **Outline** — compact tree of the scoped dashboard (<OutlineTreePanel>,
+ *     F-3).
+ *   - **Edit** — the selection-driven property editor (<RightRailEditPanel>,
+ *     G-1). Routes the form per Q25 from `workspaceActiveObject` +
+ *     `workspaceOutlineSelectedKey`, fronts each with a selection chip, and
+ *     auto-saves with a debounce (no Save buttons for the structure forms).
  */
 
 const TABS = [
@@ -50,45 +50,21 @@ const TabBtn = ({ tab, active, onClick }) => {
   );
 };
 
-const RightRailBody = ({ activeTab, activeObject }) => {
+const RightRailBody = ({ activeTab }) => {
   if (activeTab === 'outline') {
     // VIS-793 / Track F F-3 — the real Outline tree of the scoped dashboard.
     return <OutlineTreePanel />;
   }
   // Edit is the default tab — also the fallthrough so any unknown tab key
-  // still renders the editor surface rather than a blank panel.
-  return (
-    <div
-      data-testid="workspace-right-rail-edit"
-      className="flex flex-1 items-start justify-center px-6 py-8 text-center"
-    >
-      <div className="text-gray-500">
-        <PiPencil aria-hidden="true" className="mx-auto mb-2 h-5 w-5 text-gray-400" />
-        <p className="text-[12px] leading-relaxed">
-          Edit form coming soon (VIS-G1)
-          {activeObject && (
-            <>
-              {' '}
-              — selected:{' '}
-              <span
-                className="font-medium text-gray-700"
-                data-testid="workspace-right-rail-edit-active-name"
-              >
-                {activeObject.name}
-              </span>
-            </>
-          )}
-        </p>
-      </div>
-    </div>
-  );
+  // still renders the editor surface rather than a blank panel. The full
+  // selection-driven router lives in <RightRailEditPanel> (VIS-802 / G-1).
+  return <RightRailEditPanel />;
 };
 
 const RightRailExpanded = ({
   activeTab,
   onSelectTab,
   onCollapse,
-  activeObject,
 }) => {
   return (
     <aside
@@ -118,7 +94,7 @@ const RightRailExpanded = ({
           <PiSidebar className="h-4 w-4 -scale-x-100" />
         </button>
       </div>
-      <RightRailBody activeTab={activeTab} activeObject={activeObject} />
+      <RightRailBody activeTab={activeTab} />
     </aside>
   );
 };
@@ -173,7 +149,6 @@ const RightRail = () => {
   const toggleCollapsed = useStore(s => s.toggleWorkspaceRightCollapsed);
   const activeTab = useStore(s => s.workspaceRightTab);
   const setRightTab = useStore(s => s.setWorkspaceRightTab);
-  const activeObject = useStore(s => s.workspaceActiveObject);
 
   // Wrap the store setter so the right-rail tab switch fires telemetry
   // (VIS-793). Only emit when the tab actually changes — re-clicking the
@@ -194,7 +169,6 @@ const RightRail = () => {
       activeTab={activeTab}
       onSelectTab={onSelectTab}
       onCollapse={toggleCollapsed}
-      activeObject={activeObject}
     />
   );
 };

@@ -31,6 +31,20 @@ jest.mock('../project/DashboardNew', () => ({
   ),
 }));
 
+// The right rail's Edit tab now renders the real leaf/data-layer edit forms
+// inline (VIS-802 GAP-2). Those pull in preview machinery + their own collection
+// fetches, which is out of scope for the shell mount tests — stub them so e.g. a
+// `chart` active object doesn't mount the full ChartEditForm here.
+const stubLeafForm = label => ({ __esModule: true, default: () => <div data-testid={label} /> });
+jest.mock('../common/ChartEditForm', () => stubLeafForm('chart-edit-form-stub'));
+jest.mock('../common/TableEditForm', () => stubLeafForm('table-edit-form-stub'));
+jest.mock('../common/SourceEditForm', () => stubLeafForm('source-edit-form-stub'));
+jest.mock('../common/InsightEditForm', () => stubLeafForm('insight-edit-form-stub'));
+jest.mock('../common/ModelEditForm', () => stubLeafForm('model-edit-form-stub'));
+jest.mock('../common/DimensionEditForm', () => stubLeafForm('dimension-edit-form-stub'));
+jest.mock('../common/MetricEditForm', () => stubLeafForm('metric-edit-form-stub'));
+jest.mock('../common/RelationEditForm', () => stubLeafForm('relation-edit-form-stub'));
+
 const resetWorkspaceStore = () => {
   act(() => {
     useStore.setState({
@@ -64,6 +78,18 @@ const resetWorkspaceStore = () => {
       fetchMetrics: jest.fn(),
       fetchRelations: jest.fn(),
       fetchInsights: jest.fn(),
+      fetchDashboards: jest.fn(),
+      // Right-rail Edit routing (VIS-802) reads the scoped dashboard's draft
+      // config from `dashboards` and auto-saves via `saveDashboard`.
+      dashboards: [
+        { name: 'simple-dashboard', config: { name: 'simple-dashboard', rows: [] } },
+      ],
+      saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
+      // Collections the Edit panel may read for Library-row leaf forms.
+      charts: [],
+      tables: [],
+      markdowns: [],
+      inputs: [],
     });
   });
 };
@@ -144,11 +170,16 @@ describe('VIS-775 Workspace shell', () => {
     expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
   });
 
-  test('right rail Edit tab surfaces the active object name', () => {
+  test('right rail Edit tab routes to a selection-driven form with a chip (VIS-802)', () => {
     renderAt('/workspace/dashboard/simple-dashboard');
-    expect(
-      screen.getByTestId('workspace-right-rail-edit-active-name')
-    ).toHaveTextContent('simple-dashboard');
+    // The Edit tab now mounts the real selection-driven editor (VIS-802 / G-1)
+    // rather than the old "coming soon" placeholder. Scoped to a dashboard with
+    // the default Outline key ('dashboard'), it shows the dashboard-chrome form
+    // fronted by a selection chip carrying the dashboard name.
+    expect(screen.getByTestId('workspace-right-rail-edit')).toBeInTheDocument();
+    const chip = screen.getByTestId('right-rail-selection-chip');
+    expect(chip).toHaveTextContent('simple-dashboard');
+    expect(chip).toHaveAttribute('data-object-type', 'dashboard');
   });
 
   test('Publish · N button only renders when dirty > 0', () => {
