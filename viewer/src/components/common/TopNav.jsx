@@ -19,11 +19,6 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // `/project-new` is the local-dev-only path that renders ProjectNew;
-  // the dist build still serves the old ProjectContainer at `/project`.
-  const isLocalDev = window.location.hostname === 'localhost' && window.location.port === '3000';
-  const projectRoute = isLocalDev ? '/project-new' : '/project';
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#191D33] border-b border-gray-700">
       <div className="flex justify-between items-center h-12 px-4">
@@ -52,7 +47,7 @@ const TopNav = ({ onDeployClick, onPublishClick, hasUnpublishedChanges }) => {
           <TumblerNavItem
             icon={HiTemplate}
             label="Project"
-            to={projectRoute}
+            to="/project"
             tooltip="View your project as it will look deployed"
             data-onb-target="top-nav-project"
           />

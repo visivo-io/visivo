@@ -24,11 +24,88 @@ from visivo.utils import get_dashboards_dir, sanitize_filename
 from visivo.server.store import background_jobs, background_jobs_lock
 from visivo.constants import DEFAULT_RUN_ID
 
-# Limit concurrent uploads to avoid overloading the API
-semaphore_3 = asyncio.Semaphore(3)
-semaphore_50 = asyncio.Semaphore(50)
+# Limit concurrent uploads to avoid overloading the API.
+#
+# These are looked up per-loop rather than created at module import.
+# ``deploy_phase`` calls ``asyncio.run`` once per phase (dashboards, insights,
+# inputs, models, …); each call spins up a fresh event loop. A module-level
+# ``asyncio.Semaphore`` ends up bound to the first loop's internals, so once
+# that loop is closed the next ``acquire()`` that needs to wait on a Future
+# raises ``RuntimeError`` (this is what produced the "3 succeed then every
+# remaining batch fails" pattern on the model phase). Keying the semaphores
+# by the running loop's id keeps each phase isolated.
+_semaphores_by_loop: dict = {}
 attempt = contextvars.ContextVar("attempt")
 MAX_ATTEMPTS = 3
+
+
+def _semaphores():
+    loop = asyncio.get_running_loop()
+    key = id(loop)
+    sems = _semaphores_by_loop.get(key)
+    if sems is None:
+        sems = (asyncio.Semaphore(3), asyncio.Semaphore(50))
+        _semaphores_by_loop[key] = sems
+    return sems
+
+
+def semaphore_3():
+    return _semaphores()[0]
+
+
+def semaphore_50():
+    return _semaphores()[1]
+
+
+def _unwrap_retry_error(exc: BaseException) -> BaseException:
+    """Return the underlying exception from a ``tenacity.RetryError``.
+
+    Tenacity wraps the final attempt's exception in a ``Future`` on
+    ``RetryError.last_attempt``. We want the actual error (e.g. the
+    ``RuntimeError`` or ``HTTPStatusError`` that ran out of retries), not
+    the opaque ``RetryError(<Future …>)`` repr.
+    """
+    last = getattr(exc, "last_attempt", None)
+    if last is None:
+        return exc
+    try:
+        inner = last.exception()
+    except Exception:
+        return exc
+    return inner if inner is not None else exc
+
+
+def _raise_if_any_failed(results, summary: str):
+    """If any item in an ``asyncio.gather(return_exceptions=True)`` result is
+    a ``BaseException``, raise a ``ClickException`` whose message includes the
+    distinct exception reprs.
+
+    We catch ``BaseException`` (not just ``Exception``) so ``CancelledError``
+    and similar surface in the message instead of degrading to a bare "Failed
+    to …" with no cause attached. ``RetryError`` is unwrapped so the real
+    cause shows up instead of a Future repr.
+    """
+    failures = [r for r in results if isinstance(r, BaseException)]
+    if not failures:
+        return
+    seen = []
+    for f in failures:
+        inner = _unwrap_retry_error(f)
+        rep = repr(inner)
+        extra = ""
+        response = getattr(inner, "response", None)
+        if response is not None:
+            try:
+                body = response.text
+            except Exception:
+                body = "<unreadable response body>"
+            extra = f" — response: {body[:500]}"
+        msg = f"{rep}{extra}"
+        if msg not in seen:
+            seen.append(msg)
+    detail = "\n  ".join(seen)
+    Logger.instance().error(f"{summary} — {len(failures)} batch failure(s):\n  {detail}")
+    raise click.ClickException(f"{summary} — {len(failures)} batch failure(s). See log above.")
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
@@ -39,7 +116,7 @@ async def start_files(file_names, description, form_headers, host, progress):
     files = list(map(lambda file_name: {"filename": file_name}, file_names))
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(url, json=files, headers=form_headers)
@@ -69,7 +146,7 @@ async def finish_files(file_ids, description, form_headers, host, progress):
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
     ids = list(map(lambda id: {"id": id}, file_ids))
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(url, json=ids, headers=form_headers)
@@ -97,7 +174,7 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
     Asynchronously uploads trace data files.
     """
     attempt.set(attempt.get(0) + 1)
-    async with semaphore_50:
+    async with semaphore_50():
         try:
             data_file = f"{output_dir}/{file_name}"
             additional_headers = {}
@@ -154,7 +231,7 @@ async def create_dashboard_records(
         return dashboard_body
 
     body = list(map(dashboard_body, dashboards))
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/dashboards/"
@@ -194,7 +271,7 @@ async def create_insight_records(batch, project_id, json_headers, host, progress
             batch,
         )
     )
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/insight-jobs/"
@@ -234,7 +311,7 @@ async def create_input_records(batch, project_id, json_headers, host, progress):
             batch,
         )
     )
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/input-jobs/"
@@ -273,7 +350,7 @@ async def create_model_records(batch, project_id, json_headers, host, progress):
             batch,
         )
     )
-    async with semaphore_3:
+    async with semaphore_3():
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/model-jobs/"
@@ -323,8 +400,7 @@ async def process_dashboards_async(
     thumbnail_file_uploads_nested = await asyncio.gather(
         create_thumbnail_files_task, return_exceptions=True
     )
-    if any(isinstance(data_file_id, Exception) for data_file_id in thumbnail_file_uploads_nested):
-        raise click.ClickException("Failed to create thumbnail files.")
+    _raise_if_any_failed(thumbnail_file_uploads_nested, "Failed to create thumbnail files")
 
     thumbnail_file_uploads = [item for sublist in thumbnail_file_uploads_nested for item in sublist]
 
@@ -357,8 +433,7 @@ async def process_dashboards_async(
     tasks = []
     tasks.append(finish_files(uploaded_ids, "thumbnail", form_headers, host, progress))
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish thumbnail files.")
+    _raise_if_any_failed(response_items, "Failed to finish thumbnail files")
 
     tasks = []
     tasks.append(
@@ -369,8 +444,7 @@ async def process_dashboards_async(
 
     # Execute the creation of trace records concurrently
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create dashboard records.")
+    _raise_if_any_failed(response_items, "Failed to create dashboard records")
 
 
 async def process_insights_async(
@@ -411,8 +485,7 @@ async def process_insights_async(
         task = start_files(file_names, "insight", form_headers, host, progress)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(r, Exception) for r in data_file_ids):
-        raise click.ClickException("Failed to create insight files.")
+    _raise_if_any_failed(data_file_ids, "Failed to create insight files")
 
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
@@ -430,8 +503,7 @@ async def process_insights_async(
         )
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to upload insight data.")
+    _raise_if_any_failed(response_items, "Failed to upload insight data")
 
     # Finish files
     data_file_ids_list = [item["id"] for item in data_file_uploads]
@@ -441,8 +513,7 @@ async def process_insights_async(
         task = finish_files(batch, "insight", form_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish insight files.")
+    _raise_if_any_failed(response_items, "Failed to finish insight files")
 
     # Create insight records - merge insight metadata with file upload info.
     # Also read the local JSON file content so core can store it on the
@@ -479,8 +550,7 @@ async def process_insights_async(
         task = create_insight_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create insight records.")
+    _raise_if_any_failed(response_items, "Failed to create insight records")
 
 
 async def process_inputs_async(inputs, output_dir, project_id, form_headers, json_headers, host):
@@ -518,8 +588,7 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         task = start_files(file_names, "input", form_headers, host, progress)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(r, Exception) for r in data_file_ids):
-        raise click.ClickException("Failed to create input files.")
+    _raise_if_any_failed(data_file_ids, "Failed to create input files")
 
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
@@ -537,8 +606,7 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         )
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to upload input data.")
+    _raise_if_any_failed(response_items, "Failed to upload input data")
 
     # Finish files
     data_file_ids_list = [item["id"] for item in data_file_uploads]
@@ -548,8 +616,7 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         task = finish_files(batch, "input", form_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish input files.")
+    _raise_if_any_failed(response_items, "Failed to finish input files")
 
     # Create input records - merge input metadata with file upload info.
     # Read the local JSON content so core can store it on the InputJob
@@ -584,8 +651,7 @@ async def process_inputs_async(inputs, output_dir, project_id, form_headers, jso
         task = create_input_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create input records.")
+    _raise_if_any_failed(response_items, "Failed to create input records")
 
 
 async def process_models_async(models, output_dir, project_id, form_headers, json_headers, host):
@@ -609,8 +675,7 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
         task = start_files(file_names, "model", form_headers, host, progress)
         tasks.append(task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(r, Exception) for r in data_file_ids):
-        raise click.ClickException("Failed to create models.")
+    _raise_if_any_failed(data_file_ids, "Failed to create models")
 
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
@@ -628,8 +693,7 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
         )
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to upload model data.")
+    _raise_if_any_failed(response_items, "Failed to upload model data")
 
     # Finish files
     data_file_ids_list = [item["id"] for item in data_file_uploads]
@@ -639,8 +703,7 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
         task = finish_files(batch, "model", form_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to finish models.")
+    _raise_if_any_failed(response_items, "Failed to finish models")
 
     # Create model records - merge model metadata with file upload info
     for i, upload in enumerate(data_file_uploads):
@@ -653,8 +716,7 @@ async def process_models_async(models, output_dir, project_id, form_headers, jso
         task = create_model_records(batch, project_id, json_headers, host, progress)
         tasks.append(task)
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
-    if any(isinstance(item, Exception) for item in response_items):
-        raise click.ClickException("Failed to create model records.")
+    _raise_if_any_failed(response_items, "Failed to create model records")
 
 
 def collect_models_for_insights(insights, dag, output_dir):

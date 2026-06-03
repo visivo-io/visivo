@@ -5,12 +5,11 @@ import useStore from '../stores/store';
 /**
  * Project view loader.
  *
- * Currently still fetches the legacy `/api/project/` bulk-blob endpoint —
- * ProjectContainer (the legacy view) consumes it via `useLoaderData` and
- * reads `project.project_json.dashboards` directly. When ProjectContainer
- * is cut over to ProjectNew, swap the call below for `fetchProject(id)`
- * (the canonical per-resource detail endpoint) and the loader's return
- * value becomes the slim envelope `{id, name, status, config: {defaults}}`.
+ * Currently still fetches the legacy `/api/project/` bulk-blob endpoint and
+ * stashes it on the store as `project`; the Project view reads dashboards
+ * from their own store slice and tolerates either envelope shape. Swapping
+ * the call below for `fetchProject(id)` (the canonical per-resource detail
+ * endpoint) would slim the return to `{id, name, status, config: {defaults}}`.
  *
  * The `id` is whatever the URL identifies the project as: locally that's
  * the project name (visivo serve has one project, keyed by name), in

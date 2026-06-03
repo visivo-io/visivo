@@ -4,7 +4,7 @@ import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
 import { loadError } from './loaders/error';
 import Home from './components/Home';
-import ProjectContainer from './components/project/ProjectContainer';
+import Project from './components/project/Project';
 import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
@@ -108,7 +108,7 @@ const LocalRouter = createBrowserRouter(
         <Route
           id="project"
           path="/project"
-          element={<ProjectContainer />}
+          element={<Project />}
           errorElement={<ErrorPage />}
           shouldRevalidate={() => false}
           loader={loadProject}
@@ -116,10 +116,10 @@ const LocalRouter = createBrowserRouter(
             crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink>,
           }}
         >
-          <Route index element={<ProjectContainer />} />
+          <Route index element={<Project />} />
           <Route
             path=":dashboardName?/*"
-            element={<ProjectContainer />}
+            element={<Project />}
             loader={loadProject}
             shouldRevalidate={() => false}
             handle={{

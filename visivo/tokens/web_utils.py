@@ -1,5 +1,20 @@
+import base64
 import urllib.parse
 import webbrowser
+from functools import lru_cache
+from pathlib import Path
+
+# The canonical Visivo "v" logo. Lives in the viewer's images dir — the design
+# system says to copy this asset rather than recreate it as SVG / CSS art.
+_LOGO_PATH = Path(__file__).resolve().parents[2] / "viewer" / "src" / "images" / "logo.png"
+
+
+@lru_cache(maxsize=1)
+def _logo_data_uri() -> str:
+    try:
+        return "data:image/png;base64," + base64.b64encode(_LOGO_PATH.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
 
 
 def open_url(url: str) -> bool:
@@ -85,19 +100,9 @@ def generate_success_html_response(
             margin-bottom: 1.5rem;
           }}
           .brand-mark {{
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: var(--color-primary-500);
-            color: #ecefcb;
-            font-family: 'Caveat', 'Brush Script MT', cursive;
-            font-size: 36px;
-            font-weight: 700;
-            line-height: 1;
-            padding-bottom: 4px;
+            display: inline-block;
+            width: 56px;
+            height: 56px;
           }}
           .card {{
             background: #ffffff;
@@ -187,7 +192,7 @@ def generate_success_html_response(
       <body>
         <div>
           <div class="brand">
-            <span class="brand-mark">v</span>
+            <img src="{_logo_data_uri()}" alt="Visivo" class="brand-mark" />
           </div>
           <div class="card">
             <div class="success-icon">
