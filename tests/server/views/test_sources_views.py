@@ -91,7 +91,7 @@ class TestSourcesViews:
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
 
         response = client.post(
-            "/api/sources/new_source/save/",
+            "/api/sources/new_source/",
             json={"type": "sqlite", "database": "test.db"},
             content_type="application/json",
         )
@@ -103,7 +103,7 @@ class TestSourcesViews:
 
     def test_save_source_no_config(self, client, app):
         """Test saving a source without configuration."""
-        response = client.post("/api/sources/test/save/", content_type="application/json")
+        response = client.post("/api/sources/test/", content_type="application/json")
 
         assert response.status_code == 400
         data = response.get_json()

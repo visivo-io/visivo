@@ -29,7 +29,6 @@ def register_inputs_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/inputs/<input_name>/", methods=["POST"])
-    @app.route("/api/inputs/<input_name>/save/", methods=["POST"])
     def save_input_crud(input_name):
         """Save an input configuration to cache (draft state)."""
         try:

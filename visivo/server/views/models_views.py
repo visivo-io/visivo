@@ -29,7 +29,6 @@ def register_models_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/models/<model_name>/", methods=["POST"])
-    @app.route("/api/models/<model_name>/save/", methods=["POST"])
     def save_model(model_name):
         """Save a model configuration to cache (draft state)."""
         try:

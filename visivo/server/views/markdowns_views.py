@@ -29,7 +29,6 @@ def register_markdowns_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/markdowns/<markdown_name>/", methods=["POST"])
-    @app.route("/api/markdowns/<markdown_name>/save/", methods=["POST"])
     def save_markdown(markdown_name):
         """Save a markdown configuration to cache (draft state)."""
         try:

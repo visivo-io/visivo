@@ -30,7 +30,6 @@ def register_csv_script_model_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/csv-script-models/<model_name>/", methods=["POST"])
-    @app.route("/api/csv-script-models/<model_name>/save/", methods=["POST"])
     def save_csv_script_model(model_name):
         try:
             config = request.get_json(silent=True)

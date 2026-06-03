@@ -40,7 +40,6 @@ def register_dimension_views(app, flask_app, output_dir):
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/dimensions/<dimension_name>/", methods=["POST"])
-    @app.route("/api/dimensions/<dimension_name>/save/", methods=["POST"])
     def save_dimension(dimension_name):
         """Save a dimension configuration to cache (draft state).
 
