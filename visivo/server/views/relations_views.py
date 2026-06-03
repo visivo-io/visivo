@@ -28,6 +28,7 @@ def register_relations_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting relation: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/relations/<relation_name>/", methods=["POST"])
     @app.route("/api/relations/<relation_name>/save/", methods=["POST"])
     def save_relation(relation_name):
         """Save a relation configuration to cache (draft state)."""

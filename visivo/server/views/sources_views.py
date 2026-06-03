@@ -191,6 +191,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting source: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/sources/<source_name>/", methods=["POST"])
     @app.route("/api/sources/<source_name>/save/", methods=["POST"])
     def save_source(source_name):
         """Save a source configuration to cache (draft state)."""

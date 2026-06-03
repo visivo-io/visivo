@@ -101,6 +101,7 @@ def register_dashboard_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing dashboards: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/dashboards/<dashboard_name>/", methods=["POST"])
     @app.route("/api/dashboards/<dashboard_name>/save/", methods=["POST"])
     def save_dashboard_crud(dashboard_name):
         """Save a dashboard configuration to cache (draft state)."""

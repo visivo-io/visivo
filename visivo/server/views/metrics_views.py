@@ -39,6 +39,7 @@ def register_metrics_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting metric: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/metrics/<metric_name>/", methods=["POST"])
     @app.route("/api/metrics/<metric_name>/save/", methods=["POST"])
     def save_metric(metric_name):
         """Save a metric configuration to cache (draft state).

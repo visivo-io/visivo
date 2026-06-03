@@ -26,14 +26,14 @@ const URL_PATTERNS = {
     // Source management endpoints
     sourcesList: '/api/sources/',
     sourceDetail: '/api/sources/{name}/',
-    sourceSave: '/api/sources/{name}/save/',
+    sourceSave: '/api/sources/{name}/',
     sourceValidate: '/api/sources/{name}/validate/',
     sourceTestConnection: '/api/sources/test-connection/',
 
     // Model management endpoints
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',
-    modelSave: '/api/models/{name}/save/',
+    modelSave: '/api/models/{name}/',
     modelValidate: '/api/models/{name}/validate/',
 
     // Model profiling endpoints
@@ -44,67 +44,67 @@ const URL_PATTERNS = {
     // Dimension management endpoints
     dimensionsList: '/api/dimensions/',
     dimensionDetail: '/api/dimensions/{name}/',
-    dimensionSave: '/api/dimensions/{name}/save/',
+    dimensionSave: '/api/dimensions/{name}/',
     dimensionValidate: '/api/dimensions/{name}/validate/',
 
     // Metric management endpoints
     metricsList: '/api/metrics/',
     metricDetail: '/api/metrics/{name}/',
-    metricSave: '/api/metrics/{name}/save/',
+    metricSave: '/api/metrics/{name}/',
     metricValidate: '/api/metrics/{name}/validate/',
 
     // Relation management endpoints
     relationsList: '/api/relations/',
     relationDetail: '/api/relations/{name}/',
-    relationSave: '/api/relations/{name}/save/',
+    relationSave: '/api/relations/{name}/',
     relationValidate: '/api/relations/{name}/validate/',
 
     // Insight management endpoints
     insightsList: '/api/insights/',
     insightDetail: '/api/insights/{name}/',
-    insightSave: '/api/insights/{name}/save/',
+    insightSave: '/api/insights/{name}/',
     insightValidate: '/api/insights/{name}/validate/',
 
     // Input management endpoints
     inputsList: '/api/inputs/',
     inputDetail: '/api/inputs/{name}/',
-    inputSave: '/api/inputs/{name}/save/',
+    inputSave: '/api/inputs/{name}/',
     inputValidate: '/api/inputs/{name}/validate/',
 
     // Markdown management endpoints
     markdownsList: '/api/markdowns/',
     markdownDetail: '/api/markdowns/{name}/',
-    markdownSave: '/api/markdowns/{name}/save/',
+    markdownSave: '/api/markdowns/{name}/',
     markdownValidate: '/api/markdowns/{name}/validate/',
 
     // Chart management endpoints
     chartsList: '/api/charts/',
     chartDetail: '/api/charts/{name}/',
-    chartSave: '/api/charts/{name}/save/',
+    chartSave: '/api/charts/{name}/',
     chartValidate: '/api/charts/{name}/validate/',
 
     // Table management endpoints
     tablesList: '/api/tables/',
     tableDetail: '/api/tables/{name}/',
-    tableSave: '/api/tables/{name}/save/',
+    tableSave: '/api/tables/{name}/',
     tableValidate: '/api/tables/{name}/validate/',
 
     // Dashboard management endpoints
     dashboardsList: '/api/dashboards/',
-    dashboardSave: '/api/dashboards/{name}/save/',
+    dashboardSave: '/api/dashboards/{name}/',
     dashboardDelete: '/api/dashboards/{name}/delete/',
     dashboardValidate: '/api/dashboards/{name}/validate/',
 
     // CsvScriptModel management endpoints
     csvScriptModelsList: '/api/csv-script-models/',
     csvScriptModelDetail: '/api/csv-script-models/{name}/',
-    csvScriptModelSave: '/api/csv-script-models/{name}/save/',
+    csvScriptModelSave: '/api/csv-script-models/{name}/',
     csvScriptModelValidate: '/api/csv-script-models/{name}/validate/',
 
     // LocalMergeModel management endpoints
     localMergeModelsList: '/api/local-merge-models/',
     localMergeModelDetail: '/api/local-merge-models/{name}/',
-    localMergeModelSave: '/api/local-merge-models/{name}/save/',
+    localMergeModelSave: '/api/local-merge-models/{name}/',
     localMergeModelValidate: '/api/local-merge-models/{name}/validate/',
 
     // Defaults management endpoints
@@ -114,7 +114,7 @@ const URL_PATTERNS = {
     // Project management endpoints (new CRUD pattern)
     projectsList: '/api/projects/',
     projectDetail: '/api/projects/{name}/',
-    projectSave: '/api/projects/{name}/save/',
+    projectSave: '/api/projects/{name}/',
     projectValidate: '/api/projects/{name}/validate/',
 
     // Publish management endpoints

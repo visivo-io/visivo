@@ -101,6 +101,26 @@ class TestModelViews:
         assert data["model"] == "new_model"
         assert data["status"] == "new"
 
+    def test_save_model_via_detail_post(self, client, app):
+        """POST to the detail URL (no /save/) must save too: the cloud editor
+        posts saves at /api/models/<name>/, which has to reach the same handler
+        as the legacy /save/ route the local server still exposes."""
+        mock_model = Mock()
+        mock_model.name = "new_model"
+        app.flask_app.model_manager.save_from_config.return_value = mock_model
+        app.flask_app.model_manager.get_status.return_value = ObjectStatus.NEW
+
+        response = client.post(
+            "/api/models/new_model/",
+            json={"sql": "SELECT * FROM test"},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["model"] == "new_model"
+        assert data["status"] == "new"
+
     def test_save_model_no_config(self, client, app):
         """Test saving a model without configuration."""
         response = client.post("/api/models/test/save/", content_type="application/json")

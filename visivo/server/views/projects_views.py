@@ -37,6 +37,7 @@ def register_projects_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting project: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/projects/<project_name>/", methods=["POST"])
     @app.route("/api/projects/<project_name>/save/", methods=["POST"])
     def save_project(project_name):
         """
