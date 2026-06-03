@@ -9,6 +9,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ProjectCanvas from './ProjectCanvas';
+import useStore from '../../../../stores/store';
 
 jest.mock('../../../project/Dashboard', () => {
   const Mock = ({ projectId, dashboardName }) => (
@@ -48,5 +49,17 @@ describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
   test('the canvas root is positioned so the overlay can anchor to it', () => {
     render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
     expect(screen.getByTestId('project-canvas').className).toContain('relative');
+  });
+
+  test('mounts the DnD affordance layer when the scoped dashboard exists (VIS-771)', () => {
+    useStore.setState({
+      dashboards: [{ name: 'sales', config: { rows: [{ items: [{ chart: 'ref(a)' }] }] } }],
+    });
+    render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    // The DnD layer is wired to the shell's shared DndContext (no second
+    // context); it mounts as a pointer-events-none sibling over the render.
+    const dndLayer = screen.getByTestId('canvas-dnd-layer');
+    expect(dndLayer).toBeInTheDocument();
+    expect(dndLayer.className).toContain('pointer-events-none');
   });
 });

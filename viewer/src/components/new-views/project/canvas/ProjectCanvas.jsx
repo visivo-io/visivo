@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import Dashboard from '../../../project/Dashboard';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
+import CanvasDndLayer from './CanvasDndLayer';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -14,8 +15,14 @@ import CanvasSelectionOverlay from './CanvasSelectionOverlay';
  *   - Writes the workspace selection (`workspaceOutlineSelectedKey`) on click,
  *     using the SAME key scheme as the OutlineTreePanel so the canvas + tree
  *     are one selection source of truth.
- *   - Paints hover outlines (+ a resize-handle PLACEHOLDER, no gesture yet —
- *     D-3) and a persistent mulberry selection ring per the D-1 design states.
+ *   - Paints hover outlines (+ a resize-handle PLACEHOLDER) and a persistent
+ *     mulberry selection ring per the D-1 design states.
+ *
+ * VIS-771 / D-3 adds a second sibling overlay, <CanvasDndLayer>, that mounts the
+ * drag-and-drop affordances (drag handles on rows/items + drop zones in the
+ * gaps). It is wired to the shell's shared <WorkspaceDndContext> (no second
+ * DndContext) and persists reorders / Library inserts through the dashboard
+ * save path.
  *
  * The right rail is NOT mounted here (that's G-1); D-2 only SETS selection
  * state + renders overlays. This is the *build* surface by construction (only
@@ -38,6 +45,10 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
     >
       <Dashboard projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
       <CanvasSelectionOverlay rootRef={rootRef} />
+      {/* VIS-771 / D-3: drag-and-drop affordance layer (drag handles + drop
+          zones). A SIBLING over the render, wired to the shell's shared
+          <WorkspaceDndContext> — no second DndContext. */}
+      <CanvasDndLayer rootRef={rootRef} dashboardName={dashboardName} />
     </div>
   );
 };
