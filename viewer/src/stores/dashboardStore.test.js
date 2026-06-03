@@ -128,6 +128,60 @@ describe('dashboardStore level CRUD (VIS-807 M-2a)', () => {
     expect(result.success).toBe(false);
   });
 
+  test('updateLevel persists title + description together (VIS-807 M-2b)', async () => {
+    const saveDefaults = jest.fn(async () => ({ success: true }));
+    seedLevels({
+      levels: [{ title: 'Org', description: 'old' }, { title: 'Team' }],
+      saveDefaults,
+    });
+    await act(async () => {
+      await useStore.getState().updateLevel(0, { title: 'Org', description: 'new desc' });
+    });
+    expect(saveDefaults).toHaveBeenCalledWith({
+      levels: [{ title: 'Org', description: 'new desc' }, { title: 'Team' }],
+    });
+  });
+
+  test('updateLevel re-points matching dashboards when the title changes', async () => {
+    const saveDefaults = jest.fn(async () => ({ success: true }));
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seedLevels({
+      levels: [{ title: 'Org', description: 'd' }, { title: 'Team' }],
+      dashboards: [{ name: 'exec', config: { level: 'Org' } }],
+      saveDefaults,
+      saveDashboard,
+    });
+    await act(async () => {
+      await useStore.getState().updateLevel(0, { title: 'Company', description: 'd' });
+    });
+    expect(saveDefaults).toHaveBeenCalledWith({
+      levels: [{ title: 'Company', description: 'd' }, { title: 'Team' }],
+    });
+    expect(saveDashboard).toHaveBeenCalledWith('exec', { level: 'Company' });
+  });
+
+  test('updateLevel is a no-op when neither title nor description changes', async () => {
+    const saveDefaults = jest.fn();
+    seedLevels({ levels: [{ title: 'Org', description: 'd' }], saveDefaults });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().updateLevel(0, { title: 'Org', description: 'd' });
+    });
+    expect(saveDefaults).not.toHaveBeenCalled();
+    expect(result.error).toBe('unchanged');
+  });
+
+  test('updateLevel rejects a blank title', async () => {
+    const saveDefaults = jest.fn();
+    seedLevels({ levels: [{ title: 'Org' }], saveDefaults });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().updateLevel(0, { title: '   ' });
+    });
+    expect(saveDefaults).not.toHaveBeenCalled();
+    expect(result.error).toBe('title required');
+  });
+
   test('reorderLevel swaps adjacent levels', async () => {
     const saveDefaults = jest.fn(async () => ({ success: true }));
     seedLevels({ levels: [{ title: 'A' }, { title: 'B' }, { title: 'C' }], saveDefaults });

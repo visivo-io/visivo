@@ -49,6 +49,14 @@ const setOutlineKey = (page, key) =>
   page.evaluate(k => window.useStore.getState().setWorkspaceOutlineSelectedKey(k), key);
 const setRightTab = (page, tab) =>
   page.evaluate(t => window.useStore.getState().setWorkspaceRightTab(t), tab);
+// Level selection has no tab type — the Project Editor selects it by setting
+// the active object directly. Mirror that here.
+const selectLevel = (page, name, index) =>
+  page.evaluate(
+    ({ name, index }) =>
+      window.useStore.setState({ workspaceActiveObject: { type: 'level', name, index } }),
+    { name, index }
+  );
 
 test.describe('Right-rail routing (G-1)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -172,6 +180,33 @@ test.describe('Right-rail routing (G-1)', () => {
     await expect(chip).toContainText('local-duckdb');
     await page.getByTestId('workspace-right-rail').screenshot({
       path: `${SCREENS}/vis802-05-edit-source.png`,
+    });
+  });
+
+  test('level selection → LevelEditForm with chip (VIS-807 / M-2b)', async () => {
+    await setRightTab(page, 'edit');
+    // Ensure defaults are loaded so the form resolves a level.
+    await page.evaluate(() => window.useStore.getState().fetchDefaults?.());
+    await selectLevel(page, 'Organization', 0);
+    // The real LevelEditForm mounts (not the old "deferred" placeholder).
+    await page.getByTestId('right-rail-edit-level').waitFor({ timeout: 10000 });
+    await expect(page.getByTestId('right-rail-edit-level-placeholder')).toHaveCount(0);
+    await expect(page.getByTestId('level-edit-save')).toBeVisible();
+    await page.getByTestId('workspace-right-rail').screenshot({
+      path: `${SCREENS}/vis807-06-edit-level.png`,
+    });
+  });
+
+  test('project-chrome selection → DefaultsEditForm with chip (VIS-809 / M-3)', async () => {
+    await setRightTab(page, 'edit');
+    await selectObject(page, 'project', 'project');
+    // The real DefaultsEditForm mounts (not the old "deferred" placeholder).
+    await page.getByTestId('right-rail-edit-defaults').waitFor({ timeout: 10000 });
+    await expect(page.getByTestId('right-rail-edit-project-placeholder')).toHaveCount(0);
+    const chip = page.getByTestId('right-rail-selection-chip');
+    await expect(chip).toHaveAttribute('data-object-type', 'defaults');
+    await page.getByTestId('workspace-right-rail').screenshot({
+      path: `${SCREENS}/vis809-07-edit-defaults.png`,
     });
   });
 

@@ -16,6 +16,8 @@ import ModelEditForm from '../common/ModelEditForm';
 import DimensionEditForm from '../common/DimensionEditForm';
 import MetricEditForm from '../common/MetricEditForm';
 import RelationEditForm from '../common/RelationEditForm';
+import LevelEditForm from '../common/LevelEditForm';
+import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { formatRef } from '../../../utils/refString';
 import { useObjectSave } from '../../../hooks/useObjectSave';
@@ -37,8 +39,11 @@ import { emitWorkspaceEvent } from './telemetry';
  *   - Scoped dashboard + Outline `row.N` key       → <RowEditForm>.
  *   - Scoped dashboard + Outline `row.N.item.M`    → the item's leaf form
  *     (Chart/Table/Markdown/Input) when it references one, else <ItemEditForm>.
- *   - Level + project-chrome                        → minimal placeholder
- *     ("edited in M-2b/M-3" — those forms are DEFERRED, not built here).
+ *   - Level (Outline / Project-Editor `level` selection) → <LevelEditForm>
+ *     (VIS-807 / M-2b — title + description, persisted via `updateLevel`).
+ *   - Project-chrome / defaults selection            → <DefaultsEditForm>
+ *     (VIS-809 / M-3 — source_name, threads, levels, persisted via
+ *     `saveDefaults`).
  *
  * Every form is fronted by a <SelectionChip> header (rainbow type colour +
  * name) and an inline auto-save indicator. There are NO Save buttons for the
@@ -227,28 +232,24 @@ const RightRailEditPanel = () => {
     );
   }
 
-  // ── Level + project-chrome → deferred placeholders (M-2b / M-3) ────────────
-  if (type === 'project') {
+  // ── Project-chrome / defaults → DefaultsEditForm (VIS-809 / M-3) ───────────
+  if (type === 'project' || type === 'defaults') {
     return (
       <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-        <SelectionChip type="project" name={activeObject.name || 'project'} subtitle="Project settings" />
-        <Placeholder
-          testId="right-rail-edit-project-placeholder"
-          title="Project settings"
-          body="The project / defaults form is edited in M-3 — deferred."
-        />
+        <DefaultsEditForm name={activeObject.name} />
       </div>
     );
   }
-  if (type === 'level' || type === 'defaults') {
+
+  // ── Level → LevelEditForm (VIS-807 / M-2b) ─────────────────────────────────
+  if (type === 'level') {
+    // The selection carries the level's position in `defaults.levels` as
+    // `index`; fall back to the first level when it's absent (the form
+    // self-resolves the level from the store by index).
+    const levelIndex = Number.isInteger(activeObject.index) ? activeObject.index : 0;
     return (
       <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
-        <SelectionChip type={type === 'level' ? 'dashboard' : 'defaults'} name={activeObject.name || type} />
-        <Placeholder
-          testId="right-rail-edit-level-placeholder"
-          title={type === 'level' ? 'Level settings' : 'Defaults'}
-          body="This form is edited in M-2b / M-3 — deferred."
-        />
+        <LevelEditForm index={levelIndex} />
       </div>
     );
   }

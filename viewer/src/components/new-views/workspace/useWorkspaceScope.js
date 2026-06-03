@@ -130,14 +130,26 @@ export function useWorkspaceScope() {
       };
     }
 
-    // Unscoped — Project Editor surface. Selected item is the project
-    // itself (so the right-rail Edit form binds to project chrome).
-    const projectName = activeTab && activeTab.type === 'project' ? activeTab.name : null;
+    // Project-chrome tab → `project` scope. The Project Editor surface still
+    // mounts (MiddlePane keys off `workspaceActiveObject.type`, not scope) and
+    // the lineage selector stays `'*'` (Full project), but the right-rail Edit
+    // tab now binds to the project `Defaults` form (VIS-809 / M-3). When there
+    // is no project tab at all the workspace is truly unscoped → `root`.
+    if (activeTab && activeTab.type === 'project') {
+      return {
+        scope: 'project',
+        selector: '*',
+        dashboardName: null,
+        selectedItem: { type: 'project', name: activeTab.name },
+      };
+    }
+
+    // Unscoped — Project Editor surface with no selection bound.
     return {
       scope: 'root',
       selector: '*',
       dashboardName: null,
-      selectedItem: projectName ? { type: 'project', name: projectName } : null,
+      selectedItem: null,
     };
   }, [dashboardName, searchParams, activeTab]);
 }
