@@ -25,17 +25,22 @@ const DASH = 'simple-dashboard';
 // expression, which the lint rule (no-template-curly-in-string) flags.
 const ref = name => '${ref(' + name + ')}';
 
-const makeDashboard = (rows) => ({
-  name: DASH,
-  config: { name: DASH, rows },
+const makeDashboard = (name, rows) => ({
+  name,
+  config: { name, rows },
 });
 
 const resetStore = (rows) => {
   act(() => {
     useStore.setState({
-      dashboards: rows === undefined ? [] : [makeDashboard(rows)],
+      dashboards: rows === undefined ? [] : [makeDashboard(DASH, rows)],
       workspaceOutlineSelectedKey: 'dashboard',
       saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
+      // Clear workspace tabs so URL-scoped tests aren't influenced by a
+      // lingering active dashboard tab (which now wins per VIS-835).
+      workspaceTabs: [],
+      workspaceActiveTabId: null,
+      workspaceActiveObject: null,
     });
   });
 };
@@ -152,6 +157,64 @@ describe('OutlineTreePanel', () => {
     resetStore([]);
     renderPanel('/workspace');
     expect(screen.getByTestId('outline-tree-no-dashboard')).toBeInTheDocument();
+  });
+
+  describe('tile-open path drives the Outline via the active dashboard tab (VIS-835)', () => {
+    // The Project Editor tile-open path calls openWorkspaceTab without changing
+    // the route, so the Outline must populate from the active dashboard tab even
+    // when the URL has no (or a stale) dashboard param.
+
+    test('an active dashboard tab populates the Outline at /workspace (no URL param)', () => {
+      resetStore([{ height: 'medium', items: [{ chart: 'c1', width: 1 }] }]);
+      act(() => {
+        useStore.setState({
+          workspaceTabs: [
+            { id: 'project:p', type: 'project', name: 'p', dirty: false },
+            { id: `dashboard:${DASH}`, type: 'dashboard', name: DASH, dirty: false },
+          ],
+          workspaceActiveTabId: `dashboard:${DASH}`,
+          workspaceActiveObject: { type: 'dashboard', name: DASH },
+        });
+      });
+      renderPanel('/workspace');
+
+      // Tree renders (no the no-dashboard / blank state).
+      expect(screen.queryByTestId('outline-tree-no-dashboard')).not.toBeInTheDocument();
+      const root = screen.getByTestId('outline-tree-node-dashboard');
+      expect(root).toHaveTextContent(DASH);
+      expect(screen.getByTestId('outline-tree-node-row.0')).toBeInTheDocument();
+    });
+
+    test('a freshly tile-opened dashboard tab wins over a STALE dashboard URL param', () => {
+      // Repro: user viewed /workspace/dashboard/other-dashboard, then opened
+      // `DASH` via a tile (active tab = DASH) without the route changing. The
+      // Outline must show DASH's tree, not the stale URL dashboard's.
+      act(() => {
+        useStore.setState({
+          dashboards: [
+            makeDashboard('other-dashboard', [{ height: 'medium', items: [] }]),
+            makeDashboard(DASH, [
+              { height: 'medium', items: [{ chart: 'c1', width: 1 }] },
+              { height: 'small', items: [] },
+            ]),
+          ],
+          workspaceOutlineSelectedKey: 'dashboard',
+          saveDashboard: jest.fn(() => Promise.resolve({ success: true })),
+          workspaceTabs: [
+            { id: 'dashboard:other-dashboard', type: 'dashboard', name: 'other-dashboard', dirty: false },
+            { id: `dashboard:${DASH}`, type: 'dashboard', name: DASH, dirty: false },
+          ],
+          workspaceActiveTabId: `dashboard:${DASH}`,
+          workspaceActiveObject: { type: 'dashboard', name: DASH },
+        });
+      });
+      renderPanel('/workspace/dashboard/other-dashboard');
+
+      const root = screen.getByTestId('outline-tree-node-dashboard');
+      expect(root).toHaveTextContent(DASH);
+      expect(root).not.toHaveTextContent('other-dashboard');
+      expect(root).toHaveTextContent('2 rows');
+    });
   });
 
   describe('nested Item.rows container layouts (VIS-825)', () => {

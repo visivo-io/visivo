@@ -256,6 +256,77 @@ test.describe('Project Editor (M-1)', () => {
     await page.screenshot({ path: 'e2e/stories/__screens__/vis805-06-after-drop.png', fullPage: true });
   });
 
+  test('VIS-835: opening a dashboard via a tile populates the right-rail Outline (even over a stale dashboard URL)', async () => {
+    // Repro the cross-path scope bug: the Outline must follow the dashboard the
+    // user just opened from a tile, agreeing with the canvas, instead of
+    // sticking to a previously-visited dashboard's URL.
+
+    // 1) Open dashboard A by URL so the route param + Outline are populated.
+    const firstTileId = await page
+      .locator('[data-testid^="project-tile-"]')
+      .first()
+      .getAttribute('data-testid');
+    const dashA = firstTileId.replace('project-tile-', '');
+    await page.goto(`${WORKSPACE_URL}/dashboard/${dashA}`);
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('workspace-middle-dashboard').waitFor({ timeout: WAIT_FOR_PAGE });
+
+    // Show the Outline tab and assert it is scoped to A.
+    await page.getByTestId('workspace-right-rail-tab-outline').click();
+    await page.getByTestId('workspace-right-rail-outline').waitFor({ timeout: WAIT_FOR_PAGE });
+    await expect(page.getByTestId('outline-tree-node-dashboard')).toContainText(dashA, {
+      timeout: 10000,
+    });
+
+    // 2) Return to the Project Editor WITHOUT changing the route away from A's
+    //    URL: click the project tab so the middle pane shows the tile grid while
+    //    the `/workspace/dashboard/<A>` URL param lingers (the bug's setup). The
+    //    project tab's id is `project:<projectName>`; select it by the
+    //    `workspace-tab-select-project:` testid prefix.
+    const projectTab = page.locator('[data-testid^="workspace-tab-select-project:"]').first();
+    await projectTab.click();
+    await page.getByTestId('project-editor').waitFor({ timeout: WAIT_FOR_PAGE });
+    await page.locator('[data-testid^="project-tile-"]').first().waitFor({ timeout: WAIT_FOR_PAGE });
+
+    // 3) Pick a DIFFERENT dashboard tile (B) and open it via the tile.
+    const tiles = page.locator('[data-testid^="project-tile-"]');
+    const count = await tiles.count();
+    let dashB = null;
+    for (let i = 0; i < count; i++) {
+      const id = await tiles.nth(i).getAttribute('data-testid');
+      const name = id.replace('project-tile-', '');
+      if (name !== dashA) {
+        dashB = name;
+        await tiles.nth(i).click();
+        break;
+      }
+    }
+    expect(dashB, 'needs a second distinct dashboard tile').toBeTruthy();
+
+    // Canvas switches to B.
+    await expect(page.getByTestId('workspace-middle-dashboard')).toBeVisible({ timeout: 10000 });
+
+    // 4) The Outline must now show B's tree — NOT the stale A — and must not be
+    //    blank. (Before the fix, the URL param A won, leaving the Outline stuck.)
+    await page.getByTestId('workspace-right-rail-tab-outline').click().catch(() => {});
+    await page.getByTestId('workspace-right-rail-outline').waitFor({ timeout: WAIT_FOR_PAGE });
+    await expect(page.getByTestId('outline-tree-no-dashboard')).toHaveCount(0);
+    await expect(page.getByTestId('outline-tree-node-dashboard')).toContainText(dashB, {
+      timeout: 10000,
+    });
+    await expect(page.getByTestId('outline-tree-node-dashboard')).not.toContainText(dashA);
+
+    await page.screenshot({
+      path: 'e2e/stories/__screens__/vis835-tile-outline-sync.png',
+      fullPage: true,
+    });
+
+    // Reset to the unscoped pane for the remaining step.
+    await page.goto(WORKSPACE_URL);
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('project-editor').waitFor({ timeout: WAIT_FOR_PAGE });
+  });
+
   test('No console errors during the happy path', async () => {
     const realErrors = page._consoleErrors.filter(
       e =>

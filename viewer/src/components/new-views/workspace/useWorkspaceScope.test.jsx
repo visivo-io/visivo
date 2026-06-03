@@ -157,6 +157,45 @@ describe('useWorkspaceScope', () => {
     );
   });
 
+  test('an active dashboard tab at /workspace (tile-open, no URL) scopes to that dashboard (VIS-835)', () => {
+    // The Project Editor tile-open path calls openWorkspaceTab without changing
+    // the route, so a dashboard tab must scope the Outline even with no URL param.
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [
+          { id: 'project:p', type: 'project', name: 'p', dirty: false },
+          { id: 'dashboard:table-dashboard', type: 'dashboard', name: 'table-dashboard', dirty: false },
+        ],
+        workspaceActiveTabId: 'dashboard:table-dashboard',
+      });
+    });
+    renderAt('/workspace');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
+    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('table-dashboard');
+    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('table-dashboard');
+  });
+
+  test('a freshly tile-opened dashboard tab wins over a STALE dashboard URL param (VIS-835)', () => {
+    // User was on /workspace/dashboard/A, then opened B via a tile (active tab
+    // = B) without the route changing. Scope must follow the tab (B) so the
+    // Outline + Library agree with the canvas (which reads the active object),
+    // instead of sticking to the stale URL dashboard (A).
+    act(() => {
+      useStore.setState({
+        workspaceTabs: [
+          { id: 'dashboard:A', type: 'dashboard', name: 'A', dirty: false },
+          { id: 'dashboard:B', type: 'dashboard', name: 'B', dirty: false },
+        ],
+        workspaceActiveTabId: 'dashboard:B',
+      });
+    });
+    renderAt('/workspace/dashboard/A');
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('dashboard');
+    expect(screen.getByTestId('probe-dashboard')).toHaveTextContent('B');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('+B');
+    expect(screen.getByTestId('probe-selected-name')).toHaveTextContent('B');
+  });
+
   test('an active dashboard tab on a dashboard URL keeps dashboard scope', () => {
     // The dashboard route opens a matching dashboard tab; the tab and the URL
     // agree, so the scope is the dashboard either way.
