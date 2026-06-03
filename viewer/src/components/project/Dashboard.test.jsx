@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { futureFlags } from '../../router-config';
 import Dashboard from './Dashboard';
 import useStore from '../../stores/store';
+import { useModelsData } from '../../hooks/useModelsData';
+import { useInsightsData } from '../../hooks/useInsightsData';
 
 // Mock the stores
 jest.mock('../../stores/store');
@@ -33,6 +35,10 @@ jest.mock('react-cool-dimensions', () => ({
 // Mock the hooks
 jest.mock('../../hooks/useInsightsData', () => ({
   useInsightsData: jest.fn(),
+}));
+
+jest.mock('../../hooks/useModelsData', () => ({
+  useModelsData: jest.fn(),
 }));
 
 jest.mock('../../hooks/useInputsData', () => ({
@@ -114,6 +120,8 @@ describe('Dashboard', () => {
         fetchTables: jest.fn(),
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
+        fetchModels: jest.fn(),
+        models: [],
         getChartByName: jest.fn((name) => name === 'test-chart' ? mockChart : null),
         getTableByName: jest.fn(() => null),
         getMarkdownByName: jest.fn(() => null),
@@ -133,6 +141,8 @@ describe('Dashboard', () => {
         fetchTables: jest.fn(),
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
+        fetchModels: jest.fn(),
+        models: [],
         getChartByName: jest.fn(),
         getTableByName: jest.fn(),
         getMarkdownByName: jest.fn(),
@@ -179,6 +189,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => chartConfigs[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -221,6 +233,8 @@ describe('Dashboard', () => {
         fetchTables: jest.fn(),
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
+        fetchModels: jest.fn(),
+        models: [],
         getChartByName: jest.fn(),
         getTableByName: jest.fn(),
         getMarkdownByName: jest.fn(),
@@ -258,6 +272,8 @@ describe('Dashboard', () => {
         fetchTables: jest.fn(),
         fetchMarkdowns: jest.fn(),
         fetchInputs: jest.fn(),
+        fetchModels: jest.fn(),
+        models: [],
         getChartByName: jest.fn(() => null), // Chart not found
         getTableByName: jest.fn(() => null),
         getMarkdownByName: jest.fn(() => null),
@@ -280,6 +296,7 @@ describe('Dashboard', () => {
     const fetchTables = jest.fn();
     const fetchMarkdowns = jest.fn();
     const fetchInputs = jest.fn();
+    const fetchModels = jest.fn();
 
     useStore.mockImplementation((selector) => {
       const state = {
@@ -289,6 +306,8 @@ describe('Dashboard', () => {
         fetchTables,
         fetchMarkdowns,
         fetchInputs,
+        fetchModels,
+        models: [],
         getChartByName: jest.fn((name) => name === 'test-chart' ? mockChart : null),
         getTableByName: jest.fn(() => null),
         getMarkdownByName: jest.fn(() => null),
@@ -307,6 +326,9 @@ describe('Dashboard', () => {
     expect(fetchTables).toHaveBeenCalled();
     expect(fetchMarkdowns).toHaveBeenCalled();
     expect(fetchInputs).toHaveBeenCalled();
+    // VIS-827: the model registry must be fetched so model-data tables can be
+    // classified into the model-fetch bucket (useModelsData).
+    expect(fetchModels).toHaveBeenCalled();
   });
 
   // ---------- VIS-748: nested item.rows rendering ----------
@@ -331,6 +353,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => charts[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -588,6 +612,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn((name) => (name === 'test-chart' ? mockChart : null)),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -640,6 +666,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => charts[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -755,6 +783,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => charts[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -820,6 +850,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => charts[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -905,6 +937,8 @@ describe('Dashboard', () => {
           fetchTables: jest.fn(),
           fetchMarkdowns: jest.fn(),
           fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
           getChartByName: jest.fn(name => charts[name] ?? null),
           getTableByName: jest.fn(() => null),
           getMarkdownByName: jest.fn(() => null),
@@ -945,4 +979,100 @@ describe('Dashboard', () => {
       expect(nestedRow.style.display).toBe('flex');
     });
   });
+
+  // ---------- VIS-827: model-data table data collection ----------
+  //
+  // A "model-data table" sources its `data` from a model via a context-string ref
+  // (`"${ref(model-name)}"`). The /api/tables/ store endpoint delivers `data` as a
+  // bare string with no model/insight signal. The regression: every string-ref
+  // `data` was bucketed into the insight-fetch set, so useModelsData never fetched
+  // the backing model and the Table spun on a permanent loading spinner at /project
+  // (and on the Workspace canvas, same renderer). Dashboard must classify a
+  // string-ref `data` against the fetched model registry and route a known model
+  // name into useModelsData (and OUT of useInsightsData).
+  /* eslint-disable no-template-curly-in-string */
+  describe('model-data table data collection (VIS-827)', () => {
+    const tableDashboard = {
+      name: 'model-table-dash',
+      rows: [
+        {
+          height: 'large',
+          items: [
+            { width: 12, table: 'wide-columns-overflow-test-table' },
+          ],
+        },
+      ],
+    };
+
+    // Mirrors the /api/tables/ envelope: data is a bare context-string ref.
+    const modelDataTable = {
+      name: 'wide-columns-overflow-test-table',
+      config: {
+        name: 'wide-columns-overflow-test-table',
+        data: '${ref(wide-columns-table)}',
+        rows_per_page: 25,
+      },
+    };
+
+    const renderWithModels = (models = []) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [tableDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models,
+          getChartByName: jest.fn(() => null),
+          getTableByName: jest.fn(name =>
+            name === 'wide-columns-overflow-test-table' ? modelDataTable : null
+          ),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName={tableDashboard.name} />
+        </BrowserRouter>
+      );
+    };
+
+    const lastModelNames = () => {
+      const calls = useModelsData.mock.calls;
+      return calls.length ? calls[calls.length - 1][1] : [];
+    };
+    const lastInsightNames = () => {
+      const calls = useInsightsData.mock.calls;
+      return calls.length ? calls[calls.length - 1][1] : [];
+    };
+
+    it('collects a known model into useModelsData (not useInsightsData)', () => {
+      renderWithModels([{ name: 'wide-columns-table' }]);
+      // The model backing the table must be fetched as a MODEL.
+      expect(lastModelNames()).toContain('wide-columns-table');
+      // ...and must NOT leak into the insight-fetch set (would 404 / never resolve).
+      expect(lastInsightNames()).not.toContain('wide-columns-table');
+    });
+
+    it('renders the table item once classified as model-data', () => {
+      renderWithModels([{ name: 'wide-columns-table' }]);
+      expect(screen.getByTestId('table')).toHaveTextContent(
+        'wide-columns-overflow-test-table'
+      );
+    });
+
+    it('falls back to the insight bucket when the ref is not a known model', () => {
+      // A string-ref data whose name is NOT in the model registry preserves the
+      // prior behavior: it's treated as an insight-backed simple table.
+      renderWithModels([]); // empty model registry
+      expect(lastInsightNames()).toContain('wide-columns-table');
+      expect(lastModelNames()).not.toContain('wide-columns-table');
+    });
+  });
+  /* eslint-enable no-template-curly-in-string */
 });
