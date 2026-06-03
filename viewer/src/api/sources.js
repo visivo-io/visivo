@@ -31,7 +31,7 @@ export const fetchSource = async name => {
  * Save a source configuration to cache (draft state)
  */
 export const saveSource = async (name, config) => {
-  const response = await fetch(getUrl('sourceSave', { name }), {
+  const response = await fetch(getUrl('sourceDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

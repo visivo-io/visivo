@@ -17,7 +17,7 @@ export const fetchAllCsvScriptModels = async (projectId = null) => {
  * Save a CsvScriptModel configuration to cache (draft state)
  */
 export const saveCsvScriptModel = async (name, config) => {
-  const response = await fetch(getUrl('csvScriptModelSave', { name }), {
+  const response = await fetch(getUrl('csvScriptModelDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

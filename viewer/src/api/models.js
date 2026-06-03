@@ -32,7 +32,7 @@ export const fetchModel = async name => {
  * Save a model configuration to cache (draft state)
  */
 export const saveModel = async (name, config) => {
-  const response = await apiFetch(getUrl('modelSave', { name }), {
+  const response = await apiFetch(getUrl('modelDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -31,7 +31,7 @@ export const fetchMetric = async name => {
  * Save a metric configuration to cache (draft state)
  */
 export const saveMetric = async (name, config) => {
-  const response = await fetch(getUrl('metricSave', { name }), {
+  const response = await fetch(getUrl('metricDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

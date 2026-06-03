@@ -31,7 +31,7 @@ export const fetchDimension = async name => {
  * Save a dimension configuration to cache (draft state)
  */
 export const saveDimension = async (name, config) => {
-  const response = await fetch(getUrl('dimensionSave', { name }), {
+  const response = await fetch(getUrl('dimensionDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

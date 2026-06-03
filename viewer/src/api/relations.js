@@ -31,7 +31,7 @@ export const fetchRelation = async name => {
  * Save a relation configuration to cache (draft state)
  */
 export const saveRelation = async (name, config) => {
-  const response = await fetch(getUrl('relationSave', { name }), {
+  const response = await fetch(getUrl('relationDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

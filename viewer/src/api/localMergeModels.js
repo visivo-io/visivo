@@ -17,7 +17,7 @@ export const fetchAllLocalMergeModels = async (projectId = null) => {
  * Save a LocalMergeModel configuration to cache (draft state)
  */
 export const saveLocalMergeModel = async (name, config) => {
-  const response = await fetch(getUrl('localMergeModelSave', { name }), {
+  const response = await fetch(getUrl('localMergeModelDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

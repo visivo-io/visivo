@@ -26,14 +26,12 @@ const URL_PATTERNS = {
     // Source management endpoints
     sourcesList: '/api/sources/',
     sourceDetail: '/api/sources/{name}/',
-    sourceSave: '/api/sources/{name}/',
     sourceValidate: '/api/sources/{name}/validate/',
     sourceTestConnection: '/api/sources/test-connection/',
 
     // Model management endpoints
     modelsList: '/api/models/',
     modelDetail: '/api/models/{name}/',
-    modelSave: '/api/models/{name}/',
     modelValidate: '/api/models/{name}/validate/',
 
     // Model profiling endpoints
@@ -44,49 +42,41 @@ const URL_PATTERNS = {
     // Dimension management endpoints
     dimensionsList: '/api/dimensions/',
     dimensionDetail: '/api/dimensions/{name}/',
-    dimensionSave: '/api/dimensions/{name}/',
     dimensionValidate: '/api/dimensions/{name}/validate/',
 
     // Metric management endpoints
     metricsList: '/api/metrics/',
     metricDetail: '/api/metrics/{name}/',
-    metricSave: '/api/metrics/{name}/',
     metricValidate: '/api/metrics/{name}/validate/',
 
     // Relation management endpoints
     relationsList: '/api/relations/',
     relationDetail: '/api/relations/{name}/',
-    relationSave: '/api/relations/{name}/',
     relationValidate: '/api/relations/{name}/validate/',
 
     // Insight management endpoints
     insightsList: '/api/insights/',
     insightDetail: '/api/insights/{name}/',
-    insightSave: '/api/insights/{name}/',
     insightValidate: '/api/insights/{name}/validate/',
 
     // Input management endpoints
     inputsList: '/api/inputs/',
     inputDetail: '/api/inputs/{name}/',
-    inputSave: '/api/inputs/{name}/',
     inputValidate: '/api/inputs/{name}/validate/',
 
     // Markdown management endpoints
     markdownsList: '/api/markdowns/',
     markdownDetail: '/api/markdowns/{name}/',
-    markdownSave: '/api/markdowns/{name}/',
     markdownValidate: '/api/markdowns/{name}/validate/',
 
     // Chart management endpoints
     chartsList: '/api/charts/',
     chartDetail: '/api/charts/{name}/',
-    chartSave: '/api/charts/{name}/',
     chartValidate: '/api/charts/{name}/validate/',
 
     // Table management endpoints
     tablesList: '/api/tables/',
     tableDetail: '/api/tables/{name}/',
-    tableSave: '/api/tables/{name}/',
     tableValidate: '/api/tables/{name}/validate/',
 
     // Dashboard management endpoints
@@ -98,13 +88,11 @@ const URL_PATTERNS = {
     // CsvScriptModel management endpoints
     csvScriptModelsList: '/api/csv-script-models/',
     csvScriptModelDetail: '/api/csv-script-models/{name}/',
-    csvScriptModelSave: '/api/csv-script-models/{name}/',
     csvScriptModelValidate: '/api/csv-script-models/{name}/validate/',
 
     // LocalMergeModel management endpoints
     localMergeModelsList: '/api/local-merge-models/',
     localMergeModelDetail: '/api/local-merge-models/{name}/',
-    localMergeModelSave: '/api/local-merge-models/{name}/',
     localMergeModelValidate: '/api/local-merge-models/{name}/validate/',
 
     // Defaults management endpoints
@@ -114,7 +102,6 @@ const URL_PATTERNS = {
     // Project management endpoints (new CRUD pattern)
     projectsList: '/api/projects/',
     projectDetail: '/api/projects/{name}/',
-    projectSave: '/api/projects/{name}/',
     projectValidate: '/api/projects/{name}/validate/',
 
     // Publish management endpoints
@@ -170,14 +157,12 @@ const URL_PATTERNS = {
     // Source management endpoints (not available in dist)
     sourcesList: null,
     sourceDetail: null,
-    sourceSave: null,
     sourceValidate: null,
     sourceTestConnection: null,
 
     // Model management endpoints (not available in dist)
     modelsList: null,
     modelDetail: null,
-    modelSave: null,
     modelValidate: null,
 
     // Model profiling endpoints (not available in dist)
@@ -188,49 +173,41 @@ const URL_PATTERNS = {
     // Dimension management endpoints (not available in dist)
     dimensionsList: null,
     dimensionDetail: null,
-    dimensionSave: null,
     dimensionValidate: null,
 
     // Metric management endpoints (not available in dist)
     metricsList: null,
     metricDetail: null,
-    metricSave: null,
     metricValidate: null,
 
     // Relation management endpoints (not available in dist)
     relationsList: null,
     relationDetail: null,
-    relationSave: null,
     relationValidate: null,
 
     // Insight management endpoints (not available in dist)
     insightsList: null,
     insightDetail: null,
-    insightSave: null,
     insightValidate: null,
 
     // Input management endpoints (not available in dist)
     inputsList: null,
     inputDetail: null,
-    inputSave: null,
     inputValidate: null,
 
     // Markdown management endpoints (not available in dist)
     markdownsList: null,
     markdownDetail: null,
-    markdownSave: null,
     markdownValidate: null,
 
     // Chart management endpoints (not available in dist)
     chartsList: null,
     chartDetail: null,
-    chartSave: null,
     chartValidate: null,
 
     // Table management endpoints (not available in dist)
     tablesList: null,
     tableDetail: null,
-    tableSave: null,
     tableValidate: null,
 
     // Dashboard management endpoints (not available in dist)
@@ -242,13 +219,11 @@ const URL_PATTERNS = {
     // CsvScriptModel management endpoints (not available in dist)
     csvScriptModelsList: null,
     csvScriptModelDetail: null,
-    csvScriptModelSave: null,
     csvScriptModelValidate: null,
 
     // LocalMergeModel management endpoints (not available in dist)
     localMergeModelsList: null,
     localMergeModelDetail: null,
-    localMergeModelSave: null,
     localMergeModelValidate: null,
 
     // Defaults management endpoints (not available in dist)

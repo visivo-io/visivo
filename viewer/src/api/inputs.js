@@ -32,7 +32,7 @@ export const fetchInput = async name => {
  * Save an input configuration to cache (draft state)
  */
 export const saveInput = async (name, config) => {
-  const response = await apiFetch(getUrl('inputSave', { name }), {
+  const response = await apiFetch(getUrl('inputDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
