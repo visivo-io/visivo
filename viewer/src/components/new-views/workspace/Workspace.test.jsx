@@ -44,6 +44,10 @@ jest.mock('../common/ModelEditForm', () => stubLeafForm('model-edit-form-stub'))
 jest.mock('../common/DimensionEditForm', () => stubLeafForm('dimension-edit-form-stub'));
 jest.mock('../common/MetricEditForm', () => stubLeafForm('metric-edit-form-stub'));
 jest.mock('../common/RelationEditForm', () => stubLeafForm('relation-edit-form-stub'));
+// The level/defaults Edit forms (VIS-807 / VIS-809) self-fetch (sources/defaults)
+// on mount; stub them so the shell-mount fetch assertions stay route-level.
+jest.mock('../common/LevelEditForm', () => stubLeafForm('level-edit-form-stub'));
+jest.mock('../common/DefaultsEditForm', () => stubLeafForm('defaults-edit-form-stub'));
 
 const resetWorkspaceStore = () => {
   act(() => {

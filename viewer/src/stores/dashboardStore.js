@@ -180,6 +180,58 @@ const createDashboardSlice = (set, get) => ({
   },
 
   /**
+   * Update the level at `index` with a partial `{ title?, description? }` patch
+   * in one persist (VIS-807 / M-2b — the right-rail LevelEditForm edits title +
+   * description together). A blank title is rejected (the backend `Level` model
+   * requires a non-empty title). When the title changes, dashboards that
+   * referenced the level by its old title are re-pointed so they stay in the
+   * group — same behaviour as `renameLevel`. Returns `{ success: false,
+   * error: 'unchanged' }` when neither field actually changes.
+   */
+  updateLevel: async (index, patch = {}) => {
+    const levels = get()._resolveLevels();
+    if (index < 0 || index >= levels.length) {
+      return { success: false, error: 'level index out of range' };
+    }
+    const current = levels[index];
+    const previousTitle = current.title;
+    const nextTitle =
+      patch.title === undefined ? current.title : (patch.title ?? '').trim();
+    if (!nextTitle) {
+      return { success: false, error: 'title required' };
+    }
+    const nextDescription =
+      patch.description === undefined ? current.description : patch.description;
+
+    const titleChanged = nextTitle !== previousTitle;
+    const descriptionChanged = (nextDescription ?? '') !== (current.description ?? '');
+    if (!titleChanged && !descriptionChanged) {
+      return { success: false, error: 'unchanged' };
+    }
+
+    const nextLevels = levels.map((l, i) =>
+      i === index ? { ...l, title: nextTitle, description: nextDescription } : l
+    );
+    const result = await get()._persistLevels(nextLevels);
+
+    if (result?.success && titleChanged && previousTitle) {
+      const dashboards = get().dashboards || [];
+      const affected = dashboards.filter(
+        d =>
+          typeof d.config?.level === 'string' &&
+          d.config.level.toLowerCase() === previousTitle.toLowerCase()
+      );
+      for (const dashboard of affected) {
+        await get().saveDashboard(dashboard.name, {
+          ...(dashboard.config || {}),
+          level: nextTitle,
+        });
+      }
+    }
+    return result;
+  },
+
+  /**
    * Move the level at `index` by `direction` (-1 up, +1 down). No-op at the ends.
    */
   reorderLevel: async (index, direction) => {

@@ -72,7 +72,7 @@ describe('useWorkspaceScope', () => {
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent('null');
   });
 
-  test('returns root scope with project selectedItem when project tab is active', () => {
+  test('returns project scope with project selectedItem when project tab is active', () => {
     act(() => {
       useStore.setState({
         workspaceTabs: [
@@ -87,7 +87,11 @@ describe('useWorkspaceScope', () => {
       });
     });
     renderAt('/workspace');
-    expect(screen.getByTestId('probe-scope')).toHaveTextContent('root');
+    // VIS-809 (M-3): an active project-chrome tab now scopes to `project` so
+    // the right-rail Edit tab binds to the project Defaults form. The selector
+    // stays `'*'` (Full project) so lineage is unaffected.
+    expect(screen.getByTestId('probe-scope')).toHaveTextContent('project');
+    expect(screen.getByTestId('probe-selector')).toHaveTextContent('*');
     expect(screen.getByTestId('probe-selected-type')).toHaveTextContent(
       'project'
     );

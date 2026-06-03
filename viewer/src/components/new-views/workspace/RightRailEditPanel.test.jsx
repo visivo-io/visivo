@@ -48,6 +48,17 @@ jest.mock('../common/ModelEditForm', () => stubForm('model-edit-form-stub', 'mod
 jest.mock('../common/DimensionEditForm', () => stubForm('dimension-edit-form-stub', 'dimension'));
 jest.mock('../common/MetricEditForm', () => stubForm('metric-edit-form-stub', 'metric'));
 jest.mock('../common/RelationEditForm', () => stubForm('relation-edit-form-stub', 'relation'));
+// VIS-807 (M-2b) + VIS-809 (M-3) — the level/defaults forms now render real
+// forms (not placeholders). Stub them so routing assertions stay focused; each
+// stub echoes the prop the router passes through (level index / defaults name).
+jest.mock('../common/LevelEditForm', () => ({
+  __esModule: true,
+  default: ({ index }) => <div data-testid="level-edit-form-stub">{`level:${index}`}</div>,
+}));
+jest.mock('../common/DefaultsEditForm', () => ({
+  __esModule: true,
+  default: ({ name }) => <div data-testid="defaults-edit-form-stub">{`defaults:${name || 'none'}`}</div>,
+}));
 
 const SIMPLE_DASHBOARD = {
   name: 'simple-dashboard',
@@ -170,16 +181,30 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     expect(screen.getByTestId('markdown-edit-form-stub')).toHaveTextContent('notes');
   });
 
-  test('project-chrome → deferred placeholder (M-3)', () => {
+  test('project-chrome → DefaultsEditForm (VIS-809 / M-3)', () => {
     resetStore({ workspaceActiveObject: { type: 'project', name: 'proj' } });
     renderPanel('/workspace/dashboard/simple-dashboard');
-    expect(screen.getByTestId('right-rail-edit-project-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('defaults-edit-form-stub')).toHaveTextContent('defaults:proj');
+    expect(screen.queryByTestId('right-rail-edit-project-placeholder')).not.toBeInTheDocument();
   });
 
-  test('level → deferred placeholder (M-2b)', () => {
+  test('defaults selection → DefaultsEditForm (VIS-809 / M-3)', () => {
+    resetStore({ workspaceActiveObject: { type: 'defaults', name: 'settings' } });
+    renderPanel('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('defaults-edit-form-stub')).toHaveTextContent('defaults:settings');
+  });
+
+  test('level → LevelEditForm at the selected index (VIS-807 / M-2b)', () => {
+    resetStore({ workspaceActiveObject: { type: 'level', name: 'Team', index: 2 } });
+    renderPanel();
+    expect(screen.getByTestId('level-edit-form-stub')).toHaveTextContent('level:2');
+    expect(screen.queryByTestId('right-rail-edit-level-placeholder')).not.toBeInTheDocument();
+  });
+
+  test('level with no index → LevelEditForm defaulting to index 0', () => {
     resetStore({ workspaceActiveObject: { type: 'level', name: 'L0' } });
     renderPanel();
-    expect(screen.getByTestId('right-rail-edit-level-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('level-edit-form-stub')).toHaveTextContent('level:0');
   });
 
   test('no selection → empty state', () => {
