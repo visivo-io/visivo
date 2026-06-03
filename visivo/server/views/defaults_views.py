@@ -24,6 +24,7 @@ def register_defaults_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error fetching defaults: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/defaults/", methods=["POST"])
     @app.route("/api/defaults/save/", methods=["POST"])
     def save_defaults():
         """Save defaults configuration to cache (draft state)."""

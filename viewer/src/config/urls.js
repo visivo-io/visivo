@@ -96,8 +96,7 @@ const URL_PATTERNS = {
     localMergeModelValidate: '/api/local-merge-models/{name}/validate/',
 
     // Defaults management endpoints
-    defaultsGet: '/api/defaults/',
-    defaultsSave: '/api/defaults/save/',
+    defaults: '/api/defaults/',
 
     // Project management endpoints (new CRUD pattern)
     projectsList: '/api/projects/',
@@ -227,8 +226,7 @@ const URL_PATTERNS = {
     localMergeModelValidate: null,
 
     // Defaults management endpoints (not available in dist)
-    defaultsGet: null,
-    defaultsSave: null,
+    defaults: null,
 
     // Publish management endpoints (not available in dist)
     publishStatus: null,
