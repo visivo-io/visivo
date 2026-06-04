@@ -201,7 +201,17 @@ const collectInputNames = (rows, visibleRowIndices, shouldShowItem) => {
  * Dashboard - Renders a single dashboard using data from stores
  * Shows draft versions of objects merged with published versions
  */
-const Dashboard = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint = 1024 }) => {
+const Dashboard = ({
+  projectId,
+  dashboardName,
+  eagerLoad = true,
+  stackBreakpoint = 1024,
+  // When true, suppress the default "This dashboard is empty" placeholder so a
+  // build-surface overlay (the canvas's D-8 "+ Add Row" CTA) can own the empty
+  // state instead. The dashboard root still mounts so the overlay's measuring
+  // ancestor exists. (VIS-794)
+  hideEmptyPlaceholder = false,
+}) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
 
@@ -722,6 +732,19 @@ const Dashboard = ({ projectId, dashboardName, eagerLoad = true, stackBreakpoint
 
   // Empty dashboard state
   if (!dashboard.rows || dashboard.rows.length === 0) {
+    if (hideEmptyPlaceholder) {
+      // The canvas overlay (CanvasAddRow) renders the D-8 CTA on top; still
+      // mount a positioned, full-size root so the overlay has an ancestor to
+      // measure against and fill.
+      return (
+        <div
+          ref={observe}
+          data-testid={`dashboard_${dashboardName}`}
+          data-dashboard-empty="true"
+          className="flex grow flex-col w-full max-w-full"
+        />
+      );
+    }
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-gray-400">This dashboard is empty</div>

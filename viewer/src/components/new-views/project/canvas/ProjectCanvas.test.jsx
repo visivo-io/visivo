@@ -8,8 +8,19 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ProjectCanvas from './ProjectCanvas';
 import useStore from '../../../../stores/store';
+
+// ProjectCanvas mounts the CanvasAddRow overlay, which uses react-router's
+// useNavigate for the inline-create route (VIS-794), so renders are wrapped in
+// a router.
+const renderWithRouter = ui =>
+  render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      {ui}
+    </MemoryRouter>
+  );
 
 jest.mock('../../../project/Dashboard', () => {
   const Mock = ({ projectId, dashboardName }) => (
@@ -25,20 +36,20 @@ jest.mock('../../../project/Dashboard', () => {
 
 describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
   test('renders Dashboard', () => {
-    render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
     expect(screen.getByTestId('project-canvas')).toBeInTheDocument();
     expect(screen.getByTestId('dashboard-new-mock')).toBeInTheDocument();
   });
 
   test('forwards projectId and dashboardName to Dashboard unchanged', () => {
-    render(<ProjectCanvas projectId="proj-42" dashboardName="revenue" />);
+    renderWithRouter(<ProjectCanvas projectId="proj-42" dashboardName="revenue" />);
     const dashboard = screen.getByTestId('dashboard-new-mock');
     expect(dashboard).toHaveAttribute('data-project-id', 'proj-42');
     expect(dashboard).toHaveAttribute('data-dashboard-name', 'revenue');
   });
 
   test('mounts the editing-affordance overlay layer (VIS-768)', () => {
-    render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
     // The overlay is a pointer-events-none sibling layer positioned over the
     // render — it must NOT intercept Dashboard's own interactivity.
     const overlay = screen.getByTestId('canvas-overlay-layer');
@@ -47,7 +58,7 @@ describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
   });
 
   test('the canvas root is positioned so the overlay can anchor to it', () => {
-    render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
     expect(screen.getByTestId('project-canvas').className).toContain('relative');
   });
 
@@ -55,7 +66,7 @@ describe('ProjectCanvas (VIS-767 / VIS-768)', () => {
     useStore.setState({
       dashboards: [{ name: 'sales', config: { rows: [{ items: [{ chart: 'ref(a)' }] }] } }],
     });
-    render(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
+    renderWithRouter(<ProjectCanvas projectId="proj-1" dashboardName="sales" />);
     // The DnD layer is wired to the shell's shared DndContext (no second
     // context); it mounts as a pointer-events-none sibling over the render.
     const dndLayer = screen.getByTestId('canvas-dnd-layer');
