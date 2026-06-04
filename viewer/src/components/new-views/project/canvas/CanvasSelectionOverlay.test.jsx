@@ -181,7 +181,7 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     expect(chrome.className).toContain('ring-[#713b57]');
   });
 
-  test('hovering an item paints the outline + resize-handle placeholder', () => {
+  test('hovering an item paints the hover outline', () => {
     render(<Harness />);
     measureFakeDom();
     // Move off the default-selected dashboard chrome first by selecting a row,
@@ -191,7 +191,9 @@ describe('CanvasSelectionOverlay (VIS-768)', () => {
     });
     dispatch(fireEvent.mouseMove, screen.getByTestId('slot-0-0'));
     expect(screen.getByTestId('canvas-overlay-hover-item')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-overlay-resize-handle')).toBeInTheDocument();
+    // The resize affordance moved to <CanvasResizeLayer> (VIS-777 / D-4), painted
+    // on the SELECTED node — the hover overlay no longer carries a placeholder.
+    expect(screen.queryByTestId('canvas-overlay-resize-handle')).not.toBeInTheDocument();
   });
 
   test('mouse leave clears the hover overlay', () => {

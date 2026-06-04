@@ -155,9 +155,8 @@ test.describe('Canvas selection + hover overlays (VIS-768)', () => {
     await expect(page.getByTestId('canvas-overlay-hover-item')).toBeVisible({
       timeout: WAIT,
     });
-    await expect(page.getByTestId('canvas-overlay-resize-handle')).toBeVisible({
-      timeout: WAIT,
-    });
+    // The resize affordance moved to <CanvasResizeLayer> (VIS-777 / D-4), shown
+    // on the SELECTED node rather than as a hover-time placeholder.
 
     await page.screenshot({ path: `${SCREENS}/vis768-04-hover-overlay.png` });
   });

@@ -53,7 +53,16 @@ import {
 const WorkspaceDragContext = createContext(null);
 
 /** Read the live shell-level drag state ({ kind, name, level } | null). */
-export const useWorkspaceDrag = () => useContext(WorkspaceDragContext);
+export const useWorkspaceDrag = () => useContext(WorkspaceDragContext)?.activeDrag ?? null;
+
+/**
+ * Read the shared `commitCanvasConfig(dashboardName, nextConfig, meta)` —
+ * sanitize → optimistic → save. Surfaced for the canvas resize overlay
+ * (VIS-777 / D-4), which persists width/height/weight gestures through the SAME
+ * dashboard save path the DnD router uses. Returns a no-op outside the provider.
+ */
+export const useCommitCanvasConfig = () =>
+  useContext(WorkspaceDragContext)?.commitCanvasConfig ?? (() => {});
 
 /**
  * Pure router for the shared `onDragEnd`. Decides what a finished drag means
@@ -239,6 +248,14 @@ const WorkspaceDndContext = ({ children }) => {
     [updateDashboardConfigOptimistic, saveDashboard]
   );
 
+  // Context value: the live drag state PLUS the shared commit path. Consumers
+  // read `useWorkspaceDrag()` (drag only) or `useCommitCanvasConfig()` (commit
+  // only); both unwrap this object so neither re-renders on the other's change.
+  const contextValue = useMemo(
+    () => ({ activeDrag, commitCanvasConfig }),
+    [activeDrag, commitCanvasConfig]
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -290,7 +307,7 @@ const WorkspaceDndContext = ({ children }) => {
   );
 
   return (
-    <WorkspaceDragContext.Provider value={activeDrag}>
+    <WorkspaceDragContext.Provider value={contextValue}>
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}

@@ -202,3 +202,116 @@ export const buildLibraryItem = (type, name) => {
   if (type && name) item[type] = formatRef(name);
   return item;
 };
+
+// ── Resize helpers (VIS-777 / Track D D-4) ──────────────────────────────────
+// The canvas resize overlay (CanvasResizeLayer) turns the selection's edge
+// handles into real gestures. These are the pure, immutable config transforms
+// behind them — they mirror the reorder helpers above: walk the composite
+// `data-canvas-path` spine, clone only the path to the target, return a NEW
+// config. The shell sanitises the result before persisting.
+
+/**
+ * Row.height accepts `Union[HeightEnum, int]` (VIS-770). The enum tick stops,
+ * ascending, with their pixel sizes mirroring Dashboard.getHeight(). `compact`
+ * is the smallest stop; the renderer treats it specially (no explicit height),
+ * so it maps to the same floor as `xsmall` for snapping purposes.
+ */
+export const HEIGHT_ENUM_STOPS = [
+  { label: 'compact', px: 96 },
+  { label: 'xsmall', px: 128 },
+  { label: 'small', px: 256 },
+  { label: 'medium', px: 396 },
+  { label: 'large', px: 512 },
+  { label: 'xlarge', px: 768 },
+  { label: 'xxlarge', px: 1024 },
+];
+
+/** Map a HeightEnum token to its pixel size (mirrors Dashboard.getHeight). */
+export const heightEnumToPixels = label => {
+  const stop = HEIGHT_ENUM_STOPS.find(s => s.label === label);
+  return stop ? stop.px : 396;
+};
+
+/**
+ * Snap a pixel height to the NEAREST HeightEnum token. Used in tick mode so a
+ * height drag steps through the enum stops with labels. Ties resolve to the
+ * smaller stop (stable as the cursor crosses a midpoint).
+ */
+export const pixelsToNearestHeightEnum = px => {
+  if (typeof px !== 'number' || Number.isNaN(px)) return 'medium';
+  let best = HEIGHT_ENUM_STOPS[0];
+  let bestDist = Math.abs(px - best.px);
+  for (const stop of HEIGHT_ENUM_STOPS) {
+    const dist = Math.abs(px - stop.px);
+    if (dist < bestDist) {
+      best = stop;
+      bestDist = dist;
+    }
+  }
+  return best.label;
+};
+
+/** Clamp a number to [min, max], rounding to an integer. */
+const clampInt = (value, min, max) => {
+  const n = Math.round(Number(value));
+  if (Number.isNaN(n)) return min;
+  return Math.max(min, Math.min(max, n));
+};
+
+/**
+ * Set the integer column WIDTH (grid span) of the item at `itemPath`. Widths
+ * are relative within their row (the row's grid total is the sum of item
+ * widths), so changing one item's span rebalances its siblings automatically —
+ * a 6/6 row where item 0 grows to 8 becomes an 8/6 row (8/14 vs 6/14). Width is
+ * clamped to [1, 12]. Works at any nesting depth. Returns the config unchanged
+ * when the width is already `nextWidth` or the path is invalid.
+ */
+export const setItemWidth = (config, itemPath, nextWidth) => {
+  const segments = parseCanvasPath(itemPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+  const width = clampInt(nextWidth, 1, 12);
+  const itemSeg = segments[segments.length - 1];
+  const rowSegments = segments.slice(0, -1);
+  if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+  let changed = false;
+  const next = withRowsAtRowPath(config, rowSegments, rows => {
+    const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      const items = row.items.map((it, ii) => {
+        if (ii !== itemSeg.index) return it;
+        if ((it.width || 1) === width) return it;
+        changed = true;
+        return { ...it, width };
+      });
+      return changed ? { ...row, items } : row;
+    });
+  });
+  return changed ? next : config;
+};
+
+/**
+ * Set the HEIGHT of the row at `rowPath`. `nextHeight` is either a HeightEnum
+ * token (string, tick mode) or a positive integer (px, Shift-fluid mode —
+ * Row.height accepts `Union[HeightEnum, int]`). Integers are clamped to a sane
+ * floor/ceiling. Works at any nesting depth (top-level rows interpret height as
+ * absolute px; nested sub-rows interpret the same field as a relative weight —
+ * see Dashboard.heightToWeight). Returns config unchanged on no-op / bad path.
+ */
+export const setRowHeight = (config, rowPath, nextHeight) => {
+  const segments = parseCanvasPath(rowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+  const height =
+    typeof nextHeight === 'number' ? clampInt(nextHeight, 48, 2048) : nextHeight;
+  let changed = false;
+  const next = withRowsAtRowPath(config, segments, rows => {
+    const lastRowIndex = segments[segments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex) return row;
+      if (row.height === height) return row;
+      changed = true;
+      return { ...row, height };
+    });
+  });
+  return changed ? next : config;
+};
