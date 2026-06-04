@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 from tests.factories.model_factories import (
     ProjectFactory,
@@ -132,6 +133,19 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
         status_code=201,
     )
 
+    # Decomposed deploy: each resource type + defaults are posted via requests.
+    requests_mock.post(
+        re.compile(
+            r"http://host/api/(sources|models|csv-script-models|local-merge-models"
+            r"|dimensions|metrics|relations|charts|insights|tables|markdowns|inputs)/"
+        ),
+        json={"created": 0, "names": []},
+        status_code=201,
+    )
+    requests_mock.post(
+        re.compile(r"http://host/api/defaults/"), json={}, status_code=200
+    )
+
     requests_mock.post(
         "http://host/api/projects/",
         json={"name": "name", "id": "id", "url": "/url"},
@@ -153,7 +167,19 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
     captured = capsys.readouterr()
     stdout = captured.out
     assert "/url" == url
+    assert "Uploading project resources..." in stdout
     assert "Processing insight uploads..." in stdout
     assert "Processing input uploads..." in stdout
     assert "Processing model uploads..." in stdout
     assert "Deployment completed in" in stdout
+
+    # The monolithic blob is no longer sent on the project create.
+    projects_post = next(
+        r
+        for r in requests_mock.request_history
+        if r.method == "POST" and r.url == "http://host/api/projects/"
+    )
+    assert "project_json" not in projects_post.json()
+    # Resources were decomposed into per-type endpoint POSTs.
+    posted_paths = {r.path for r in requests_mock.request_history if r.method == "POST"}
+    assert "/api/charts/" in posted_paths

@@ -13,6 +13,11 @@ from tests.factories.model_factories import (
     InsightFactory,
     ChartFactory,
     SqlModelFactory,
+    CsvScriptModelFactory,
+    LocalMergeModelFactory,
+    DimensionFactory,
+    MetricFactory,
+    RelationFactory,
 )
 
 
@@ -206,3 +211,61 @@ def test_dereference_to_dict_matches_dereference():
     deref_insight = deref_dashboard.rows[0].items[0].chart.insights[0]
 
     assert dict_insight["name"] == deref_insight.name
+
+
+def test_collect_deploy_resources_emits_all_deploy_types():
+    """``collect_deploy_resources`` emits every named object the decomposed
+    deploy posts — split by model subtype, references preserved — keyed by the
+    cloud endpoint segment, so the cloud editor sees the full authored layer."""
+    project = ProjectFactory(
+        sources=[SourceFactory()],
+        models=[
+            SqlModelFactory(
+                name="m1",
+                dimensions=[DimensionFactory(name="d1")],
+                metrics=[MetricFactory(name="mt1")],
+            ),
+            SqlModelFactory(name="m2"),
+            CsvScriptModelFactory(name="csv_m"),
+            LocalMergeModelFactory(name="merge_m"),
+        ],
+        relations=[RelationFactory(name="r1", condition="${ref(m1).id} = ${ref(m2).id}")],
+        dashboards=[],
+    )
+    project.invalidate_dag_cache()
+
+    layer = Serializer(project=project).collect_deploy_resources()
+
+    # Every deploy endpoint segment is represented (the view-object buckets
+    # exist even though this fixture authors none top-level).
+    assert set(layer) == {
+        "sources",
+        "models",
+        "csv-script-models",
+        "local-merge-models",
+        "dimensions",
+        "metrics",
+        "relations",
+        "charts",
+        "insights",
+        "tables",
+        "markdowns",
+        "inputs",
+    }
+
+    assert {s["name"] for s in layer["sources"]} >= {"source"}
+    assert {m["name"] for m in layer["models"]} >= {"m1", "m2"}
+    assert {m["name"] for m in layer["csv-script-models"]} == {"csv_m"}
+    assert {m["name"] for m in layer["local-merge-models"]} == {"merge_m"}
+    assert {d["name"] for d in layer["dimensions"]} >= {"d1"}
+    assert {m["name"] for m in layer["metrics"]} >= {"mt1"}
+    assert {r["name"] for r in layer["relations"]} == {"r1"}
+
+    # The SqlModel subtype bucket must not leak csv-script / local-merge models.
+    assert "csv_m" not in {m["name"] for m in layer["models"]}
+    assert "merge_m" not in {m["name"] for m in layer["models"]}
+
+    # References stay as ${ref(...)} rather than being inlined, so editing a
+    # deployed object matches editing it locally.
+    m1 = next(m for m in layer["models"] if m["name"] == "m1")
+    assert "ref(source)" in str(m1["source"])

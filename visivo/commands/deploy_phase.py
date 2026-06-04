@@ -207,11 +207,12 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def create_dashboard_records(
-    dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress
+    dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress, baked_configs=None
 ):
     """
     Asynchronously creates a trace record on the server.
     """
+    baked_configs = baked_configs or {}
 
     def dashboard_body(dashboard):
         thumbnail_file_id = next(
@@ -225,6 +226,9 @@ async def create_dashboard_records(
         dashboard_body = {
             "name": dashboard.name,
             "project_id": project_id,
+            # Baked config the cloud renders (inlined charts/insights). The
+            # source/ref objects are posted separately for the editor.
+            "config": baked_configs.get(dashboard.name, {}),
         }
         if thumbnail_file_id:
             dashboard_body["thumbnail_file_id"] = thumbnail_file_id
@@ -374,7 +378,7 @@ async def create_model_records(batch, project_id, json_headers, host, progress):
 
 
 async def process_dashboards_async(
-    dashboards, output_dir, project_id, form_headers, json_headers, host
+    dashboards, output_dir, project_id, form_headers, json_headers, host, baked_configs=None
 ):
     """
     Coordinates the asynchronous upload of thumbnail files.
@@ -438,7 +442,13 @@ async def process_dashboards_async(
     tasks = []
     tasks.append(
         create_dashboard_records(
-            dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress
+            dashboards,
+            thumbnail_file_uploads,
+            project_id,
+            json_headers,
+            host,
+            progress,
+            baked_configs or {},
         )
     )
 
@@ -801,6 +811,24 @@ def collect_parquet_files_for_inputs(inputs, output_dir):
     return list(parquet_files.values())
 
 
+def upload_resources(resources_by_segment, project_id, json_headers, host):
+    """POST each non-empty per-type config array to its cloud endpoint.
+
+    ``resources_by_segment`` maps a cloud endpoint segment (``sources``,
+    ``models``, ``csv-script-models``, ``dimensions``, ``charts``, ...) to a
+    list of config dicts. Each type is upserted by name and published in a
+    single request, so the cloud editor + lineage get the full project without
+    the legacy ``project_json`` blob.
+    """
+    for segment, configs in resources_by_segment.items():
+        if not configs:
+            continue
+        url = f"{host}/api/{segment}/?project_id={project_id}"
+        response = requests.post(url, data=json.dumps(configs), headers=json_headers)
+        response.raise_for_status()
+        Logger.instance().success(f"\t{len(configs)} {segment} created")
+
+
 def deploy_phase(
     working_dir, user_dir, output_dir, stage, host, deploy_id=None, run_id=DEFAULT_RUN_ID
 ):
@@ -847,9 +875,11 @@ def deploy_phase(
     project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
     send_progress(f"Project Compiled in {time() - deploy_start_time:.2f} seconds", "success")
 
-    # Prepare request payloads and headers
+    # Prepare request payloads and headers. The monolithic ``project_json``
+    # blob is no longer sent — each object is posted to its own endpoint below
+    # (decomposed deploy). ``project_json`` is still computed for the project
+    # metadata, the baked dashboard configs, and the defaults.
     body = {
-        "project_json": project_json,
         "name": project_json["name"],
         "cli_version": project_json["cli_version"],
         "stage": stage,
@@ -879,6 +909,37 @@ def deploy_phase(
         project_id = project_data["id"]
         project_url = project_data["url"]
 
+        # Decomposed deploy: post each named object to its own endpoint so the
+        # cloud editor + lineage have the full project (no project_json blob).
+        send_progress("Uploading project resources...", "info")
+        upload_resources_start_time = time()
+        upload_resources(
+            serializer.collect_deploy_resources(),
+            project_id=project_id,
+            json_headers=json_headers,
+            host=host,
+        )
+        defaults = project_json.get("defaults") or {}
+        if defaults:
+            defaults_response = requests.post(
+                f"{host}/api/defaults/?project_id={project_id}",
+                data=json.dumps(defaults),
+                headers=json_headers,
+            )
+            defaults_response.raise_for_status()
+        send_progress(
+            f"Project resources uploaded in {time() - upload_resources_start_time:.2f} seconds",
+            "info",
+        )
+
+        # Baked (dereferenced, inlined) dashboard configs the cloud renders,
+        # keyed by name and attached to each dashboard record below.
+        baked_dashboards = {
+            dashboard["name"]: dashboard
+            for dashboard in project_json.get("dashboards", [])
+            if isinstance(dashboard, dict) and dashboard.get("name")
+        }
+
         # Process thumbnails
         send_progress("Processing dashboard uploads...", "info")
         process_thumbnails_start_time = time()
@@ -897,6 +958,7 @@ def deploy_phase(
                 form_headers=form_headers,
                 json_headers=json_headers,
                 host=host,
+                baked_configs=baked_dashboards,
             )
         )
         send_progress(
