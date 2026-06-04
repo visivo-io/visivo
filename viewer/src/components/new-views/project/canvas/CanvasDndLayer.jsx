@@ -73,9 +73,13 @@ const itemRefName = item => {
 // A grip positioned at the top-left of a row/item box. Dragging it starts a
 // canvas reorder. `rowPath` is the path of the ROW the item lives in (for an
 // item) so the router can reorder within it.
-const CanvasDragHandle = ({ id, box, kind, dragData, label }) => {
+const CanvasDragHandle = ({ id, box, kind, dragData, label, visible }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: dragData });
-  if (!box) return null;
+  // Reveal grips only on hover-or-selection (VIS-771 follow-up) — an always-on
+  // grip over every row/item reads as clutter. Keep the actively-dragged grip
+  // mounted (`isDragging`) so a hover change mid-drag can't unmount it and abort
+  // the gesture.
+  if (!box || (!visible && !isDragging)) return null;
   const isRow = kind === 'row';
   // Rows: handle sits in the LEFT GUTTER beside the row (clamped to ≥2px so it
   // never escapes the canvas) and is taller — this keeps it clear of the row's
@@ -92,6 +96,16 @@ const CanvasDragHandle = ({ id, box, kind, dragData, label }) => {
       type="button"
       data-testid={`canvas-drag-handle-${id}`}
       data-canvas-handle-kind={kind}
+      // Carry the SAME composite path as the row/item the grip belongs to. This
+      // (a) keeps the grip revealed while the cursor is on it — the selection
+      // overlay resolves hover via `closest('[data-canvas-path]')`, which without
+      // this would resolve the grip to dashboard-chrome and clear the hover that
+      // revealed it, making the grip vanish as you reach for it — and (b) makes a
+      // plain click on the grip select that row/item (handy for selecting a row,
+      // whose chrome is otherwise mostly covered by its items). Dashboard's own
+      // path node renders earlier in the DOM, so geometry queries (querySelector)
+      // still resolve to the real row/item box, not this grip.
+      data-canvas-path={id}
       aria-label={label}
       title={label}
       className="pointer-events-auto absolute z-20 inline-flex items-center justify-center rounded-md border border-[#c6b0bb] bg-white/95 text-[#713b57] shadow-sm transition-opacity hover:bg-[#f9f6f8]"
@@ -127,6 +141,11 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
   const { setNodeRef, isOver, active } = useDroppable({ id, data });
   if (!box) return null;
   const isDragging = !!active;
+  // Opt into pointer events ONLY while a drag is in progress. At rest the zone is
+  // pointer-events-none so it never swallows a canvas selection click (VIS-768
+  // row/item selection); during a drag it must capture pointer events so the drop
+  // registers and reorder/insert commits.
+  const peClass = isDragging ? 'pointer-events-auto' : 'pointer-events-none';
 
   // Hit areas are generous (the gaps are thin); the visible indicator is the
   // mulberry bar/region, shown only while a drag is over this zone.
@@ -145,7 +164,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
     return (
       <div
         {...common}
-        className="pointer-events-auto absolute z-20"
+        className={`${peClass} absolute z-20`}
         style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
       >
         {isDragging && isOver && (
@@ -170,7 +189,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
     return (
       <div
         {...common}
-        className="pointer-events-auto absolute z-[19]"
+        className={`${peClass} absolute z-[19]`}
         style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
       >
         {isDragging && isOver && (
@@ -191,7 +210,7 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
   return (
     <div
       {...common}
-      className="pointer-events-auto absolute z-20"
+      className={`${peClass} absolute z-20`}
       style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
     >
       {isDragging && isOver && (
@@ -422,8 +441,25 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
   return model;
 };
 
+// Is `key` the row at `rowPath`, or any descendant item/row within it? Used to
+// reveal a row's grip when the cursor is over (or selection is on) any of its
+// items, so row-drag is reachable from anywhere in the row.
+const keyWithinRow = (key, rowPath) =>
+  !!key && (key === rowPath || key.startsWith(`${rowPath}.`));
+
+// Should a handle be revealed given the current hover + selection keys?
+const isHandleVisible = (handle, hoverKey, selectedKey) => {
+  if (handle.kind === 'row') {
+    return keyWithinRow(hoverKey, handle.id) || keyWithinRow(selectedKey, handle.id);
+  }
+  // Item grips reveal only for that exact item.
+  return hoverKey === handle.id || selectedKey === handle.id;
+};
+
 const CanvasDndLayer = ({ rootRef, dashboardName }) => {
   const dashboards = useStore(s => s.dashboards);
+  const hoverKey = useStore(s => s.workspaceCanvasHoverKey);
+  const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
   const dashboardConfig = useMemo(() => {
     const entry = (dashboards || []).find(d => d.name === dashboardName);
     if (!entry) return null;
@@ -450,6 +486,7 @@ const CanvasDndLayer = ({ rootRef, dashboardName }) => {
           kind={h.kind}
           dragData={h.dragData}
           label={h.label}
+          visible={isHandleVisible(h, hoverKey, selectedKey)}
         />
       ))}
     </div>

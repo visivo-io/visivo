@@ -71,7 +71,12 @@ const BOXES = {
 };
 
 beforeEach(() => {
-  useStore.setState({ dashboards: [DASHBOARD] });
+  // Reset selection/hover to a neutral default (handles are gated on these).
+  useStore.setState({
+    dashboards: [DASHBOARD],
+    workspaceOutlineSelectedKey: 'dashboard',
+    workspaceCanvasHoverKey: null,
+  });
   // Mock getBoundingClientRect off the element's data-testid.
   Element.prototype.getBoundingClientRect = function () {
     const tid = this.getAttribute && this.getAttribute('data-testid');
@@ -81,27 +86,50 @@ beforeEach(() => {
   };
 });
 
+const reveal = ({ hover = null, selected = 'dashboard' } = {}) =>
+  useStore.setState({ workspaceCanvasHoverKey: hover, workspaceOutlineSelectedKey: selected });
+
 describe('CanvasDndLayer (VIS-771)', () => {
-  test('renders a drag handle over each row and item', () => {
+  test('drag handles are hidden at rest (no hover, dashboard selected)', () => {
+    reveal();
     render(<Host />);
     expect(screen.getByTestId('canvas-dnd-layer')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-drag-handle-row.0')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-drag-handle-row.1')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-drag-handle-row.0.item.0')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-drag-handle-row.0.item.1')).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-drag-handle-row.1.item.0')).toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-drag-handle-row.0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-drag-handle-row.0.item.0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-drag-handle-row.1.item.0')).not.toBeInTheDocument();
   });
 
-  test('row handles are tagged row, item handles tagged item', () => {
+  test('selecting a row reveals only that row handle (tagged row)', () => {
+    reveal({ selected: 'row.1' });
     render(<Host />);
+    expect(screen.getByTestId('canvas-drag-handle-row.1')).toHaveAttribute(
+      'data-canvas-handle-kind',
+      'row'
+    );
+    expect(screen.queryByTestId('canvas-drag-handle-row.0')).not.toBeInTheDocument();
+  });
+
+  test('selecting an item reveals the item handle AND its parent row handle', () => {
+    reveal({ selected: 'row.0.item.1' });
+    render(<Host />);
+    expect(screen.getByTestId('canvas-drag-handle-row.0.item.1')).toHaveAttribute(
+      'data-canvas-handle-kind',
+      'item'
+    );
+    // The parent row's grip is revealed too, so row-drag stays reachable.
     expect(screen.getByTestId('canvas-drag-handle-row.0')).toHaveAttribute(
       'data-canvas-handle-kind',
       'row'
     );
-    expect(screen.getByTestId('canvas-drag-handle-row.0.item.0')).toHaveAttribute(
-      'data-canvas-handle-kind',
-      'item'
-    );
+    // A sibling item's grip stays hidden.
+    expect(screen.queryByTestId('canvas-drag-handle-row.0.item.0')).not.toBeInTheDocument();
+  });
+
+  test('hovering an item reveals the item + its parent row handle', () => {
+    reveal({ hover: 'row.0.item.0' });
+    render(<Host />);
+    expect(screen.getByTestId('canvas-drag-handle-row.0.item.0')).toBeInTheDocument();
+    expect(screen.getByTestId('canvas-drag-handle-row.0')).toBeInTheDocument();
   });
 
   test('renders between-items, end-of-row and between-rows drop zones', () => {
