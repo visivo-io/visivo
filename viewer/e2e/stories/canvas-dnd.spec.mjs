@@ -62,45 +62,116 @@ const readItemOrder = async (page, rowIndex) => {
   return items.map(itemKey);
 };
 
-// dnd-kit PointerSensor needs down → nudge (clears 5px activation) → travel →
-// settle on target so the collision detector registers `over` before the drop.
+// Start a canvas drag and travel to the target drop zone, leaving the pointer
+// DOWN (the caller commits the drop with `page.mouse.up()`).
+//
+// Why this dispatches `pointerdown` directly on the grip element instead of
+// driving `page.mouse.down()` at the grip's coordinates:
+//
+//   The canvas grips are an absolutely-positioned overlay (`<CanvasDndLayer>`,
+//   z-10) painted OVER the render-only <Dashboard>, and an item grip sits at the
+//   top-left corner of its item — directly over the item's Plotly chart. The
+//   dashboard item wrapper carries `z-40`, which is ABOVE the overlay's z-10, so
+//   at the grip's centre `elementFromPoint` resolves to the Plotly
+//   `svg-container`, not the grip. A coordinate-based `page.mouse.down()`
+//   therefore lands on the chart and dnd-kit's PointerSensor never arms — the
+//   drag silently no-ops (this is what the previous `scrollIntoViewIfNeeded`
+//   harness masked; the scroll only made it flakier by reflowing the gated grip
+//   mid-grab). The grip is fully visible per CSS (the gating test asserts that),
+//   it's just occluded for hit-testing.
+//
+//   Dispatching `pointerdown` on the grip element itself bypasses hit-testing
+//   and arms dnd-kit's PointerSensor on the real draggable node. The subsequent
+//   document-level `pointermove`s clear the 5px activation distance and travel to
+//   the target (dnd-kit measures droppables by rect — MeasuringStrategy.Always —
+//   so the moves only need to reach the target's centre, occlusion-immune too).
+//   The final commit is a REAL `page.mouse.up()` in the caller, which dnd-kit's
+//   document pointerup listener catches and routes through `routeWorkspaceDragEnd`.
 const dndDrag = async (page, source, target) => {
-  await source.scrollIntoViewIfNeeded();
+  await expect(source).toBeVisible();
+  await page.waitForTimeout(150); // settle the reveal/select reflow before grabbing
   const sb = await source.boundingBox();
   const tb = await target.boundingBox();
   expect(sb && tb, 'both drag endpoints have a box').toBeTruthy();
-  const sx = sb.x + sb.width / 2;
-  const sy = sb.y + sb.height / 2;
   const tx = tb.x + tb.width / 2;
   const ty = tb.y + tb.height / 2;
-  await page.mouse.move(sx, sy);
-  await page.mouse.down();
-  await page.mouse.move(sx + 8, sy + 8, { steps: 6 }); // clear activation distance
-  await page.mouse.move(tx, ty, { steps: 24 });
-  await page.mouse.move(tx + 1, ty + 1, { steps: 4 });
-  await page.mouse.move(tx, ty, { steps: 4 });
+  // Arm the PointerSensor by dispatching pointerdown on the grip node directly.
+  await source.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    window.__canvasDndSrc = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const ev = (x, y) => ({
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+      button: 0,
+      pointerType: 'mouse',
+      isPrimary: true,
+      view: window,
+    });
+    el.dispatchEvent(new PointerEvent('pointerdown', ev(window.__canvasDndSrc.x, window.__canvasDndSrc.y)));
+  });
+  await page.waitForTimeout(40);
+  // Nudge past the 5px activation distance, then travel to the target centre.
+  await page.evaluate(
+    ([tx, ty]) => {
+      const s = window.__canvasDndSrc;
+      const ev = (x, y) => ({
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+        pointerId: 1,
+        button: 0,
+        pointerType: 'mouse',
+        isPrimary: true,
+        view: window,
+      });
+      document.dispatchEvent(new PointerEvent('pointermove', ev(s.x + 10, s.y + 10)));
+      document.dispatchEvent(new PointerEvent('pointermove', ev((s.x + tx) / 2, (s.y + ty) / 2)));
+      document.dispatchEvent(new PointerEvent('pointermove', ev(tx, ty)));
+      document.dispatchEvent(new PointerEvent('pointermove', ev(tx, ty)));
+    },
+    [tx, ty]
+  );
+  await page.waitForTimeout(40);
   return { sb, tb };
 };
 
 // Canvas drag-grips are gated on hover/selection (not painted at rest). We reveal
-// via SELECTION (click) rather than hover: a selected key persists through the
-// scroll/reflow that dndDrag's scrollIntoViewIfNeeded triggers, whereas a hover
-// key is intentionally cleared on reflow (so the grip would vanish mid-grab).
-// Clicking also exercises canvas selection (the grip carries the row/item's
-// data-canvas-path). `.first()` (DOM order) is the dashboard slot, not the grip.
+// via SELECTION (click) rather than hover: a selected key persists for the whole
+// gesture, whereas a hover key is cleared on any reflow (so a hover-revealed grip
+// could vanish mid-grab). Clicking also exercises canvas selection (the grip
+// carries the row/item's data-canvas-path). `.first()` (DOM order) is the
+// dashboard slot, not the grip.
+//
+// The select-click uses `{ force: true }` to skip Playwright's actionability /
+// occlusion check. The click target (the slot's top-left corner) is intentionally
+// overlaid by the item's Plotly chart AND, on a re-entrant call (e.g. a serial
+// retry where a prior selection already revealed this grip), by the grip button
+// itself — Playwright would otherwise abort with "<button …drag-handle…> subtree
+// intercepts pointer events" and retry until it times out. We only need the click
+// to land on the slot element to trigger selection; what visually sits on top of
+// that point is irrelevant, so forcing the dispatch is correct and removes the
+// retry flake.
 const revealItemHandle = async (page, itemPath) => {
-  await page.locator(`[data-canvas-path="${itemPath}"]`).first().click({ position: { x: 6, y: 6 } });
+  await page
+    .locator(`[data-canvas-path="${itemPath}"]`)
+    .first()
+    .click({ position: { x: 6, y: 6 }, force: true });
   const handle = page.getByTestId(`canvas-drag-handle-${itemPath}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
 };
 const revealRowHandle = async (page, rowIndex) => {
   // Selecting any item in the row reveals the row's grip (keyWithinRow), and the
-  // selection persists through scroll.
+  // selection persists through scroll. `force: true` for the same occlusion
+  // reason as revealItemHandle.
   await page
     .locator(`[data-canvas-path="row.${rowIndex}.item.0"]`)
     .first()
-    .click({ position: { x: 6, y: 6 } });
+    .click({ position: { x: 6, y: 6 }, force: true });
   const handle = page.getByTestId(`canvas-drag-handle-row.${rowIndex}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
@@ -165,13 +236,7 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     await page.screenshot({ path: `${SCREENS}/vis771-01-affordances.png`, fullPage: true });
   });
 
-  // NOTE (task: tune canvas-dnd harness): item/row reorder + Library-insert are
-  // VERIFIED WORKING by direct drives, but this spec's synthetic `dndDrag`
-  // (scrollIntoViewIfNeeded) reflows the canvas and rebuilds the now-gated grip
-  // mid-grab, so the synthetic drag doesn't start. Marked fixme until the harness
-  // reveals/grabs grips without triggering the reflow. The grip-gating behaviour
-  // itself is covered by the passing test above.
-  test.fixme('reorder an item within a row → persists to the store config', async () => {
+  test('reorder an item within a row → persists to the store config', async () => {
     await openCanvas(page);
     const rows = await readRows(page);
     const ri = rows.findIndex(r => (r.items || []).length >= 2);
@@ -198,7 +263,7 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     await page.screenshot({ path: `${SCREENS}/vis771-02-item-reordered.png`, fullPage: true });
   });
 
-  test.fixme('reorder top-level rows → persists to the store config', async () => {
+  test('reorder top-level rows → persists to the store config', async () => {
     await openCanvas(page);
     const rows = await readRows(page);
     expect(rows.length, 'dashboard has ≥2 rows').toBeGreaterThanOrEqual(2);
@@ -231,7 +296,7 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     await page.screenshot({ path: `${SCREENS}/vis771-03-rows-reordered.png`, fullPage: true });
   });
 
-  test.fixme('drop a Library object onto the canvas → inserts a new item', async () => {
+  test('drop a Library object onto the canvas → inserts a new item', async () => {
     await openCanvas(page);
     const rowsBefore = await readRows(page);
     const totalItemsBefore = rowsBefore.reduce((n, r) => n + (r.items || []).length, 0);
