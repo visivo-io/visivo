@@ -50,6 +50,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
         dashboardName={dashboardName}
         stackBreakpoint={768}
         hideEmptyPlaceholder
+        canvasMode
       />
       <CanvasSelectionOverlay rootRef={rootRef} />
       {/* VIS-771 / D-3: drag-and-drop affordance layer (drag handles + drop

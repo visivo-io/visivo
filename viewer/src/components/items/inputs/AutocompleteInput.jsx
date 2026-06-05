@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown, FaTimes } from 'react-icons/fa';
-import { DropdownLabel, DropdownMenu } from '../../styled/DropdownButton';
+import { DropdownLabel } from '../../styled/DropdownButton';
+import PortalDropdownMenu from './PortalDropdownMenu';
 
 /**
  * AutocompleteInput - Single-select input with searchable dropdown.
@@ -24,6 +25,7 @@ const AutocompleteInput = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
   const inputRef = useRef(null);
 
   // Derive display text from selectedValue prop
@@ -51,7 +53,11 @@ const AutocompleteInput = ({
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = event => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // The option menu is portalled to <body> (outside dropdownRef's subtree),
+      // so a click inside it must NOT close the dropdown — check the menu too.
+      const inAnchor = dropdownRef.current && dropdownRef.current.contains(event.target);
+      const inMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!inAnchor && !inMenu) {
         setIsOpen(false);
         setHighlightedIndex(-1);
         // Reset search term to show selected value when closing
@@ -203,9 +209,10 @@ const AutocompleteInput = ({
           </div>
         </div>
 
-        {/* Dropdown menu */}
+        {/* Dropdown menu — portalled to <body> so it escapes the canvas item
+            slot's overflow clipping (VIS-901 #6). */}
         {isOpen && (
-          <DropdownMenu>
+          <PortalDropdownMenu anchorRef={dropdownRef} menuRef={menuRef}>
             <div className="max-h-64 overflow-y-auto">
               {filteredOptions.length === 0 ? (
                 <div className="p-3 text-sm text-gray-500 text-center">
@@ -231,7 +238,7 @@ const AutocompleteInput = ({
                 })
               )}
             </div>
-          </DropdownMenu>
+          </PortalDropdownMenu>
         )}
       </div>
     </div>

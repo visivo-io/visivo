@@ -398,6 +398,7 @@ const ProjectEditor = () => {
                     <LevelGroup
                       key={group.levelKey}
                       group={group}
+                      levelIndex={levelIndex}
                       collapsed={!!collapsed[group.levelKey]}
                       onToggle={() => handleToggle(group.levelKey)}
                       selectedDashboardName={selectedDashboardName}

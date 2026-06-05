@@ -19,9 +19,13 @@ describe('groupDashboardsByLevel', () => {
       [dash('exec', 'Organization'), dash('sales', 'Department'), dash('rev', 'Organization')],
       defaults
     );
-    expect(groups.map(g => g.title)).toEqual(['Organization', 'Department']);
+    // Explicitly-configured levels ALL render (even empty ones) so a newly-added
+    // level is a visible drop target — VIS-901. Team has no dashboards but still
+    // shows as an empty droppable section.
+    expect(groups.map(g => g.title)).toEqual(['Organization', 'Department', 'Team']);
     expect(groups[0].dashboards.map(d => d.name)).toEqual(['exec', 'rev']);
     expect(groups[1].dashboards.map(d => d.name)).toEqual(['sales']);
+    expect(groups[2].dashboards).toEqual([]);
   });
 
   test('resolves numeric and L-prefixed levels to configured titles', () => {
@@ -62,8 +66,17 @@ describe('groupDashboardsByLevel', () => {
     expect(groups[0].title).toBe('Organization');
   });
 
-  test('returns empty array for no dashboards', () => {
-    expect(groupDashboardsByLevel([], defaults)).toEqual([]);
+  test('renders all configured levels (as empty drop targets) when there are no dashboards', () => {
+    // With levels explicitly configured, every level is a real user-created
+    // bucket and renders as an empty droppable section — VIS-901. No Unassigned
+    // group is added because there are no orphaned dashboards.
+    const groups = groupDashboardsByLevel([], defaults);
+    expect(groups.map(g => g.title)).toEqual(['Organization', 'Department', 'Team']);
+    groups.forEach(g => expect(g.dashboards).toEqual([]));
+  });
+
+  test('returns empty array for no dashboards and no configured levels', () => {
+    expect(groupDashboardsByLevel([], { levels: [] })).toEqual([]);
   });
 });
 

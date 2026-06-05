@@ -1,5 +1,6 @@
 import React from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { PiDotsSixVertical } from 'react-icons/pi';
 import LevelGroupHeader from './LevelGroupHeader';
 import DashboardTile from './DashboardTile';
 
@@ -14,6 +15,7 @@ import DashboardTile from './DashboardTile';
  */
 const LevelGroup = ({
   group,
+  levelIndex = -1,
   collapsed,
   onToggle,
   selectedDashboardName,
@@ -28,29 +30,61 @@ const LevelGroup = ({
   onMoveDown,
   onDelete,
 }) => {
+  // Drop target for BOTH a dashboard tile (reassign level) AND a level-header
+  // drag (reorder levels — VIS-901 #5). `levelIndex` lets the router compute the
+  // reorder destination.
   const { setNodeRef, isOver } = useDroppable({
     id: group.levelKey,
-    data: { levelKey: group.levelKey, levelValue: group.levelValue },
+    data: { levelKey: group.levelKey, levelValue: group.levelValue, levelIndex },
+  });
+
+  // The level itself is draggable by its grip (only for real, editable levels —
+  // not the trailing Unassigned bucket). Reorder is routed through the shared
+  // WorkspaceDndContext (VIS-901 #5).
+  const levelDrag = useDraggable({
+    id: `level-handle:${group.levelKey}`,
+    data: { source: 'level', levelIndex, levelKey: group.levelKey, title: group.title },
+    disabled: !editable,
   });
 
   const isInvalidTarget = !!activeDragName && isActiveSourceGroup;
 
   return (
     <section className="mt-1 mb-6" data-testid={`level-group-${group.levelKey}`}>
-      <LevelGroupHeader
-        title={group.title}
-        count={group.dashboards.length}
-        collapsed={collapsed}
-        onToggle={onToggle}
-        testId={`level-group-header-${group.levelKey}`}
-        editable={editable}
-        canMoveUp={canMoveUp}
-        canMoveDown={canMoveDown}
-        onRename={onRename}
-        onMoveUp={onMoveUp}
-        onMoveDown={onMoveDown}
-        onDelete={onDelete}
-      />
+      <div className="flex items-center gap-1">
+        {editable && (
+          <button
+            ref={levelDrag.setNodeRef}
+            {...levelDrag.listeners}
+            {...levelDrag.attributes}
+            type="button"
+            data-testid={`level-drag-handle-${group.levelKey}`}
+            aria-label={`Reorder level ${group.title}`}
+            title="Drag to reorder level"
+            onClick={e => e.stopPropagation()}
+            className="inline-flex h-6 w-5 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary"
+            style={{ cursor: levelDrag.isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+          >
+            <PiDotsSixVertical className="h-4 w-4" />
+          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <LevelGroupHeader
+            title={group.title}
+            count={group.dashboards.length}
+            collapsed={collapsed}
+            onToggle={onToggle}
+            testId={`level-group-header-${group.levelKey}`}
+            editable={editable}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            onRename={onRename}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+            onDelete={onDelete}
+          />
+        </div>
+      </div>
       {!collapsed && (
         <div
           ref={setNodeRef}

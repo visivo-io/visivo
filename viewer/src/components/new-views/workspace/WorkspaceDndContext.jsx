@@ -88,8 +88,13 @@ const workspaceCollisionDetection = args => {
       const scoped = { ...args, droppableContainers: droppableContainers.filter(isBetweenRows) };
       return closestCenter(scoped);
     }
-    // Item drag → everything except between-rows zones, pointer-precise.
-    droppableContainers = droppableContainers.filter(c => !isBetweenRows(c));
+    // Item drag → everything except between-rows zones AND except the on-item
+    // slot-fill zones (VIS-901 #4): those are a LIBRARY-only affordance (fill /
+    // insert-before a slot). A canvas item reorder must always resolve to a
+    // gap (between-items / end-of-row), never to the slot body, so it can't
+    // silently no-op on an on-item zone.
+    const isOnItem = c => c?.data?.current?.target?.kind === 'on-item';
+    droppableContainers = droppableContainers.filter(c => !isBetweenRows(c) && !isOnItem(c));
   }
   const scoped = { ...args, droppableContainers };
   const hits = pointerWithin(scoped);
@@ -128,6 +133,8 @@ export const useWorkspaceCommit = () => useContext(WorkspaceCommitContext);
  * @param {Array}  deps.dashboards    current dashboards list (for level groups).
  * @param {object} deps.projectDefaults defaults used to resolve level groups.
  * @param {Function} deps.reassignDashboardLevel store action.
+ * @param {Function} deps.moveLevel  store action `(fromIndex, toIndex) => void`
+ *                   for canvas level reorder (VIS-901 #5).
  * @param {Function} deps.commitCanvasConfig  applies a next dashboard config
  *                   (sanitize → optimistic → save) for canvas D-3 mutations:
  *                   `(dashboardName, nextConfig, meta) => void`.
@@ -139,13 +146,33 @@ export const useWorkspaceCommit = () => useContext(WorkspaceCommitContext);
  */
 export const routeWorkspaceDragEnd = (
   event,
-  { dashboards, projectDefaults, reassignDashboardLevel, commitCanvasConfig, emit }
+  { dashboards, projectDefaults, reassignDashboardLevel, moveLevel, commitCanvasConfig, emit }
 ) => {
   const { active, over } = event || {};
   if (!over) return 'noop';
   const dragData = active?.data?.current;
   const dropData = over?.data?.current;
   if (!dragData || !dropData) return 'noop';
+
+  // ── Branch 0: ProjectEditor level → level reorder (VIS-901 #5) ───────────
+  // A level-header drag carries `{ source: 'level', levelIndex }`; dropping it
+  // on another level group (which exposes `levelIndex`) reorders the levels.
+  if (dragData.source === 'level' && dropData.levelKey !== undefined) {
+    const fromIndex = dragData.levelIndex;
+    const toIndex = dropData.levelIndex;
+    if (
+      typeof fromIndex !== 'number' ||
+      typeof toIndex !== 'number' ||
+      fromIndex === toIndex ||
+      toIndex < 0
+    ) {
+      return 'noop';
+    }
+    if (moveLevel) moveLevel(fromIndex, toIndex);
+    emit &&
+      emit('project_editor_action', { kind: 'level_reorder_dnd', from: fromIndex, to: toIndex });
+    return 'level_reorder';
+  }
 
   // ── Branch 1: ProjectEditor tile → level reassignment (M-1) ─────────────
   if (dragData.type === 'dashboard' && dropData.levelKey !== undefined) {
@@ -256,8 +283,96 @@ export const routeWorkspaceDragEnd = (
   return 'noop';
 };
 
+/**
+ * Pure mapper for `onDragStart` (VIS-901 #5): turn the dnd-kit `active.data`
+ * payload into the `activeDrag` shape the DragOverlay reads. Exported so the
+ * mapping (especially the row-vs-item distinction for the preview pill) is
+ * unit-testable without simulating a real drag. Returns `null` for no payload.
+ *
+ *   - dashboard tile        → { kind: 'dashboard', name, level, type }
+ *   - library row           → { kind: 'library', name, type, data }
+ *   - canvas ROW drag       → { kind: 'canvas', canvasKind: 'row', name }
+ *   - canvas ITEM drag      → { kind: 'canvas', canvasKind: 'item', name, type, data }
+ *
+ * A ROW has no `refType`, so it gets a dedicated row preview rather than the
+ * old chart pill (the bug this fixes: row drags showed a "chart" pill).
+ */
+export const mapDragStartData = data => {
+  if (!data) return null;
+  if (data.type === 'dashboard') {
+    return { kind: 'dashboard', name: data.name, level: data.level, type: 'dashboard' };
+  }
+  if (data.source === 'library') {
+    return { kind: 'library', name: data.name, type: data.type, data };
+  }
+  if (data.source === 'level') {
+    return { kind: 'level', name: data.title || 'Level' };
+  }
+  if (data.source === 'canvas') {
+    if (data.kind === 'row') {
+      return { kind: 'canvas', canvasKind: 'row', name: data.label || data.name || 'Row' };
+    }
+    const name = data.label || data.name;
+    const type = data.refType || 'chart';
+    return {
+      kind: 'canvas',
+      canvasKind: 'item',
+      name,
+      type,
+      data: { source: 'library', type, name },
+    };
+  }
+  return null;
+};
+
 const DashboardIcon = getTypeIcon('dashboard');
 const DASH_COLORS = getTypeColors('dashboard');
+
+/**
+ * CanvasRowDragPreview — the DragOverlay pill for a canvas ROW drag (VIS-901 #5).
+ * A row has no referenced object type, so it gets its own preview (a mulberry
+ * "Row" pill with a stacked-bars glyph) rather than borrowing the chart pill.
+ */
+const CanvasRowDragPreview = ({ name }) => (
+  <div
+    data-testid="canvas-row-drag-preview"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+  >
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+      <g fill="currentColor">
+        <rect x="1" y="2" width="12" height="3" rx="1" />
+        <rect x="1" y="9" width="12" height="3" rx="1" />
+      </g>
+    </svg>
+    <span className="text-[13px] font-medium text-gray-900">{name}</span>
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+      Row
+    </span>
+  </div>
+);
+
+/**
+ * CanvasLevelDragPreview — the DragOverlay pill for a level-header drag
+ * (VIS-901 #5). A simple mulberry "Level" pill with the level title.
+ */
+const CanvasLevelDragPreview = ({ name }) => (
+  <div
+    data-testid="level-drag-preview"
+    className="pointer-events-none inline-flex items-center gap-2 rounded-md bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-[#713b57]"
+  >
+    <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className="text-[#713b57]">
+      <g fill="currentColor">
+        <rect x="1" y="2" width="12" height="2.5" rx="1" />
+        <rect x="1" y="6" width="9" height="2.5" rx="1" />
+        <rect x="1" y="10" width="6" height="2.5" rx="1" />
+      </g>
+    </svg>
+    <span className="text-[13px] font-medium text-gray-900">{name}</span>
+    <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
+      Level
+    </span>
+  </div>
+);
 
 const DashboardTilePreview = ({ name }) => (
   <div className="flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-[13px] font-semibold text-gray-900 shadow-lg ring-2 ring-primary">
@@ -275,6 +390,7 @@ const WorkspaceDndContext = ({ children }) => {
   const defaults = useStore(s => s.defaults);
   const project = useStore(s => s.project);
   const reassignDashboardLevel = useStore(s => s.reassignDashboardLevel);
+  const moveLevel = useStore(s => s.moveLevel);
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
 
@@ -319,28 +435,7 @@ const WorkspaceDndContext = ({ children }) => {
   );
 
   const handleDragStart = useCallback(event => {
-    const data = event.active?.data?.current;
-    if (!data) return;
-    if (data.type === 'dashboard') {
-      setActiveDrag({ kind: 'dashboard', name: data.name, level: data.level, type: 'dashboard' });
-      return;
-    }
-    if (data.source === 'library') {
-      setActiveDrag({ kind: 'library', name: data.name, type: data.type, data });
-      return;
-    }
-    // Canvas item/row drag (VIS-771 / D-3). The drag preview IS the source pill
-    // (no thumbnail, per architecture §2.6) — for an item we render the same
-    // Library-style pill keyed on the referenced object's type + name.
-    if (data.source === 'canvas') {
-      setActiveDrag({
-        kind: 'canvas',
-        canvasKind: data.kind,
-        name: data.label || data.name,
-        type: data.refType || 'chart',
-        data: { source: 'library', type: data.refType || 'chart', name: data.label || data.name },
-      });
-    }
+    setActiveDrag(mapDragStartData(event.active?.data?.current));
   }, []);
 
   const handleDragCancel = useCallback(() => setActiveDrag(null), []);
@@ -352,11 +447,12 @@ const WorkspaceDndContext = ({ children }) => {
         dashboards,
         projectDefaults,
         reassignDashboardLevel,
+        moveLevel,
         commitCanvasConfig,
         emit: emitWorkspaceEvent,
       });
     },
-    [dashboards, projectDefaults, reassignDashboardLevel, commitCanvasConfig]
+    [dashboards, projectDefaults, reassignDashboardLevel, moveLevel, commitCanvasConfig]
   );
 
   return (
@@ -379,9 +475,15 @@ const WorkspaceDndContext = ({ children }) => {
         <DragOverlay dropAnimation={null}>
           {activeDrag?.kind === 'dashboard' ? (
             <DashboardTilePreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'level' ? (
+            <CanvasLevelDragPreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'canvas' && activeDrag.canvasKind === 'row' ? (
+            // Canvas ROW drag → a dedicated row pill (VIS-901 #5). A row has no
+            // refType, so it must NOT borrow the chart pill.
+            <CanvasRowDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'library' || activeDrag?.kind === 'canvas' ? (
-            // Canvas item/row drags reuse the SAME pill shape as a Library drag
-            // (architecture §2.6: "the drag preview IS the source pill").
+            // Library drags + canvas ITEM drags reuse the SAME pill shape as a
+            // Library drag (architecture §2.6: "the drag preview IS the source pill").
             <LibraryDragPreview data={activeDrag.data} />
           ) : null}
         </DragOverlay>

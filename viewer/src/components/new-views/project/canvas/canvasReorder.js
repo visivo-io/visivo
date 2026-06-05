@@ -127,6 +127,48 @@ export const reorderTopLevelRows = (config, fromIndex, toIndex) => {
 const NEW_ROW = items => ({ height: 'medium', items });
 
 /**
+ * Resolve the `items` array of the row addressed by `rowPath` (any nesting
+ * depth). Returns `[]` for a missing / malformed path. Used by the smart-width
+ * helper so an insert can read its target row's existing item widths.
+ */
+const itemsAtRowPath = (config, rowPath) => {
+  const segments = parseCanvasPath(rowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return [];
+  let rows = Array.isArray(config?.rows) ? config.rows : [];
+  let row = null;
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i];
+    if (seg.kind === 'row') {
+      row = rows[seg.index];
+      if (!row) return [];
+      rows = null;
+    } else {
+      const item = Array.isArray(row?.items) ? row.items[seg.index] : null;
+      if (!item) return [];
+      rows = Array.isArray(item.rows) ? item.rows : [];
+      row = null;
+    }
+  }
+  return Array.isArray(row?.items) ? row.items : [];
+};
+
+/**
+ * The smallest item `width` in the row addressed by `rowPath` (VIS-901 #4). An
+ * insert between items defaults the new item to this width so an all-width-1 row
+ * stays width-1 (balanced) rather than dropping in a default-width-1 that may not
+ * match a row of wider slots. Returns `1` when the row is empty / unknown (the
+ * existing default). Item width defaults to 1 when unset, mirroring the renderer.
+ */
+export const smallestWidthInRow = (config, rowPath) => {
+  const items = itemsAtRowPath(config, rowPath);
+  if (!items.length) return 1;
+  return items.reduce((min, it) => {
+    const w = Math.max(1, Math.round(it?.width || 1));
+    return w < min ? w : min;
+  }, Infinity);
+};
+
+/**
  * Insert `newItem` into the config at a canvas drop target. `target` is the
  * normalised descriptor the canvas droppables carry:
  *
@@ -135,9 +177,38 @@ const NEW_ROW = items => ({ height: 'medium', items });
  *   { kind: 'between-rows',  index }             → new top-level row at index.
  *   { kind: 'in-container',  itemPath }          → append a sub-row to the
  *                                                  container item at itemPath.
+ *   { kind: 'on-item', rowPath, index }          → drop directly ONTO a slot
+ *                                                  (VIS-901 #4): fill an EMPTY
+ *                                                  slot in place, else splice in
+ *                                                  before the filled slot.
+ *
+ * Smart width (VIS-901 #4): for a NEW item inserted between/end-of-row items the
+ * default width is the SMALLEST item width in the target row, so an all-width-1
+ * row stays balanced. A slot-fill (`on-item` onto an empty slot) inherits the
+ * slot's existing width. Both only apply when `newItem` carries the default
+ * width 1 (an explicit width from the caller is preserved).
  *
  * Returns the config unchanged for an unrecognised target.
  */
+const isEmptySlot = item =>
+  !!item &&
+  typeof item === 'object' &&
+  !item.chart &&
+  !item.table &&
+  !item.markdown &&
+  !item.input &&
+  !(Array.isArray(item.rows) && item.rows.length > 0);
+
+// Apply the smart default width to a freshly-built item unless the caller set a
+// non-default width. `buildLibraryItem` always seeds `width: 1`, so a value of 1
+// is treated as "use the smart default".
+const withDefaultWidth = (item, width) => {
+  if (!item || typeof item !== 'object') return item;
+  if ((item.width || 1) !== 1) return item; // caller set an explicit width
+  if (!Number.isFinite(width) || width <= 1) return item;
+  return { ...item, width };
+};
+
 export const insertItemAtTarget = (config, target, newItem) => {
   if (!config || !Array.isArray(config.rows) || !target) return config;
   const item = newItem || { width: 1 };
@@ -149,9 +220,37 @@ export const insertItemAtTarget = (config, target, newItem) => {
     return { ...config, rows: nextRows };
   }
 
+  // Drop directly onto an existing item slot (VIS-901 #4). An EMPTY slot is
+  // filled in place (the new leaf inherits the slot's width); a FILLED slot
+  // splices the new item in just before it (smart-width default).
+  if (target.kind === 'on-item') {
+    const segments = parseCanvasPath(target.rowPath);
+    if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+    const smart = smallestWidthInRow(config, target.rowPath);
+    return withRowsAtRowPath(config, segments, rows => {
+      const lastRowIndex = segments[segments.length - 1].index;
+      return rows.map((row, ri) => {
+        if (ri !== lastRowIndex) return row;
+        const items = Array.isArray(row.items) ? [...row.items] : [];
+        const idx = Math.max(0, Math.min(target.index ?? items.length, items.length));
+        const existing = items[idx];
+        if (isEmptySlot(existing)) {
+          // Fill the empty slot in place, preserving its width.
+          const slotWidth = existing.width || 1;
+          items[idx] = { ...existing, ...item, width: slotWidth };
+        } else {
+          items.splice(idx, 0, withDefaultWidth(item, smart));
+        }
+        return { ...row, items };
+      });
+    });
+  }
+
   if (target.kind === 'between-items' || target.kind === 'end-of-row') {
     const segments = parseCanvasPath(target.rowPath);
     if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+    const smart = smallestWidthInRow(config, target.rowPath);
+    const sized = withDefaultWidth(item, smart);
     return withRowsAtRowPath(config, segments, rows => {
       const lastRowIndex = segments[segments.length - 1].index;
       return rows.map((row, ri) => {
@@ -161,7 +260,7 @@ export const insertItemAtTarget = (config, target, newItem) => {
           target.kind === 'end-of-row'
             ? items.length
             : Math.max(0, Math.min(target.index ?? items.length, items.length));
-        items.splice(insertAt, 0, item);
+        items.splice(insertAt, 0, sized);
         return { ...row, items };
       });
     });

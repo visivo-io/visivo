@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import WorkspaceDndContext, {
   useWorkspaceDrag,
   routeWorkspaceDragEnd,
+  mapDragStartData,
 } from './WorkspaceDndContext';
 import useStore from '../../../stores/store';
 
@@ -45,6 +46,56 @@ describe('WorkspaceDndContext provider (VIS-802)', () => {
       </WorkspaceDndContext>
     );
     expect(screen.getByTestId('drag-probe')).toHaveTextContent('null');
+  });
+});
+
+describe('mapDragStartData — drag preview mapping (VIS-901 #5)', () => {
+  test('returns null for no payload', () => {
+    expect(mapDragStartData(null)).toBeNull();
+    expect(mapDragStartData(undefined)).toBeNull();
+  });
+
+  test('dashboard tile → dashboard kind', () => {
+    const out = mapDragStartData({ type: 'dashboard', name: 'd0', level: 'L1' });
+    expect(out).toMatchObject({ kind: 'dashboard', name: 'd0', level: 'L1', type: 'dashboard' });
+  });
+
+  test('library row → library kind carrying the source payload', () => {
+    const data = { source: 'library', type: 'chart', name: 'sales' };
+    const out = mapDragStartData(data);
+    expect(out).toMatchObject({ kind: 'library', name: 'sales', type: 'chart' });
+    expect(out.data).toBe(data);
+  });
+
+  test('canvas ROW drag → row preview (NOT a chart pill)', () => {
+    const out = mapDragStartData({ source: 'canvas', kind: 'row', rowIndex: 2, rowPath: 'row.2' });
+    expect(out).toMatchObject({ kind: 'canvas', canvasKind: 'row' });
+    // A row has no referenced object type — it must not borrow the chart pill.
+    expect(out.type).toBeUndefined();
+    expect(out.data).toBeUndefined();
+  });
+
+  test('canvas ROW drag falls back to a "Row" label when unnamed', () => {
+    const out = mapDragStartData({ source: 'canvas', kind: 'row', rowPath: 'row.0' });
+    expect(out.name).toBe('Row');
+  });
+
+  test('canvas ITEM drag → item pill keyed on the referenced type + name', () => {
+    const out = mapDragStartData({
+      source: 'canvas',
+      kind: 'item',
+      rowPath: 'row.0',
+      itemIndex: 1,
+      refType: 'table',
+      label: 'orders',
+    });
+    expect(out).toMatchObject({ kind: 'canvas', canvasKind: 'item', name: 'orders', type: 'table' });
+    expect(out.data).toMatchObject({ source: 'library', type: 'table', name: 'orders' });
+  });
+
+  test('canvas ITEM drag defaults to chart type when refType is absent', () => {
+    const out = mapDragStartData({ source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 });
+    expect(out.type).toBe('chart');
   });
 });
 

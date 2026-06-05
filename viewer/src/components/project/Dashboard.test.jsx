@@ -252,6 +252,49 @@ describe('Dashboard', () => {
     expect(screen.getByText('This dashboard is empty')).toBeInTheDocument();
   });
 
+  // ---------- VIS-901 #3: empty-slot placeholder (canvas build surface) ----------
+  describe('empty-slot placeholder (VIS-901 #3)', () => {
+    const emptySlotDashboard = {
+      name: 'with-empty-slot',
+      rows: [{ height: 'medium', items: [{ width: 1 }] }],
+    };
+    const renderEmptySlot = (props = {}) => {
+      useStore.mockImplementation(selector => {
+        const state = {
+          project: mockProject,
+          dashboards: [emptySlotDashboard],
+          fetchDashboards: jest.fn(),
+          fetchCharts: jest.fn(),
+          fetchTables: jest.fn(),
+          fetchMarkdowns: jest.fn(),
+          fetchInputs: jest.fn(),
+          fetchModels: jest.fn(),
+          models: [],
+          getChartByName: jest.fn(() => null),
+          getTableByName: jest.fn(() => null),
+          getMarkdownByName: jest.fn(() => null),
+          getInputByName: jest.fn(() => null),
+        };
+        return selector(state);
+      });
+      return render(
+        <BrowserRouter future={futureFlags}>
+          <Dashboard project={mockProject} dashboardName="with-empty-slot" {...props} />
+        </BrowserRouter>
+      );
+    };
+
+    it('renders a visible placeholder for an empty slot in canvasMode', () => {
+      renderEmptySlot({ canvasMode: true });
+      expect(screen.getByTestId('canvas-empty-slot')).toBeInTheDocument();
+    });
+
+    it('renders nothing for an empty slot in View mode (parity preserved)', () => {
+      renderEmptySlot();
+      expect(screen.queryByTestId('canvas-empty-slot')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders chart when found in store', () => {
     render(
       <BrowserRouter future={futureFlags}>
