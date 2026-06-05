@@ -4,12 +4,12 @@ from visivo.server.managers.object_manager import ObjectStatus
 from visivo.server.project_writer import ProjectWriter
 
 
-def register_publish_views(app, flask_app, output_dir):
-    """Register publish-related API endpoints."""
+def register_commit_views(app, flask_app, output_dir):
+    """Register commit-related API endpoints."""
 
-    @app.route("/api/publish/status/", methods=["GET"])
-    def get_publish_status():
-        """Check if there are any unpublished changes."""
+    @app.route("/api/commit/status/", methods=["GET"])
+    def get_commit_status():
+        """Check if there are any uncommitted changes."""
         try:
             has_changes = (
                 flask_app.source_manager.has_unpublished_changes()
@@ -29,10 +29,10 @@ def register_publish_views(app, flask_app, output_dir):
             )
             return jsonify({"has_unpublished_changes": has_changes})
         except Exception as e:
-            Logger.instance().error(f"Error checking publish status: {str(e)}")
+            Logger.instance().error(f"Error checking commit status: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/publish/pending/", methods=["GET"])
+    @app.route("/api/commit/pending/", methods=["GET"])
     def get_pending_changes():
         """Get all objects with pending changes."""
         try:
@@ -205,8 +205,8 @@ def register_publish_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting pending changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/publish/", methods=["POST"])
-    def publish_changes():
+    @app.route("/api/commit/", methods=["POST"])
+    def commit_changes():
         """Write all cached changes to YAML files."""
         try:
             # Build named_children dict for ProjectWriter
@@ -435,7 +435,7 @@ def register_publish_views(app, flask_app, output_dir):
                 published_count += 1
 
             if not named_children:
-                return jsonify({"message": "No changes to publish", "published_count": 0})
+                return jsonify({"message": "No changes to commit", "published_count": 0})
 
             # Use ProjectWriter to write changes
             writer = ProjectWriter(named_children)
@@ -467,12 +467,12 @@ def register_publish_views(app, flask_app, output_dir):
 
             return jsonify(
                 {
-                    "message": "Changes published successfully",
+                    "message": "Changes committed successfully",
                     "published_count": published_count,
                 }
             )
         except Exception as e:
-            Logger.instance().error(f"Error publishing changes: {str(e)}")
+            Logger.instance().error(f"Error committing changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
 

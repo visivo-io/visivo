@@ -39,7 +39,7 @@ import {
  * - setPreviewConfig: Function to set the preview configuration in parent
  */
 const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPreviewOpen, setIsPreviewOpen, setPreviewConfig }) => {
-  const { deleteInsight, checkPublishStatus } = useStore();
+  const { deleteInsight, checkCommitStatus } = useStore();
 
   // Form state - Basic fields
   const [name, setName] = useState('');
@@ -241,7 +241,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete insight');
@@ -512,7 +512,7 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure you want to delete this insight? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this insight? This will mark it for deletion and remove it from YAML when you publish.'}
+                : 'Are you sure you want to delete this insight? This will mark it for deletion and remove it from YAML when you commit.'}
             </p>
             <div className="flex gap-2">
               <button

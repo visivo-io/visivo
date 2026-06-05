@@ -28,7 +28,7 @@ import RefTextArea from './RefTextArea';
 const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded }) => {
   const {
     deleteTable,
-    checkPublishStatus,
+    checkCommitStatus,
     insights: storeInsights,
     fetchInsights,
     models: storeModels,
@@ -168,7 +168,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete table');
@@ -371,7 +371,7 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure you want to delete this table? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this table? This will mark it for deletion and remove it from YAML when you publish.'}
+                : 'Are you sure you want to delete this table? This will mark it for deletion and remove it from YAML when you commit.'}
             </p>
             <div className="flex gap-2">
               <button

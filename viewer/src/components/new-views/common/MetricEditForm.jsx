@@ -22,7 +22,7 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
  * - onGoBack: Callback to navigate back to parent (for embedded metrics)
  */
 const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
-  const { saveMetric, deleteMetric, checkPublishStatus } = useStore();
+  const { saveMetric, deleteMetric, checkCommitStatus } = useStore();
 
   // Detect embedded mode (inline metric within a model)
   const isEmbedded = isEmbeddedObject(metric);
@@ -132,7 +132,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete metric');
@@ -202,7 +202,7 @@ const MetricEditForm = ({ metric, isCreate, onClose, onSave, onGoBack }) => {
                 show: true,
                 message: isNewObject
                   ? 'Are you sure you want to delete this metric? This will discard your unsaved changes.'
-                  : 'Are you sure you want to delete this metric? This will mark it for deletion and remove it from YAML when you publish.',
+                  : 'Are you sure you want to delete this metric? This will mark it for deletion and remove it from YAML when you commit.',
                 onConfirm: handleDelete,
                 onCancel: () => setShowDeleteConfirm(false),
                 deleting,

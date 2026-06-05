@@ -32,9 +32,9 @@ const createDimensionSlice = (set, get) => ({
       const result = await dimensionsApi.saveDimension(name, config);
       // Refresh dimensions list to get updated status
       await get().fetchDimensions();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createDimensionSlice = (set, get) => ({
     }
   },
 
-  // Mark dimension for deletion (will be removed from YAML on publish)
+  // Mark dimension for deletion (will be removed from YAML on commit)
   deleteDimension: async name => {
     try {
       await dimensionsApi.deleteDimension(name);
       await get().fetchDimensions();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

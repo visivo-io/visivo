@@ -101,10 +101,10 @@ const URL_PATTERNS = {
     projectDetail: '/api/projects/{name}/',
     projectValidate: '/api/projects/{name}/validate/',
 
-    // Publish management endpoints
-    publishStatus: '/api/publish/status/',
-    publishPending: '/api/publish/pending/',
-    publish: '/api/publish/',
+    // Commit management endpoints
+    commitStatus: '/api/commit/status/',
+    commitPending: '/api/commit/pending/',
+    commit: '/api/commit/',
 
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
@@ -224,10 +224,10 @@ const URL_PATTERNS = {
     // Defaults management endpoints (not available in dist)
     defaults: null,
 
-    // Publish management endpoints (not available in dist)
-    publishStatus: null,
-    publishPending: null,
-    publish: null,
+    // Commit management endpoints (not available in dist)
+    commitStatus: null,
+    commitPending: null,
+    commit: null,
 
     // Source schema jobs endpoints (not available in dist)
     sourceSchemaJobsList: null,

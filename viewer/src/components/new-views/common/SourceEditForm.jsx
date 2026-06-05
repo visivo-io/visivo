@@ -28,7 +28,7 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
  * - onGoBack: Callback to navigate back to parent (for embedded sources)
  */
 const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
-  const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkPublishStatus } =
+  const { deleteSource, testConnection, connectionStatus, clearConnectionStatus, checkCommitStatus } =
     useStore();
 
   // Form state
@@ -149,7 +149,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
     setDeleting(false);
 
     if (result.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result.error || 'Failed to delete source');
@@ -256,7 +256,7 @@ const SourceEditForm = ({ source, isCreate, onClose, onSave, onGoBack }) => {
                 show: true,
                 message: isNewObject
                   ? 'Are you sure you want to delete this source? This will discard your unsaved changes.'
-                  : 'Are you sure you want to delete this source? This will mark it for deletion and remove it from YAML when you publish.',
+                  : 'Are you sure you want to delete this source? This will mark it for deletion and remove it from YAML when you commit.',
                 onConfirm: handleDelete,
                 onCancel: () => setShowDeleteConfirm(false),
                 deleting,

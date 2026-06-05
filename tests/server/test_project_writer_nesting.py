@@ -157,7 +157,7 @@ def test_new_model_with_new_nested_metric_in_same_write():
 
     named_children = {
         # Model is processed first by ProjectWriter (dict insertion order
-        # mirrors the publish_views processing order: models before metrics).
+        # mirrors the commit_views processing order: models before metrics).
         "new_orders": {
             "status": "New",
             "file_path": project_file,

@@ -40,29 +40,29 @@ const TypeBadge = ({ type }) => {
   );
 };
 
-const PublishModal = () => {
-  const publishModalOpen = useStore(state => state.publishModalOpen);
-  const closePublishModal = useStore(state => state.closePublishModal);
+const CommitModal = () => {
+  const commitModalOpen = useStore(state => state.commitModalOpen);
+  const closeCommitModal = useStore(state => state.closeCommitModal);
   const pendingChanges = useStore(state => state.pendingChanges);
-  const publishLoading = useStore(state => state.publishLoading);
-  const publishError = useStore(state => state.publishError);
-  const publishChanges = useStore(state => state.publishChanges);
+  const commitLoading = useStore(state => state.commitLoading);
+  const commitError = useStore(state => state.commitError);
+  const commitChanges = useStore(state => state.commitChanges);
 
-  if (!publishModalOpen) return null;
+  if (!commitModalOpen) return null;
 
-  const handlePublish = async () => {
-    await publishChanges();
+  const handleCommit = async () => {
+    await commitChanges();
   };
 
   return (
     <ModalOverlay>
       <ModalWrapper>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Publish Changes</h2>
+          <h2 className="text-xl font-bold text-gray-900">Commit Changes</h2>
           <button
-            onClick={closePublishModal}
+            onClick={closeCommitModal}
             className="hover:text-gray-800 text-gray-500 text-2xl font-bold focus:outline-none cursor-pointer"
-            disabled={publishLoading}
+            disabled={commitLoading}
           >
             &times;
           </button>
@@ -72,13 +72,13 @@ const PublishModal = () => {
           The following changes will be written to your project YAML files:
         </p>
 
-        {publishError && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{publishError}</div>
+        {commitError && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{commitError}</div>
         )}
 
         <div className="max-h-64 overflow-y-auto mb-6">
           {pendingChanges.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No pending changes to publish.</p>
+            <p className="text-gray-500 text-center py-4">No pending changes to commit.</p>
           ) : (
             <ul className="space-y-2">
               {pendingChanges.map((change, index) => (
@@ -102,18 +102,18 @@ const PublishModal = () => {
 
         <div className="flex justify-end gap-3">
           <button
-            onClick={closePublishModal}
+            onClick={closeCommitModal}
             className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none"
-            disabled={publishLoading}
+            disabled={commitLoading}
           >
             Cancel
           </button>
           <button
-            onClick={handlePublish}
-            disabled={publishLoading || pendingChanges.length === 0}
+            onClick={handleCommit}
+            disabled={commitLoading || pendingChanges.length === 0}
             className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {publishLoading ? 'Publishing...' : 'Publish Changes'}
+            {commitLoading ? 'Committing...' : 'Commit Changes'}
           </button>
         </div>
       </ModalWrapper>
@@ -121,4 +121,4 @@ const PublishModal = () => {
   );
 };
 
-export default PublishModal;
+export default CommitModal;

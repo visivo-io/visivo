@@ -32,9 +32,9 @@ const createInputSlice = (set, get) => ({
       const result = await inputsApi.saveInput(name, config);
       // Refresh inputs list to get updated status
       await get().fetchInputs();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createInputSlice = (set, get) => ({
     }
   },
 
-  // Mark input for deletion (will be removed from YAML on publish)
+  // Mark input for deletion (will be removed from YAML on commit)
   deleteInput: async name => {
     try {
       await inputsApi.deleteInput(name);
       await get().fetchInputs();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

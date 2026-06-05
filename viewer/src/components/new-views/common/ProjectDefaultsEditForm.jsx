@@ -16,7 +16,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
   const saveDefaults = useStore(state => state.saveDefaults);
   const fetchSources = useStore(state => state.fetchSources);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
 
   const [sourceName, setSourceName] = useState('');
   const [alertName, setAlertName] = useState('');
@@ -57,7 +57,7 @@ const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
     try {
       const result = await saveDefaults(config);
       if (result?.success) {
-        if (checkPublishStatus) await checkPublishStatus();
+        if (checkCommitStatus) await checkCommitStatus();
         if (onClose) onClose();
       } else {
         setError(result?.error || 'Failed to save defaults');

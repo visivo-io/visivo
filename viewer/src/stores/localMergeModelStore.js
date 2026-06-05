@@ -28,8 +28,8 @@ const createLocalMergeModelSlice = (set, get) => ({
     try {
       const result = await localMergeModelsApi.saveLocalMergeModel(name, config);
       await get().fetchLocalMergeModels();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,8 +42,8 @@ const createLocalMergeModelSlice = (set, get) => ({
     try {
       await localMergeModelsApi.deleteLocalMergeModel(name);
       await get().fetchLocalMergeModels();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

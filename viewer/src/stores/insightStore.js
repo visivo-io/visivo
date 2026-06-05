@@ -33,9 +33,9 @@ const createInsightSlice = (set, get) => ({
       const result = await insightsApi.saveInsight(name, config);
       // Refresh insights list to get updated status
       await get().fetchInsights();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       // Tap for the onboarding "Create an Insight" checklist row.
       recordOnboardingAction('insight_saved');
@@ -45,14 +45,14 @@ const createInsightSlice = (set, get) => ({
     }
   },
 
-  // Mark insight for deletion (will be removed from YAML on publish)
+  // Mark insight for deletion (will be removed from YAML on commit)
   deleteInsight: async name => {
     try {
       await insightsApi.deleteInsight(name);
       await get().fetchInsights();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

@@ -41,9 +41,9 @@ const createSourceSlice = (set, get) => ({
       const result = await sourcesApi.saveSource(name, config);
       // Refresh sources list to get updated status
       await get().fetchSources();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -51,14 +51,14 @@ const createSourceSlice = (set, get) => ({
     }
   },
 
-  // Mark source for deletion (will be removed from YAML on publish)
+  // Mark source for deletion (will be removed from YAML on commit)
   deleteSource: async name => {
     try {
       await sourcesApi.deleteSource(name);
       await get().fetchSources();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

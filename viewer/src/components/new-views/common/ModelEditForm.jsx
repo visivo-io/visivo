@@ -24,7 +24,7 @@ import { setAtPath } from './embeddedObjectUtils';
  */
 const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
   const deleteModel = useStore(state => state.deleteModel);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const fetchSources = useStore(state => state.fetchSources);
 
   const isCreate = !model;
@@ -115,7 +115,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
     try {
       const result = await deleteModel(model.name);
       if (result.success) {
-        await checkPublishStatus();
+        await checkCommitStatus();
         onCancel();
       } else {
         setError(result.error || 'Failed to delete model');
@@ -408,7 +408,7 @@ const ModelEditForm = ({ model, onSave, onCancel, onNavigateToEmbedded }) => {
           <p className="text-sm text-red-700 mb-2">
             {isNewObject
               ? 'Are you sure you want to delete this model? This will discard your unsaved changes.'
-              : 'Are you sure you want to delete this model? This will mark it for deletion and remove it from YAML when you publish.'}
+              : 'Are you sure you want to delete this model? This will mark it for deletion and remove it from YAML when you commit.'}
           </p>
           <div className="flex gap-2">
             <button

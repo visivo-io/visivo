@@ -32,9 +32,9 @@ const createRelationSlice = (set, get) => ({
       const result = await relationsApi.saveRelation(name, config);
       // Refresh relations list to get updated status
       await get().fetchRelations();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createRelationSlice = (set, get) => ({
     }
   },
 
-  // Mark relation for deletion (will be removed from YAML on publish)
+  // Mark relation for deletion (will be removed from YAML on commit)
   deleteRelation: async name => {
     try {
       await relationsApi.deleteRelation(name);
       await get().fetchRelations();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

@@ -22,7 +22,7 @@ import { BackNavigationButton } from '../../styled/BackNavigationButton';
  * - onGoBack: Callback to navigate back to parent (for embedded dimensions)
  */
 const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) => {
-  const { saveDimension, deleteDimension, checkPublishStatus } = useStore();
+  const { saveDimension, deleteDimension, checkCommitStatus } = useStore();
 
   // Detect embedded mode (inline dimension within a model)
   const isEmbedded = isEmbeddedObject(dimension);
@@ -132,7 +132,7 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) =
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete dimension');
@@ -202,7 +202,7 @@ const DimensionEditForm = ({ dimension, isCreate, onClose, onSave, onGoBack }) =
                 show: true,
                 message: isNewObject
                   ? 'Are you sure you want to delete this dimension? This will discard your unsaved changes.'
-                  : 'Are you sure you want to delete this dimension? This will mark it for deletion and remove it from YAML when you publish.',
+                  : 'Are you sure you want to delete this dimension? This will mark it for deletion and remove it from YAML when you commit.',
                 onConfirm: handleDelete,
                 onCancel: () => setShowDeleteConfirm(false),
                 deleting,
