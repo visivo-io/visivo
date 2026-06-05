@@ -248,10 +248,11 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
         />
       )}
 
-      {/* Hover overlay — subtle mulberry-200 outline + resize-handle
-          PLACEHOLDER (no resize gesture; that's D-3). Suppressed when this
-          exact node is the persistent selection, so the selection ring reads
-          cleanly. */}
+      {/* Hover overlay — subtle mulberry-200 outline. The real resize handles
+          (VIS-777 / D-4) live in <CanvasResizeLayer>, painted on the SELECTED
+          node; the former hover-time resize-handle placeholder is removed so
+          there is exactly one resize affordance. Suppressed when this exact
+          node is the persistent selection, so the selection ring reads cleanly. */}
       {hoverBox &&
         hoverBox.rect &&
         !(
@@ -273,13 +274,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
               width: hoverBox.rect.width,
               height: hoverBox.rect.height,
             }}
-          >
-            {/* Resize-handle PLACEHOLDER — bottom-right grip, no gesture. */}
-            <span
-              data-testid="canvas-overlay-resize-handle"
-              className="pointer-events-none absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-sm border border-[#c6b0bb] bg-white shadow-sm"
-            />
-          </div>
+          />
         )}
 
       {/* Selection overlay — persistent mulberry-500 ring with offset
