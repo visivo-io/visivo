@@ -4,7 +4,6 @@ import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { validateName } from './namedModel';
 import { SchemaEditor } from './SchemaEditor';
@@ -12,6 +11,7 @@ import { getSchema, isSchemaLoaded } from '../../../schemas/schemas';
 import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
 import { parseRefValue, formatRef } from '../../../utils/refString';
+import EmbeddedPill from '../lineage/EmbeddedPill';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -273,11 +273,26 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
               </p>
             ) : (
               insights.map((insight, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div
+                  key={index}
+                  className="flex items-center gap-2"
+                  data-testid={`ref-insight-row-${index}`}
+                >
+                  <EmbeddedPill
+                    objectType="insight"
+                    label={insight}
+                    size="md"
+                    as="div"
+                    tooltip={`Insight: ${insight}`}
+                    onRemove={() => removeInsight(index)}
+                    className="flex-1 min-w-0"
+                  />
                   <select
+                    aria-label={`Change insight ${index + 1}`}
                     value={insight}
                     onChange={e => updateInsight(index, e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="px-2 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    title="Change insight"
                   >
                     {availableInsights.map(i => (
                       <option key={i} value={i} disabled={insights.includes(i) && i !== insight}>
@@ -285,14 +300,6 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => removeInsight(index)}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    title="Remove insight"
-                  >
-                    <RemoveIcon fontSize="small" />
-                  </button>
                 </div>
               ))
             )}
