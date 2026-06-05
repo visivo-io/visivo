@@ -98,6 +98,10 @@ const measure = (el, rootEl) => {
 const CanvasSelectionOverlay = ({ rootRef }) => {
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  // Publish the hovered path so CanvasDndLayer can reveal drag-grips on hover.
+  // This overlay is the single hover source (it already resolves the target);
+  // sharing the key keeps the grip reveal aligned 1:1 with the hover ring.
+  const setHoverKey = useStore(s => s.setWorkspaceCanvasHoverKey);
 
   // Hovered + selected box geometry, measured from the live Dashboard DOM.
   const [hoverBox, setHoverBox] = useState(null); // { rect, kind }
@@ -141,6 +145,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       // Drop the hover box on reflow — it re-arms on the next pointer move.
       setHoverBox(null);
       hoverTargetRef.current = null;
+      setHoverKey(null);
     };
 
     // ResizeObserver on the root catches canvas-width changes (and charts
@@ -160,7 +165,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       window.removeEventListener('resize', onReflow);
       window.removeEventListener('scroll', onReflow, true);
     };
-  }, [rootRef, recomputeSelectedBox]);
+  }, [rootRef, recomputeSelectedBox, setHoverKey]);
 
   // --- Pointer handlers: hover + click selection ----------------------------
   const handleMouseMove = useCallback(
@@ -173,6 +178,7 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
         if (hoverTargetRef.current) {
           hoverTargetRef.current = null;
           setHoverBox(null);
+          setHoverKey(null);
         }
         return;
       }
@@ -181,14 +187,16 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       hoverTargetRef.current = nextKey;
       const rect = measure(target.el, root);
       setHoverBox(rect ? { kind: target.kind, rect } : null);
+      setHoverKey(nextKey);
     },
-    [rootRef]
+    [rootRef, setHoverKey]
   );
 
   const handleMouseLeave = useCallback(() => {
     hoverTargetRef.current = null;
     setHoverBox(null);
-  }, []);
+    setHoverKey(null);
+  }, [setHoverKey]);
 
   const handleClick = useCallback(
     e => {

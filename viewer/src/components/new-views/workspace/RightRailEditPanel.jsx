@@ -438,9 +438,13 @@ const RightRailEditPanel = () => {
         );
       }
       const leafRef = getItemLeafRef(item);
-      // If the item points at a real leaf object, drill in to that leaf's
-      // existing edit form (per Q25).
-      if (leafRef && LEAF_TYPES.includes(leafRef.type)) {
+      // If the item points at a real, NAMED leaf object, drill in to that leaf's
+      // existing edit form (per Q25). Inline/unnamed leaves (e.g. markdown
+      // defined in place) are NOT in the object store — there is no named object
+      // to open — so they fall through to the item layout editor below, which
+      // renders a "defined inline" chip + a prompt to name the object rather
+      // than opening an empty/broken leaf form.
+      if (leafRef && !leafRef.inline && LEAF_TYPES.includes(leafRef.type)) {
         return (
           <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
             <LeafObjectForm type={leafRef.type} name={leafRef.name} onSelectRef={handleSelectRef} />
@@ -477,7 +481,11 @@ const RightRailEditPanel = () => {
           <SelectionChip
             type="dashboard"
             name={`Item ${sel.itemIndex + 1}`}
-            subtitle={`Row ${sel.rowIndex + 1} · empty slot`}
+            subtitle={
+              leafRef?.inline
+                ? `Row ${sel.rowIndex + 1} · inline ${leafRef.type}`
+                : `Row ${sel.rowIndex + 1} · empty slot`
+            }
             saveStatus={saveStatus}
           />
           <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">

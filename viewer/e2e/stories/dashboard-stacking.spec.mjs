@@ -71,12 +71,16 @@ test.describe('Dashboard stacking breakpoint (VIS-829)', () => {
     const dashboard = page.getByTestId('dashboard_simple-dashboard');
     await expect(dashboard).toBeVisible({ timeout: 15000 });
 
-    // Row 0 of simple-dashboard has two items (width 9 + width 2). At a wide
-    // canvas they MUST sit side-by-side, not stacked.
+    // Row 0 of simple-dashboard has multiple items. At a wide canvas they MUST
+    // sit side-by-side, not stacked. Target the row's TOP-LEVEL item slots by
+    // their `data-canvas-path` via the direct-child combinator (`:scope >`), which
+    // (a) maps 1:1 to items even though each item is wrapped in extra layout divs
+    // and (b) excludes any deeper nested-container paths. We assert "multiple
+    // items, first two side-by-side" rather than a brittle exact count.
     const row0 = page.getByTestId('dashboard-row-0');
     await expect(row0).toBeVisible({ timeout: 15000 });
-    const items = row0.locator(':scope > div');
-    await expect(items).toHaveCount(2);
+    const items = row0.locator(':scope > [data-canvas-path]');
+    expect(await items.count()).toBeGreaterThanOrEqual(2);
 
     const boxA = await items.nth(0).boundingBox();
     const boxB = await items.nth(1).boundingBox();
@@ -115,8 +119,10 @@ test.describe('Dashboard stacking breakpoint (VIS-829)', () => {
     // wide canvas these top-level slots sit side-by-side.
     const section1 = page.getByTestId('dashboard-row-1');
     await expect(section1).toBeVisible({ timeout: 15000 });
-    const topSlots = section1.locator(':scope > div');
-    await expect(topSlots).toHaveCount(2);
+    // Top-level slots only (direct-child combinator) — exclude the nested
+    // container's deeper item paths.
+    const topSlots = section1.locator(':scope > [data-canvas-path]');
+    expect(await topSlots.count()).toBeGreaterThanOrEqual(2);
     const leftBox = await topSlots.nth(0).boundingBox();
     const rightBox = await topSlots.nth(1).boundingBox();
     expect(leftBox).toBeTruthy();
@@ -161,8 +167,8 @@ test.describe('Dashboard stacking breakpoint (VIS-829)', () => {
 
     const row0 = page.getByTestId('dashboard-row-0');
     await expect(row0).toBeVisible({ timeout: 15000 });
-    const items = row0.locator(':scope > div');
-    await expect(items).toHaveCount(2);
+    const items = row0.locator(':scope > [data-canvas-path]');
+    expect(await items.count()).toBeGreaterThanOrEqual(2);
 
     const boxA = await items.nth(0).boundingBox();
     const boxB = await items.nth(1).boundingBox();

@@ -58,6 +58,14 @@ const createWorkspaceSlice = (set, get) => ({
   // to the dashboard root so the scoped dashboard reads as selected on entry.
   workspaceOutlineSelectedKey: 'dashboard',
 
+  // Canvas hover key — the composite `data-canvas-path` of the row/item the
+  // cursor is currently over on the dashboard canvas (`null` over chrome/empty).
+  // Written by CanvasSelectionOverlay (the single hover source) and read by
+  // CanvasDndLayer so drag-grips reveal on hover-or-selection rather than always
+  // being painted (VIS-771 follow-up). Kept out of the Outline selection key so
+  // hovering never mutates selection.
+  workspaceCanvasHoverKey: null,
+
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
   workspaceRightWidth: 360,
@@ -198,6 +206,18 @@ const createWorkspaceSlice = (set, get) => ({
   setWorkspaceOutlineSelectedKey: (key) => {
     if (typeof key !== 'string' || !key) return;
     set({ workspaceOutlineSelectedKey: key });
+  },
+
+  /**
+   * Set the canvas hover key (or `null` to clear). Used only to reveal canvas
+   * drag-grips on hover; never affects the Outline selection.
+   */
+  setWorkspaceCanvasHoverKey: (key) => {
+    set(state =>
+      state.workspaceCanvasHoverKey === (key || null)
+        ? state
+        : { workspaceCanvasHoverKey: key || null }
+    );
   },
 
   /**

@@ -62,6 +62,11 @@ test.describe('Library — Dashboards in Layout Items (VIS-824)', () => {
     await page.goto('/workspace');
     await page.waitForLoadState('networkidle');
 
+    // Library per-type subsections are collapsed by default (VIS-828), so the
+    // dashboard rows are not rendered until the subsection is expanded. Click its
+    // header to expand before grabbing a row.
+    await page.getByTestId('library-subsection-dashboard-header').click();
+
     // Grab the first dashboard row inside the dashboard subsection.
     const dashboardRow = page
       .getByTestId('library-subsection-dashboard-rows')
