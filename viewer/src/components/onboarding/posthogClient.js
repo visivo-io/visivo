@@ -6,10 +6,19 @@
  *    (visivo_version, platform, plan, is_ci), registered ONCE as PostHog super
  *    properties so they ride on every event.
  *  - ENV-GATED: posthog initializes ONLY when a key is present (read by
- *    posthogEnv.js from import.meta.env.VITE_POSTHOG_KEY; host defaults to
- *    https://us.i.posthog.com or VITE_POSTHOG_HOST). With no key (jest/jsdom,
- *    or any build where the key is not set) posthog NEVER initializes and every
+ *    posthogEnv.js, which falls back to the public hardcoded ingestion key so
+ *    telemetry is ON BY DEFAULT in distribution; host defaults to
+ *    https://us.i.posthog.com or VITE_POSTHOG_HOST). Under jest the env module
+ *    is stubbed to return null, so posthog NEVER initializes there and every
  *    capture is a guarded no-op.
+ *  - OPT-OUT GATE: the host can disable telemetry by setting
+ *    `window.__VISIVO_TELEMETRY_DISABLED = true` BEFORE the shim runs. When set,
+ *    posthog does not init and capture is a no-op. This is how `visivo serve`
+ *    honors the CLI/local telemetry opt-out (the Flask server injects the flag
+ *    into the served index.html when telemetry is disabled). The flag is ABSENT
+ *    for cloud and for local users who have not opted out, so both stay
+ *    always-on. The window event buffer (window.__onbEvents) is unaffected — it
+ *    is written in telemetry.js regardless of this gate (e2e contract).
  *  - PRIVACY: the viewer is a CLI/embedded surface. It NEVER sends email or any
  *    PII and never calls identify(); account linking is server-side only.
  *  - The key is never hardcoded; enabling it in the distribution build is a
@@ -29,6 +38,14 @@ const SURFACE = 'viewer';
 
 let client = null; // the posthog-js instance once initialized
 let initStarted = false;
+
+/* Host opt-out gate. Telemetry is enabled unless the host explicitly sets
+ * window.__VISIVO_TELEMETRY_DISABLED === true. Absent/undefined => enabled, so
+ * cloud and local-not-opted-out both send; only an explicit `true` (injected by
+ * `visivo serve` when the CLI telemetry opt-out is active) disables it. */
+function isTelemetryDisabled() {
+  return typeof window !== 'undefined' && window.__VISIVO_TELEMETRY_DISABLED === true;
+}
 
 /* Best-effort, PII-free shared context for the super properties. These are
  * intentionally derived client-side with safe fallbacks; the build/server can
@@ -72,6 +89,8 @@ export function initPosthog() {
   initStarted = true;
 
   if (typeof window === 'undefined') return null;
+  // Host opt-out (e.g. CLI telemetry opt-out via `visivo serve`): never init.
+  if (isTelemetryDisabled()) return null;
 
   const config = getPosthogConfig();
   if (!config || !config.key) return null;
@@ -100,6 +119,9 @@ export function initPosthog() {
  * present). `surface: 'viewer'` is enforced here as well as via super props.
  * Never accepts or forwards email/PII — callers pass only event metadata. */
 export function capturePosthog(event, props = {}) {
+  // Host opt-out gate: no-op when telemetry is disabled, even if a prior init
+  // succeeded before the flag was observed.
+  if (isTelemetryDisabled()) return;
   const instance = client || initPosthog();
   if (!instance) return;
   try {
