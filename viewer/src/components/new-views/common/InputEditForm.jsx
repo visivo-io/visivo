@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import { FormInput, FormAlert } from '../../styled/FormComponents';
 import { Button, ButtonOutline } from '../../styled/Button';
@@ -12,6 +12,8 @@ import CodeIcon from '@mui/icons-material/Code';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import RefTextArea from './RefTextArea';
 import { validateName } from './namedModel';
+import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
+import useDebouncedSave from '../workspace/useDebouncedSave';
 
 const INPUT_TYPES = [
   { value: 'single-select', label: 'Single Select' },
@@ -21,7 +23,26 @@ const INPUT_TYPES = [
 const SINGLE_SELECT_DISPLAY_TYPES = ['dropdown', 'radio', 'toggle', 'tabs', 'autocomplete', 'slider'];
 const MULTI_SELECT_DISPLAY_TYPES = ['dropdown', 'checkboxes', 'chips', 'tags', 'range-slider', 'date-range'];
 
-const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
+/**
+ * InputEditForm — VIS-898 / Track G (input slice).
+ *
+ * The Input editor, with two modes:
+ *
+ *  - `autoSave` (the right rail): edits (name/label/type/options/display/default)
+ *    AUTO-SAVE on a ~500ms debounce through the shared `onSave` handler — there
+ *    is NO Save button, matching the structure-form UX wired by G-1
+ *    (RightRailEditPanel). The auto-save status is reported up via
+ *    `onSaveStatusChange` so the SelectionChip header can render the indicator.
+ *
+ *  - legacy modal (Editor / Lineage `EditPanel`): keeps the explicit
+ *    Save/Cancel footer so the modal can be dismissed as before.
+ *
+ * In both modes validation is inline and non-blocking: obvious mistakes
+ * (invalid name, default not in options, …) are caught client-side and shown
+ * near the field without trapping the user, and any backend rejection is
+ * surfaced inline too.
+ */
+const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, autoSave = false }) => {
   const deleteInput = useStore(state => state.deleteInput);
   const checkPublishStatus = useStore(state => state.checkPublishStatus);
 
@@ -42,15 +63,35 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
 
   // UI state
   const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Guards: don't auto-save the initial hydration from props, and skip the very
+  // first display-type reset that fires when `inputType` initialises.
+  const hydratedRef = useRef(false);
 
   const isEditMode = !!input && !isCreate;
   const isNewObject = input?.status === ObjectStatus.NEW;
 
+  // Debounced auto-save bound to this input by name.
+  const saveFn = useCallback(
+    config => {
+      if (typeof onSave !== 'function') return undefined;
+      return onSave('input', config.name, config);
+    },
+    [onSave]
+  );
+  const { status: saveStatus, scheduleSave, reset } = useDebouncedSave(saveFn, { delay: 500 });
+
+  // Surface the auto-save status to the parent (SelectionChip indicator).
   useEffect(() => {
+    if (autoSave && typeof onSaveStatusChange === 'function') onSaveStatusChange(saveStatus);
+  }, [autoSave, saveStatus, onSaveStatusChange]);
+
+  useEffect(() => {
+    hydratedRef.current = false;
     if (input) {
       setName(input.name || '');
       const config = input.config || {};
@@ -112,12 +153,92 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
     }
     setErrors({});
     setSaveError(null);
-  }, [input, isCreate]);
+    reset();
+    // Mark hydration complete on the next tick so the field-change effect that
+    // schedules the save ignores this prop-driven reset.
+    const id = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(id);
+    // input identity (name) drives re-hydration; reset is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input?.name, isCreate]);
 
-  // Reset display type when input type changes
+  // Reset display type to a valid value when the input type changes (after the
+  // initial hydration so we don't clobber a hydrated display type).
   useEffect(() => {
+    if (!hydratedRef.current) return;
     setDisplayType('dropdown');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputType]);
+
+  // Auto-save: whenever an editable field changes (post-hydration), validate and
+  // — when valid — schedule the debounced persist. Invalid drafts show inline
+  // errors and are NOT round-tripped, but the form stays fully editable.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const draft = {
+      name,
+      inputType,
+      label,
+      optionsMode,
+      options,
+      optionsQuery,
+      rangeStart,
+      rangeEnd,
+      rangeStep,
+      displayType,
+      defaultValue,
+    };
+    const nextErrors = validateInputDraft(draft, validateName);
+    setErrors(nextErrors);
+    setSaveError(null);
+    if (autoSave && Object.keys(nextErrors).length === 0) {
+      scheduleSave(buildInputConfig(draft));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    name,
+    inputType,
+    label,
+    optionsMode,
+    options,
+    optionsQuery,
+    rangeStart,
+    rangeEnd,
+    rangeStep,
+    displayType,
+    defaultValue,
+  ]);
+
+  // Reflect a backend rejection inline (the debounced save sets status 'error';
+  // we re-run the save once on demand to capture its message).
+  const surfaceBackendError = useCallback(async () => {
+    if (!autoSave || saveStatus !== 'error' || typeof onSave !== 'function') return;
+    const draft = {
+      name,
+      inputType,
+      label,
+      optionsMode,
+      options,
+      optionsQuery,
+      rangeStart,
+      rangeEnd,
+      rangeStep,
+      displayType,
+      defaultValue,
+    };
+    if (Object.keys(validateInputDraft(draft, validateName)).length > 0) return;
+    const result = await onSave('input', name, buildInputConfig(draft));
+    if (result && result.success === false) {
+      setSaveError(result.error || 'Failed to save input');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveStatus, onSave]);
+
+  useEffect(() => {
+    surfaceBackendError();
+  }, [surfaceBackendError]);
 
   const displayTypes = inputType === 'single-select' ? SINGLE_SELECT_DISPLAY_TYPES : MULTI_SELECT_DISPLAY_TYPES;
 
@@ -140,74 +261,29 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    const nameError = validateName(name);
-    if (nameError) newErrors.name = nameError;
-
-    if (optionsMode === 'range') {
-      if (!rangeStart && rangeStart !== '0') newErrors.rangeStart = 'Start is required';
-      if (!rangeEnd && rangeEnd !== '0') newErrors.rangeEnd = 'End is required';
-      if (!rangeStep && rangeStep !== '0') newErrors.rangeStep = 'Step is required';
-    } else if (optionsMode === 'query') {
-      if (!optionsQuery.trim()) newErrors.optionsQuery = 'Query is required';
-    } else {
-      if (options.length === 0) newErrors.options = 'At least one option is required';
-    }
-
-    if (optionsMode === 'list' && inputType === 'single-select' && displayType === 'toggle' && options.length !== 2) {
-      newErrors.options = 'Toggle display requires exactly 2 options';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+  // Legacy modal (non-autoSave) explicit save.
   const handleSave = async () => {
-    if (!validateForm()) return;
+    const draft = {
+      name,
+      inputType,
+      label,
+      optionsMode,
+      options,
+      optionsQuery,
+      rangeStart,
+      rangeEnd,
+      rangeStep,
+      displayType,
+      defaultValue,
+    };
+    const nextErrors = validateInputDraft(draft, validateName);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
     setSaveError(null);
-
-    const config = {
-      name,
-      type: inputType,
-    };
-
-    if (label.trim()) config.label = label.trim();
-
-    if (optionsMode === 'range') {
-      config.range = {
-        start: isNaN(Number(rangeStart)) ? rangeStart : Number(rangeStart),
-        end: isNaN(Number(rangeEnd)) ? rangeEnd : Number(rangeEnd),
-        step: isNaN(Number(rangeStep)) ? rangeStep : Number(rangeStep),
-      };
-    } else if (optionsMode === 'query') {
-      config.options = optionsQuery.trim();
-    } else {
-      config.options = options;
-    }
-
-    if (displayType !== 'dropdown') {
-      config.display = { type: displayType };
-    }
-
-    if (defaultValue.trim()) {
-      if (!config.display) config.display = {};
-      if (inputType === 'single-select') {
-        const parsed = isNaN(Number(defaultValue)) ? defaultValue.trim() : Number(defaultValue);
-        config.display.default = { value: parsed };
-      } else {
-        const vals = defaultValue.split(',').map(v => v.trim()).filter(Boolean);
-        if (vals.length > 0) {
-          config.display.default = { values: vals.map(v => isNaN(Number(v)) ? v : Number(v)) };
-        }
-      }
-    }
-
-    const result = await onSave('input', name, config);
+    const result = await onSave('input', name, buildInputConfig(draft));
     setSaving(false);
-
     if (!result?.success) {
       setSaveError(result?.error || 'Failed to save input');
     }
@@ -221,7 +297,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
       const result = await deleteInput(input.name);
       if (result.success) {
         await checkPublishStatus();
-        onClose();
+        setShowDeleteConfirm(false);
       } else {
         setSaveError(result.error || 'Failed to delete input');
         setShowDeleteConfirm(false);
@@ -236,13 +312,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
-      <form
-        onSubmit={e => {
-          e.preventDefault();
-          handleSave();
-        }}
-        className="space-y-4"
-      >
+      <div className="space-y-4">
         {saveError && <FormAlert variant="error">{saveError}</FormAlert>}
 
         <FormInput
@@ -260,7 +330,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           <select
             value={inputType}
             onChange={e => setInputType(e.target.value)}
-            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             {INPUT_TYPES.map(t => (
               <option key={t.value} value={t.value}>
@@ -284,18 +354,26 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           <ToggleButtonGroup
             value={optionsMode}
             exclusive
-            onChange={(e, newMode) => { if (newMode !== null) setOptionsMode(newMode); }}
+            onChange={(e, newMode) => {
+              if (newMode !== null) setOptionsMode(newMode);
+            }}
             size="small"
           >
             <ToggleButton value="list" aria-label="static list">
-              <Tooltip title="Static list"><TuneIcon fontSize="small" /></Tooltip>
+              <Tooltip title="Static list">
+                <TuneIcon fontSize="small" />
+              </Tooltip>
             </ToggleButton>
             <ToggleButton value="query" aria-label="query string">
-              <Tooltip title="Query expression"><CodeIcon fontSize="small" /></Tooltip>
+              <Tooltip title="Query expression">
+                <CodeIcon fontSize="small" />
+              </Tooltip>
             </ToggleButton>
             {inputType === 'multi-select' && (
               <ToggleButton value="range" aria-label="range">
-                <Tooltip title="Numeric range"><SwapHorizIcon fontSize="small" /></Tooltip>
+                <Tooltip title="Numeric range">
+                  <SwapHorizIcon fontSize="small" />
+                </Tooltip>
               </ToggleButton>
             )}
           </ToggleButtonGroup>
@@ -333,7 +411,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
             {errors.optionsQuery && <p className="text-xs text-red-600">{errors.optionsQuery}</p>}
             <RefTextArea
               value={optionsQuery}
-              onChange={(val) => setOptionsQuery(val)}
+              onChange={val => setOptionsQuery(val)}
               allowedTypes={['model']}
               label=""
               rows={3}
@@ -343,7 +421,11 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           </div>
         ) : (
           <div className="space-y-2">
-            {errors.options && <p className="text-xs text-red-600">{errors.options}</p>}
+            {errors.options && (
+              <p className="text-xs text-red-600" data-testid="input-edit-options-error">
+                {errors.options}
+              </p>
+            )}
 
             <div className="border border-gray-300 rounded-md max-h-40 overflow-y-auto">
               {options.length === 0 ? (
@@ -374,7 +456,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
                 onChange={e => setNewOption(e.target.value)}
                 onKeyDown={handleOptionKeyDown}
                 placeholder="Add option..."
-                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
               <button
                 type="button"
@@ -395,7 +477,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           <select
             value={displayType}
             onChange={e => setDisplayType(e.target.value)}
-            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             {displayTypes.map(d => (
               <option key={d} value={d}>
@@ -411,6 +493,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           label={inputType === 'single-select' ? 'Default Value' : 'Default Values'}
           value={defaultValue}
           onChange={e => setDefaultValue(e.target.value)}
+          error={errors.defaultValue}
           placeholder={
             inputType === 'single-select'
               ? 'Optional default value'
@@ -447,9 +530,11 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
           </div>
         )}
 
-        <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
-          <div>
-            {isEditMode && !showDeleteConfirm && (
+        {autoSave ? (
+          // Auto-save mode: no Save button. Delete stays as a distinct action.
+          isEditMode &&
+          !showDeleteConfirm && (
+            <div className="flex justify-start pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -458,25 +543,51 @@ const InputEditForm = ({ input, isCreate, onClose, onSave }) => {
               >
                 <DeleteOutlineIcon fontSize="small" />
               </button>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <ButtonOutline type="button" onClick={onClose} disabled={saving || deleting} className="text-sm">
-              Cancel
-            </ButtonOutline>
-            <Button type="submit" disabled={saving || deleting} className="text-sm">
-              {saving ? (
-                <>
-                  <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save'
+            </div>
+          )
+        ) : (
+          // Legacy modal mode: explicit Save / Cancel footer.
+          <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
+            <div>
+              {isEditMode && !showDeleteConfirm && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-1.5 text-red-600 hover:text-red-700 border border-red-300 hover:bg-red-50 rounded transition-colors"
+                  title="Delete input"
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </button>
               )}
-            </Button>
+            </div>
+            <div className="flex gap-3">
+              <ButtonOutline
+                type="button"
+                onClick={onClose}
+                disabled={saving || deleting}
+                className="text-sm"
+              >
+                Cancel
+              </ButtonOutline>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || deleting}
+                className="text-sm"
+              >
+                {saving ? (
+                  <>
+                    <CircularProgress size={14} className="mr-1" style={{ color: 'white' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </form>
+        )}
+      </div>
     </div>
   );
 };
