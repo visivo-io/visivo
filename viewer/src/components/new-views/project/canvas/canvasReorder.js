@@ -315,3 +315,52 @@ export const setRowHeight = (config, rowPath, nextHeight) => {
   });
   return changed ? next : config;
 };
+
+/**
+ * Row templates backing the "+ Add Row" picker (VIS-794 / D-7). Each is a
+ * pure layout SHAPE — a row of empty item slots (`{ width }`), NOT a content
+ * thumbnail. The user picks the column layout, then drags / inline-creates
+ * items into the slots. `widths` is the per-slot `width` (the 12-col grid is
+ * derived from their sum by <Dashboard>'s grid layout). The shell's
+ * `sanitizeDashboardConfig` accepts an empty `{ width }` slot as backend-valid,
+ * so a freshly-inserted template row persists cleanly with no leaf refs.
+ *
+ *   blank  → 1 full-width slot.
+ *   kpi    → 4 equal narrow slots (a headline-metrics strip).
+ *   2up    → 2 equal slots.
+ *   3up    → 3 equal slots.
+ *   mix    → 1 wide slot + 1 narrow slot.
+ */
+export const ROW_TEMPLATES = [
+  { key: 'blank', name: 'Blank', desc: 'Single empty slot', widths: [12] },
+  { key: 'kpi', name: 'KPI strip', desc: '4 small slots for headline metrics', widths: [3, 3, 3, 3] },
+  { key: '2up', name: '2-up', desc: 'Two equal-width slots', widths: [6, 6] },
+  { key: '3up', name: '3-up', desc: 'Three equal-width slots', widths: [4, 4, 4] },
+  { key: 'mix', name: 'Mixed', desc: 'One wide slot + one narrow', widths: [8, 4] },
+];
+
+/**
+ * Build a brand-new top-level row from a template key (VIS-794 / D-7). Returns a
+ * `{ height: 'medium', items: [{ width }, …] }` row of empty slots, or `null`
+ * for an unknown key. Pure — never reads/mutates external state.
+ */
+export const buildTemplateRow = templateKey => {
+  const template = ROW_TEMPLATES.find(t => t.key === templateKey);
+  if (!template) return null;
+  return { height: 'medium', items: template.widths.map(width => ({ width })) };
+};
+
+/**
+ * Insert a fully-formed `row` into the config's top-level `rows` at `index`
+ * (clamped to `[0, rows.length]`). Returns a NEW config (never mutates); an
+ * out-of-shape config or a falsy `row` returns the config unchanged. Used by the
+ * "+ Add Row" affordance + the empty-canvas CTA to commit a templated row.
+ */
+export const insertRowAtIndex = (config, index, row) => {
+  if (!row || typeof row !== 'object') return config;
+  const baseRows = config && Array.isArray(config.rows) ? config.rows : [];
+  const idx = Math.max(0, Math.min(index ?? baseRows.length, baseRows.length));
+  const nextRows = [...baseRows];
+  nextRows.splice(idx, 0, row);
+  return { ...(config || {}), rows: nextRows };
+};

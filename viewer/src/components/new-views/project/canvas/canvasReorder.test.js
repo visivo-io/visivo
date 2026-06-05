@@ -12,6 +12,9 @@ import {
   reorderTopLevelRows,
   insertItemAtTarget,
   buildLibraryItem,
+  ROW_TEMPLATES,
+  buildTemplateRow,
+  insertRowAtIndex,
 } from './canvasReorder';
 
 const config = () => ({
@@ -183,5 +186,68 @@ describe('buildLibraryItem', () => {
   });
   test('returns a bare layout slot when type/name are missing', () => {
     expect(buildLibraryItem(null, null)).toEqual({ width: 1 });
+  });
+});
+
+describe('buildTemplateRow (VIS-794 / D-7)', () => {
+  test('exposes the five D-7 templates', () => {
+    expect(ROW_TEMPLATES.map(t => t.key)).toEqual(['blank', 'kpi', '2up', '3up', 'mix']);
+  });
+
+  test('blank → one full-width empty slot', () => {
+    expect(buildTemplateRow('blank')).toEqual({ height: 'medium', items: [{ width: 12 }] });
+  });
+
+  test('kpi → four equal narrow empty slots', () => {
+    const row = buildTemplateRow('kpi');
+    expect(row.items).toHaveLength(4);
+    expect(row.items.every(it => it.width === 3)).toBe(true);
+    // Empty slots carry NO leaf ref — backend-valid after sanitize.
+    expect(row.items.every(it => Object.keys(it).length === 1)).toBe(true);
+  });
+
+  test('2up / 3up / mix produce the expected slot widths', () => {
+    expect(buildTemplateRow('2up').items.map(i => i.width)).toEqual([6, 6]);
+    expect(buildTemplateRow('3up').items.map(i => i.width)).toEqual([4, 4, 4]);
+    expect(buildTemplateRow('mix').items.map(i => i.width)).toEqual([8, 4]);
+  });
+
+  test('unknown template key returns null', () => {
+    expect(buildTemplateRow('nope')).toBeNull();
+    expect(buildTemplateRow(undefined)).toBeNull();
+  });
+});
+
+describe('insertRowAtIndex (VIS-794 / D-7)', () => {
+  const row = () => ({ height: 'medium', items: [{ width: 12 }] });
+
+  test('inserts a row at the given index (immutably)', () => {
+    const before = config();
+    const after = insertRowAtIndex(before, 1, row());
+    expect(after).not.toBe(before);
+    expect(before.rows).toHaveLength(2); // input untouched
+    expect(after.rows).toHaveLength(3);
+    expect(after.rows[1]).toEqual(row());
+    // Surrounding rows preserved in order.
+    expect(names(after.rows[0].items)).toEqual(names(before.rows[0].items));
+    expect(names(after.rows[2].items)).toEqual(names(before.rows[1].items));
+  });
+
+  test('clamps an out-of-range index to append / prepend', () => {
+    const before = config();
+    expect(insertRowAtIndex(before, 999, row()).rows).toHaveLength(3);
+    expect(insertRowAtIndex(before, 999, row()).rows[2]).toEqual(row());
+    expect(insertRowAtIndex(before, -5, row()).rows[0]).toEqual(row());
+  });
+
+  test('seeds rows on an empty / rows-less config (D-8 empty canvas)', () => {
+    expect(insertRowAtIndex({}, 0, row()).rows).toEqual([row()]);
+    expect(insertRowAtIndex(null, 0, row()).rows).toEqual([row()]);
+    expect(insertRowAtIndex({ rows: [] }, 0, row()).rows).toEqual([row()]);
+  });
+
+  test('a falsy row returns the config unchanged', () => {
+    const before = config();
+    expect(insertRowAtIndex(before, 0, null)).toBe(before);
   });
 });

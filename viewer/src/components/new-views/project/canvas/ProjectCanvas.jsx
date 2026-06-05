@@ -3,6 +3,7 @@ import Dashboard from '../../../project/Dashboard';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 import CanvasDndLayer from './CanvasDndLayer';
 import CanvasResizeLayer from './CanvasResizeLayer';
+import CanvasAddRow from './CanvasAddRow';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -44,7 +45,12 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
       data-testid="project-canvas"
       className="relative flex flex-1 min-h-0 w-full max-w-full"
     >
-      <Dashboard projectId={projectId} dashboardName={dashboardName} stackBreakpoint={768} />
+      <Dashboard
+        projectId={projectId}
+        dashboardName={dashboardName}
+        stackBreakpoint={768}
+        hideEmptyPlaceholder
+      />
       <CanvasSelectionOverlay rootRef={rootRef} />
       {/* VIS-771 / D-3: drag-and-drop affordance layer (drag handles + drop
           zones). A SIBLING over the render, wired to the shell's shared
@@ -54,6 +60,10 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
           container corner). Paints edge handles on the selected node and
           persists width/height through the shared commitCanvasConfig. */}
       <CanvasResizeLayer rootRef={rootRef} dashboardName={dashboardName} />
+      {/* VIS-794 / D-7 + D-8: "+ Add Row" template menu (end-of-canvas +
+          between-rows) and the empty-canvas CTA. Commits a templated row via the
+          shell's shared commitCanvasConfig (sanitize → optimistic → save). */}
+      <CanvasAddRow rootRef={rootRef} dashboardName={dashboardName} />
     </div>
   );
 };

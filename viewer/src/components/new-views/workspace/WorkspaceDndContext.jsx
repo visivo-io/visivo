@@ -108,6 +108,15 @@ export const useWorkspaceDrag = () => useContext(WorkspaceDragContext)?.activeDr
 export const useCommitCanvasConfig = () =>
   useContext(WorkspaceDragContext)?.commitCanvasConfig ?? (() => {});
 
+// Exposes the shell's `commitCanvasConfig` (sanitize → optimistic → save) to
+// non-DnD canvas affordances — the "+ Add Row" template menu + empty-canvas CTA
+// (VIS-794 / D-7, D-8) — so they reuse the SAME persistence path the DnD router
+// uses, rather than re-implementing the save flow.
+const WorkspaceCommitContext = createContext(null);
+
+/** Read the shell's `commitCanvasConfig(dashboardName, nextConfig)` committer. */
+export const useWorkspaceCommit = () => useContext(WorkspaceCommitContext);
+
 /**
  * Pure router for the shared `onDragEnd`. Decides what a finished drag means
  * from its `active`/`over` payloads and invokes the right side effect. Exported
@@ -352,6 +361,7 @@ const WorkspaceDndContext = ({ children }) => {
 
   return (
     <WorkspaceDragContext.Provider value={contextValue}>
+      <WorkspaceCommitContext.Provider value={commitCanvasConfig}>
       <DndContext
         sensors={sensors}
         collisionDetection={workspaceCollisionDetection}
@@ -376,6 +386,7 @@ const WorkspaceDndContext = ({ children }) => {
           ) : null}
         </DragOverlay>
       </DndContext>
+      </WorkspaceCommitContext.Provider>
     </WorkspaceDragContext.Provider>
   );
 };
