@@ -142,9 +142,7 @@ def test_deploy_with_insights_and_inputs_success(requests_mock, httpx_mock, caps
         json={"created": 0, "names": []},
         status_code=201,
     )
-    requests_mock.post(
-        re.compile(r"http://host/api/defaults/"), json={}, status_code=200
-    )
+    requests_mock.post(re.compile(r"http://host/api/defaults/"), json={}, status_code=200)
 
     requests_mock.post(
         "http://host/api/projects/",

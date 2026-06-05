@@ -47,6 +47,44 @@ describe('TopNav', () => {
     expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();
   });
 
+  it('version pill is a plain label for a single deploy, a dropdown for many', () => {
+    const proj = { currentProject: { id: 'p', name: 'p' } };
+    // single version → clicking it opens nothing
+    const { unmount } = renderNav({
+      ...proj,
+      versions: [{ id: 'v1', ts: '6/5/2026, 8:00 AM', live: true }],
+      currentVersion: { id: 'v1', ts: '6/5/2026, 8:00 AM', live: true },
+    });
+    fireEvent.click(screen.getByText('6/5/2026, 8:00 AM'));
+    expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();
+    unmount();
+
+    // multiple versions → clicking opens the history dropdown
+    renderNav({
+      ...proj,
+      versions: [
+        { id: 'v1', ts: 'today', live: true },
+        { id: 'v2', ts: 'earlier', live: false },
+      ],
+      currentVersion: { id: 'v1', ts: 'today', live: true },
+    });
+    fireEvent.click(screen.getByText('today'));
+    expect(screen.getByText(/PROJECT HISTORY/i)).toBeInTheDocument();
+  });
+
+  it('account variant (no tools, no stages) shows neither tools nor a capsule', () => {
+    renderNav({ tools: [], stages: [] });
+    expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
+    expect(screen.queryByText('Local')).not.toBeInTheDocument();
+  });
+
+  it('stage variant (a stage, no tools) shows the stage pill but no tools', () => {
+    const stages = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
+    renderNav({ tools: [], stages, currentStage: stages[0], onAllStages: () => {} });
+    expect(screen.getByText('Production')).toBeInTheDocument();
+    expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
+  });
+
   it('stage dropdown always shows the search and lists DEFAULT before STARRED', () => {
     const stages = [
       { id: 'prod', name: 'Production', color: '#16a34a', desc: 'live', starred: true },

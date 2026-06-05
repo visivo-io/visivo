@@ -202,7 +202,10 @@ function VersionMenu({ versions, currentVersion, onPick, close }) {
 }
 
 /* --------------------------------- the capsule: stage + project segments */
-function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, currentProject, onProjectChange, narrow }) {
+function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, currentProject, onProjectChange, narrow, showProject }) {
+  // Defensive: the bar only mounts the capsule when a stage exists, but never
+  // crash if rendered without one (account bar / a stale vendored copy).
+  if (!currentStage) return null;
   // The stage segment opens a menu to switch stages or jump to "All stages";
   // with a single stage and no onAllStages (local) it's a plain label.
   const stageOpens = stages.length > 1 || Boolean(onAllStages);
@@ -213,6 +216,7 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
         display: 'flex', alignItems: 'center', gap: 7, background: currentStage.color, color: '#fff',
         border: 'none', cursor: stageOpens ? 'pointer' : 'default', padding: '7px 12px', fontSize: 12.5,
         fontWeight: 700, whiteSpace: 'nowrap', borderTopLeftRadius: 99, borderBottomLeftRadius: 99,
+        ...(showProject ? {} : { borderTopRightRadius: 99, borderBottomRightRadius: 99 }),
       }}
     >
       <span style={{ width: 7, height: 7, borderRadius: 99, background: 'rgba(255,255,255,.92)' }} />
@@ -241,11 +245,14 @@ function Capsule({ stages, currentStage, onStageChange, onAllStages, projects, c
           {close => <StageMenu stages={stages} currentStage={currentStage} onPick={onStageChange} onAllStages={onAllStages} close={close} />}
         </Dropdown>
       ) : stageBtn}
-      {multiProject ? (
-        <Dropdown align="left" width={272} panelStyle={{ marginTop: 2 }} trigger={projectBtn}>
-          {close => <ProjectMenu projects={projects} currentProject={currentProject} onPick={onProjectChange} close={close} />}
-        </Dropdown>
-      ) : projectBtn}
+      {showProject &&
+        (multiProject ? (
+          <Dropdown align="left" width={272} panelStyle={{ marginTop: 2 }} trigger={projectBtn}>
+            {close => <ProjectMenu projects={projects} currentProject={currentProject} onPick={onProjectChange} close={close} />}
+          </Dropdown>
+        ) : (
+          projectBtn
+        ))}
     </div>
   );
 }
@@ -280,18 +287,22 @@ function ToolSwitch({ tools, activeTool }) {
 function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
   const viewing = !currentVersion.live;
   const label = compact ? String(currentVersion.ts).split(',')[0] : currentVersion.ts;
+  // A single deploy has nothing to switch to — show it as a plain label, no
+  // chevron, no dropdown. More than one → it's a dropdown into the history.
+  const multi = versions.length > 1;
   const trigger = (
     <button
       style={{
         display: 'flex', alignItems: 'center', gap: 7, background: viewing ? '#a84738' : 'rgba(255,255,255,.06)',
         border: viewing ? 'none' : `1px solid ${HAIR}`, color: '#fff', fontSize: 12.5, fontWeight: 500,
-        padding: '6px 11px', borderRadius: 99, cursor: 'pointer', whiteSpace: 'nowrap',
+        padding: '6px 11px', borderRadius: 99, cursor: multi ? 'pointer' : 'default', whiteSpace: 'nowrap',
       }}
     >
       <FiClock size={15} /> {label}
-      <FiChevronDown size={13} />
+      {multi && <FiChevronDown size={13} />}
     </button>
   );
+  if (!multi) return trigger;
   return (
     <Dropdown align="right" width={300} panelStyle={{ marginTop: 2 }} trigger={trigger}>
       {close => <VersionMenu versions={versions} currentVersion={currentVersion} onPick={onVersionChange} close={close} />}
@@ -437,7 +448,16 @@ const TopNav = ({
   const resolvedActive =
     activeTool || (tools.find(t => location.pathname === t.to || location.pathname.endsWith(t.to)) || {}).id;
 
-  const showVersions = Array.isArray(versions) && versions.length > 0 && currentVersion;
+  // Bar variant by depth — one component, three shapes. Project depth is
+  // signalled by having tools (account/stage bars pass tools=[]; local + cloud
+  // project bars have the four). A stage is present at stage + project depth.
+  //   account (no stage, no tools) → logo + user
+  //   stage   (stage, no tools)    → + stage pill
+  //   project (stage + tools)      → + project segment, tools, version, commit/deploy
+  const showProject = tools.length > 0;
+  const showCapsule = Boolean(resolvedStage);
+
+  const showVersions = showProject && Array.isArray(versions) && versions.length > 0 && currentVersion;
   const inHistory = showVersions && !currentVersion.live;
 
   const action = hasUncommittedChanges ? (
@@ -469,6 +489,7 @@ const TopNav = ({
       currentProject={resolvedProject}
       onProjectChange={onProjectChange}
       narrow={narrow}
+      showProject={showProject}
     />
   );
 
@@ -478,18 +499,20 @@ const TopNav = ({
         <div style={{ background: DARK, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', height: 54 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
             {renderLogo || <Link to="/"><img src={logo} alt="V" style={{ height: 26, width: 26, borderRadius: 6 }} /></Link>}
-            {capsule}
+            {showCapsule && capsule}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
-            {action}
+            {showProject && action}
             <UserMenu user={user} onSignOut={onSignOut} />
           </div>
         </div>
         {banner}
-        <div style={{ background: DARK, borderTop: `1px solid ${HAIR}`, padding: '8px 12px', display: 'flex', justifyContent: 'center' }}>
-          <ToolSwitch tools={tools} activeTool={resolvedActive} />
-        </div>
+        {showProject && (
+          <div style={{ background: DARK, borderTop: `1px solid ${HAIR}`, padding: '8px 12px', display: 'flex', justifyContent: 'center' }}>
+            <ToolSwitch tools={tools} activeTool={resolvedActive} />
+          </div>
+        )}
       </nav>
     );
   }
@@ -499,12 +522,12 @@ const TopNav = ({
       <div style={{ background: DARK, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56, padding: '0 16px', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {renderLogo || <Link to="/"><img src={logo} alt="V" style={{ height: 30, width: 30, borderRadius: 7 }} /></Link>}
-          {capsule}
+          {showCapsule && capsule}
         </div>
-        <ToolSwitch tools={tools} activeTool={resolvedActive} />
+        {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
-          {action}
+          {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
           <UserMenu user={user} onSignOut={onSignOut} />
         </div>
