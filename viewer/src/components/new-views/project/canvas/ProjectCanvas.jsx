@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import Dashboard from '../../../project/Dashboard';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 import CanvasDndLayer from './CanvasDndLayer';
+import CanvasResizeLayer from './CanvasResizeLayer';
 import CanvasAddRow from './CanvasAddRow';
 
 /**
@@ -55,6 +56,10 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
           zones). A SIBLING over the render, wired to the shell's shared
           <WorkspaceDndContext> — no second DndContext. */}
       <CanvasDndLayer rootRef={rootRef} dashboardName={dashboardName} />
+      {/* VIS-777 / D-4: resize-gesture layer (item width / row height /
+          container corner). Paints edge handles on the selected node and
+          persists width/height through the shared commitCanvasConfig. */}
+      <CanvasResizeLayer rootRef={rootRef} dashboardName={dashboardName} />
       {/* VIS-794 / D-7 + D-8: "+ Add Row" template menu (end-of-canvas +
           between-rows) and the empty-canvas CTA. Commits a templated row via the
           shell's shared commitCanvasConfig (sanitize → optimistic → save). */}

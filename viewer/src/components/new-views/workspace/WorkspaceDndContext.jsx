@@ -2,7 +2,11 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
+  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -52,8 +56,57 @@ import {
 
 const WorkspaceDragContext = createContext(null);
 
+/**
+ * Collision strategy for the shared context. dnd-kit's default
+ * (`rectIntersection`) resolves the drop by greatest rectangle-overlap between
+ * the dragged element and each droppable. On the canvas the drop zones overlap
+ * (a thin between-rows band sits next to taller item/end-of-row zones), so a
+ * row-handle drag aimed at a between-rows gap loses the collision to a larger
+ * neighbouring zone and the row never reorders. `pointerWithin` resolves to the
+ * droppable under the CURSOR, which is exactly the gap the user is pointing at;
+ * we fall back to `rectIntersection` when the pointer is between zones so
+ * coarser targets (Library → RefDropZone, project-editor level zones) keep
+ * working. This is the dnd-kit-recommended composite for overlapping droppables.
+ */
+const workspaceCollisionDetection = args => {
+  const drag = args.active?.data?.current;
+  let droppableContainers = args.droppableContainers;
+  // For CANVAS drags the gap zones overlap (a between-rows band abuts the next
+  // row's between-items zone), so restrict the candidate set by drag type:
+  //   - row drag  → only between-rows zones can be the target,
+  //   - item drag → everything EXCEPT between-rows zones.
+  // This is what makes a row-handle drag reliably reorder rows instead of
+  // resolving to a neighbouring item gap. Non-canvas drags (Library → RefDropZone,
+  // project-editor level reassignment) are left unfiltered.
+  if (drag?.source === 'canvas' && Array.isArray(droppableContainers)) {
+    const isBetweenRows = c => c?.data?.current?.target?.kind === 'between-rows';
+    if (drag.kind === 'row') {
+      // Row drag → only between-rows gaps are valid. They're thin, sparse bands,
+      // so use closestCenter (distance-based) rather than pointerWithin: the user
+      // never has to land the pointer exactly inside the ~22px band, just nearest
+      // it. This is what makes row reorder land reliably.
+      const scoped = { ...args, droppableContainers: droppableContainers.filter(isBetweenRows) };
+      return closestCenter(scoped);
+    }
+    // Item drag → everything except between-rows zones, pointer-precise.
+    droppableContainers = droppableContainers.filter(c => !isBetweenRows(c));
+  }
+  const scoped = { ...args, droppableContainers };
+  const hits = pointerWithin(scoped);
+  return hits.length > 0 ? hits : rectIntersection(scoped);
+};
+
 /** Read the live shell-level drag state ({ kind, name, level } | null). */
-export const useWorkspaceDrag = () => useContext(WorkspaceDragContext);
+export const useWorkspaceDrag = () => useContext(WorkspaceDragContext)?.activeDrag ?? null;
+
+/**
+ * Read the shared `commitCanvasConfig(dashboardName, nextConfig, meta)` —
+ * sanitize → optimistic → save. Surfaced for the canvas resize overlay
+ * (VIS-777 / D-4), which persists width/height/weight gestures through the SAME
+ * dashboard save path the DnD router uses. Returns a no-op outside the provider.
+ */
+export const useCommitCanvasConfig = () =>
+  useContext(WorkspaceDragContext)?.commitCanvasConfig ?? (() => {});
 
 // Exposes the shell's `commitCanvasConfig` (sanitize → optimistic → save) to
 // non-DnD canvas affordances — the "+ Add Row" template menu + empty-canvas CTA
@@ -248,6 +301,14 @@ const WorkspaceDndContext = ({ children }) => {
     [updateDashboardConfigOptimistic, saveDashboard]
   );
 
+  // Context value: the live drag state PLUS the shared commit path. Consumers
+  // read `useWorkspaceDrag()` (drag only) or `useCommitCanvasConfig()` (commit
+  // only); both unwrap this object so neither re-renders on the other's change.
+  const contextValue = useMemo(
+    () => ({ activeDrag, commitCanvasConfig }),
+    [activeDrag, commitCanvasConfig]
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -299,10 +360,17 @@ const WorkspaceDndContext = ({ children }) => {
   );
 
   return (
-    <WorkspaceDragContext.Provider value={activeDrag}>
+    <WorkspaceDragContext.Provider value={contextValue}>
       <WorkspaceCommitContext.Provider value={commitCanvasConfig}>
       <DndContext
         sensors={sensors}
+        collisionDetection={workspaceCollisionDetection}
+        // Re-measure droppables continuously while dragging. The canvas drop
+        // zones are absolutely-positioned overlays that the affordance layer
+        // rebuilds on reflow (overlay mount / ResizeObserver), so a rect measured
+        // once at drag-start goes stale and collisions miss. `Always` keeps the
+        // measured rects in sync with the live overlay positions.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}

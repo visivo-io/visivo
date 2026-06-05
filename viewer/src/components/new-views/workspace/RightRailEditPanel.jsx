@@ -4,6 +4,8 @@ import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
 import useDebouncedSave from './useDebouncedSave';
 import SelectionChip from './SelectionChip';
+import EditPanelBreadcrumb from './EditPanelBreadcrumb';
+import { applyReorder } from './breadcrumbNav';
 import RowEditForm from '../common/RowEditForm';
 import ItemEditForm, { getItemLeafRef } from '../common/ItemEditForm';
 import MarkdownEditForm from '../common/MarkdownEditForm';
@@ -142,6 +144,7 @@ const COLLECTION_KEY = {
 const RightRailEditPanel = () => {
   const activeObject = useStore(s => s.workspaceActiveObject);
   const outlineKey = useStore(s => s.workspaceOutlineSelectedKey);
+  const setOutlineKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
   const dashboards = useStore(s => s.dashboards);
   const saveDashboard = useStore(s => s.saveDashboard);
   const updateDashboardConfigOptimistic = useStore(s => s.updateDashboardConfigOptimistic);
@@ -223,6 +226,47 @@ const RightRailEditPanel = () => {
     [openWorkspaceTab]
   );
 
+  // ⌘↑/⌘↓ reorder from the breadcrumb: swap the node within its siblings in the
+  // live config (optimistic + debounced save) and re-key the selection so the
+  // breadcrumb + Edit form follow the node to its new index.
+  const handleBreadcrumbReorder = useCallback(
+    op => {
+      if (!op || !dashboardConfig) return;
+      const nextConfig = applyReorder(dashboardConfig, op);
+      persistConfig(nextConfig, { kind: 'reorder', axis: op.axis });
+      const nextKey = op.parentKey === 'dashboard'
+        ? `${op.axis}.${op.toIndex}`
+        : `${op.parentKey}.${op.axis}.${op.toIndex}`;
+      if (setOutlineKey) setOutlineKey(nextKey);
+    },
+    [dashboardConfig, persistConfig, setOutlineKey]
+  );
+
+  // Enter on the breadcrumb focuses the Edit form's first focusable field.
+  const handleFocusForm = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const panel = document.querySelector('[data-testid="workspace-right-rail-edit"]');
+    if (!panel) return;
+    const field = panel.querySelector(
+      'input:not([type="hidden"]), textarea, select, [contenteditable="true"]'
+    );
+    if (field && typeof field.focus === 'function') field.focus();
+  }, []);
+
+  // The breadcrumb band — rendered at the top of every dashboard-scoped Edit
+  // view (dashboard / row / item). Reflects the Outline selection's ancestry
+  // and is the keyboard-nav surface (Q7 = C).
+  const breadcrumb = (
+    <EditPanelBreadcrumb
+      outlineKey={outlineKey}
+      dashboardName={dashboardName}
+      rows={rows}
+      onSelectKey={setOutlineKey}
+      onReorder={handleBreadcrumbReorder}
+      onFocusForm={handleFocusForm}
+    />
+  );
+
   // ── Nothing selected ──────────────────────────────────────────────────────
   if (!activeObject) {
     return (
@@ -269,6 +313,7 @@ const RightRailEditPanel = () => {
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+          {breadcrumb}
           <SelectionChip
             type="dashboard"
             name={dashboardName}
@@ -367,6 +412,7 @@ const RightRailEditPanel = () => {
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+          {breadcrumb}
           <SelectionChip
             type="dashboard"
             name={`Row ${sel.rowIndex + 1}`}
@@ -438,11 +484,16 @@ const RightRailEditPanel = () => {
         );
       }
       const leafRef = getItemLeafRef(item);
-      // If the item points at a real leaf object, drill in to that leaf's
-      // existing edit form (per Q25).
-      if (leafRef && LEAF_TYPES.includes(leafRef.type)) {
+      // If the item points at a real, NAMED leaf object, drill in to that leaf's
+      // existing edit form (per Q25). Inline/unnamed leaves (e.g. markdown
+      // defined in place) are NOT in the object store — there is no named object
+      // to open — so they fall through to the item layout editor below, which
+      // renders a "defined inline" chip + a prompt to name the object rather
+      // than opening an empty/broken leaf form.
+      if (leafRef && !leafRef.inline && LEAF_TYPES.includes(leafRef.type)) {
         return (
           <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+            {breadcrumb}
             <LeafObjectForm type={leafRef.type} name={leafRef.name} onSelectRef={handleSelectRef} />
           </div>
         );
@@ -474,10 +525,15 @@ const RightRailEditPanel = () => {
 
       return (
         <div data-testid="workspace-right-rail-edit" className="flex flex-1 flex-col overflow-hidden">
+          {breadcrumb}
           <SelectionChip
             type="dashboard"
             name={`Item ${sel.itemIndex + 1}`}
-            subtitle={`Row ${sel.rowIndex + 1} · empty slot`}
+            subtitle={
+              leafRef?.inline
+                ? `Row ${sel.rowIndex + 1} · inline ${leafRef.type}`
+                : `Row ${sel.rowIndex + 1} · empty slot`
+            }
             saveStatus={saveStatus}
           />
           <div data-testid="right-rail-edit-item" className="flex-1 overflow-y-auto p-3">

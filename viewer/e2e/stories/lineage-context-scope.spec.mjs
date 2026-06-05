@@ -210,8 +210,18 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await page.goto(`${BASE}/workspace/dashboard/${encodeURIComponent(dashboardName)}`);
     await page.waitForLoadState('networkidle');
 
+    // Library per-type subsections are collapsed by default (VIS-828); the chart
+    // rows aren't rendered until the Charts subsection is expanded.
+    await page.getByTestId('library-subsection-chart-header').click();
+
     const row = page.getByTestId(`library-row-chart-${SUBJECT_CHART}`);
     await row.waitFor({ timeout: WAIT_FOR_PAGE });
+    // Center the row in the viewport BEFORE opening the flip-popover. The popover
+    // renders in a floating portal anchored below the row; if the row sits near
+    // the bottom of the Library scroll area the portal (and its Expand button)
+    // open off-screen, so the Expand click would land outside the viewport.
+    await row.scrollIntoViewIfNeeded();
+    await row.evaluate(el => el.scrollIntoView({ block: 'center' }));
     await row.hover();
     await page.getByTestId(`library-row-chart-${SUBJECT_CHART}-flip`).click();
 
@@ -219,7 +229,9 @@ test.describe('Lineage Context Scope (VIS-779)', () => {
     await expect(popover).toBeVisible({ timeout: WAIT_FOR_PAGE });
     await screenshot(page, '08a-flip-popover');
 
-    await page.getByTestId(`library-row-chart-${SUBJECT_CHART}-popover-expand`).click();
+    const expandBtn = page.getByTestId(`library-row-chart-${SUBJECT_CHART}-popover-expand`);
+    await expect(expandBtn).toBeVisible({ timeout: WAIT_FOR_PAGE });
+    await expandBtn.click();
 
     // The chart opens in the universal Lineage lens, scoped to ITS OWN DAG —
     // not the dashboard's — and the route is unchanged (E-1 requires it).

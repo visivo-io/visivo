@@ -32,10 +32,10 @@ const renderRow = (props = {}) =>
 
 describe('getItemRef', () => {
   test('resolves a chart ref to { type, name }', () => {
-    expect(getItemRef({ chart: 'ref(c1)' })).toEqual({ type: 'chart', name: 'c1' });
+    expect(getItemRef({ chart: 'ref(c1)' })).toEqual({ type: 'chart', name: 'c1', inline: false });
   });
   test('resolves a table ref', () => {
-    expect(getItemRef({ table: 'ref(t1)' })).toEqual({ type: 'table', name: 't1' });
+    expect(getItemRef({ table: 'ref(t1)' })).toEqual({ type: 'table', name: 't1', inline: false });
   });
   test('returns null for an empty item', () => {
     expect(getItemRef({ chart: '', table: '' })).toBeNull();

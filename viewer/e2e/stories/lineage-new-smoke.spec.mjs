@@ -1,8 +1,15 @@
 /**
  * Story: Lineage New Smoke
  *
- * Safety-net smoke for the lineage view. Confirms the route loads, React
+ * Safety-net smoke for the lineage view. Confirms the lens loads, React
  * Flow renders with at least one node, and there are no console errors.
+ *
+ * The standalone `/lineage` page was removed in VIS-772 (Track B): `/lineage`
+ * now redirects to `/workspace?view=lineage`, and the universal Lineage lens
+ * renders inside the Workspace middle pane scoped to a selected object. With no
+ * scope the middle pane defaults to the project view, so this smoke selects a
+ * chart from the Library and switches the middle pane to the Lineage lens to
+ * exercise the React Flow renderer.
  *
  * Precondition: Sandbox running on :3001/:8001
  */
@@ -27,8 +34,21 @@ test.describe('Lineage New Smoke', () => {
       }
     });
 
-    await page.goto('/lineage');
+    await page.goto('/workspace');
     await page.waitForLoadState('networkidle');
+
+    // Library per-type subsections are collapsed by default (VIS-828); expand
+    // Charts, then select the first chart to scope the middle pane to it.
+    await page.getByTestId('library-subsection-chart-header').click();
+    const chartRow = page
+      .getByTestId('library-subsection-chart-rows')
+      .locator('[data-testid^="library-row-chart-"]')
+      .first();
+    await chartRow.waitFor({ timeout: WAIT_FOR_PAGE });
+    await chartRow.click();
+
+    // Switch the middle pane to the Lineage lens and wait for React Flow.
+    await page.getByTestId('workspace-lens-picker-option-lineage').click();
     await page.locator('.react-flow').waitFor({ timeout: WAIT_FOR_PAGE });
   });
 

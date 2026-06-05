@@ -1,19 +1,3 @@
-import { prepPostQuery, runDuckDBQuery } from '../duckdb/queries';
-
-/**
- * Yield control back to the main thread to avoid blocking the UI.
- * Uses requestAnimationFrame for better scheduling than setTimeout.
- */
-const yieldToMain = () => {
-  return new Promise(resolve => {
-    if (typeof requestAnimationFrame !== 'undefined') {
-      requestAnimationFrame(() => resolve());
-    } else {
-      setTimeout(resolve, 0);
-    }
-  });
-};
-
 /**
  * Check if a value looks like an ISO date string (YYYY-MM-DD format).
  * @param {*} v - Value to check
@@ -107,7 +91,7 @@ const computeMultiSelectAccessors = selectedValues => {
  *
  * Manages input runtime state: accessor values, selected values, options, and data.
  */
-const createInputJobsSlice = (set, get) => ({
+const createInputJobsSlice = set => ({
   inputJobs: {}, // Store for input accessor objects: { inputName: { value: 'quoted' } or { values, min, max, first, last } }
   inputSelectedValues: {}, // Raw selected values for UI display: { inputName: value | [values] }
   inputJobOptions: {}, // Store for pre-computed input options: { inputName: ['option1', 'option2'] }
@@ -133,9 +117,17 @@ const createInputJobsSlice = (set, get) => ({
     })),
 
   /**
-   * Set input value with accessor structure.
-   * Automatically computes the appropriate accessor values based on input type.
-   * Only triggers query refresh if the input was already initialized (user selection change).
+   * Set input value with accessor structure on a user selection change.
+   * Automatically computes the appropriate accessor values based on input type
+   * and marks the input as initialized.
+   *
+   * This writes only to the store — it does NOT itself re-run any insight query.
+   * Input-driven refetch is owned entirely by `useInsightsData`: writing the new
+   * accessor object into `inputJobs` here re-keys that hook's react-query query
+   * (its queryKey folds in the relevant input values), which re-runs the insight
+   * exactly once and settles. Keeping a single refetch path — rather than a
+   * second imperative DuckDB re-query here — is what avoids the VIS-831 class of
+   * input→insight feedback loops.
    *
    * @param {string} inputName - Name of the input
    * @param {string|number|Array} rawValue - Raw selected value(s)
@@ -143,78 +135,13 @@ const createInputJobsSlice = (set, get) => ({
    */
   setInputJobValue: (inputName, rawValue, inputType = 'single-select') =>
     set(state => {
-      // Compute accessor values based on input type
       const accessors =
         inputType === 'multi-select'
           ? computeMultiSelectAccessors(Array.isArray(rawValue) ? rawValue : [rawValue])
           : computeSingleSelectAccessors(rawValue);
 
-      const newInputJobs = { ...state.inputJobs, [inputName]: accessors };
-
-      // Only trigger query refresh if the input was already initialized
-      // This prevents premature query execution during initial load
-      const wasAlreadyInitialized = state.inputJobsInitialized[inputName];
-
-      if (wasAlreadyInitialized) {
-        // Use requestAnimationFrame to schedule work without blocking
-        requestAnimationFrame(async () => {
-          const { insightJobs, db } = get();
-
-          // Guard against db not being initialized yet
-          if (!db) {
-            return;
-          }
-
-          // Get fresh inputs after state update
-          const currentInputJobs = get().inputJobs;
-
-          // Find insights that depend on this input by checking their query
-          const dependentInsights = Object.entries(insightJobs)
-            .filter(([_, insight]) => {
-              const query = insight?.query || '';
-              return query.includes(`\${${inputName}.`);
-            })
-            .map(([name]) => name);
-
-          for (const insightName of dependentInsights) {
-            // Yield between each query to avoid blocking the main thread
-            await yieldToMain();
-
-            const insight = insightJobs[insightName];
-            try {
-              const preparedQuery = prepPostQuery({ query: insight.query }, currentInputJobs);
-
-              const result = await runDuckDBQuery(db, preparedQuery, 3, 300);
-              const processedRows =
-                result.toArray().map(row => {
-                  const rowData = row.toJSON();
-                  return Object.fromEntries(
-                    Object.entries(rowData).map(([key, value]) => [
-                      key,
-                      typeof value === 'bigint' ? value.toString() : value,
-                    ])
-                  );
-                }) || [];
-
-              set(s => ({
-                insightJobs: {
-                  ...s.insightJobs,
-                  [insightName]: {
-                    ...s.insightJobs[insightName],
-                    data: processedRows,
-                  },
-                },
-              }));
-            } catch (err) {
-              // Query failed - continue with remaining insights
-            }
-          }
-        });
-      }
-
-      // Mark as initialized (for future calls to trigger refresh)
       return {
-        inputJobs: newInputJobs,
+        inputJobs: { ...state.inputJobs, [inputName]: accessors },
         inputSelectedValues: { ...state.inputSelectedValues, [inputName]: rawValue },
         inputJobsInitialized: { ...state.inputJobsInitialized, [inputName]: true },
       };

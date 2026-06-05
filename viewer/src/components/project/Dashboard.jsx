@@ -364,8 +364,6 @@ const Dashboard = ({
     return collectInputNames(dashboard.rows, allRowIndices, shouldShowItem);
   }, [dashboard?.rows, shouldShowItem]);
 
-  useInputsData(projectId, visibleInputNames);
-
   const knownInsightNames = useMemo(() => {
     const names = new Set();
     forEachItemDeep(dashboard?.rows, item => {
@@ -405,6 +403,32 @@ const Dashboard = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboard?.rows, charts, tables, models, getChartByName, getTableByName, shouldShowItem, knownInsightNames, isKnownModel]);
 
+  // Inputs an insight DEPENDS ON (referenced via `${input.value}` inside its
+  // query / static_props) must be prefetched too. Otherwise an input-driven
+  // chart added to a dashboard that carries no input WIDGET for that input never
+  // gets the input's options/default loaded, so the insight stays
+  // `pendingInputs` and its tile spins forever. useInsightsData publishes the
+  // per-insight dependency list into `insightJobs[name].inputDependencies` (and
+  // `pendingInputs` while still waiting); union them across the visible insights
+  // and prefetch alongside the widget inputs.
+  const insightJobs = useStore(state => state.insightJobs);
+  const insightInputNames = useMemo(() => {
+    const names = new Set();
+    visibleInsightNames.forEach(name => {
+      const job = insightJobs?.[name];
+      if (!job) return;
+      (job.inputDependencies || []).forEach(n => names.add(n));
+      (job.pendingInputs || []).forEach(n => names.add(n));
+    });
+    return [...names];
+  }, [insightJobs, visibleInsightNames]);
+
+  const allInputNames = useMemo(
+    () => [...new Set([...visibleInputNames, ...insightInputNames])],
+    [visibleInputNames, insightInputNames]
+  );
+
+  useInputsData(projectId, allInputNames);
   useInsightsData(projectId, visibleInsightNames);
   useModelsData(projectId, visibleModelNames);
 

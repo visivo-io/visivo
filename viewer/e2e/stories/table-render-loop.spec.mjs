@@ -138,25 +138,51 @@ test.describe('VIS-830 Table render-loop', () => {
 
     // The input-driven insight resolved its data (not stuck pending) AND re-runs
     // when the input value genuinely changes — proving the input still drives the
-    // insight after the loop fix.
+    // insight after the loop fix. We drive TWO distinct input values (a low and a
+    // high min_x_value, both real distinct-x options in the integration project)
+    // and poll for each result to settle, rather than asserting against the
+    // nondeterministic initial default with a single fixed wait — that fixed-wait
+    // form was flaky under sandbox load and on `select distinct x` ordering.
     const refresh = await page.evaluate(async () => {
       const store = window.useStore;
       const NAME = 'filter-nonaggregate-input-test-insight';
       const lenOf = () => {
         const d = (store.getState().insightJobs || {})[NAME]?.data;
-        return Array.isArray(d) ? d.length : d;
+        return Array.isArray(d) ? d.length : typeof d === 'number' ? d : null;
       };
-      const before = lenOf();
+      // Poll until the insight's row count settles to a positive number, up to ~8s.
+      const settle = async () => {
+        const deadline = Date.now() + 8000;
+        let last = lenOf();
+        while (Date.now() < deadline) {
+          const cur = lenOf();
+          if (cur > 0) return cur;
+          last = cur;
+          await new Promise(r => setTimeout(r, 200));
+        }
+        return last;
+      };
+
+      const before = await settle();
+      // x > 0 keeps the most rows; x > 5 keeps the fewest. Both are real options.
+      store.getState().setInputJobValue('min_x_value', '0', 'single-select');
+      const lenLow = await settle();
       store.getState().setInputJobValue('min_x_value', '5', 'single-select');
-      await new Promise(r => setTimeout(r, 2000));
-      const after = lenOf();
-      return { before, after };
+      // Wait for the high-filter result to differ from the low-filter result.
+      const deadline = Date.now() + 8000;
+      let lenHigh = lenOf();
+      while (Date.now() < deadline && (lenHigh == null || lenHigh === lenLow)) {
+        await new Promise(r => setTimeout(r, 200));
+        lenHigh = lenOf();
+      }
+      return { before, lenLow, lenHigh };
     });
 
     expect(refresh.before, 'canvas: insight resolved before input change').toBeGreaterThan(0);
-    expect(refresh.after, 'canvas: insight re-ran on input change').toBeGreaterThan(0);
-    expect(refresh.after, 'canvas: input change altered the result row count').not.toBe(
-      refresh.before
+    expect(refresh.lenLow, 'canvas: insight resolved at min_x_value=0').toBeGreaterThan(0);
+    expect(refresh.lenHigh, 'canvas: insight re-ran at min_x_value=5').toBeGreaterThan(0);
+    expect(refresh.lenHigh, 'canvas: input change altered the result row count').not.toBe(
+      refresh.lenLow
     );
 
     // Still no loop after the input-driven refetch.
