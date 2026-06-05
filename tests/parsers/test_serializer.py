@@ -269,3 +269,53 @@ def test_collect_deploy_resources_emits_all_deploy_types():
     # deployed object matches editing it locally.
     m1 = next(m for m in layer["models"] if m["name"] == "m1")
     assert "ref(source)" in str(m1["source"])
+
+
+def test_collect_deploy_resources_finds_objects_nested_in_other_objects():
+    """The deploy must collect every named object, top-level AND nested inside
+    another object — not just the project's top-level lists.
+
+    Coverage here:
+      * ``top_source``        — declared top-level
+      * ``nested_source``     — inlined inside a model (``model.source``)
+      * ``nested_dim`` /
+        ``nested_metric``     — defined inside a model (``model.dimensions`` /
+                                 ``model.metrics``)
+      * ``nested_chart``      — inlined inside a dashboard item
+      * ``nested_insight``    — inlined inside that chart
+
+    The deploy walks the whole DAG, so nesting depth doesn't matter; this
+    guards against a regression where only top-level lists get deployed."""
+    top_source = SourceFactory(name="top_source")
+    # Source / dimensions / metrics are authored INSIDE the model, not as
+    # top-level project objects.
+    model = SqlModelFactory(
+        name="top_model",
+        source=SourceFactory(name="nested_source"),
+        dimensions=[DimensionFactory(name="nested_dim")],
+        metrics=[MetricFactory(name="nested_metric")],
+    )
+    # Chart + insight are authored INSIDE the dashboard, not top-level.
+    nested_insight = InsightFactory(name="nested_insight", model=model)
+    nested_chart = ChartFactory(name="nested_chart", insights=[nested_insight])
+    dashboard = DashboardFactory(
+        name="dash", rows=[RowFactory(items=[ItemFactory(chart=nested_chart)])]
+    )
+    project = ProjectFactory(
+        sources=[top_source],
+        models=[model],
+        insights=[],
+        charts=[],
+        dashboards=[dashboard],
+    )
+    project.invalidate_dag_cache()
+
+    layer = Serializer(project=project).collect_deploy_resources()
+
+    # Top-level and nested objects are both collected.
+    assert {s["name"] for s in layer["sources"]} == {"top_source", "nested_source"}
+    assert {m["name"] for m in layer["models"]} == {"top_model"}
+    assert {d["name"] for d in layer["dimensions"]} == {"nested_dim"}
+    assert {m["name"] for m in layer["metrics"]} == {"nested_metric"}
+    assert {c["name"] for c in layer["charts"]} == {"nested_chart"}
+    assert {i["name"] for i in layer["insights"]} == {"nested_insight"}
