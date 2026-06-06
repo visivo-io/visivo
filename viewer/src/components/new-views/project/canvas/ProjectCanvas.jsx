@@ -5,6 +5,7 @@ import CanvasDndLayer from './CanvasDndLayer';
 import CanvasResizeLayer from './CanvasResizeLayer';
 import CanvasAddRow from './CanvasAddRow';
 import CanvasContextMenu from './CanvasContextMenu';
+import CanvasKeyboardLayer from './CanvasKeyboardLayer';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -70,6 +71,10 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
           inside / add item to row, unwrap. Commits via the shared
           commitCanvasConfig (sanitize → optimistic → save). */}
       <CanvasContextMenu rootRef={rootRef} dashboardName={dashboardName} />
+      {/* VIS-790 / D-7: canvas-direct keyboard navigation + a11y. A focusable
+          application region + ARIA live announcements; routes arrow / Tab /
+          ⌘↑↓ / Enter / Esc through the shared breadcrumbNav model. */}
+      <CanvasKeyboardLayer rootRef={rootRef} dashboardName={dashboardName} />
     </div>
   );
 };
