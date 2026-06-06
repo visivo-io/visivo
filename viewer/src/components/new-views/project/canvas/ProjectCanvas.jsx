@@ -6,6 +6,7 @@ import CanvasResizeLayer from './CanvasResizeLayer';
 import CanvasAddRow from './CanvasAddRow';
 import CanvasContextMenu from './CanvasContextMenu';
 import CanvasKeyboardLayer from './CanvasKeyboardLayer';
+import CanvasItemFlipLayer from './CanvasItemFlipLayer';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -75,6 +76,11 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
           application region + ARIA live announcements; routes arrow / Tab /
           ⌘↑↓ / Enter / Esc through the shared breadcrumbNav model. */}
       <CanvasKeyboardLayer rootRef={rootRef} dashboardName={dashboardName} />
+      {/* VIS-785 / D-6: per-item flip-to-lineage. A flip toggle on the
+          hovered/selected leaf opens its lineage neighbourhood card (the
+          delivered C-2 surface), with a live selector + Expand-to-lens.
+          Multi-flip; disabled during drag; honors prefers-reduced-motion. */}
+      <CanvasItemFlipLayer rootRef={rootRef} dashboardName={dashboardName} />
     </div>
   );
 };
