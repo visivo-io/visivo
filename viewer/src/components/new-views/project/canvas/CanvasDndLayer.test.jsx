@@ -190,4 +190,125 @@ describe('CanvasDndLayer (VIS-771)', () => {
       'in-container'
     );
   });
+
+  // ── Nested recursion (VIS-903) ─────────────────────────────────────────────
+  describe('nested rows/items (VIS-903)', () => {
+    const NESTED_BOXES = {
+      r0: { top: 0, left: 0, width: 800, height: 400, bottom: 400, right: 800 },
+      r0i0: { top: 0, left: 0, width: 400, height: 400, bottom: 400, right: 400 },
+      r0i1: { top: 0, left: 410, width: 390, height: 400, bottom: 400, right: 800 },
+      // Sub-rows inside the container item r0i1.
+      n0: { top: 0, left: 410, width: 390, height: 130, bottom: 130, right: 800 },
+      n0i0: { top: 0, left: 410, width: 190, height: 130, bottom: 130, right: 600 },
+      n0i1: { top: 0, left: 610, width: 190, height: 130, bottom: 130, right: 800 },
+      n1: { top: 140, left: 410, width: 390, height: 130, bottom: 270, right: 800 },
+      n1i0: { top: 140, left: 410, width: 390, height: 130, bottom: 270, right: 800 },
+      root: { top: 0, left: 0, width: 800, height: 400, bottom: 400, right: 800 },
+    };
+
+    const NestedHost = () => {
+      const rootRef = useRef(null);
+      return (
+        <div ref={rootRef} style={{ position: 'relative' }}>
+          <div data-canvas-path="row.0" data-testid="r0">
+            <div data-canvas-path="row.0.item.0" data-testid="r0i0" />
+            <div data-canvas-path="row.0.item.1" data-testid="r0i1">
+              <div data-canvas-path="row.0.item.1.row.0" data-testid="n0">
+                <div data-canvas-path="row.0.item.1.row.0.item.0" data-testid="n0i0" />
+                <div data-canvas-path="row.0.item.1.row.0.item.1" data-testid="n0i1" />
+              </div>
+              <div data-canvas-path="row.0.item.1.row.1" data-testid="n1">
+                <div data-canvas-path="row.0.item.1.row.1.item.0" data-testid="n1i0" />
+              </div>
+            </div>
+          </div>
+          <CanvasDndLayer rootRef={rootRef} dashboardName="dash" />
+        </div>
+      );
+    };
+
+    beforeEach(() => {
+      useStore.setState({
+        dashboards: [
+          {
+            name: 'dash',
+            config: {
+              rows: [
+                {
+                  items: [
+                    { width: 2, chart: 'ref(top0)' },
+                    {
+                      width: 1,
+                      rows: [
+                        { items: [{ width: 6, chart: 'ref(n0a)' }, { width: 6, table: 'ref(n0b)' }] },
+                        { items: [{ width: 12, markdown: 'ref(n1a)' }] },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      });
+      Element.prototype.getBoundingClientRect = function () {
+        const tid = this.getAttribute && this.getAttribute('data-testid');
+        if (tid && NESTED_BOXES[tid]) return NESTED_BOXES[tid];
+        return NESTED_BOXES.root;
+      };
+    });
+
+    test('emits drag grips for NESTED rows and items', () => {
+      reveal({ hover: 'row.0.item.1.row.0.item.0' });
+      render(<NestedHost />);
+      // The nested item's grip is revealed on hover.
+      expect(
+        screen.getByTestId('canvas-drag-handle-row.0.item.1.row.0.item.0')
+      ).toHaveAttribute('data-canvas-handle-kind', 'item');
+      // Its nested parent row's grip is revealed too (keyWithinRow).
+      expect(screen.getByTestId('canvas-drag-handle-row.0.item.1.row.0')).toHaveAttribute(
+        'data-canvas-handle-kind',
+        'row'
+      );
+    });
+
+    test('nested item drag grip carries its nested rowPath + item index', () => {
+      reveal({ selected: 'row.0.item.1.row.0.item.1' });
+      render(<NestedHost />);
+      // Selecting the nested item reveals its grip.
+      expect(
+        screen.getByTestId('canvas-drag-handle-row.0.item.1.row.0.item.1')
+      ).toBeInTheDocument();
+    });
+
+    test('emits between-items + end-of-row drop zones for nested rows', () => {
+      render(<NestedHost />);
+      expect(
+        screen.getByTestId('canvas-dropzone-row.0.item.1.row.0-before-1')
+      ).toHaveAttribute('data-intent', 'between-items');
+      expect(
+        screen.getByTestId('canvas-dropzone-row.0.item.1.row.0-end')
+      ).toHaveAttribute('data-intent', 'end-of-row');
+    });
+
+    test('emits container-scoped between-rows bands for the nested sibling group', () => {
+      render(<NestedHost />);
+      // A nested between-rows band is prefixed with the container item path so it
+      // doesn't collide with the top-level bands.
+      expect(
+        screen.getByTestId('canvas-dropzone-row.0.item.1.row-before-0')
+      ).toHaveAttribute('data-intent', 'between-rows');
+      // …and the trailing append band for the nested sibling group.
+      expect(
+        screen.getByTestId('canvas-dropzone-row.0.item.1.row-before-2')
+      ).toBeInTheDocument();
+    });
+
+    test('still emits the in-container zone on the container item itself', () => {
+      render(<NestedHost />);
+      expect(
+        screen.getByTestId('canvas-dropzone-row.0.item.1-container')
+      ).toHaveAttribute('data-intent', 'in-container');
+    });
+  });
 });

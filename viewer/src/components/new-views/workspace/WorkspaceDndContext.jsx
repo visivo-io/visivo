@@ -19,6 +19,8 @@ import sanitizeDashboardConfig from './sanitizeDashboardConfig';
 import {
   reorderItemsInRow,
   reorderTopLevelRows,
+  reorderRowsInContainer,
+  parseNestedRowPath,
   insertItemAtTarget,
   buildLibraryItem,
 } from '../project/canvas/canvasReorder';
@@ -85,7 +87,28 @@ const workspaceCollisionDetection = args => {
       // so use closestCenter (distance-based) rather than pointerWithin: the user
       // never has to land the pointer exactly inside the ~22px band, just nearest
       // it. This is what makes row reorder land reliably.
-      const scoped = { ...args, droppableContainers: droppableContainers.filter(isBetweenRows) };
+      //
+      // VIS-903: with nested layouts there are now between-rows bands at multiple
+      // depths (top-level + per-container). Scope the candidate bands to the SAME
+      // sibling group as the dragged row — a nested row resolves only to its
+      // container's bands, a top-level row only to the top-level bands — so a
+      // distance-based pick can never land on a band in a different container
+      // (which the router would no-op, making the gesture feel dead).
+      const containerOf = path => {
+        // `row.0.item.1.row.0` → container `row.0.item.1`; `row.0` → '' (top).
+        if (typeof path !== 'string') return '';
+        const lastRow = path.lastIndexOf('row.');
+        return lastRow > 0 ? path.slice(0, lastRow - 1) : '';
+      };
+      const dragContainer = containerOf(drag.rowPath);
+      const bands = droppableContainers.filter(isBetweenRows);
+      const sameGroup = bands.filter(
+        c => (c?.data?.current?.target?.containerPath || '') === dragContainer
+      );
+      const scoped = {
+        ...args,
+        droppableContainers: sameGroup.length ? sameGroup : bands,
+      };
       return closestCenter(scoped);
     }
     // Item drag → everything except between-rows zones AND except the on-item
@@ -248,16 +271,45 @@ export const routeWorkspaceDragEnd = (
         return 'canvas_reorder_items';
       }
 
-      // Row reorder: drag a top-level row + drop a `between-rows` target.
+      // Row reorder: drag a row + drop a `between-rows` target.
       if (dragData.kind === 'row' && target.kind === 'between-rows') {
-        const fromIndex = dragData.rowIndex;
-        let toIndex = target.index;
-        if (toIndex > fromIndex) toIndex -= 1;
-        const next = reorderTopLevelRows(config, fromIndex, toIndex);
-        if (next === config) return 'noop';
-        commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
-        emit && emit('canvas_dnd', { kind: 'reorder_rows', from: fromIndex, to: toIndex });
-        return 'canvas_reorder_rows';
+        // Nested row (VIS-903): the dragged row lives in a container (its path
+        // has a parent item) and the target band is scoped to the SAME container
+        // (`target.containerPath`). Reorder the sibling sub-rows in place.
+        const dragNested = parseNestedRowPath(dragData.rowPath);
+        if (dragNested && target.containerPath === dragNested.containerPath) {
+          const fromIndex = dragNested.rowIndex;
+          let toIndex = target.index;
+          if (toIndex > fromIndex) toIndex -= 1;
+          const next = reorderRowsInContainer(config, dragNested.containerPath, fromIndex, toIndex);
+          if (next === config) return 'noop';
+          commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
+          emit &&
+            emit('canvas_dnd', {
+              kind: 'reorder_rows',
+              containerPath: dragNested.containerPath,
+              from: fromIndex,
+              to: toIndex,
+            });
+          return 'canvas_reorder_rows';
+        }
+
+        // Top-level row reorder: only when BOTH the drag is a top-level row and
+        // the target is a top-level between-rows band (no containerPath). This
+        // prevents a nested-row drag from landing on a top-level band (or vice
+        // versa) and corrupting indices across nesting boundaries.
+        if (!dragNested && !target.containerPath && typeof dragData.rowIndex === 'number') {
+          const fromIndex = dragData.rowIndex;
+          let toIndex = target.index;
+          if (toIndex > fromIndex) toIndex -= 1;
+          const next = reorderTopLevelRows(config, fromIndex, toIndex);
+          if (next === config) return 'noop';
+          commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
+          emit && emit('canvas_dnd', { kind: 'reorder_rows', from: fromIndex, to: toIndex });
+          return 'canvas_reorder_rows';
+        }
+
+        return 'noop';
       }
 
       return 'noop';

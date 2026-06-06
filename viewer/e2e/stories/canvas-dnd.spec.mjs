@@ -283,7 +283,9 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     const rowHandle = await revealRowHandle(page, 0);
     const gapZone = page.getByTestId(`canvas-dropzone-row-before-${rows.length}`);
     await dndDrag(page, rowHandle, gapZone);
-    await expect(page.getByTestId('library-drag-preview')).toBeVisible({ timeout: 4000 });
+    // A ROW drag renders the dedicated row pill (VIS-901 #5) — a row has no
+    // referenced object type, so it must NOT borrow the Library/chart pill.
+    await expect(page.getByTestId('canvas-row-drag-preview')).toBeVisible({ timeout: 4000 });
     await page.mouse.up();
 
     // The row order changes and the moved row lands LAST.

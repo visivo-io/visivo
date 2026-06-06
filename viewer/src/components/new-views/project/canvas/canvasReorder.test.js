@@ -336,3 +336,115 @@ describe('insertRowAtIndex (VIS-794 / D-7)', () => {
     expect(insertRowAtIndex(before, 0, null)).toBe(before);
   });
 });
+
+// ── Nested rows/items (VIS-903) ─────────────────────────────────────────────
+// A config with a container item holding two sub-rows, exercised by the nested
+// reorder + insert paths.
+const nestedConfig = () => ({
+  rows: [
+    {
+      height: 'large',
+      items: [
+        { width: 2, chart: 'ref(top0)' },
+        {
+          width: 1,
+          rows: [
+            { height: 'small', items: [{ width: 1, chart: 'ref(n0)' }] },
+            { height: 'small', items: [{ width: 1, table: 'ref(n1)' }] },
+            { height: 'small', items: [{ width: 1, markdown: 'ref(n2)' }] },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
+const subRowLeaf = (config, ri) =>
+  names(config.rows[0].items[1].rows[ri].items);
+
+describe('parseNestedRowPath (VIS-903)', () => {
+  const { parseNestedRowPath } = require('./canvasReorder');
+  test('parses a nested row path into containerPath + rowIndex', () => {
+    expect(parseNestedRowPath('row.0.item.1.row.2')).toEqual({
+      containerPath: 'row.0.item.1',
+      rowIndex: 2,
+    });
+  });
+  test('parses a deeply nested row path', () => {
+    expect(parseNestedRowPath('row.0.item.1.row.0.item.0.row.1')).toEqual({
+      containerPath: 'row.0.item.1.row.0.item.0',
+      rowIndex: 1,
+    });
+  });
+  test('returns null for a top-level row path', () => {
+    expect(parseNestedRowPath('row.0')).toBeNull();
+  });
+  test('returns null for an item path or malformed input', () => {
+    expect(parseNestedRowPath('row.0.item.1')).toBeNull();
+    expect(parseNestedRowPath('dashboard')).toBeNull();
+    expect(parseNestedRowPath('')).toBeNull();
+  });
+});
+
+describe('reorderRowsInContainer (VIS-903)', () => {
+  const { reorderRowsInContainer } = require('./canvasReorder');
+  test('reorders sibling sub-rows of a container item', () => {
+    const before = nestedConfig();
+    const after = reorderRowsInContainer(before, 'row.0.item.1', 0, 2);
+    // n0 sub-row moves to the end.
+    expect(subRowLeaf(after, 0)).toEqual(['ref(n1)']);
+    expect(subRowLeaf(after, 1)).toEqual(['ref(n2)']);
+    expect(subRowLeaf(after, 2)).toEqual(['ref(n0)']);
+  });
+  test('is immutable — returns a new config, leaves the original intact', () => {
+    const before = nestedConfig();
+    const snapshot = JSON.stringify(before);
+    const after = reorderRowsInContainer(before, 'row.0.item.1', 1, 0);
+    expect(after).not.toBe(before);
+    expect(JSON.stringify(before)).toBe(snapshot);
+  });
+  test('no-op for from===to or invalid path', () => {
+    const before = nestedConfig();
+    expect(reorderRowsInContainer(before, 'row.0.item.1', 1, 1)).toBe(before);
+    expect(reorderRowsInContainer(before, 'row.0', 0, 1)).toBe(before);
+  });
+});
+
+describe('insertItemAtTarget — nested between-rows (VIS-903)', () => {
+  test('inserts a new sub-row into a container at the given index', () => {
+    const before = nestedConfig();
+    const item = buildLibraryItem('chart', 'fresh');
+    const after = insertItemAtTarget(
+      before,
+      { kind: 'between-rows', index: 1, containerPath: 'row.0.item.1' },
+      item
+    );
+    const subRows = after.rows[0].items[1].rows;
+    expect(subRows).toHaveLength(4);
+    expect(names(subRows[1].items)).toEqual(['ref(fresh)']);
+    // Siblings preserved around the inserted row.
+    expect(names(subRows[0].items)).toEqual(['ref(n0)']);
+    expect(names(subRows[2].items)).toEqual(['ref(n1)']);
+  });
+  test('appends a sub-row when the index equals the sibling count', () => {
+    const before = nestedConfig();
+    const after = insertItemAtTarget(
+      before,
+      { kind: 'between-rows', index: 3, containerPath: 'row.0.item.1' },
+      buildLibraryItem('chart', 'tail')
+    );
+    const subRows = after.rows[0].items[1].rows;
+    expect(subRows).toHaveLength(4);
+    expect(names(subRows[3].items)).toEqual(['ref(tail)']);
+  });
+  test('leaves top-level between-rows behaviour unchanged when no containerPath', () => {
+    const before = nestedConfig();
+    const after = insertItemAtTarget(
+      before,
+      { kind: 'between-rows', index: 0 },
+      buildLibraryItem('chart', 'newtop')
+    );
+    expect(after.rows).toHaveLength(2);
+    expect(names(after.rows[0].items)).toEqual(['ref(newtop)']);
+  });
+});

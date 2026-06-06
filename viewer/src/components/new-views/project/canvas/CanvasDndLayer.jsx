@@ -238,9 +238,19 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
 
 /**
  * Build the list of handles + drop zones from the live DOM geometry. We read
- * the config (top-level row count + per-row item counts + which items are
- * containers) from the store, then measure each `data-canvas-path` node. The
- * gaps are derived from adjacent item/row boxes.
+ * the config (the FULL nested row/item tree — top-level rows, their items,
+ * which items are containers, and recursively their sub-rows/items) from the
+ * store, then measure each `data-canvas-path` node. The gaps are derived from
+ * adjacent item/row boxes.
+ *
+ * VIS-903: the builder RECURSES through nested `Item.rows`. Every row and item
+ * — at ANY depth — gets the same affordances as a top-level one: a drag grip
+ * (gated on hover/selection), between-items / end-of-row / on-item / in-container
+ * drop zones, and a between-rows insertion band scoped to its sibling rows.
+ * The composite `data-canvas-path` keys already encode arbitrary depth, and the
+ * reorder helpers + router already resolve nested paths (item reorder is gated on
+ * `target.rowPath === dragData.rowPath`, which holds for nested rows), so the
+ * recursion just has to EMIT the affordances for the deeper nodes.
  */
 const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
   const [model, setModel] = useState({ handles: [], zones: [] });
@@ -263,167 +273,210 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
       return el ? measure(el, root) : null;
     };
 
-    rows.forEach((row, ri) => {
-      const rowPath = `row.${ri}`;
-      const rowBox = at(rowPath);
-      if (!rowBox) return;
+    // Emit affordances for ONE item at `itemPath` (its grip, its before-gap
+    // drop zone, and either its on-item or in-container zone). `prevBox` is the
+    // measured box of the previous sibling item (for the before-gap geometry);
+    // `labelCtx` is a human-readable position for the grip's aria-label.
+    const emitItem = (item, itemPath, rowPath, ii, box, prevBox, labelCtx) => {
+      const isContainer = Array.isArray(item.rows) && item.rows.length > 0;
 
-      // Row drag handle.
       handles.push({
-        id: rowPath,
-        box: rowBox,
-        kind: 'row',
-        label: `Reorder row ${ri + 1}`,
-        dragData: { source: 'canvas', kind: 'row', rowIndex: ri, rowPath },
-      });
-
-      const items = Array.isArray(row.items) ? row.items : [];
-      const itemBoxes = items.map((_, ii) => at(`${rowPath}.item.${ii}`));
-
-      items.forEach((item, ii) => {
-        const itemPath = `${rowPath}.item.${ii}`;
-        const box = itemBoxes[ii];
-        if (!box) return;
-        const isContainer = Array.isArray(item.rows) && item.rows.length > 0;
-
-        // Item drag handle.
-        handles.push({
-          id: itemPath,
-          box,
+        id: itemPath,
+        box,
+        kind: 'item',
+        label: `Reorder ${labelCtx}`,
+        dragData: {
+          source: 'canvas',
           kind: 'item',
-          label: `Reorder item ${ii + 1} in row ${ri + 1}`,
-          dragData: {
-            source: 'canvas',
-            kind: 'item',
-            rowPath,
-            itemIndex: ii,
-            refType: itemRefType(item),
-            label: itemRefName(item),
-          },
-        });
-
-        // between-items drop zone in the gap BEFORE this item (index ii).
-        const prevBox = ii > 0 ? itemBoxes[ii - 1] : null;
-        const gapLeft = prevBox ? prevBox.left + prevBox.width : box.left - 12;
-        zones.push({
-          id: `${rowPath}-before-${ii}`,
-          intent: 'between-items',
-          box: { top: box.top, left: gapLeft - 6, width: Math.max(12, box.left - gapLeft + 12), height: box.height },
-          data: {
-            kind: 'canvas-drop',
-            dashboardName,
-            config: dashboardConfig,
-            target: { kind: 'between-items', rowPath, index: ii },
-          },
-        });
-
-        // on-item drop zone over the slot itself (VIS-901 #4) — lets a Library
-        // object be dropped DIRECTLY onto an existing slot (fill an empty slot,
-        // or insert before a filled one). Painted as a tinted region like
-        // in-container; only acted on for Library drags by the router. Skipped
-        // for container items (they get the in-container zone instead).
-        if (!isContainer) {
-          zones.push({
-            id: `${itemPath}-on-item`,
-            intent: 'on-item',
-            box,
-            data: {
-              kind: 'canvas-drop',
-              dashboardName,
-              config: dashboardConfig,
-              target: { kind: 'on-item', rowPath, index: ii },
-            },
-          });
-        }
-
-        // in-container drop zone over container items.
-        if (isContainer) {
-          zones.push({
-            id: `${itemPath}-container`,
-            intent: 'in-container',
-            box,
-            data: {
-              kind: 'canvas-drop',
-              dashboardName,
-              config: dashboardConfig,
-              target: { kind: 'in-container', itemPath },
-            },
-          });
-        }
+          rowPath,
+          itemIndex: ii,
+          refType: itemRefType(item),
+          label: itemRefName(item),
+        },
       });
 
-      // end-of-row drop zone at the row's trailing edge.
-      const lastBox = itemBoxes[itemBoxes.length - 1];
-      if (lastBox) {
+      // between-items drop zone in the gap BEFORE this item (index ii).
+      const gapLeft = prevBox ? prevBox.left + prevBox.width : box.left - 12;
+      zones.push({
+        id: `${rowPath}-before-${ii}`,
+        intent: 'between-items',
+        box: {
+          top: box.top,
+          left: gapLeft - 6,
+          width: Math.max(12, box.left - gapLeft + 12),
+          height: box.height,
+        },
+        data: {
+          kind: 'canvas-drop',
+          dashboardName,
+          config: dashboardConfig,
+          target: { kind: 'between-items', rowPath, index: ii },
+        },
+      });
+
+      // on-item drop zone over the slot itself (VIS-901 #4) — Library-only
+      // affordance. Skipped for container items (they get the in-container zone).
+      if (!isContainer) {
         zones.push({
-          id: `${rowPath}-end`,
-          intent: 'end-of-row',
-          box: {
-            top: lastBox.top,
-            left: lastBox.left + lastBox.width - 6,
-            width: 18,
-            height: lastBox.height,
-          },
+          id: `${itemPath}-on-item`,
+          intent: 'on-item',
+          box,
           data: {
             kind: 'canvas-drop',
             dashboardName,
             config: dashboardConfig,
-            target: { kind: 'end-of-row', rowPath },
+            target: { kind: 'on-item', rowPath, index: ii },
           },
         });
       }
 
-      // between-rows drop zone in the gap before this row (top-level only). The
-      // hit box is widened to ±18px around the gap centre (a comfortable target
-      // for the thin inter-row gap); the bar is painted at the true gap centre.
-      const prevRowBox = ri > 0 ? at(`row.${ri - 1}`) : null;
-      const gapCenter = prevRowBox
-        ? (prevRowBox.top + prevRowBox.height + rowBox.top) / 2
-        : rowBox.top - 6;
-      // Keep the band inside the inter-row gap so it doesn't overlap (and steal
-      // the collision from) the item drop zones at a row's top edge.
-      const HALF = 11;
-      zones.push({
-        id: `row-before-${ri}`,
-        intent: 'between-rows',
-        box: {
-          top: gapCenter - HALF,
-          left: rowBox.left,
-          width: rowBox.width,
-          height: HALF * 2,
-          barTop: HALF - 1.5,
-        },
-        data: {
-          kind: 'canvas-drop',
-          dashboardName,
-          config: dashboardConfig,
-          target: { kind: 'between-rows', index: ri },
-        },
-      });
-    });
+      // in-container drop zone over container items.
+      if (isContainer) {
+        zones.push({
+          id: `${itemPath}-container`,
+          intent: 'in-container',
+          box,
+          data: {
+            kind: 'canvas-drop',
+            dashboardName,
+            config: dashboardConfig,
+            target: { kind: 'in-container', itemPath },
+          },
+        });
+        // Recurse into the container's sub-rows.
+        emitRows(item.rows, itemPath, labelCtx);
+      }
+    };
 
-    // between-rows zone AFTER the last row (append). A generous 36px band so
-    // the trailing append target is easy to hit below the last row.
-    const lastRowBox = at(`row.${rows.length - 1}`);
-    if (lastRowBox) {
-      zones.push({
-        id: `row-before-${rows.length}`,
-        intent: 'between-rows',
-        box: {
-          top: lastRowBox.top + lastRowBox.height,
-          left: lastRowBox.left,
-          width: lastRowBox.width,
-          height: 36,
-          barTop: 4,
-        },
-        data: {
-          kind: 'canvas-drop',
-          dashboardName,
-          config: dashboardConfig,
-          target: { kind: 'between-rows', index: rows.length },
-        },
+    // Emit affordances for a list of sibling `rows` living under `parentPath`
+    // (`''` for the top-level dashboard rows, else a container item path). Walks
+    // each row → its grip, its items (via emitItem, which recurses into nested
+    // containers), its end-of-row zone, and the between-rows bands that scope to
+    // THESE siblings (so a between-rows drop inserts a new sub-row in the right
+    // container, not always at the top level).
+    function emitRows(siblingRows, parentPath, parentLabel) {
+      const prefix = parentPath ? `${parentPath}.` : '';
+      const rowBoxes = siblingRows.map((_, ri) => at(`${prefix}row.${ri}`));
+
+      siblingRows.forEach((row, ri) => {
+        const rowPath = `${prefix}row.${ri}`;
+        const rowBox = rowBoxes[ri];
+        if (!rowBox) return;
+        const rowLabel = parentLabel
+          ? `row ${ri + 1} in ${parentLabel}`
+          : `row ${ri + 1}`;
+
+        // Row drag handle. Top-level rows carry a `rowIndex` (the router uses it
+        // for the top-level row reorder); nested rows carry their `rowPath` only
+        // (nested-row reorder is handled as a between-rows insert within the
+        // container, and nested rows are dragged less often than their items).
+        handles.push({
+          id: rowPath,
+          box: rowBox,
+          kind: 'row',
+          label: `Reorder ${rowLabel}`,
+          dragData: parentPath
+            ? { source: 'canvas', kind: 'row', rowPath }
+            : { source: 'canvas', kind: 'row', rowIndex: ri, rowPath },
+        });
+
+        const items = Array.isArray(row.items) ? row.items : [];
+        const itemBoxes = items.map((_, ii) => at(`${rowPath}.item.${ii}`));
+
+        items.forEach((item, ii) => {
+          const box = itemBoxes[ii];
+          if (!box) return;
+          emitItem(
+            item,
+            `${rowPath}.item.${ii}`,
+            rowPath,
+            ii,
+            box,
+            ii > 0 ? itemBoxes[ii - 1] : null,
+            `item ${ii + 1} in ${rowLabel}`
+          );
+        });
+
+        // end-of-row drop zone at the row's trailing edge.
+        const lastBox = itemBoxes[itemBoxes.length - 1];
+        if (lastBox) {
+          zones.push({
+            id: `${rowPath}-end`,
+            intent: 'end-of-row',
+            box: {
+              top: lastBox.top,
+              left: lastBox.left + lastBox.width - 6,
+              width: 18,
+              height: lastBox.height,
+            },
+            data: {
+              kind: 'canvas-drop',
+              dashboardName,
+              config: dashboardConfig,
+              target: { kind: 'end-of-row', rowPath },
+            },
+          });
+        }
+
+        // between-rows drop zone in the gap before this row, scoped to this
+        // sibling group. The id is prefixed with the parent path so nested bands
+        // don't collide with the top-level ones. The hit box is widened to ±11px
+        // around the gap centre; the bar is painted at the true gap centre. For
+        // nested rows the target carries the `containerPath` so the router
+        // inserts the new sub-row into the right container.
+        const prevRowBox = ri > 0 ? rowBoxes[ri - 1] : null;
+        const gapCenter = prevRowBox
+          ? (prevRowBox.top + prevRowBox.height + rowBox.top) / 2
+          : rowBox.top - 6;
+        const HALF = 11;
+        zones.push({
+          id: `${prefix}row-before-${ri}`,
+          intent: 'between-rows',
+          box: {
+            top: gapCenter - HALF,
+            left: rowBox.left,
+            width: rowBox.width,
+            height: HALF * 2,
+            barTop: HALF - 1.5,
+          },
+          data: {
+            kind: 'canvas-drop',
+            dashboardName,
+            config: dashboardConfig,
+            target: parentPath
+              ? { kind: 'between-rows', index: ri, containerPath: parentPath }
+              : { kind: 'between-rows', index: ri },
+          },
+        });
       });
+
+      // between-rows zone AFTER the last sibling row (append). A generous 36px
+      // band so the trailing append target is easy to hit below the last row.
+      const lastRowBox = rowBoxes[rowBoxes.length - 1];
+      if (lastRowBox) {
+        zones.push({
+          id: `${prefix}row-before-${siblingRows.length}`,
+          intent: 'between-rows',
+          box: {
+            top: lastRowBox.top + lastRowBox.height,
+            left: lastRowBox.left,
+            width: lastRowBox.width,
+            height: 36,
+            barTop: 4,
+          },
+          data: {
+            kind: 'canvas-drop',
+            dashboardName,
+            config: dashboardConfig,
+            target: parentPath
+              ? { kind: 'between-rows', index: siblingRows.length, containerPath: parentPath }
+              : { kind: 'between-rows', index: siblingRows.length },
+          },
+        });
+      }
     }
+
+    emitRows(rows, '', null);
 
     setModel({ handles, zones });
   }, [rootRef, rows, dashboardName, dashboardConfig]);

@@ -123,6 +123,48 @@ export const reorderTopLevelRows = (config, fromIndex, toIndex) => {
   return { ...config, rows: arrayMove(config.rows, fromIndex, toIndex) };
 };
 
+/**
+ * Reorder the sibling sub-rows of the container item addressed by `containerPath`
+ * (VIS-903). `fromIndex`/`toIndex` are indices within that container's `rows`.
+ * Returns the config unchanged on a no-op / invalid path.
+ */
+export const reorderRowsInContainer = (config, containerPath, fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return config;
+  const segments = parseCanvasPath(containerPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+  const itemSeg = segments[segments.length - 1];
+  const rowSegments = segments.slice(0, -1);
+  if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+  return withRowsAtRowPath(config, rowSegments, rows => {
+    const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      const nextItems = row.items.map((it, ii) => {
+        if (ii !== itemSeg.index || !Array.isArray(it.rows)) return it;
+        return { ...it, rows: arrayMove(it.rows, fromIndex, toIndex) };
+      });
+      return { ...row, items: nextItems };
+    });
+  });
+};
+
+/**
+ * Parse the `containerPath` (item path) out of a nested row path. A nested row
+ * lives under a container item: `row.0.item.1.row.0` → container `row.0.item.1`,
+ * row index 0. Returns `{ containerPath, rowIndex }` for a nested row, or `null`
+ * for a top-level row (`row.N`) or malformed input. Used by the canvas DnD
+ * router to route a nested-row drag to `reorderRowsInContainer` (VIS-903).
+ */
+export const parseNestedRowPath = rowPath => {
+  const segments = parseCanvasPath(rowPath);
+  if (segments.length < 3 || segments[segments.length - 1].kind !== 'row') return null;
+  const rowIndex = segments[segments.length - 1].index;
+  const containerSegments = segments.slice(0, -1);
+  if (containerSegments[containerSegments.length - 1].kind !== 'item') return null;
+  const containerPath = containerSegments.map(s => `${s.kind}.${s.index}`).join('.');
+  return { containerPath, rowIndex };
+};
+
 /** Default empty layout slot height for a freshly-created top-level row. */
 const NEW_ROW = items => ({ height: 'medium', items });
 
@@ -214,10 +256,34 @@ export const insertItemAtTarget = (config, target, newItem) => {
   const item = newItem || { width: 1 };
 
   if (target.kind === 'between-rows') {
-    const idx = Math.max(0, Math.min(target.index ?? config.rows.length, config.rows.length));
-    const nextRows = [...config.rows];
-    nextRows.splice(idx, 0, NEW_ROW([item]));
-    return { ...config, rows: nextRows };
+    // Top-level between-rows → splice a new top-level row at the index.
+    if (!target.containerPath) {
+      const idx = Math.max(0, Math.min(target.index ?? config.rows.length, config.rows.length));
+      const nextRows = [...config.rows];
+      nextRows.splice(idx, 0, NEW_ROW([item]));
+      return { ...config, rows: nextRows };
+    }
+    // Nested between-rows (VIS-903) → splice a new sub-row into the container
+    // item addressed by `containerPath` at the index, among its sibling rows.
+    const segments = parseCanvasPath(target.containerPath);
+    if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+    const itemSeg = segments[segments.length - 1];
+    const rowSegments = segments.slice(0, -1);
+    if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+    return withRowsAtRowPath(config, rowSegments, rows => {
+      const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+      return rows.map((row, ri) => {
+        if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+        const nextItems = row.items.map((it, ii) => {
+          if (ii !== itemSeg.index) return it;
+          const subRows = Array.isArray(it.rows) ? [...it.rows] : [];
+          const idx = Math.max(0, Math.min(target.index ?? subRows.length, subRows.length));
+          subRows.splice(idx, 0, NEW_ROW([item]));
+          return { ...it, rows: subRows };
+        });
+        return { ...row, items: nextItems };
+      });
+    });
   }
 
   // Drop directly onto an existing item slot (VIS-901 #4). An EMPTY slot is
