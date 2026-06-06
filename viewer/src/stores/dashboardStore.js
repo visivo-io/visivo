@@ -247,6 +247,29 @@ const createDashboardSlice = (set, get) => ({
   },
 
   /**
+   * Move the level from `fromIndex` to `toIndex` (VIS-901 #5 — canvas level
+   * reorder via DnD). Unlike `reorderLevel` (single-step arrow), this moves a
+   * level to an arbitrary slot, matching a drag-and-drop gesture. Persists
+   * through the same `_persistLevels` path. No-op for out-of-range / unchanged.
+   */
+  moveLevel: async (fromIndex, toIndex) => {
+    const levels = get()._resolveLevels();
+    if (
+      fromIndex < 0 ||
+      fromIndex >= levels.length ||
+      toIndex < 0 ||
+      toIndex >= levels.length ||
+      fromIndex === toIndex
+    ) {
+      return { success: false, error: 'move out of range or unchanged' };
+    }
+    const nextLevels = [...levels];
+    const [moved] = nextLevels.splice(fromIndex, 1);
+    nextLevels.splice(toIndex, 0, moved);
+    return get()._persistLevels(nextLevels);
+  },
+
+  /**
    * Delete the level at `index`. Dashboards assigned to that level (by title)
    * fall to the Unassigned bucket — their `level` key is removed via
    * `reassignDashboardLevel(name, null)`.

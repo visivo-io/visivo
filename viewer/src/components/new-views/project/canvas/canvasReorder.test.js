@@ -12,6 +12,7 @@ import {
   reorderTopLevelRows,
   insertItemAtTarget,
   buildLibraryItem,
+  smallestWidthInRow,
   ROW_TEMPLATES,
   buildTemplateRow,
   insertRowAtIndex,
@@ -176,6 +177,90 @@ describe('insertItemAtTarget', () => {
   test('unrecognised target returns the config unchanged', () => {
     const before = config();
     expect(insertItemAtTarget(before, { kind: 'nope' }, {})).toBe(before);
+  });
+});
+
+describe('smallestWidthInRow (VIS-901 #4 smart width)', () => {
+  test('returns the smallest item width in the target row', () => {
+    expect(smallestWidthInRow(config(), 'row.0')).toBe(3); // 6/3/3 → 3
+    expect(smallestWidthInRow(config(), 'row.1')).toBe(12); // single 12-wide slot
+  });
+  test('treats a missing width as 1', () => {
+    const cfg = { rows: [{ items: [{ chart: 'ref(a)' }, { width: 4 }] }] };
+    expect(smallestWidthInRow(cfg, 'row.0')).toBe(1);
+  });
+  test('returns 1 for an empty / unknown row', () => {
+    expect(smallestWidthInRow({ rows: [{ items: [] }] }, 'row.0')).toBe(1);
+    expect(smallestWidthInRow(config(), 'row.9')).toBe(1);
+  });
+  test('reads a nested row path', () => {
+    const cfg = {
+      rows: [{ items: [{ width: 6, rows: [{ items: [{ width: 2 }, { width: 5 }] }] }] }],
+    };
+    expect(smallestWidthInRow(cfg, 'row.0.item.0.row.0')).toBe(2);
+  });
+});
+
+describe('insertItemAtTarget — smart width (VIS-901 #4)', () => {
+  test('between-items default width = smallest item width in the row', () => {
+    const after = insertItemAtTarget(
+      config(),
+      { kind: 'between-items', rowPath: 'row.0', index: 1 },
+      buildLibraryItem('chart', 'x')
+    );
+    // row.0 widths are 6/3/3 → smallest 3, so the new item inserts at width 3.
+    expect(after.rows[0].items[1]).toEqual({ width: 3, chart: 'ref(x)' });
+  });
+
+  test('all-width-1 row stays width 1 on insert', () => {
+    const cfg = { rows: [{ items: [{ width: 1, chart: 'ref(a)' }, { width: 1, chart: 'ref(b)' }] }] };
+    const after = insertItemAtTarget(
+      cfg,
+      { kind: 'end-of-row', rowPath: 'row.0' },
+      buildLibraryItem('table', 't')
+    );
+    expect(after.rows[0].items[2]).toEqual({ width: 1, table: 'ref(t)' });
+  });
+
+  test('an explicit caller width is preserved (not overridden by smart width)', () => {
+    const after = insertItemAtTarget(
+      config(),
+      { kind: 'end-of-row', rowPath: 'row.0' },
+      { width: 8, chart: 'ref(big)' }
+    );
+    expect(after.rows[0].items[3]).toEqual({ width: 8, chart: 'ref(big)' });
+  });
+});
+
+describe('insertItemAtTarget — on-item slot drop (VIS-901 #4)', () => {
+  test('filling an EMPTY slot in place preserves the slot width', () => {
+    const cfg = { rows: [{ items: [{ width: 4 }, { width: 8, chart: 'ref(a)' }] }] };
+    const after = insertItemAtTarget(
+      cfg,
+      { kind: 'on-item', rowPath: 'row.0', index: 0 },
+      buildLibraryItem('chart', 'new')
+    );
+    expect(after.rows[0].items).toHaveLength(2); // no new slot — filled in place
+    expect(after.rows[0].items[0]).toEqual({ width: 4, chart: 'ref(new)' });
+  });
+
+  test('dropping onto a FILLED slot inserts a new item before it (smart width)', () => {
+    const cfg = { rows: [{ items: [{ width: 6, chart: 'ref(a)' }, { width: 6, chart: 'ref(b)' }] }] };
+    const after = insertItemAtTarget(
+      cfg,
+      { kind: 'on-item', rowPath: 'row.0', index: 1 },
+      buildLibraryItem('table', 't')
+    );
+    expect(after.rows[0].items).toHaveLength(3);
+    // Smart width = smallest in row (6); new item lands before index 1.
+    expect(after.rows[0].items[1]).toEqual({ width: 6, table: 'ref(t)' });
+    expect(after.rows[0].items[2]).toEqual({ width: 6, chart: 'ref(b)' });
+  });
+
+  test('input is never mutated', () => {
+    const before = { rows: [{ items: [{ width: 2 }] }] };
+    insertItemAtTarget(before, { kind: 'on-item', rowPath: 'row.0', index: 0 }, buildLibraryItem('chart', 'z'));
+    expect(before.rows[0].items[0]).toEqual({ width: 2 });
   });
 });
 

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FaChevronDown } from 'react-icons/fa';
 import DropdownOptions from './DropdownOptions';
+import PortalDropdownMenu from './PortalDropdownMenu';
 import {
   DropdownButton,
   DropdownLabel,
-  DropdownMenu,
   LoadingBar,
   LoadingContainer,
   SearchInput,
@@ -38,6 +38,7 @@ const Dropdown = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
   const searchInputRef = useRef(null);
 
   // Derive selectedItems from selectedValue prop (display only)
@@ -70,7 +71,11 @@ const Dropdown = ({
 
   useEffect(() => {
     const handleClickOutside = event => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // The menu is portalled to <body> (outside dropdownRef's subtree), so a
+      // click inside it must NOT close the dropdown — check the menu node too.
+      const inAnchor = dropdownRef.current && dropdownRef.current.contains(event.target);
+      const inMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!inAnchor && !inMenu) {
         setIsOpen(false);
         setHighlightedIndex(-1);
       }
@@ -165,7 +170,7 @@ const Dropdown = ({
         </DropdownButton>
 
         {isOpen && (
-          <DropdownMenu>
+          <PortalDropdownMenu anchorRef={dropdownRef} menuRef={menuRef}>
             <div className="p-3 border-b border-gray-200">
               <SearchInput
                 ref={searchInputRef}
@@ -189,7 +194,7 @@ const Dropdown = ({
               isMulti={false}
               selectedItems={selectedItems}
             />
-          </DropdownMenu>
+          </PortalDropdownMenu>
         )}
       </div>
     </div>

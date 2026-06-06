@@ -211,6 +211,11 @@ const Dashboard = ({
   // state instead. The dashboard root still mounts so the overlay's measuring
   // ancestor exists. (VIS-794)
   hideEmptyPlaceholder = false,
+  // When true (canvas build surface only), render a visible placeholder for an
+  // EMPTY item slot (no chart/table/markdown/input/rows) so users can see — and
+  // drop onto — an otherwise-invisible empty slot. View mode keeps the legacy
+  // behaviour (an empty slot renders nothing). (VIS-901 #3)
+  canvasMode = false,
 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
@@ -582,6 +587,23 @@ const Dashboard = ({
           row={row}
           height={effectiveSlotHeight}
         />
+      );
+    }
+
+    // Empty layout slot ({ width } with no leaf ref / rows). In View mode this
+    // renders nothing (parity preserved); on the canvas build surface we paint a
+    // visible dashed placeholder so the slot is discoverable + a drop target
+    // (VIS-901 #3). Backend persistence of a truly-empty item lands with VIS-900.
+    if (canvasMode) {
+      return (
+        <div
+          key={key}
+          data-testid="canvas-empty-slot"
+          className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/40 text-[11px] font-medium text-gray-400"
+          style={{ minHeight: 48 }}
+        >
+          Empty slot
+        </div>
       );
     }
 

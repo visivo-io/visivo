@@ -59,10 +59,14 @@ const toTile = dashboard => ({
 
 export const groupDashboardsByLevel = (dashboards, defaults) => {
   const safeDashboards = Array.isArray(dashboards) ? dashboards : [];
-  const configuredLevels =
-    Array.isArray(defaults?.levels) && defaults.levels.length > 0
-      ? defaults.levels
-      : defaultLevels;
+  // When the project EXPLICITLY configures levels, every configured level is a
+  // real, user-created bucket — render ALL of them (even empty ones) so a level
+  // added via "Add Level" shows as an empty droppable SECTION dashboards can be
+  // dragged into (VIS-901 #5). When we fall back to the shared `defaultLevels`
+  // (no levels configured yet) we keep the conservative windowing below so an
+  // empty project doesn't show every default level as noise.
+  const hasConfiguredLevels = Array.isArray(defaults?.levels) && defaults.levels.length > 0;
+  const configuredLevels = hasConfiguredLevels ? defaults.levels : defaultLevels;
 
   // Bucket dashboards by resolved level index.
   const buckets = new Map(); // index -> tiles[]
@@ -86,13 +90,15 @@ export const groupDashboardsByLevel = (dashboards, defaults) => {
 
   configuredLevels.forEach((lvl, idx) => {
     const tiles = buckets.get(idx) || [];
-    // Show a configured level if it has dashboards, OR it precedes the last
-    // populated level (so a populated L2 always shows an empty L0/L1 above it
-    // as a valid drop destination).
-    const maxPopulated = populatedIndices.size
-      ? Math.max(...populatedIndices)
-      : -1;
-    if (tiles.length === 0 && idx > maxPopulated) return;
+    // Explicitly-configured levels ALWAYS render (so a newly-added empty level
+    // is a visible drop target — VIS-901 #5). For the default-fallback case,
+    // show a level if it has dashboards OR it precedes the last populated level
+    // (so a populated L2 always shows an empty L0/L1 above it as a valid drop
+    // destination), but hide trailing empty defaults.
+    if (!hasConfiguredLevels) {
+      const maxPopulated = populatedIndices.size ? Math.max(...populatedIndices) : -1;
+      if (tiles.length === 0 && idx > maxPopulated) return;
+    }
     groups.push({
       levelKey: `level:${idx}`,
       title: lvl.title || `Level ${idx + 1}`,

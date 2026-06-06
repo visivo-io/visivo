@@ -185,11 +185,16 @@ const CanvasDropZone = ({ id, box, intent, data }) => {
     );
   }
 
-  if (intent === 'in-container') {
+  if (intent === 'on-item' || intent === 'in-container') {
+    // Slot-fill / container drop → a tinted region over the slot. `on-item`
+    // sits BELOW the thin between-items/end-of-row bars (z-[18] < z-20) so a
+    // precise edge drop still resolves to the insertion bar, while a drop over
+    // the slot body resolves here.
+    const z = intent === 'on-item' ? 'z-[18]' : 'z-[19]';
     return (
       <div
         {...common}
-        className={`${peClass} absolute z-[19]`}
+        className={`${peClass} absolute ${z}`}
         style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
       >
         {isDragging && isOver && (
@@ -311,6 +316,25 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
             target: { kind: 'between-items', rowPath, index: ii },
           },
         });
+
+        // on-item drop zone over the slot itself (VIS-901 #4) — lets a Library
+        // object be dropped DIRECTLY onto an existing slot (fill an empty slot,
+        // or insert before a filled one). Painted as a tinted region like
+        // in-container; only acted on for Library drags by the router. Skipped
+        // for container items (they get the in-container zone instead).
+        if (!isContainer) {
+          zones.push({
+            id: `${itemPath}-on-item`,
+            intent: 'on-item',
+            box,
+            data: {
+              kind: 'canvas-drop',
+              dashboardName,
+              config: dashboardConfig,
+              target: { kind: 'on-item', rowPath, index: ii },
+            },
+          });
+        }
 
         // in-container drop zone over container items.
         if (isContainer) {

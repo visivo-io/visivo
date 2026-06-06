@@ -117,6 +117,48 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     expect(screen.queryByTestId('canvas-resize-height-row.0.item.0')).not.toBeInTheDocument();
   });
 
+  test('paints a LEFT-edge width handle on an item that has a left neighbour', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.1' });
+    render(<Host />);
+    const handle = screen.getByTestId('canvas-resize-width-left-row.0.item.1');
+    expect(handle).toHaveAttribute('data-resize-axis', 'width-left');
+    expect(handle).toHaveAttribute('aria-label', 'Resize item width from left edge');
+  });
+
+  test('omits the LEFT-edge width handle on the FIRST item in a row', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.0' });
+    render(<Host />);
+    // Right-edge handle present, left-edge handle absent (no shared boundary).
+    expect(screen.getByTestId('canvas-resize-width-row.0.item.0')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('canvas-resize-width-left-row.0.item.0')
+    ).not.toBeInTheDocument();
+  });
+
+  test('dragging the LEFT edge left grows the item and shrinks the left neighbour', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.1' });
+    render(<Host />);
+    const handle = screen.getByTestId('canvas-resize-width-left-row.0.item.1');
+
+    // Down on the left handle, move -135px left (~2 cols at 66.7px/col), release.
+    firePointerDown(handle, { clientX: 410, clientY: 100, pointerId: 1 });
+    expect(screen.getByTestId('canvas-resize-ghost')).toBeInTheDocument();
+    firePointer('pointermove', { clientX: 410 - 135, clientY: 100 });
+    expect(screen.getByTestId('canvas-resize-readout').textContent).toContain('8 / 12');
+    firePointer('pointerup', { clientX: 410 - 135, clientY: 100 });
+
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    const [name, nextConfig] = mockCommit.mock.calls[0];
+    expect(name).toBe('dash');
+    // Item 1 gains 2 cols, neighbour (item 0) loses 2 — row total stays 12.
+    expect(nextConfig.rows[0].items[1].width).toBe(8);
+    expect(nextConfig.rows[0].items[0].width).toBe(4);
+    expect(mockEmit).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'resize_item', axis: 'width-left' })
+    );
+  });
+
   test('paints a height handle on a selected row', () => {
     useStore.setState({ workspaceOutlineSelectedKey: 'row.0' });
     render(<Host />);
