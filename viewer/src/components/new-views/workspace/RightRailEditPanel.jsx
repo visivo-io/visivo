@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { PiPencil, PiPlus } from 'react-icons/pi';
 import useStore from '../../../stores/store';
 import useWorkspaceScope from './useWorkspaceScope';
@@ -593,7 +593,15 @@ const INLINE_LEAF_FORMS = {
   chart: (record, common) => <ChartEditForm chart={record} {...common} />,
   table: (record, common) => <TableEditForm table={record} {...common} />,
   markdown: (record, common) => <MarkdownEditForm markdown={record} {...common} />,
-  input: (record, common) => <InputEditForm input={record} {...common} />,
+  input: (record, common) => (
+    <InputEditForm
+      input={record}
+      isCreate={common.isCreate}
+      onSave={common.onSave}
+      onSaveStatusChange={common.onSaveStatusChange}
+      autoSave
+    />
+  ),
   source: (record, common) => <SourceEditForm source={record} {...common} />,
   insight: (record, common) => <InsightEditForm insight={record} {...common} />,
   model: (record, common) => (
@@ -615,6 +623,11 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   const typeDef = getTypeByValue(type);
   const singular = typeDef?.singularLabel || type;
 
+  // Auto-saving leaf forms (currently Input — VIS-898) report their debounced
+  // save status up so the SelectionChip header renders the indicator, mirroring
+  // the dashboard-structure forms.
+  const [leafSaveStatus, setLeafSaveStatus] = useState(undefined);
+
   // Standalone (non-embedded) save: the same unified handler EditorNew uses,
   // routed to the right per-type store action. currentEdit=null keeps it on the
   // standalone-save path (no edit stack in the rail).
@@ -629,10 +642,11 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
       onSave: handleObjectSave,
       onNavigateToEmbedded: noop,
       onGoBack: noop,
+      onSaveStatusChange: setLeafSaveStatus,
     };
     return (
       <>
-        <SelectionChip type={type} name={name} subtitle={singular} />
+        <SelectionChip type={type} name={name} subtitle={singular} saveStatus={leafSaveStatus} />
         <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
           {renderForm(record, common)}
         </div>
