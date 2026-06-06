@@ -1,6 +1,6 @@
 import * as dashboardsApi from '../api/dashboards';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
-import { defaultLevels } from '../utils/dashboardUtils';
+import { getEffectiveLevels } from '../utils/effectiveLevels';
 
 /**
  * Dashboard Store Slice
@@ -106,13 +106,7 @@ const createDashboardSlice = (set, get) => ({
    * delete affordances act on exactly the levels the user sees, we seed from
    * that same fallback here — the first edit persists a concrete list.
    */
-  _resolveLevels: () => {
-    const configured = get().defaults?.levels;
-    if (Array.isArray(configured) && configured.length > 0) {
-      return configured.map(l => ({ ...l }));
-    }
-    return defaultLevels.map(l => ({ ...l }));
-  },
+  _resolveLevels: () => getEffectiveLevels(get().defaults),
 
   _persistLevels: async nextLevels => {
     const saveDefaults = get().saveDefaults;

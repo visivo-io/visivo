@@ -7,11 +7,19 @@ import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { getEffectiveLevels } from '../../../utils/effectiveLevels';
 
 /**
  * ProjectDefaultsEditForm - Form for editing project-level defaults (singleton)
  *
  * Fields: source_name, alert_name, threads, telemetry_enabled, levels
+ *
+ * Levels (VIS-899): the form seeds its level list from `getEffectiveLevels` —
+ * the SAME single source of truth the canvas Project Editor renders. So when no
+ * levels are configured the form shows the shared default levels (the list the
+ * canvas already displays) rather than "No dashboard levels defined", and the
+ * two surfaces always agree. Edits persist through `saveDefaults` (the same
+ * path the canvas level-CRUD actions use), so both surfaces reflect changes.
  */
 const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
   const saveDefaults = useStore(state => state.saveDefaults);
@@ -36,8 +44,11 @@ const ProjectDefaultsEditForm = ({ defaults, onSave, onClose }) => {
       setAlertName(defaults.alert_name || '');
       setThreads(defaults.threads ?? 8);
       setTelemetryEnabled(defaults.telemetry_enabled ?? true);
-      setLevels(defaults.levels || []);
     }
+    // Seed from the shared effective-levels source so the form shows the same
+    // levels the canvas Project Editor renders (configured levels when present,
+    // else the shared defaults) — VIS-899 parity.
+    setLevels(getEffectiveLevels(defaults));
   }, [defaults]);
 
   const handleSubmit = async e => {
