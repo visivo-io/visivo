@@ -146,6 +146,16 @@ const WorkspaceCommitContext = createContext(null);
 export const useWorkspaceCommit = () => useContext(WorkspaceCommitContext);
 
 /**
+ * Provider for the shell's `commitCanvasConfig` committer. The full
+ * <WorkspaceDndContext> wires this from its DnD provider; this thin wrapper lets
+ * a non-DnD surface (or a focused component test) supply a committer without
+ * mounting the whole dnd-kit shell.
+ */
+export const WorkspaceCommitProvider = ({ value, children }) => (
+  <WorkspaceCommitContext.Provider value={value}>{children}</WorkspaceCommitContext.Provider>
+);
+
+/**
  * Pure router for the shared `onDragEnd`. Decides what a finished drag means
  * from its `active`/`over` payloads and invokes the right side effect. Exported
  * so the routing decision is unit-testable without simulating a real dnd-kit

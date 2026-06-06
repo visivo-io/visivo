@@ -448,3 +448,114 @@ describe('insertItemAtTarget — nested between-rows (VIS-903)', () => {
     expect(names(after.rows[0].items)).toEqual(['ref(newtop)']);
   });
 });
+
+// ── Wrap-in-container helpers (VIS-781 / D-5) ───────────────────────────────
+describe('wrapItemInContainer / unwrap / add (VIS-781)', () => {
+  const {
+    wrapItemInContainer,
+    unwrapTrivialContainer,
+    isTriviallyWrappedContainer,
+    addRowInsideContainer,
+    addItemToRow,
+  } = require('./canvasReorder');
+
+  test('wraps a leaf item into a single-row container, inheriting its width', () => {
+    const before = config();
+    const after = wrapItemInContainer(before, 'row.0.item.0');
+    const wrapped = after.rows[0].items[0];
+    expect(Array.isArray(wrapped.rows)).toBe(true);
+    expect(wrapped.width).toBe(6); // inherited from the original leaf
+    expect(wrapped.rows).toHaveLength(1);
+    expect(wrapped.rows[0].items).toHaveLength(1);
+    // The inner item is the original leaf, sans its own width.
+    expect(wrapped.rows[0].items[0].chart).toBe('ref(a)');
+    expect(wrapped.rows[0].items[0].width).toBeUndefined();
+  });
+
+  test('wrapping is immutable', () => {
+    const before = config();
+    const snapshot = JSON.stringify(before);
+    wrapItemInContainer(before, 'row.0.item.0');
+    expect(JSON.stringify(before)).toBe(snapshot);
+  });
+
+  test('wraps a NESTED leaf at any depth', () => {
+    const before = wrapItemInContainer(config(), 'row.0.item.0');
+    // row.0.item.0 is now a container; wrap its inner leaf.
+    const after = wrapItemInContainer(before, 'row.0.item.0.row.0.item.0');
+    const innerContainer = after.rows[0].items[0].rows[0].items[0];
+    expect(Array.isArray(innerContainer.rows)).toBe(true);
+    expect(innerContainer.rows[0].items[0].chart).toBe('ref(a)');
+  });
+
+  test('wrapping a container is a no-op (only leaves wrap)', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    expect(wrapItemInContainer(wrapped, 'row.0.item.0')).toBe(wrapped);
+  });
+
+  test('isTriviallyWrappedContainer: true for 1×1, false for leaf / multi', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    expect(isTriviallyWrappedContainer(wrapped, 'row.0.item.0')).toBe(true);
+    expect(isTriviallyWrappedContainer(config(), 'row.0.item.0')).toBe(false);
+    const withExtraRow = addRowInsideContainer(wrapped, 'row.0.item.0');
+    expect(isTriviallyWrappedContainer(withExtraRow, 'row.0.item.0')).toBe(false);
+  });
+
+  test('unwrap restores the inner leaf and its width on a trivial container', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    const after = unwrapTrivialContainer(wrapped, 'row.0.item.0');
+    const item = after.rows[0].items[0];
+    expect(item.chart).toBe('ref(a)');
+    expect(item.width).toBe(6);
+    expect(item.rows).toBeUndefined();
+  });
+
+  test('unwrap is a no-op on a non-trivial container', () => {
+    const wrapped = addRowInsideContainer(
+      wrapItemInContainer(config(), 'row.0.item.0'),
+      'row.0.item.0'
+    );
+    expect(unwrapTrivialContainer(wrapped, 'row.0.item.0')).toBe(wrapped);
+  });
+
+  test('addRowInsideContainer appends an empty sub-row to the container', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    const after = addRowInsideContainer(wrapped, 'row.0.item.0');
+    expect(after.rows[0].items[0].rows).toHaveLength(2);
+    expect(after.rows[0].items[0].rows[1].items).toEqual([{ width: 1 }]);
+  });
+
+  test('addRowInsideContainer is a no-op on a leaf', () => {
+    const before = config();
+    expect(addRowInsideContainer(before, 'row.0.item.0')).toBe(before);
+  });
+
+  test('addItemToRow appends an empty slot to a top-level row', () => {
+    const before = config();
+    const after = addItemToRow(before, 'row.1');
+    expect(after.rows[1].items).toHaveLength(2);
+    expect(after.rows[1].items[1]).toEqual({ width: 12 }); // smart width = smallest in row
+  });
+
+  test('addItemToRow works on a nested row', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    const after = addItemToRow(wrapped, 'row.0.item.0.row.0');
+    expect(after.rows[0].items[0].rows[0].items).toHaveLength(2);
+  });
+
+  test('5-levels-deep wrap renders without error (no depth limit, Q12)', () => {
+    let cfg = config();
+    let path = 'row.0.item.0';
+    for (let i = 0; i < 5; i += 1) {
+      cfg = wrapItemInContainer(cfg, path);
+      path = `${path}.row.0.item.0`;
+    }
+    // Walk down 5 container levels to the original leaf.
+    let node = cfg.rows[0].items[0];
+    for (let i = 0; i < 5; i += 1) {
+      expect(Array.isArray(node.rows)).toBe(true);
+      node = node.rows[0].items[0];
+    }
+    expect(node.chart).toBe('ref(a)');
+  });
+});

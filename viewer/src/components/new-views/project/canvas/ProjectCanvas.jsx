@@ -4,6 +4,7 @@ import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 import CanvasDndLayer from './CanvasDndLayer';
 import CanvasResizeLayer from './CanvasResizeLayer';
 import CanvasAddRow from './CanvasAddRow';
+import CanvasContextMenu from './CanvasContextMenu';
 
 /**
  * ProjectCanvas (VIS-D1 / VIS-767, extended by VIS-D2 / VIS-768) — the
@@ -65,6 +66,10 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
           between-rows) and the empty-canvas CTA. Commits a templated row via the
           shell's shared commitCanvasConfig (sanitize → optimistic → save). */}
       <CanvasAddRow rootRef={rootRef} dashboardName={dashboardName} />
+      {/* VIS-781 / D-5: right-click context menu — wrap-in-container, add row
+          inside / add item to row, unwrap. Commits via the shared
+          commitCanvasConfig (sanitize → optimistic → save). */}
+      <CanvasContextMenu rootRef={rootRef} dashboardName={dashboardName} />
     </div>
   );
 };
