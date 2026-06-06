@@ -390,6 +390,58 @@ export const setItemWidth = (config, itemPath, nextWidth) => {
 };
 
 /**
+ * Resize the item at `rowPath`/`itemIndex` from its LEFT boundary — the edge it
+ * shares with the PREVIOUS sibling in the row. `deltaCols` is the integer number
+ * of grid columns to transfer ACROSS that shared boundary: a positive `deltaCols`
+ * grows this item by that many columns and shrinks the left neighbour by the same
+ * amount; a negative `deltaCols` does the inverse. Neither item is allowed below
+ * width 1, so the transfer is clamped to the columns actually available. The row
+ * grid total is unchanged (columns only move between the two adjacent items).
+ *
+ * The FIRST item in a row (index 0) has no left neighbour and therefore no shared
+ * boundary, so this is a no-op there — it never invents a phantom neighbour.
+ * Returns the config unchanged on a no-op (delta 0, clamped to 0, index 0, or an
+ * invalid path).
+ */
+export const resizeItemFromLeft = (config, rowPath, itemIndex, deltaCols) => {
+  const segments = parseCanvasPath(rowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+  if (!Number.isInteger(itemIndex) || itemIndex <= 0) return config;
+  const delta = Math.round(Number(deltaCols));
+  if (Number.isNaN(delta) || delta === 0) return config;
+
+  let changed = false;
+  const next = withRowsAtRowPath(config, segments, rows => {
+    const lastRowIndex = segments[segments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      const neighbourIndex = itemIndex - 1;
+      const self = row.items[itemIndex];
+      const neighbour = row.items[neighbourIndex];
+      if (!self || !neighbour) return row;
+      const selfWidth = self.width || 1;
+      const neighbourWidth = neighbour.width || 1;
+      // Clamp the transfer so neither item drops below width 1: growing self
+      // (positive delta) is bounded by the neighbour's spare columns; shrinking
+      // self (negative delta) is bounded by self's spare columns.
+      const transfer = Math.max(
+        -(selfWidth - 1),
+        Math.min(neighbourWidth - 1, delta)
+      );
+      if (transfer === 0) return row;
+      changed = true;
+      const items = row.items.map((it, ii) => {
+        if (ii === itemIndex) return { ...it, width: selfWidth + transfer };
+        if (ii === neighbourIndex) return { ...it, width: neighbourWidth - transfer };
+        return it;
+      });
+      return { ...row, items };
+    });
+  });
+  return changed ? next : config;
+};
+
+/**
  * Set the HEIGHT of the row at `rowPath`. `nextHeight` is either a HeightEnum
  * token (string, tick mode) or a positive integer (px, Shift-fluid mode —
  * Row.height accepts `Union[HeightEnum, int]`). Integers are clamped to a sane

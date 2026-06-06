@@ -5,6 +5,7 @@ import { useCommitCanvasConfig } from '../../workspace/WorkspaceDndContext';
 import {
   parseCanvasPath,
   setItemWidth,
+  resizeItemFromLeft,
   setRowHeight,
   HEIGHT_ENUM_STOPS,
   heightEnumToPixels,
@@ -22,10 +23,15 @@ import {
  * mutation persisted through the shell's shared `commitCanvasConfig`
  * (sanitize → optimistic → save).
  *
- * Three handle types (D-3 contract):
+ * Handle types (D-3 contract):
  *   - Item RIGHT-EDGE (↔ width): drag changes the item's integer col-span
  *     (1–12). Widths are relative within the row, so siblings rebalance live. A
  *     `N / total` readout pill rides the handle.
+ *   - Item LEFT-EDGE (↔ width): drag moves the boundary shared with the PREVIOUS
+ *     sibling, transferring grid columns between this item and its left neighbour
+ *     (drag left grows this item / shrinks the neighbour; drag right inverts),
+ *     clamped so neither drops below width 1. The first item in a row has no
+ *     shared left boundary, so it gets no left handle.
  *   - Row BOTTOM-EDGE (↕ height): drag snaps to HeightEnum tick stops by
  *     default (label stack, active stop mulberry-filled). Holding Shift switches
  *     to FLUID mode — a numeric pixel value written as an int to `Row.height`
@@ -187,6 +193,15 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     return segs.map(s => `${s.kind}.${s.index}`).join('.');
   }, [selection]);
 
+  // The selected item's index within its parent row. Drives the LEFT-edge
+  // handle: only items past index 0 share a boundary with a previous sibling,
+  // so the first item in a row gets no left handle.
+  const itemIndexInRow = useMemo(() => {
+    if (!selection?.isItem || !selection.segments.length) return -1;
+    return selection.segments[selection.segments.length - 1].index;
+  }, [selection]);
+  const hasLeftNeighbor = itemIndexInRow > 0;
+
   const beginDrag = useCallback(
     (e, kind) => {
       if (!box || !selection) return;
@@ -197,7 +212,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       // Width context: per-column px from the parent row's width / its grid total.
       let colPx = 0;
       let startCols = selection.item?.width || 1;
-      if ((kind === 'width' || kind === 'corner') && rowPathForItem && root) {
+      if ((kind === 'width' || kind === 'width-left' || kind === 'corner') && rowPathForItem && root) {
         const rowEl = root.querySelector(`[data-canvas-path="${rowPathForItem}"]`);
         const rowBox = rowEl ? measure(rowEl, root) : null;
         const total =
@@ -205,6 +220,13 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         const rowWidth = rowBox ? rowBox.width : box.width;
         colPx = rowWidth / total;
       }
+
+      // Left-edge context: the previous sibling's start width bounds how far the
+      // shared boundary can move (the neighbour can't drop below width 1).
+      const neighborStartCols =
+        kind === 'width-left' && hasLeftNeighbor
+          ? (selection.itemsInRow?.[itemIndexInRow - 1]?.width || 1)
+          : 1;
 
       // Height context: the gesture's row is the selection's row (item → parent
       // row; row → itself). startPx from the row's current enum/px height.
@@ -219,6 +241,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         colPx: colPx || 1,
         startCols,
         liveCols: startCols,
+        neighborStartCols,
         startPx,
         livePx: startPx,
         fluid: !!e.shiftKey,
@@ -245,7 +268,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         // is the fallback so the gesture still completes.
       }
     },
-    [box, selection, rowPathForItem, rootRef]
+    [box, selection, rowPathForItem, itemIndexInRow, hasLeftNeighbor, rootRef]
   );
 
   // Window-level move/up handlers active only while a drag is in flight. They
@@ -267,12 +290,21 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         const deltaCols = Math.round(dx / d.colPx);
         liveCols = Math.max(1, Math.min(COLS, d.startCols + deltaCols));
       }
+      if (d.kind === 'width-left') {
+        // Dragging the LEFT edge left (dx < 0) grows the item; dragging it right
+        // shrinks it. Columns transfer across the shared boundary with the left
+        // neighbour, so the live span is bounded by the neighbour's spare width.
+        const deltaCols = -Math.round(dx / d.colPx);
+        const maxGrow = Math.max(0, (d.neighborStartCols || 1) - 1);
+        const transfer = Math.max(-(d.startCols - 1), Math.min(maxGrow, deltaCols));
+        liveCols = d.startCols + transfer;
+      }
       if (d.kind === 'height' || d.kind === 'corner') {
         livePx = Math.max(48, Math.min(2048, d.startPx + dy));
       }
 
       let label;
-      if (d.kind === 'width') {
+      if (d.kind === 'width' || d.kind === 'width-left') {
         label = `${liveCols} / ${COLS}`;
       } else if (d.kind === 'corner') {
         const hLabel = fluid ? `${Math.round(livePx)} px` : pixelsToNearestHeightEnum(livePx);
@@ -301,6 +333,18 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       // Width / corner-width → item col-span.
       if ((d.kind === 'width' || d.kind === 'corner') && selection.isItem) {
         nextConfig = setItemWidth(nextConfig, selectedKey, d.liveCols);
+      }
+      // Left-edge width → transfer columns across the boundary with the left
+      // neighbour (this item gains `liveCols - startCols`; the neighbour loses
+      // the same). Clamping lives in `resizeItemFromLeft`.
+      if (d.kind === 'width-left' && selection.isItem && rowPathForItem) {
+        const deltaCols = d.liveCols - d.startCols;
+        nextConfig = resizeItemFromLeft(
+          nextConfig,
+          rowPathForItem,
+          itemIndexInRow,
+          deltaCols
+        );
       }
       // Height / corner-height → row height (enum tick OR fluid px int).
       if (d.kind === 'height' || d.kind === 'corner') {
@@ -342,6 +386,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     dashboardName,
     selectedKey,
     rowPathForItem,
+    itemIndexInRow,
     commitCanvasConfig,
     measureBox,
   ]);
@@ -356,20 +401,30 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     if (!drag) return null;
     let w = box.width;
     let h = box.height;
+    let left = box.left;
     if (drag.kind === 'width' || drag.kind === 'corner') {
       w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
+    }
+    if (drag.kind === 'width-left') {
+      // The left-edge gesture moves the LEFT boundary: anchor the right edge and
+      // extend leftward as the span grows.
+      w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
+      left = box.left + box.width - w;
     }
     if (drag.kind === 'height' || drag.kind === 'corner') {
       h = box.height * (drag.livePx / Math.max(1, drag.startPx));
     }
-    return { top: box.top, left: box.left, width: w, height: h };
+    return { top: box.top, left, width: w, height: h };
   })();
 
   // Which handles to show: an ITEM selection gets the right-edge width handle
   // (+ the bottom-edge height handle on its row is owned by a ROW selection);
   // a container item additionally gets the corner. A ROW selection gets the
-  // bottom-edge height handle.
+  // bottom-edge height handle. An item with a LEFT neighbour also gets a
+  // left-edge width handle that moves the shared boundary; the first item in a
+  // row has no shared left boundary and so gets no left handle.
   const showWidthHandle = selection.isItem;
+  const showLeftWidthHandle = selection.isItem && hasLeftNeighbor;
   const showHeightHandle = !selection.isItem; // row selection
   const showCornerHandle = isContainerItem;
 
@@ -407,6 +462,32 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             height: ghost.height,
             background: 'rgba(113,59,87,0.06)',
             boxShadow: `0 0 0 2px ${MULBERRY}, 0 0 0 5px rgba(113,59,87,0.18)`,
+          }}
+        />
+      )}
+
+      {/* Item LEFT-EDGE width handle (↔). Mirrors the right-edge handle but moves
+          the boundary shared with the PREVIOUS sibling — only rendered when the
+          item has a left neighbour. */}
+      {showLeftWidthHandle && (
+        <div
+          role="button"
+          tabIndex={0}
+          data-testid={`canvas-resize-width-left-${selectedKey}`}
+          data-resize-axis="width-left"
+          aria-label="Resize item width from left edge"
+          title="Drag to resize width from the left"
+          className={`${handleBase} opacity-80`}
+          onPointerDown={e => beginDrag(e, 'width-left')}
+          style={{
+            top: box.top + 6,
+            left: box.left - 3,
+            width: 6,
+            height: Math.max(0, box.height - 12),
+            cursor: 'col-resize',
+            background: drag?.kind === 'width-left' ? MULBERRY : `${MULBERRY}99`,
+            borderRadius: 3,
+            touchAction: 'none',
           }}
         />
       )}
@@ -498,7 +579,9 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             left:
               drag.kind === 'height'
                 ? box.left + box.width / 2 - 40
-                : box.left + box.width - 30,
+                : drag.kind === 'width-left'
+                  ? box.left
+                  : box.left + box.width - 30,
           }}
         >
           {drag.kind === 'height' && !drag.fluid ? (
