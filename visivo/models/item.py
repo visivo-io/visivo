@@ -81,6 +81,21 @@ class Item(NamedModel, ParentModel):
 
     `rows` is mutually exclusive with `markdown`, `chart`, `table`, and `input` — at most one
     of the five may be set on a given item.
+
+    ## Empty items
+
+    An item may also be **truly empty** — with none of `markdown`, `chart`, `table`, `input`,
+    or `rows` set. An empty item reserves whitespace in its row (sized by `width`) and is used
+    to persist intentional gaps or unfilled canvas template slots. At most one of the five
+    leaf/container fields may be set, but zero is allowed.
+
+    ``` yaml
+    rows:
+      - items:
+          - width: 1
+            chart: ref(chart-name)
+          - width: 1   # empty slot — reserves whitespace next to the chart
+    ```
     """
 
     width: int = Field(
@@ -114,6 +129,15 @@ class Item(NamedModel, ParentModel):
     @model_validator(mode="before")
     @classmethod
     def validate_unique_item_types(cls, data: any):
+        """Enforce *at most one* leaf/container field on an item.
+
+        Zero of `markdown`/`chart`/`table`/`input`/`rows` is allowed — a truly empty
+        item persists intentional whitespace or an unfilled canvas template slot.
+        Setting more than one is rejected, since an item renders a single slot.
+        """
+        if not isinstance(data, dict):
+            return data
+
         markdown, chart, table, input, rows = (
             data.get("markdown"),
             data.get("chart"),
