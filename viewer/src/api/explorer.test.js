@@ -6,36 +6,37 @@ import {
   testSourceConnection,
   fetchColumns,
 } from './explorer';
+import { apiFetch } from './utils';
 
-// Mock fetch globally
-global.fetch = jest.fn();
+// Mock apiFetch globally
+jest.mock('./utils', () => ({ apiFetch: jest.fn() }));
 
 // Mock console.error to avoid noise in tests
 global.console.error = jest.fn();
 
 describe('explorer API functions', () => {
   beforeEach(() => {
-    fetch.mockClear();
+    apiFetch.mockClear();
     console.error.mockClear();
   });
 
   describe('fetchSourceMetadata', () => {
-    it('should fetch source metadata successfully', async () => {
+    it('should apiFetch source metadata successfully', async () => {
       const mockData = { sources: [{ name: 'test_source' }] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchSourceMetadata();
 
-      expect(fetch).toHaveBeenCalledWith('/api/project/sources_metadata/');
+      expect(apiFetch).toHaveBeenCalledWith('/api/project/sources_metadata/');
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
     });
 
     it('should return null and log error on failure', async () => {
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 500,
       });
 
@@ -46,17 +47,17 @@ describe('explorer API functions', () => {
   });
 
   describe('fetchDatabases', () => {
-    it('should fetch databases for a source successfully', async () => {
+    it('should apiFetch databases for a source successfully', async () => {
       const sourceName = 'test_source';
       const mockData = { databases: ['db1', 'db2'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchDatabases(sourceName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/`
       );
       expect(result).toEqual(mockData);
@@ -66,14 +67,14 @@ describe('explorer API functions', () => {
     it('should handle special characters in source name', async () => {
       const sourceName = 'source with spaces/special@chars';
       const mockData = { databases: ['db1'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchDatabases(sourceName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/source%20with%20spaces%2Fspecial%40chars/databases/`
       );
       expect(result).toEqual(mockData);
@@ -81,7 +82,7 @@ describe('explorer API functions', () => {
 
     it('should return null and log error on failure', async () => {
       const sourceName = 'test_source';
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 404,
       });
 
@@ -92,18 +93,18 @@ describe('explorer API functions', () => {
   });
 
   describe('fetchSchemas', () => {
-    it('should fetch schemas successfully', async () => {
+    it('should apiFetch schemas successfully', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const mockData = { schemas: ['public', 'private'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchSchemas(sourceName, databaseName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/schemas/`
@@ -116,14 +117,14 @@ describe('explorer API functions', () => {
       const sourceName = 'source@123';
       const databaseName = 'db with spaces';
       const mockData = { schemas: [] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchSchemas(sourceName, databaseName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas/`
       );
       expect(result).toEqual(mockData);
@@ -132,7 +133,7 @@ describe('explorer API functions', () => {
     it('should return null and log error on failure', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 503,
       });
 
@@ -143,19 +144,19 @@ describe('explorer API functions', () => {
   });
 
   describe('fetchTables', () => {
-    it('should fetch tables with schema successfully', async () => {
+    it('should apiFetch tables with schema successfully', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const schemaName = 'public';
       const mockData = { tables: ['users', 'orders'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchTables(sourceName, databaseName, schemaName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/schemas/${encodeURIComponent(schemaName)}/tables/`
@@ -164,18 +165,18 @@ describe('explorer API functions', () => {
       expect(console.error).not.toHaveBeenCalled();
     });
 
-    it('should fetch tables without schema successfully', async () => {
+    it('should apiFetch tables without schema successfully', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const mockData = { tables: ['table1', 'table2'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchTables(sourceName, databaseName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/tables/`
@@ -183,19 +184,19 @@ describe('explorer API functions', () => {
       expect(result).toEqual(mockData);
     });
 
-    it('should fetch tables with null schema', async () => {
+    it('should apiFetch tables with null schema', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const schemaName = null;
       const mockData = { tables: ['table1'] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchTables(sourceName, databaseName, schemaName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/tables/`
@@ -207,7 +208,7 @@ describe('explorer API functions', () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const schemaName = 'public';
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 403,
       });
 
@@ -221,14 +222,14 @@ describe('explorer API functions', () => {
     it('should test source connection successfully', async () => {
       const sourceName = 'test_source';
       const mockData = { status: 'connected' };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await testSourceConnection(sourceName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/test-connection/`
       );
       expect(result).toEqual(mockData);
@@ -238,14 +239,14 @@ describe('explorer API functions', () => {
     it('should handle special characters in source name', async () => {
       const sourceName = 'source/with/slashes';
       const mockData = { status: 'connected' };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await testSourceConnection(sourceName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/source%2Fwith%2Fslashes/test-connection/`
       );
       expect(result).toEqual(mockData);
@@ -253,7 +254,7 @@ describe('explorer API functions', () => {
 
     it('should return null and log error on failure', async () => {
       const sourceName = 'test_source';
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 500,
       });
 
@@ -264,20 +265,20 @@ describe('explorer API functions', () => {
   });
 
   describe('fetchColumns', () => {
-    it('should fetch columns with schema successfully', async () => {
+    it('should apiFetch columns with schema successfully', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const tableName = 'users';
       const schemaName = 'public';
       const mockData = { columns: [{ name: 'id', type: 'INTEGER' }] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchColumns(sourceName, databaseName, tableName, schemaName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/schemas/${encodeURIComponent(schemaName)}/tables/${encodeURIComponent(
@@ -288,19 +289,19 @@ describe('explorer API functions', () => {
       expect(console.error).not.toHaveBeenCalled();
     });
 
-    it('should fetch columns without schema successfully', async () => {
+    it('should apiFetch columns without schema successfully', async () => {
       const sourceName = 'test_source';
       const databaseName = 'test_db';
       const tableName = 'products';
       const mockData = { columns: [{ name: 'name', type: 'VARCHAR' }] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchColumns(sourceName, databaseName, tableName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
         )}/tables/${encodeURIComponent(tableName)}/columns/`
@@ -314,14 +315,14 @@ describe('explorer API functions', () => {
       const tableName = 'table/special';
       const schemaName = 'schema.name';
       const mockData = { columns: [] };
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 200,
         json: async () => mockData,
       });
 
       const result = await fetchColumns(sourceName, databaseName, tableName, schemaName);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(apiFetch).toHaveBeenCalledWith(
         `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas/schema.name/tables/table%2Fspecial/columns/`
       );
       expect(result).toEqual(mockData);
@@ -332,7 +333,7 @@ describe('explorer API functions', () => {
       const databaseName = 'test_db';
       const tableName = 'users';
       const schemaName = 'public';
-      fetch.mockResolvedValueOnce({
+      apiFetch.mockResolvedValueOnce({
         status: 404,
       });
 
@@ -344,7 +345,7 @@ describe('explorer API functions', () => {
 
   describe('error handling', () => {
     it('should handle network errors gracefully', async () => {
-      fetch.mockRejectedValueOnce(new Error('Network error'));
+      apiFetch.mockRejectedValueOnce(new Error('Network error'));
 
       let result;
       try {
@@ -356,9 +357,9 @@ describe('explorer API functions', () => {
       expect(result).toBeNull();
     });
 
-    it('should throw fetch exceptions', async () => {
+    it('should throw apiFetch exceptions', async () => {
       const networkError = new Error('Connection refused');
-      fetch.mockRejectedValue(networkError);
+      apiFetch.mockRejectedValue(networkError);
 
       // Test each function throws the error
       await expect(fetchSourceMetadata()).rejects.toThrow('Connection refused');

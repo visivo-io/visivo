@@ -20,7 +20,7 @@ const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge
  */
 const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
   const deleteDashboard = useStore(state => state.deleteDashboard);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const charts = useStore(state => state.charts);
   const tables = useStore(state => state.tables);
   const markdowns = useStore(state => state.markdowns);
@@ -127,7 +127,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
     try {
       const result = await deleteDashboard(dashboard.name);
       if (result.success) {
-        await checkPublishStatus();
+        await checkCommitStatus();
         onClose();
       } else {
         setError(result.error || 'Failed to delete dashboard');
@@ -386,7 +386,7 @@ const DashboardEditForm = ({ dashboard, isCreate, onSave, onClose }) => {
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure you want to delete this dashboard? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this dashboard? This will mark it for deletion and remove it from YAML when you publish.'}
+                : 'Are you sure you want to delete this dashboard? This will mark it for deletion and remove it from YAML when you commit.'}
             </p>
             <div className="flex gap-2">
               <button

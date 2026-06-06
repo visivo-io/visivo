@@ -67,10 +67,10 @@ jest.mock('../api/dimensions', () => ({
 jest.mock('../api/explorer', () => ({
   fetchDiff: jest.fn().mockResolvedValue({}),
 }));
-jest.mock('../api/publish', () => ({
-  getPublishStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
+jest.mock('../api/commit', () => ({
+  getCommitStatus: jest.fn().mockResolvedValue({ has_unpublished_changes: false }),
   getPendingChanges: jest.fn().mockResolvedValue({ pending: [] }),
-  publishChanges: jest.fn().mockResolvedValue({}),
+  commitChanges: jest.fn().mockResolvedValue({}),
 }));
 
 // Helper to reset all explorer new state
@@ -1972,8 +1972,8 @@ describe('explorerNewStore', () => {
       });
     });
 
-    it('calls checkPublishStatus once on successful save so TopNav reflects pending changes', async () => {
-      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+    it('calls checkCommitStatus once on successful save so TopNav reflects pending changes', async () => {
+      const mockCheckCommitStatus = jest.fn().mockResolvedValue(undefined);
       useStore.setState({
         explorerModelStates: {
           new_model: {
@@ -1987,17 +1987,17 @@ describe('explorerNewStore', () => {
         explorerChartName: null,
         explorerChartLayout: {},
         explorerChartInsightNames: [],
-        checkPublishStatus: mockCheckPublishStatus,
+        checkCommitStatus: mockCheckCommitStatus,
       });
 
       const result = await useStore.getState().saveExplorerObjects();
 
       expect(result.success).toBe(true);
-      expect(mockCheckPublishStatus).toHaveBeenCalledTimes(1);
+      expect(mockCheckCommitStatus).toHaveBeenCalledTimes(1);
     });
 
-    it('does NOT call checkPublishStatus when a save fails', async () => {
-      const mockCheckPublishStatus = jest.fn().mockResolvedValue(undefined);
+    it('does NOT call checkCommitStatus when a save fails', async () => {
+      const mockCheckCommitStatus = jest.fn().mockResolvedValue(undefined);
       mockSaveModel.mockRejectedValue(new Error('Network error'));
       useStore.setState({
         explorerModelStates: {
@@ -2012,13 +2012,13 @@ describe('explorerNewStore', () => {
         explorerChartName: null,
         explorerChartLayout: {},
         explorerChartInsightNames: [],
-        checkPublishStatus: mockCheckPublishStatus,
+        checkCommitStatus: mockCheckCommitStatus,
       });
 
       const result = await useStore.getState().saveExplorerObjects();
 
       expect(result.success).toBe(false);
-      expect(mockCheckPublishStatus).not.toHaveBeenCalled();
+      expect(mockCheckCommitStatus).not.toHaveBeenCalled();
     });
   });
 

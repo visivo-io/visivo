@@ -6,6 +6,13 @@ from visivo.models.project import Project
 from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.models.model import Model
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.dimension import Dimension
+from visivo.models.metric import Metric
+from visivo.models.relation import Relation
+from visivo.models.markdown import Markdown
 from visivo.version import VISIVO_VERSION
 
 
@@ -193,3 +200,48 @@ class Serializer:
         project.sources = []
         project.inputs = []
         return project
+
+    def collect_deploy_resources(self) -> dict:
+        """Collect every named object the decomposed deploy posts, keyed by the
+        cloud endpoint segment (``/api/<segment>/``).
+
+        A deploy decomposes the project into per-type POSTs instead of one
+        ``project_json`` blob. This emits each named object — with
+        ``${ref(...)}`` references preserved by ``model_dump`` — so the cloud
+        editor + lineage see the authored config, identical to what the object
+        managers serve in ``visivo serve`` for the local editor (they read this
+        same DAG).
+
+        Model subtypes are split (sql / csv-script / local-merge) to match the
+        cloud's separate per-type endpoints. Dimensions and metrics are
+        surfaced even when authored inside a model, since they are their own
+        named nodes in the DAG. Charts/insights/tables/markdowns/inputs are
+        emitted in source (ref) form — distinct from the baked, inlined copies
+        carried on the dashboards for rendering.
+        """
+        dag = self._get_dag()
+
+        def collect(node_type):
+            collected = []
+            seen = set()
+            for node in all_descendants_of_type(type=node_type, dag=dag):
+                name = getattr(node, "name", None)
+                if name and name not in seen:
+                    seen.add(name)
+                    collected.append(node.model_dump(exclude_none=True, mode="json"))
+            return collected
+
+        return {
+            "sources": collect(Source),
+            "models": collect(SqlModel),
+            "csv-script-models": collect(CsvScriptModel),
+            "local-merge-models": collect(LocalMergeModel),
+            "dimensions": collect(Dimension),
+            "metrics": collect(Metric),
+            "relations": collect(Relation),
+            "charts": collect(Chart),
+            "insights": collect(Insight),
+            "tables": collect(Table),
+            "markdowns": collect(Markdown),
+            "inputs": collect(Input),
+        }

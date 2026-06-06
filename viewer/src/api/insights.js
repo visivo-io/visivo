@@ -32,7 +32,7 @@ export const fetchInsight = async name => {
  * Save an insight configuration to cache (draft state)
  */
 export const saveInsight = async (name, config) => {
-  const response = await apiFetch(getUrl('insightSave', { name }), {
+  const response = await apiFetch(getUrl('insightDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

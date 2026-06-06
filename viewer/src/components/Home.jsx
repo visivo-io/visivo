@@ -1,5 +1,4 @@
 import { Outlet, useLocation, Link, Navigate } from 'react-router-dom';
-import Breadcrumbs from './common/Breadcrumbs';
 import ProjectHistory from './project/ProjectHistory';
 import { useLoaderData } from 'react-router-dom';
 import Error from './styled/Error';
@@ -9,7 +8,7 @@ import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
-import PublishModal from './publish/PublishModal';
+import CommitModal from './commit/CommitModal';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
@@ -25,14 +24,14 @@ const Home = () => {
 
   const isNewProject = useStore(state => state.isNewProject);
   const isOnboardingRequested = useStore(state => state.isOnboardingRequested);
-  const hasUnpublishedChanges = useStore(state => state.hasUnpublishedChanges);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
-  const openPublishModal = useStore(state => state.openPublishModal);
+  const hasUncommittedChanges = useStore(state => state.hasUncommittedChanges);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
+  const openCommitModal = useStore(state => state.openCommitModal);
 
-  // Check publish status on mount
+  // Check commit status on mount
   useEffect(() => {
-    checkPublishStatus();
-  }, [checkPublishStatus]);
+    checkCommitStatus();
+  }, [checkCommitStatus]);
 
   if (isNewProject === undefined) {
     return (
@@ -107,23 +106,22 @@ const Home = () => {
     setIsDeployOpen(!isDeployOpen);
   };
 
-  const onPublishClick = () => {
-    openPublishModal();
+  const onCommitClick = () => {
+    openCommitModal();
   };
 
   return (
     <div className="visivo-home min-h-screen bg-gray-50">
       <TopNav
         onDeployClick={onDeployClick}
-        onPublishClick={onPublishClick}
-        hasUnpublishedChanges={hasUnpublishedChanges}
+        onCommitClick={onCommitClick}
+        hasUncommittedChanges={hasUncommittedChanges}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
-      <PublishModal />
-      <div className={'pt-12'}>
+      <CommitModal />
+      <div>
         {isProject && (
-          <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
-            <Breadcrumbs />
+          <div className="flex flex-row justify-end items-center whitespace-nowrap py-1">
             <ProjectHistory />
           </div>
         )}

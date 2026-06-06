@@ -32,9 +32,9 @@ const createTableSlice = (set, get) => ({
       const result = await tablesApi.saveTable(name, config);
       // Refresh tables list to get updated status
       await get().fetchTables();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createTableSlice = (set, get) => ({
     }
   },
 
-  // Mark table for deletion (will be removed from YAML on publish)
+  // Mark table for deletion (will be removed from YAML on commit)
   deleteTable: async name => {
     try {
       await tablesApi.deleteTable(name);
       await get().fetchTables();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

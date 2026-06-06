@@ -41,9 +41,9 @@ const renderWithStore = storeState => {
     cb({
       isNewProject: false,
       isOnboardingRequested: false,
-      hasUnpublishedChanges: false,
-      checkPublishStatus: jest.fn(),
-      openPublishModal: jest.fn(),
+      hasUncommittedChanges: false,
+      checkCommitStatus: jest.fn(),
+      openCommitModal: jest.fn(),
       ...storeState,
     })
   );

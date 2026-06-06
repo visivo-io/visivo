@@ -32,7 +32,7 @@ export const fetchChart = async name => {
  * Save a chart configuration to cache (draft state)
  */
 export const saveChart = async (name, config) => {
-  const response = await apiFetch(getUrl('chartSave', { name }), {
+  const response = await apiFetch(getUrl('chartDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

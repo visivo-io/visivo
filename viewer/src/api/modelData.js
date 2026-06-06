@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch pre-computed data for a model (from previous visivo run).
@@ -11,7 +12,7 @@ export const fetchModelData = async (modelName) => {
     return { available: false };
   }
 
-  const response = await fetch(getUrl('modelData', { name: modelName }));
+  const response = await apiFetch(getUrl('modelData', { name: modelName }));
 
   if (response.status === 200) {
     return await response.json();

@@ -30,8 +30,8 @@ const createDashboardSlice = (set, get) => ({
     try {
       const result = await dashboardsApi.saveDashboard(name, config);
       await get().fetchDashboards();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       // Tap for the onboarding "Build a Dashboard" checklist row.
       recordOnboardingAction('dashboard_saved');
@@ -46,8 +46,8 @@ const createDashboardSlice = (set, get) => ({
     try {
       await dashboardsApi.deleteDashboard(name);
       await get().fetchDashboards();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

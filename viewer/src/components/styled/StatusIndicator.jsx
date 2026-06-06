@@ -17,7 +17,7 @@ const StyledIndicator = tw.span`
 `;
 
 /**
- * StatusIndicator - Shows the publish status of an object
+ * StatusIndicator - Shows the commit status of an object
  *
  * @param {ObjectStatus} status - The status of the object (NEW, MODIFIED, or PUBLISHED)
  * @returns {JSX.Element|null} - Returns null if status is PUBLISHED or not provided
@@ -28,8 +28,8 @@ export const StatusIndicator = ({ status }) => {
   }
 
   const title = status === ObjectStatus.NEW
-    ? 'New - Not yet published'
-    : 'Modified - Has unpublished changes';
+    ? 'New - Not yet committed'
+    : 'Modified - Has uncommitted changes';
 
   return (
     <StyledIndicator

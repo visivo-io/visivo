@@ -91,7 +91,7 @@ class TestModelViews:
         app.flask_app.model_manager.get_status.return_value = ObjectStatus.NEW
 
         response = client.post(
-            "/api/models/new_model/save/",
+            "/api/models/new_model/",
             json={"sql": "SELECT * FROM test"},
             content_type="application/json",
         )
@@ -103,7 +103,7 @@ class TestModelViews:
 
     def test_save_model_no_config(self, client, app):
         """Test saving a model without configuration."""
-        response = client.post("/api/models/test/save/", content_type="application/json")
+        response = client.post("/api/models/test/", content_type="application/json")
 
         assert response.status_code == 400
         data = response.get_json()

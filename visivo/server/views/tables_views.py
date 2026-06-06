@@ -28,7 +28,7 @@ def register_tables_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting table: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/tables/<table_name>/save/", methods=["POST"])
+    @app.route("/api/tables/<table_name>/", methods=["POST"])
     def save_table(table_name):
         """Save a table configuration to cache (draft state)."""
         try:
