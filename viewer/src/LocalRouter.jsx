@@ -9,8 +9,18 @@ import BreadcrumbLink from './components/common/BreadcrumbLink';
 import ErrorPage from './components/common/ErrorPage';
 import Onboarding from './components/onboarding/Onboarding';
 import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
+import ExplorerOverlay from './components/explorerNew/ExplorerOverlay';
 import Workspace from './components/new-views/workspace/Workspace';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
+
+// VIS-778 / J-2: Build-mode → Explorer round-trip. The overlay composes OVER
+// the Workspace shell (so the origin canvas stays visible underneath).
+const WorkspaceWithExplorerOverlay = () => (
+  <>
+    <Workspace />
+    <ExplorerOverlay />
+  </>
+);
 
 // VIS-772: /editor/<type>/<name> redirects into Workspace with the edit selector encoded
 // as a query param. Wrapping <Navigate /> so we can pull params out of the URL.
@@ -74,6 +84,19 @@ const LocalRouter = createBrowserRouter(
           id="workspace-dashboard"
           path="/workspace/dashboard/:dashboardName"
           element={<Workspace />}
+          loader={loadProject}
+          handle={{
+            crumb: match => (
+              <BreadcrumbLink to={`/workspace/dashboard/${match.params.dashboardName}`}>
+                {match.params.dashboardName}
+              </BreadcrumbLink>
+            ),
+          }}
+        />
+        <Route
+          id="workspace-dashboard-explorer-overlay"
+          path="/workspace/dashboard/:dashboardName/explorer"
+          element={<WorkspaceWithExplorerOverlay />}
           loader={loadProject}
           handle={{
             crumb: match => (

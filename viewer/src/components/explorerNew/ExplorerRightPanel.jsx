@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { PiPlus, PiFloppyDisk } from 'react-icons/pi';
+import { PiPlus, PiFloppyDisk, PiPushPin } from 'react-icons/pi';
 import useStore from '../../stores/store';
 import { selectHasModifications } from '../../stores/explorerNewStore';
 import InsightCRUDSection from './InsightCRUDSection';
 import ChartCRUDSection from './ChartCRUDSection';
 import ExplorerSaveModal from './ExplorerSaveModal';
+import { useExplorerRoundTrip } from './ExplorerRoundTripContext';
 import { recordOnboardingAction } from '../onboarding/onboardingState';
 
 const ExplorerRightPanel = () => {
@@ -13,6 +14,10 @@ const ExplorerRightPanel = () => {
   const setActiveInsight = useStore((s) => s.setActiveInsight);
   const createInsight = useStore((s) => s.createInsight);
   const hasChanges = useStore(selectHasModifications);
+
+  // J-2 round-trip: when present, the Save button becomes "Save and place in
+  // slot" and routes to the overlay's handler instead of the Save modal.
+  const roundTrip = useExplorerRoundTrip();
 
   const [chartExpanded, setChartExpanded] = useState(true);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -74,18 +79,32 @@ const ExplorerRightPanel = () => {
 
       {/* Save Button (fixed at bottom) */}
       <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
-        <button
-          data-testid="explorer-save-button"
-          data-onb-target="explorer-save-button"
-          disabled={!hasChanges}
-          onClick={() => setShowSaveModal(true)}
-          className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <PiFloppyDisk size={16} />
-          Save to Project
-        </button>
+        {roundTrip ? (
+          <button
+            data-testid="explorer-save-and-place-button"
+            disabled={!hasChanges || roundTrip.saving}
+            onClick={() => roundTrip.onSaveAndPlace && roundTrip.onSaveAndPlace()}
+            className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <PiPushPin size={16} />
+            {roundTrip.saving ? 'Placing…' : 'Save and place in slot'}
+          </button>
+        ) : (
+          <button
+            data-testid="explorer-save-button"
+            data-onb-target="explorer-save-button"
+            disabled={!hasChanges}
+            onClick={() => setShowSaveModal(true)}
+            className="flex items-center justify-center gap-2 w-full py-2 px-4 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <PiFloppyDisk size={16} />
+            Save to Project
+          </button>
+        )}
       </div>
-      {showSaveModal && <ExplorerSaveModal onClose={() => setShowSaveModal(false)} />}
+      {showSaveModal && !roundTrip && (
+        <ExplorerSaveModal onClose={() => setShowSaveModal(false)} />
+      )}
     </div>
   );
 };
