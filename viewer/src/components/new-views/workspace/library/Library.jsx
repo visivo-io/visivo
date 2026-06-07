@@ -1,9 +1,11 @@
 import React, { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PiSidebar } from 'react-icons/pi';
 import LibrarySection from './LibrarySection';
 import useLibraryData from './useLibraryData';
 import { LAYOUT_TYPES, DATA_TYPES } from './LibraryRow';
 import useStore from '../../../../stores/store';
+import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
 
 /**
@@ -42,6 +44,8 @@ import { emitWorkspaceEvent } from '../telemetry';
  */
 const Library = () => {
   const data = useLibraryData();
+  const navigate = useNavigate();
+  const scope = useWorkspaceScope();
 
   // Workspace actions — read from the store directly so the Library has no
   // required props (the parent LeftRail mounts it as `<Library />`).
@@ -90,6 +94,20 @@ const Library = () => {
   const handleCreate = useCallback(
     typeKey => {
       emitWorkspaceEvent('inline_create_used', { source: 'library', kind: typeKey });
+      // J-2 (VIS-778): "+ New Chart" inside a scoped dashboard opens the
+      // Explorer round-trip overlay (build the insight there, it gets wrapped
+      // in a chart and placed back on the dashboard). Outside a dashboard
+      // scope there's no slot to return to, so fall back to the create modal.
+      if (typeKey === 'chart' && scope.dashboardName) {
+        navigate(
+          `/workspace/dashboard/${encodeURIComponent(
+            scope.dashboardName
+          )}/explorer?return_to=workspace&dashboard=${encodeURIComponent(
+            scope.dashboardName
+          )}&slot=new`
+        );
+        return;
+      }
       switch (typeKey) {
         case 'chart':
           if (openCreateChartModal) openCreateChartModal();
@@ -107,7 +125,14 @@ const Library = () => {
           break;
       }
     },
-    [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
+    [
+      openCreateChartModal,
+      openCreateTableModal,
+      openCreateMarkdownModal,
+      openCreateInputModal,
+      navigate,
+      scope.dashboardName,
+    ]
   );
 
   return (

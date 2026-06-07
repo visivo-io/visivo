@@ -26,15 +26,26 @@ import Library from './Library';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../telemetry';
 
+// Renders the current URL so navigation assertions (J-2 overlay) can read it.
+const LocationProbe = () => {
+  const { useLocation } = jest.requireActual('react-router-dom');
+  const loc = useLocation();
+  return <div data-testid="location-probe">{loc.pathname + loc.search}</div>;
+};
+
 const renderLibrary = (entry = '/workspace') => {
   const router = createMemoryRouter(
     createRoutesFromElements(
       <>
-        <Route path="/workspace" element={<DndContext><Library /></DndContext>} />
+        <Route
+          path="/workspace"
+          element={<DndContext><Library /><LocationProbe /></DndContext>}
+        />
         <Route
           path="/workspace/dashboard/:dashboardName"
-          element={<DndContext><Library /></DndContext>}
+          element={<DndContext><Library /><LocationProbe /></DndContext>}
         />
+        <Route path="/workspace/dashboard/:dashboardName/explorer" element={<LocationProbe />} />
       </>
     ),
     { initialEntries: [entry], future: futureFlags }
@@ -259,12 +270,25 @@ describe('Library', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('"+ New Chart" calls the chart create-modal opener', () => {
+  test('"+ New Chart" calls the chart create-modal opener (unscoped)', () => {
     const openCreateChartModal = jest.fn();
     seedStore({ openCreateChartModal });
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
     expect(openCreateChartModal).toHaveBeenCalledTimes(1);
+  });
+
+  test('"+ New Chart" opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
+    const openCreateChartModal = jest.fn();
+    seedStore({ openCreateChartModal });
+    renderLibrary('/workspace/dashboard/overview');
+    fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
+    expect(openCreateChartModal).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(
+      '/workspace/dashboard/overview/explorer'
+    );
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('return_to=workspace');
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('slot=new');
   });
 
   test('"+ New Table" calls the table create-modal opener', () => {
