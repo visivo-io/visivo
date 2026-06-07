@@ -54,6 +54,11 @@ const resetWorkspaceStore = () => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      // Reset the active object so tests are isolated: a non-project active
+      // object makes MiddlePane mount that type's preview (Track N), whose
+      // on-mount data fetch would otherwise leak into the next test's
+      // "fetches every collection once" assertion.
+      workspaceActiveObject: null,
       workspaceLeftCollapsed: false,
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
