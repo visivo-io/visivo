@@ -501,6 +501,61 @@ export const addItemToRow = (config, rowPath) => {
   });
 };
 
+// ── Broken-ref repair helpers (VIS-792 / Track L L-1) ───────────────────────
+// The broken-ref placeholder card (<BrokenRefCard>) repairs a slot whose leaf
+// reference (chart/table/markdown/input) no longer resolves: it either re-points
+// the leaf to a valid object (the <ReferencePicker>) or removes the slot
+// entirely. Both are pure, immutable config transforms over the composite
+// `data-canvas-path` spine, committed through the shared commitCanvasConfig.
+
+const LEAF_REF_FIELDS = ['chart', 'table', 'markdown', 'input'];
+
+/**
+ * Re-point the leaf item at `itemPath` to `name` of `type` (one of
+ * chart/table/markdown/input). Clears any sibling leaf fields so the item
+ * carries exactly one leaf ref, then writes `<type>: ref(name)` (the same bare
+ * `ref(name)` form buildLibraryItem + the right-rail writers use — the shell
+ * sanitises it on commit). Preserves the item's `width`. Returns the config
+ * unchanged for an invalid path / type or a missing name.
+ */
+export const setItemRef = (config, itemPath, type, name) => {
+  if (!LEAF_REF_FIELDS.includes(type) || !name) return config;
+  return withItemAtPath(config, itemPath, item => {
+    if (!item || typeof item !== 'object') return item;
+    const next = { ...item };
+    LEAF_REF_FIELDS.forEach(field => {
+      delete next[field];
+    });
+    next[type] = formatRef(name);
+    return next;
+  });
+};
+
+/**
+ * Remove the item at `itemPath` from its parent row's `items` array (the
+ * "Delete this slot" escape on the broken-ref card). Works at any nesting depth.
+ * Returns the config unchanged for an invalid path.
+ */
+export const removeItemAtPath = (config, itemPath) => {
+  const segments = parseCanvasPath(itemPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+  const itemSeg = segments[segments.length - 1];
+  const rowSegments = segments.slice(0, -1);
+  if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+  let changed = false;
+  const next = withRowsAtRowPath(config, rowSegments, rows => {
+    const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      if (itemSeg.index < 0 || itemSeg.index >= row.items.length) return row;
+      changed = true;
+      const items = row.items.filter((_, ii) => ii !== itemSeg.index);
+      return { ...row, items };
+    });
+  });
+  return changed ? next : config;
+};
+
 // ── Resize helpers (VIS-777 / Track D D-4) ──────────────────────────────────
 // The canvas resize overlay (CanvasResizeLayer) turns the selection's edge
 // handles into real gestures. These are the pure, immutable config transforms

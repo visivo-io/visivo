@@ -216,6 +216,13 @@ const Dashboard = ({
   // drop onto — an otherwise-invisible empty slot. View mode keeps the legacy
   // behaviour (an empty slot renders nothing). (VIS-901 #3)
   canvasMode = false,
+  // Optional broken-reference renderer (VIS-792 / Track L L-1). When a leaf's
+  // chart/table/markdown/input ref doesn't resolve, the renderer calls this with
+  // `({ type, name, itemPath })` so the canvas can mount an interactive
+  // <BrokenRefCard> (Fix… / Delete this slot). When absent (View mode), the
+  // renderer falls back to the legacy "<Type> not found: <name>" placeholder so
+  // static viewing stays at parity.
+  renderBrokenRef = null,
 }) => {
   // Dashboard store (fetched by Project container)
   const dashboards = useStore(state => state.dashboards);
@@ -451,6 +458,27 @@ const Dashboard = ({
     // size from the slot, not the dashboard.
     const effectiveSlotWidth = getWidth(items, item, slotPixelWidth);
 
+    // Render the placeholder for a leaf whose reference doesn't resolve. The
+    // canvas passes `renderBrokenRef` to mount the interactive <BrokenRefCard>
+    // (VIS-792 / L-1); View mode falls back to the legacy inline text so static
+    // viewing stays at parity.
+    const brokenRef = (type, rawRef) => {
+      const name = typeof rawRef === 'string' ? parseRefValue(rawRef) || rawRef : 'unknown';
+      if (typeof renderBrokenRef === 'function') {
+        return (
+          <div key={key} className="h-full w-full">
+            {renderBrokenRef({ type, name, itemPath })}
+          </div>
+        );
+      }
+      const label = type.charAt(0).toUpperCase() + type.slice(1);
+      return (
+        <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
+          {label} not found: {typeof rawRef === 'string' ? rawRef : 'unknown'}
+        </div>
+      );
+    };
+
     // Row-container item: render nested rows as a vertical flex stack with
     // weight-based heights (see Q9 — sub-row heights are relative weights inside
     // the parent slot, not absolute pixels).
@@ -504,11 +532,7 @@ const Dashboard = ({
     if (item.input) {
       const input = resolveItem(item.input, getInputByName);
       if (!input) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Input not found: {typeof item.input === 'string' ? item.input : 'unknown'}
-          </div>
-        );
+        return brokenRef('input', item.input);
       }
       return (
         <Input
@@ -530,11 +554,7 @@ const Dashboard = ({
     if (item.chart) {
       const chart = resolveItem(item.chart, getChartByName);
       if (!chart) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Chart not found: {typeof item.chart === 'string' ? item.chart : 'unknown'}
-          </div>
-        );
+        return brokenRef('chart', item.chart);
       }
       return (
         <Chart
@@ -552,11 +572,7 @@ const Dashboard = ({
     if (item.table) {
       const table = resolveItem(item.table, getTableByName);
       if (!table) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Table not found: {typeof item.table === 'string' ? item.table : 'unknown'}
-          </div>
-        );
+        return brokenRef('table', item.table);
       }
       return (
         <Table
@@ -574,11 +590,7 @@ const Dashboard = ({
     if (item.markdown) {
       const markdown = resolveItem(item.markdown, getMarkdownByName);
       if (!markdown) {
-        return (
-          <div key={key} className="flex items-center justify-center h-full text-gray-500 text-sm">
-            Markdown not found: {typeof item.markdown === 'string' ? item.markdown : 'unknown'}
-          </div>
-        );
+        return brokenRef('markdown', item.markdown);
       }
       return (
         <Markdown

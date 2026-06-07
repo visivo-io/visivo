@@ -1,5 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import Dashboard from '../../../project/Dashboard';
+import useStore from '../../../../stores/store';
+import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
+import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { setItemRef, removeItemAtPath } from './canvasReorder';
+import BrokenRefCard from './BrokenRefCard';
 import CanvasSelectionOverlay from './CanvasSelectionOverlay';
 import CanvasDndLayer from './CanvasDndLayer';
 import CanvasResizeLayer from './CanvasResizeLayer';
@@ -42,6 +47,82 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
   // root, so the rings land exactly over Dashboard's rows/items.
   const rootRef = useRef(null);
 
+  // ── Broken-ref repair (VIS-792 / Track L L-1) ──────────────────────────────
+  // The Dashboard renderer mounts an interactive <BrokenRefCard> for any leaf
+  // whose chart/table/markdown/input ref doesn't resolve; the card's Fix… /
+  // Delete this slot actions commit through the shared commitCanvasConfig (the
+  // SAME sanitize → optimistic → save path the other canvas mutations use).
+  const dashboards = useStore(s => s.dashboards);
+  const commitCanvasConfig = useWorkspaceCommit();
+  const openCreateChartModal = useStore(s => s.openCreateChartModal);
+  const openCreateTableModal = useStore(s => s.openCreateTableModal);
+  const openCreateMarkdownModal = useStore(s => s.openCreateMarkdownModal);
+  const openCreateInputModal = useStore(s => s.openCreateInputModal);
+
+  const dashboardConfig = useMemo(() => {
+    const entry = (dashboards || []).find(d => d.name === dashboardName);
+    if (!entry) return null;
+    return entry.config || entry;
+  }, [dashboards, dashboardName]);
+
+  const handleCreateNew = useCallback(
+    typeKey => {
+      emitWorkspaceEvent('inline_create_used', { source: 'broken_ref', kind: typeKey });
+      switch (typeKey) {
+        case 'chart':
+          if (openCreateChartModal) openCreateChartModal();
+          break;
+        case 'table':
+          if (openCreateTableModal) openCreateTableModal();
+          break;
+        case 'markdown':
+          if (openCreateMarkdownModal) openCreateMarkdownModal();
+          break;
+        case 'input':
+          if (openCreateInputModal) openCreateInputModal();
+          break;
+        default:
+          break;
+      }
+    },
+    [openCreateChartModal, openCreateTableModal, openCreateMarkdownModal, openCreateInputModal]
+  );
+
+  const renderBrokenRef = useCallback(
+    ({ type, name, itemPath }) => (
+      <BrokenRefCard
+        type={type}
+        name={name}
+        onFix={(fixType, fixName) => {
+          if (!dashboardConfig || typeof commitCanvasConfig !== 'function') return;
+          const next = setItemRef(dashboardConfig, itemPath, fixType, fixName);
+          if (next === dashboardConfig) return;
+          commitCanvasConfig(dashboardName, next, { kind: 'broken_ref_fix' });
+          emitWorkspaceEvent('canvas_action', {
+            kind: 'broken_ref_fix',
+            dashboardName,
+            path: itemPath,
+            type: fixType,
+            name: fixName,
+          });
+        }}
+        onDelete={() => {
+          if (!dashboardConfig || typeof commitCanvasConfig !== 'function') return;
+          const next = removeItemAtPath(dashboardConfig, itemPath);
+          if (next === dashboardConfig) return;
+          commitCanvasConfig(dashboardName, next, { kind: 'broken_ref_delete' });
+          emitWorkspaceEvent('canvas_action', {
+            kind: 'broken_ref_delete',
+            dashboardName,
+            path: itemPath,
+          });
+        }}
+        onCreateNew={handleCreateNew}
+      />
+    ),
+    [dashboardConfig, commitCanvasConfig, dashboardName, handleCreateNew]
+  );
+
   return (
     <div
       ref={rootRef}
@@ -54,6 +135,7 @@ const ProjectCanvas = ({ projectId, dashboardName }) => {
         stackBreakpoint={768}
         hideEmptyPlaceholder
         canvasMode
+        renderBrokenRef={renderBrokenRef}
       />
       <CanvasSelectionOverlay rootRef={rootRef} />
       {/* VIS-771 / D-3: drag-and-drop affordance layer (drag handles + drop
