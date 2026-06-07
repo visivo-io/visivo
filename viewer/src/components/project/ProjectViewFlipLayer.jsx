@@ -1,9 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PiArrowsClockwise } from 'react-icons/pi';
+import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
 import { useNavigate } from 'react-router-dom';
 import { parseRefValue } from '../../utils/refString';
 import { parseCanvasPath } from '../new-views/project/canvas/canvasReorder';
 import LibraryRowFlipPopover from '../new-views/workspace/library/LibraryRowFlipPopover';
+import ItemActionMenu from './ItemActionMenu';
+import copy from 'copy-to-clipboard';
+
+// Replicate the items' built-in "Copy link" behavior: copy the current URL with
+// `element_id` set to the scroll offset so the link reopens at this slot.
+const copyItemLink = () => {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('element_id', window.scrollY);
+  copy(url.toString());
+};
 
 /**
  * ProjectViewFlipLayer — VIS-788 / I-1 (View-mode flip gesture).
@@ -29,8 +40,6 @@ import LibraryRowFlipPopover from '../new-views/workspace/library/LibraryRowFlip
  * Mulberry (`#713b57`) is the affordance colour; per-type colours come from
  * objectTypeConfigs via the shared card.
  */
-
-const MULBERRY = '#713b57';
 
 // Honor the user's reduced-motion preference: suppress the flip-button rotation +
 // transition when `prefers-reduced-motion: reduce` is set. Mirrors the canvas
@@ -88,39 +97,6 @@ const itemAtKey = (config, key) => {
     }
   }
   return item;
-};
-
-const FlipButton = ({ box, flipped, onToggle, itemKey, reducedMotion }) => {
-  if (!box) return null;
-  return (
-    <button
-      type="button"
-      data-testid={`view-flip-button-${itemKey}`}
-      data-flip-button="true"
-      data-flipped={flipped ? 'true' : 'false'}
-      aria-pressed={flipped}
-      aria-label={flipped ? 'Hide lineage' : 'Show lineage'}
-      title={flipped ? 'Hide lineage' : 'Flip to lineage'}
-      // Swallow the pointerdown so the open card's outside-mousedown-close
-      // doesn't fight the button's own toggle (matches CanvasItemFlipLayer).
-      onPointerDown={e => e.stopPropagation()}
-      onMouseDown={e => e.stopPropagation()}
-      onClick={onToggle}
-      className={[
-        'pointer-events-auto absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm',
-        reducedMotion ? '' : 'transition-transform duration-200',
-      ].join(' ')}
-      style={{
-        top: box.top + 4,
-        left: box.left + box.width - 28,
-        borderColor: '#c6b0bb',
-        color: MULBERRY,
-        transform: flipped && !reducedMotion ? 'rotateY(180deg)' : 'none',
-      }}
-    >
-      <PiArrowsClockwise className="h-3.5 w-3.5" />
-    </button>
-  );
 };
 
 const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
@@ -195,9 +171,9 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
     [root]
   );
 
-  // Flip buttons render for the hovered leaf AND every flipped item (so an open
-  // card stays toggleable after the hover that opened it clears). Deduped.
-  const buttonKeys = useMemo(
+  // The kebab menu renders for the hovered leaf AND every flipped item (so an
+  // open card stays toggleable after the hover that opened it clears). Deduped.
+  const menuKeys = useMemo(
     () => [...new Set([...(hoverKey ? [hoverKey] : []), ...flipped])],
     [hoverKey, flipped]
   );
@@ -219,18 +195,35 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
   if (!dashboardConfig) return null;
 
   return (
-    <div data-testid="view-flip-layer" className="pointer-events-none absolute inset-0 z-20">
-      {buttonKeys.map(key => {
+    <div data-testid="view-flip-layer" className="pointer-events-none absolute inset-0 z-50">
+      {menuKeys.map(key => {
         const subject = subjectForItem(itemAtKey(dashboardConfig, key));
         if (!subject) return null;
+        const isFlipped = flipped.has(key);
+        // EXTENSIBLE action list — adding a future View-mode item action is a
+        // one-line addition here. v1: Copy link + Flip to lineage.
+        const actions = [
+          {
+            id: 'copy',
+            label: 'Copy link',
+            icon: PiLink,
+            onSelect: copyItemLink,
+          },
+          {
+            id: 'flip',
+            label: isFlipped ? 'Hide lineage' : 'Flip to lineage',
+            icon: PiArrowsClockwise,
+            active: isFlipped,
+            onSelect: () => toggleFlip(key),
+          },
+        ];
         return (
-          <FlipButton
+          <ItemActionMenu
             key={key}
             itemKey={key}
             box={boxFor(key)}
-            flipped={flipped.has(key)}
             reducedMotion={reducedMotion}
-            onToggle={() => toggleFlip(key)}
+            actions={actions}
           />
         );
       })}

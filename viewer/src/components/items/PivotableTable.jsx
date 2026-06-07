@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { useViewItemActions } from './ViewItemActionsContext';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
 
@@ -29,6 +30,9 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(table.rows_per_page || 50);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
+  // In View mode the kebab (⋮) owns Copy link. Suppress ONLY the share button —
+  // the CSV export stays (export is a table feature, not a kebab action).
+  const { suppressItemShare } = useViewItemActions();
 
   const isPivotMode = !!(table.columns && table.rows && table.values);
   const isColumnSelectMode = !!(table.columns && !table.rows && !table.values);
@@ -255,16 +259,18 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
           >
             <FileDownloadIcon fontSize="medium" />
           </Button>
-          <Button
-            aria-label="Share Table"
-            onClick={handleCopyText}
-            size="small"
-            sx={{ minWidth: '40px' }}
-          >
-            <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
-              <ShareIcon fontSize="medium" />
-            </Tooltip>
-          </Button>
+          {!suppressItemShare && (
+            <Button
+              aria-label="Share Table"
+              onClick={handleCopyText}
+              size="small"
+              sx={{ minWidth: '40px' }}
+            >
+              <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
+                <ShareIcon fontSize="medium" />
+              </Tooltip>
+            </Button>
+          )}
         </Box>
       </Box>
 

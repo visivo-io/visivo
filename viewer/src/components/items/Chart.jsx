@@ -11,10 +11,13 @@ import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { chartDataFromInsightData } from '../../models/Insight';
 import useStore from '../../stores/store';
 import { useShallow } from 'zustand/react/shallow';
+import { useViewItemActions } from './ViewItemActionsContext';
 
 const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, shouldLoad = true, hideToolbar = false, plotlyConfig, onRelayout }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
+  // In View mode the kebab (⋮) owns Copy link, so suppress the built-in share btn.
+  const { suppressItemShare } = useViewItemActions();
 
   const chartInsightNames = useMemo(() => {
     if (!chart.insights?.length) return [];
@@ -142,7 +145,7 @@ const Chart = React.forwardRef(({ chart, projectId, itemWidth, height, width, sh
       onMouseOut={() => setHovering(false)}
       id={itemNameToSlug(chart.name)}
     >
-      {!hideToolbar && (
+      {!hideToolbar && !suppressItemShare && (
         <MenuContainer>
           <Menu
             hovering={hovering}
