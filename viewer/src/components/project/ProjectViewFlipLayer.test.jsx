@@ -1,13 +1,15 @@
 /**
- * ProjectViewFlipLayer tests (VIS-788 / I-1 — View-mode flip gesture).
+ * ProjectViewFlipLayer tests (VIS-788 / I-1 — View-mode item-action kebab).
  *
- * Per Q3b the flip-to-lineage gesture also lives in View mode. This layer paints
- * a flip toggle on the hovered leaf slot and opens the SAME delivered lineage
- * card (<LibraryRowFlipPopover> → shared <MiniLineageCard>) the build canvas
- * uses — the only View-mode difference is that Expand deep-links to
+ * The View-mode per-item actions (Copy link, Flip to lineage) are consolidated
+ * into ONE kebab (⋮) menu per slot (replacing the old standalone flip button).
+ * This layer paints the kebab on the hovered leaf slot; opening it reveals the
+ * action list, and "Flip to lineage" opens the SAME delivered lineage card
+ * (<LibraryRowFlipPopover> → shared <MiniLineageCard>) the build canvas uses.
+ * The only View-mode difference is that Expand deep-links to
  * /workspace?edit=<type>:<name> (no right rail in View). The card is mocked to a
- * marker; this suite locks the flip GATING (leaf vs container), the multi-flip
- * set, and the Expand deep link.
+ * marker; this suite locks the kebab GATING (leaf vs container), the action menu
+ * (Copy + Flip), the multi-flip set, and the Expand deep link.
  */
 import React, { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -16,6 +18,12 @@ import ProjectViewFlipLayer from './ProjectViewFlipLayer';
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+}));
+
+const mockCopy = jest.fn();
+jest.mock('copy-to-clipboard', () => ({
+  __esModule: true,
+  default: (...args) => mockCopy(...args),
 }));
 
 // Mock the heavy lineage popover to a marker carrying its subject + an Expand
@@ -62,62 +70,107 @@ const Host = ({ config = CONFIG }) => {
 
 beforeEach(() => {
   mockNavigate.mockClear();
+  mockCopy.mockClear();
   Element.prototype.getBoundingClientRect = function () {
     return { top: 0, left: 0, width: 400, height: 200, bottom: 200, right: 400 };
   };
 });
 
-const flipButtons = () => screen.queryAllByTestId(/^view-flip-button-/);
-const flipButton = key => screen.getByTestId(`view-flip-button-${key}`);
+const menuButtons = () => screen.queryAllByTestId(/^view-item-menu-[^l]/);
+const menuButton = key => screen.getByTestId(`view-item-menu-${key}`);
 const hover = testid => fireEvent.pointerMove(screen.getByTestId(testid));
+const openMenu = key => fireEvent.click(menuButton(key));
+const action = (id, key) => screen.getByTestId(`view-item-action-${id}-${key}`);
 
-describe('ProjectViewFlipLayer (VIS-788)', () => {
-  test('no flip button at rest (nothing hovered)', () => {
+describe('ProjectViewFlipLayer kebab (VIS-788)', () => {
+  test('no kebab at rest (nothing hovered)', () => {
     render(<Host />);
-    expect(flipButtons()).toHaveLength(0);
+    expect(menuButtons()).toHaveLength(0);
   });
 
-  test('hovering a LEAF slot reveals the flip button', () => {
+  test('hovering a LEAF slot reveals the kebab', () => {
     render(<Host />);
     hover('r0i0');
-    expect(flipButton('row.0.item.0')).toBeInTheDocument();
+    expect(menuButton('row.0.item.0')).toBeInTheDocument();
   });
 
-  test('hovering a CONTAINER slot does NOT reveal a flip button', () => {
+  test('hovering a CONTAINER slot does NOT reveal a kebab', () => {
     render(<Host />);
     hover('r0i1');
-    expect(flipButtons()).toHaveLength(0);
+    expect(menuButtons()).toHaveLength(0);
   });
 
-  test('clicking flip opens the lineage card for that slot', () => {
+  test('opening the kebab reveals Copy link + Flip to lineage actions', () => {
     render(<Host />);
     hover('r0i0');
-    fireEvent.click(flipButton('row.0.item.0'));
+    openMenu('row.0.item.0');
+    expect(action('copy', 'row.0.item.0')).toHaveTextContent('Copy link');
+    expect(action('flip', 'row.0.item.0')).toHaveTextContent('Flip to lineage');
+  });
+
+  test('Copy link copies the current URL with element_id', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    fireEvent.click(action('copy', 'row.0.item.0'));
+    expect(mockCopy).toHaveBeenCalledTimes(1);
+    expect(mockCopy.mock.calls[0][0]).toContain('element_id=');
+  });
+
+  test('Flip to lineage opens the lineage card for that slot', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
     const card = screen.getByTestId('view-flip-card-row.0.item.0');
     expect(card).toHaveAttribute('data-subject', 'chart:rev_chart');
   });
 
-  test('flip is a toggle — clicking again closes the card', () => {
+  test('flip entry reads "Hide lineage" while flipped and toggles closed', () => {
     render(<Host />);
     hover('r0i0');
-    fireEvent.click(flipButton('row.0.item.0'));
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
     expect(screen.getByTestId('view-flip-card-row.0.item.0')).toBeInTheDocument();
-    fireEvent.click(flipButton('row.0.item.0'));
+    // Reopen the menu (selecting an action closes it) — entry now reads "Hide".
+    openMenu('row.0.item.0');
+    expect(action('flip', 'row.0.item.0')).toHaveTextContent('Hide lineage');
+    fireEvent.click(action('flip', 'row.0.item.0'));
     expect(screen.queryByTestId('view-flip-card-row.0.item.0')).not.toBeInTheDocument();
+  });
+
+  test('menu closes on Escape', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    expect(screen.getByTestId('view-item-menu-list-row.0.item.0')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(
+      screen.queryByTestId('view-item-menu-list-row.0.item.0')
+    ).not.toBeInTheDocument();
+  });
+
+  test('menu closes on outside click', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    expect(screen.getByTestId('view-item-menu-list-row.0.item.0')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(
+      screen.queryByTestId('view-item-menu-list-row.0.item.0')
+    ).not.toBeInTheDocument();
   });
 
   test('Expand deep-links to /workspace?edit=<type>:<name>', () => {
     render(<Host />);
     hover('r0i0');
-    fireEvent.click(flipButton('row.0.item.0'));
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
     fireEvent.click(screen.getByTestId('view-flip-card-row.0.item.0-expand'));
     expect(mockNavigate).toHaveBeenCalledWith('/workspace?edit=chart:rev_chart');
   });
 
-  test('honors prefers-reduced-motion — no rotate transform / transition on the toggle', () => {
-    // Mock matchMedia to report reduced-motion. The button must drop the
-    // rotateY flip transform AND the transition utility (parity with the canvas
-    // flip layer), while the gesture still works.
+  test('honors prefers-reduced-motion — no transition utility on the kebab', () => {
     const original = window.matchMedia;
     window.matchMedia = jest.fn().mockImplementation(query => ({
       matches: query.includes('reduce'),
@@ -131,13 +184,8 @@ describe('ProjectViewFlipLayer (VIS-788)', () => {
     try {
       render(<Host />);
       hover('r0i0');
-      const btn = flipButton('row.0.item.0');
-      // No motion transition while reduced-motion is on.
-      expect(btn.className).not.toContain('transition-transform');
-      // Flip it — the card opens but the button doesn't rotate.
-      fireEvent.click(btn);
-      expect(screen.getByTestId('view-flip-card-row.0.item.0')).toBeInTheDocument();
-      expect(btn.style.transform).toBe('none');
+      const btn = menuButton('row.0.item.0');
+      expect(btn.className).not.toContain('transition-colors');
     } finally {
       window.matchMedia = original;
     }
@@ -149,9 +197,11 @@ describe('ProjectViewFlipLayer (VIS-788)', () => {
     };
     render(<Host config={twoLeaves} />);
     hover('r0i0');
-    fireEvent.click(flipButton('row.0.item.0'));
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
     fireEvent.pointerMove(screen.getByTestId('r0i1'));
-    fireEvent.click(flipButton('row.0.item.1'));
+    openMenu('row.0.item.1');
+    fireEvent.click(action('flip', 'row.0.item.1'));
     expect(screen.getByTestId('view-flip-card-row.0.item.0')).toBeInTheDocument();
     expect(screen.getByTestId('view-flip-card-row.0.item.1')).toBeInTheDocument();
   });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import Markdown from './Markdown';
+import ViewItemActionsContext from './ViewItemActionsContext';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 jest.mock('@fortawesome/react-fontawesome', () => ({
@@ -73,5 +74,17 @@ describe('Markdown Component', () => {
     fireEvent.mouseLeave(shareIcon);
 
     expect(mockResetToolTip).toHaveBeenCalledTimes(1);
+  });
+
+  test('suppresses the built-in share button when ViewItemActions suppress is on', () => {
+    render(
+      <ViewItemActionsContext.Provider value={{ suppressItemShare: true }}>
+        <Markdown markdown={sampleMarkdown} row={row} height={height} />
+      </ViewItemActionsContext.Provider>
+    );
+    const container = screen.getByTestId('sample-markdown');
+    fireEvent.mouseOver(container);
+    // The kebab (in ProjectViewFlipLayer) owns Copy in View mode — no share btn.
+    expect(screen.queryByTestId('font-awesome-icon')).not.toBeInTheDocument();
   });
 });
