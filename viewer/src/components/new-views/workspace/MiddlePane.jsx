@@ -132,6 +132,21 @@ const PerObjectPane = ({ activeObject, projectId }) => {
   const [lensEffective, setLensEffective] = React.useState(
     hasPreview ? 'preview' : 'lineage'
   );
+  // Reset the lens to the new object's DEFAULT whenever the active object
+  // changes. React reuses this same PerObjectPane instance when the user
+  // switches between two non-dashboard objects (same component, same tree
+  // position), so without this the previous object's lens selection would leak:
+  // flipping a chart to Lineage and then selecting a table would open the table
+  // on Lineage instead of its Preview default. Keyed on type+name so navigating
+  // between two objects of the same type also re-defaults.
+  const objectKey = `${type}:${name}`;
+  const prevKeyRef = React.useRef(objectKey);
+  React.useEffect(() => {
+    if (prevKeyRef.current !== objectKey) {
+      prevKeyRef.current = objectKey;
+      setLensEffective(hasPreview ? 'preview' : 'lineage');
+    }
+  }, [objectKey, hasPreview]);
   // A fallback type can never show Preview — clamp any stale 'preview' selection.
   const lens = hasPreview ? lensEffective : 'lineage';
   return (

@@ -147,6 +147,34 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('chart-preview-mock')).not.toBeInTheDocument();
   });
+
+  test('flipping one object to Lineage does NOT leak the lens to the next object (resets to Preview)', () => {
+    // Regression: PerObjectPane is a single reused React instance, so a chart
+    // flipped to Lineage would leak its lens — selecting a table next opened it
+    // on Lineage instead of its Preview default. The lens must reset on switch.
+    seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceLens: 'preview' });
+    const { rerender } = render(<MiddlePane />);
+    fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+
+    // Switch to a different previewable object (cross-type).
+    act(() => {
+      useStore.setState({ workspaceActiveObject: { type: 'table', name: 'orders' } });
+    });
+    rerender(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-table-preview')).toBeInTheDocument();
+    expect(screen.getByTestId('table-preview-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-middle-table-lineage')).not.toBeInTheDocument();
+
+    // Same-type navigation also re-defaults: flip table → Lineage, pick another table.
+    fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
+    expect(screen.getByTestId('workspace-middle-table-lineage')).toBeInTheDocument();
+    act(() => {
+      useStore.setState({ workspaceActiveObject: { type: 'table', name: 'revenue_table' } });
+    });
+    rerender(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-table-preview')).toBeInTheDocument();
+  });
 });
 
 describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {
