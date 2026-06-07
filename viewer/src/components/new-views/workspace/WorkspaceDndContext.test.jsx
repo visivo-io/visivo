@@ -323,4 +323,105 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     );
     expect(result).toBe('noop');
   });
+
+  // ── Nested rows/items (VIS-903) ──────────────────────────────────────────
+  const nestedCanvasConfig = () => ({
+    rows: [
+      {
+        height: 'large',
+        items: [
+          { width: 2, chart: 'ref(top0)' },
+          {
+            width: 1,
+            rows: [
+              { height: 'small', items: [{ width: 6, chart: 'ref(n0)' }, { width: 6, table: 'ref(n1)' }] },
+              { height: 'small', items: [{ width: 12, markdown: 'ref(n2)' }] },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const overNested = target => ({
+    data: {
+      current: { kind: 'canvas-drop', dashboardName: 'dash', config: nestedCanvasConfig(), target },
+    },
+  });
+
+  test('nested item drag → between-items in its nested row reorders within that row', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: {
+            current: {
+              source: 'canvas',
+              kind: 'item',
+              rowPath: 'row.0.item.1.row.0',
+              itemIndex: 0,
+            },
+          },
+        },
+        over: overNested({ kind: 'between-items', rowPath: 'row.0.item.1.row.0', index: 2 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('canvas_reorder_items');
+    const nestedItems = commitCanvasConfig.mock.calls[0][1].rows[0].items[1].rows[0].items;
+    expect(nestedItems.map(it => it.chart || it.table)).toEqual(['ref(n1)', 'ref(n0)']);
+  });
+
+  test('nested row drag → between-rows in the SAME container reorders sub-rows', () => {
+    const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0.item.1.row.0' } },
+        },
+        // Drop after the last sub-row → sub-row 0 moves to the end.
+        over: overNested({ kind: 'between-rows', index: 2, containerPath: 'row.0.item.1' }),
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_reorder_rows');
+    const subRows = commitCanvasConfig.mock.calls[0][1].rows[0].items[1].rows;
+    expect(subRows[1].items[0].markdown).toBe(undefined); // moved
+    expect(subRows[0].items[0].markdown).toBe('ref(n2)');
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_dnd',
+      expect.objectContaining({ kind: 'reorder_rows', containerPath: 'row.0.item.1' })
+    );
+  });
+
+  test('nested row drag onto a DIFFERENT container band is a noop (no cross-boundary move)', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0.item.1.row.0' } },
+        },
+        // Target band scoped to a different / top-level container.
+        over: overNested({ kind: 'between-rows', index: 0 }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('noop');
+    expect(commitCanvasConfig).not.toHaveBeenCalled();
+  });
+
+  test('library drag → nested between-rows inserts a new sub-row in the container', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'fresh' } } },
+        over: overNested({ kind: 'between-rows', index: 1, containerPath: 'row.0.item.1' }),
+      },
+      { commitCanvasConfig }
+    );
+    expect(result).toBe('canvas_library_insert');
+    const subRows = commitCanvasConfig.mock.calls[0][1].rows[0].items[1].rows;
+    expect(subRows).toHaveLength(3);
+    expect(subRows[1].items[0].chart).toBe('ref(fresh)');
+  });
 });

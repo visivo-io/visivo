@@ -123,6 +123,48 @@ export const reorderTopLevelRows = (config, fromIndex, toIndex) => {
   return { ...config, rows: arrayMove(config.rows, fromIndex, toIndex) };
 };
 
+/**
+ * Reorder the sibling sub-rows of the container item addressed by `containerPath`
+ * (VIS-903). `fromIndex`/`toIndex` are indices within that container's `rows`.
+ * Returns the config unchanged on a no-op / invalid path.
+ */
+export const reorderRowsInContainer = (config, containerPath, fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return config;
+  const segments = parseCanvasPath(containerPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+  const itemSeg = segments[segments.length - 1];
+  const rowSegments = segments.slice(0, -1);
+  if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+  return withRowsAtRowPath(config, rowSegments, rows => {
+    const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      const nextItems = row.items.map((it, ii) => {
+        if (ii !== itemSeg.index || !Array.isArray(it.rows)) return it;
+        return { ...it, rows: arrayMove(it.rows, fromIndex, toIndex) };
+      });
+      return { ...row, items: nextItems };
+    });
+  });
+};
+
+/**
+ * Parse the `containerPath` (item path) out of a nested row path. A nested row
+ * lives under a container item: `row.0.item.1.row.0` → container `row.0.item.1`,
+ * row index 0. Returns `{ containerPath, rowIndex }` for a nested row, or `null`
+ * for a top-level row (`row.N`) or malformed input. Used by the canvas DnD
+ * router to route a nested-row drag to `reorderRowsInContainer` (VIS-903).
+ */
+export const parseNestedRowPath = rowPath => {
+  const segments = parseCanvasPath(rowPath);
+  if (segments.length < 3 || segments[segments.length - 1].kind !== 'row') return null;
+  const rowIndex = segments[segments.length - 1].index;
+  const containerSegments = segments.slice(0, -1);
+  if (containerSegments[containerSegments.length - 1].kind !== 'item') return null;
+  const containerPath = containerSegments.map(s => `${s.kind}.${s.index}`).join('.');
+  return { containerPath, rowIndex };
+};
+
 /** Default empty layout slot height for a freshly-created top-level row. */
 const NEW_ROW = items => ({ height: 'medium', items });
 
@@ -214,10 +256,34 @@ export const insertItemAtTarget = (config, target, newItem) => {
   const item = newItem || { width: 1 };
 
   if (target.kind === 'between-rows') {
-    const idx = Math.max(0, Math.min(target.index ?? config.rows.length, config.rows.length));
-    const nextRows = [...config.rows];
-    nextRows.splice(idx, 0, NEW_ROW([item]));
-    return { ...config, rows: nextRows };
+    // Top-level between-rows → splice a new top-level row at the index.
+    if (!target.containerPath) {
+      const idx = Math.max(0, Math.min(target.index ?? config.rows.length, config.rows.length));
+      const nextRows = [...config.rows];
+      nextRows.splice(idx, 0, NEW_ROW([item]));
+      return { ...config, rows: nextRows };
+    }
+    // Nested between-rows (VIS-903) → splice a new sub-row into the container
+    // item addressed by `containerPath` at the index, among its sibling rows.
+    const segments = parseCanvasPath(target.containerPath);
+    if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+    const itemSeg = segments[segments.length - 1];
+    const rowSegments = segments.slice(0, -1);
+    if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+    return withRowsAtRowPath(config, rowSegments, rows => {
+      const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+      return rows.map((row, ri) => {
+        if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+        const nextItems = row.items.map((it, ii) => {
+          if (ii !== itemSeg.index) return it;
+          const subRows = Array.isArray(it.rows) ? [...it.rows] : [];
+          const idx = Math.max(0, Math.min(target.index ?? subRows.length, subRows.length));
+          subRows.splice(idx, 0, NEW_ROW([item]));
+          return { ...it, rows: subRows };
+        });
+        return { ...row, items: nextItems };
+      });
+    });
   }
 
   // Drop directly onto an existing item slot (VIS-901 #4). An EMPTY slot is
@@ -300,6 +366,139 @@ export const buildLibraryItem = (type, name) => {
   const item = { width: 1 };
   if (type && name) item[type] = formatRef(name);
   return item;
+};
+
+// ── Wrap-in-container helpers (VIS-781 / Track D D-5) ───────────────────────
+// Pure, immutable transforms that turn a leaf item into a row-container and
+// manage container sub-rows/items. Like the reorder helpers, they walk the
+// composite `data-canvas-path` spine and clone only the path to the target.
+
+// Is `item` a leaf (a chart/table/markdown/input slot, OR an empty slot) rather
+// than an existing container (`Item.rows`)? Only leaves can be wrapped.
+const isLeafItem = item =>
+  !!item && typeof item === 'object' && !(Array.isArray(item.rows) && item.rows.length > 0);
+
+/**
+ * Transform the single item at `itemPath` in place (immutably), returning a new
+ * config. `transformItem(item)` returns the replacement item (or the same ref
+ * for a no-op). Returns the config unchanged for an invalid path or when the
+ * transform returns the same item reference. Shared by wrap / unwrap / add-row.
+ */
+const withItemAtPath = (config, itemPath, transformItem) => {
+  const segments = parseCanvasPath(itemPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return config;
+  const itemSeg = segments[segments.length - 1];
+  const rowSegments = segments.slice(0, -1);
+  if (!rowSegments.length || rowSegments[rowSegments.length - 1].kind !== 'row') return config;
+  let changed = false;
+  const next = withRowsAtRowPath(config, rowSegments, rows => {
+    const lastRowIndex = rowSegments[rowSegments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex || !Array.isArray(row.items)) return row;
+      const items = row.items.map((it, ii) => {
+        if (ii !== itemSeg.index) return it;
+        const replacement = transformItem(it);
+        if (replacement === it) return it;
+        changed = true;
+        return replacement;
+      });
+      return changed ? { ...row, items } : row;
+    });
+  });
+  return changed ? next : config;
+};
+
+/**
+ * Wrap the LEAF item at `itemPath` in a single-row container (D-5). The original
+ * leaf becomes the single inner item of a new `{ rows: [{ items: [original] }] }`
+ * container; the container inherits the original's `width` (so the slot keeps
+ * its column span), and the inner item drops its own width (it fills the
+ * container's single row). No depth limit (Q12). Returns the config unchanged if
+ * the path is invalid or the item is already a container.
+ */
+export const wrapItemInContainer = (config, itemPath) =>
+  withItemAtPath(config, itemPath, item => {
+    if (!isLeafItem(item)) return item;
+    const width = item.width || 1;
+    const inner = { ...item };
+    delete inner.width;
+    return { width, rows: [{ height: 'medium', items: [inner] }] };
+  });
+
+/**
+ * Is the container at `itemPath` TRIVIALLY wrapped — exactly one sub-row holding
+ * exactly one inner item? Only trivial containers can be unwrapped back to a
+ * leaf without losing layout. Returns false for a leaf or a multi-row/multi-item
+ * container.
+ */
+export const isTriviallyWrappedContainer = (config, itemPath) => {
+  const segments = parseCanvasPath(itemPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return false;
+  let rows = Array.isArray(config?.rows) ? config.rows : null;
+  let item = null;
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i];
+    if (seg.kind === 'row') {
+      if (!rows || !rows[seg.index]) return false;
+      rows = Array.isArray(rows[seg.index].items) ? rows[seg.index].items : null;
+    } else {
+      if (!rows || !rows[seg.index]) return false;
+      item = rows[seg.index];
+      rows = Array.isArray(item.rows) ? item.rows : null;
+    }
+  }
+  if (!item || !Array.isArray(item.rows) || item.rows.length !== 1) return false;
+  const inner = Array.isArray(item.rows[0].items) ? item.rows[0].items : [];
+  return inner.length === 1;
+};
+
+/**
+ * Unwrap the TRIVIALLY-wrapped container at `itemPath` back to its single inner
+ * leaf (D-5 inverse). The inner item inherits the container's `width` (so the
+ * slot keeps its span). Returns the config unchanged if the container is not
+ * trivially wrapped (multi-row / multi-item containers are left intact — there's
+ * no unambiguous leaf to collapse to).
+ */
+export const unwrapTrivialContainer = (config, itemPath) => {
+  if (!isTriviallyWrappedContainer(config, itemPath)) return config;
+  return withItemAtPath(config, itemPath, item => {
+    const width = item.width || 1;
+    const inner = item.rows[0].items[0];
+    return { ...inner, width };
+  });
+};
+
+/**
+ * Add a new empty sub-row INSIDE the container at `itemPath` (D-5). Appends a
+ * `{ height: 'medium', items: [{ width: 1 }] }` row to the container's `rows`.
+ * Returns the config unchanged if the path is not a container item.
+ */
+export const addRowInsideContainer = (config, itemPath) =>
+  withItemAtPath(config, itemPath, item => {
+    if (!Array.isArray(item.rows)) return item;
+    return { ...item, rows: [...item.rows, NEW_ROW([{ width: 1 }])] };
+  });
+
+/**
+ * Append a new empty item slot to the row addressed by `rowPath` (D-5
+ * "Add item to row"). Works at any nesting depth. The new slot defaults to the
+ * smallest existing item width so an all-width-1 row stays balanced. Returns the
+ * config unchanged for an invalid path.
+ */
+export const addItemToRow = (config, rowPath) => {
+  const segments = parseCanvasPath(rowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+  const smart = smallestWidthInRow(config, rowPath);
+  const width = Number.isFinite(smart) && smart > 1 ? smart : 1;
+  return withRowsAtRowPath(config, segments, rows => {
+    const lastRowIndex = segments[segments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex) return row;
+      const items = Array.isArray(row.items) ? [...row.items] : [];
+      items.push({ width });
+      return { ...row, items };
+    });
+  });
 };
 
 // ── Resize helpers (VIS-777 / Track D D-4) ──────────────────────────────────
