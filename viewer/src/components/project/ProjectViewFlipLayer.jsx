@@ -32,6 +32,14 @@ import LibraryRowFlipPopover from '../new-views/workspace/library/LibraryRowFlip
 
 const MULBERRY = '#713b57';
 
+// Honor the user's reduced-motion preference: suppress the flip-button rotation +
+// transition when `prefers-reduced-motion: reduce` is set. Mirrors the canvas
+// flip layer (CanvasItemFlipLayer) so both flip surfaces behave identically.
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const measure = (el, rootEl) => {
   if (!el || !rootEl) return null;
   const node = el.getBoundingClientRect();
@@ -82,7 +90,7 @@ const itemAtKey = (config, key) => {
   return item;
 };
 
-const FlipButton = ({ box, flipped, onToggle, itemKey }) => {
+const FlipButton = ({ box, flipped, onToggle, itemKey, reducedMotion }) => {
   if (!box) return null;
   return (
     <button
@@ -98,13 +106,16 @@ const FlipButton = ({ box, flipped, onToggle, itemKey }) => {
       onPointerDown={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
       onClick={onToggle}
-      className="pointer-events-auto absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm transition-transform duration-200"
+      className={[
+        'pointer-events-auto absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm',
+        reducedMotion ? '' : 'transition-transform duration-200',
+      ].join(' ')}
       style={{
         top: box.top + 4,
         left: box.left + box.width - 28,
         borderColor: '#c6b0bb',
         color: MULBERRY,
-        transform: flipped ? 'rotateY(180deg)' : 'none',
+        transform: flipped && !reducedMotion ? 'rotateY(180deg)' : 'none',
       }}
     >
       <PiArrowsClockwise className="h-3.5 w-3.5" />
@@ -114,6 +125,7 @@ const FlipButton = ({ box, flipped, onToggle, itemKey }) => {
 
 const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
   const navigate = useNavigate();
+  const reducedMotion = prefersReducedMotion();
   const [hoverKey, setHoverKey] = useState(null);
   const [flipped, setFlipped] = useState(() => new Set());
   const [tick, setTick] = useState(0); // forces a re-measure on reflow
@@ -217,6 +229,7 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
             itemKey={key}
             box={boxFor(key)}
             flipped={flipped.has(key)}
+            reducedMotion={reducedMotion}
             onToggle={() => toggleFlip(key)}
           />
         );

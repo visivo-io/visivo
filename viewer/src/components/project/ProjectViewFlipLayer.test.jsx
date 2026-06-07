@@ -114,6 +114,35 @@ describe('ProjectViewFlipLayer (VIS-788)', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/workspace?edit=chart:rev_chart');
   });
 
+  test('honors prefers-reduced-motion — no rotate transform / transition on the toggle', () => {
+    // Mock matchMedia to report reduced-motion. The button must drop the
+    // rotateY flip transform AND the transition utility (parity with the canvas
+    // flip layer), while the gesture still works.
+    const original = window.matchMedia;
+    window.matchMedia = jest.fn().mockImplementation(query => ({
+      matches: query.includes('reduce'),
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+    try {
+      render(<Host />);
+      hover('r0i0');
+      const btn = flipButton('row.0.item.0');
+      // No motion transition while reduced-motion is on.
+      expect(btn.className).not.toContain('transition-transform');
+      // Flip it — the card opens but the button doesn't rotate.
+      fireEvent.click(btn);
+      expect(screen.getByTestId('view-flip-card-row.0.item.0')).toBeInTheDocument();
+      expect(btn.style.transform).toBe('none');
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   test('multi-flip — two leaf slots can be flipped at once', () => {
     const twoLeaves = {
       rows: [{ items: [{ chart: 'ref(rev_chart)' }, { chart: 'ref(cost_chart)' }] }],
