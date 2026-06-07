@@ -37,8 +37,14 @@ const openCanvas = async page => {
   await page.waitForTimeout(600);
 };
 
-// Optimistically re-point the first leaf item at a non-existent chart so the
-// renderer mounts a <BrokenRefCard> in that slot. Returns the broken name.
+// APPEND a new broken-chart slot to row.0 so the renderer mounts a
+// <BrokenRefCard> in that NEW slot. Returns the broken name.
+//
+// We append (rather than re-pointing an existing slot) for test isolation: the
+// card's Fix… / Delete this slot actions COMMIT through the real save path, so
+// breaking an existing slot and committing a delete would permanently remove a
+// real chart from the shared sandbox project. Appending keeps a committed delete
+// a no-op on the original items, and a committed fix only ADDS a valid item.
 const breakFirstSlot = async page => {
   const brokenName = `__missing_chart_${Date.now()}`;
   await page.evaluate(
@@ -47,14 +53,10 @@ const breakFirstSlot = async page => {
       const entry = (s.dashboards || []).find(d => d.name === dashboard);
       const cfg = entry?.config || entry;
       const next = JSON.parse(JSON.stringify(cfg));
-      const item = next.rows?.[0]?.items?.[0];
-      if (item) {
-        delete item.chart;
-        delete item.table;
-        delete item.markdown;
-        delete item.input;
-        item.chart = `\${ref(${name})}`;
-      }
+      const row0 = next.rows?.[0];
+      if (!row0) return;
+      if (!Array.isArray(row0.items)) row0.items = [];
+      row0.items.push({ width: 1, chart: `\${ref(${name})}` });
       if (s.updateDashboardConfigOptimistic) {
         s.updateDashboardConfigOptimistic(dashboard, next);
       }
