@@ -6,12 +6,16 @@
  *     replacing the old "coming soon" placeholder.
  *   - dashboard + lineage lens → mounts `<LineageCanvas>` (VIS-E1); the canvas
  *     lens renders `<ProjectCanvas>` (render-only Dashboard wrapper, VIS-767).
- *   - any non-dashboard object → `<PerObjectPane>`, which defaults to the
- *     universal Lineage lens (VIS-779) and keeps Preview as the Track N
- *     placeholder.
+ *   - a non-dashboard object WITH a Track-N preview (chart/table/markdown/
+ *     input/insight/model) → `<PerObjectPane>` defaulting to the Preview lens,
+ *     mounting that type's custom Preview component (from previewRegistry).
+ *   - a non-dashboard object WITHOUT a preview (source/dimension/…/unknown) →
+ *     `<PerObjectPane>` locked to the universal Lineage lens (VIS-779), Preview
+ *     muted.
  *
- * Child surfaces (ProjectEditor, ProjectCanvas, LineageCanvas) are mocked so this
- * stays a focused dispatcher test, not the heavy React Flow / Plotly trees.
+ * Child surfaces (ProjectEditor, ProjectCanvas, LineageCanvas, the Track-N
+ * preview components) are mocked so this stays a focused dispatcher test, not
+ * the heavy React Flow / Plotly trees.
  */
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
@@ -35,6 +39,35 @@ jest.mock('../lineage/LineageCanvas', () => {
   Mock.displayName = 'MockLineageCanvas';
   return { __esModule: true, default: Mock };
 });
+
+// Mock the Track-N preview components so the dispatcher test stays focused — it
+// only verifies WHICH preview mounts, not the heavy renderers themselves (those
+// have their own component tests). The factory is inlined per-mock because
+// jest.mock is hoisted above module-scope helpers.
+jest.mock('./ChartPreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="chart-preview-mock" />,
+}));
+jest.mock('./TablePreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="table-preview-mock" />,
+}));
+jest.mock('./MarkdownPreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="markdown-preview-mock" />,
+}));
+jest.mock('./InputPreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="input-preview-mock" />,
+}));
+jest.mock('./InsightPreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="insight-preview-mock" />,
+}));
+jest.mock('./ModelPreview', () => ({
+  __esModule: true,
+  default: () => <div data-testid="model-preview-mock" />,
+}));
 
 const seed = (extra = {}) => {
   act(() => {
@@ -86,33 +119,57 @@ describe('MiddlePane — dashboard lineage lens (VIS-E1)', () => {
   });
 });
 
-describe('MiddlePane — universal Lineage lens for non-dashboard objects (VIS-779)', () => {
-  test.each(['chart', 'model', 'insight', 'input', 'table', 'markdown', 'source'])(
-    'defaults a selected %s to the Lineage lens, mounting LineageCanvas',
+describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-784/791/795/796/798/801)', () => {
+  test.each([
+    ['chart', 'chart-preview-mock'],
+    ['table', 'table-preview-mock'],
+    ['markdown', 'markdown-preview-mock'],
+    ['input', 'input-preview-mock'],
+    ['insight', 'insight-preview-mock'],
+    ['model', 'model-preview-mock'],
+  ])('defaults a selected %s to the Preview lens, mounting its custom preview', (type, previewTestId) => {
+    seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
+    render(<MiddlePane />);
+    expect(screen.getByTestId(`workspace-middle-${type}-preview`)).toBeInTheDocument();
+    expect(screen.getByTestId(previewTestId)).toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
+  });
+
+  test('a Track-N type can flip from its Preview to the Lineage lens', () => {
+    seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceLens: 'preview' });
+    render(<MiddlePane />);
+    // Defaults to its custom preview.
+    expect(screen.getByTestId('chart-preview-mock')).toBeInTheDocument();
+
+    // Lineage is selectable — clicking it flips to the universal DAG view.
+    fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-preview-mock')).not.toBeInTheDocument();
+  });
+});
+
+describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {
+  test.each(['source', 'dimension', 'metric', 'relation'])(
+    'a selected %s (no custom preview) locks onto the Lineage lens',
     (type) => {
-      // Store lens default is 'preview' (the dashboard canvas default); the
-      // per-object pane must still default to lineage regardless.
       seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
       render(<MiddlePane />);
       expect(screen.getByTestId(`workspace-middle-${type}-lineage`)).toBeInTheDocument();
       expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId(`workspace-middle-${type}-placeholder`)
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(`workspace-middle-${type}-preview`)).not.toBeInTheDocument();
     }
   );
 
-  test('switching a non-dashboard object to the Preview lens shows the Track N placeholder', () => {
-    seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceLens: 'preview' });
+  test('the Preview option is muted for a preview-less type and cannot flip away from Lineage', () => {
+    seed({ workspaceActiveObject: { type: 'source', name: 'db' }, workspaceLens: 'preview' });
     render(<MiddlePane />);
-    // Defaults to lineage.
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
 
-    // Preview is selectable — clicking it flips to the Track N placeholder.
+    // The Preview option is disabled — clicking it does not flip away from Lineage.
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-preview'));
-    expect(screen.getByTestId('workspace-middle-chart-placeholder')).toBeInTheDocument();
-    expect(screen.getByText(/Per-object preview coming soon \(Track N\)/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-source-lineage')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-middle-source-preview')).not.toBeInTheDocument();
   });
 
   test('an unknown object type also defaults to the universal Lineage lens', () => {

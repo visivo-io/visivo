@@ -3,6 +3,7 @@ import SubBar, { PreviewLensPicker } from './SubBar';
 import ProjectCanvas from '../project/canvas/ProjectCanvas';
 import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
+import { getPreviewComponent } from './previewRegistry';
 import useStore from '../../../stores/store';
 
 /**
@@ -12,9 +13,12 @@ import useStore from '../../../stores/store';
  *   dashboard  → ProjectCanvas (render-only Dashboard wrapper, VIS-767) when
  *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
  *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
- *                source/dimension/metric/relation/unknown). The Lineage lens is
- *                universal (VIS-779) and the per-object default — it mounts
- *                <LineageCanvas>; the Preview lens shows the Track N placeholder.
+ *                source/dimension/metric/relation/unknown). Track-N types
+ *                (chart/table/markdown/input/insight/model) mount their custom
+ *                Preview component (from previewRegistry, reusing the existing
+ *                renderer) in the Preview lens; every other type has no preview
+ *                and falls back to the universal Lineage lens (VIS-779),
+ *                mounting <LineageCanvas> with the Preview option muted.
  *
  * Each variant renders the `<SubBar>` above its viewport so the lens picker
  * stays close to the surface it switches the view of (per the chat
@@ -108,17 +112,28 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   );
 };
 
-const PerObjectPane = ({ activeObject }) => {
+const PerObjectPane = ({ activeObject, projectId }) => {
   const name = activeObject?.name || '(unnamed)';
   const type = activeObject?.type || 'object';
-  // No custom previews exist yet (Track N), so Lineage is the default lens for
-  // any selected non-dashboard object — selecting one immediately shows its DAG
-  // via <LineageCanvas> (scoped through useWorkspaceScope). The shared store
-  // lens defaults to 'preview' (the dashboard *canvas* default), which is not a
-  // meaningful default for objects with no preview surface, so the per-object
-  // lens is tracked locally and defaults to 'lineage'. Preview stays selectable
-  // in the picker (it shows the Track N placeholder until custom previews ship).
-  const [lensEffective, setLensEffective] = React.useState('lineage');
+  // Track N: a subset of object types (chart / table / markdown / input /
+  // insight / model) now have a custom Preview component registered in
+  // previewRegistry; each reuses that type's EXISTING renderer. Types WITHOUT a
+  // registered preview (source, dimension, metric, relation, unknown, …) have no
+  // preview surface, so they default to — and stay parked on — the universal
+  // Lineage lens (VIS-779), with the Preview option muted (N-7 / VIS-803 is
+  // canceled; the fallback is the plain Lineage lens, not a bespoke component).
+  const PreviewComponent = getPreviewComponent(type);
+  const hasPreview = Boolean(PreviewComponent);
+  // Types with a custom preview default to the Preview lens (it's their primary
+  // surface); fallback types default to — and lock onto — Lineage. The shared
+  // store lens defaults to 'preview' (the dashboard *canvas* default), which is
+  // not meaningful for objects with no preview surface, so the per-object lens
+  // is tracked locally.
+  const [lensEffective, setLensEffective] = React.useState(
+    hasPreview ? 'preview' : 'lineage'
+  );
+  // A fallback type can never show Preview — clamp any stale 'preview' selection.
+  const lens = hasPreview ? lensEffective : 'lineage';
   return (
     <section
       data-testid={`workspace-middle-${type}`}
@@ -135,13 +150,14 @@ const PerObjectPane = ({ activeObject }) => {
         }
         right={
           <PreviewLensPicker
-            value={lensEffective}
+            value={lens}
             onChange={setLensEffective}
             previewLabel="Preview"
+            previewDisabled={!hasPreview}
           />
         }
       />
-      {lensEffective === 'lineage' ? (
+      {lens === 'lineage' ? (
         <div
           data-testid={`workspace-middle-${type}-lineage`}
           className="flex flex-1 min-h-0"
@@ -149,11 +165,12 @@ const PerObjectPane = ({ activeObject }) => {
           <LineageCanvas />
         </div>
       ) : (
-        <Placeholder
-          testId={`workspace-middle-${type}-placeholder`}
-          title="Per-object preview coming soon (Track N)"
-          body={`Custom previews for ${type}s ship in Phase 4. The Lineage lens shows this object's DAG today.`}
-        />
+        <div
+          data-testid={`workspace-middle-${type}-preview`}
+          className="flex flex-1 min-h-0"
+        >
+          <PreviewComponent activeObject={activeObject} projectId={projectId} />
+        </div>
       )}
     </section>
   );
@@ -182,9 +199,10 @@ const MiddlePane = () => {
     );
   }
   // Every non-dashboard object (chart, model, insight, input, table, markdown,
-  // source, dimension, metric, relation, unknown) routes through PerObjectPane,
-  // which defaults to the universal Lineage lens (VIS-779).
-  return <PerObjectPane activeObject={obj} />;
+  // source, dimension, metric, relation, unknown) routes through PerObjectPane.
+  // Track-N types render their custom Preview; the rest fall back to the
+  // universal Lineage lens (VIS-779).
+  return <PerObjectPane activeObject={obj} projectId={projectId} />;
 };
 
 export default MiddlePane;
