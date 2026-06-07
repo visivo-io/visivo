@@ -16,6 +16,8 @@ import {
   ROW_TEMPLATES,
   buildTemplateRow,
   insertRowAtIndex,
+  setItemRef,
+  removeItemAtPath,
 } from './canvasReorder';
 
 const config = () => ({
@@ -557,5 +559,71 @@ describe('wrapItemInContainer / unwrap / add (VIS-781)', () => {
       node = node.rows[0].items[0];
     }
     expect(node.chart).toBe('ref(a)');
+  });
+});
+
+// ── Broken-ref repair helpers (VIS-792 / Track L L-1) ───────────────────────
+const { wrapItemInContainer, addItemToRow } = require('./canvasReorder');
+
+describe('setItemRef (VIS-792)', () => {
+  test('re-points a leaf to a new ref of the same type, preserving width', () => {
+    const after = setItemRef(config(), 'row.0.item.0', 'chart', 'new_chart');
+    expect(after.rows[0].items[0]).toEqual({ width: 6, chart: 'ref(new_chart)' });
+  });
+
+  test('re-points a leaf to a DIFFERENT type, clearing the stale leaf field', () => {
+    const after = setItemRef(config(), 'row.0.item.0', 'table', 'new_table');
+    const item = after.rows[0].items[0];
+    expect(item.chart).toBeUndefined();
+    expect(item.table).toBe('ref(new_table)');
+    expect(item.width).toBe(6);
+  });
+
+  test('works at any nesting depth', () => {
+    const wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    const after = setItemRef(wrapped, 'row.0.item.0.row.0.item.0', 'markdown', 'note');
+    expect(after.rows[0].items[0].rows[0].items[0].markdown).toBe('ref(note)');
+  });
+
+  test('no-op for an invalid type or missing name', () => {
+    const cfg = config();
+    expect(setItemRef(cfg, 'row.0.item.0', 'bogus', 'x')).toBe(cfg);
+    expect(setItemRef(cfg, 'row.0.item.0', 'chart', '')).toBe(cfg);
+    expect(setItemRef(cfg, 'row.9.item.9', 'chart', 'x')).toBe(cfg);
+  });
+
+  test('is immutable (does not mutate the input config)', () => {
+    const cfg = config();
+    const snapshot = JSON.stringify(cfg);
+    setItemRef(cfg, 'row.0.item.0', 'chart', 'new_chart');
+    expect(JSON.stringify(cfg)).toBe(snapshot);
+  });
+});
+
+describe('removeItemAtPath (VIS-792)', () => {
+  test('removes a top-level item from its row', () => {
+    const after = removeItemAtPath(config(), 'row.0.item.1');
+    expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(c)']);
+  });
+
+  test('removes a nested item at depth', () => {
+    let wrapped = wrapItemInContainer(config(), 'row.0.item.0');
+    wrapped = addItemToRow(wrapped, 'row.0.item.0.row.0');
+    expect(wrapped.rows[0].items[0].rows[0].items).toHaveLength(2);
+    const after = removeItemAtPath(wrapped, 'row.0.item.0.row.0.item.1');
+    expect(after.rows[0].items[0].rows[0].items).toHaveLength(1);
+  });
+
+  test('no-op for an invalid path', () => {
+    const cfg = config();
+    expect(removeItemAtPath(cfg, 'row.9.item.9')).toBe(cfg);
+    expect(removeItemAtPath(cfg, 'row.0')).toBe(cfg);
+  });
+
+  test('is immutable (does not mutate the input config)', () => {
+    const cfg = config();
+    const snapshot = JSON.stringify(cfg);
+    removeItemAtPath(cfg, 'row.0.item.1');
+    expect(JSON.stringify(cfg)).toBe(snapshot);
   });
 });
