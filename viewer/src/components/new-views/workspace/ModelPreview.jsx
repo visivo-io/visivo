@@ -26,6 +26,8 @@ const ModelPreview = ({ activeObject }) => {
   const fetchModels = useStore(s => s.fetchModels);
   const sources = useStore(s => s.sources);
   const fetchSources = useStore(s => s.fetchSources);
+  const defaults = useStore(s => s.defaults);
+  const fetchDefaults = useStore(s => s.fetchDefaults);
 
   const { status, progress, progressMessage, result, error, isRunning, executeQuery } =
     useModelQueryJob();
@@ -37,7 +39,10 @@ const ModelPreview = ({ activeObject }) => {
     if ((!sources || sources.length === 0) && typeof fetchSources === 'function') {
       fetchSources();
     }
-  }, [models, fetchModels, sources, fetchSources]);
+    if (!defaults && typeof fetchDefaults === 'function') {
+      fetchDefaults();
+    }
+  }, [models, fetchModels, sources, fetchSources, defaults, fetchDefaults]);
 
   const record = useMemo(
     () => (Array.isArray(models) ? models.find(m => m.name === name) || null : null),
@@ -51,11 +56,13 @@ const ModelPreview = ({ activeObject }) => {
     if (config?.source && typeof config.source === 'string') {
       return parseRefValue(config.source);
     }
-    // Fall back to the first available named source so Run still works for
-    // models that rely on the project's default source.
+    // A source-less model uses the PROJECT DEFAULT source (defaults.source_name),
+    // exactly as the run/compile path resolves it — NOT just the first source in
+    // the list (which may be an unusable / uninstalled dialect). Mirrors the
+    // explorerNewStore `defaults.source_name || firstAvailableSource` convention.
     const list = Array.isArray(sources) ? sources : [];
-    return list[0]?.name || null;
-  }, [config, sources]);
+    return defaults?.source_name || list[0]?.name || null;
+  }, [config, sources, defaults]);
 
   const [hasRun, setHasRun] = useState(false);
 

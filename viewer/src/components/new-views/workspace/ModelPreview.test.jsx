@@ -26,13 +26,15 @@ jest.mock('../../../hooks/useModelQueryJob', () => ({
   useModelQueryJob: () => mockJobState,
 }));
 
-const seed = (models = [], sources = []) => {
+const seed = (models = [], sources = [], defaults = null) => {
   act(() => {
     useStore.setState({
       models,
       sources,
+      defaults,
       fetchModels: jest.fn(),
       fetchSources: jest.fn(),
+      fetchDefaults: jest.fn(),
     });
   });
 };
@@ -86,11 +88,37 @@ describe('ModelPreview (VIS-801)', () => {
     expect(results).toHaveTextContent('2');
   });
 
-  test('falls back to the first available source when the model has none', () => {
+  test('falls back to the first available source when the model has none and no project default', () => {
     seed([{ name: 'orders', config: { sql: 'SELECT 1' } }], [{ name: 'fallback_db' }]);
     render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
     fireEvent.click(screen.getByTestId('model-preview-run'));
     expect(mockExecuteQuery).toHaveBeenCalledWith('fallback_db', 'SELECT 1');
+  });
+
+  test('a source-less model uses the PROJECT DEFAULT source, not just the first source', () => {
+    // Regression for the clickhouse-fallback bug: with multiple sources and a
+    // project default, the default must win over sources[0]. sources[0] here is
+    // an unusable dialect, exactly mirroring the integration project.
+    seed(
+      [{ name: 'orders', config: { sql: 'SELECT 1' } }],
+      [{ name: 'local-clickhouse' }, { name: 'local-duckdb' }],
+      { source_name: 'local-duckdb' }
+    );
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    expect(screen.getByTestId('model-preview')).toHaveTextContent('local-duckdb');
+    fireEvent.click(screen.getByTestId('model-preview-run'));
+    expect(mockExecuteQuery).toHaveBeenCalledWith('local-duckdb', 'SELECT 1');
+  });
+
+  test('an explicit model source still overrides the project default', () => {
+    seed(
+      [{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(explicit_db)}' } }],
+      [{ name: 'local-clickhouse' }, { name: 'explicit_db' }],
+      { source_name: 'local-duckdb' }
+    );
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    fireEvent.click(screen.getByTestId('model-preview-run'));
+    expect(mockExecuteQuery).toHaveBeenCalledWith('explicit_db', 'SELECT 1');
   });
 
   test('renders an empty state when the model is not found', () => {
