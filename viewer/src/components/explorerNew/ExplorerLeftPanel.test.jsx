@@ -1,8 +1,20 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import ExplorerLeftPanel from './ExplorerLeftPanel';
 import useStore from '../../stores/store';
+import { futureFlags } from '../../router-config';
+
+// All renders go through a Router so `useSearchParams` resolves. `currentEntry`
+// overrides the URL (J-5 return_to detection), reset before each test.
+let currentEntry = '/explorer';
+const render = (ui) =>
+  rtlRender(
+    <MemoryRouter initialEntries={[currentEntry]} future={futureFlags}>
+      {ui}
+    </MemoryRouter>
+  );
 
 jest.mock('@dnd-kit/core', () => ({
   useDraggable: () => ({
@@ -111,6 +123,7 @@ const defaultState = {
 describe('ExplorerLeftPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    currentEntry = '/explorer';
     useStore.setState(defaultState);
   });
 
@@ -298,5 +311,45 @@ describe('ExplorerLeftPanel', () => {
 
     expect(screen.getByTestId('object-item-model-orders_model')).toBeInTheDocument();
     expect(screen.queryByTestId('object-item-model-users_model')).not.toBeInTheDocument();
+  });
+
+  // ------------------------------------------------------------------
+  // J-5 / VIS-789 — round-trip empty-state CTA
+  // ------------------------------------------------------------------
+  describe('round-trip empty state (J-5)', () => {
+    const emptyProject = {
+      models: [],
+      metrics: [],
+      dimensions: [],
+      insights: [],
+      charts: [],
+      inputs: [],
+    };
+
+    it('shows the default empty-state copy without return_to', () => {
+      currentEntry = '/explorer';
+      useStore.setState(emptyProject);
+      render(<ExplorerLeftPanel />);
+      expect(screen.getByText('No project objects defined')).toBeInTheDocument();
+    });
+
+    it('shows the round-trip CTA when entered with return_to=workspace', () => {
+      currentEntry = '/explorer?return_to=workspace&dashboard=sales';
+      useStore.setState(emptyProject);
+      render(<ExplorerLeftPanel />);
+      expect(
+        screen.getByText(/then we'll wrap it in a chart and drop it back on your dashboard/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByText('No project objects defined')).not.toBeInTheDocument();
+    });
+
+    it('prefers the search "no results" copy over the round-trip CTA', () => {
+      currentEntry = '/explorer?return_to=workspace&dashboard=sales';
+      useStore.setState(emptyProject);
+      render(<ExplorerLeftPanel />);
+      const searchInput = screen.getByTestId('left-panel-search');
+      fireEvent.change(searchInput, { target: { value: 'zzz' } });
+      expect(screen.getByText('No results for "zzz"')).toBeInTheDocument();
+    });
   });
 });
