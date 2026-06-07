@@ -10,15 +10,24 @@
  */
 import React, { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import CanvasContextMenu from './CanvasContextMenu';
 import useStore from '../../../../stores/store';
 import { WorkspaceCommitProvider } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
+import { futureFlags } from '../../../../router-config';
 
 // Stub the telemetry emitter (no shell mounted). jest hoists this above the
 // imports, so the mocked module is what the import above resolves to.
 jest.mock('../../workspace/telemetry', () => ({
   emitWorkspaceEvent: jest.fn(),
+}));
+
+// Capture navigation (J-3 "Open in Explorer").
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
 }));
 
 const LEAF_DASH = {
@@ -69,23 +78,32 @@ const Host = ({ commit, structure = 'leaf' }) => {
   );
 };
 
+// Render the Host inside a Router so `useNavigate` resolves.
+const renderHost = props =>
+  render(
+    <MemoryRouter future={futureFlags}>
+      <Host {...props} />
+    </MemoryRouter>
+  );
+
 const rightClick = testid =>
   fireEvent.contextMenu(screen.getByTestId(testid), { clientX: 100, clientY: 100 });
 
 describe('CanvasContextMenu (VIS-781)', () => {
   beforeEach(() => {
     emitWorkspaceEvent.mockClear();
+    mockNavigate.mockClear();
     useStore.setState({ dashboards: [LEAF_DASH], workspaceOutlineSelectedKey: 'dashboard' });
     // jsdom getBoundingClientRect is zeroed; the menu only needs a root rect.
   });
 
   test('no menu until a right-click on a row/item', () => {
-    render(<Host commit={jest.fn()} />);
+    renderHost({ commit: jest.fn() });
     expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
   });
 
   test('right-clicking a LEAF item shows Wrap + Add item to row, not Unwrap/Add row inside', () => {
-    render(<Host commit={jest.fn()} />);
+    renderHost({ commit: jest.fn() });
     rightClick('r0i0');
     expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
     expect(screen.getByTestId('canvas-ctx-wrap')).toBeInTheDocument();
@@ -95,7 +113,7 @@ describe('CanvasContextMenu (VIS-781)', () => {
   });
 
   test('right-clicking a ROW shows only Add item to row', () => {
-    render(<Host commit={jest.fn()} />);
+    renderHost({ commit: jest.fn() });
     rightClick('r0');
     expect(screen.getByTestId('canvas-ctx-add-item')).toBeInTheDocument();
     expect(screen.queryByTestId('canvas-ctx-wrap')).not.toBeInTheDocument();
@@ -103,7 +121,7 @@ describe('CanvasContextMenu (VIS-781)', () => {
 
   test('Wrap in container commits the wrapped config + fires telemetry', () => {
     const commit = jest.fn();
-    render(<Host commit={commit} />);
+    renderHost({ commit });
     rightClick('r0i0');
     fireEvent.click(screen.getByTestId('canvas-ctx-wrap'));
     expect(commit).toHaveBeenCalledTimes(1);
@@ -120,7 +138,7 @@ describe('CanvasContextMenu (VIS-781)', () => {
 
   test('right-clicking a CONTAINER item shows Add row inside + Unwrap (trivial 1×1)', () => {
     useStore.setState({ dashboards: [CONTAINER_DASH] });
-    render(<Host commit={jest.fn()} structure="container" />);
+    renderHost({ commit: jest.fn(), structure: "container" });
     rightClick('r0i0');
     expect(screen.getByTestId('canvas-ctx-add-row-inside')).toBeInTheDocument();
     expect(screen.getByTestId('canvas-ctx-unwrap')).toBeInTheDocument();
@@ -131,7 +149,7 @@ describe('CanvasContextMenu (VIS-781)', () => {
   test('Unwrap commits the collapsed config', () => {
     useStore.setState({ dashboards: [CONTAINER_DASH] });
     const commit = jest.fn();
-    render(<Host commit={commit} structure="container" />);
+    renderHost({ commit, structure: "container" });
     rightClick('r0i0');
     fireEvent.click(screen.getByTestId('canvas-ctx-unwrap'));
     const [, nextConfig] = commit.mock.calls[0];
@@ -144,10 +162,52 @@ describe('CanvasContextMenu (VIS-781)', () => {
   });
 
   test('Escape dismisses the menu', () => {
-    render(<Host commit={jest.fn()} />);
+    renderHost({ commit: jest.fn() });
     rightClick('r0i0');
     expect(screen.getByTestId('canvas-context-menu')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+  });
+
+  // ------------------------------------------------------------------
+  // J-3 / VIS-782 — "Open in Explorer"
+  // ------------------------------------------------------------------
+  describe('Open in Explorer (J-3)', () => {
+    test('chart leaf shows Open in Explorer and navigates with return_to + dashboard', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      const item = screen.getByTestId('canvas-ctx-open-in-explorer');
+      expect(item).toBeInTheDocument();
+      fireEvent.click(item);
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/explorer?insight=a&return_to=workspace&dashboard=dash'
+      );
+      expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+        'open_in_explorer',
+        expect.objectContaining({ dashboardName: 'dash', subjectType: 'chart', subjectName: 'a' })
+      );
+    });
+
+    test('table leaf navigates with a table param', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i1');
+      fireEvent.click(screen.getByTestId('canvas-ctx-open-in-explorer'));
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/explorer?table=b&return_to=workspace&dashboard=dash'
+      );
+    });
+
+    test('a container item does not offer Open in Explorer', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      renderHost({ commit: jest.fn(), structure: 'container' });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-ctx-open-in-explorer')).not.toBeInTheDocument();
+    });
+
+    test('a row right-click does not offer Open in Explorer', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0');
+      expect(screen.queryByTestId('canvas-ctx-open-in-explorer')).not.toBeInTheDocument();
+    });
   });
 });
