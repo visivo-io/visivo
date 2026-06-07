@@ -42,6 +42,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
+import { useViewItemActions } from './ViewItemActionsContext';
 
 const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const theme = useTheme();
@@ -76,6 +77,9 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const [searchIsVisible, setSearchIsVisible] = useState(false);
 
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
+  // In View mode the kebab (⋮) owns Copy link. Suppress ONLY the share button —
+  // the CSV export stays (export is a table feature, not a kebab action).
+  const { suppressItemShare } = useViewItemActions();
 
   const csvConfig = mkConfig({
     fieldSeparator: ',',
@@ -360,16 +364,18 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
               >
                 <FileDownloadIcon fontSize="medium" />
               </Button>
-              <Button
-                aria-label="Share Table"
-                onClick={handleCopyText}
-                size="small"
-                sx={{ minWidth: '40px' }}
-              >
-                <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
-                  <ShareIcon fontSize="medium" />
-                </Tooltip>
-              </Button>
+              {!suppressItemShare && (
+                <Button
+                  aria-label="Share Table"
+                  onClick={handleCopyText}
+                  size="small"
+                  sx={{ minWidth: '40px' }}
+                >
+                  <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
+                    <ShareIcon fontSize="medium" />
+                  </Tooltip>
+                </Button>
+              )}
             </Box>
             {searchIsVisible && isMobile ? (
               <Box sx={{ display: 'flex', width: '100%', minWidth: 0, flexBasis: '100%' }}>
