@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { defaultLevels } from '../../../../utils/dashboardUtils';
+import {
+  getEffectiveLevels,
+  hasConfiguredLevels as projectHasConfiguredLevels,
+} from '../../../../utils/effectiveLevels';
 
 /**
  * useProjectEditorData — VIS-805 / Track M M-1.
@@ -65,8 +68,11 @@ export const groupDashboardsByLevel = (dashboards, defaults) => {
   // dragged into (VIS-901 #5). When we fall back to the shared `defaultLevels`
   // (no levels configured yet) we keep the conservative windowing below so an
   // empty project doesn't show every default level as noise.
-  const hasConfiguredLevels = Array.isArray(defaults?.levels) && defaults.levels.length > 0;
-  const configuredLevels = hasConfiguredLevels ? defaults.levels : defaultLevels;
+  // The effective level list is the SINGLE source of truth shared with the
+  // right-rail Project-Settings form (VIS-899): configured `defaults.levels`
+  // when present, else the shared `defaultLevels` fallback.
+  const hasConfiguredLevels = projectHasConfiguredLevels(defaults);
+  const configuredLevels = getEffectiveLevels(defaults);
 
   // Bucket dashboards by resolved level index.
   const buckets = new Map(); // index -> tiles[]
