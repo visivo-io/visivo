@@ -1,8 +1,24 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import ExplorerSaveModal from './ExplorerSaveModal';
 import useStore from '../../stores/store';
+import { futureFlags } from '../../router-config';
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
+// Wrap render so every test has Router context (useNavigate).
+const renderModal = (props) =>
+  render(
+    <MemoryRouter future={futureFlags}>
+      <ExplorerSaveModal {...props} />
+    </MemoryRouter>
+  );
 
 jest.mock('../new-views/lineage/EmbeddedPill', () => {
   return function MockEmbeddedPill({ objectType, label, statusDot }) {
@@ -32,23 +48,28 @@ describe('ExplorerSaveModal', () => {
 
   beforeEach(() => {
     mockOnClose = jest.fn();
+    mockNavigate.mockClear();
+    sessionStorage.clear();
     mockSaveExplorerObjects = jest.fn().mockResolvedValue({ success: true, errors: [] });
     useStore.setState({
       ...baseState,
+      dashboards: [],
+      // Stub so the modal's on-mount dashboards fetch doesn't hit the network.
+      fetchDashboards: jest.fn().mockResolvedValue(undefined),
       saveExplorerObjects: mockSaveExplorerObjects,
     });
   });
 
   it('renders modal with title', () => {
     useStore.setState({ explorerDiffResult: { models: { new_model: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.getByTestId('explorer-save-modal')).toBeInTheDocument();
     expect(screen.getByText('Save to Project')).toBeInTheDocument();
   });
 
   it('shows new models with green status dot', () => {
     useStore.setState({ explorerDiffResult: { models: { new_model: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-model-new_model');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'new');
@@ -56,7 +77,7 @@ describe('ExplorerSaveModal', () => {
 
   it('shows modified models with amber status dot', () => {
     useStore.setState({ explorerDiffResult: { models: { existing_model: 'modified' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-model-existing_model');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'modified');
@@ -69,14 +90,14 @@ describe('ExplorerSaveModal', () => {
         insights: { stable_insight: null },
       },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.queryByTestId('embedded-pill-model-stable_model')).not.toBeInTheDocument();
     expect(screen.queryByTestId('embedded-pill-insight-stable_insight')).not.toBeInTheDocument();
   });
 
   it('shows new insights with green status dot', () => {
     useStore.setState({ explorerDiffResult: { insights: { new_insight: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-insight-new_insight');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'new');
@@ -84,7 +105,7 @@ describe('ExplorerSaveModal', () => {
 
   it('shows modified insights with amber status dot', () => {
     useStore.setState({ explorerDiffResult: { insights: { existing_insight: 'modified' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-insight-existing_insight');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'modified');
@@ -92,14 +113,14 @@ describe('ExplorerSaveModal', () => {
 
   it('cancel button calls onClose', () => {
     useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     fireEvent.click(screen.getByTestId('save-modal-cancel'));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
   it('save button calls saveExplorerObjects', async () => {
     useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
     await waitFor(() => {
       expect(mockSaveExplorerObjects).toHaveBeenCalledTimes(1);
@@ -111,7 +132,7 @@ describe('ExplorerSaveModal', () => {
     const slowSave = new Promise((resolve) => { resolvePromise = resolve; });
     mockSaveExplorerObjects.mockReturnValue(slowSave);
     useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
     await waitFor(() => {
       expect(screen.getByText('Saving...')).toBeInTheDocument();
@@ -127,7 +148,7 @@ describe('ExplorerSaveModal', () => {
       errors: [{ name: 'my_model', type: 'model', error: 'Network error' }],
     });
     useStore.setState({ explorerDiffResult: { models: { my_model: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
     await waitFor(() => {
       expect(screen.getByTestId('save-error')).toBeInTheDocument();
@@ -138,7 +159,7 @@ describe('ExplorerSaveModal', () => {
 
   it('calls onClose on successful save', async () => {
     useStore.setState({ explorerDiffResult: { models: { m: 'new' } } });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     fireEvent.click(screen.getByTestId('save-modal-confirm'));
     await waitFor(() => { expect(mockOnClose).toHaveBeenCalledTimes(1); });
   });
@@ -148,7 +169,7 @@ describe('ExplorerSaveModal', () => {
       explorerChartName: 'my_chart',
       explorerDiffResult: { chart: 'new' },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-chart-my_chart');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'new');
@@ -159,7 +180,7 @@ describe('ExplorerSaveModal', () => {
       explorerChartName: 'my_chart',
       explorerDiffResult: { chart: 'modified' },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     const pill = screen.getByTestId('embedded-pill-chart-my_chart');
     expect(pill).toBeInTheDocument();
     expect(pill).toHaveAttribute('data-status', 'modified');
@@ -170,7 +191,7 @@ describe('ExplorerSaveModal', () => {
       explorerChartName: 'my_chart',
       explorerDiffResult: { chart: null },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.queryByTestId('embedded-pill-chart-my_chart')).not.toBeInTheDocument();
   });
 
@@ -178,7 +199,7 @@ describe('ExplorerSaveModal', () => {
     useStore.setState({
       explorerDiffResult: { metrics: { total_x: 'new', existing_met: null } },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.getByTestId('embedded-pill-metric-total_x')).toBeInTheDocument();
     expect(screen.queryByTestId('embedded-pill-metric-existing_met')).not.toBeInTheDocument();
   });
@@ -187,13 +208,107 @@ describe('ExplorerSaveModal', () => {
     useStore.setState({
       explorerDiffResult: { models: { m: null }, insights: { i: null } },
     });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.getByTestId('save-modal-confirm')).toBeDisabled();
   });
 
   it('save button is disabled when diff result is null', () => {
     useStore.setState({ explorerDiffResult: null });
-    render(<ExplorerSaveModal onClose={mockOnClose} />);
+    renderModal({ onClose: mockOnClose });
     expect(screen.getByTestId('save-modal-confirm')).toBeDisabled();
+  });
+
+  // ------------------------------------------------------------------
+  // J-1 / VIS-774 — "After save" section
+  // ------------------------------------------------------------------
+  describe('After save section (J-1)', () => {
+    const withDashboards = (extra = {}) => {
+      useStore.setState({
+        explorerChartName: 'revenue_chart',
+        explorerDiffResult: { chart: 'new' },
+        dashboards: [
+          { name: 'sales', config: { rows: [{ items: [] }, { items: [] }] } },
+          { name: 'ops', config: { rows: [{ items: [] }] } },
+        ],
+        ...extra,
+      });
+    };
+
+    it('renders the After save section with three radios, Stay default', () => {
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      expect(screen.getByTestId('after-save-section')).toBeInTheDocument();
+      expect(screen.getByTestId('after-save-stay')).toBeChecked();
+      expect(screen.getByTestId('after-save-workspace')).toBeInTheDocument();
+      expect(screen.getByTestId('after-save-dashboard')).toBeInTheDocument();
+    });
+
+    it('disables option 3 when no dashboards exist', () => {
+      useStore.setState({
+        explorerChartName: 'revenue_chart',
+        explorerDiffResult: { chart: 'new' },
+        dashboards: [],
+      });
+      renderModal({ onClose: mockOnClose });
+      expect(screen.getByTestId('after-save-dashboard')).toBeDisabled();
+      expect(screen.getByTestId('after-save-dashboard-select')).toBeDisabled();
+    });
+
+    it('navigates to /workspace when "Open in Workspace" is chosen', async () => {
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-workspace'));
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/workspace');
+      });
+    });
+
+    it('navigates to the dashboard with slot + newItem params on option 3', async () => {
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-dashboard'));
+      fireEvent.change(screen.getByTestId('after-save-dashboard-select'), {
+        target: { value: 'ops' },
+      });
+      fireEvent.change(screen.getByTestId('after-save-slot-select'), {
+        target: { value: '0:end' },
+      });
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/workspace/dashboard/ops?slot=0%3Aend&newItem=revenue_chart'
+        );
+      });
+    });
+
+    it('slot picker lists one option per row plus a new-row option', () => {
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      // 'sales' has 2 rows → 2 "at end of" + 1 "new row".
+      const slotSelect = screen.getByTestId('after-save-slot-select');
+      expect(slotSelect).toContainHTML('At end of row 1');
+      expect(slotSelect).toContainHTML('At end of row 2');
+      expect(slotSelect).toContainHTML('In a new row at the end');
+    });
+
+    it('does not navigate when staying in Explorer (default)', async () => {
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('persists the choice across modal opens within a session', async () => {
+      withDashboards();
+      const { unmount } = renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-workspace'));
+      unmount();
+      renderModal({ onClose: mockOnClose });
+      expect(screen.getByTestId('after-save-workspace')).toBeChecked();
+    });
   });
 });
