@@ -7,6 +7,7 @@
  */
 import { act } from '@testing-library/react';
 import useStore from './store';
+import { slotToInsertTarget } from './dashboardStore';
 
 const seed = (dashboards, saveDashboard) => {
   act(() => {
@@ -219,5 +220,100 @@ describe('dashboardStore level CRUD (VIS-807 M-2a)', () => {
     expect(saveDefaults).toHaveBeenCalledWith({ levels: [{ title: 'Team' }] });
     // reassignDashboardLevel(name, null) strips the level key via saveDashboard.
     expect(saveDashboard).toHaveBeenCalledWith('exec', {});
+  });
+});
+
+// ----------------------------------------------------------------------------
+// J-1 / J-2 (VIS-774 / VIS-778) — placeChartInDashboardSlot + slotToInsertTarget
+// ----------------------------------------------------------------------------
+describe('slotToInsertTarget', () => {
+  const config = { rows: [{ items: [{ chart: 'ref(a)' }] }, { items: [] }] };
+
+  test('"new" → a new top-level row at the end', () => {
+    expect(slotToInsertTarget(config, 'new')).toEqual({ kind: 'between-rows', index: 2 });
+  });
+
+  test('undefined slot defaults to a new row', () => {
+    expect(slotToInsertTarget(config, undefined)).toEqual({ kind: 'between-rows', index: 2 });
+  });
+
+  test('"<row>:end" → end-of-row target', () => {
+    expect(slotToInsertTarget(config, '1:end')).toEqual({ kind: 'end-of-row', rowPath: 'row.1' });
+  });
+
+  test('"<row>:<item>" → between-items target', () => {
+    expect(slotToInsertTarget(config, '0:0')).toEqual({
+      kind: 'between-items',
+      rowPath: 'row.0',
+      index: 0,
+    });
+  });
+
+  test('an out-of-range row index falls back to a new row', () => {
+    expect(slotToInsertTarget(config, '9:end')).toEqual({ kind: 'between-rows', index: 2 });
+  });
+});
+
+describe('dashboardStore placeChartInDashboardSlot', () => {
+  const seedPlace = (dashboards, saveDashboard) => {
+    act(() => {
+      useStore.setState({
+        dashboards,
+        saveDashboard: saveDashboard || jest.fn(async () => ({ success: true })),
+      });
+    });
+  };
+
+  test('wraps the chart in an item and appends a new row, then saves', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seedPlace([{ name: 'sales', config: { rows: [{ items: [{ chart: 'ref(x)' }] }] } }], saveDashboard);
+    await act(async () => {
+      await useStore.getState().placeChartInDashboardSlot('sales', 'revenue_chart', 'new');
+    });
+    expect(saveDashboard).toHaveBeenCalledTimes(1);
+    const [name, nextConfig] = saveDashboard.mock.calls[0];
+    expect(name).toBe('sales');
+    expect(nextConfig.rows).toHaveLength(2);
+    const placedItem = nextConfig.rows[1].items[0];
+    expect(placedItem.chart).toBe('ref(revenue_chart)');
+  });
+
+  test('appends to an existing row for "<row>:end"', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seedPlace([{ name: 'sales', config: { rows: [{ items: [{ chart: 'ref(x)' }] }] } }], saveDashboard);
+    await act(async () => {
+      await useStore.getState().placeChartInDashboardSlot('sales', 'revenue_chart', '0:end');
+    });
+    const [, nextConfig] = saveDashboard.mock.calls[0];
+    expect(nextConfig.rows).toHaveLength(1);
+    expect(nextConfig.rows[0].items.map(i => i.chart)).toEqual(['ref(x)', 'ref(revenue_chart)']);
+  });
+
+  test('handles a dashboard with no rows', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seedPlace([{ name: 'sales', config: {} }], saveDashboard);
+    await act(async () => {
+      await useStore.getState().placeChartInDashboardSlot('sales', 'revenue_chart', 'new');
+    });
+    const [, nextConfig] = saveDashboard.mock.calls[0];
+    expect(nextConfig.rows[0].items[0].chart).toBe('ref(revenue_chart)');
+  });
+
+  test('returns an error when the dashboard is not found', async () => {
+    seedPlace([], jest.fn());
+    let result;
+    await act(async () => {
+      result = await useStore.getState().placeChartInDashboardSlot('ghost', 'c', 'new');
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('returns an error when chart name is missing', async () => {
+    seedPlace([{ name: 'sales', config: { rows: [] } }], jest.fn());
+    let result;
+    await act(async () => {
+      result = await useStore.getState().placeChartInDashboardSlot('sales', '', 'new');
+    });
+    expect(result.success).toBe(false);
   });
 });
