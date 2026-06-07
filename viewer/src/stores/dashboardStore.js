@@ -1,6 +1,36 @@
 import * as dashboardsApi from '../api/dashboards';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 import { getEffectiveLevels } from '../utils/effectiveLevels';
+import { insertItemAtTarget } from '../components/new-views/project/canvas/canvasReorder';
+
+/**
+ * Translate a J-1 / J-2 `slot` descriptor into the `insertItemAtTarget` target
+ * descriptor against a dashboard config:
+ *
+ *   "new"             → a new top-level row at the end.
+ *   "<rowIdx>:end"    → append to that row (or new row if the index is gone).
+ *   "<rowIdx>:<i>"    → insert before item <i> in that row.
+ *
+ * Always falls back to a new row at the end when the descriptor can't be
+ * resolved, so a placement never silently drops the chart.
+ */
+export const slotToInsertTarget = (config, slot) => {
+  const rows = Array.isArray(config?.rows) ? config.rows : [];
+  const newRow = { kind: 'between-rows', index: rows.length };
+  if (!slot || slot === 'new') return newRow;
+  const [rowPart, itemPart] = String(slot).split(':');
+  const rowIdx = Number(rowPart);
+  if (!Number.isInteger(rowIdx) || rowIdx < 0 || rowIdx >= rows.length) return newRow;
+  const rowPath = `row.${rowIdx}`;
+  if (itemPart === 'end' || itemPart === undefined) {
+    return { kind: 'end-of-row', rowPath };
+  }
+  const itemIdx = Number(itemPart);
+  if (!Number.isInteger(itemIdx) || itemIdx < 0) {
+    return { kind: 'end-of-row', rowPath };
+  }
+  return { kind: 'between-items', rowPath, index: itemIdx };
+};
 
 /**
  * Dashboard Store Slice
@@ -72,6 +102,34 @@ const createDashboardSlice = (set, get) => ({
       nextConfig.level = nextLevel;
     }
     return get().saveDashboard(name, nextConfig);
+  },
+
+  /**
+   * Place an existing chart onto a dashboard in a given slot (J-2 / VIS-778
+   * round-trip, and the J-1 add-to-dashboard landing). The chart is wrapped in
+   * an `Item` ({ chart: ref(...) }) and inserted at the slot via the same
+   * canvas reshape helper the DnD router uses, then persisted through the draft
+   * cache (`saveDashboard`).
+   *
+   * Returns `{ success, result|error }`.
+   */
+  placeChartInDashboardSlot: async (dashboardName, chartName, slot) => {
+    if (!dashboardName || !chartName) {
+      return { success: false, error: 'dashboard and chart names are required' };
+    }
+    const dashboard = (get().dashboards || []).find(d => d.name === dashboardName);
+    if (!dashboard) {
+      return { success: false, error: `Dashboard "${dashboardName}" not found` };
+    }
+    const config = dashboard.config || {};
+    const baseConfig = { ...config, rows: Array.isArray(config.rows) ? config.rows : [] };
+    const target = slotToInsertTarget(baseConfig, slot);
+    const newItem = { width: 1, chart: `ref(${chartName})` };
+    const nextConfig = insertItemAtTarget(baseConfig, target, newItem);
+    if (nextConfig === baseConfig) {
+      return { success: false, error: 'Could not place the chart in the requested slot' };
+    }
+    return get().saveDashboard(dashboardName, nextConfig);
   },
 
   // Mark dashboard for deletion
