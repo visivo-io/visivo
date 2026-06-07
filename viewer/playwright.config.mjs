@@ -9,7 +9,10 @@ export default defineConfig({
   retries: 2,
   workers: '75%',
   use: {
-    baseURL: 'http://localhost:3001',
+    // Defaults to the standard sandbox (:3001). An isolated hardening sandbox
+    // (e.g. :3022) can be targeted via PLAYWRIGHT_BASE_URL without editing this
+    // file, so parallel agents don't collide on ports.
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
@@ -24,12 +27,17 @@ export default defineConfig({
       name: 'parallel',
       testIgnore: [
         '**/explorer-crud-save.spec.mjs',
+        '**/explorer-library-reactivity.spec.mjs',
         '**/explorer-publish-to-files.spec.mjs',
       ],
     },
     {
       name: 'state-mutating',
-      testMatch: ['**/explorer-crud-save.spec.mjs'],
+      testMatch: [
+        '**/explorer-crud-save.spec.mjs',
+        // J-4: saves a chart from Explorer, asserts the Library reflects it.
+        '**/explorer-library-reactivity.spec.mjs',
+      ],
       dependencies: ['parallel'],
     },
     {
