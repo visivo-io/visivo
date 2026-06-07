@@ -6,6 +6,7 @@ import {
   PiX,
   PiSpinner,
 } from 'react-icons/pi';
+import { useSearchParams } from 'react-router-dom';
 import { useDraggable } from '@dnd-kit/core';
 import ObjectList from '../new-views/common/ObjectList';
 import { getTypeColors, getTypeIcon } from '../new-views/common/objectTypeConfigs';
@@ -72,6 +73,12 @@ const ExplorerLeftPanel = () => {
   const activeModelName = useStore((s) => s.explorerActiveModelName);
   const explorerModelStates = useStore((s) => s.explorerModelStates);
   const explorerInsightStates = useStore((s) => s.explorerInsightStates);
+
+  // J-5 (VIS-789): when Explorer is opened from Build mode (`?return_to=workspace`)
+  // with nothing yet authored, the empty-state CTA spells out the full
+  // round-trip so the user isn't orphaned in an empty Explorer.
+  const [searchParams] = useSearchParams();
+  const returnToWorkspace = searchParams.get('return_to') === 'workspace';
 
   // Object stores
   const models = useStore((s) => s.models || []);
@@ -457,8 +464,15 @@ const ExplorerLeftPanel = () => {
           filteredInsights.length === 0 &&
           filteredCharts.length === 0 &&
           filteredInputs.length === 0 && (
-            <div className="flex items-center justify-center h-32 text-xs text-secondary-400">
-              {searchQuery ? `No results for "${searchQuery}"` : 'No project objects defined'}
+            <div
+              data-testid="explorer-left-empty-state"
+              className="flex items-center justify-center h-32 px-4 text-center text-xs text-secondary-400"
+            >
+              {searchQuery
+                ? `No results for "${searchQuery}"`
+                : returnToWorkspace
+                  ? "Add a source first, then build your first insight, then we'll wrap it in a chart and drop it back on your dashboard."
+                  : 'No project objects defined'}
             </div>
           )}
       </div>
