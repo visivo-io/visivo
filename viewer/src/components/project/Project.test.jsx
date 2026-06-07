@@ -15,6 +15,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('./Dashboard', () => ({ projectId, dashboardName }) => (
   <div data-testid="dashboard" data-project={projectId} data-name={dashboardName} />
 ));
+jest.mock('./ProjectViewFlipLayer', () => () => <div data-testid="view-flip-layer" />);
 jest.mock('../project/DashboardSection', () => ({ title, dashboards }) => (
   <div data-testid="dashboard-section" data-level={title} data-count={dashboards?.length} />
 ));
