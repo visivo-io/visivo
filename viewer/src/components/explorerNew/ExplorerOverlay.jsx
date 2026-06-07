@@ -104,21 +104,25 @@ const ExplorerOverlay = () => {
   return (
     <div
       data-testid="explorer-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 lg:p-10"
     >
-      {/* Backdrop — low opacity so the canvas (origin context) shows through. */}
+      {/* Backdrop — dim the origin canvas enough that the framed card clearly
+          reads as an overlay ON TOP of Build mode (not a navigation away), while
+          still letting the dashboard show through around the edges. */}
       <button
         type="button"
         aria-label="Close Explorer overlay"
         data-testid="explorer-overlay-backdrop"
-        className="absolute inset-0 bg-secondary-900/30"
+        className="absolute inset-0 bg-secondary-900/50"
         onClick={() => !saving && close()}
       />
 
-      {/* Framed card — border + shadow read as "inside Build mode". */}
+      {/* Framed card — a prominent mulberry border, a visible dimmed margin
+          (the card never fills the full viewport), and a ring+shadow make it
+          read as "inside Build mode". */}
       <div
         data-testid="explorer-overlay-card"
-        className="relative flex h-full w-full max-w-[1600px] flex-col overflow-hidden rounded-xl border-2 border-primary-200 bg-white shadow-2xl"
+        className="relative flex h-full max-h-[94vh] w-full max-w-[1600px] flex-col overflow-hidden rounded-xl border-2 border-primary-400 bg-white shadow-2xl ring-1 ring-primary-900/10"
         role="dialog"
         aria-modal="true"
         aria-label="Create a chart for your dashboard"
