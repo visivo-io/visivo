@@ -55,8 +55,11 @@ const buildSlotOptions = dashboardConfig => {
  *
  * J-1 (VIS-774): an "After save" section lets the user choose what happens once
  * the save succeeds — stay in Explorer (default), open the new chart in
- * Workspace, or add it to a chosen dashboard in a chosen slot. The last choice
- * is remembered per session.
+ * Workspace, or add it to a chosen dashboard in a chosen slot. The "Add to
+ * dashboard" choice places the saved chart in the slot (via
+ * placeChartInDashboardSlot) and then navigates to Build mode with
+ * `?slot&newItem` so the receiving canvas can highlight the new item. The last
+ * choice is remembered per session.
  *
  * Props:
  * - onClose: (function) called when the modal should close (cancel or successful save)
@@ -64,10 +67,13 @@ const buildSlotOptions = dashboardConfig => {
 const ExplorerSaveModal = ({ onClose }) => {
   const navigate = useNavigate();
   const diffResult = useStore((s) => s.explorerDiffResult);
+  const modelStates = useStore((s) => s.explorerModelStates);
+  const insightStates = useStore((s) => s.explorerInsightStates);
   const chartName = useStore((s) => s.explorerChartName);
   const saveExplorerObjects = useStore((s) => s.saveExplorerObjects);
   const dashboards = useStore((s) => s.dashboards);
   const fetchDashboards = useStore((s) => s.fetchDashboards);
+  const placeChartInDashboardSlot = useStore((s) => s.placeChartInDashboardSlot);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -123,6 +129,7 @@ const ExplorerSaveModal = ({ onClose }) => {
   const { newItems, modifiedItems, chartStatus } = useMemo(() => {
     const newArr = [];
     const modArr = [];
+    const seen = new Set();
 
     if (diffResult) {
       for (const [category, statuses] of Object.entries(diffResult)) {
@@ -130,9 +137,32 @@ const ExplorerSaveModal = ({ onClose }) => {
         // Map category to objectType (e.g., "models" → "model")
         const objectType = category.replace(/s$/, '');
         for (const [name, status] of Object.entries(statuses || {})) {
-          if (status === 'new') newArr.push({ name, objectType });
-          else if (status === 'modified') modArr.push({ name, objectType });
+          if (status === 'new') {
+            newArr.push({ name, objectType });
+            seen.add(`${objectType}:${name}`);
+          } else if (status === 'modified') {
+            modArr.push({ name, objectType });
+            seen.add(`${objectType}:${name}`);
+          }
         }
+      }
+    }
+
+    // Brand-new LOCAL objects (isNew) may not appear in the backend diff yet —
+    // the diff only tracks objects the backend already knows about. Mirror
+    // selectHasModifications here so the modal's "new" list (and totalChanges)
+    // matches the top Save button's enabled state. Without this, a fresh model/
+    // insight shows "No changes to save" with Save disabled — a dead end.
+    for (const [name, ms] of Object.entries(modelStates || {})) {
+      if (ms?.isNew && ms?.sql && !seen.has(`model:${name}`)) {
+        newArr.push({ name, objectType: 'model' });
+        seen.add(`model:${name}`);
+      }
+    }
+    for (const [name, is] of Object.entries(insightStates || {})) {
+      if (is?.isNew && !seen.has(`insight:${name}`)) {
+        newArr.push({ name, objectType: 'insight' });
+        seen.add(`insight:${name}`);
       }
     }
 
@@ -141,7 +171,7 @@ const ExplorerSaveModal = ({ onClose }) => {
       modifiedItems: modArr,
       chartStatus: diffResult?.chart || null,
     };
-  }, [diffResult]);
+  }, [diffResult, modelStates, insightStates]);
 
   const totalChanges = newItems.length + modifiedItems.length + (chartStatus ? 1 : 0);
 
@@ -156,6 +186,21 @@ const ExplorerSaveModal = ({ onClose }) => {
         if (afterSave === AFTER_SAVE_WORKSPACE) {
           navigate('/workspace');
         } else if (afterSave === AFTER_SAVE_DASHBOARD && targetDashboard) {
+          // Actually place the freshly-saved chart in the chosen slot before
+          // navigating — without this the "Add to dashboard … in slot …" choice
+          // only moved the user to Build mode and silently dropped the chart.
+          if (chartName) {
+            const placed = await placeChartInDashboardSlot(
+              targetDashboard,
+              chartName,
+              targetSlot
+            );
+            if (!placed.success) {
+              setError(placed.error || 'Could not place the chart on the dashboard.');
+              setSaving(false);
+              return;
+            }
+          }
           const params = new URLSearchParams();
           params.set('slot', targetSlot);
           if (chartName) params.set('newItem', chartName);
@@ -173,7 +218,16 @@ const ExplorerSaveModal = ({ onClose }) => {
     } finally {
       setSaving(false);
     }
-  }, [saveExplorerObjects, onClose, afterSave, targetDashboard, targetSlot, chartName, navigate]);
+  }, [
+    saveExplorerObjects,
+    onClose,
+    afterSave,
+    targetDashboard,
+    targetSlot,
+    chartName,
+    navigate,
+    placeChartInDashboardSlot,
+  ]);
 
   const radioBase =
     'flex items-start gap-2 text-sm text-secondary-700 cursor-pointer select-none';
