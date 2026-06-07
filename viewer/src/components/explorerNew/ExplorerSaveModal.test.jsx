@@ -45,18 +45,21 @@ const baseState = {
 describe('ExplorerSaveModal', () => {
   let mockOnClose;
   let mockSaveExplorerObjects;
+  let mockPlaceChart;
 
   beforeEach(() => {
     mockOnClose = jest.fn();
     mockNavigate.mockClear();
     sessionStorage.clear();
     mockSaveExplorerObjects = jest.fn().mockResolvedValue({ success: true, errors: [] });
+    mockPlaceChart = jest.fn().mockResolvedValue({ success: true });
     useStore.setState({
       ...baseState,
       dashboards: [],
       // Stub so the modal's on-mount dashboards fetch doesn't hit the network.
       fetchDashboards: jest.fn().mockResolvedValue(undefined),
       saveExplorerObjects: mockSaveExplorerObjects,
+      placeChartInDashboardSlot: mockPlaceChart,
     });
   });
 
@@ -204,6 +207,40 @@ describe('ExplorerSaveModal', () => {
     expect(screen.queryByTestId('embedded-pill-metric-existing_met')).not.toBeInTheDocument();
   });
 
+  it('enables Save for a brand-new LOCAL model absent from the backend diff', () => {
+    // Mirrors selectHasModifications: a fresh model (isNew + sql) exists only
+    // locally and is not yet in explorerDiffResult. The modal must still treat
+    // it as a change (no "No changes to save" dead end).
+    useStore.setState({
+      explorerDiffResult: {},
+      explorerModelStates: { model_2: { isNew: true, sql: 'SELECT 1' } },
+    });
+    renderModal({ onClose: mockOnClose });
+    expect(screen.getByTestId('save-modal-confirm')).not.toBeDisabled();
+    expect(screen.getByTestId('embedded-pill-model-model_2')).toBeInTheDocument();
+    expect(screen.queryByText('No changes to save.')).not.toBeInTheDocument();
+  });
+
+  it('enables Save for a brand-new LOCAL insight absent from the backend diff', () => {
+    useStore.setState({
+      explorerDiffResult: null,
+      explorerInsightStates: { my_insight: { isNew: true, type: 'bar', props: {} } },
+    });
+    renderModal({ onClose: mockOnClose });
+    expect(screen.getByTestId('save-modal-confirm')).not.toBeDisabled();
+    expect(screen.getByTestId('embedded-pill-insight-my_insight')).toBeInTheDocument();
+  });
+
+  it('does not double-count a local new model that is also in the diff', () => {
+    useStore.setState({
+      explorerDiffResult: { models: { model_2: 'new' } },
+      explorerModelStates: { model_2: { isNew: true, sql: 'SELECT 1' } },
+    });
+    renderModal({ onClose: mockOnClose });
+    // Exactly one pill for model_2.
+    expect(screen.getAllByTestId('embedded-pill-model-model_2')).toHaveLength(1);
+  });
+
   it('save button is disabled when no changes', () => {
     useStore.setState({
       explorerDiffResult: { models: { m: null }, insights: { i: null } },
@@ -264,7 +301,7 @@ describe('ExplorerSaveModal', () => {
       });
     });
 
-    it('navigates to the dashboard with slot + newItem params on option 3', async () => {
+    it('places the chart in the chosen slot AND navigates with slot + newItem params on option 3', async () => {
       withDashboards();
       renderModal({ onClose: mockOnClose });
       fireEvent.click(screen.getByTestId('after-save-dashboard'));
@@ -276,10 +313,27 @@ describe('ExplorerSaveModal', () => {
       });
       fireEvent.click(screen.getByTestId('save-modal-confirm'));
       await waitFor(() => {
+        expect(mockPlaceChart).toHaveBeenCalledWith('ops', 'revenue_chart', '0:end');
+      });
+      await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(
           '/workspace/dashboard/ops?slot=0%3Aend&newItem=revenue_chart'
         );
       });
+    });
+
+    it('surfaces an error and does NOT navigate when placement fails on option 3', async () => {
+      mockPlaceChart.mockResolvedValue({ success: false, error: 'slot is gone' });
+      withDashboards();
+      renderModal({ onClose: mockOnClose });
+      fireEvent.click(screen.getByTestId('after-save-dashboard'));
+      fireEvent.click(screen.getByTestId('save-modal-confirm'));
+      await waitFor(() => {
+        expect(screen.getByTestId('save-error')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/slot is gone/)).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
 
     it('slot picker lists one option per row plus a new-row option', () => {
