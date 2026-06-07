@@ -37,17 +37,13 @@ const openView = async page => {
 
 // The flip layer tracks hover via a pointermove delegation on the View root, so
 // the reveal needs a REAL pointer move over the slot (not just a synthetic
-// hover). Scroll the slot into view, then move the mouse to its center via the
-// bounding box so the delegated pointermove fires reliably. Retry once if the
-// first move lands before layout settles.
-const revealFlip = async (page, itemPath) => {
+// hover). Scroll the slot into view, then move the mouse to its top-left corner
+// via the bounding box so the delegated pointermove fires reliably. Retry until
+// the kebab (⋮) menu button appears.
+const revealMenu = async (page, itemPath) => {
   const slot = page.locator(`[data-canvas-path="${itemPath}"]`).first();
   await slot.scrollIntoViewIfNeeded();
-  const button = page.getByTestId(`view-flip-button-${itemPath}`);
-  // The flip layer tracks hover via pointermove delegation on the View root, so
-  // re-hover the slot's top-left corner (away from the chart center, and away
-  // from any open card popover anchored to a sibling) until the delegated hover
-  // reveals the flip button. `hover` auto-scrolls + auto-waits for actionability.
+  const button = page.getByTestId(`view-item-menu-${itemPath}`);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     await slot.hover({ position: { x: 40, y: 20 }, timeout: 4000 }).catch(() => {});
     if (await button.isVisible().catch(() => false)) return;
@@ -56,11 +52,21 @@ const revealFlip = async (page, itemPath) => {
   await expect(button).toBeVisible({ timeout: 4000 });
 };
 
-// The flip button sits in a pointer-events layer over the slot; dispatch the
-// click directly to avoid the Plotly/markdown content intercepting it.
-const clickFlip = async (page, itemPath) => {
-  await page.getByTestId(`view-flip-button-${itemPath}`).evaluate(el => el.click());
+// Open the kebab dropdown for a slot (dispatch click directly — the menu sits in
+// a pointer-events layer that the Plotly/markdown content can otherwise intercept).
+const openMenu = async (page, itemPath) => {
+  await page.getByTestId(`view-item-menu-${itemPath}`).evaluate(el => el.click());
+  await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({ timeout: WAIT });
 };
+
+// Reveal + open the kebab, then select an action by id (copy | flip).
+const selectAction = async (page, itemPath, actionId) => {
+  await revealMenu(page, itemPath);
+  await openMenu(page, itemPath);
+  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).evaluate(el => el.click());
+};
+
+const clickFlip = (page, itemPath) => selectAction(page, itemPath, 'flip');
 
 test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -81,28 +87,32 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     await page.close();
   });
 
-  test('flip toggle appears on hover for a CHART slot', async () => {
+  test('kebab menu appears on hover for a CHART slot', async () => {
     await openView(page);
-    await revealFlip(page, 'row.0.item.0');
-    await expect(page.getByTestId('view-flip-button-row.0.item.0')).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
+    await revealMenu(page, 'row.0.item.0');
+    await expect(page.getByTestId('view-item-menu-row.0.item.0')).toBeVisible();
   });
 
-  test('flip toggle appears on hover for a MARKDOWN slot', async () => {
+  test('kebab menu appears on hover for a MARKDOWN slot', async () => {
     await openView(page);
     // simple-dashboard row.2.item.0 is a markdown leaf.
-    await revealFlip(page, 'row.2.item.0');
-    await expect(page.getByTestId('view-flip-button-row.2.item.0')).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
+    await revealMenu(page, 'row.2.item.0');
+    await expect(page.getByTestId('view-item-menu-row.2.item.0')).toBeVisible();
+  });
+
+  test('the kebab carries Copy link + Flip and the built-in share button is gone', async () => {
+    await openView(page);
+    await revealMenu(page, 'row.0.item.0');
+    await openMenu(page, 'row.0.item.0');
+    await expect(page.getByTestId('view-item-action-copy-row.0.item.0')).toBeVisible();
+    await expect(page.getByTestId('view-item-action-flip-row.0.item.0')).toBeVisible();
+    // No legacy standalone flip button anywhere (collision resolved).
+    await expect(page.locator('[data-testid^="view-flip-button-"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
   });
 
   test('the View-mode card renders the shared MiniLineageCard chain (VIS-780)', async () => {
     await openView(page);
-    await revealFlip(page, 'row.0.item.0');
     await clickFlip(page, 'row.0.item.0');
     const prefix = 'view-flip-card-row.0.item.0';
     await expect(page.getByTestId(prefix)).toBeVisible({ timeout: WAIT });
@@ -125,12 +135,10 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     // a 2-up row it overlays the sibling slot, making the sibling un-hoverable.
     // Cross-row slots avoid the overlap while still proving the multi-flip set.
     await openView(page);
-    await revealFlip(page, 'row.0.item.0');
     await clickFlip(page, 'row.0.item.0');
     await expect(page.getByTestId('view-flip-card-row.0.item.0')).toBeVisible({ timeout: WAIT });
 
     // Flip a SECOND slot in a lower row — the first card must stay open.
-    await revealFlip(page, 'row.1.item.0');
     await clickFlip(page, 'row.1.item.0');
     await expect(page.getByTestId('view-flip-card-row.1.item.0')).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('view-flip-card-row.0.item.0')).toBeVisible();
@@ -151,7 +159,6 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
 
   test('Expand deep-links with the CORRECT type:name for the slot subject', async () => {
     await openView(page);
-    await revealFlip(page, 'row.0.item.0');
     await clickFlip(page, 'row.0.item.0');
     const prefix = 'view-flip-card-row.0.item.0';
     await expect(page.getByTestId(prefix)).toBeVisible({ timeout: WAIT });
@@ -174,16 +181,14 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
   test('prefers-reduced-motion: gesture works AND motion is suppressed', async () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openView(page);
-    await revealFlip(page, 'row.0.item.0');
-    const btn = page.getByTestId('view-flip-button-row.0.item.0');
-    // The flip-button drops its rotate-transition utility under reduced motion.
+    await revealMenu(page, 'row.0.item.0');
+    const btn = page.getByTestId('view-item-menu-row.0.item.0');
+    // The kebab drops its color-transition utility under reduced motion.
     const cls = await btn.getAttribute('class');
-    expect(cls).not.toContain('transition-transform');
+    expect(cls).not.toContain('transition-colors');
+    // The gesture still works under reduced motion.
     await clickFlip(page, 'row.0.item.0');
     await expect(page.getByTestId('view-flip-card-row.0.item.0')).toBeVisible({ timeout: WAIT });
-    // Flipped, but no rotateY transform applied (motion suppressed).
-    const transform = await btn.evaluate(el => el.style.transform);
-    expect(transform).toBe('none');
     await clickFlip(page, 'row.0.item.0');
     await expect(page.getByTestId('view-flip-card-row.0.item.0')).toHaveCount(0);
     await page.emulateMedia({ reducedMotion: null });
