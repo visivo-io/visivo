@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
+import { parseRefValue } from '../../../../utils/refString';
 import { useWorkspaceCommit } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import {
@@ -67,6 +69,35 @@ const isContainerItem = (config, key) => {
   return !!item && Array.isArray(item.rows) && item.rows.length > 0;
 };
 
+// Walk the config to the leaf item addressed by an item key, then resolve the
+// chart/table subject it carries: `{ type, name }` or null (container / empty /
+// non-chart leaf). Used by "Open in Explorer" (VIS-782 / J-3) — only chart and
+// table leaves have a model+insight worth opening in Explorer.
+const explorerSubjectAtKey = (config, key) => {
+  const segments = parseCanvasPath(key);
+  if (!segments.length || segments[segments.length - 1].kind !== 'item') return null;
+  let rows = Array.isArray(config?.rows) ? config.rows : null;
+  let item = null;
+  for (const seg of segments) {
+    if (seg.kind === 'row') {
+      if (!rows || !rows[seg.index]) return null;
+      rows = Array.isArray(rows[seg.index].items) ? rows[seg.index].items : null;
+    } else {
+      if (!rows || !rows[seg.index]) return null;
+      item = rows[seg.index];
+      rows = Array.isArray(item.rows) ? item.rows : null;
+    }
+  }
+  if (!item || (Array.isArray(item.rows) && item.rows.length > 0)) return null;
+  for (const type of ['chart', 'table']) {
+    const raw = item[type];
+    if (raw == null || raw === '') continue;
+    const name = typeof raw === 'string' ? parseRefValue(raw) : raw.name || raw.path;
+    if (name) return { type, name };
+  }
+  return null;
+};
+
 // The ROW path that owns the item at an item key (for "Add item to row" from an
 // item right-click): drop the trailing `item.<n>` segment.
 const rowPathForItemKey = key => {
@@ -114,6 +145,7 @@ const MenuItem = ({ testid, label, hint, onClick, danger }) => (
 );
 
 const CanvasContextMenu = ({ rootRef, dashboardName }) => {
+  const navigate = useNavigate();
   const dashboards = useStore(s => s.dashboards);
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
   const commitCanvasConfig = useWorkspaceCommit();
@@ -187,9 +219,32 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     [dashboardName, commitCanvasConfig, dashboardConfig]
   );
 
+  const openInExplorer = useCallback(
+    subject => {
+      if (!subject) return;
+      const params = new URLSearchParams();
+      // The deep-load target — Explorer reads `?insight=` / engineering routing
+      // hydrates the chart's model + insight (out of scope for J-3 framing).
+      params.set(subject.type === 'table' ? 'table' : 'insight', subject.name);
+      params.set('return_to', 'workspace');
+      if (dashboardName) params.set('dashboard', dashboardName);
+      emitWorkspaceEvent('open_in_explorer', {
+        dashboardName,
+        subjectType: subject.type,
+        subjectName: subject.name,
+      });
+      setMenu(null);
+      navigate(`/explorer?${params.toString()}`);
+    },
+    [navigate, dashboardName]
+  );
+
   if (!dashboardConfig || !menu) return null;
 
   const isContainer = menu.kind === 'item' && isContainerItem(dashboardConfig, menu.key);
+  // "Open in Explorer" subject — a chart/table leaf carries a model+insight.
+  const explorerSubject =
+    menu.kind === 'item' ? explorerSubjectAtKey(dashboardConfig, menu.key) : null;
   // A leaf can be wrapped. (A container is not a leaf.)
   const isLeaf = menu.kind === 'item' && !isContainer;
   // Container actions target the nearest container ancestor — the clicked key
@@ -214,6 +269,18 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
       <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
         {menu.kind === 'item' ? (isContainer ? 'Container' : 'Item') : 'Row'}
       </div>
+
+      {explorerSubject && (
+        <>
+          <MenuItem
+            testid="canvas-ctx-open-in-explorer"
+            label="Open in Explorer"
+            hint="↗"
+            onClick={() => openInExplorer(explorerSubject)}
+          />
+          <div className="my-1 h-px bg-[#f0ebed]" />
+        </>
+      )}
 
       {isLeaf && (
         <MenuItem
