@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
 import { useNavigate } from 'react-router-dom';
 import { parseRefValue } from '../../utils/refString';
 import { parseCanvasPath } from '../new-views/project/canvas/canvasReorder';
-import LibraryRowFlipPopover from '../new-views/workspace/library/LibraryRowFlipPopover';
+import ItemFlipCard from './ItemFlipCard';
 import ItemActionMenu from './ItemActionMenu';
 import copy from 'copy-to-clipboard';
 
@@ -21,11 +21,11 @@ const copyItemLink = () => {
  *
  * Per Q3b the flip-to-lineage gesture lives in VIEW mode too — not just the
  * Workspace build canvas. This mounts a SIBLING over the render-only
- * <Dashboard> at `/project/<name>` and paints a small mulberry FLIP button in
- * the top-right of each hovered leaf slot (chart/table/markdown/input).
- * Clicking it flips the slot to its lineage neighbourhood card — the SAME
- * delivered surface the build canvas uses (<LibraryRowFlipPopover>, which
- * renders the shared <MiniLineageCard> extracted by VIS-780). No new design.
+ * <Dashboard> at `/project/<name>` and paints a kebab (⋮) menu in the top-right
+ * of each hovered leaf slot (chart/table/markdown/input). Selecting "Flip to
+ * lineage" flips the slot IN PLACE to its lineage neighbourhood card —
+ * `<ItemFlipCard>` overlays the slot's OWN box (reading as the chart flipping
+ * over) and renders the shared <MiniLineageCard> extracted by VIS-780.
  *
  * ### View-mode specifics
  *
@@ -191,18 +191,20 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
     [hoverKey, menuHoverKey, openKey, flipped]
   );
 
-  // Resolve a stable anchor element + subject for each open (flipped) card.
+  // Resolve a subject + the slot box for each open (flipped) card. The card
+  // overlays the slot IN PLACE, so it positions at the slot box (re-measured on
+  // reflow via `tick`) rather than anchoring beside it.
   const openCards = useMemo(
     () =>
       [...flipped]
         .map(key => {
           const subject = subjectForItem(itemAtKey(dashboardConfig, key));
-          const el = root ? root.querySelector(`[data-canvas-path="${key}"]`) : null;
-          return subject && el ? { key, subject, el } : null;
+          const box = boxFor(key);
+          return subject && box ? { key, subject, box } : null;
         })
         .filter(Boolean),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flipped, dashboardConfig, root, tick]
+    [flipped, dashboardConfig, boxFor, tick]
   );
 
   if (!dashboardConfig) return null;
@@ -248,37 +250,17 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
       })}
 
       {openCards.map(card => (
-        <FlipCardAnchor
+        <ItemFlipCard
           key={card.key}
-          cardKey={card.key}
-          el={card.el}
-          subject={card.subject}
+          box={card.box}
+          obj={card.subject}
+          reducedMotion={reducedMotion}
           onClose={() => toggleFlip(card.key)}
-          onExpand={expandToWorkspace}
+          onExpand={() => expandToWorkspace(card.subject)}
+          testIdPrefix={`view-flip-card-${card.key}`}
         />
       ))}
     </div>
-  );
-};
-
-/**
- * FlipCardAnchor — wraps LibraryRowFlipPopover with a ref anchored to the item's
- * live DOM node so the popover positions next to the View-mode slot. The popover
- * already portals to the body + tracks scroll/resize, and renders the shared
- * <MiniLineageCard>. `onExpand` overrides the default lens flip with the
- * View-mode deep link.
- */
-const FlipCardAnchor = ({ cardKey, el, subject, onClose, onExpand }) => {
-  const anchorRef = useRef(el);
-  anchorRef.current = el;
-  return (
-    <LibraryRowFlipPopover
-      obj={subject}
-      anchorRef={anchorRef}
-      onClose={onClose}
-      onExpand={() => onExpand(subject)}
-      testIdPrefix={`view-flip-card-${cardKey}`}
-    />
   );
 };
 

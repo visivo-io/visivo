@@ -41,9 +41,12 @@ const openView = async page => {
 // via the bounding box so the delegated pointermove fires reliably. Retry until
 // the kebab (⋮) menu button appears.
 const revealMenu = async (page, itemPath) => {
+  const button = page.getByTestId(`view-item-menu-${itemPath}`);
+  // Already flipped → an in-place card covers the slot body, but its kebab stays
+  // mounted above the card. Short-circuit rather than hovering the obscured slot.
+  if (await button.isVisible().catch(() => false)) return;
   const slot = page.locator(`[data-canvas-path="${itemPath}"]`).first();
   await slot.scrollIntoViewIfNeeded();
-  const button = page.getByTestId(`view-item-menu-${itemPath}`);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     await slot.hover({ position: { x: 40, y: 20 }, timeout: 4000 }).catch(() => {});
     if (await button.isVisible().catch(() => false)) return;
@@ -52,21 +55,38 @@ const revealMenu = async (page, itemPath) => {
   await expect(button).toBeVisible({ timeout: 4000 });
 };
 
-// Open the kebab dropdown for a slot (dispatch click directly — the menu sits in
-// a pointer-events layer that the Plotly/markdown content can otherwise intercept).
+// Open the kebab dropdown for a slot with a REAL cursor click on the kebab. The
+// kebab is a pointer-events-auto overlay above the Plotly/markdown content.
 const openMenu = async (page, itemPath) => {
-  await page.getByTestId(`view-item-menu-${itemPath}`).evaluate(el => el.click());
+  await page.getByTestId(`view-item-menu-${itemPath}`).click();
   await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({ timeout: WAIT });
 };
 
-// Reveal + open the kebab, then select an action by id (copy | flip).
+// Reveal + open the kebab, then select an action by id (copy | flip) with a REAL
+// cursor click on the action row.
 const selectAction = async (page, itemPath, actionId) => {
   await revealMenu(page, itemPath);
   await openMenu(page, itemPath);
-  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).evaluate(el => el.click());
+  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).click();
 };
 
 const clickFlip = (page, itemPath) => selectAction(page, itemPath, 'flip');
+
+// Assert the flip card's box overlaps the source slot's box (center within it).
+const expectCardOverlapsSlot = async (page, cardTestId, itemPath) => {
+  const card = page.getByTestId(cardTestId);
+  await expect(card).toBeVisible({ timeout: WAIT });
+  const cardBox = await card.boundingBox();
+  const slotBox = await page.locator(`[data-canvas-path="${itemPath}"]`).first().boundingBox();
+  expect(cardBox).not.toBeNull();
+  expect(slotBox).not.toBeNull();
+  const cx = cardBox.x + cardBox.width / 2;
+  const cy = cardBox.y + cardBox.height / 2;
+  expect(cx).toBeGreaterThanOrEqual(slotBox.x - 2);
+  expect(cx).toBeLessThanOrEqual(slotBox.x + slotBox.width + 2);
+  expect(cy).toBeGreaterThanOrEqual(slotBox.y - 2);
+  expect(cy).toBeLessThanOrEqual(slotBox.y + slotBox.height + 2);
+};
 
 test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -111,7 +131,7 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('the View-mode card renders the shared MiniLineageCard chain (VIS-780)', async () => {
+  test('the View-mode card renders the shared MiniLineageCard chain, POPULATED + in place (VIS-780)', async () => {
     await openView(page);
     await clickFlip(page, 'row.0.item.0');
     const prefix = 'view-flip-card-row.0.item.0';
@@ -120,6 +140,12 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     await expect(page.getByTestId(`${prefix}-body`)).toBeVisible();
     await expect(page.getByTestId(`${prefix}-selector-input`)).toBeVisible();
     await expect(page.getByTestId(`${prefix}-expand`)).toBeVisible();
+    // The card OVERLAYS the wide source slot, and the lineage is POPULATED
+    // (subject + ancestor nodes, no empty state) — the two bug fixes.
+    await expectCardOverlapsSlot(page, prefix, 'row.0.item.0');
+    await expect(page.getByTestId(`${prefix}-lineage-subject`)).toBeVisible();
+    await expect(page.getByTestId(`${prefix}-empty`)).toHaveCount(0);
+    expect(await page.locator(`[data-testid^="${prefix}-lineage-"]`).count()).toBeGreaterThan(1);
     await page.screenshot({
       path: `${SCREENS}/vis788d-01-shared-card.png`,
       fullPage: true,
@@ -130,10 +156,9 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
   });
 
   test('MULTI-FLIP: two slots flipped open at once each render their own card', async () => {
-    // Use slots in DIFFERENT rows (row.0 + row.1) rather than two adjacent slots
-    // in one row: an open flip card is a popover anchored beside its slot, and on
-    // a 2-up row it overlays the sibling slot, making the sibling un-hoverable.
-    // Cross-row slots avoid the overlap while still proving the multi-flip set.
+    // Use slots in DIFFERENT rows (row.0 + row.1) so revealing the SECOND slot's
+    // kebab isn't blocked by the first in-place card (which covers its own slot).
+    // Cross-row slots keep both kebabs reachable while proving the multi-flip set.
     await openView(page);
     await clickFlip(page, 'row.0.item.0');
     await expect(page.getByTestId('view-flip-card-row.0.item.0')).toBeVisible({ timeout: WAIT });
@@ -168,10 +193,9 @@ test.describe('View-mode flip detailed (VIS-788 / I-1)', () => {
     // different (but still valid) chart. The deep link must carry THAT subject.
     const subjectName = (await page.getByTestId(`${prefix}-name`).innerText()).trim();
     expect(subjectName.length).toBeGreaterThan(0);
-    // Dispatch the click directly: the flip-card popover can extend past the
-    // right viewport edge (a known View-mode finding), so the Expand button may
-    // not be in an actionable position for a coordinate click.
-    await page.getByTestId(`${prefix}-expand`).evaluate(el => el.click());
+    // Real cursor click on Expand — the in-place card sits over its own slot and
+    // is clamped to the viewport, so the Expand footer is always actionable.
+    await page.getByTestId(`${prefix}-expand`).click();
     await expect(page).toHaveURL(
       new RegExp(`/workspace\\?edit=chart:${subjectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
       { timeout: WAIT }

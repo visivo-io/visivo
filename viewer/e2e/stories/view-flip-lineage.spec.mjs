@@ -35,26 +35,58 @@ const openView = async page => {
 
 // Hover the slot to reveal its kebab (⋮) menu button. The flip layer tracks hover
 // via pointermove delegation on the view root, so we hover the slot directly.
+// When the slot is already flipped, an in-place card COVERS the slot body — but
+// its kebab stays mounted (flipped items keep their kebab) above the card, so we
+// short-circuit to it rather than hovering the now-obscured slot.
 const revealMenu = async (page, itemPath) => {
+  const kebab = page.getByTestId(`view-item-menu-${itemPath}`);
+  if (await kebab.isVisible().catch(() => false)) return;
   const slot = page.locator(`[data-canvas-path="${itemPath}"]`).first();
   await slot.hover();
-  await expect(page.getByTestId(`view-item-menu-${itemPath}`)).toBeVisible({ timeout: WAIT });
+  await expect(kebab).toBeVisible({ timeout: WAIT });
 };
 
-// Open the kebab dropdown for a slot.
+// Open the kebab dropdown for a slot with a REAL cursor click on the kebab.
 const openMenu = async (page, itemPath) => {
-  await page.getByTestId(`view-item-menu-${itemPath}`).evaluate(el => el.click());
+  await page.getByTestId(`view-item-menu-${itemPath}`).click();
   await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({ timeout: WAIT });
 };
 
-// Reveal + open the kebab, then select an action by id (copy | flip).
+// Reveal + open the kebab, then select an action by id (copy | flip) with a REAL
+// cursor click on the action row.
 const selectAction = async (page, itemPath, actionId) => {
   await revealMenu(page, itemPath);
   await openMenu(page, itemPath);
-  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).evaluate(el => el.click());
+  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).click();
 };
 
 const clickFlip = (page, itemPath) => selectAction(page, itemPath, 'flip');
+
+// Assert the flip card's box overlaps the source slot's box (center within the
+// slot, so it overlays the chart it came from, not a neighbour).
+const expectCardOverlapsSlot = async (page, cardTestId, itemPath) => {
+  const card = page.getByTestId(cardTestId);
+  await expect(card).toBeVisible({ timeout: WAIT });
+  const cardBox = await card.boundingBox();
+  const slotBox = await page.locator(`[data-canvas-path="${itemPath}"]`).first().boundingBox();
+  expect(cardBox).not.toBeNull();
+  expect(slotBox).not.toBeNull();
+  const cx = cardBox.x + cardBox.width / 2;
+  const cy = cardBox.y + cardBox.height / 2;
+  expect(cx).toBeGreaterThanOrEqual(slotBox.x - 2);
+  expect(cx).toBeLessThanOrEqual(slotBox.x + slotBox.width + 2);
+  expect(cy).toBeGreaterThanOrEqual(slotBox.y - 2);
+  expect(cy).toBeLessThanOrEqual(slotBox.y + slotBox.height + 2);
+};
+
+// Assert the lineage is POPULATED: subject row present, at least one ancestor/
+// descendant node visible, and the empty-state text absent.
+const expectLineagePopulated = async (page, prefix) => {
+  await expect(page.getByTestId(`${prefix}-lineage-subject`)).toBeVisible({ timeout: WAIT });
+  await expect(page.getByTestId(`${prefix}-empty`)).toHaveCount(0);
+  const nodeCount = await page.locator(`[data-testid^="${prefix}-lineage-"]`).count();
+  expect(nodeCount).toBeGreaterThan(1);
+};
 
 test.describe('View-mode flip-to-lineage (VIS-788 / I-1)', () => {
   test.describe.configure({ mode: 'serial' });
@@ -128,14 +160,19 @@ test.describe('View-mode flip-to-lineage (VIS-788 / I-1)', () => {
     expect(clip).toContain('element_id=');
   });
 
-  test('flipping opens the shared lineage card anchored to the slot', async () => {
+  test('flipping flips IN PLACE over the WIDE slot with POPULATED lineage', async () => {
+    // row.0.item.0 = a-very-fibonacci-waterfall (the wide "AAPL P&L" chart) —
+    // exactly where the old beside-popover landed over the neighbour AND read
+    // "No lineage available". This locks both fixes with a real-cursor flip.
     await openView(page);
     await clickFlip(page, 'row.0.item.0');
-    const card = page.getByTestId('view-flip-card-row.0.item.0');
-    await expect(card).toBeVisible({ timeout: WAIT });
-    await expect(
-      page.getByTestId('view-flip-card-row.0.item.0-selector-input')
-    ).toBeVisible();
+    const prefix = 'view-flip-card-row.0.item.0';
+    await expect(page.getByTestId(prefix)).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId(`${prefix}-selector-input`)).toBeVisible();
+    // The card OVERLAYS the source slot (center within it, not a neighbour).
+    await expectCardOverlapsSlot(page, prefix, 'row.0.item.0');
+    // The lineage POPULATES in View mode (the lazy collection fetch fix).
+    await expectLineagePopulated(page, prefix);
     await page.screenshot({ path: `${SCREENS}/vis788-02-view-lineage-card.png`, fullPage: true });
   });
 
