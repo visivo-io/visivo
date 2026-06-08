@@ -229,7 +229,13 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
     .filter(Boolean);
 
   return (
-    <div data-testid="canvas-flip-layer" className="pointer-events-none absolute inset-0 z-20">
+    // z-50 keeps the consolidated kebab (and any open flip card) ABOVE the sibling
+    // canvas overlays — notably CanvasResizeLayer's pointer-events-auto resize
+    // handles (z-30), which sit on the SELECTED item's corners exactly where the
+    // kebab anchors (top-right). Without this the handles intercept the kebab
+    // click on a selected slot. The layer stays pointer-events-none; only the
+    // kebab/card opt back in.
+    <div data-testid="canvas-flip-layer" className="pointer-events-none absolute inset-0 z-50">
       {/* Consolidated kebab on the hovered/selected leaf + every flipped item
           (hidden during drag). Copy link + Flip to lineage live in ONE menu —
           the SAME <ItemActionMenu> View mode uses. */}
