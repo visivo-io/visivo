@@ -1,9 +1,10 @@
 /**
  * ItemActionMenu tests — the consolidated View-mode item-action kebab (⋮).
  *
- * Locks: closed-at-rest, opens on click, renders the data-driven action list,
- * invokes onSelect + closes, the `active` tone, `keepOpen`, and close on
- * outside-click / Escape.
+ * The menu is CONTROLLED by the parent (ProjectViewFlipLayer owns `open` so the
+ * kebab survives the slot-hover clearing as the cursor reaches it). These tests
+ * cover both the controlled contract (open prop, onToggle/onClose/onHover) and
+ * the end-to-end open→select→close flow via a small stateful harness.
  */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -13,14 +14,34 @@ import ItemActionMenu from './ItemActionMenu';
 const BOX = { top: 0, left: 0, width: 200, height: 100 };
 const KEY = 'row.0.item.0';
 
-const renderMenu = (overrides = {}) => {
-  const onCopy = jest.fn();
-  const onFlip = jest.fn();
-  const actions = overrides.actions || [
+const DEFAULT_ACTIONS = onCopy => onFlip =>
+  [
     { id: 'copy', label: 'Copy link', icon: PiLink, onSelect: onCopy },
     { id: 'flip', label: 'Flip to lineage', icon: PiArrowsClockwise, onSelect: onFlip },
   ];
-  render(<ItemActionMenu box={BOX} itemKey={KEY} actions={actions} {...overrides} />);
+
+// Stateful harness that mimics the parent owning `open` (toggle on click, close
+// on onClose) so the open→select→close flows can be exercised end-to-end.
+const ControlledMenu = ({ actions, box = BOX, onHover }) => {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <ItemActionMenu
+      box={box}
+      itemKey={KEY}
+      actions={actions}
+      open={open}
+      onToggle={() => setOpen(o => !o)}
+      onClose={() => setOpen(false)}
+      onHover={onHover}
+    />
+  );
+};
+
+const renderControlled = (overrides = {}) => {
+  const onCopy = jest.fn();
+  const onFlip = jest.fn();
+  const actions = overrides.actions || DEFAULT_ACTIONS(onCopy)(onFlip);
+  render(<ControlledMenu actions={actions} onHover={overrides.onHover} box={overrides.box} />);
   return { onCopy, onFlip };
 };
 
@@ -30,18 +51,38 @@ const action = id => screen.getByTestId(`view-item-action-${id}-${KEY}`);
 
 describe('ItemActionMenu', () => {
   test('renders nothing without a box', () => {
-    const { container } = render(<ItemActionMenu box={null} itemKey={KEY} actions={[]} />);
+    const { container } = render(
+      <ItemActionMenu box={null} itemKey={KEY} actions={[]} open={false} />
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
   test('kebab present, menu closed at rest', () => {
-    renderMenu();
+    renderControlled();
     expect(kebab()).toBeInTheDocument();
     expect(list()).not.toBeInTheDocument();
   });
 
-  test('clicking the kebab opens the action list', () => {
-    renderMenu();
+  test('controlled: list renders only when open=true', () => {
+    const { rerender } = render(
+      <ItemActionMenu box={BOX} itemKey={KEY} actions={DEFAULT_ACTIONS(jest.fn())(jest.fn())} open={false} />
+    );
+    expect(list()).not.toBeInTheDocument();
+    rerender(
+      <ItemActionMenu box={BOX} itemKey={KEY} actions={DEFAULT_ACTIONS(jest.fn())(jest.fn())} open={true} />
+    );
+    expect(list()).toBeInTheDocument();
+  });
+
+  test('clicking the kebab calls onToggle', () => {
+    const onToggle = jest.fn();
+    render(<ItemActionMenu box={BOX} itemKey={KEY} actions={[]} open={false} onToggle={onToggle} />);
+    fireEvent.click(kebab());
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  test('clicking the kebab opens the action list (end-to-end)', () => {
+    renderControlled();
     fireEvent.click(kebab());
     expect(list()).toBeInTheDocument();
     expect(action('copy')).toHaveTextContent('Copy link');
@@ -49,7 +90,7 @@ describe('ItemActionMenu', () => {
   });
 
   test('selecting an action invokes onSelect and closes the menu', () => {
-    const { onCopy } = renderMenu();
+    const { onCopy } = renderControlled();
     fireEvent.click(kebab());
     fireEvent.click(action('copy'));
     expect(onCopy).toHaveBeenCalledTimes(1);
@@ -58,9 +99,7 @@ describe('ItemActionMenu', () => {
 
   test('keepOpen actions do not close the menu', () => {
     const onSelect = jest.fn();
-    renderMenu({
-      actions: [{ id: 'noop', label: 'Stay', onSelect, keepOpen: true }],
-    });
+    renderControlled({ actions: [{ id: 'noop', label: 'Stay', onSelect, keepOpen: true }] });
     fireEvent.click(kebab());
     fireEvent.click(action('noop'));
     expect(onSelect).toHaveBeenCalled();
@@ -68,15 +107,19 @@ describe('ItemActionMenu', () => {
   });
 
   test('active action renders in the mulberry tone', () => {
-    renderMenu({
-      actions: [{ id: 'flip', label: 'Hide lineage', active: true, onSelect: jest.fn() }],
-    });
-    fireEvent.click(kebab());
+    render(
+      <ItemActionMenu
+        box={BOX}
+        itemKey={KEY}
+        open={true}
+        actions={[{ id: 'flip', label: 'Hide lineage', active: true, onSelect: jest.fn() }]}
+      />
+    );
     expect(action('flip')).toHaveStyle({ color: '#713b57' });
   });
 
   test('closes on Escape', () => {
-    renderMenu();
+    renderControlled();
     fireEvent.click(kebab());
     expect(list()).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -84,15 +127,32 @@ describe('ItemActionMenu', () => {
   });
 
   test('closes on outside click', () => {
-    renderMenu();
+    renderControlled();
     fireEvent.click(kebab());
     expect(list()).toBeInTheDocument();
     fireEvent.mouseDown(document.body);
     expect(list()).not.toBeInTheDocument();
   });
 
+  test('clicking inside the menu does NOT close it (mousedown swallowed)', () => {
+    renderControlled();
+    fireEvent.click(kebab());
+    fireEvent.mouseDown(list());
+    expect(list()).toBeInTheDocument();
+  });
+
+  test('reports hover via onHover on pointer enter/leave', () => {
+    const onHover = jest.fn();
+    renderControlled({ onHover });
+    const container = screen.getByTestId(`view-item-menu-wrap-${KEY}`);
+    fireEvent.pointerEnter(container);
+    expect(onHover).toHaveBeenLastCalledWith(true);
+    fireEvent.pointerLeave(container);
+    expect(onHover).toHaveBeenLastCalledWith(false);
+  });
+
   test('aria-expanded reflects open state', () => {
-    renderMenu();
+    renderControlled();
     expect(kebab()).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(kebab());
     expect(kebab()).toHaveAttribute('aria-expanded', 'true');

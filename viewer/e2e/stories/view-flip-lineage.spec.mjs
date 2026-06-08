@@ -85,6 +85,27 @@ test.describe('View-mode flip-to-lineage (VIS-788 / I-1)', () => {
     await page.screenshot({ path: `${SCREENS}/vis788-01-view-item-menu.png`, fullPage: true });
   });
 
+  test('REGRESSION: real cursor hover→reach→click opens the menu and it stays mounted', async () => {
+    // Guards the kebab-unmount bug: the menu lives in a sibling overlay, so moving
+    // the REAL cursor from the chart body up to the kebab fires the view-root's
+    // pointerleave and clears the slot hover. The fix keeps the menu mounted while
+    // its kebab is hovered / its dropdown is open. NOTE: this uses a REAL click
+    // (cursor travels to the kebab) rather than a synthetic `el.click()`, which is
+    // what previously let this bug pass undetected.
+    await openView(page);
+    const path = 'row.0.item.0';
+    await page.locator(`[data-canvas-path="${path}"]`).first().hover();
+    const kebab = page.getByTestId(`view-item-menu-${path}`);
+    await expect(kebab).toBeVisible({ timeout: WAIT });
+    await kebab.click(); // real mouse traverse + click
+    const list = page.getByTestId(`view-item-menu-list-${path}`);
+    await expect(list).toBeVisible({ timeout: WAIT });
+    // Stays open even after the cursor leaves the slot entirely (openKey persists).
+    await page.mouse.move(5, 5);
+    await page.waitForTimeout(200);
+    await expect(list).toBeVisible();
+  });
+
   test('the item-built-in share/Copy button is GONE in View mode (collision fix)', async () => {
     await openView(page);
     // Hover the chart slot; the OLD per-item share/"Copy link" button used the
