@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent } from './telemetry';
@@ -21,8 +21,10 @@ import { useWorkspaceScope } from './useWorkspaceScope';
  */
 const Workspace = () => {
   const { dashboardName } = useParams();
+  const [searchParams] = useSearchParams();
   const project = useStore(s => s.project);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const checkPublishStatus = useStore(s => s.checkPublishStatus);
   const scope = useWorkspaceScope();
 
@@ -100,7 +102,23 @@ const Workspace = () => {
         name: dashboardName,
       });
     }
-  }, [project, projectName, dashboardName, openWorkspaceTab]);
+    // Deep-link from the flip card's "Expand / Open full lineage" gesture:
+    // `?edit=<type>:<name>` opens a real tab for the subject (so the tab strip
+    // gains it and it becomes active), and `?lens=lineage` shows the full
+    // lineage in the middle pane. Without opening the tab the Workspace would
+    // land on the unscoped Project Editor (only the project tab visible).
+    const editParam = searchParams.get('edit');
+    if (editParam && editParam.includes(':')) {
+      const [type, ...rest] = editParam.split(':');
+      const name = rest.join(':');
+      if (type && name) {
+        openWorkspaceTab({ type, name });
+        if (searchParams.get('lens') === 'lineage') {
+          setWorkspaceLens('lineage');
+        }
+      }
+    }
+  }, [project, projectName, dashboardName, searchParams, openWorkspaceTab, setWorkspaceLens]);
 
   // Check publish status so the Publish · N button has accurate count.
   useEffect(() => {

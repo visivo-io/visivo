@@ -1,44 +1,56 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PiArrowsClockwise } from 'react-icons/pi';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PiArrowsClockwise, PiLink } from 'react-icons/pi';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../stores/store';
 import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import { parseRefValue } from '../../../../utils/refString';
 import { parseCanvasPath } from './canvasReorder';
 import ItemFlipCard from '../../../project/ItemFlipCard';
+import ItemActionMenu from '../../../project/ItemActionMenu';
+import copyItemLink from '../../../project/copyItemLink';
 
 /**
  * CanvasItemFlipLayer — VIS-785 / Track D D-6 (flip-to-lineage).
  *
- * Per-item flip-to-lineage affordance for the Workspace dashboard canvas. A
- * SIBLING over the render-only <Dashboard> (mounted by ProjectCanvas alongside
- * the selection / DnD / resize / keyboard overlays). For the hovered-or-selected
- * leaf item it paints a small mulberry FLIP button in the item's top-right
- * corner; clicking it "flips" the slot to its lineage neighbourhood card.
+ * Per-item action affordance for the Workspace dashboard canvas. A SIBLING over
+ * the render-only <Dashboard> (mounted by ProjectCanvas alongside the selection
+ * / DnD / resize / keyboard overlays). For the hovered-or-selected leaf item it
+ * paints the consolidated mulberry (`#713b57`) kebab (⋮) — the SAME
+ * <ItemActionMenu> View mode uses — anchored to the item's top-right corner.
+ * The action list is Copy link + Flip to lineage.
+ *
+ * ### Controlled open/hover state (mirrors ProjectViewFlipLayer)
+ *
+ * The kebab lives in this sibling overlay, so reaching for it can clear the
+ * canvas hover/selection that spawned it. As in the View layer, the parent owns
+ * the kebab's `open` state (`openKey`) and is told when the kebab is hovered
+ * (`menuHoverKey`); the kebab stays mounted for the active item, every flipped
+ * item, the menu-hovered item, and the open item — so it survives the cursor
+ * reach.
  *
  * ### True in-place flip (<ItemFlipCard>)
  *
- * Clicking the flip toggle flips the slot IN PLACE: `<ItemFlipCard>` overlays
+ * Selecting "Flip to lineage" flips the slot IN PLACE: `<ItemFlipCard>` overlays
  * the slot's OWN box (a CSS-3D rotateY reveal) and renders the shared
  * `<MiniLineageCard>` (the branching ancestors/subject/descendants ladder with
- * the live selector input + Expand-to-lens footer). The card covers the chart
+ * the live selector input + Expand-to-lineage footer). The card covers the chart
  * it came from rather than floating beside it.
  *
  * ### Behaviour (D-6 AC)
- *   - Click the flip icon → the item's lineage card flips in place over the slot.
+ *   - Open the kebab → Copy link (copies the slot's deep link) + Flip to lineage.
+ *   - Flip → the item's lineage card flips in place over the slot.
  *   - The card shows ancestors + subject + descendants and a live selector input
  *     (defaulted to `+<name>+`); editing it re-walks the lineage.
- *   - Expand → routes the subject to the Workspace lineage lens (E-1).
+ *   - Expand → opens a Workspace tab for the subject on the lineage lens.
  *   - Multi-flip: several items can be flipped at once (a Set of flipped keys).
  *   - Disabled during a drag (`useWorkspaceDrag`).
- *   - `prefers-reduced-motion`: the flip-button + card rotation animations are
- *     suppressed (the card degrades to a fade, honored by the OS setting).
+ *   - `prefers-reduced-motion`: the card rotation animation is suppressed (it
+ *     degrades to a fade, honored by the OS setting).
  *
  * Mulberry (`#713b57`) is the affordance colour; the lineage card's per-type
  * colours come from objectTypeConfigs via MiniLineageCard.
  */
-
-const MULBERRY = '#713b57';
 
 const measure = (el, rootEl) => {
   if (!el || !rootEl) return null;
@@ -90,53 +102,22 @@ const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// Anchor button for one item — paints the flip toggle in the slot's top-right.
-const FlipButton = ({ box, flipped, onToggle, reducedMotion, anchorRef, itemKey }) => {
-  if (!box) return null;
-  return (
-    <button
-      ref={anchorRef}
-      type="button"
-      data-testid={`canvas-flip-button-${itemKey}`}
-      data-flip-button="true"
-      data-flipped={flipped ? 'true' : 'false'}
-      aria-pressed={flipped}
-      aria-label={flipped ? 'Hide lineage' : 'Show lineage'}
-      title={flipped ? 'Hide lineage' : 'Flip to lineage'}
-      // Swallow pointerdown/mousedown so the flip toggle stays a single,
-      // authoritative click and never reaches the canvas selection / DnD layers
-      // underneath (which would otherwise start a drag or re-select the slot).
-      onPointerDown={e => e.stopPropagation()}
-      onMouseDown={e => e.stopPropagation()}
-      onClick={onToggle}
-      className={[
-        'pointer-events-auto absolute z-50 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm',
-        reducedMotion ? '' : 'transition-transform duration-200',
-      ].join(' ')}
-      style={{
-        top: box.top + 4,
-        left: box.left + box.width - 28,
-        borderColor: '#c6b0bb',
-        color: MULBERRY,
-        transform: flipped && !reducedMotion ? 'rotateY(180deg)' : 'none',
-      }}
-    >
-      <PiArrowsClockwise className="h-3.5 w-3.5" />
-    </button>
-  );
-};
-
 const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
+  const navigate = useNavigate();
   const dashboards = useStore(s => s.dashboards);
   const hoverKey = useStore(s => s.workspaceCanvasHoverKey);
   const selectedKey = useStore(s => s.workspaceOutlineSelectedKey);
   const activeDrag = useWorkspaceDrag();
 
-  // Flipped item keys (multi-flip, Q3b) → each has an open lineage popover.
+  // Flipped item keys (multi-flip, Q3b) → each has an open lineage card.
   const [flipped, setFlipped] = useState(() => new Set());
-  // Measured box of the item the flip BUTTON should attach to (hover/selection).
-  const [buttonBox, setButtonBox] = useState(null);
-  const anchorRef = useRef(null);
+  // The kebab lives in a sibling overlay, so reaching for it can clear the
+  // canvas hover/selection. These two keep a menu mounted while its kebab is
+  // hovered (menuHoverKey) or its dropdown is open (openKey) — independent of
+  // the transient hover/selection key (mirrors ProjectViewFlipLayer).
+  const [menuHoverKey, setMenuHoverKey] = useState(null);
+  const [openKey, setOpenKey] = useState(null);
+  const [tick, setTick] = useState(0); // forces a re-measure on reflow
   const reducedMotion = prefersReducedMotion();
 
   const dashboardConfig = useMemo(() => {
@@ -145,8 +126,8 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
     return entry.config || entry;
   }, [dashboards, dashboardName]);
 
-  // The item the flip button attaches to: the hovered item, else the selected
-  // item (only leaf items with a resolvable subject).
+  // The item the kebab attaches to: the hovered item, else the selected item
+  // (only leaf items with a resolvable subject).
   const activeKey = useMemo(() => {
     const candidate = hoverKey && hoverKey.includes('.item.') ? hoverKey : selectedKey;
     if (!candidate || !candidate.includes('.item.')) return null;
@@ -154,33 +135,25 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
     return subjectForItem(item) ? candidate : null;
   }, [hoverKey, selectedKey, dashboardConfig]);
 
-  const measureButton = useCallback(() => {
-    const root = rootRef.current;
-    if (!root || !activeKey) {
-      setButtonBox(null);
-      return;
-    }
-    const el = root.querySelector(`[data-canvas-path="${activeKey}"]`);
-    setButtonBox(el ? measure(el, root) : null);
-  }, [rootRef, activeKey]);
-
-  useEffect(() => {
-    measureButton();
-  }, [measureButton]);
-
+  // Re-measure on resize/scroll so the kebab + open cards track canvas reflow.
+  // The mount tick forces one re-measure once `rootRef.current` is attached, so
+  // an item that is already hovered/selected at mount gets a non-null box (the
+  // first render runs before the ref is set; boxFor reads the live DOM).
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return undefined;
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measureButton) : null;
+    const onReflow = () => setTick(t => t + 1);
+    onReflow();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onReflow) : null;
     if (ro) ro.observe(root);
-    window.addEventListener('resize', measureButton);
-    window.addEventListener('scroll', measureButton, true);
+    window.addEventListener('resize', onReflow);
+    window.addEventListener('scroll', onReflow, true);
     return () => {
       if (ro) ro.disconnect();
-      window.removeEventListener('resize', measureButton);
-      window.removeEventListener('scroll', measureButton, true);
+      window.removeEventListener('resize', onReflow);
+      window.removeEventListener('scroll', onReflow, true);
     };
-  }, [rootRef, measureButton]);
+  }, [rootRef]);
 
   const toggleFlip = useCallback(
     key => {
@@ -206,19 +179,42 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
     [dashboardConfig]
   );
 
+  // Expand = "open full lineage in a tab": deep-link to the Workspace with both
+  // the `edit=<type>:<name>` scope (opens a real tab for the subject) and the
+  // `lens=lineage` hint (the middle pane shows the full lineage).
+  const expandToWorkspace = useCallback(
+    subject => {
+      if (!subject) return;
+      navigate(`/workspace?edit=${subject.type}:${subject.name}&lens=lineage`);
+    },
+    [navigate]
+  );
+
   if (!dashboardConfig) return null;
 
-  // A drag suppresses the flip affordance entirely (D-6 AC: disabled during drag)
-  // and closes any open cards so a reflowing canvas can't orphan an anchor.
+  // A drag suppresses the affordance entirely (D-6 AC: disabled during drag) and
+  // closes any open cards so a reflowing canvas can't orphan an anchor.
   const dragging = !!activeDrag;
 
   const root = rootRef.current;
-  const boxFor = key => (root ? measure(root.querySelector(`[data-canvas-path="${key}"]`), root) : null);
+  const boxFor = key =>
+    root ? measure(root.querySelector(`[data-canvas-path="${key}"]`), root) : null;
+  // `tick` is referenced so the lint dep-checker keeps boxFor results fresh on
+  // reflow (boxFor reads the live DOM; the tick just forces this render).
+  void tick;
 
-  // Flip buttons render for the hovered/selected item AND for every flipped item
-  // (so an open card stays toggleable even after the hover that opened it clears
-  // on the popover-mount reflow). Deduped.
-  const buttonKeys = [...new Set([...(activeKey ? [activeKey] : []), ...flipped])];
+  // The kebab renders for the hovered/selected item, every flipped item (so an
+  // open card stays toggleable after the hover that opened it clears), AND the
+  // item whose kebab/menu is being interacted with (menuHoverKey / openKey) so it
+  // survives the cursor reach. Deduped.
+  const menuKeys = [
+    ...new Set([
+      ...(activeKey ? [activeKey] : []),
+      ...(menuHoverKey ? [menuHoverKey] : []),
+      ...(openKey ? [openKey] : []),
+      ...flipped,
+    ]),
+  ];
 
   // Resolve a subject + the slot box for each open (flipped) card. The card
   // overlays the slot IN PLACE (reading as the chart flipping over) rather than
@@ -234,23 +230,42 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
 
   return (
     <div data-testid="canvas-flip-layer" className="pointer-events-none absolute inset-0 z-20">
-      {/* Flip toggles on the hovered/selected leaf + every flipped item (hidden
-          during drag). The active item uses the kept-fresh measured box; the
-          others measure on render (they reflow rarely). */}
+      {/* Consolidated kebab on the hovered/selected leaf + every flipped item
+          (hidden during drag). Copy link + Flip to lineage live in ONE menu —
+          the SAME <ItemActionMenu> View mode uses. */}
       {!dragging &&
-        buttonKeys.map(key => {
+        menuKeys.map(key => {
           const subject = subjectForItem(itemAtKey(dashboardConfig, key));
           if (!subject) return null;
-          const box = key === activeKey ? buttonBox || boxFor(key) : boxFor(key);
+          const isFlipped = flipped.has(key);
+          const actions = [
+            {
+              id: 'copy',
+              label: 'Copy link',
+              icon: PiLink,
+              onSelect: copyItemLink,
+            },
+            {
+              id: 'flip',
+              label: isFlipped ? 'Hide lineage' : 'Flip to lineage',
+              icon: PiArrowsClockwise,
+              active: isFlipped,
+              onSelect: () => toggleFlip(key),
+            },
+          ];
           return (
-            <FlipButton
+            <ItemActionMenu
               key={key}
               itemKey={key}
-              box={box}
-              flipped={flipped.has(key)}
+              box={boxFor(key)}
               reducedMotion={reducedMotion}
-              anchorRef={key === activeKey ? anchorRef : undefined}
-              onToggle={() => toggleFlip(key)}
+              actions={actions}
+              open={openKey === key}
+              onToggle={() => setOpenKey(prev => (prev === key ? null : key))}
+              onClose={() => setOpenKey(prev => (prev === key ? null : prev))}
+              onHover={isHovering =>
+                setMenuHoverKey(prev => (isHovering ? key : prev === key ? null : prev))
+              }
             />
           );
         })}
@@ -266,6 +281,7 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
             obj={card.subject}
             reducedMotion={reducedMotion}
             onClose={() => toggleFlip(card.key)}
+            onExpand={() => expandToWorkspace(card.subject)}
             testIdPrefix={`canvas-flip-card-${card.key}`}
           />
         ))}

@@ -178,13 +178,13 @@ describe('ProjectViewFlipLayer kebab (VIS-788)', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('Expand deep-links to /workspace?edit=<type>:<name>', () => {
+  test('Expand deep-links to /workspace?edit=<type>:<name>&lens=lineage', () => {
     render(<Host />);
     hover('r0i0');
     openMenu('row.0.item.0');
     fireEvent.click(action('flip', 'row.0.item.0'));
     fireEvent.click(screen.getByTestId('view-flip-card-row.0.item.0-expand'));
-    expect(mockNavigate).toHaveBeenCalledWith('/workspace?edit=chart:rev_chart');
+    expect(mockNavigate).toHaveBeenCalledWith('/workspace?edit=chart:rev_chart&lens=lineage');
   });
 
   test('honors prefers-reduced-motion — no transition utility on the kebab', () => {
