@@ -474,16 +474,36 @@ const MiniLineageCard = ({
   const localMergeModels = useStore(s => s.localMergeModels);
   const defaults = useStore(s => s.defaults);
   const fetchDefaults = useStore(s => s.fetchDefaults);
+  const fetchCharts = useStore(s => s.fetchCharts);
+  const fetchInsights = useStore(s => s.fetchInsights);
+  const fetchModels = useStore(s => s.fetchModels);
+  const fetchTables = useStore(s => s.fetchTables);
+  const fetchSources = useStore(s => s.fetchSources);
+  const fetchDimensions = useStore(s => s.fetchDimensions);
+  const fetchMetrics = useStore(s => s.fetchMetrics);
+  const fetchRelations = useStore(s => s.fetchRelations);
 
-  // The Workspace shell preloads charts/insights/models/etc. via their
-  // own slices, but `dashboards` only loads on demand. Without it the
-  // descendant walker can't surface "this chart is in dashboard X".
-  // Trigger a one-shot fetch when the card mounts so descendants appear
-  // on first open.
+  // The Workspace shell preloads charts/insights/models/etc. via their own
+  // slices, so this card "just works" there. In VIEW mode (`/project/<name>`)
+  // the render-only <Dashboard> only fetches charts/tables/markdowns/inputs/
+  // models — NOT insights/sources/dimensions/metrics/relations — so the
+  // chart→insight→model→source lineage walk dead-ends and the card reads
+  // "No lineage available". `dashboards` also only loads on demand, which the
+  // descendant walker needs for "this chart is in dashboard X".
+  //
+  // This one-shot mount pass lazy-fetches every collection the walker reads
+  // when it's empty. Each fetch is guarded on emptiness + fn presence, so it's
+  // a no-op in the Workspace (already populated) and only does real work in
+  // View mode.
   useEffect(() => {
+    const isEmpty = x => !Array.isArray(x) || x.length === 0;
+    const lazyFetch = (collection, fetchFn) => {
+      if (isEmpty(collection) && typeof fetchFn === 'function') fetchFn();
+    };
+
     if (
-      (!Array.isArray(allDashboards) || allDashboards.length === 0) &&
-      (!Array.isArray(dashboardsFromStore) || dashboardsFromStore.length === 0) &&
+      isEmpty(allDashboards) &&
+      isEmpty(dashboardsFromStore) &&
       typeof fetchDashboards === 'function'
     ) {
       fetchDashboards();
@@ -491,6 +511,14 @@ const MiniLineageCard = ({
     if (!defaults && typeof fetchDefaults === 'function') {
       fetchDefaults();
     }
+    lazyFetch(charts, fetchCharts);
+    lazyFetch(insights, fetchInsights);
+    lazyFetch(models, fetchModels);
+    lazyFetch(tables, fetchTables);
+    lazyFetch(sources, fetchSources);
+    lazyFetch(dimensions, fetchDimensions);
+    lazyFetch(metrics, fetchMetrics);
+    lazyFetch(relationsList, fetchRelations);
     // We intentionally run only once per mount — refetches handled
     // elsewhere by save flows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
