@@ -2,7 +2,7 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import Table from './Table';
 import { withProviders } from '../../utils/test-utils';
 import useStore from '../../stores/store';
-import * as useCopyToClipboardModule from '../../hooks/useCopyToClipboard';
+import * as useShallowModule from 'zustand/react/shallow';
 
 jest.mock('./PivotableTable', () => ({ table, sourceData }) => (
   <div data-testid="pivotable-table">
@@ -66,9 +66,10 @@ describe('VIS-830 render-loop stabilization', () => {
     // Count Table's OWN renders by spying on a hook it calls once per render
     // (before any early return). The buggy setState-inside-useEffect produced an
     // extra Table commit per update (setColumns/setTableData); useMemo does not.
-    const realHook = useCopyToClipboardModule.useCopyToClipboard;
+    // `useShallow` is invoked once at the top of Table on every render.
+    const realHook = useShallowModule.useShallow;
     const spy = jest
-      .spyOn(useCopyToClipboardModule, 'useCopyToClipboard')
+      .spyOn(useShallowModule, 'useShallow')
       .mockImplementation((...args) => realHook(...args));
 
     render(<Table table={table} shouldLoad={true} />, { wrapper: withProviders });

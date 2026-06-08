@@ -4,13 +4,6 @@ import * as DuckDBContext from '../../contexts/DuckDBContext';
 
 jest.mock('../../contexts/DuckDBContext');
 jest.mock('../../duckdb/queries');
-jest.mock('../../hooks/useCopyToClipboard', () => ({
-  useCopyToClipboard: () => ({
-    toolTip: 'Copy link',
-    copyText: jest.fn(),
-    resetToolTip: jest.fn(),
-  }),
-}));
 
 // Mock useVirtualizer since JSDOM has no real layout
 jest.mock('@tanstack/react-virtual', () => ({
@@ -90,7 +83,7 @@ describe('PivotableTable', () => {
     expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
-  it('renders export and share buttons in toolbar', () => {
+  it('renders the export button but NO share button in the toolbar', () => {
     render(
       <PivotableTable
         table={{ name: 'test-table', rows_per_page: 50 }}
@@ -101,8 +94,10 @@ describe('PivotableTable', () => {
       />
     );
 
+    // CSV export is a table feature and stays; the Copy/share button is gone
+    // (the per-item Copy link now lives only in the flip-layer kebab).
     expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Share Table' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Share Table' })).not.toBeInTheDocument();
   });
 
   it('renders search input in toolbar', () => {

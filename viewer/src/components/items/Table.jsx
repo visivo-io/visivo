@@ -10,7 +10,6 @@ import {
   Box,
   IconButton,
   Button,
-  Tooltip,
   useMediaQuery,
   useTheme,
   TextField,
@@ -33,16 +32,13 @@ import {
 } from 'material-react-table';
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import ShareIcon from '@mui/icons-material/Share';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { parseRefValue, extractRefNamesFromStrings } from '../../utils/refString';
-import { useViewItemActions } from './ViewItemActionsContext';
 
 const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   const theme = useTheme();
@@ -75,11 +71,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
   );
 
   const [searchIsVisible, setSearchIsVisible] = useState(false);
-
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
-  // In View mode the kebab (⋮) owns Copy link. Suppress ONLY the share button —
-  // the CSV export stays (export is a table feature, not a kebab action).
-  const { suppressItemShare } = useViewItemActions();
 
   const csvConfig = mkConfig({
     fieldSeparator: ',',
@@ -165,12 +156,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleCopyText = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('element_id', window.scrollY);
-    copyText(url.toString());
   };
 
   const toggleSearch = () => setSearchIsVisible(!searchIsVisible);
@@ -364,18 +349,6 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
               >
                 <FileDownloadIcon fontSize="medium" />
               </Button>
-              {!suppressItemShare && (
-                <Button
-                  aria-label="Share Table"
-                  onClick={handleCopyText}
-                  size="small"
-                  sx={{ minWidth: '40px' }}
-                >
-                  <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
-                    <ShareIcon fontSize="medium" />
-                  </Tooltip>
-                </Button>
-              )}
             </Box>
             {searchIsVisible && isMobile ? (
               <Box sx={{ display: 'flex', width: '100%', minWidth: 0, flexBasis: '100%' }}>
