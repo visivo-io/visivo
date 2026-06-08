@@ -103,6 +103,11 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
   const navigate = useNavigate();
   const reducedMotion = prefersReducedMotion();
   const [hoverKey, setHoverKey] = useState(null);
+  // The kebab lives in a sibling overlay, so reaching for it clears the slot
+  // hover. These two keep a menu mounted while its kebab is hovered (menuHoverKey)
+  // or its dropdown is open (openKey) — independent of the transient slot hover.
+  const [menuHoverKey, setMenuHoverKey] = useState(null);
+  const [openKey, setOpenKey] = useState(null);
   const [flipped, setFlipped] = useState(() => new Set());
   const [tick, setTick] = useState(0); // forces a re-measure on reflow
 
@@ -171,11 +176,19 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
     [root]
   );
 
-  // The kebab menu renders for the hovered leaf AND every flipped item (so an
+  // The kebab menu renders for the hovered leaf, the slot whose kebab/menu is
+  // being interacted with (menuHoverKey / openKey), AND every flipped item (so an
   // open card stays toggleable after the hover that opened it clears). Deduped.
   const menuKeys = useMemo(
-    () => [...new Set([...(hoverKey ? [hoverKey] : []), ...flipped])],
-    [hoverKey, flipped]
+    () => [
+      ...new Set([
+        ...(hoverKey ? [hoverKey] : []),
+        ...(menuHoverKey ? [menuHoverKey] : []),
+        ...(openKey ? [openKey] : []),
+        ...flipped,
+      ]),
+    ],
+    [hoverKey, menuHoverKey, openKey, flipped]
   );
 
   // Resolve a stable anchor element + subject for each open (flipped) card.
@@ -224,6 +237,12 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
             box={boxFor(key)}
             reducedMotion={reducedMotion}
             actions={actions}
+            open={openKey === key}
+            onToggle={() => setOpenKey(prev => (prev === key ? null : key))}
+            onClose={() => setOpenKey(prev => (prev === key ? null : prev))}
+            onHover={isHovering =>
+              setMenuHoverKey(prev => (isHovering ? key : prev === key ? null : prev))
+            }
           />
         );
       })}
