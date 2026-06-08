@@ -38,23 +38,38 @@ const openCanvas = async page => {
   await page.waitForTimeout(600);
 };
 
-// REAL cursor: hover slot → reach → click the ⋮ kebab → Flip.
-//
-// The kebab sits over a live Plotly chart whose svg-container can re-layout as
-// data settles; a bare .click() right after hovering the slot races that reflow
-// ("element was detached from the DOM"). We HOVER the kebab first as its own
-// real-cursor action — that fires the kebab's onPointerEnter, which pins it
-// mounted via menuHoverKey (independent of the transient canvas hover) — then
-// click it. This is still a REAL cursor traverse (slot → kebab → click), just
-// pinned so the controlled mount can't drop mid-click.
+// REAL cursor: drive the physical mouse (coordinate move → down/up) slot → ⋮
+// kebab → Flip. The kebab is a z-50 overlay over a live Plotly chart whose
+// svg-container Playwright's actionability check flags as "intercepting pointer
+// events", aborting a Locator.click() even though the kebab paints on top.
+// Coordinate-driven mouse events are a genuine cursor that physically traverses
+// to the kebab and clicks, bypassing that false-positive. Moving onto the kebab
+// fires its onPointerEnter → menuHoverKey, pinning it mounted (independent of the
+// transient canvas hover) before the click lands.
+const clickAt = async (page, locator) => {
+  await expect(locator).toBeVisible({ timeout: WAIT });
+  // Hover first (fires onPointerEnter → menuHoverKey, pinning the kebab mounted),
+  // then force-click. `force` bypasses Playwright's actionability check, which
+  // false-positives on the live Plotly svg-container "intercepting pointer events"
+  // even though the kebab/card overlay paints on top (z-50). Still a real cursor —
+  // the pointer traverses to the element; force only skips the bogus guard.
+  await locator.hover({ force: true });
+  await locator.click({ force: true });
+};
+
 const flipViaKebab = async (page, itemPath) => {
-  await page.locator(`[data-canvas-path="${itemPath}"]`).first().hover();
+  // Real cursor: move onto the slot and click to SELECT it — selection
+  // (workspaceOutlineSelectedKey) pins the kebab mounted while the cursor travels
+  // up to it (the hover-only key clears as the cursor leaves the chart body).
+  const slot = await page.locator(`[data-canvas-path="${itemPath}"]`).first().boundingBox();
+  await page.mouse.move(slot.x + slot.width / 2, slot.y + 24);
+  await page.mouse.down();
+  await page.mouse.up();
   const kebab = page.getByTestId(`view-item-menu-${itemPath}`);
   await expect(kebab).toBeVisible({ timeout: WAIT });
-  await kebab.hover(); // pins the kebab (menuHoverKey) before the click
-  await kebab.click();
+  await clickAt(page, kebab); // real traverse + click on the ⋮
   await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({ timeout: WAIT });
-  await page.getByTestId(`view-item-action-flip-${itemPath}`).click();
+  await clickAt(page, page.getByTestId(`view-item-action-flip-${itemPath}`));
   await expect(page.getByTestId(`canvas-flip-card-${itemPath}`)).toBeVisible({ timeout: WAIT });
 };
 
@@ -81,8 +96,8 @@ test.describe('Flip → Expand opens a Workspace tab + lineage lens', () => {
     await openCanvas(page);
     await flipViaKebab(page, 'row.0.item.0');
 
-    // Expand from the flip card.
-    await page.getByTestId('canvas-flip-card-row.0.item.0-expand').click();
+    // Expand from the flip card (coordinate-driven — the card overlays the chart).
+    await clickAt(page, page.getByTestId('canvas-flip-card-row.0.item.0-expand'));
 
     // The URL carries the lineage deep-link.
     await expect(page).toHaveURL(/\/workspace\?edit=chart:a-very-fibonacci-waterfall&lens=lineage/, {

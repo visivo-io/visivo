@@ -40,29 +40,59 @@ const openCanvas = async page => {
   await page.waitForTimeout(600);
 };
 
-// Hover the slot with a REAL cursor to reveal its kebab (⋮). The canvas tracks
-// hover via the selection overlay's real pointermove, so hovering the slot sets
-// workspaceCanvasHoverKey and mounts the kebab. When the slot is already flipped,
-// an in-place card COVERS the body but its kebab stays mounted — short-circuit.
+// Reveal a slot's kebab (⋮) by SELECTING the slot with a REAL cursor click. On
+// the canvas the kebab mounts for the hovered OR selected leaf; selection
+// (workspaceOutlineSelectedKey) persists across pointer moves, so a real click to
+// select the slot pins the kebab mounted while the cursor then travels up to it —
+// avoiding the hover-only race where moving toward the corner kebab clears the
+// transient canvas hover before menuHoverKey can pin it. This mirrors real usage
+// (select an item on the canvas, then act on it via its ⋮). When the slot is
+// already flipped, an in-place card COVERS the body but its kebab stays mounted —
+// short-circuit.
 const revealMenu = async (page, itemPath) => {
   const kebab = page.getByTestId(`view-item-menu-${itemPath}`);
   if (await kebab.isVisible().catch(() => false)) return;
-  await page.locator(`[data-canvas-path="${itemPath}"]`).first().hover();
+  const slot = await page.locator(`[data-canvas-path="${itemPath}"]`).first().boundingBox();
+  // Real cursor: move to the slot's upper area (away from Plotly's busy center)
+  // and click to SELECT it — selection keeps the kebab mounted.
+  await page.mouse.move(slot.x + slot.width / 2, slot.y + 24);
+  await page.mouse.down();
+  await page.mouse.up();
   await expect(kebab).toBeVisible({ timeout: WAIT });
 };
 
-// Open the kebab dropdown with a REAL cursor click on the ⋮ kebab.
+// Open the kebab dropdown by driving the REAL cursor with physical mouse
+// coordinates (page.mouse.move → down → up) onto the ⋮ kebab. The kebab is a
+// z-50 overlay sitting OVER a live Plotly chart whose svg-container Playwright's
+// element-actionability check flags as "intercepting pointer events" — aborting a
+// Locator.click() even though the kebab paints on top. Coordinate-driven mouse
+// events are a genuine cursor (the pointer physically traverses to the kebab and
+// clicks) and bypass that false-positive interception check. Moving onto the
+// kebab first fires its onPointerEnter → menuHoverKey, pinning it mounted
+// (independent of the transient canvas hover) before the click lands.
 const openMenu = async (page, itemPath) => {
-  await page.getByTestId(`view-item-menu-${itemPath}`).click();
+  const kebab = page.getByTestId(`view-item-menu-${itemPath}`);
+  await expect(kebab).toBeVisible({ timeout: WAIT });
+  // Hover (real traverse → onPointerEnter pins the kebab via menuHoverKey), then
+  // force-click. `force` skips Playwright's actionability check, which
+  // false-positives on the live Plotly svg-container "intercepting pointer events"
+  // even though the z-50 kebab paints on top.
+  await kebab.hover({ force: true });
+  await kebab.click({ force: true });
   await expect(page.getByTestId(`view-item-menu-list-${itemPath}`)).toBeVisible({ timeout: WAIT });
 };
 
-// Reveal + open the kebab, then select an action (copy | flip) with a REAL cursor
-// click on the action row.
+// Reveal + open the kebab, then select an action (copy | flip) by driving the
+// REAL cursor with mouse coordinates onto the action row (the dropdown can sit
+// over the live chart too, so coordinate-driven clicks avoid the same Plotly
+// interception false-positive).
 const selectAction = async (page, itemPath, actionId) => {
   await revealMenu(page, itemPath);
   await openMenu(page, itemPath);
-  await page.getByTestId(`view-item-action-${actionId}-${itemPath}`).click();
+  const row = page.getByTestId(`view-item-action-${actionId}-${itemPath}`);
+  await expect(row).toBeVisible({ timeout: WAIT });
+  await row.hover({ force: true });
+  await row.click({ force: true });
 };
 
 const clickFlip = (page, itemPath) => selectAction(page, itemPath, 'flip');
@@ -113,10 +143,10 @@ test.describe('Canvas flip-to-lineage via kebab (VIS-785 / D-6)', () => {
 
   test('the build-canvas chart has NO old share icon AND no standalone flip button', async () => {
     await openCanvas(page);
-    // Hover the wide chart slot — the OLD per-item Copy used the shared <Menu>
-    // (faShareAlt → [data-icon="share-alt"]). That share code is removed; the
-    // kebab owns Copy now.
-    await page.locator('[data-canvas-path="row.0.item.0"]').first().hover();
+    // Move the REAL cursor onto the wide chart slot — the OLD per-item Copy used
+    // the shared <Menu> (faShareAlt → [data-icon="share-alt"]). That share code is
+    // removed; the kebab owns Copy now.
+    await revealMenu(page, 'row.0.item.0');
     await expect(page.getByTestId('view-item-menu-row.0.item.0')).toBeVisible({ timeout: WAIT });
     // The old dark share-alt icon is gone everywhere on the canvas.
     await expect(page.locator('[data-icon="share-alt"]')).toHaveCount(0);
@@ -129,16 +159,13 @@ test.describe('Canvas flip-to-lineage via kebab (VIS-785 / D-6)', () => {
     // Guards the kebab-unmount race on the build canvas too: the kebab lives in a
     // sibling overlay, so moving the REAL cursor from the chart body up to the ⋮
     // can clear the canvas hover that mounted it. The controlled open/menu-hover
-    // state keeps it mounted. This uses a REAL click (cursor traverses to the
-    // kebab) rather than a synthetic el.click().
+    // state keeps it mounted. revealMenu/openMenu drive the physical mouse
+    // (coordinate move → down/up) so the cursor genuinely traverses to the kebab —
+    // not a synthetic el.click().
     await openCanvas(page);
     const path = 'row.0.item.0';
-    await page.locator(`[data-canvas-path="${path}"]`).first().hover();
-    const kebab = page.getByTestId(`view-item-menu-${path}`);
-    await expect(kebab).toBeVisible({ timeout: WAIT });
-    await kebab.click(); // real mouse traverse + click
-    const list = page.getByTestId(`view-item-menu-list-${path}`);
-    await expect(list).toBeVisible({ timeout: WAIT });
+    await revealMenu(page, path);
+    await openMenu(page, path);
     // The consolidated menu carries BOTH actions: Copy link + Flip to lineage.
     await expect(page.getByTestId(`view-item-action-copy-${path}`)).toBeVisible();
     await expect(page.getByTestId(`view-item-action-flip-${path}`)).toBeVisible();
