@@ -74,7 +74,9 @@ const ItemActionMenu = ({
     <div
       ref={rootRef}
       data-testid={`view-item-menu-wrap-${itemKey}`}
-      className="pointer-events-auto absolute z-30"
+      // z-50 keeps the kebab above an open in-place flip card (z-40) so the slot
+      // can still be flipped back via the kebab after it's flipped.
+      className="pointer-events-auto absolute z-50"
       style={{ top: box.top + 4, left: box.left + box.width - 28 }}
       // Keep this menu mounted while the cursor is over the kebab/dropdown — the
       // slot-hover that spawned it clears the moment the cursor leaves the chart
@@ -108,7 +110,7 @@ const ItemActionMenu = ({
         <ul
           role="menu"
           data-testid={`view-item-menu-list-${itemKey}`}
-          className="absolute right-0 top-7 z-40 min-w-[10rem] overflow-hidden rounded-md border bg-white py-1 shadow-lg"
+          className="absolute right-0 top-7 z-[60] min-w-[10rem] overflow-hidden rounded-md border bg-white py-1 shadow-lg"
           style={{ borderColor: MENU_BORDER }}
         >
           {actions.map(action => {

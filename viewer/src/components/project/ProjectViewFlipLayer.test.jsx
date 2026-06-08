@@ -26,15 +26,21 @@ jest.mock('copy-to-clipboard', () => ({
   default: (...args) => mockCopy(...args),
 }));
 
-// Mock the heavy lineage popover to a marker carrying its subject + an Expand
-// button that invokes the passed onExpand (so we assert the View-mode deep link).
-jest.mock('../new-views/workspace/library/LibraryRowFlipPopover', () => ({
+// Mock the in-place flip card to a marker carrying its subject + the box it was
+// positioned at + an Expand button that invokes the passed onExpand (so we
+// assert the View-mode deep link), plus a close button.
+jest.mock('./ItemFlipCard', () => ({
   obj,
+  box,
   onClose,
   onExpand,
   testIdPrefix,
 }) => (
-  <div data-testid={`${testIdPrefix}`} data-subject={`${obj.type}:${obj.name}`}>
+  <div
+    data-testid={`${testIdPrefix}`}
+    data-subject={`${obj.type}:${obj.name}`}
+    data-box={box ? `${box.top},${box.left},${box.width},${box.height}` : ''}
+  >
     <button data-testid={`${testIdPrefix}-close`} onClick={onClose}>
       close
     </button>
@@ -124,6 +130,17 @@ describe('ProjectViewFlipLayer kebab (VIS-788)', () => {
     fireEvent.click(action('flip', 'row.0.item.0'));
     const card = screen.getByTestId('view-flip-card-row.0.item.0');
     expect(card).toHaveAttribute('data-subject', 'chart:rev_chart');
+  });
+
+  test('the flipped card overlays the SLOT box (in-place flip, not a beside popover)', () => {
+    render(<Host />);
+    hover('r0i0');
+    openMenu('row.0.item.0');
+    fireEvent.click(action('flip', 'row.0.item.0'));
+    const card = screen.getByTestId('view-flip-card-row.0.item.0');
+    // The mocked slot box is top:0 left:0 400x200 — the card positions AT it,
+    // not at rect.right+12 (which is what the old beside-popover did).
+    expect(card).toHaveAttribute('data-box', '0,0,400,200');
   });
 
   test('flip entry reads "Hide lineage" while flipped and toggles closed', () => {

@@ -5,7 +5,7 @@ import { useWorkspaceDrag } from '../../workspace/WorkspaceDndContext';
 import { emitWorkspaceEvent } from '../../workspace/telemetry';
 import { parseRefValue } from '../../../../utils/refString';
 import { parseCanvasPath } from './canvasReorder';
-import LibraryRowFlipPopover from '../../workspace/library/LibraryRowFlipPopover';
+import ItemFlipCard from '../../../project/ItemFlipCard';
 
 /**
  * CanvasItemFlipLayer — VIS-785 / Track D D-6 (flip-to-lineage).
@@ -16,29 +16,26 @@ import LibraryRowFlipPopover from '../../workspace/library/LibraryRowFlipPopover
  * leaf item it paints a small mulberry FLIP button in the item's top-right
  * corner; clicking it "flips" the slot to its lineage neighbourhood card.
  *
- * ### Reuse of the delivered C-2 surface
+ * ### True in-place flip (<ItemFlipCard>)
  *
- * The original brief called for a bespoke `<MiniLineageCard>` + `<ItemFlipCard>`
- * (CSS-3D in-slot rotation) + `<ItemLineageModal>`. Track C subsequently
- * DELIVERED that lineage card as `<LibraryRowFlipPopover>` (the branching
- * ancestors/subject/descendants ladder with the live selector input), and its
- * "Expand" routes to the Workspace lineage lens (E-1) — the delivered design
- * explicitly "replaces the never-built VIS-D6 standalone lineage modal". This
- * layer therefore REUSES that delivered card (anchored to the canvas item)
- * rather than forking a second lineage renderer, which would diverge.
+ * Clicking the flip toggle flips the slot IN PLACE: `<ItemFlipCard>` overlays
+ * the slot's OWN box (a CSS-3D rotateY reveal) and renders the shared
+ * `<MiniLineageCard>` (the branching ancestors/subject/descendants ladder with
+ * the live selector input + Expand-to-lens footer). The card covers the chart
+ * it came from rather than floating beside it.
  *
  * ### Behaviour (D-6 AC)
- *   - Click the flip icon → the item's lineage card opens, anchored to the slot.
+ *   - Click the flip icon → the item's lineage card flips in place over the slot.
  *   - The card shows ancestors + subject + descendants and a live selector input
  *     (defaulted to `+<name>+`); editing it re-walks the lineage.
  *   - Expand → routes the subject to the Workspace lineage lens (E-1).
  *   - Multi-flip: several items can be flipped at once (a Set of flipped keys).
  *   - Disabled during a drag (`useWorkspaceDrag`).
- *   - `prefers-reduced-motion`: the flip-button reveal/rotation animation is
- *     suppressed (the popover itself is a fade, honored by the OS setting).
+ *   - `prefers-reduced-motion`: the flip-button + card rotation animations are
+ *     suppressed (the card degrades to a fade, honored by the OS setting).
  *
  * Mulberry (`#713b57`) is the affordance colour; the lineage card's per-type
- * colours come from objectTypeConfigs via LibraryRowFlipPopover.
+ * colours come from objectTypeConfigs via MiniLineageCard.
  */
 
 const MULBERRY = '#713b57';
@@ -106,17 +103,14 @@ const FlipButton = ({ box, flipped, onToggle, reducedMotion, anchorRef, itemKey 
       aria-pressed={flipped}
       aria-label={flipped ? 'Hide lineage' : 'Show lineage'}
       title={flipped ? 'Hide lineage' : 'Flip to lineage'}
-      // Stop the pointerdown from reaching the document: the open lineage card
-      // (LibraryRowFlipPopover) closes on any outside mousedown, and this button
-      // lives OUTSIDE the portaled card. Without this, clicking the button to
-      // flip BACK would first trigger the card's outside-close (one toggle) and
-      // then the button's onClick (a second toggle) — a net no-op. Swallowing
-      // the pointerdown makes the button click a single, authoritative toggle.
+      // Swallow pointerdown/mousedown so the flip toggle stays a single,
+      // authoritative click and never reaches the canvas selection / DnD layers
+      // underneath (which would otherwise start a drag or re-select the slot).
       onPointerDown={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
       onClick={onToggle}
       className={[
-        'pointer-events-auto absolute z-30 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm',
+        'pointer-events-auto absolute z-50 inline-flex h-6 w-6 items-center justify-center rounded-md border bg-white/95 shadow-sm',
         reducedMotion ? '' : 'transition-transform duration-200',
       ].join(' ')}
       style={{
@@ -226,13 +220,15 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
   // on the popover-mount reflow). Deduped.
   const buttonKeys = [...new Set([...(activeKey ? [activeKey] : []), ...flipped])];
 
-  // Resolve a stable anchor element + subject for each open (flipped) card.
+  // Resolve a subject + the slot box for each open (flipped) card. The card
+  // overlays the slot IN PLACE (reading as the chart flipping over) rather than
+  // anchoring beside it.
   const openCards = [...flipped]
     .map(key => {
       const item = itemAtKey(dashboardConfig, key);
       const subject = subjectForItem(item);
-      const el = root ? root.querySelector(`[data-canvas-path="${key}"]`) : null;
-      return subject && el ? { key, subject, el } : null;
+      const box = boxFor(key);
+      return subject && box ? { key, subject, box } : null;
     })
     .filter(Boolean);
 
@@ -259,38 +255,21 @@ const CanvasItemFlipLayer = ({ rootRef, dashboardName }) => {
           );
         })}
 
-      {/* Open lineage cards (multi-flip). Each reuses the delivered C-2 surface
-          (LibraryRowFlipPopover) anchored to its item, with the canvas surface
-          tag. Suppressed during a drag. */}
+      {/* Open lineage cards (multi-flip). Each flips IN PLACE over its slot via
+          the shared <ItemFlipCard> (which renders the shared <MiniLineageCard>),
+          with the canvas surface tag. Suppressed during a drag. */}
       {!dragging &&
         openCards.map(card => (
-          <FlipCardAnchor
+          <ItemFlipCard
             key={card.key}
-            cardKey={card.key}
-            el={card.el}
-            subject={card.subject}
+            box={card.box}
+            obj={card.subject}
+            reducedMotion={reducedMotion}
             onClose={() => toggleFlip(card.key)}
+            testIdPrefix={`canvas-flip-card-${card.key}`}
           />
         ))}
     </div>
-  );
-};
-
-/**
- * FlipCardAnchor — wraps LibraryRowFlipPopover with a ref anchored to the item's
- * live DOM node so the popover positions next to the canvas slot. The popover
- * already portals to the body + tracks scroll/resize.
- */
-const FlipCardAnchor = ({ cardKey, el, subject, onClose }) => {
-  const anchorRef = useRef(el);
-  anchorRef.current = el;
-  return (
-    <LibraryRowFlipPopover
-      obj={subject}
-      anchorRef={anchorRef}
-      onClose={onClose}
-      testIdPrefix={`canvas-flip-card-${cardKey}`}
-    />
   );
 };
 

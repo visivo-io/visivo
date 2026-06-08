@@ -2,11 +2,12 @@
  * CanvasItemFlipLayer tests (VIS-785 / Track D D-6).
  *
  * The flip layer paints a flip toggle on the hovered/selected leaf item and
- * opens its lineage card (the delivered LibraryRowFlipPopover) on click. The
- * popover is portal + store heavy, so it's mocked to a marker here — this test
- * locks the flip GATING (leaf vs container, drag suppression), the multi-flip
- * set, and the `item_flipped` telemetry. The popover's own lineage rendering is
- * covered by its own suite.
+ * flips its lineage card IN PLACE over the slot (the shared <ItemFlipCard>) on
+ * click. ItemFlipCard is store-heavy, so it's mocked to a marker here that
+ * echoes the `box` it was positioned at — this test locks the flip GATING (leaf
+ * vs container, drag suppression), the multi-flip set, the in-place box
+ * (the card positions at the SLOT box, not beside it), and the `item_flipped`
+ * telemetry. ItemFlipCard's own rendering is covered by its own suite.
  */
 import React, { useRef } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
@@ -18,10 +19,15 @@ jest.mock('../../workspace/telemetry', () => ({
   emitWorkspaceEvent: jest.fn(),
 }));
 
-// Mock the heavy lineage popover to a simple marker carrying its subject + a
-// close button, so we assert open/close + multi-flip without the portal walker.
-jest.mock('../../workspace/library/LibraryRowFlipPopover', () => ({ obj, onClose, testIdPrefix }) => (
-  <div data-testid={`${testIdPrefix}`} data-subject={`${obj.type}:${obj.name}`}>
+// Mock the in-place flip card to a marker carrying its subject + the box it was
+// positioned at + a close button, so we assert open/close + multi-flip + that
+// the card overlays the SLOT box without the heavy lineage walker.
+jest.mock('../../../project/ItemFlipCard', () => ({ obj, box, onClose, testIdPrefix }) => (
+  <div
+    data-testid={`${testIdPrefix}`}
+    data-subject={`${obj.type}:${obj.name}`}
+    data-box={box ? `${box.top},${box.left},${box.width},${box.height}` : ''}
+  >
     <button data-testid={`${testIdPrefix}-close`} onClick={onClose}>
       close
     </button>
@@ -108,6 +114,15 @@ describe('CanvasItemFlipLayer (VIS-785)', () => {
       'item_flipped',
       expect.objectContaining({ surface: 'build', type: 'chart', name: 'rev_chart' })
     );
+  });
+
+  test('the flipped card overlays the SLOT box (in-place flip, not beside it)', () => {
+    setHover('row.0.item.0');
+    render(<Host />);
+    fireEvent.click(flipButton('row.0.item.0'));
+    const card = screen.getByTestId('canvas-flip-card-row.0.item.0');
+    // The mocked slot box is top:0 left:0 400x200 — the card positions AT it.
+    expect(card).toHaveAttribute('data-box', '0,0,400,200');
   });
 
   test('flip is a toggle — clicking again closes the card', () => {
