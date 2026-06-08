@@ -7,20 +7,16 @@ import { computeGradientStyles } from '../../utils/cellFormatting';
 import { COLUMN_TYPES } from '../../duckdb/schemaUtils';
 import Loading from '../common/Loading';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import ShareIcon from '@mui/icons-material/Share';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import {
   Box,
   IconButton,
   Button,
-  Tooltip,
   TextField,
   InputAdornment,
 } from '@mui/material';
 import { mkConfig, generateCsv } from 'export-to-csv';
-import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import { useViewItemActions } from './ViewItemActionsContext';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
 
@@ -29,10 +25,6 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const [sorting, setSorting] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(table.rows_per_page || 50);
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
-  // In View mode the kebab (⋮) owns Copy link. Suppress ONLY the share button —
-  // the CSV export stays (export is a table feature, not a kebab action).
-  const { suppressItemShare } = useViewItemActions();
 
   const isPivotMode = !!(table.columns && table.rows && table.values);
   const isColumnSelectMode = !!(table.columns && !table.rows && !table.values);
@@ -170,12 +162,6 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
     document.body.removeChild(link);
   }, [allRows, table.name, csvConfig]);
 
-  const handleCopyText = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('element_id', window.scrollY);
-    copyText(url.toString());
-  }, [copyText]);
-
   const rowColumnIds = useMemo(() => {
     if (!isPivotMode) return null;
     return dataTableColumns.filter(c => c.isPivotRow).map(c => c.name);
@@ -259,18 +245,6 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
           >
             <FileDownloadIcon fontSize="medium" />
           </Button>
-          {!suppressItemShare && (
-            <Button
-              aria-label="Share Table"
-              onClick={handleCopyText}
-              size="small"
-              sx={{ minWidth: '40px' }}
-            >
-              <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
-                <ShareIcon fontSize="medium" />
-              </Tooltip>
-            </Button>
-          )}
         </Box>
       </Box>
 

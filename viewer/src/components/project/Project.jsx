@@ -3,18 +3,11 @@ import { useParams } from 'react-router-dom';
 import useStore from '../../stores/store';
 import Dashboard from './Dashboard';
 import ProjectViewFlipLayer from './ProjectViewFlipLayer';
-import ViewItemActionsContext from '../items/ViewItemActionsContext';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from '../project/DashboardSection';
 import FilterBar from '../project/FilterBar';
-
-// In View mode the per-item Copy/Flip actions are consolidated into the kebab
-// (⋮) menu owned by <ProjectViewFlipLayer>, so each item suppresses its OWN
-// built-in share/"Copy link" button to avoid a duplicate. Stable identity so the
-// context value doesn't change on every render.
-const SUPPRESS_ITEM_SHARE = { suppressItemShare: true };
 
 /**
  * Project - Container component for the new project view
@@ -146,17 +139,17 @@ function Project() {
 
   // Render specific dashboard. Wrapped in a positioned root so the View-mode
   // flip layer (VIS-788 / I-1) can mount as a sibling over the render-only
-  // <Dashboard> and place its flip buttons / lineage cards over each slot.
+  // <Dashboard> and place its kebab menus / lineage cards over each slot. The
+  // kebab (⋮) owns Copy link, so the items no longer render a built-in share
+  // button — no context provider is needed.
   return (
-    <ViewItemActionsContext.Provider value={SUPPRESS_ITEM_SHARE}>
-      <div ref={viewRootRef} data-testid="project-view-root" className="relative flex grow flex-col">
-        <Dashboard
-          projectId={project.id}
-          dashboardName={dashboardName}
-        />
-        <ProjectViewFlipLayer rootRef={viewRootRef} dashboardConfig={activeDashboardConfig} />
-      </div>
-    </ViewItemActionsContext.Provider>
+    <div ref={viewRootRef} data-testid="project-view-root" className="relative flex grow flex-col">
+      <Dashboard
+        projectId={project.id}
+        dashboardName={dashboardName}
+      />
+      <ProjectViewFlipLayer rootRef={viewRootRef} dashboardConfig={activeDashboardConfig} />
+    </div>
   );
 }
 
