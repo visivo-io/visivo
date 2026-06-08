@@ -195,3 +195,97 @@ describe('MiniLineageCard rendering (VIS-780)', () => {
     expect(within(insightRow).getByText('insight')).toBeInTheDocument();
   });
 });
+
+describe('MiniLineageCard lazy collection fetch on mount (View-mode fix)', () => {
+  // In View mode the render-only <Dashboard> only fetches a subset of
+  // collections, so the chart→insight→model→source walk dead-ends. The card's
+  // one-shot mount pass lazy-fetches every EMPTY collection the walker reads.
+  const makeFetchSpies = () => ({
+    fetchCharts: jest.fn(),
+    fetchInsights: jest.fn(),
+    fetchModels: jest.fn(),
+    fetchTables: jest.fn(),
+    fetchSources: jest.fn(),
+    fetchDimensions: jest.fn(),
+    fetchMetrics: jest.fn(),
+    fetchRelations: jest.fn(),
+    fetchDashboards: jest.fn(),
+    fetchDefaults: jest.fn(),
+  });
+
+  test('fetches every empty collection on mount (View mode)', () => {
+    const spies = makeFetchSpies();
+    act(() => {
+      useStore.setState({
+        charts: [],
+        insights: [],
+        models: [],
+        tables: [],
+        sources: [],
+        dimensions: [],
+        metrics: [],
+        relations: [],
+        markdowns: [],
+        inputs: [],
+        csvScriptModels: [],
+        localMergeModels: [],
+        allDashboards: [],
+        dashboards: [],
+        defaults: null,
+        openWorkspaceTab: jest.fn(),
+        setWorkspaceLens: jest.fn(),
+        ...spies,
+      });
+    });
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+    expect(spies.fetchCharts).toHaveBeenCalledTimes(1);
+    expect(spies.fetchInsights).toHaveBeenCalledTimes(1);
+    expect(spies.fetchModels).toHaveBeenCalledTimes(1);
+    expect(spies.fetchTables).toHaveBeenCalledTimes(1);
+    expect(spies.fetchSources).toHaveBeenCalledTimes(1);
+    expect(spies.fetchDimensions).toHaveBeenCalledTimes(1);
+    expect(spies.fetchMetrics).toHaveBeenCalledTimes(1);
+    expect(spies.fetchRelations).toHaveBeenCalledTimes(1);
+    expect(spies.fetchDashboards).toHaveBeenCalledTimes(1);
+    expect(spies.fetchDefaults).toHaveBeenCalledTimes(1);
+  });
+
+  test('does NOT re-fetch populated collections on mount (Workspace)', () => {
+    // The default seedStore() populates charts/insights/models/sources/etc, so
+    // the lazy fetch must be a no-op there. Re-seed with explicit spies.
+    const spies = makeFetchSpies();
+    act(() => {
+      useStore.setState({
+        charts: [{ name: 'revenue_chart', child_item_names: ['revenue_breakdown'] }],
+        insights: [{ name: 'revenue_breakdown', child_item_names: ['monthly_revenue'] }],
+        models: [{ name: 'monthly_revenue', child_item_names: ['local_postgres'] }],
+        tables: [{ name: 't' }],
+        sources: [{ name: 'local_postgres', child_item_names: [] }],
+        dimensions: [{ name: 'd' }],
+        metrics: [{ name: 'm' }],
+        relations: [{ name: 'r' }],
+        markdowns: [],
+        inputs: [],
+        csvScriptModels: [],
+        localMergeModels: [],
+        allDashboards: [{ name: 'dash', rows: [] }],
+        dashboards: [{ name: 'dash', config: { rows: [] } }],
+        defaults: { source_name: 'local_postgres' },
+        openWorkspaceTab: jest.fn(),
+        setWorkspaceLens: jest.fn(),
+        ...spies,
+      });
+    });
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" />);
+    expect(spies.fetchCharts).not.toHaveBeenCalled();
+    expect(spies.fetchInsights).not.toHaveBeenCalled();
+    expect(spies.fetchModels).not.toHaveBeenCalled();
+    expect(spies.fetchTables).not.toHaveBeenCalled();
+    expect(spies.fetchSources).not.toHaveBeenCalled();
+    expect(spies.fetchDimensions).not.toHaveBeenCalled();
+    expect(spies.fetchMetrics).not.toHaveBeenCalled();
+    expect(spies.fetchRelations).not.toHaveBeenCalled();
+    expect(spies.fetchDashboards).not.toHaveBeenCalled();
+    expect(spies.fetchDefaults).not.toHaveBeenCalled();
+  });
+});
