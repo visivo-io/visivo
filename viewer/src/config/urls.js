@@ -8,8 +8,6 @@ const URL_PATTERNS = {
   server: {
     project: '/api/project/',
     explorer: '/api/explorer/',
-    dag: '/api/dag/',
-    schema: '/api/schema/',
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
     inputJobsQuery: '/api/input-jobs/',
@@ -33,8 +31,6 @@ const URL_PATTERNS = {
     modelValidate: '/api/models/{name}/validate/',
 
     // Model profiling endpoints
-    modelProfile: '/api/models/{name}/profile/',
-    modelHistogram: '/api/models/{name}/histogram/{column}/',
     modelProfileInvalidate: '/api/models/{name}/profile/invalidate/',
 
     // Dimension management endpoints
@@ -133,8 +129,6 @@ const URL_PATTERNS = {
     // Static data endpoints only in dist mode
     project: '/data/project.json',
     explorer: '/data/explorer.json',
-    dag: '/data/dag.json',
-    schema: '/data/schema.json',
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',
@@ -161,8 +155,6 @@ const URL_PATTERNS = {
     modelValidate: null,
 
     // Model profiling endpoints (not available in dist)
-    modelProfile: null,
-    modelHistogram: null,
     modelProfileInvalidate: null,
 
     // Dimension management endpoints (not available in dist)
