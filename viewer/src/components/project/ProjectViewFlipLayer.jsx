@@ -5,16 +5,7 @@ import { parseRefValue } from '../../utils/refString';
 import { parseCanvasPath } from '../new-views/project/canvas/canvasReorder';
 import ItemFlipCard from './ItemFlipCard';
 import ItemActionMenu from './ItemActionMenu';
-import copy from 'copy-to-clipboard';
-
-// Replicate the items' built-in "Copy link" behavior: copy the current URL with
-// `element_id` set to the scroll offset so the link reopens at this slot.
-const copyItemLink = () => {
-  if (typeof window === 'undefined') return;
-  const url = new URL(window.location.href);
-  url.searchParams.set('element_id', window.scrollY);
-  copy(url.toString());
-};
+import copyItemLink from './copyItemLink';
 
 /**
  * ProjectViewFlipLayer — VIS-788 / I-1 (View-mode flip gesture).
@@ -160,12 +151,13 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
     });
   }, []);
 
-  // Expand deep-links to the Workspace editor for the subject (View mode has no
-  // rail to flip in place). Closes the flipped card afterwards.
+  // Expand = "open full lineage in a tab": deep-link to the Workspace with both
+  // the `edit=<type>:<name>` scope (opens a real tab for the subject) and the
+  // `lens=lineage` hint (the middle pane shows the full lineage, not the editor).
   const expandToWorkspace = useCallback(
     subject => {
       if (!subject) return;
-      navigate(`/workspace?edit=${subject.type}:${subject.name}`);
+      navigate(`/workspace?edit=${subject.type}:${subject.name}&lens=lineage`);
     },
     [navigate]
   );

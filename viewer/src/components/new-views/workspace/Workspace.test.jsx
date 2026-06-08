@@ -290,6 +290,29 @@ describe('VIS-775 Workspace shell', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('?edit=<type>:<name> deep link opens a real tab for the subject and focuses it', () => {
+    // The flip card's "Expand / Open full lineage" gesture routes here. Without
+    // opening a tab the Workspace would land on the unscoped Project Editor
+    // (only the project tab visible); the deep link must open + focus a tab.
+    renderAt('/workspace?edit=chart:revenue_chart&lens=lineage');
+    // Project tab is still hydrated, AND a chart tab opened from the deep link.
+    expect(
+      screen.getByTestId('workspace-tab-project:analytics-platform')
+    ).toBeInTheDocument();
+    const chartTab = screen.getByTestId('workspace-tab-chart:revenue_chart');
+    expect(chartTab).toBeInTheDocument();
+    // The deep-linked tab becomes active.
+    expect(chartTab).toHaveAttribute('data-active', 'true');
+    // The middle pane dispatches to the chart's PerObjectPane on the lineage lens.
+    expect(screen.getByTestId('workspace-middle-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+  });
+
+  test('?lens=lineage sets the workspace lens to lineage', () => {
+    renderAt('/workspace?edit=chart:revenue_chart&lens=lineage');
+    expect(useStore.getState().workspaceLens).toBe('lineage');
+  });
+
   test('fires workspace_mode_entered telemetry with null dashboardName when unscoped', () => {
     const events = [];
     const unsubscribe = setWorkspaceTelemetryListener((evt) =>
