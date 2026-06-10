@@ -18,9 +18,19 @@
  * the heavy React Flow / Plotly trees.
  */
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, act, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import MiddlePane from './MiddlePane';
 import useStore from '../../../stores/store';
+
+// MiddlePane reads the URL (?edit/?lens) for the deep-link lens, so every render
+// needs a Router. Wrap render (and the rerender it returns) in a MemoryRouter.
+const RouterWrapper = ({ children }) => (
+  <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    {children}
+  </MemoryRouter>
+);
+const render = (ui, options) => rtlRender(ui, { wrapper: RouterWrapper, ...options });
 
 jest.mock('../project/editor/ProjectEditor', () => {
   const Mock = () => <div data-testid="mock-project-editor" />;

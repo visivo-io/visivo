@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import ProjectCanvas from '../project/canvas/ProjectCanvas';
 import ProjectEditor from '../project/editor/ProjectEditor';
@@ -124,29 +125,40 @@ const PerObjectPane = ({ activeObject, projectId }) => {
   // canceled; the fallback is the plain Lineage lens, not a bespoke component).
   const PreviewComponent = getPreviewComponent(type);
   const hasPreview = Boolean(PreviewComponent);
-  // Types with a custom preview default to the Preview lens (it's their primary
-  // surface); fallback types default to — and lock onto — Lineage. The shared
-  // store lens defaults to 'preview' (the dashboard *canvas* default), which is
-  // not meaningful for objects with no preview surface, so the per-object lens
-  // is tracked locally.
-  const [lensEffective, setLensEffective] = React.useState(
-    hasPreview ? 'preview' : 'lineage'
-  );
-  // Reset the lens to the new object's DEFAULT whenever the active object
-  // changes. React reuses this same PerObjectPane instance when the user
-  // switches between two non-dashboard objects (same component, same tree
+  const objectKey = `${type}:${name}`;
+
+  // A deep link (`?edit=<type>:<name>&lens=lineage`) — e.g. the flip card's
+  // "Open full lineage" Expand — requests the Lineage lens for THIS specific
+  // object. Honour it as the initial/reset lens, but scope it to the named
+  // object so it can't leak to the next selection (the param stays in the URL
+  // after the user navigates within the Workspace).
+  const [searchParams] = useSearchParams();
+  const deepLinkLens = React.useMemo(() => {
+    if (searchParams.get('lens') !== 'lineage') return null;
+    return searchParams.get('edit') === objectKey ? 'lineage' : null;
+  }, [searchParams, objectKey]);
+  const defaultLens = hasPreview ? 'preview' : 'lineage';
+
+  // Types with a custom preview default to the Preview lens (their primary
+  // surface); fallback types default to — and lock onto — Lineage. A matching
+  // deep link overrides the default. The shared store lens defaults to 'preview'
+  // (the dashboard *canvas* default), which isn't meaningful for objects with no
+  // preview surface, so the per-object lens is tracked locally.
+  const [lensEffective, setLensEffective] = React.useState(deepLinkLens || defaultLens);
+  // Reset the lens to the object's default (or the deep-link lens) whenever the
+  // active object changes. React reuses this same PerObjectPane instance when the
+  // user switches between two non-dashboard objects (same component, same tree
   // position), so without this the previous object's lens selection would leak:
   // flipping a chart to Lineage and then selecting a table would open the table
   // on Lineage instead of its Preview default. Keyed on type+name so navigating
   // between two objects of the same type also re-defaults.
-  const objectKey = `${type}:${name}`;
   const prevKeyRef = React.useRef(objectKey);
   React.useEffect(() => {
     if (prevKeyRef.current !== objectKey) {
       prevKeyRef.current = objectKey;
-      setLensEffective(hasPreview ? 'preview' : 'lineage');
+      setLensEffective(deepLinkLens || defaultLens);
     }
-  }, [objectKey, hasPreview]);
+  }, [objectKey, deepLinkLens, defaultLens]);
   // A fallback type can never show Preview — clamp any stale 'preview' selection.
   const lens = hasPreview ? lensEffective : 'lineage';
   return (
