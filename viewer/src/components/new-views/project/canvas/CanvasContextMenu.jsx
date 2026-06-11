@@ -148,6 +148,8 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
   const navigate = useNavigate();
   const dashboards = useStore(s => s.dashboards);
   const setSelectedKey = useStore(s => s.setWorkspaceOutlineSelectedKey);
+  const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   const commitCanvasConfig = useWorkspaceCommit();
   // menu: null | { x, y, key, kind }
   const [menu, setMenu] = useState(null);
@@ -239,6 +241,27 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
     [navigate, dashboardName]
   );
 
+  // VIS-811 / O-2: open the right-clicked leaf's object as a workspace tab.
+  // "Open" replaces the current context (focus moves); "Open in new tab"
+  // background-opens so the dashboard tab keeps focus.
+  const openAsTab = useCallback(
+    (subject, background) => {
+      if (!subject) return;
+      const tab = {
+        id: `${subject.type}:${subject.name}`,
+        type: subject.type,
+        name: subject.name,
+      };
+      if (background) {
+        if (openWorkspaceTabBackground) openWorkspaceTabBackground(tab);
+      } else if (openWorkspaceTab) {
+        openWorkspaceTab(tab);
+      }
+      setMenu(null);
+    },
+    [openWorkspaceTab, openWorkspaceTabBackground]
+  );
+
   if (!dashboardConfig || !menu) return null;
 
   const isContainer = menu.kind === 'item' && isContainerItem(dashboardConfig, menu.key);
@@ -272,6 +295,18 @@ const CanvasContextMenu = ({ rootRef, dashboardName }) => {
 
       {explorerSubject && (
         <>
+          <MenuItem
+            testid="canvas-ctx-open"
+            label="Open"
+            hint="tab"
+            onClick={() => openAsTab(explorerSubject, false)}
+          />
+          <MenuItem
+            testid="canvas-ctx-open-new-tab"
+            label="Open in new tab"
+            hint="⌘↵"
+            onClick={() => openAsTab(explorerSubject, true)}
+          />
           <MenuItem
             testid="canvas-ctx-open-in-explorer"
             label="Open in Explorer"

@@ -50,6 +50,7 @@ const Library = () => {
   // Workspace actions — read from the store directly so the Library has no
   // required props (the parent LeftRail mounts it as `<Library />`).
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   const toggleLeftCollapsed = useStore(s => s.toggleWorkspaceLeftCollapsed);
 
   // The active workspace tab's id is the selected row's id — both are
@@ -82,14 +83,27 @@ const Library = () => {
     [openWorkspaceTab]
   );
 
-  const handleContextAction = useCallback((action, obj) => {
-    // Track G wires the actual handlers; for C3 we just emit telemetry.
-    emitWorkspaceEvent('library_row_context_action', {
-      type: obj.type,
-      name: obj.name,
-      action,
-    });
-  }, []);
+  const handleContextAction = useCallback(
+    (action, obj) => {
+      emitWorkspaceEvent('library_row_context_action', {
+        type: obj.type,
+        name: obj.name,
+        action,
+      });
+      // VIS-811 / O-2: the open actions are live; the rest (wrapInChart,
+      // showLineage, delete) stay telemetry-only until their tracks wire them.
+      if (action === 'edit' && openWorkspaceTab) {
+        openWorkspaceTab({ id: `${obj.type}:${obj.name}`, type: obj.type, name: obj.name });
+      } else if (action === 'openInNewTab' && openWorkspaceTabBackground) {
+        openWorkspaceTabBackground({
+          id: `${obj.type}:${obj.name}`,
+          type: obj.type,
+          name: obj.name,
+        });
+      }
+    },
+    [openWorkspaceTab, openWorkspaceTabBackground]
+  );
 
   const handleCreate = useCallback(
     typeKey => {

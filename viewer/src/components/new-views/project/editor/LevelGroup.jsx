@@ -20,6 +20,7 @@ const LevelGroup = ({
   onToggle,
   selectedDashboardName,
   onSelectTile,
+  onOpenTileInNewTab,
   activeDragName,
   isActiveSourceGroup,
   editable = false,
@@ -109,6 +110,7 @@ const LevelGroup = ({
                 tile={tile}
                 selected={selectedDashboardName === tile.name}
                 onSelect={onSelectTile}
+                onOpenInNewTab={onOpenTileInNewTab}
               />
             ))
           )}

@@ -41,8 +41,18 @@ import { formatRefExpression } from '../../../utils/refString';
  *   - `headerSlot`     — optional React node rendered to the left of the
  *                        selector input bar (used by `<LineageCanvas>` to
  *                        mount the scope-indicator chrome).
+ *   - `onNodeContextMenu` — called with `(event, { type, name })` when a node
+ *                        is right-clicked (VIS-811 / Track O O-2) so a host
+ *                        can mount an "Open / Open in new tab" context menu.
+ *                        When provided, the browser's default menu is
+ *                        suppressed for node right-clicks only.
  */
-const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = null } = {}) => {
+const LineageNew = ({
+  scopeSelector = null,
+  onNodeSelect = null,
+  headerSlot = null,
+  onNodeContextMenu = null,
+} = {}) => {
   // Sources
   const fetchSources = useStore(state => state.fetchSources);
   const sourcesError = useStore(state => state.sourcesError);
@@ -422,6 +432,19 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
     }
   }, [clearEdit, pushEdit, onNodeSelect]);
 
+  // Right-click on a node (VIS-811 / Track O O-2) — resolve the node to its
+  // `{ type, name }` identity and hand it to the host with the raw event so
+  // the host can position its own context menu. Suppress the browser menu
+  // only when a host is actually listening.
+  const handleNodeContextMenu = useCallback(
+    (event, node) => {
+      if (!onNodeContextMenu) return;
+      event.preventDefault();
+      onNodeContextMenu(event, { type: node.data.objectType, name: node.data.name });
+    },
+    [onNodeContextMenu]
+  );
+
   // Handle new edge connection (drag from source to model)
   const handleConnect = useCallback(
     async params => {
@@ -599,6 +622,7 @@ const LineageNew = ({ scopeSelector = null, onNodeSelect = null, headerSlot = nu
             edges={initialLoadDone ? (edges || []) : []}
             nodeTypes={nodeTypes}
             onNodeClick={handleNodeClick}
+            onNodeContextMenu={handleNodeContextMenu}
             onConnect={handleConnect}
             onEdgesDelete={handleEdgesDelete}
             onInit={instance => {

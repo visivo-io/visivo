@@ -116,6 +116,30 @@ const createWorkspaceSlice = (set, get) => ({
     return id;
   },
 
+  /**
+   * Open a tab WITHOUT focusing it (VIS-811 / O-2). The convention for
+   * right-click "Open in new tab": the tab joins the strip in the background
+   * and the current context is untouched (per the Track O spec — "creates a
+   * new tab; clicking the tab switches the workspace context"). If the tab
+   * is already open this is a no-op (it keeps its position and focus stays
+   * where it is). Returns the tab id, or null on bad input.
+   */
+  openWorkspaceTabBackground: (tab) => {
+    if (!tab || !tab.type || !tab.name) return null;
+    const id = tab.id || `${tab.type}:${tab.name}`;
+    const state = get();
+    if (state.workspaceTabs.some((t) => t.id === id)) return id;
+    const next = { id, type: tab.type, name: tab.name, dirty: !!tab.dirty };
+    emitWorkspaceEvent('tab_opened', {
+      id,
+      type: tab.type,
+      name: tab.name,
+      background: true,
+    });
+    set({ workspaceTabs: [...state.workspaceTabs, next] });
+    return id;
+  },
+
   /** Focus a tab by id without opening anything new. No-op if id unknown. */
   switchWorkspaceTab: (tabId) => {
     const state = get();

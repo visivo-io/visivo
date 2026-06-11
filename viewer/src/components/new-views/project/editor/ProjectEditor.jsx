@@ -144,6 +144,7 @@ const ProjectEditor = () => {
   const sources = useStore(s => s.sources);
   const defaults = useStore(s => s.defaults);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
+  const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   // M-2a level CRUD (merged from feature). Drag-between-levels reassignment now
   // lives in the shell's shared WorkspaceDndContext handler, so this surface no
   // longer needs `reassignDashboardLevel` — only the level-editing actions.
@@ -238,6 +239,25 @@ const ProjectEditor = () => {
       });
     },
     [openWorkspaceTab]
+  );
+
+  // Right-click "Open in new tab" on a tile (VIS-811 / O-2): background-open —
+  // the tab joins the strip but the Project Editor keeps focus.
+  const dispatchDashboardOpenInNewTab = useCallback(
+    tile => {
+      if (openWorkspaceTabBackground) {
+        openWorkspaceTabBackground({
+          id: `dashboard:${tile.name}`,
+          type: 'dashboard',
+          name: tile.name,
+        });
+      }
+      emitWorkspaceEvent('project_editor_action', {
+        kind: 'open_tile_in_new_tab',
+        name: tile.name,
+      });
+    },
+    [openWorkspaceTabBackground]
   );
 
   const dispatchChromeSelection = useCallback(() => {
@@ -403,6 +423,7 @@ const ProjectEditor = () => {
                       onToggle={() => handleToggle(group.levelKey)}
                       selectedDashboardName={selectedDashboardName}
                       onSelectTile={dispatchDashboardSelection}
+                      onOpenTileInNewTab={dispatchDashboardOpenInNewTab}
                       activeDragName={activeDrag?.name || null}
                       isActiveSourceGroup={isActiveSourceGroup}
                       editable={editable}

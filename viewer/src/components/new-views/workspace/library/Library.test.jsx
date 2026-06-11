@@ -13,7 +13,7 @@
  *   - "+ New X" delegates to the corresponding store opener + telemetry.
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import {
   createMemoryRouter,
   Route,
@@ -248,6 +248,60 @@ describe('Library', () => {
       type: 'source',
       name: 'local-duck',
     });
+  });
+
+  // Right-click context actions (VIS-811 / Track O O-2) ----------------------
+
+  test('row context "Open in new tab" background-opens (openWorkspaceTabBackground), not openWorkspaceTab', () => {
+    const openWorkspaceTab = jest.fn();
+    const openWorkspaceTabBackground = jest.fn();
+    seedStore({ openWorkspaceTab, openWorkspaceTabBackground });
+    renderLibrary();
+
+    fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
+    const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
+    fireEvent.click(within(menu).getByText('Open in new tab'));
+
+    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
+      id: 'chart:waterfall',
+      type: 'chart',
+      name: 'waterfall',
+    });
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
+  });
+
+  test('row context "Open in right rail" focuses the tab via openWorkspaceTab', () => {
+    const openWorkspaceTab = jest.fn();
+    const openWorkspaceTabBackground = jest.fn();
+    seedStore({ openWorkspaceTab, openWorkspaceTabBackground });
+    renderLibrary();
+
+    fireEvent.contextMenu(screen.getByTestId('library-row-model-monthly_revenue'));
+    const menu = screen.getByTestId('library-row-model-monthly_revenue-context-menu');
+    fireEvent.click(within(menu).getByText('Open in right rail'));
+
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'model:monthly_revenue',
+      type: 'model',
+      name: 'monthly_revenue',
+    });
+    expect(openWorkspaceTabBackground).not.toHaveBeenCalled();
+  });
+
+  test('row context actions still emit library_row_context_action telemetry', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    seedStore({ openWorkspaceTab: jest.fn(), openWorkspaceTabBackground: jest.fn() });
+    renderLibrary();
+
+    fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
+    const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
+    fireEvent.click(within(menu).getByText('Open in new tab'));
+
+    const ctx = events.find(e => e.eventName === 'library_row_context_action');
+    expect(ctx).toBeTruthy();
+    expect(ctx.payload).toEqual({ type: 'chart', name: 'waterfall', action: 'openInNewTab' });
+    unsubscribe();
   });
 
   test('clicking a dashboard row scopes the workspace to that dashboard (VIS-824)', () => {
