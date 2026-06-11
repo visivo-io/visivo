@@ -223,3 +223,104 @@ class TestPublishViews:
         # Verify caches were cleared
         app.flask_app.source_manager.clear_cache.assert_called_once()
         app.flask_app.model_manager.clear_cache.assert_called_once()
+
+    @patch("visivo.server.views.publish_views.ProjectWriter")
+    def test_publish_pauses_watcher_around_write_and_refresh(self, mock_writer_class, client, app):
+        """The YAML write + synchronous project refresh must be serialized
+        with the file watcher — a concurrent watcher recompile races the git
+        include cache and leaves the served project stale (VIS-806)."""
+        mock_source = Mock()
+        mock_source.model_dump.return_value = {"name": "new_source", "type": "sqlite"}
+        app.flask_app.source_manager.cached_objects = {"new_source": mock_source}
+        app.flask_app.source_manager.published_objects = {}
+        app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
+        app.flask_app.model_manager.cached_objects = {}
+        app.flask_app.model_manager.get_status.return_value = ObjectStatus.PUBLISHED
+        mock_writer_class.return_value = Mock()
+
+        hot_reload = Mock()
+        app.flask_app.hot_reload_server = hot_reload
+
+        response = client.post("/api/publish/")
+
+        assert response.status_code == 200
+        ordered = [
+            c[0]
+            for c in hot_reload.method_calls
+            if c[0] in ("pause_file_watcher", "on_project_change", "resume_file_watcher")
+        ]
+        assert ordered == ["pause_file_watcher", "on_project_change", "resume_file_watcher"]
+
+    @patch("visivo.server.views.publish_views.ProjectWriter")
+    def test_publish_resumes_watcher_when_refresh_throws(self, mock_writer_class, client, app):
+        """resume_file_watcher must run even when the refresh fails — a stuck
+        pause would silently disable hot reload for the rest of the session."""
+        mock_source = Mock()
+        mock_source.model_dump.return_value = {"name": "new_source", "type": "sqlite"}
+        app.flask_app.source_manager.cached_objects = {"new_source": mock_source}
+        app.flask_app.source_manager.published_objects = {}
+        app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
+        app.flask_app.model_manager.cached_objects = {}
+        app.flask_app.model_manager.get_status.return_value = ObjectStatus.PUBLISHED
+        mock_writer_class.return_value = Mock()
+
+        hot_reload = Mock()
+        hot_reload.on_project_change.side_effect = RuntimeError("compile blew up")
+        app.flask_app.hot_reload_server = hot_reload
+
+        response = client.post("/api/publish/")
+
+        assert response.status_code == 500
+        hot_reload.resume_file_watcher.assert_called_once()
+
+    def test_discard_no_changes(self, client, app):
+        """Discard with an empty draft cache reports zero discards."""
+        response = client.post("/api/publish/discard/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["discarded_count"] == 0
+        assert "discarded" in data["message"].lower()
+        app.flask_app.source_manager.clear_cache.assert_called_once()
+
+    def test_discard_with_changes(self, client, app):
+        """Discard counts every unpublished draft and clears all caches."""
+        mock_source = Mock()
+        mock_source.type = "sqlite"
+        app.flask_app.source_manager.cached_objects = {"new_source": mock_source}
+        app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
+        app.flask_app.model_manager.cached_objects = {"edited_model": Mock()}
+        app.flask_app.model_manager.get_status.return_value = ObjectStatus.MODIFIED
+        app.flask_app._cached_defaults = Mock()
+
+        response = client.post("/api/publish/discard/")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["discarded_count"] == 3
+        app.flask_app.source_manager.clear_cache.assert_called_once()
+        app.flask_app.model_manager.clear_cache.assert_called_once()
+        app.flask_app.dashboard_manager.clear_cache.assert_called_once()
+        assert app.flask_app._cached_defaults is None
+
+    def test_discard_excludes_published(self, client, app):
+        """Cached objects already in the published state don't inflate the count."""
+        app.flask_app.source_manager.cached_objects = {"published_source": Mock()}
+        app.flask_app.source_manager.get_status.return_value = ObjectStatus.PUBLISHED
+
+        response = client.post("/api/publish/discard/")
+
+        assert response.status_code == 200
+        assert response.get_json()["discarded_count"] == 0
+        app.flask_app.source_manager.clear_cache.assert_called_once()
+
+    def test_discard_counts_deletions(self, client, app):
+        """A draft deletion (None entry) counts as a discarded change."""
+        app.flask_app.dashboard_manager.cached_objects = {"doomed_dashboard": None}
+        app.flask_app.dashboard_manager.get_status.return_value = ObjectStatus.DELETED
+
+        response = client.post("/api/publish/discard/")
+
+        assert response.status_code == 200
+        assert response.get_json()["discarded_count"] == 1
+        app.flask_app.dashboard_manager.clear_cache.assert_called_once()
