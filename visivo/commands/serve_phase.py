@@ -28,6 +28,17 @@ def serve_phase(
     server = None  # Will be set later
 
     def on_project_change(one_shot=False):
+        def emit_project_changed(drafts_dropped):
+            # Soft-refresh signal for the Workspace SPA (VIS-808 / Q15): the
+            # viewer refetches instead of hard-reloading, and shows the
+            # external-edit banner when drafts were dropped. The legacy
+            # "reload" event (full page refresh) is emitted separately by the
+            # watcher wrapper / publish endpoint.
+            if app.hot_reload_server:
+                app.hot_reload_server.socketio.emit(
+                    "project_changed", {"drafts_dropped": drafts_dropped}
+                )
+
         try:
             Logger.instance().info(
                 "Server has detected changes to the project. Re-running project..."
@@ -38,6 +49,18 @@ def serve_phase(
                 output_dir=output_dir,
                 no_deprecation_warnings=no_deprecation_warnings,
             )
+
+            # Q15 last-write-wins: the YAML on disk just changed, so any
+            # in-flight draft edits are stale — drop them BEFORE serving the
+            # recompiled project. A publish clears the caches before calling
+            # this, so drafts_dropped is only True for genuinely external
+            # edits during a dirty Build session.
+            drafts_dropped = app.has_draft_changes()
+            if drafts_dropped:
+                app.clear_draft_caches()
+                Logger.instance().info(
+                    "External project change with unsaved drafts — drafts dropped (last-write-wins)."
+                )
 
             changed_dag_filter = project.dag().get_diff_dag_filter(
                 existing_project=app.project, existing_dag_filter=dag_filter
@@ -51,6 +74,7 @@ def serve_phase(
                 # change (the canvas would silently lose the published edit).
                 app.project = project
                 Logger.instance().info("No data changes to the project. Refreshed metadata.")
+                emit_project_changed(drafts_dropped)
                 return
 
             runner = run_phase(
@@ -66,6 +90,7 @@ def serve_phase(
                 no_deprecation_warnings=no_deprecation_warnings,
             )
             app.project = runner.project
+            emit_project_changed(drafts_dropped)
             if one_shot:
                 Logger.instance().success("Closing server...")
             else:
