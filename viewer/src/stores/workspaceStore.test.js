@@ -14,6 +14,7 @@ const reset = () => {
     useStore.setState({
       workspaceTabs: [],
       workspaceActiveTabId: null,
+      workspacePendingCloseTabId: null,
       workspaceLeftCollapsed: false,
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
@@ -165,6 +166,86 @@ describe('workspace store slice', () => {
     const s = useStore.getState();
     expect(s.workspaceTabs).toHaveLength(0);
     expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  // Dirty-close guard (VIS-812 / Track O O-3) --------------------------------
+
+  test('requestCloseWorkspaceTab closes a CLEAN tab immediately', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().requestCloseWorkspaceTab('dashboard:d1');
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs).toHaveLength(0);
+    expect(s.workspacePendingCloseTabId).toBeNull();
+  });
+
+  test('requestCloseWorkspaceTab parks a DIRTY tab for confirmation instead of closing', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().setWorkspaceTabDirty('dashboard:d1', true);
+      useStore.getState().requestCloseWorkspaceTab('dashboard:d1');
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs).toHaveLength(1);
+    expect(s.workspacePendingCloseTabId).toBe('dashboard:d1');
+  });
+
+  test('requestCloseWorkspaceTab is a no-op for unknown ids', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().requestCloseWorkspaceTab('nope:nope');
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs).toHaveLength(1);
+    expect(s.workspacePendingCloseTabId).toBeNull();
+  });
+
+  test('confirmCloseWorkspaceTab closes the parked tab and clears the pending id', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs.map((t) => t.id)).toEqual(['dashboard:d1']);
+    expect(s.workspacePendingCloseTabId).toBeNull();
+    // Focus fell back to the surviving tab.
+    expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('confirmCloseWorkspaceTab with nothing pending is a no-op', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().confirmCloseWorkspaceTab();
+    });
+    expect(useStore.getState().workspaceTabs).toHaveLength(1);
+  });
+
+  test('cancelCloseWorkspaceTab keeps the tab open (and still dirty)', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+      useStore.getState().cancelCloseWorkspaceTab();
+    });
+    const s = useStore.getState();
+    expect(s.workspacePendingCloseTabId).toBeNull();
+    expect(s.workspaceTabs).toHaveLength(1);
+    expect(s.workspaceTabs[0].dirty).toBe(true);
+  });
+
+  test('closing a parked tab by another path clears the pending id', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().setWorkspaceTabDirty('chart:c1', true);
+      useStore.getState().requestCloseWorkspaceTab('chart:c1');
+      // Force-close (e.g. some other surface) while the dialog is up.
+      useStore.getState().closeWorkspaceTab('chart:c1');
+    });
+    expect(useStore.getState().workspacePendingCloseTabId).toBeNull();
   });
 
   test('setWorkspaceTabDirty toggles the dirty flag without touching others', () => {

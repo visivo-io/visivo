@@ -7,6 +7,7 @@ import MiddlePane from './MiddlePane';
 import DragHandle from './DragHandle';
 import WorkspaceDndContext from './WorkspaceDndContext';
 import ExternalEditBanner from './ExternalEditBanner';
+import useWorkspaceTabShortcuts from './useWorkspaceTabShortcuts';
 import useStore from '../../../stores/store';
 
 /**
@@ -40,6 +41,10 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
   const rightCollapsed = useStore(s => s.workspaceRightCollapsed);
   const leftWidth = useStore(s => s.workspaceLeftWidth);
   const rightWidth = useStore(s => s.workspaceRightWidth);
+
+  // Tab keyboard shortcuts (VIS-812 / O-3): Cmd/Ctrl+T new tab, Cmd/Ctrl+W
+  // close active (through the dirty guard), Cmd/Ctrl+1..9 switch by position.
+  useWorkspaceTabShortcuts();
 
   return (
     <div

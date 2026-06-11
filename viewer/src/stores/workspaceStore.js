@@ -47,6 +47,10 @@ const createWorkspaceSlice = (set, get) => ({
   workspaceActiveTabId: null,
   workspaceActiveObject: null, // `{ type, name }` mirror of the active tab.
 
+  // Dirty-close confirmation (VIS-812 / O-3): the tab id awaiting the user's
+  // confirm/cancel in the close dialog, or null when no close is pending.
+  workspacePendingCloseTabId: null,
+
   // Rails -------------------------------------------------------------------
   workspaceLeftCollapsed: false,
   workspaceRightCollapsed: false,
@@ -187,7 +191,42 @@ const createWorkspaceSlice = (set, get) => ({
       workspaceTabs: remaining,
       workspaceActiveTabId: activeId,
       workspaceActiveObject: activeObject,
+      // A tab closed by any path can't stay parked in the confirm dialog.
+      workspacePendingCloseTabId:
+        state.workspacePendingCloseTabId === tabId ? null : state.workspacePendingCloseTabId,
     });
+  },
+
+  /**
+   * Close a tab THROUGH the dirty guard (VIS-812 / O-3). Clean tabs close
+   * immediately; dirty tabs park their id in `workspacePendingCloseTabId`
+   * so the TabStrip's confirmation dialog can ask first. The × button and
+   * Cmd/Ctrl+W both route through here; `closeWorkspaceTab` stays the
+   * unguarded primitive (the dialog's "Close without saving" calls it).
+   */
+  requestCloseWorkspaceTab: (tabId) => {
+    const state = get();
+    const tab = state.workspaceTabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    if (tab.dirty) {
+      set({ workspacePendingCloseTabId: tabId });
+      return;
+    }
+    state.closeWorkspaceTab(tabId);
+  },
+
+  /** Confirm the pending dirty close — closes the tab and clears the pending id. */
+  confirmCloseWorkspaceTab: () => {
+    const state = get();
+    const tabId = state.workspacePendingCloseTabId;
+    if (!tabId) return;
+    set({ workspacePendingCloseTabId: null });
+    state.closeWorkspaceTab(tabId);
+  },
+
+  /** Cancel the pending dirty close — the tab stays open and dirty. */
+  cancelCloseWorkspaceTab: () => {
+    set({ workspacePendingCloseTabId: null });
   },
 
   /**
