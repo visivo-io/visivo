@@ -56,10 +56,15 @@ const createDashboardSlice = (set, get) => ({
     }
   },
 
-  // Save dashboard to cache
+  // Save dashboard to cache. Reports into the global save-activity counter
+  // (H-1) so canvas actions — which call this directly, without the
+  // debounced-save hook — light up the TopBar "Saving…" pill too.
   saveDashboard: async (name, config) => {
+    get().beginSaveActivity?.();
+    let ok = false;
     try {
       const result = await dashboardsApi.saveDashboard(name, config);
+      ok = true;
       await get().fetchDashboards();
       if (get().checkPublishStatus) {
         await get().checkPublishStatus();
@@ -69,6 +74,8 @@ const createDashboardSlice = (set, get) => ({
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };
+    } finally {
+      get().endSaveActivity?.(ok);
     }
   },
 

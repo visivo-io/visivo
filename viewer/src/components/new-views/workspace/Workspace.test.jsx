@@ -64,6 +64,14 @@ const resetWorkspaceStore = () => {
       workspaceRightTab: 'edit',
       workspaceLens: 'preview',
       hasUnpublishedChanges: false,
+      // Publish-cluster state (H-1) — reset so tests are isolated.
+      pendingCount: 0,
+      saveActivityCount: 0,
+      lastSaveFailed: false,
+      publishLoading: false,
+      publishError: null,
+      publishModalOpen: false,
+      lastPublishedAt: null,
       // Stub project that the loader normally hydrates.
       project: {
         id: 'p1',
@@ -191,20 +199,21 @@ describe('VIS-775 Workspace shell', () => {
     expect(chip).toHaveAttribute('data-object-type', 'dashboard');
   });
 
-  test('Publish · N button only renders when dirty > 0', () => {
-    // Clean state.
+  test('Publish cluster: disabled + "Saved" when clean, count badge when dirty (H-1)', () => {
+    // Clean state — the cluster renders, Publish is disabled, pill says Saved.
     renderAt('/workspace');
-    expect(
-      screen.queryByTestId('workspace-top-bar-publish')
-    ).not.toBeInTheDocument();
-    // Mark dirty.
+    expect(screen.getByTestId('workspace-top-bar-publish')).toBeDisabled();
+    expect(screen.getByTestId('workspace-save-pill-clean')).toHaveTextContent('Saved');
+    // Mark dirty with a live pending count.
     act(() => {
-      useStore.setState({ hasUnpublishedChanges: true });
+      useStore.setState({ hasUnpublishedChanges: true, pendingCount: 3 });
     });
-    expect(screen.getByTestId('workspace-top-bar-publish')).toHaveTextContent(
-      'Publish'
-    );
-    expect(screen.getByTestId('workspace-top-bar-publish')).toHaveTextContent('1');
+    const publish = screen.getByTestId('workspace-top-bar-publish');
+    expect(publish).toBeEnabled();
+    expect(publish).toHaveTextContent('Publish');
+    expect(publish).toHaveTextContent('3');
+    expect(screen.getByTestId('workspace-save-pill-dirty')).toHaveTextContent('3 changes');
+    expect(screen.getByTestId('workspace-top-bar-discard')).toBeInTheDocument();
   });
 
   test('fires workspace_mode_entered telemetry on mount with dashboard scope', () => {

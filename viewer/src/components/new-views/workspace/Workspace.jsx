@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
-import { emitWorkspaceEvent } from './telemetry';
+import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
 
 /**
@@ -133,6 +133,8 @@ const Workspace = () => {
       dashboardName: dashboardName || null,
       scope: scope.scope,
     });
+    // Arm the time_to_first_publish_in_build_mode metric (H-1 / Q22).
+    markBuildModeEntered();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardName]);
 
@@ -140,10 +142,13 @@ const Workspace = () => {
   // container to reserve space for its fixed `<TopNav>`. The Workspace
   // shell renders its own TopBar (per the delivered B-1 design), so we
   // anchor the shell to `top-0 bottom-0` to occupy the full viewport
-  // height and visually replace the outer nav.
+  // height and visually replace the outer nav. The overlay must sit ABOVE
+  // TopNav's `z-50` — at the old `z-40` the outer nav covered the shell's
+  // TopBar, leaving the Publish cluster visible-but-unclickable (H-1 e2e
+  // caught this: every pointer action on the top bar hit TopNav instead).
   return (
     <div
-      className="fixed inset-0 z-40 bg-white"
+      className="fixed inset-0 z-[60] bg-white"
       data-testid="workspace-route-root"
     >
       <WorkspaceShell />

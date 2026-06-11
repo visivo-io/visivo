@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import useStore from '../../../stores/store';
 
 /**
  * useDebouncedSave — VIS-802 / Track G G-1.
@@ -49,11 +50,19 @@ export default function useDebouncedSave(saveFn, opts = {}) {
 
   const runSave = useCallback(async payload => {
     if (mountedRef.current) setStatus('saving');
+    // Report into the global save-activity counter (H-1) so the TopBar
+    // cluster shows "Saving…" while this form's write is in flight. The
+    // counter must balance even if this hook unmounts mid-save, so the
+    // end call lives in `finally` and ignores `mountedRef`.
+    const { beginSaveActivity, endSaveActivity } = useStore.getState();
+    beginSaveActivity?.();
+    let ok = false;
     try {
       const result = await saveFnRef.current(payload);
-      if (!mountedRef.current) return;
       // saveFn may return `{ success }` (the store actions do) or nothing.
-      if (result && result.success === false) {
+      ok = !(result && result.success === false);
+      if (!mountedRef.current) return;
+      if (!ok) {
         setStatus('error');
         return;
       }
@@ -65,6 +74,8 @@ export default function useDebouncedSave(saveFn, opts = {}) {
       }, 2000);
     } catch {
       if (mountedRef.current) setStatus('error');
+    } finally {
+      endSaveActivity?.(ok);
     }
   }, []);
 

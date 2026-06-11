@@ -23,10 +23,14 @@ const createDefaultsSlice = (set, get) => ({
     }
   },
 
-  // Save defaults to cache
+  // Save defaults to cache. Reports into the global save-activity counter
+  // (H-1) — level CRUD persists through this path without the debounced hook.
   saveDefaults: async config => {
+    get().beginSaveActivity?.();
+    let ok = false;
     try {
       const result = await defaultsApi.saveDefaults(config);
+      ok = true;
       // Refresh defaults
       await get().fetchDefaults();
       // Trigger publish status check
@@ -36,6 +40,8 @@ const createDefaultsSlice = (set, get) => ({
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };
+    } finally {
+      get().endSaveActivity?.(ok);
     }
   },
 });

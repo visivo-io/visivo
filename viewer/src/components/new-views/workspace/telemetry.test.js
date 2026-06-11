@@ -11,6 +11,8 @@
 import {
   emitWorkspaceEvent,
   setWorkspaceTelemetryListener,
+  markBuildModeEntered,
+  emitFirstPublishTelemetry,
 } from './telemetry';
 
 const TEL_EVENT = 'visivo:workspace-telemetry';
@@ -72,5 +74,44 @@ describe('emitWorkspaceEvent', () => {
       throw new Error('boom');
     });
     expect(() => emitWorkspaceEvent('middle_pane_toggled', {})).not.toThrow();
+  });
+});
+
+describe('time_to_first_publish_in_build_mode (VIS-806 / H-1)', () => {
+  let events;
+  let unsubscribe;
+
+  beforeEach(() => {
+    events = [];
+    unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
+  });
+
+  afterEach(() => {
+    unsubscribe();
+  });
+
+  test('emits once per Build-mode entry, with elapsed ms', () => {
+    markBuildModeEntered();
+    emitFirstPublishTelemetry();
+    emitFirstPublishTelemetry(); // second publish in the same session — no event
+
+    const publishEvents = events.filter(
+      e => e.eventName === 'time_to_first_publish_in_build_mode'
+    );
+    expect(publishEvents).toHaveLength(1);
+    expect(publishEvents[0].payload.msSinceBuildModeEntered).toEqual(expect.any(Number));
+    expect(publishEvents[0].payload.msSinceBuildModeEntered).toBeGreaterThanOrEqual(0);
+  });
+
+  test('re-entering Build mode re-arms the metric', () => {
+    markBuildModeEntered();
+    emitFirstPublishTelemetry();
+    markBuildModeEntered();
+    emitFirstPublishTelemetry();
+
+    const publishEvents = events.filter(
+      e => e.eventName === 'time_to_first_publish_in_build_mode'
+    );
+    expect(publishEvents).toHaveLength(2);
   });
 });

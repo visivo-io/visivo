@@ -72,3 +72,28 @@ export function setWorkspaceTelemetryListener(fn) {
     if (listener === fn) listener = null;
   };
 }
+
+/**
+ * `time_to_first_publish_in_build_mode` (VIS-806 / Track H H-1, Q22 metric).
+ *
+ * The Workspace marks Build-mode entry on mount; the publish flow calls
+ * `emitFirstPublishTelemetry()` on every successful publish, but only the
+ * FIRST publish after a Build-mode entry emits — re-entering the Workspace
+ * re-arms the metric. Elapsed time is `null` when a publish happens without
+ * a recorded entry (e.g. publish from the legacy /editor surface).
+ */
+let buildModeEnteredAt = null;
+let firstPublishEmitted = false;
+
+export function markBuildModeEntered() {
+  buildModeEnteredAt = Date.now();
+  firstPublishEmitted = false;
+}
+
+export function emitFirstPublishTelemetry() {
+  if (firstPublishEmitted) return;
+  firstPublishEmitted = true;
+  emitWorkspaceEvent('time_to_first_publish_in_build_mode', {
+    msSinceBuildModeEntered: buildModeEnteredAt ? Date.now() - buildModeEnteredAt : null,
+  });
+}

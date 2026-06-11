@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SiSlack } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
 import { FaUserCircle } from 'react-icons/fa';
@@ -6,19 +6,20 @@ import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { PiCaretRight } from 'react-icons/pi';
 import logo from '../../../images/logo.png';
 import useStore from '../../../stores/store';
+import PublishCluster from './PublishCluster';
+import DeployModal from '../../deploy/DeployModal';
 
 /**
  * TopBar — h-12 navy top bar for the Workspace shell (VIS-775 / Track B B2).
  *
  * Per the delivered B-1 design (`design/cofounder-mockups/`):
  *   LEFT  — brand mark + breadcrumb (`Workspace › <projectName>`).
- *   RIGHT — `Publish · N` (visible only when `dirty > 0 && canBuild`) →
- *           `Deploy` → utility icons (Slack, Docs, Account).
+ *   RIGHT — save/publish cluster (H-1: status pill + Discard + `Publish · N`)
+ *           → `Deploy` → utility icons (Slack, Docs, Account).
  *
- * No mode toggle, no lens picker, no save-state pill. The Publish button's
- * presence IS the save state (saved ⇒ no Publish; unsaved ⇒ `Publish · N`).
- * The route split (`/workspace` = editing, `/project` = consumer) is the
- * mode toggle.
+ * No mode toggle, no lens picker. The route split (`/workspace` = editing,
+ * `/project` = consumer) is the mode toggle. The save-state pill + Publish +
+ * Discard cluster is `PublishCluster` (VIS-806 / Track H H-1).
  */
 const IconButton = ({ children, title, href, onClick, testId }) => {
   const cls =
@@ -55,16 +56,15 @@ const IconButton = ({ children, title, href, onClick, testId }) => {
 const TopBar = () => {
   // Reads directly from the store — no prop-drilling from the route container.
   const project = useStore(s => s.project);
-  const hasUnpublishedChanges = useStore(s => s.hasUnpublishedChanges);
-  const openPublishModal = useStore(s => s.openPublishModal);
 
   const projectName = project?.project_json?.name || project?.name || 'project';
-  const dirty = hasUnpublishedChanges ? 1 : 0;
   const canBuild = true; // Phase 0 — every Workspace user can build.
 
-  // Phase 0 stub — the full deploy modal lives in Home.jsx today. Track O /
-  // Track G will wire the deploy CTA from the Workspace TopBar.
-  const handleDeployClick = () => {};
+  // The Workspace overlay sits above Home's TopNav (z-[60] > z-50), so this
+  // bar's Deploy is the only reachable one in Build mode — it opens the same
+  // DeployModal Home uses, just with bar-local open state.
+  const [isDeployOpen, setIsDeployOpen] = useState(false);
+  const handleDeployClick = () => setIsDeployOpen(true);
 
   return (
     <header
@@ -97,19 +97,7 @@ const TopBar = () => {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        {dirty > 0 && canBuild && (
-          <button
-            type="button"
-            onClick={openPublishModal}
-            data-testid="workspace-top-bar-publish"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
-          >
-            Publish
-            <span className="rounded-sm bg-white/20 px-1.5 py-px text-[11px] font-bold tabular-nums">
-              {dirty}
-            </span>
-          </button>
-        )}
+        {canBuild && <PublishCluster />}
         <button
           type="button"
           onClick={handleDeployClick}
@@ -138,6 +126,7 @@ const TopBar = () => {
           <FaUserCircle className="h-5 w-5" />
         </IconButton>
       </div>
+      <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
     </header>
   );
 };

@@ -121,6 +121,7 @@ const URL_PATTERNS = {
     publishStatus: '/api/publish/status/',
     publishPending: '/api/publish/pending/',
     publish: '/api/publish/',
+    publishDiscard: '/api/publish/discard/',
 
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
@@ -259,6 +260,7 @@ const URL_PATTERNS = {
     publishStatus: null,
     publishPending: null,
     publish: null,
+    publishDiscard: null,
 
     // Source schema jobs endpoints (not available in dist)
     sourceSchemaJobsList: null,
