@@ -288,6 +288,48 @@ describe('Library', () => {
     expect(openWorkspaceTabBackground).not.toHaveBeenCalled();
   });
 
+  test('a mousedown INSIDE the row menu does not dismiss it (real-cursor click sequence)', () => {
+    const openWorkspaceTabBackground = jest.fn();
+    seedStore({ openWorkspaceTab: jest.fn(), openWorkspaceTabBackground });
+    renderLibrary();
+
+    fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
+    const menu = screen.getByTestId('library-row-chart-waterfall-context-menu');
+    const item = within(menu).getByText('Open in new tab');
+
+    // A REAL cursor fires mousedown → mouseup → click. If the mousedown
+    // dismisses (unmounts) the menu, the click never lands and the action is
+    // a silent no-op — exactly the VIS-811 e2e regression this pins.
+    fireEvent.mouseDown(item);
+    expect(
+      screen.getByTestId('library-row-chart-waterfall-context-menu')
+    ).toBeInTheDocument();
+    fireEvent.mouseUp(item);
+    fireEvent.click(item);
+    expect(openWorkspaceTabBackground).toHaveBeenCalledWith({
+      id: 'chart:waterfall',
+      type: 'chart',
+      name: 'waterfall',
+    });
+    // The action itself dismisses the menu.
+    expect(
+      screen.queryByTestId('library-row-chart-waterfall-context-menu')
+    ).not.toBeInTheDocument();
+  });
+
+  test('a mousedown OUTSIDE the row menu still dismisses it', () => {
+    seedStore({ openWorkspaceTab: jest.fn(), openWorkspaceTabBackground: jest.fn() });
+    renderLibrary();
+    fireEvent.contextMenu(screen.getByTestId('library-row-chart-waterfall'));
+    expect(
+      screen.getByTestId('library-row-chart-waterfall-context-menu')
+    ).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(
+      screen.queryByTestId('library-row-chart-waterfall-context-menu')
+    ).not.toBeInTheDocument();
+  });
+
   test('row context actions still emit library_row_context_action telemetry', () => {
     const events = [];
     const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
