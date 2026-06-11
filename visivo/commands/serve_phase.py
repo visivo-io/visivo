@@ -43,7 +43,14 @@ def serve_phase(
                 existing_project=app.project, existing_dag_filter=dag_filter
             )
             if not changed_dag_filter and not new:
-                Logger.instance().info("No changes to the project.")
+                # No runnable jobs changed, but the compiled project may still
+                # differ (e.g. a layout-only dashboard edit published to YAML).
+                # Refresh the app project so the object managers rehydrate from
+                # the new YAML — otherwise a publish that only reshapes a
+                # dashboard serves stale published objects until the next data
+                # change (the canvas would silently lose the published edit).
+                app.project = project
+                Logger.instance().info("No data changes to the project. Refreshed metadata.")
                 return
 
             runner = run_phase(
