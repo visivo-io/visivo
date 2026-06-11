@@ -50,12 +50,21 @@ const CanvasKeyboardLayer = ({ rootRef, dashboardName }) => {
   );
 
   // Reorder commits go through the shared commitCanvasConfig with a telemetry
-  // shadow (parity with the pointer reorders).
+  // shadow (parity with the pointer reorders). The §3.4 canvas_action kind is
+  // derived from the reorder axis (row → move_row, item → move_item) so
+  // keyboard moves roll up with their pointer/DnD equivalents; `via` keeps the
+  // input modality visible for analytics.
   const commitConfig = useCallback(
     (nextConfig, meta) => {
       if (!dashboardName || typeof commitCanvasConfig !== 'function') return;
       commitCanvasConfig(dashboardName, nextConfig, meta);
-      emitWorkspaceEvent('canvas_action', { kind: meta?.kind || 'reorder_keyboard', dashboardName });
+      const kind =
+        meta?.axis === 'row'
+          ? 'move_row'
+          : meta?.axis === 'item'
+            ? 'move_item'
+            : meta?.kind || 'reorder_keyboard';
+      emitWorkspaceEvent('canvas_action', { kind, via: 'keyboard', dashboardName });
     },
     [dashboardName, commitCanvasConfig]
   );

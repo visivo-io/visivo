@@ -227,7 +227,10 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     expect(name).toBe('dash');
     const order = nextConfig.rows[0].items.map(it => it.chart || it.table);
     expect(order).toEqual(['ref(b)', 'ref(a)']);
-    expect(emit).toHaveBeenCalledWith('canvas_dnd', expect.objectContaining({ kind: 'reorder_items' }));
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_item', rowPath: 'row.0', from: 0 })
+    );
   });
 
   test('canvas item drag → end-of-row appends the item to the end', () => {
@@ -275,7 +278,10 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     expect(result).toBe('canvas_reorder_rows');
     const heights = commitCanvasConfig.mock.calls[0][1].rows.map(r => r.height);
     expect(heights).toEqual(['small', 'medium']);
-    expect(emit).toHaveBeenCalledWith('canvas_dnd', expect.objectContaining({ kind: 'reorder_rows' }));
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_row', from: 1, to: 0 })
+    );
   });
 
   test('library drag → canvas between-items inserts a new item referencing the object', () => {
@@ -293,8 +299,8 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     expect(items).toHaveLength(3);
     expect(items[1].chart).toBe('ref(new-chart)');
     expect(emit).toHaveBeenCalledWith(
-      'canvas_dnd',
-      expect.objectContaining({ kind: 'library_insert', type: 'chart', name: 'new-chart' })
+      'canvas_action',
+      expect.objectContaining({ kind: 'add_item', type: 'chart', name: 'new-chart' })
     );
   });
 
@@ -389,8 +395,8 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     expect(subRows[1].items[0].markdown).toBe(undefined); // moved
     expect(subRows[0].items[0].markdown).toBe('ref(n2)');
     expect(emit).toHaveBeenCalledWith(
-      'canvas_dnd',
-      expect.objectContaining({ kind: 'reorder_rows', containerPath: 'row.0.item.1' })
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_row', containerPath: 'row.0.item.1' })
     );
   });
 

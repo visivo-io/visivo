@@ -7,6 +7,7 @@
  */
 import { act } from '@testing-library/react';
 import useStore from './store';
+import { setWorkspaceTelemetryListener } from '../components/new-views/workspace/telemetry';
 
 const reset = () => {
   act(() => {
@@ -210,6 +211,69 @@ describe('workspace store slice', () => {
       useStore.getState().setWorkspaceLens('garbage');
     });
     expect(useStore.getState().workspaceLens).toBe('lineage');
+  });
+
+  // middle_pane_toggled telemetry (§3.4, VIS-797) ----------------------------
+
+  test('toggling back to the canvas lens fires middle_pane_toggled with scope', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({
+          workspaceLens: 'lineage',
+          workspaceActiveObject: { type: 'dashboard', name: 'sales' },
+        });
+        useStore.getState().setWorkspaceLens('preview');
+      });
+    } finally {
+      unsubscribe();
+    }
+    const toggled = events.filter(e => e.eventName === 'middle_pane_toggled');
+    expect(toggled).toHaveLength(1);
+    expect(toggled[0].payload).toEqual({
+      pane: 'canvas',
+      scope: 'dashboard',
+      dashboardName: 'sales',
+    });
+  });
+
+  test('middle_pane_toggled scope is root for the project tab and item for objects', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.setState({ workspaceLens: 'lineage', workspaceActiveObject: null });
+        useStore.getState().setWorkspaceLens('preview');
+        useStore.setState({
+          workspaceLens: 'lineage',
+          workspaceActiveObject: { type: 'chart', name: 'rev' },
+        });
+        useStore.getState().setWorkspaceLens('preview');
+      });
+    } finally {
+      unsubscribe();
+    }
+    const scopes = events
+      .filter(e => e.eventName === 'middle_pane_toggled')
+      .map(e => e.payload.scope);
+    expect(scopes).toEqual(['root', 'item']);
+  });
+
+  test('the lineage direction does NOT emit from the store (LineageCanvas owns it)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      act(() => {
+        useStore.getState().setWorkspaceLens('lineage');
+        // Re-selecting the current lens is a no-op too.
+        useStore.setState({ workspaceLens: 'preview' });
+        useStore.getState().setWorkspaceLens('preview');
+      });
+    } finally {
+      unsubscribe();
+    }
+    expect(events.filter(e => e.eventName === 'middle_pane_toggled')).toHaveLength(0);
   });
 
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------

@@ -39,6 +39,8 @@
  * O3 — this slice only carries the state the shell needs in Phase 0.
  */
 
+import { emitWorkspaceEvent } from '../components/new-views/workspace/telemetry';
+
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
   workspaceTabs: [],
@@ -191,7 +193,28 @@ const createWorkspaceSlice = (set, get) => ({
 
   setWorkspaceLens: (lens) => {
     if (!['preview', 'lineage'].includes(lens)) return;
+    const previous = get().workspaceLens;
     set({ workspaceLens: lens });
+    // `middle_pane_toggled` telemetry (§3.4, VIS-797). Lineage ENTRIES are
+    // emitted by <LineageCanvas> on mount (with the richer scope/selector
+    // payload) — emitting the lineage direction here too would double-count a
+    // single toggle. The canvas/preview direction has no mount site of its
+    // own, so the explicit toggle-back is captured here, tagged with the
+    // scope at toggle time per the spec.
+    if (lens === 'preview' && previous !== 'preview') {
+      const activeObject = get().workspaceActiveObject;
+      const scope =
+        !activeObject || activeObject.type === 'project'
+          ? 'root'
+          : activeObject.type === 'dashboard'
+            ? 'dashboard'
+            : 'item';
+      emitWorkspaceEvent('middle_pane_toggled', {
+        pane: 'canvas',
+        scope,
+        dashboardName: activeObject?.type === 'dashboard' ? activeObject.name : null,
+      });
+    }
   },
 
   // ------------------------------------------------------------------------

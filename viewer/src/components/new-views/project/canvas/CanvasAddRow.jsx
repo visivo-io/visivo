@@ -163,7 +163,10 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
 
   const handleInlineCreate = useCallback(
     type => {
-      emitWorkspaceEvent('inline_create_used', { type, dashboardName });
+      // §3.4 payload convention: `source` (where the create was initiated) +
+      // `kind` (the object type), matching the Library / broken-ref /
+      // project-editor inline-create sites.
+      emitWorkspaceEvent('inline_create_used', { source: 'canvas', kind: type, dashboardName });
       setOpenMenu(null);
       // The full Explorer round-trip (author → return to canvas slot) is VIS-J2;
       // for now route to the Explorer so the create flow is reachable.

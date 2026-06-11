@@ -101,6 +101,25 @@ describe('CanvasKeyboardLayer (VIS-790)', () => {
     expect(nextConfig.rows.map(r => r.height)).toEqual(['small', 'medium']);
     // The selection follows the moved row to its new index.
     expect(selectedKey()).toBe('row.1');
+    // §3.4 canvas_action kind — keyboard row moves roll up as move_row.
+    const { emitWorkspaceEvent } = require('../../workspace/telemetry');
+    expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_row', via: 'keyboard', dashboardName: 'dash' })
+    );
+  });
+
+  test('⌘ArrowDown on a selected ITEM reorders it and emits move_item (§3.4)', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.0' });
+    const commit = jest.fn();
+    render(<Host commit={commit} />);
+    press('ArrowDown', { metaKey: true });
+    expect(commit).toHaveBeenCalledTimes(1);
+    const { emitWorkspaceEvent } = require('../../workspace/telemetry');
+    expect(emitWorkspaceEvent).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_item', via: 'keyboard', dashboardName: 'dash' })
+    );
   });
 
   test('Escape deselects to the dashboard root', () => {

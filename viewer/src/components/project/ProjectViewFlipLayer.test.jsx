@@ -14,6 +14,7 @@
 import React, { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ProjectViewFlipLayer from './ProjectViewFlipLayer';
+import { setWorkspaceTelemetryListener } from '../new-views/workspace/telemetry';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -130,6 +131,31 @@ describe('ProjectViewFlipLayer kebab (VIS-788)', () => {
     fireEvent.click(action('flip', 'row.0.item.0'));
     const card = screen.getByTestId('view-flip-card-row.0.item.0');
     expect(card).toHaveAttribute('data-subject', 'chart:rev_chart');
+  });
+
+  test('flipping fires item_flipped telemetry with surface: view (§3.4 / Q3b)', () => {
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      render(<Host />);
+      hover('r0i0');
+      openMenu('row.0.item.0');
+      fireEvent.click(action('flip', 'row.0.item.0'));
+      // Closing the flip must NOT emit a second event.
+      openMenu('row.0.item.0');
+      fireEvent.click(action('flip', 'row.0.item.0'));
+    } finally {
+      unsubscribe();
+    }
+    const flips = events.filter(e => e.eventName === 'item_flipped');
+    expect(flips).toHaveLength(1);
+    expect(flips[0].payload).toEqual({
+      surface: 'view',
+      selector_edited: false,
+      expanded_to_modal: false,
+      type: 'chart',
+      name: 'rev_chart',
+    });
   });
 
   test('the flipped card overlays the SLOT box (in-place flip, not a beside popover)', () => {

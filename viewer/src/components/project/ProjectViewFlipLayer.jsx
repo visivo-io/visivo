@@ -6,6 +6,7 @@ import { parseCanvasPath } from '../new-views/project/canvas/canvasReorder';
 import ItemFlipCard from './ItemFlipCard';
 import ItemActionMenu from './ItemActionMenu';
 import copyItemLink from './copyItemLink';
+import { emitWorkspaceEvent } from '../new-views/workspace/telemetry';
 
 /**
  * ProjectViewFlipLayer — VIS-788 / I-1 (View-mode flip gesture).
@@ -142,14 +143,31 @@ const ProjectViewFlipLayer = ({ rootRef, dashboardConfig }) => {
     };
   }, [rootRef]);
 
-  const toggleFlip = useCallback(key => {
-    setFlipped(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggleFlip = useCallback(
+    key => {
+      setFlipped(prev => {
+        const next = new Set(prev);
+        const willFlip = !next.has(key);
+        if (willFlip) next.add(key);
+        else next.delete(key);
+        // `item_flipped` telemetry (§3.4 / Q3b) — the View-mode counterpart of
+        // the Build-mode emission in <CanvasItemFlipLayer>; only the opening
+        // flip emits. Payload shape mirrors the canvas layer exactly.
+        if (willFlip) {
+          const subject = subjectForItem(itemAtKey(dashboardConfig, key));
+          emitWorkspaceEvent('item_flipped', {
+            surface: 'view',
+            selector_edited: false,
+            expanded_to_modal: false,
+            type: subject?.type,
+            name: subject?.name,
+          });
+        }
+        return next;
+      });
+    },
+    [dashboardConfig]
+  );
 
   // Expand = "open full lineage in a tab": deep-link to the Workspace with both
   // the `edit=<type>:<name>` scope (opens a real tab for the subject) and the
