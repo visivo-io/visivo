@@ -272,9 +272,10 @@ export const routeWorkspaceDragEnd = (
         const next = reorderItemsInRow(config, dragData.rowPath, fromIndex, toIndex);
         if (next === config) return 'noop';
         commitCanvasConfig(dashboardName, next, { kind: 'reorder_items' });
+        // §3.4 canvas_action kind for a DnD item move.
         emit &&
-          emit('canvas_dnd', {
-            kind: 'reorder_items',
+          emit('canvas_action', {
+            kind: 'move_item',
             rowPath: dragData.rowPath,
             from: fromIndex,
           });
@@ -294,9 +295,10 @@ export const routeWorkspaceDragEnd = (
           const next = reorderRowsInContainer(config, dragNested.containerPath, fromIndex, toIndex);
           if (next === config) return 'noop';
           commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
+          // §3.4 canvas_action kind for a DnD row move (nested container rows).
           emit &&
-            emit('canvas_dnd', {
-              kind: 'reorder_rows',
+            emit('canvas_action', {
+              kind: 'move_row',
               containerPath: dragNested.containerPath,
               from: fromIndex,
               to: toIndex,
@@ -315,7 +317,8 @@ export const routeWorkspaceDragEnd = (
           const next = reorderTopLevelRows(config, fromIndex, toIndex);
           if (next === config) return 'noop';
           commitCanvasConfig(dashboardName, next, { kind: 'reorder_rows' });
-          emit && emit('canvas_dnd', { kind: 'reorder_rows', from: fromIndex, to: toIndex });
+          // §3.4 canvas_action kind for a DnD row move (top-level rows).
+          emit && emit('canvas_action', { kind: 'move_row', from: fromIndex, to: toIndex });
           return 'canvas_reorder_rows';
         }
 
@@ -331,9 +334,11 @@ export const routeWorkspaceDragEnd = (
       const next = insertItemAtTarget(config, target, newItem);
       if (next === config) return 'noop';
       commitCanvasConfig(dashboardName, next, { kind: 'library_insert' });
+      // §3.4 canvas_action kind for a Library → canvas item insert.
       emit &&
-        emit('canvas_dnd', {
-          kind: 'library_insert',
+        emit('canvas_action', {
+          kind: 'add_item',
+          source: 'library',
           type: dragData.type,
           name: dragData.name,
           target: target.kind,

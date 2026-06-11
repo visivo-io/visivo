@@ -85,7 +85,12 @@ describe('CanvasAddRow — empty canvas (D-8)', () => {
     render(<Harness dashboardName="empty-dash" />);
     fireEvent.click(screen.getByTestId('canvas-inline-create-chart'));
     unsub();
-    expect(events.find(e => e.eventName === 'inline_create_used')?.payload.type).toBe('chart');
+    // §3.4 payload convention: source (initiating surface) + kind (object type).
+    expect(events.find(e => e.eventName === 'inline_create_used')?.payload).toEqual({
+      source: 'canvas',
+      kind: 'chart',
+      dashboardName: 'empty-dash',
+    });
     expect(mockNavigate).toHaveBeenCalledWith('/explorer?create=chart');
   });
 });
