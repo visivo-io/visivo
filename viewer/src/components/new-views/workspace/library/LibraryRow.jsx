@@ -121,6 +121,7 @@ const ContextMenu = ({ obj, onAction, onDismiss }) => {
   return (
     <div
       role="menu"
+      data-library-row-menu="true"
       data-testid={`library-row-${obj.type}-${obj.name}-context-menu`}
       className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-gray-200"
     >
@@ -237,10 +238,16 @@ const LibraryRow = ({ obj, selected = false, draggable = true, onClick, onContex
   const handleMenuDismiss = useCallback(() => setMenuOpen(false), []);
   const handlePopoverClose = useCallback(() => setPopoverOpen(false), []);
 
-  // Dismiss menu on outside click.
+  // Dismiss menu on outside click. Mousedowns INSIDE the menu must not
+  // dismiss it — with a real cursor the native mousedown precedes the click,
+  // and unmounting the item between the two means its onClick never fires
+  // (VIS-811: this made every menu action a silent no-op outside jsdom).
   React.useEffect(() => {
     if (!menuOpen) return undefined;
-    const onDoc = () => setMenuOpen(false);
+    const onDoc = e => {
+      if (e.target?.closest?.('[data-library-row-menu="true"]')) return;
+      setMenuOpen(false);
+    };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [menuOpen]);
