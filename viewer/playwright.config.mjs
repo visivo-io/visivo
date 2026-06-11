@@ -29,6 +29,7 @@ export default defineConfig({
         '**/explorer-crud-save.spec.mjs',
         '**/explorer-library-reactivity.spec.mjs',
         '**/explorer-publish-to-files.spec.mjs',
+        '**/build-mode-publish.spec.mjs',
       ],
     },
     {
@@ -48,6 +49,18 @@ export default defineConfig({
       workers: 1,
       // Retries would run against polluted backend cache from the failed
       // attempt, so they give no useful signal. Fail fast instead.
+      retries: 0,
+    },
+    {
+      // H-1 Save/Publish cluster (VIS-806) — publishes REAL YAML writes to the
+      // integration project, so it gets the same isolation as 'publish':
+      // serial, no retries (a retry would race the file-watcher recompile
+      // triggered by the previous attempt's YAML restore and see phantom
+      // pending changes). Targets its own sandbox via VIS_PUBLISH_BASE.
+      name: 'workspace-publish',
+      testMatch: ['**/build-mode-publish.spec.mjs'],
+      fullyParallel: false,
+      workers: 1,
       retries: 0,
     },
   ],
