@@ -4,6 +4,7 @@ import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
 import { useWorkspaceScope } from './useWorkspaceScope';
+import useProjectChangeListener from './useProjectChangeListener';
 
 /**
  * Workspace — route container for `/workspace` and
@@ -27,6 +28,10 @@ const Workspace = () => {
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
   const checkPublishStatus = useStore(s => s.checkPublishStatus);
   const scope = useWorkspaceScope();
+
+  // H-2: soft-refresh on backend `project_changed` events (and show the
+  // external-edit banner when a hot reload dropped unsaved drafts).
+  useProjectChangeListener();
 
   // Collection loaders — hoisted here from the Library so the rail is a
   // pure consumer and other workspace surfaces (canvas, outline, project
