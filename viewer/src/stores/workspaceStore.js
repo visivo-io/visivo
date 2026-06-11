@@ -90,6 +90,9 @@ const createWorkspaceSlice = (set, get) => ({
     const existing = state.workspaceTabs.find((t) => t.id === id);
     const activeObject = { type: tab.type, name: tab.name };
     if (existing) {
+      if (state.workspaceActiveTabId !== id) {
+        emitWorkspaceEvent('tab_switched', { id, type: tab.type, name: tab.name, via: 'open' });
+      }
       set({ workspaceActiveTabId: id, workspaceActiveObject: activeObject });
       return id;
     }
@@ -99,6 +102,12 @@ const createWorkspaceSlice = (set, get) => ({
       name: tab.name,
       dirty: !!tab.dirty,
     };
+    emitWorkspaceEvent('tab_opened', {
+      id,
+      type: tab.type,
+      name: tab.name,
+      background: false,
+    });
     set({
       workspaceTabs: [...state.workspaceTabs, next],
       workspaceActiveTabId: id,
@@ -112,6 +121,9 @@ const createWorkspaceSlice = (set, get) => ({
     const state = get();
     const tab = state.workspaceTabs.find((t) => t.id === tabId);
     if (!tab) return;
+    if (state.workspaceActiveTabId !== tabId) {
+      emitWorkspaceEvent('tab_switched', { id: tabId, type: tab.type, name: tab.name });
+    }
     set({
       workspaceActiveTabId: tabId,
       workspaceActiveObject: { type: tab.type, name: tab.name },
@@ -127,6 +139,13 @@ const createWorkspaceSlice = (set, get) => ({
     const state = get();
     const idx = state.workspaceTabs.findIndex((t) => t.id === tabId);
     if (idx === -1) return;
+    const closing = state.workspaceTabs[idx];
+    emitWorkspaceEvent('tab_closed', {
+      id: tabId,
+      type: closing.type,
+      name: closing.name,
+      dirty: !!closing.dirty,
+    });
     const remaining = state.workspaceTabs.filter((t) => t.id !== tabId);
     let activeId = state.workspaceActiveTabId;
     let activeObject = state.workspaceActiveObject;
