@@ -276,6 +276,112 @@ describe('workspace store slice', () => {
     expect(events.filter(e => e.eventName === 'middle_pane_toggled')).toHaveLength(0);
   });
 
+  // Tab telemetry (VIS-810 / Track O O-1) ------------------------------------
+
+  describe('tab telemetry', () => {
+    let events;
+    let unsubscribe;
+
+    beforeEach(() => {
+      events = [];
+      unsubscribe = setWorkspaceTelemetryListener(e => events.push(e));
+    });
+
+    afterEach(() => {
+      unsubscribe();
+    });
+
+    test('openWorkspaceTab fires tab_opened for a new tab', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      });
+      expect(events.map(e => e.eventName)).toEqual(['tab_opened']);
+      expect(events[0].payload).toEqual({
+        id: 'dashboard:d1',
+        type: 'dashboard',
+        name: 'd1',
+        background: false,
+      });
+    });
+
+    test('openWorkspaceTab on an already-open, non-active tab fires tab_switched (not tab_opened)', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+        useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      });
+      events.length = 0;
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      });
+      expect(events.map(e => e.eventName)).toEqual(['tab_switched']);
+      expect(events[0].payload).toEqual({
+        id: 'dashboard:d1',
+        type: 'dashboard',
+        name: 'd1',
+        via: 'open',
+      });
+    });
+
+    test('openWorkspaceTab on the already-active tab fires nothing', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      });
+      events.length = 0;
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      });
+      expect(events).toHaveLength(0);
+    });
+
+    test('switchWorkspaceTab fires tab_switched only when focus actually changes', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+        useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      });
+      events.length = 0;
+      act(() => {
+        useStore.getState().switchWorkspaceTab('dashboard:d1');
+      });
+      expect(events.map(e => e.eventName)).toEqual(['tab_switched']);
+      events.length = 0;
+      // Already active → no event.
+      act(() => {
+        useStore.getState().switchWorkspaceTab('dashboard:d1');
+      });
+      expect(events).toHaveLength(0);
+      // Unknown id → no event.
+      act(() => {
+        useStore.getState().switchWorkspaceTab('nope:nope');
+      });
+      expect(events).toHaveLength(0);
+    });
+
+    test('closeWorkspaceTab fires tab_closed with the dirty flag', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+        useStore.getState().setWorkspaceTabDirty('dashboard:d1', true);
+      });
+      events.length = 0;
+      act(() => {
+        useStore.getState().closeWorkspaceTab('dashboard:d1');
+      });
+      expect(events.map(e => e.eventName)).toEqual(['tab_closed']);
+      expect(events[0].payload).toEqual({
+        id: 'dashboard:d1',
+        type: 'dashboard',
+        name: 'd1',
+        dirty: true,
+      });
+    });
+
+    test('closeWorkspaceTab on an unknown id fires nothing', () => {
+      act(() => {
+        useStore.getState().closeWorkspaceTab('nope:nope');
+      });
+      expect(events).toHaveLength(0);
+    });
+  });
+
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
 
   test('setWorkspaceOutlineSelectedKey updates the selection key', () => {
