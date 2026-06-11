@@ -28,7 +28,7 @@ jest.mock('../workspace/useWorkspaceScope', () => ({
 // Mock LineageNew with a stub that echoes the props we care about and lets us
 // drive the node-select round-trip + the manual selector input.
 jest.mock('./LineageNew', () => {
-  const MockLineageNew = ({ scopeSelector, onNodeSelect, headerSlot }) => {
+  const MockLineageNew = ({ scopeSelector, onNodeSelect, onNodeContextMenu, headerSlot }) => {
     const React = require('react');
     const [manual, setManual] = React.useState(scopeSelector || '');
     React.useEffect(() => {
@@ -48,6 +48,14 @@ jest.mock('./LineageNew', () => {
           onClick={() => onNodeSelect && onNodeSelect({ type: 'model', name: 'monthly_revenue' })}
         >
           click node
+        </button>
+        <button
+          data-testid="simulate-node-contextmenu"
+          onClick={(e) =>
+            onNodeContextMenu && onNodeContextMenu(e, { type: 'model', name: 'monthly_revenue' })
+          }
+        >
+          right-click node
         </button>
       </div>
     );
@@ -149,6 +157,58 @@ describe('LineageCanvas', () => {
       scope: 'dashboard',
       dashboardName: 'sales',
     });
+  });
+
+  // Right-click context menu (VIS-811 / Track O O-2) -------------------------
+
+  test('right-clicking a node opens the Open / Open in new tab menu', () => {
+    setScope(DASHBOARD);
+    render(<LineageCanvas />);
+    fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+    expect(screen.getByTestId('lineage-node-ctx-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-node-ctx-open')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-node-ctx-open-new-tab')).toBeInTheDocument();
+  });
+
+  test('context-menu "Open" focuses the object tab (replaces context) and dismisses', () => {
+    setScope(DASHBOARD);
+    render(<LineageCanvas />);
+    fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+    fireEvent.click(screen.getByTestId('lineage-node-ctx-open'));
+
+    const state = useStore.getState();
+    expect(state.workspaceActiveTabId).toBe('model:monthly_revenue');
+    expect(state.workspaceActiveObject).toEqual({ type: 'model', name: 'monthly_revenue' });
+    expect(screen.queryByTestId('lineage-node-ctx-menu')).not.toBeInTheDocument();
+  });
+
+  test('context-menu "Open in new tab" background-opens without stealing focus', () => {
+    setScope(DASHBOARD);
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'sales' });
+    });
+    render(<LineageCanvas />);
+    fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+    fireEvent.click(screen.getByTestId('lineage-node-ctx-open-new-tab'));
+
+    const state = useStore.getState();
+    expect(state.workspaceTabs.map((t) => t.id)).toEqual([
+      'dashboard:sales',
+      'model:monthly_revenue',
+    ]);
+    // Focus is untouched — the dashboard tab stays active.
+    expect(state.workspaceActiveTabId).toBe('dashboard:sales');
+    expect(screen.queryByTestId('lineage-node-ctx-menu')).not.toBeInTheDocument();
+  });
+
+  test('the node context menu dismisses on Escape without opening anything', () => {
+    setScope(DASHBOARD);
+    render(<LineageCanvas />);
+    fireEvent.click(screen.getByTestId('simulate-node-contextmenu'));
+    expect(screen.getByTestId('lineage-node-ctx-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('lineage-node-ctx-menu')).not.toBeInTheDocument();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
   });
 
   test('manual selector input inside LineageNew still works as an override', () => {

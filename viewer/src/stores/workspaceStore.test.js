@@ -58,6 +58,61 @@ describe('workspace store slice', () => {
     expect(s.workspaceActiveTabId).toBe('dashboard:simple-dashboard');
   });
 
+  // Background open (VIS-811 / Track O O-2) ---------------------------------
+
+  test('openWorkspaceTabBackground adds a tab WITHOUT focusing it', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+      useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'c1' });
+    });
+    const s = useStore.getState();
+    expect(s.workspaceTabs.map((t) => t.id)).toEqual(['dashboard:d1', 'chart:c1']);
+    // Focus and the active-object mirror are untouched.
+    expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+    expect(s.workspaceActiveObject).toEqual({ type: 'dashboard', name: 'd1' });
+  });
+
+  test('openWorkspaceTabBackground works with no tabs open (adds without activating)', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'c1' });
+    });
+    const s = useStore.getState();
+    expect(returned).toBe('chart:c1');
+    expect(s.workspaceTabs).toHaveLength(1);
+    expect(s.workspaceActiveTabId).toBeNull();
+  });
+
+  test('openWorkspaceTabBackground is a no-op when the tab already exists', () => {
+    act(() => {
+      useStore.getState().openWorkspaceTab({ type: 'chart', name: 'c1' });
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
+    });
+    let returned;
+    act(() => {
+      returned = useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'c1' });
+    });
+    const s = useStore.getState();
+    expect(returned).toBe('chart:c1');
+    expect(s.workspaceTabs).toHaveLength(2);
+    // Existing tab keeps its position; focus untouched.
+    expect(s.workspaceTabs[0].id).toBe('chart:c1');
+    expect(s.workspaceActiveTabId).toBe('dashboard:d1');
+  });
+
+  test('openWorkspaceTabBackground rejects bad input', () => {
+    let returned;
+    act(() => {
+      returned = useStore.getState().openWorkspaceTabBackground({ type: 'chart' });
+    });
+    expect(returned).toBeNull();
+    act(() => {
+      returned = useStore.getState().openWorkspaceTabBackground(null);
+    });
+    expect(returned).toBeNull();
+    expect(useStore.getState().workspaceTabs).toHaveLength(0);
+  });
+
   test('switchWorkspaceTab focuses an existing tab; no-op for unknown ids', () => {
     act(() => {
       useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'd1' });
@@ -377,6 +432,25 @@ describe('workspace store slice', () => {
     test('closeWorkspaceTab on an unknown id fires nothing', () => {
       act(() => {
         useStore.getState().closeWorkspaceTab('nope:nope');
+      });
+      expect(events).toHaveLength(0);
+    });
+
+    test('openWorkspaceTabBackground fires tab_opened with background: true', () => {
+      act(() => {
+        useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'c1' });
+      });
+      expect(events.map(e => e.eventName)).toEqual(['tab_opened']);
+      expect(events[0].payload).toEqual({
+        id: 'chart:c1',
+        type: 'chart',
+        name: 'c1',
+        background: true,
+      });
+      events.length = 0;
+      // Already open → no duplicate event.
+      act(() => {
+        useStore.getState().openWorkspaceTabBackground({ type: 'chart', name: 'c1' });
       });
       expect(events).toHaveLength(0);
     });

@@ -1,7 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { PiDotsSix } from 'react-icons/pi';
 import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
+import OpenObjectContextMenu from '../../workspace/OpenObjectContextMenu';
 
 /**
  * DashboardTile — VIS-805 / Track M M-1.
@@ -19,7 +20,7 @@ import { getTypeIcon, getTypeColors } from '../../common/objectTypeConfigs';
 const DashboardIcon = getTypeIcon('dashboard');
 const DASH_COLORS = getTypeColors('dashboard');
 
-const DashboardTile = ({ tile, selected = false, onSelect }) => {
+const DashboardTile = ({ tile, selected = false, onSelect, onOpenInNewTab }) => {
   const drag = useDraggable({
     id: `project-tile:${tile.name}`,
     data: { source: 'project-editor', type: 'dashboard', name: tile.name, level: tile.level },
@@ -38,6 +39,16 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
     [drag.isDragging, onSelect, tile]
   );
 
+  // Right-click → "Open / Open in new tab" (VIS-811 / Track O O-2).
+  // `ctxMenu`: null | { x, y } in viewport coordinates for the shared menu.
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const handleContextMenu = useCallback(e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+  const dismissCtxMenu = useCallback(() => setCtxMenu(null), []);
+
   const tags = Array.isArray(tile.tags) ? tile.tags : [];
 
   return (
@@ -49,6 +60,7 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
       data-selected={selected ? 'true' : 'false'}
       data-dragging={drag.isDragging ? 'true' : 'false'}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -96,6 +108,18 @@ const DashboardTile = ({ tile, selected = false, onSelect }) => {
         <span>{tile.itemCount != null ? `${tile.itemCount} items` : 'dashboard'}</span>
         {tile.updatedAt && <span className="truncate">{tile.updatedAt}</span>}
       </div>
+
+      {ctxMenu && (
+        <OpenObjectContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          obj={{ type: 'dashboard', name: tile.name }}
+          onOpen={() => onSelect && onSelect(tile)}
+          onOpenInNewTab={() => onOpenInNewTab && onOpenInNewTab(tile)}
+          onDismiss={dismissCtxMenu}
+          testIdPrefix={`project-tile-ctx-${tile.name}`}
+        />
+      )}
     </div>
   );
 };

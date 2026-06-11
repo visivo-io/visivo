@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PiTreeStructure, PiArrowCounterClockwise } from 'react-icons/pi';
 import LineageNew from './LineageNew';
+import OpenObjectContextMenu from '../workspace/OpenObjectContextMenu';
 import useStore from '../../../stores/store';
 import { useWorkspaceScope } from '../workspace/useWorkspaceScope';
 import { emitWorkspaceEvent } from '../workspace/telemetry';
@@ -31,6 +32,7 @@ import { emitWorkspaceEvent } from '../workspace/telemetry';
 const LineageCanvas = () => {
   const { scope, selector, dashboardName, selectedItem } = useWorkspaceScope();
   const openWorkspaceTab = useStore((s) => s.openWorkspaceTab);
+  const openWorkspaceTabBackground = useStore((s) => s.openWorkspaceTabBackground);
 
   // Local "show full project" override. When active we force `*` regardless of
   // the derived scope — without touching the route. It auto-clears whenever the
@@ -94,6 +96,37 @@ const LineageCanvas = () => {
     [openWorkspaceTab]
   );
 
+  // Right-click a node → "Open / Open in new tab" (VIS-811 / Track O O-2).
+  // `ctxMenu`: null | { x, y, obj: { type, name } } — viewport coordinates for
+  // the portal-rendered shared menu.
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const handleNodeContextMenu = useCallback((event, obj) => {
+    if (!obj || !obj.type || !obj.name) return;
+    setCtxMenu({ x: event.clientX, y: event.clientY, obj });
+  }, []);
+  const dismissCtxMenu = useCallback(() => setCtxMenu(null), []);
+  const handleCtxOpen = useCallback(
+    (obj) => handleNodeSelect(obj),
+    [handleNodeSelect]
+  );
+  const handleCtxOpenInNewTab = useCallback(
+    (obj) => {
+      if (openWorkspaceTabBackground) {
+        openWorkspaceTabBackground({
+          id: `${obj.type}:${obj.name}`,
+          type: obj.type,
+          name: obj.name,
+        });
+      }
+      emitWorkspaceEvent('lineage_node_context_action', {
+        type: obj.type,
+        name: obj.name,
+        action: 'openInNewTab',
+      });
+    },
+    [openWorkspaceTabBackground]
+  );
+
   const chrome = (
     <div
       data-testid="lineage-canvas-scope-bar"
@@ -135,8 +168,20 @@ const LineageCanvas = () => {
       <LineageNew
         scopeSelector={effectiveSelector}
         onNodeSelect={handleNodeSelect}
+        onNodeContextMenu={handleNodeContextMenu}
         headerSlot={chrome}
       />
+      {ctxMenu && (
+        <OpenObjectContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          obj={ctxMenu.obj}
+          onOpen={handleCtxOpen}
+          onOpenInNewTab={handleCtxOpenInNewTab}
+          onDismiss={dismissCtxMenu}
+          testIdPrefix="lineage-node-ctx"
+        />
+      )}
     </div>
   );
 };

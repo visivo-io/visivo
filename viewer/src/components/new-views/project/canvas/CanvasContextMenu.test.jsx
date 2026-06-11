@@ -210,4 +210,56 @@ describe('CanvasContextMenu (VIS-781)', () => {
       expect(screen.queryByTestId('canvas-ctx-open-in-explorer')).not.toBeInTheDocument();
     });
   });
+
+  // ------------------------------------------------------------------
+  // O-2 / VIS-811 — "Open" / "Open in new tab" (workspace tabs)
+  // ------------------------------------------------------------------
+  describe('Open / Open in new tab (O-2)', () => {
+    beforeEach(() => {
+      useStore.setState({
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        workspaceActiveObject: null,
+      });
+    });
+
+    test('chart leaf shows both open actions', () => {
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      expect(screen.getByTestId('canvas-ctx-open')).toBeInTheDocument();
+      expect(screen.getByTestId('canvas-ctx-open-new-tab')).toBeInTheDocument();
+    });
+
+    test('"Open" focuses a tab for the chart (replaces current context) and dismisses', () => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash' });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i0');
+      fireEvent.click(screen.getByTestId('canvas-ctx-open'));
+
+      const s = useStore.getState();
+      expect(s.workspaceActiveTabId).toBe('chart:a');
+      expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'a' });
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('"Open in new tab" background-opens without stealing focus from the dashboard', () => {
+      useStore.getState().openWorkspaceTab({ type: 'dashboard', name: 'dash' });
+      renderHost({ commit: jest.fn() });
+      rightClick('r0i1'); // the table leaf → subject { type: 'table', name: 'b' }
+      fireEvent.click(screen.getByTestId('canvas-ctx-open-new-tab'));
+
+      const s = useStore.getState();
+      expect(s.workspaceTabs.map(t => t.id)).toEqual(['dashboard:dash', 'table:b']);
+      expect(s.workspaceActiveTabId).toBe('dashboard:dash');
+      expect(screen.queryByTestId('canvas-context-menu')).not.toBeInTheDocument();
+    });
+
+    test('a container item offers neither open action', () => {
+      useStore.setState({ dashboards: [CONTAINER_DASH] });
+      renderHost({ commit: jest.fn(), structure: 'container' });
+      rightClick('r0i0');
+      expect(screen.queryByTestId('canvas-ctx-open')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('canvas-ctx-open-new-tab')).not.toBeInTheDocument();
+    });
+  });
 });
