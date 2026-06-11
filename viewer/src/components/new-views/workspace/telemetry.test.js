@@ -14,6 +14,13 @@ import {
   markBuildModeEntered,
   emitFirstPublishTelemetry,
 } from './telemetry';
+import { postWorkspaceEvent } from '../../../api/workspaceTelemetry';
+
+// Mock the PostHog sink so the integration tests below can assert the
+// emit → sink contract (VIS-822) without network calls.
+jest.mock('../../../api/workspaceTelemetry', () => ({
+  postWorkspaceEvent: jest.fn(),
+}));
 
 const TEL_EVENT = 'visivo:workspace-telemetry';
 
@@ -74,6 +81,39 @@ describe('emitWorkspaceEvent', () => {
       throw new Error('boom');
     });
     expect(() => emitWorkspaceEvent('middle_pane_toggled', {})).not.toThrow();
+  });
+});
+
+describe('PostHog sink integration (VIS-822)', () => {
+  beforeEach(() => {
+    postWorkspaceEvent.mockClear();
+  });
+
+  afterEach(() => {
+    setWorkspaceTelemetryListener(null);
+  });
+
+  test('emitWorkspaceEvent forwards the event to the sink with name + payload', () => {
+    emitWorkspaceEvent('workspace_mode_entered', { dashboardName: 'sales', scope: 'dashboard' });
+
+    expect(postWorkspaceEvent).toHaveBeenCalledTimes(1);
+    const event = postWorkspaceEvent.mock.calls[0][0];
+    expect(event.eventName).toBe('workspace_mode_entered');
+    expect(event.payload).toEqual({ dashboardName: 'sales', scope: 'dashboard' });
+    expect(typeof event.ts).toBe('number');
+  });
+
+  test('the in-memory test listener short-circuits the sink', () => {
+    setWorkspaceTelemetryListener(() => {});
+    emitWorkspaceEvent('canvas_action', { kind: 'add_row' });
+    expect(postWorkspaceEvent).not.toHaveBeenCalled();
+  });
+
+  test('a throwing sink cannot break the shell', () => {
+    postWorkspaceEvent.mockImplementationOnce(() => {
+      throw new Error('sink boom');
+    });
+    expect(() => emitWorkspaceEvent('canvas_action', { kind: 'add_row' })).not.toThrow();
   });
 });
 

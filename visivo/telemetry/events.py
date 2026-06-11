@@ -155,3 +155,44 @@ class NewInstallationEvent(BaseEvent):
             machine_id=machine_id,  # Use the provided machine_id instead of calling _get_machine_id()
             properties=properties,
         )
+
+
+@dataclass
+class WorkspaceEvent(BaseEvent):
+    """
+    Event for a viewer Workspace interaction (dashboard-building telemetry).
+
+    The viewer's `emitWorkspaceEvent` forwards workspace events (e.g.
+    `workspace_mode_entered`, `canvas_action`) to the local Flask server,
+    which wraps them in this event and tracks them through the shared
+    PostHog client — so the CLI's opt-out and anonymization rules apply
+    to frontend events identically to CLI/API events.
+    """
+
+    @classmethod
+    def create(
+        cls,
+        name: str,
+        properties: Optional[Dict[str, Any]] = None,
+        project_hash: Optional[str] = None,
+    ) -> "WorkspaceEvent":
+        """Create a workspace event carrying the viewer payload plus system properties."""
+        merged_properties = {
+            **(properties or {}),
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+            "is_ci": is_ci_environment(),
+            "source_surface": "viewer_workspace",
+        }
+
+        if project_hash:
+            merged_properties["project_hash"] = project_hash
+
+        return cls(
+            event_type=name,
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            session_id=SESSION_ID,
+            machine_id=_get_machine_id(),
+            properties=merged_properties,
+        )
