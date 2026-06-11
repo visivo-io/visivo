@@ -150,6 +150,31 @@ const createPublishSlice = (set, get) => ({
     }
   },
 
+  // External-edit banner (VIS-808 / Q15). Shown when a hot-reload fires
+  // during a dirty Build session — the backend dropped the drafts
+  // (last-write-wins) and the canvas re-rendered from the file's state.
+  externalEditBannerVisible: false,
+
+  showExternalEditBanner: () => set({ externalEditBannerVisible: true }),
+
+  dismissExternalEditBanner: () => set({ externalEditBannerVisible: false }),
+
+  /**
+   * Soft refresh after a backend `project_changed` event: re-pull the
+   * project, every named-child collection, and the pending-change state so
+   * the Workspace reflects the recompiled YAML without a page reload.
+   */
+  refreshFromProjectChange: async ({ draftsDropped = false } = {}) => {
+    if (draftsDropped) {
+      set({ externalEditBannerVisible: true });
+    }
+    await Promise.all([
+      get().fetchProject?.(),
+      get()._refreshNamedChildren(),
+      get().checkPublishStatus(),
+    ]);
+  },
+
   // Open publish modal (fetches pending changes)
   openPublishModal: async () => {
     set({ publishModalOpen: true, publishError: null });

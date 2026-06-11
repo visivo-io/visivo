@@ -6,6 +6,7 @@ import RightRail from './RightRail';
 import MiddlePane from './MiddlePane';
 import DragHandle from './DragHandle';
 import WorkspaceDndContext from './WorkspaceDndContext';
+import ExternalEditBanner from './ExternalEditBanner';
 import useStore from '../../../stores/store';
 
 /**
@@ -75,6 +76,9 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
                 className="flex min-w-0 flex-1 flex-col"
                 data-testid="workspace-middle-container"
               >
+                {/* H-2: external-edit warning — top of the canvas area,
+                    full-width within the middle pane, non-blocking. */}
+                <ExternalEditBanner />
                 <MiddlePane />
               </main>
               <DragHandle side="right" />

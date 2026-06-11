@@ -168,6 +168,37 @@ describe('publishStore (VIS-806)', () => {
     });
   });
 
+  describe('refreshFromProjectChange (VIS-808)', () => {
+    test('shows the external-edit banner and refetches when drafts were dropped', async () => {
+      const fetchProject = jest.fn().mockResolvedValue(undefined);
+      useStore.setState({ fetchProject, externalEditBannerVisible: false });
+      publishApi.getPendingChanges.mockResolvedValue({ pending: [], count: 0 });
+
+      await useStore.getState().refreshFromProjectChange({ draftsDropped: true });
+
+      expect(useStore.getState().externalEditBannerVisible).toBe(true);
+      expect(fetchProject).toHaveBeenCalled();
+      expect(fetcherStubs.fetchDashboards).toHaveBeenCalled();
+    });
+
+    test('a clean recompile refetches without showing the banner', async () => {
+      const fetchProject = jest.fn().mockResolvedValue(undefined);
+      useStore.setState({ fetchProject, externalEditBannerVisible: false });
+      publishApi.getPendingChanges.mockResolvedValue({ pending: [], count: 0 });
+
+      await useStore.getState().refreshFromProjectChange({ draftsDropped: false });
+
+      expect(useStore.getState().externalEditBannerVisible).toBe(false);
+      expect(fetchProject).toHaveBeenCalled();
+    });
+
+    test('dismissExternalEditBanner hides the banner', () => {
+      useStore.setState({ externalEditBannerVisible: true });
+      useStore.getState().dismissExternalEditBanner();
+      expect(useStore.getState().externalEditBannerVisible).toBe(false);
+    });
+  });
+
   describe('discardChanges', () => {
     test('drops pending state and refreshes every collection (canvas revert)', async () => {
       useStore.setState({ pendingCount: 4, hasUnpublishedChanges: true });

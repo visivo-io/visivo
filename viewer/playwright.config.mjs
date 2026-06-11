@@ -30,6 +30,7 @@ export default defineConfig({
         '**/explorer-library-reactivity.spec.mjs',
         '**/explorer-publish-to-files.spec.mjs',
         '**/build-mode-publish.spec.mjs',
+        '**/external-edit-banner.spec.mjs',
       ],
     },
     {
@@ -52,13 +53,14 @@ export default defineConfig({
       retries: 0,
     },
     {
-      // H-1 Save/Publish cluster (VIS-806) — publishes REAL YAML writes to the
-      // integration project, so it gets the same isolation as 'publish':
-      // serial, no retries (a retry would race the file-watcher recompile
-      // triggered by the previous attempt's YAML restore and see phantom
-      // pending changes). Targets its own sandbox via VIS_PUBLISH_BASE.
+      // Track H stories (VIS-806/808) — both mutate the integration project's
+      // YAML on disk (publish writes / external-edit simulation), so they get
+      // the same isolation as 'publish': serial, no retries (a retry would
+      // race the file-watcher recompile triggered by the previous attempt's
+      // YAML restore and see phantom pending changes). Targets its own
+      // sandbox via VIS_PUBLISH_BASE.
       name: 'workspace-publish',
-      testMatch: ['**/build-mode-publish.spec.mjs'],
+      testMatch: ['**/build-mode-publish.spec.mjs', '**/external-edit-banner.spec.mjs'],
       fullyParallel: false,
       workers: 1,
       retries: 0,

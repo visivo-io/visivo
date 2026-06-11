@@ -22,6 +22,12 @@ import { setWorkspaceTelemetryListener } from './telemetry';
 
 // Dashboard has heavy dependencies (insights data, plotly, etc.) — stub
 // it out so the Workspace shell render stays focused on shell behaviour.
+// The route container mounts the H-2 project-change socket listener — stub
+// the socket client so jsdom never attempts a real polling connection.
+jest.mock('socket.io-client', () => ({
+  io: jest.fn(() => ({ on: jest.fn(), close: jest.fn() })),
+}));
+
 jest.mock('../../project/Dashboard', () => ({
   __esModule: true,
   default: ({ projectId, dashboardName }) => (
