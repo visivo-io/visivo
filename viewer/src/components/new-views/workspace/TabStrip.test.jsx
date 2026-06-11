@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import TabStrip from './TabStrip';
+import TabStrip, { tabDragEndToReorder } from './TabStrip';
 import useStore from '../../../stores/store';
 
 const sampleTabs = [
@@ -26,8 +26,10 @@ const seedStore = (extra = {}) => {
     useStore.setState({
       workspaceTabs: sampleTabs,
       workspaceActiveTabId: null,
+      workspacePendingCloseTabId: null,
       switchWorkspaceTab: jest.fn(),
       closeWorkspaceTab: jest.fn(),
+      requestCloseWorkspaceTab: jest.fn(),
       openWorkspaceTab: jest.fn(),
       project: { id: 'p1', project_json: { name: 'analytics-platform' } },
       ...extra,
@@ -37,16 +39,7 @@ const seedStore = (extra = {}) => {
 
 describe('TabStrip', () => {
   test('renders nothing when there are no tabs', () => {
-    act(() => {
-      useStore.setState({
-        workspaceTabs: [],
-        workspaceActiveTabId: null,
-        switchWorkspaceTab: jest.fn(),
-        closeWorkspaceTab: jest.fn(),
-        openWorkspaceTab: jest.fn(),
-        project: null,
-      });
-    });
+    seedStore({ workspaceTabs: [], project: null });
     const { container } = render(<TabStrip />);
     expect(container).toBeEmptyDOMElement();
   });
@@ -86,45 +79,55 @@ describe('TabStrip', () => {
     expect(switchWorkspaceTab).toHaveBeenCalledWith('chart:revenue_chart');
   });
 
-  test('clicking the close button calls closeWorkspaceTab without firing select', () => {
+  test('clicking the close button routes through requestCloseWorkspaceTab (dirty guard) without firing select', () => {
     const switchWorkspaceTab = jest.fn();
     const closeWorkspaceTab = jest.fn();
-    seedStore({ switchWorkspaceTab, closeWorkspaceTab });
+    const requestCloseWorkspaceTab = jest.fn();
+    seedStore({ switchWorkspaceTab, closeWorkspaceTab, requestCloseWorkspaceTab });
     render(<TabStrip />);
     fireEvent.click(
       screen.getByTestId('workspace-tab-close-dashboard:simple-dashboard')
     );
-    expect(closeWorkspaceTab).toHaveBeenCalledWith('dashboard:simple-dashboard');
-    // stopPropagation in the close handler prevents the underlying select fire.
+    // VIS-812: the × asks the guard (which raises the confirm dialog when
+    // dirty) instead of force-closing.
+    expect(requestCloseWorkspaceTab).toHaveBeenCalledWith('dashboard:simple-dashboard');
+    expect(closeWorkspaceTab).not.toHaveBeenCalled();
     expect(switchWorkspaceTab).not.toHaveBeenCalled();
   });
 
-  test('drag-and-drop dispatches reorderWorkspaceTabs', () => {
-    const reorderWorkspaceTabs = jest.fn();
-    seedStore({ reorderWorkspaceTabs });
+  // Drag-reorder is dnd-kit pointer-driven (VIS-812) — the gesture itself is
+  // covered by the Playwright story; here we pin the drag-end → reorder
+  // resolution and that every tab mounts as a draggable wrapper.
+  test('tabDragEndToReorder resolves a drop to the [active, over] pair', () => {
+    expect(
+      tabDragEndToReorder({ active: { id: 'chart:c' }, over: { id: 'project:p' } })
+    ).toEqual(['chart:c', 'project:p']);
+    // Dropped on itself / nowhere → no reorder.
+    expect(
+      tabDragEndToReorder({ active: { id: 'chart:c' }, over: { id: 'chart:c' } })
+    ).toBeNull();
+    expect(tabDragEndToReorder({ active: { id: 'chart:c' }, over: null })).toBeNull();
+    expect(tabDragEndToReorder(null)).toBeNull();
+  });
+
+  test('every tab renders a draggable wrapper for the strip-local dnd context', () => {
+    seedStore();
     render(<TabStrip />);
-    // dnd-kit isn't used here (native HTML5 drag) — fire the synthetic
-    // events with a hand-rolled dataTransfer.
-    const dataTransfer = {
-      effectAllowed: '',
-      dropEffect: '',
-      _data: '',
-      setData(_, v) {
-        this._data = v;
-      },
-      getData() {
-        return this._data;
-      },
-    };
-    const source = screen.getByTestId('workspace-tab-wrapper-chart:revenue_chart');
-    const target = screen.getByTestId('workspace-tab-wrapper-project:analytics-platform');
-    fireEvent.dragStart(source, { dataTransfer });
-    fireEvent.dragOver(target, { dataTransfer });
-    fireEvent.drop(target, { dataTransfer });
-    expect(reorderWorkspaceTabs).toHaveBeenCalledWith(
-      'chart:revenue_chart',
-      'project:analytics-platform'
-    );
+    sampleTabs.forEach(tab => {
+      expect(screen.getByTestId(`workspace-tab-wrapper-${tab.id}`)).toBeInTheDocument();
+    });
+  });
+
+  test('mounts the dirty-close confirmation dialog when a close is pending', () => {
+    seedStore({
+      workspacePendingCloseTabId: 'dashboard:simple-dashboard',
+      confirmCloseWorkspaceTab: jest.fn(),
+      cancelCloseWorkspaceTab: jest.fn(),
+    });
+    render(<TabStrip />);
+    const dialog = screen.getByTestId('tab-close-confirm-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent('simple-dashboard');
   });
 
   test('clicking the + button opens the project tab via openWorkspaceTab', () => {
