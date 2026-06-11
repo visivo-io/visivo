@@ -76,7 +76,7 @@ const PublishModal = () => {
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">{publishError}</div>
         )}
 
-        <div className="max-h-64 overflow-y-auto mb-6">
+        <div className="max-h-64 overflow-y-auto mb-6" data-testid="publish-modal-pending-list">
           {pendingChanges.length === 0 ? (
             <p className="text-gray-500 text-center py-4">No pending changes to publish.</p>
           ) : (

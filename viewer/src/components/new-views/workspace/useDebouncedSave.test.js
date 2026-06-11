@@ -6,6 +6,7 @@
  */
 import { renderHook, act } from '@testing-library/react';
 import useDebouncedSave from './useDebouncedSave';
+import useStore from '../../../stores/store';
 
 describe('useDebouncedSave (VIS-802)', () => {
   beforeEach(() => {
@@ -97,5 +98,55 @@ describe('useDebouncedSave (VIS-802)', () => {
       jest.advanceTimersByTime(1000);
     });
     expect(saveFn).not.toHaveBeenCalled();
+  });
+
+  test('reports into the global save-activity counter while a save is in flight (H-1)', async () => {
+    useStore.setState({ saveActivityCount: 0, lastSaveFailed: false });
+    let resolveSave;
+    const saveFn = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveSave = resolve;
+        })
+    );
+    const { result } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    act(() => result.current.scheduleSave({ a: 1 }));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(useStore.getState().saveActivityCount).toBe(1);
+
+    await act(async () => {
+      resolveSave({ success: true });
+    });
+    expect(useStore.getState().saveActivityCount).toBe(0);
+    expect(useStore.getState().lastSaveFailed).toBe(false);
+  });
+
+  test('a failed save latches lastSaveFailed on the global counter (H-1)', async () => {
+    useStore.setState({ saveActivityCount: 0, lastSaveFailed: false });
+    const saveFn = jest.fn(() => Promise.resolve({ success: false, error: 'nope' }));
+    const { result } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    await act(async () => {
+      await result.current.saveNow({ a: 1 });
+    });
+
+    expect(useStore.getState().saveActivityCount).toBe(0);
+    expect(useStore.getState().lastSaveFailed).toBe(true);
+  });
+
+  test('a throwing save still balances the global counter (H-1)', async () => {
+    useStore.setState({ saveActivityCount: 0, lastSaveFailed: false });
+    const saveFn = jest.fn(() => Promise.reject(new Error('network')));
+    const { result } = renderHook(() => useDebouncedSave(saveFn, { delay: 500 }));
+
+    await act(async () => {
+      await result.current.saveNow({ a: 1 });
+    });
+
+    expect(useStore.getState().saveActivityCount).toBe(0);
+    expect(useStore.getState().lastSaveFailed).toBe(true);
   });
 });
