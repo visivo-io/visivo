@@ -88,6 +88,36 @@ class FlaskApp:
 
         register_views(self.app, self, output_dir)
 
+    def _all_object_managers(self):
+        return [
+            self.source_manager,
+            self.model_manager,
+            self.dimension_manager,
+            self.metric_manager,
+            self.relation_manager,
+            self.insight_manager,
+            self.input_manager,
+            self.markdown_manager,
+            self.chart_manager,
+            self.table_manager,
+            self.dashboard_manager,
+            self.csv_script_model_manager,
+            self.local_merge_model_manager,
+        ]
+
+    def has_draft_changes(self) -> bool:
+        """True when any manager holds an unpublished draft (or defaults are cached)."""
+        return (
+            any(m.has_unpublished_changes() for m in self._all_object_managers())
+            or self._cached_defaults is not None
+        )
+
+    def clear_draft_caches(self) -> None:
+        """Drop every draft cache (Q15 last-write-wins on external YAML edits)."""
+        for manager in self._all_object_managers():
+            manager.clear_cache()
+        self._cached_defaults = None
+
     @property
     def project(self):
         return self._project
