@@ -1,21 +1,25 @@
 /**
- * Workspace telemetry stub (VIS-775 / Track B B2).
+ * Workspace telemetry (VIS-775 / Track B B2, sink wired in VIS-822 / Track K).
  *
- * The viewer has no frontend telemetry framework yet — server-side telemetry
- * lives in `visivo/telemetry/` (Flask middleware + PostHog client). When the
- * frontend gets its own analytics sink (PostHog browser SDK or similar), wire
- * `emitWorkspaceEvent` to forward to it.
+ * `emitWorkspaceEvent(name, payload)` fans each event out to three places:
  *
- * The spec for VIS-775 (`specs/dashboard-building/implementation/01-tracks-and-phasing.md`
- * Track B B2) requires firing `workspace_mode_entered` on shell mount with the
- * scoped dashboard name (or `null` for unscoped). We log the event to the
- * console in dev so the shape is visible during local testing, and we expose
- * a hook so tests can spy on emissions without coupling to a sink.
+ *   1. The in-memory test listener (`setWorkspaceTelemetryListener`) — when
+ *      set, it REPLACES the other sinks so unit tests observe emissions
+ *      without any side effects.
+ *   2. The `visivo:workspace-telemetry` CustomEvent — out-of-process
+ *      observers (Playwright e2e stories) subscribe to this.
+ *   3. The PostHog sink (`postWorkspaceEvent`) — POSTs the event to the local
+ *      Flask server's `/api/telemetry/workspace-event/` relay, which tracks
+ *      it through the CLI's server-side PostHog client (so the CLI telemetry
+ *      opt-out and anonymization apply). A no-op under jest and in the
+ *      dist/cloud viewer (the URL key is `null` there).
  *
- * TODO(VIS-?): replace with real telemetry call once the viewer adopts a
- * browser-side analytics module. Keep the function signature stable so
- * call-sites don't need to change.
+ * Event names + payload shapes follow
+ * `specs/dashboard-building/03-architecture-proposal.md` §3.4; keep the
+ * function signature stable so call-sites don't need to change.
  */
+
+import { postWorkspaceEvent } from '../../../api/workspaceTelemetry';
 
 let listener = null;
 
@@ -49,6 +53,14 @@ export function emitWorkspaceEvent(eventName, payload = {}) {
     } catch {
       // ignore — telemetry must never throw into the render path.
     }
+  }
+  // Forward to the PostHog sink (VIS-822). The sink module guards itself
+  // (jest no-op, dist no-op, all errors swallowed) but we belt-and-suspenders
+  // the call so telemetry can never throw into the render path.
+  try {
+    postWorkspaceEvent(event);
+  } catch {
+    // ignore — telemetry must never break the app.
   }
   // Dev visibility only — keep silent in CI/test to avoid the
   // setupTests.js "unexpected console call" guard. Under Vite `process` is

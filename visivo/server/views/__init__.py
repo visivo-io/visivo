@@ -24,6 +24,7 @@ from visivo.server.views.publish_views import register_publish_views
 from visivo.server.views.relations_views import register_relations_views
 from visivo.server.views.sources_views import register_source_views
 from visivo.server.views.source_schema_jobs_views import register_source_schema_jobs_views
+from visivo.server.views.telemetry_views import register_telemetry_views
 from visivo.server.views.explorer_views import register_explorer_views
 from visivo.server.views.expression_views import register_expression_views
 from visivo.server.views.model_data_views import register_model_data_views
@@ -56,6 +57,7 @@ def register_views(app, flask_app, output_dir):
     register_source_schema_jobs_views(app, flask_app, output_dir)
     register_auth_views(app, flask_app, output_dir)
     register_cloud_views(app, flask_app, output_dir)
+    register_telemetry_views(app, flask_app, output_dir)
 
     register_explorer_views(app, flask_app, output_dir)
     register_expression_views(app, flask_app, output_dir)
