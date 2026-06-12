@@ -123,3 +123,35 @@ def test_serve_command_raises_when_parse_fails(output_dir, tmp_path):
 
         assert result.exit_code != 0
         assert "mock parse failure" in result.output.lower()
+
+
+def test_serve_command_does_not_claim_build_complete_before_data_ready(output_dir, tmp_path):
+    """Regression (VIS-870): `visivo serve` used to log "Initial build completed"
+    right after serve_phase() returned — before the server had started and before
+    the initial run_phase (triggered by the on_server_ready callback) had built
+    any data. The pre-serve log lines must not claim the build is done; the
+    truthful completion message ("Initial Data Refresh Complete.") is emitted by
+    serve_phase once the data is actually ready.
+    """
+    from unittest.mock import MagicMock
+
+    port = get_test_port()
+    mock_server = MagicMock()
+
+    with (
+        patch("visivo.commands.serve.parse_project_phase") as mock_parse,
+        patch("visivo.commands.serve.serve_phase") as mock_serve_phase,
+    ):
+        mock_parse.return_value = ProjectFactory()
+        mock_serve_phase.return_value = (mock_server, MagicMock(), MagicMock())
+
+        result = runner.invoke(
+            serve,
+            ["--output-dir", str(output_dir), "--working-dir", str(tmp_path), "--port", str(port)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Initial build completed" not in result.output
+        assert "Project loaded in" in result.output
+        assert f"Starting server at http://localhost:{port}" in result.output
+        mock_server.serve.assert_called_once()

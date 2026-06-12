@@ -288,5 +288,6 @@ nav:
           - Run Time:
               - reference/functions/runtime_functions/index.md
   - Background:
+      - background/index.md
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
