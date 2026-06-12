@@ -92,7 +92,10 @@ const LevelGroup = ({
           data-testid={`level-group-dropzone-${group.levelKey}`}
           data-over={isOver ? 'true' : 'false'}
           className={[
-            'grid grid-cols-1 gap-3 rounded-lg transition-colors sm:grid-cols-2 lg:grid-cols-3',
+            // Keyed to the tiles COLUMN's width (@container/groups on the
+            // ProjectEditor wrapper), not the viewport — the middle pane can
+            // be ~400px wide on a 1071px screen once both rails take their cut.
+            'grid grid-cols-1 gap-3 rounded-lg transition-colors @[400px]/groups:grid-cols-2 @[640px]/groups:grid-cols-3',
             isOver && !isInvalidTarget
               ? 'bg-primary-100/30 p-2 ring-2 ring-dashed ring-primary'
               : '',

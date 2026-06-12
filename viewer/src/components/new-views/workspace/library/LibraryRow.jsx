@@ -46,6 +46,22 @@ export const DATA_TYPES = ['source', 'model', 'dimension', 'metric', 'relation',
 // not a canvas-droppable item — clicking it scopes the middle pane instead.
 export const DROPPABLE_TYPES = ['chart', 'table', 'markdown', 'input'];
 
+// Every type except `relation` supports inline create (a draft with a
+// minimal valid config — see stores/inlineCreateStore.js). A relation can't
+// be templated: its condition must reference two real models.
+export const CREATABLE_TYPES = [
+  'chart',
+  'table',
+  'markdown',
+  'input',
+  'dashboard',
+  'source',
+  'model',
+  'dimension',
+  'metric',
+  'insight',
+];
+
 export const getTypeDef = type => {
   const cfg = getTypeByValue(type);
   const droppable = DROPPABLE_TYPES.includes(type);
@@ -54,6 +70,7 @@ export const getTypeDef = type => {
     label: cfg?.singularLabel || type,
     plural: cfg?.label || `${type}s`,
     droppable,
+    creatable: CREATABLE_TYPES.includes(type),
     accent: droppable ? 'mulberry' : 'teal',
   };
 };

@@ -33,6 +33,7 @@ const LineageCanvas = () => {
   const { scope, selector, dashboardName, selectedItem } = useWorkspaceScope();
   const openWorkspaceTab = useStore((s) => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore((s) => s.openWorkspaceTabBackground);
+  const setWorkspaceLensIntent = useStore((s) => s.setWorkspaceLensIntent);
 
   // Local "show full project" override. When active we force `*` regardless of
   // the derived scope — without touching the route. It auto-clears whenever the
@@ -88,12 +89,22 @@ const LineageCanvas = () => {
   const handleNodeSelect = useCallback(
     (obj) => {
       if (!obj || !obj.type || !obj.name) return;
+      // The user is walking the DAG — ask the new object's pane to open on
+      // the Lineage lens (one-shot, object-scoped; the pane clears it).
+      // Without this, selecting a node with a Track-N preview would bounce
+      // the middle pane to Preview mid-walk (VIS-779 Step 4). Dashboards are
+      // excluded: DashboardPane follows the store lens, which is already
+      // 'lineage' here, and PerObjectPane (the intent's only consumer) never
+      // renders dashboards — the intent would just linger unconsumed.
+      if (setWorkspaceLensIntent && obj.type !== 'dashboard') {
+        setWorkspaceLensIntent({ objectKey: `${obj.type}:${obj.name}`, lens: 'lineage' });
+      }
       if (openWorkspaceTab) {
         openWorkspaceTab({ id: `${obj.type}:${obj.name}`, type: obj.type, name: obj.name });
       }
       emitWorkspaceEvent('lineage_node_selected', { type: obj.type, name: obj.name });
     },
-    [openWorkspaceTab]
+    [openWorkspaceTab, setWorkspaceLensIntent]
   );
 
   // Right-click a node → "Open / Open in new tab" (VIS-811 / Track O O-2).

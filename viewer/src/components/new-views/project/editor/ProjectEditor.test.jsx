@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import ProjectEditor from './ProjectEditor';
 import useStore from '../../../../stores/store';
 import { setWorkspaceTelemetryListener } from '../../workspace/telemetry';
@@ -33,7 +33,7 @@ const seed = (extra = {}) => {
       reorderLevel: jest.fn(),
       deleteLevel: jest.fn(),
       fetchDashboards: jest.fn(),
-      openCreateDashboardModal: jest.fn(),
+      createDashboard: jest.fn().mockResolvedValue({ success: true, name: 'new-dashboard' }),
       ...extra,
     });
   });
@@ -131,14 +131,32 @@ describe('ProjectEditor', () => {
     expect(screen.queryByTestId('project-tile-a')).not.toBeInTheDocument();
   });
 
-  test('+ New Dashboard CTA is present and reuses the create flow', () => {
-    const openCreateDashboardModal = jest.fn();
-    seed({ openCreateDashboardModal });
+  test('+ New Dashboard creates a draft dashboard and opens it as a workspace tab', async () => {
+    const createDashboard = jest.fn().mockResolvedValue({ success: true, name: 'new-dashboard' });
+    const openWorkspaceTab = jest.fn();
+    seed({ createDashboard, openWorkspaceTab });
     render(<ProjectEditor />);
     const cta = screen.getByTestId('project-editor-new-dashboard');
     expect(cta).toHaveTextContent('New Dashboard');
     fireEvent.click(cta);
-    expect(openCreateDashboardModal).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(createDashboard).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'dashboard:new-dashboard',
+      type: 'dashboard',
+        name: 'new-dashboard',
+      })
+    );
+  });
+
+  test('a failed create does not open a tab', async () => {
+    const createDashboard = jest.fn().mockResolvedValue({ success: false, error: 'boom' });
+    const openWorkspaceTab = jest.fn();
+    seed({ createDashboard, openWorkspaceTab });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-editor-new-dashboard'));
+    await waitFor(() => expect(createDashboard).toHaveBeenCalledTimes(1));
+    expect(openWorkspaceTab).not.toHaveBeenCalled();
   });
 
   test('renders the empty state when there are no dashboards', () => {

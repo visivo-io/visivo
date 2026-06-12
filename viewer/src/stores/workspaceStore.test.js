@@ -537,6 +537,29 @@ describe('workspace store slice', () => {
     });
   });
 
+  test('workspaceLensIntent: set, validate, and clear (VIS-779)', () => {
+    act(() => {
+      useStore.getState().setWorkspaceLensIntent({ objectKey: 'chart:rev', lens: 'lineage' });
+    });
+    expect(useStore.getState().workspaceLensIntent).toEqual({
+      objectKey: 'chart:rev',
+      lens: 'lineage',
+    });
+    // Invalid shapes are rejected without clobbering the current intent.
+    act(() => {
+      useStore.getState().setWorkspaceLensIntent({ lens: 'lineage' });
+      useStore.getState().setWorkspaceLensIntent({ objectKey: 'chart:rev', lens: 'nope' });
+    });
+    expect(useStore.getState().workspaceLensIntent).toEqual({
+      objectKey: 'chart:rev',
+      lens: 'lineage',
+    });
+    act(() => {
+      useStore.getState().clearWorkspaceLensIntent();
+    });
+    expect(useStore.getState().workspaceLensIntent).toBeNull();
+  });
+
   // Outline tree (VIS-793 / Track F F-3) ------------------------------------
 
   test('setWorkspaceOutlineSelectedKey updates the selection key', () => {

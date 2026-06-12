@@ -470,6 +470,7 @@ const MiniLineageCard = ({
   const fetchDashboards = useStore(s => s.fetchDashboards);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
+  const setWorkspaceLensIntent = useStore(s => s.setWorkspaceLensIntent);
   const csvScriptModels = useStore(s => s.csvScriptModels);
   const localMergeModels = useStore(s => s.localMergeModels);
   const defaults = useStore(s => s.defaults);
@@ -608,6 +609,12 @@ const MiniLineageCard = ({
     if (typeof onExpand === 'function') {
       onExpand(subjectForRender);
     } else {
+      // Per-object panes track their lens locally and ignore the store lens,
+      // so a previewable subject needs the one-shot object-scoped intent to
+      // actually open on Lineage; the store lens covers the dashboard pane.
+      if (typeof setWorkspaceLensIntent === 'function' && type !== 'dashboard') {
+        setWorkspaceLensIntent({ objectKey: `${type}:${name}`, lens: 'lineage' });
+      }
       if (typeof openWorkspaceTab === 'function') {
         openWorkspaceTab({ id: `${type}:${name}`, type, name });
       }

@@ -137,6 +137,14 @@ const PerObjectPane = ({ activeObject, projectId }) => {
     if (searchParams.get('lens') !== 'lineage') return null;
     return searchParams.get('edit') === objectKey ? 'lineage' : null;
   }, [searchParams, objectKey]);
+  // A lineage node click requests the Lineage lens for the object it selects
+  // (VIS-779 Step 4 — walking the DAG must not bounce back to Preview). Same
+  // object-scoped shape as the deep link; one-shot, cleared after consumption.
+  const lensIntent = useStore(s => s.workspaceLensIntent);
+  const clearWorkspaceLensIntent = useStore(s => s.clearWorkspaceLensIntent);
+  const intentLens =
+    lensIntent && lensIntent.objectKey === objectKey ? lensIntent.lens : null;
+  const requestedLens = deepLinkLens || intentLens;
   const defaultLens = hasPreview ? 'preview' : 'lineage';
 
   // Types with a custom preview default to the Preview lens (their primary
@@ -144,8 +152,8 @@ const PerObjectPane = ({ activeObject, projectId }) => {
   // deep link overrides the default. The shared store lens defaults to 'preview'
   // (the dashboard *canvas* default), which isn't meaningful for objects with no
   // preview surface, so the per-object lens is tracked locally.
-  const [lensEffective, setLensEffective] = React.useState(deepLinkLens || defaultLens);
-  // Reset the lens to the object's default (or the deep-link lens) whenever the
+  const [lensEffective, setLensEffective] = React.useState(requestedLens || defaultLens);
+  // Reset the lens to the object's default (or the requested lens) whenever the
   // active object changes. React reuses this same PerObjectPane instance when the
   // user switches between two non-dashboard objects (same component, same tree
   // position), so without this the previous object's lens selection would leak:
@@ -156,9 +164,16 @@ const PerObjectPane = ({ activeObject, projectId }) => {
   React.useEffect(() => {
     if (prevKeyRef.current !== objectKey) {
       prevKeyRef.current = objectKey;
-      setLensEffective(deepLinkLens || defaultLens);
+      setLensEffective(requestedLens || defaultLens);
     }
-  }, [objectKey, deepLinkLens, defaultLens]);
+  }, [objectKey, requestedLens, defaultLens]);
+  // The intent is single-use: clear it once this pane has consumed it so it
+  // can't re-apply on a later visit to the same object.
+  React.useEffect(() => {
+    if (intentLens && clearWorkspaceLensIntent) {
+      clearWorkspaceLensIntent();
+    }
+  }, [intentLens, clearWorkspaceLensIntent]);
   // A fallback type can never show Preview — clamp any stale 'preview' selection.
   const lens = hasPreview ? lensEffective : 'lineage';
   return (

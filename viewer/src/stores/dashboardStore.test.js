@@ -18,6 +18,41 @@ const seed = (dashboards, saveDashboard) => {
   });
 };
 
+describe('dashboardStore createDashboard (Project Editor "+ New Dashboard")', () => {
+  test('creates an empty draft with a unique name and returns it', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seed([{ name: 'exec', config: {} }], saveDashboard);
+
+    const result = await useStore.getState().createDashboard();
+
+    expect(saveDashboard).toHaveBeenCalledWith('new-dashboard', { rows: [] });
+    expect(result).toMatchObject({ success: true, name: 'new-dashboard' });
+  });
+
+  test('deduplicates the name when new-dashboard already exists', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: true }));
+    seed([{ name: 'new-dashboard', config: {} }], saveDashboard);
+
+    const result = await useStore.getState().createDashboard();
+
+    expect(saveDashboard).toHaveBeenCalledWith(expect.not.stringMatching(/^new-dashboard$/), {
+      rows: [],
+    });
+    expect(result.success).toBe(true);
+    expect(result.name).not.toBe('new-dashboard');
+  });
+
+  test('propagates a failed save without a name', async () => {
+    const saveDashboard = jest.fn(async () => ({ success: false, error: 'boom' }));
+    seed([], saveDashboard);
+
+    const result = await useStore.getState().createDashboard();
+
+    expect(result.success).toBe(false);
+    expect(result.name).toBeUndefined();
+  });
+});
+
 describe('dashboardStore reassignDashboardLevel', () => {
   test('saves the dashboard config with the new level', async () => {
     const saveDashboard = jest.fn(async () => ({ success: true }));

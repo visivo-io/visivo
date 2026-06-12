@@ -143,6 +143,18 @@ describe('LineageCanvas', () => {
     expect(state.workspaceActiveTabId).toBe('model:monthly_revenue');
   });
 
+  test('clicking a node requests the Lineage lens for the selected object (VIS-779 Step 4)', () => {
+    setScope(DASHBOARD);
+    render(<LineageCanvas />);
+
+    fireEvent.click(screen.getByTestId('simulate-node-click'));
+
+    expect(useStore.getState().workspaceLensIntent).toEqual({
+      objectKey: 'model:monthly_revenue',
+      lens: 'lineage',
+    });
+  });
+
   test('fires middle_pane_toggled telemetry on lineage entry', () => {
     setScope(DASHBOARD);
     const events = [];

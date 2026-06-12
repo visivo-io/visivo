@@ -31,6 +31,7 @@ export default defineConfig({
         '**/explorer-publish-to-files.spec.mjs',
         '**/build-mode-publish.spec.mjs',
         '**/external-edit-banner.spec.mjs',
+        '**/library-inline-create.spec.mjs',
       ],
     },
     {
@@ -39,6 +40,8 @@ export default defineConfig({
         '**/explorer-crud-save.spec.mjs',
         // J-4: saves a chart from Explorer, asserts the Library reflects it.
         '**/explorer-library-reactivity.spec.mjs',
+        // Drafts objects into the backend cache via the Library create flow.
+        '**/library-inline-create.spec.mjs',
       ],
       dependencies: ['parallel'],
     },

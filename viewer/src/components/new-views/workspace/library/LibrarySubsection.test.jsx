@@ -57,23 +57,46 @@ describe('LibrarySubsection', () => {
     );
   });
 
-  test('shows "+ New X" for a droppable Layout type', () => {
+  test('shows "+ New X" for a creatable type when onCreate is provided', () => {
     expand('chart');
-    render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
+    render(
+      withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} onCreate={jest.fn()} />)
+    );
     expect(screen.getByTestId('library-subsection-chart-create')).toHaveTextContent('New Chart');
   });
 
-  test('hides "+ New X" for a non-droppable Data-layer type', () => {
+  test('hides "+ New X" when no onCreate handler is wired', () => {
+    expand('chart');
+    render(withDnd(<LibrarySubsection typeKey="chart" rows={CHART_ROWS} />));
+    expect(screen.queryByTestId('library-subsection-chart-create')).not.toBeInTheDocument();
+  });
+
+  test('data-layer types are creatable too — source shows "+ New X" with onCreate', () => {
     expand('source');
     render(
       withDnd(
         <LibrarySubsection
           typeKey="source"
           rows={[{ id: 'source:duck', type: 'source', name: 'duck' }]}
+          onCreate={jest.fn()}
         />
       )
     );
-    expect(screen.queryByTestId('library-subsection-source-create')).not.toBeInTheDocument();
+    expect(screen.getByTestId('library-subsection-source-create')).toHaveTextContent('New Source');
+  });
+
+  test('hides "+ New X" for relation (no valid empty template)', () => {
+    expand('relation');
+    render(
+      withDnd(
+        <LibrarySubsection
+          typeKey="relation"
+          rows={[{ id: 'relation:r1', type: 'relation', name: 'r1' }]}
+          onCreate={jest.fn()}
+        />
+      )
+    );
+    expect(screen.queryByTestId('library-subsection-relation-create')).not.toBeInTheDocument();
   });
 
   test('"+ New X" delegates to onCreate with the type key', () => {

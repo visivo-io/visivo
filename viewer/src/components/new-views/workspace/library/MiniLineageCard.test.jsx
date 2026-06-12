@@ -64,6 +64,7 @@ const seedStore = () => {
       fetchDefaults: jest.fn(),
       openWorkspaceTab: jest.fn(),
       setWorkspaceLens: jest.fn(),
+      setWorkspaceLensIntent: jest.fn(),
     });
   });
 };
@@ -162,6 +163,25 @@ describe('MiniLineageCard rendering (VIS-780)', () => {
     expect(screen.queryByTestId('mlc-expand')).not.toBeInTheDocument();
     // Body still renders.
     expect(screen.getByTestId('mlc-lineage-subject')).toBeInTheDocument();
+  });
+
+  test('default Expand opens the tab AND requests the Lineage lens for the subject', () => {
+    render(<MiniLineageCard obj={SUBJECT_CHART} testIdPrefix="mlc" onClose={jest.fn()} />);
+    fireEvent.click(screen.getByTestId('mlc-expand'));
+
+    const state = useStore.getState();
+    expect(state.openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'chart:revenue_chart',
+      type: 'chart',
+      name: 'revenue_chart',
+    });
+    // PerObjectPane ignores the store lens, so the one-shot object-scoped
+    // intent is what actually lands a previewable subject on Lineage.
+    expect(state.setWorkspaceLensIntent).toHaveBeenCalledWith({
+      objectKey: 'chart:revenue_chart',
+      lens: 'lineage',
+    });
+    expect(state.setWorkspaceLens).toHaveBeenCalledWith('lineage');
   });
 
   test('onExpand override is invoked with the subject (instead of workspace lens)', () => {

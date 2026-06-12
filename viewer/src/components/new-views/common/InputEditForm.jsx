@@ -34,7 +34,7 @@ const MULTI_SELECT_DISPLAY_TYPES = ['dropdown', 'checkboxes', 'chips', 'tags', '
  *    (RightRailEditPanel). The auto-save status is reported up via
  *    `onSaveStatusChange` so the SelectionChip header can render the indicator.
  *
- *  - legacy modal (Editor / Lineage `EditPanel`): keeps the explicit
+ *  - legacy modal hosts (removed): kept the explicit
  *    Save/Cancel footer so the modal can be dismissed as before.
  *
  * In both modes validation is inline and non-blocking: obvious mistakes
