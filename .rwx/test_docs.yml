@@ -4,6 +4,7 @@ on:
       actions: [opened, reopened, synchronize]
       init:
         commit-sha: ${{ event.git.sha }}
+        pr-num: ${{ event.github.pull_request.pull_request.number }}
 
 base:
   image: ubuntu:22.04
@@ -53,3 +54,31 @@ tasks:
     filter:
       - build_stdout.txt
       - validate_mkdocs_build.sh
+
+  - key: github-cli
+    call: github/install-cli 1.0.5
+
+  # Per-PR docs preview app. Serves the built site (site_dir: mkdocs_build) on an
+  # on-demand rwx.run URL; spins down after 10 min idle and re-materializes from
+  # the task cache when the URL is hit again.
+  - key: docs-preview
+    use: [mkdocs]
+    app:
+      endpoint: docs-pr-${{ init.pr-num }}
+      port: 8000
+      timeout: 2m
+    run: python3 -m http.server $PORT --directory mkdocs_build
+
+  - key: comment-preview-link
+    use: [code, github-cli]
+    run: |
+      BODY="📚 Docs preview: $DOCS_PREVIEW_URL"
+      COMMENT_ID=$(gh api "repos/visivo-io/visivo/issues/${{ init.pr-num }}/comments" --jq '[.[] | select(.body | startswith("📚 Docs preview:"))][0].id // empty')
+      if [ -n "$COMMENT_ID" ]; then
+        gh api -X PATCH "repos/visivo-io/visivo/issues/comments/$COMMENT_ID" -f body="$BODY" > /dev/null
+      else
+        gh pr comment ${{ init.pr-num }} --body "$BODY"
+      fi
+    env:
+      DOCS_PREVIEW_URL: ${{ tasks.docs-preview.app.url.friendly }}
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
