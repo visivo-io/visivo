@@ -37,7 +37,7 @@ def run(
     no_deprecation_warnings,
 ):
     """
-    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
+    Compiles the project and then runs the model and insight queries to fetch the data that powers your dashboards. Writes all data to the output directory. Can skip the compile with the --skip-compile flag.
     """
     from visivo.logger.logger import Logger
     from visivo.commands.parse_project_phase import parse_project_phase

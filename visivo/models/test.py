@@ -8,24 +8,6 @@ from visivo.models.base.eval_string import EvalString
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
-"""
-Tests allow you to assert on the computed values that are the output of an
-insight. Tests are run with the `visivo test` command.
-
-### Example
-``` yaml
-tests:
-  - name: Test One
-    if: ${ ref(Tested Insight).props.type } == "scatter"
-    assertions:
-      - >{ sum( ${ ref(Tested Insight).props.x } ) == 7 }
-      - >{ ${ ref(Tested Insight).props.x[0] } == 1 }
-```
-
-The [numpy](https://numpy.org/doc/stable/index.html) library is available
-in test expressions.
-"""
-
 
 class OnFailureEnum(str, Enum):
     exit = "exit"
@@ -33,9 +15,37 @@ class OnFailureEnum(str, Enum):
 
 
 class Test(NamedModel, ParentModel):
-    if_: Optional[EvalString] = Field(None, alias="if")
-    on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
-    assertions: List[EvalString] = Field(None)
+    """
+    Tests allow you to assert on the computed values that are the output of an
+    insight. Tests are run with the `visivo test` command.
+
+    ### Example
+    ``` yaml
+    tests:
+      - name: Test One
+        if: ${ ref(Tested Insight).props.type } == "scatter"
+        assertions:
+          - >{ sum( ${ ref(Tested Insight).props.x } ) == 7 }
+          - >{ ${ ref(Tested Insight).props.x[0] } == 1 }
+    ```
+
+    The [numpy](https://numpy.org/doc/stable/index.html) library is available
+    in test expressions.
+    """
+
+    if_: Optional[EvalString] = Field(
+        None,
+        alias="if",
+        description="An optional eval string that gates the test; the assertions only run when it evaluates to true.",
+    )
+    on_failure: OnFailureEnum = Field(
+        OnFailureEnum.exit,
+        description="Whether a failure stops the test run (`exit`) or lets the remaining tests run (`continue`).",
+    )
+    assertions: List[EvalString] = Field(
+        None,
+        description="A list of eval strings (`>{ ... }`) that must all evaluate to true for the test to pass.",
+    )
 
     @model_validator(mode="before")
     def rename_if(cls, values):

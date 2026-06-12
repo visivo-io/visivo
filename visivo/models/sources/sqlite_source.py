@@ -7,7 +7,12 @@ from visivo.logger.logger import Logger
 
 
 class Attachment(BaseModel):
-    schema_name: str = Field("Name of the schema to attach the source under.")
+    """
+    An Attachment makes an additional SQLite database available in the parent
+    source's connection so a single model query can join across both databases.
+    """
+
+    schema_name: str = Field(..., description="Name of the schema to attach the source under.")
     source: "SqliteSource" = Field(
         None,
         description="Local SQLite database source to attach in the connection that will be available in the base SQL query.",

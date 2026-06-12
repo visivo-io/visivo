@@ -8,11 +8,34 @@ from visivo.logger.logger import Logger
 
 
 class ExcelFileSource(BaseDuckdbSource):
+    """
+    ExcelFileSources let you query a local Excel file with SQL — no database required.
+
+    The file is loaded into an in-memory DuckDB connection and exposed as a view named
+    after the source, so models can `SELECT` from it like any other table.
+
+    !!! example
+
+        ``` yaml
+        sources:
+          - name: budget_xls
+            type: xls
+            file: data/budget.xlsx
+
+        models:
+          - name: budget
+            source: ${ref(budget_xls)}
+            sql: SELECT * FROM budget_xls
+        ```
+    """
+
     type: Literal["xls"]
-    file: str = Field(..., description="Path to the Excel file.")
-    delimiter: Optional[str] = Field(",", description="Excel delimiter.")
-    encoding: Optional[str] = Field("utf-8", description="Excel file encoding.")
-    has_header: Optional[bool] = Field(True, description="Whether Excel has a header row.")
+    file: str = Field(..., description="Path to the Excel file, relative to the project directory.")
+    delimiter: Optional[str] = Field(",", description="Character separating values in the file.")
+    encoding: Optional[str] = Field("utf-8", description="Text encoding of the file.")
+    has_header: Optional[bool] = Field(
+        True, description="Whether the first row of the sheet contains column names."
+    )
 
     def get_connection(self, read_only: bool = False):
         """Create an in-memory DuckDB connection with the Excel file loaded as a view."""

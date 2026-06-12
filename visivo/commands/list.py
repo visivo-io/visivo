@@ -5,7 +5,7 @@ from visivo.commands.list_phase import list_phase
 
 
 @click.command()
-@click.argument("object_type", type=click.Choice(["sources", "models", "traces"]))
+@click.argument("object_type", type=click.Choice(["sources", "models", "insights"]))
 @working_dir
 @output_dir
 @source

@@ -34,6 +34,47 @@ from visivo.version import VISIVO_VERSION
 
 
 class Project(NamedModel, ParentModel):
+    """
+    The Project is the top-level object in a Visivo configuration. Every other object —
+    sources, models, the semantic layer (metrics, dimensions, relations), insights,
+    charts, tables, inputs, and dashboards — is defined within it.
+
+    A project is assembled from one or more YAML files. The root `project.visivo.yml`
+    file can pull in additional files with `includes`, so you can split a large project
+    across files and folders (or even other git repositories).
+
+    ``` yaml
+    name: my-project
+
+    sources:
+      - name: local-duckdb
+        type: duckdb
+        database: target/local.duckdb
+
+    models:
+      - name: orders
+        sql: SELECT * FROM orders
+
+    insights:
+      - name: revenue-by-month
+        props:
+          type: bar
+          x: ?{ date_trunc('month', ${ref(orders).created_at}) }
+          y: ?{ sum(${ref(orders).amount}) }
+
+    charts:
+      - name: revenue-chart
+        insights:
+          - ${ref(revenue-by-month)}
+
+    dashboards:
+      - name: Overview
+        rows:
+          - items:
+              - chart: ${ref(revenue-chart)}
+    ```
+    """
+
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     # Private attributes for schema extraction caching (don't store extractor object to avoid pickle errors)
@@ -41,32 +82,71 @@ class Project(NamedModel, ParentModel):
     # Private attribute for DAG caching to avoid rebuilding the DAG multiple times
     _cached_dag: Optional[Any] = PrivateAttr(default=None)
 
-    defaults: Optional[Defaults] = None
-    dbt: Optional[Dbt] = None
-    project_file_path: Optional[str] = None
-    project_dir: Optional[str] = None
+    defaults: Optional[Defaults] = Field(
+        None,
+        description="Project-wide defaults, such as the source and alert to use when none is specified.",
+    )
+    dbt: Optional[Dbt] = Field(
+        None,
+        description="Configuration for importing models and sources from a dbt™ project.",
+    )
+    project_file_path: Optional[str] = Field(
+        None,
+        description="Set automatically to the path of the root project file. You do not need to set this.",
+    )
+    project_dir: Optional[str] = Field(
+        None,
+        description="Set automatically to the directory containing the root project file. You do not need to set this.",
+    )
     cli_version: Optional[str] = Field(
         default=VISIVO_VERSION,
         description="The version of the CLI that created the project.",
     )
-    includes: List[Include] = []
-    destinations: List[DestinationField] = []
-    alerts: List[Alert] = []
+    includes: List[Include] = Field(
+        [],
+        description="A list of other YAML files (local or from git) to merge into this project.",
+    )
+    destinations: List[DestinationField] = Field(
+        [],
+        description="A list of destination objects (Slack, email, console) that alerts can send to.",
+    )
+    alerts: List[Alert] = Field(
+        [],
+        description="A list of alert objects that fire after `visivo test` runs and notify destinations.",
+    )
     sources: List[SourceField] = Field(
         [],
-        description="A list of source objects.",
+        description="A list of source objects holding connection information for your databases and files.",
         alias="targets",
     )
-    models: List[ModelField] = []
-    insights: List[Insight] = []
+    models: List[ModelField] = Field(
+        [],
+        description="A list of model objects that define the base data insights are built on.",
+    )
+    insights: List[Insight] = Field(
+        [],
+        description="A list of insight objects that define interactive visualizations of model data.",
+    )
     markdowns: List[Markdown] = Field(
         [],
         description="A list of markdown objects for displaying formatted text in dashboards.",
     )
-    tables: List[Table] = []
-    charts: List[Chart] = []
-    inputs: List[InputField] = []
-    dashboards: List[DashboardField] = []
+    tables: List[Table] = Field(
+        [],
+        description="A list of table objects that present model or insight data in tabular or pivot form.",
+    )
+    charts: List[Chart] = Field(
+        [],
+        description="A list of chart objects that combine insights with layout configuration.",
+    )
+    inputs: List[InputField] = Field(
+        [],
+        description="A list of input objects (single- or multi-select) that drive client-side interactivity.",
+    )
+    dashboards: List[DashboardField] = Field(
+        [],
+        description="A list of dashboard objects that arrange charts, tables, markdown, and inputs in a grid.",
+    )
     metrics: List[Metric] = Field(
         [], description="A list of global metric objects that can reference multiple models."
     )

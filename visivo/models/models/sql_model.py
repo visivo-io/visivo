@@ -14,12 +14,15 @@ from visivo.models.dimension import Dimension
 
 
 class SqlModel(Model, ParentModel):
-    model_config = ConfigDict(populate_by_name=True, extra="forbid")
-
     """
     SQL Models are queries that return base data from a SQL source. The
-    resulting rows are then referenced by Insights via `${ref(model).column}`
+    resulting columns are referenced by Insights via `${ref(model).column}`
     field references in their `?{ ... }` slot bindings.
+
+    SQL Models can also carry their slice of the semantic layer: model-scoped
+    `metrics` (aggregate calculations) and `dimensions` (row-level calculated
+    fields) defined on the model are reusable anywhere the model can be
+    referenced.
 
     !!! example {% raw %}
 
@@ -27,16 +30,33 @@ class SqlModel(Model, ParentModel):
 
             ``` yaml
             models:
-              - name: sql_model
+              - name: orders
                 source: ref(sql_source)
-                sql: select * from table_in_source
+                sql: select * from orders
+            ```
+
+        === "With Metrics & Dimensions"
+
+            ``` yaml
+            models:
+              - name: orders
+                source: ref(sql_source)
+                sql: select * from orders
+                metrics:
+                  - name: total_revenue
+                    expression: sum(amount)
+                dimensions:
+                  - name: order_month
+                    expression: date_trunc('month', created_at)
             ```
     {% endraw %}
     """
 
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
     sql: str = Field(
         None,
-        description="The sql used to generate your base data",
+        description="The SQL query that returns this model's base data from its source.",
     )
 
     source: Optional[SourceRefField] = Field(

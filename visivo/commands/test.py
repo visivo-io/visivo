@@ -9,7 +9,7 @@ from visivo.commands.options import output_dir, working_dir, source, no_deprecat
 @no_deprecation_warnings
 def test(output_dir, working_dir, source, no_deprecation_warnings):
     """
-    Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.
+    Runs the project's tests, asserting on computed insight values to ensure the charts being produced have the characteristics that you expect.
     """
     from visivo.logger.logger import Logger
 
