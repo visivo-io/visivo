@@ -8,7 +8,7 @@
   <a href="https://visivo.io">Website</a> •
   <a href="https://docs.visivo.io">Documentation</a> •
   <a href="https://visivo.io/examples">Live Examples</a> •
-  <a href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ">Join Slack</a> •
+  <a href="https://github.com/visivo-io/visivo/discussions">Discussions</a> •
   <a href="https://www.linkedin.com/company/visivo-io">LinkedIn</a>
 </p>
 
@@ -112,7 +112,7 @@ python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1
   <strong>Join our growing community of data practitioners!</strong>
 </p>
 
-- 💬 **[Join our Slack](https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ)** – Get help, share dashboards, and chat with the team
+- 💬 **[GitHub Discussions](https://github.com/visivo-io/visivo/discussions)** – Get help, share dashboards, and chat with the team
 - 📚 **[Browse Documentation](https://docs.visivo.io)** – Comprehensive guides and API reference
 - 🐛 **[Report Issues](https://github.com/visivo-io/visivo/issues)** – Found a bug or have a feature request? Let us know!
 - 💼 **[Follow on LinkedIn](https://www.linkedin.com/company/visivo-io)** – Stay updated with the latest news

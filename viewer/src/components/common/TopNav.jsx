@@ -5,7 +5,7 @@ import Dropdown from './Dropdown';
 import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiUser, FiUsers, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
-import { SiSlack } from 'react-icons/si';
+import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
 import { PiMagnifyingGlass, PiTreeStructure, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
@@ -361,13 +361,13 @@ function localMenu(close) {
         <MdMenuBook size={16} color="#6b7280" /> Documentation
       </a>
       <a
-        href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ"
+        href="https://github.com/visivo-io/visivo/discussions"
         target="_blank"
         rel="noopener noreferrer"
         onClick={close}
         style={{ ...linkStyle, display: 'flex', alignItems: 'center', gap: 8 }}
       >
-        <SiSlack size={15} color="#6b7280" /> Join the Community
+        <SiGithub size={15} color="#6b7280" /> Join the Community
       </a>
       <a href="https://github.com/visivo-io/visivo/issues/new/choose" target="_blank" rel="noopener noreferrer" onClick={close} style={linkStyle}>
         Log an Issue

@@ -385,7 +385,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
     ```
 
     1. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
-    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install visivo==1.0.26`
+    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install visivo==2.0.3`
     3. You can get your visivo token from [app.visivo.io](https://app.visivo.io). 
     4. This assumes that you have a target set up in your project that depends on these env variables for connection. 
 
@@ -447,7 +447,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
     ```
 
     1. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
-    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install visivo==1.0.26`
+    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install visivo==2.0.3`
     3. You can get your visivo token from [app.visivo.io](https://app.visivo.io). 
     4. This assumes that you have a target set up in your project that depends on these env variables for connection. 
 {% endraw %}

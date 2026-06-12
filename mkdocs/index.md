@@ -165,7 +165,7 @@ Now that you have a running dashboard, explore what's possible:
 ---
 
 <div style="text-align: center; margin-top: 2rem;">
-  <a href="https://github.com/visivo/visivo" class="md-button md-button--primary">
+  <a href="https://github.com/visivo-io/visivo" class="md-button md-button--primary">
     :octicons-star-16: Star us on GitHub
   </a>
   <a href="https://app.visivo.io" class="md-button">

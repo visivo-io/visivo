@@ -320,13 +320,13 @@ Releases are created through GitHub Actions:
 
 - Be respectful and inclusive
 - Follow the code of conduct
-- Ask questions in our [Slack community](https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ)
+- Ask questions in [GitHub Discussions](https://github.com/visivo-io/visivo/discussions)
 - Report bugs with clear reproduction steps
 - Suggest features with use cases
 
 ## 📞 Getting Help
 
-- 💬 [Join our Slack](https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ) for real-time help
+- 💬 [Start a discussion](https://github.com/visivo-io/visivo/discussions) for questions and help
 - 📚 Check the [documentation](https://docs.visivo.io)
 - 🐛 Search [existing issues](https://github.com/visivo-io/visivo/issues) before creating new ones
 

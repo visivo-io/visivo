@@ -108,8 +108,11 @@ def serve(
         no_deprecation_warnings=no_deprecation_warnings,
     )
 
-    logger.info(f"Initial build completed in {round(time() - start_time, 2)}s")
-    logger.info(f"Server running at {server_url}")
+    # The initial data build runs via the on_server_ready callback after the
+    # server starts, so don't claim the build is done here — serve_phase logs
+    # "Initial Data Refresh Complete." when the data is actually ready.
+    logger.info(f"Project loaded in {round(time() - start_time, 2)}s")
+    logger.info(f"Starting server at {server_url} (initial data refresh runs once it's up)")
 
     server.serve(
         host="0.0.0.0",
