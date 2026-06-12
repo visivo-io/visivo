@@ -98,7 +98,7 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
           </div>
         </div>
       </WorkspaceDndContext>
-      {/* The publish confirm flow (H-1) is Home's layout-level <PublishModal>;
+      {/* The publish confirm flow (H-1) is Home's layout-level <CommitModal>;
           its ModalOverlay stacks at z-[70], above this shell's z-[60] route
           overlay, so the Workspace deliberately does NOT mount a second one. */}
     </div>

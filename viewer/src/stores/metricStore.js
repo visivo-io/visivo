@@ -32,9 +32,9 @@ const createMetricSlice = (set, get) => ({
       const result = await metricsApi.saveMetric(name, config);
       // Refresh metrics list to get updated status
       await get().fetchMetrics();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createMetricSlice = (set, get) => ({
     }
   },
 
-  // Mark metric for deletion (will be removed from YAML on publish)
+  // Mark metric for deletion (will be removed from YAML on commit)
   deleteMetric: async name => {
     try {
       await metricsApi.deleteMetric(name);
       await get().fetchMetrics();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

@@ -151,14 +151,14 @@ def test_on_project_change_drops_drafts_and_emits_project_changed(
     dashboard_name = test_project.dashboards[0].name
     config = client.get(f"/api/dashboards/{dashboard_name}/").get_json()["config"]
     config["rows"] = list(config["rows"]) + [{"height": "medium", "items": [{"width": 4}]}]
-    assert client.post(f"/api/dashboards/{dashboard_name}/save/", json=config).status_code == 200
-    assert client.get("/api/publish/pending/").get_json()["count"] == 1
+    assert client.post(f"/api/dashboards/{dashboard_name}/", json=config).status_code == 200
+    assert client.get("/api/commit/pending/").get_json()["count"] == 1
 
     mocker.patch("visivo.commands.serve_phase.compile_phase", return_value=ProjectFactory())
 
     on_project_change()
 
-    assert client.get("/api/publish/pending/").get_json()["count"] == 0
+    assert client.get("/api/commit/pending/").get_json()["count"] == 0
     emit_spy.assert_called_with("project_changed", {"drafts_dropped": True})
 
 

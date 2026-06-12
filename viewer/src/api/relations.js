@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all relations with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllRelations = async (projectId = null) => {
   let url = getUrl('relationsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllRelations = async (projectId = null) => {
  * Fetch a single relation by name with status information
  */
 export const fetchRelation = async name => {
-  const response = await fetch(getUrl('relationDetail', { name }));
+  const response = await apiFetch(getUrl('relationDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchRelation = async name => {
  * Save a relation configuration to cache (draft state)
  */
 export const saveRelation = async (name, config) => {
-  const response = await fetch(getUrl('relationSave', { name }), {
+  const response = await apiFetch(getUrl('relationDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveRelation = async (name, config) => {
  * Delete a relation from cache (revert to published version)
  */
 export const deleteRelation = async name => {
-  const response = await fetch(getUrl('relationDetail', { name }), {
+  const response = await apiFetch(getUrl('relationDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteRelation = async name => {
  * Validate a relation configuration without saving
  */
 export const validateRelation = async (name, config) => {
-  const response = await fetch(getUrl('relationValidate', { name }), {
+  const response = await apiFetch(getUrl('relationValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

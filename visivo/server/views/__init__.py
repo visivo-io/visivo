@@ -20,7 +20,7 @@ from visivo.server.views.model_query_jobs_views import register_model_query_jobs
 from visivo.server.views.profiling_views import register_profiling_views
 from visivo.server.views.project_views import register_project_views
 from visivo.server.views.projects_views import register_projects_views
-from visivo.server.views.publish_views import register_publish_views
+from visivo.server.views.commit_views import register_commit_views
 from visivo.server.views.relations_views import register_relations_views
 from visivo.server.views.sources_views import register_source_views
 from visivo.server.views.source_schema_jobs_views import register_source_schema_jobs_views
@@ -50,7 +50,7 @@ def register_views(app, flask_app, output_dir):
     register_metrics_views(app, flask_app, output_dir)
     register_relations_views(app, flask_app, output_dir)
     register_profiling_views(app, flask_app, output_dir)
-    register_publish_views(app, flask_app, output_dir)
+    register_commit_views(app, flask_app, output_dir)
     register_defaults_views(app, flask_app, output_dir)
     register_csv_script_model_views(app, flask_app, output_dir)
     register_local_merge_model_views(app, flask_app, output_dir)

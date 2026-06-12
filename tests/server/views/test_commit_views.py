@@ -2,16 +2,16 @@ import pytest
 from unittest.mock import Mock, patch
 from flask import Flask
 
-from visivo.server.views.publish_views import register_publish_views
+from visivo.server.views.commit_views import register_commit_views
 from visivo.server.managers.object_manager import ObjectStatus
 
 
-class TestPublishViews:
-    """Test suite for publish API endpoints."""
+class TestCommitViews:
+    """Test suite for commit API endpoints."""
 
     @pytest.fixture
     def app(self):
-        """Create a test Flask app with publish views."""
+        """Create a test Flask app with commit views."""
         app = Flask(__name__)
         app.config["TESTING"] = True
 
@@ -59,7 +59,7 @@ class TestPublishViews:
         flask_app.input_manager.cached_objects = {}
         flask_app._cached_defaults = None
 
-        register_publish_views(app, flask_app, "/tmp/output")
+        register_commit_views(app, flask_app, "/tmp/output")
 
         # Store flask_app on the app for access in tests
         app.flask_app = flask_app
@@ -71,34 +71,34 @@ class TestPublishViews:
         """Create a test client."""
         return app.test_client()
 
-    def test_publish_status_has_changes(self, client, app):
-        """Test publish status when there are unpublished changes."""
+    def test_commit_status_has_changes(self, client, app):
+        """Test commit status when there are uncommitted changes."""
         app.flask_app.source_manager.has_unpublished_changes.return_value = True
         app.flask_app.model_manager.has_unpublished_changes.return_value = False
 
-        response = client.get("/api/publish/status/")
+        response = client.get("/api/commit/status/")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["has_unpublished_changes"] is True
 
-    def test_publish_status_no_changes(self, client, app):
-        """Test publish status when there are no unpublished changes."""
+    def test_commit_status_no_changes(self, client, app):
+        """Test commit status when there are no uncommitted changes."""
         app.flask_app.source_manager.has_unpublished_changes.return_value = False
         app.flask_app.model_manager.has_unpublished_changes.return_value = False
 
-        response = client.get("/api/publish/status/")
+        response = client.get("/api/commit/status/")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["has_unpublished_changes"] is False
 
-    def test_publish_status_model_changes(self, client, app):
-        """Test publish status when only models have changes."""
+    def test_commit_status_model_changes(self, client, app):
+        """Test commit status when only models have changes."""
         app.flask_app.source_manager.has_unpublished_changes.return_value = False
         app.flask_app.model_manager.has_unpublished_changes.return_value = True
 
-        response = client.get("/api/publish/status/")
+        response = client.get("/api/commit/status/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -109,7 +109,7 @@ class TestPublishViews:
         app.flask_app.source_manager.cached_objects = {}
         app.flask_app.model_manager.cached_objects = {}
 
-        response = client.get("/api/publish/pending/")
+        response = client.get("/api/commit/pending/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -125,7 +125,7 @@ class TestPublishViews:
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.NEW
         app.flask_app.model_manager.cached_objects = {}
 
-        response = client.get("/api/publish/pending/")
+        response = client.get("/api/commit/pending/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -143,7 +143,7 @@ class TestPublishViews:
         app.flask_app.model_manager.cached_objects = {"test_model": mock_model}
         app.flask_app.model_manager.get_status.return_value = ObjectStatus.MODIFIED
 
-        response = client.get("/api/publish/pending/")
+        response = client.get("/api/commit/pending/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -162,7 +162,7 @@ class TestPublishViews:
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.PUBLISHED
         app.flask_app.model_manager.cached_objects = {}
 
-        response = client.get("/api/publish/pending/")
+        response = client.get("/api/commit/pending/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -175,7 +175,7 @@ class TestPublishViews:
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.DELETED
         app.flask_app.model_manager.cached_objects = {}
 
-        response = client.get("/api/publish/pending/")
+        response = client.get("/api/commit/pending/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -183,24 +183,24 @@ class TestPublishViews:
         assert data["pending"][0]["name"] == "deleted_source"
         assert data["pending"][0]["status"] == "deleted"
 
-    @patch("visivo.server.views.publish_views.ProjectWriter")
-    def test_publish_no_changes(self, mock_writer_class, client, app):
-        """Test publishing when there are no changes."""
+    @patch("visivo.server.views.commit_views.ProjectWriter")
+    def test_commit_no_changes(self, mock_writer_class, client, app):
+        """Test committing when there are no changes."""
         app.flask_app.source_manager.cached_objects = {}
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.PUBLISHED
         app.flask_app.model_manager.cached_objects = {}
         app.flask_app.model_manager.get_status.return_value = ObjectStatus.PUBLISHED
 
-        response = client.post("/api/publish/")
+        response = client.post("/api/commit/")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["published_count"] == 0
-        assert "No changes to publish" in data["message"]
+        assert "No changes to commit" in data["message"]
 
-    @patch("visivo.server.views.publish_views.ProjectWriter")
-    def test_publish_success(self, mock_writer_class, client, app):
-        """Test successful publish with changes."""
+    @patch("visivo.server.views.commit_views.ProjectWriter")
+    def test_commit_success(self, mock_writer_class, client, app):
+        """Test successful commit with changes."""
         mock_source = Mock()
         mock_source.model_dump.return_value = {"name": "new_source", "type": "sqlite"}
 
@@ -213,7 +213,7 @@ class TestPublishViews:
         mock_writer = Mock()
         mock_writer_class.return_value = mock_writer
 
-        response = client.post("/api/publish/")
+        response = client.post("/api/commit/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -224,8 +224,8 @@ class TestPublishViews:
         app.flask_app.source_manager.clear_cache.assert_called_once()
         app.flask_app.model_manager.clear_cache.assert_called_once()
 
-    @patch("visivo.server.views.publish_views.ProjectWriter")
-    def test_publish_pauses_watcher_around_write_and_refresh(self, mock_writer_class, client, app):
+    @patch("visivo.server.views.commit_views.ProjectWriter")
+    def test_commit_pauses_watcher_around_write_and_refresh(self, mock_writer_class, client, app):
         """The YAML write + synchronous project refresh must be serialized
         with the file watcher — a concurrent watcher recompile races the git
         include cache and leaves the served project stale (VIS-806)."""
@@ -241,7 +241,7 @@ class TestPublishViews:
         hot_reload = Mock()
         app.flask_app.hot_reload_server = hot_reload
 
-        response = client.post("/api/publish/")
+        response = client.post("/api/commit/")
 
         assert response.status_code == 200
         ordered = [
@@ -251,8 +251,8 @@ class TestPublishViews:
         ]
         assert ordered == ["pause_file_watcher", "on_project_change", "resume_file_watcher"]
 
-    @patch("visivo.server.views.publish_views.ProjectWriter")
-    def test_publish_resumes_watcher_when_refresh_throws(self, mock_writer_class, client, app):
+    @patch("visivo.server.views.commit_views.ProjectWriter")
+    def test_commit_resumes_watcher_when_refresh_throws(self, mock_writer_class, client, app):
         """resume_file_watcher must run even when the refresh fails — a stuck
         pause would silently disable hot reload for the rest of the session."""
         mock_source = Mock()
@@ -268,14 +268,14 @@ class TestPublishViews:
         hot_reload.on_project_change.side_effect = RuntimeError("compile blew up")
         app.flask_app.hot_reload_server = hot_reload
 
-        response = client.post("/api/publish/")
+        response = client.post("/api/commit/")
 
         assert response.status_code == 500
         hot_reload.resume_file_watcher.assert_called_once()
 
     def test_discard_no_changes(self, client, app):
         """Discard with an empty draft cache reports zero discards."""
-        response = client.post("/api/publish/discard/")
+        response = client.post("/api/commit/discard/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -293,7 +293,7 @@ class TestPublishViews:
         app.flask_app.model_manager.get_status.return_value = ObjectStatus.MODIFIED
         app.flask_app._cached_defaults = Mock()
 
-        response = client.post("/api/publish/discard/")
+        response = client.post("/api/commit/discard/")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -308,7 +308,7 @@ class TestPublishViews:
         app.flask_app.source_manager.cached_objects = {"published_source": Mock()}
         app.flask_app.source_manager.get_status.return_value = ObjectStatus.PUBLISHED
 
-        response = client.post("/api/publish/discard/")
+        response = client.post("/api/commit/discard/")
 
         assert response.status_code == 200
         assert response.get_json()["discarded_count"] == 0
@@ -319,7 +319,7 @@ class TestPublishViews:
         app.flask_app.dashboard_manager.cached_objects = {"doomed_dashboard": None}
         app.flask_app.dashboard_manager.get_status.return_value = ObjectStatus.DELETED
 
-        response = client.post("/api/publish/discard/")
+        response = client.post("/api/commit/discard/")
 
         assert response.status_code == 200
         assert response.get_json()["discarded_count"] == 1

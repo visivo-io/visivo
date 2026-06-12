@@ -6,7 +6,7 @@ import { HiOutlineCloudUpload } from 'react-icons/hi';
 import { PiCaretRight } from 'react-icons/pi';
 import logo from '../../../images/logo.png';
 import useStore from '../../../stores/store';
-import PublishCluster from './PublishCluster';
+import CommitCluster from './CommitCluster';
 import DeployModal from '../../deploy/DeployModal';
 
 /**
@@ -14,12 +14,12 @@ import DeployModal from '../../deploy/DeployModal';
  *
  * Per the delivered B-1 design (`design/cofounder-mockups/`):
  *   LEFT  — brand mark + breadcrumb (`Workspace › <projectName>`).
- *   RIGHT — save/publish cluster (H-1: status pill + Discard + `Publish · N`)
+ *   RIGHT — save/commit cluster (H-1: status pill + Discard + `Commit · N`)
  *           → `Deploy` → utility icons (Slack, Docs, Account).
  *
  * No mode toggle, no lens picker. The route split (`/workspace` = editing,
- * `/project` = consumer) is the mode toggle. The save-state pill + Publish +
- * Discard cluster is `PublishCluster` (VIS-806 / Track H H-1).
+ * `/project` = consumer) is the mode toggle. The save-state pill + Commit +
+ * Discard cluster is `CommitCluster` (VIS-806 / Track H H-1).
  */
 const IconButton = ({ children, title, href, onClick, testId }) => {
   const cls =
@@ -97,7 +97,7 @@ const TopBar = () => {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        {canBuild && <PublishCluster />}
+        {canBuild && <CommitCluster />}
         <button
           type="button"
           onClick={handleDeployClick}

@@ -33,9 +33,9 @@ const createModelSlice = (set, get) => ({
       const result = await modelsApi.saveModel(name, config);
       // Refresh models list to get updated status
       await get().fetchModels();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       // Tap for the onboarding "Build a Model" checklist row.
       recordOnboardingAction('model_saved');
@@ -45,14 +45,14 @@ const createModelSlice = (set, get) => ({
     }
   },
 
-  // Mark model for deletion (will be removed from YAML on publish)
+  // Mark model for deletion (will be removed from YAML on commit)
   deleteModel: async name => {
     try {
       await modelsApi.deleteModel(name);
       await get().fetchModels();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

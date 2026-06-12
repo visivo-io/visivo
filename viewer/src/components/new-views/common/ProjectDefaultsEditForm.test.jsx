@@ -17,7 +17,7 @@ const seedStore = () => {
     useStore.setState({
       fetchSources: jest.fn(),
       saveDefaults: jest.fn().mockResolvedValue({ success: true }),
-      checkPublishStatus: jest.fn(),
+      checkCommitStatus: jest.fn(),
       sources: [],
     });
   });

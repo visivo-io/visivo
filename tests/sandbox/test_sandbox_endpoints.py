@@ -140,7 +140,7 @@ def test_metrics_list(client):
 
 def test_model_save_and_read(client):
     save_data = {"name": "_sandbox_test_model", "sql": "SELECT 1 AS x, 2 AS y"}
-    r = client.post("/api/models/_sandbox_test_model/save/", json=save_data)
+    r = client.post("/api/models/_sandbox_test_model/", json=save_data)
     assert r.status_code in (200, 201), f"Save failed: {r.status_code} {r.text}"
 
     r = client.get("/api/models/_sandbox_test_model/")

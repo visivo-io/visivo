@@ -1,13 +1,13 @@
 /**
  * Story: Build-mode Save/Publish cluster (VIS-806 / Track H H-1).
  *
- * The Workspace TopBar mounts <PublishCluster> — the status pill + Discard +
- * Publish·N group. Every canvas action auto-saves to the backend draft cache;
- * the cluster's pending count updates live; Publish opens the confirm modal
+ * The Workspace TopBar mounts <CommitCluster> — the status pill + Discard +
+ * Commit·N group. Every canvas action auto-saves to the backend draft cache;
+ * the cluster's pending count updates live; Commit opens the confirm modal
  * and flushes the cache to YAML; Discard drops the cache and the canvas
- * reverts to last-published state.
+ * reverts to last-committed state.
  *
- * The publish step REALLY writes test-projects/integration/project.visivo.yml.
+ * The commit step REALLY writes test-projects/integration/project.visivo.yml.
  * The suite snapshots the file in beforeAll and restores it byte-for-byte in
  * afterAll (which also re-triggers the watcher so the sandbox recompiles back
  * to baseline), plus discards any leftover drafts on both ends.
@@ -67,7 +67,7 @@ const addRowViaCanvas = async page => {
 };
 
 const discardViaApi = async request => {
-  await request.post(`${BASE}/api/publish/discard/`).catch(() => {});
+  await request.post(`${BASE}/api/commit/discard/`).catch(() => {});
 };
 
 // Self-contained test setup: drop any leftover drafts on the backend, wait
@@ -78,7 +78,7 @@ const startClean = async (page, request) => {
   await expect
     .poll(
       async () => {
-        const res = await request.get(`${BASE}/api/publish/pending/`);
+        const res = await request.get(`${BASE}/api/commit/pending/`);
         return (await res.json()).count;
       },
       { timeout: WAIT }
@@ -122,7 +122,7 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     await expect(page.getByTestId('workspace-save-pill-clean')).toHaveText(/Saved/, {
       timeout: WAIT,
     });
-    await expect(page.getByTestId('workspace-top-bar-publish')).toBeDisabled();
+    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
     await expect(page.getByTestId('workspace-top-bar-discard')).toHaveCount(0);
 
     // Regression guard: the Workspace overlay must stack ABOVE Home's fixed
@@ -155,9 +155,9 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     await expect(page.getByTestId('workspace-save-pill-dirty')).toHaveText(/1 change/, {
       timeout: WAIT,
     });
-    const publish = page.getByTestId('workspace-top-bar-publish');
+    const publish = page.getByTestId('workspace-top-bar-commit');
     await expect(publish).toBeEnabled();
-    await expect(publish).toHaveText(/Publish/);
+    await expect(publish).toHaveText(/Commit/);
     await expect(publish).toHaveText(/1/);
     await expect(page.getByTestId('workspace-top-bar-discard')).toBeVisible();
     await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-cluster.png` });
@@ -186,7 +186,7 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     await expect
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
       .toBe(baselineRows); // reverted — the discarded row is gone
-    await expect(page.getByTestId('workspace-top-bar-publish')).toBeDisabled();
+    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
     await page.screenshot({ path: `${SCREENS}/vis806-04-after-discard.png` });
   });
 
@@ -198,30 +198,30 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     const rowsAfterAdd = (await addRowViaCanvas(page)) + 1;
 
     await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
-    await page.getByTestId('workspace-top-bar-publish').hover();
-    await page.getByTestId('workspace-top-bar-publish').click();
+    await page.getByTestId('workspace-top-bar-commit').hover();
+    await page.getByTestId('workspace-top-bar-commit').click();
 
     // The PublishModal confirm step lists the dashboard's pending change.
-    const modalPublish = page.getByRole('button', { name: 'Publish Changes' });
-    await expect(modalPublish).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('publish-modal-pending-list')).toContainText(DASHBOARD);
+    const modalCommit = page.getByRole('button', { name: 'Commit Changes' });
+    await expect(modalCommit).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTestId('commit-modal-pending-list')).toContainText(DASHBOARD);
     await page.screenshot({ path: `${SCREENS}/vis806-05-publish-modal.png` });
 
-    await modalPublish.click();
+    await modalCommit.click();
 
     // Transient success flash (≤2s) then the cluster settles clean.
-    await expect(page.getByTestId('workspace-save-pill-published')).toBeVisible({
+    await expect(page.getByTestId('workspace-save-pill-committed')).toBeVisible({
       timeout: WAIT,
     });
     await page.screenshot({ path: `${SCREENS}/vis806-06-published-flash.png` });
     await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('workspace-top-bar-publish')).toBeDisabled({ timeout: WAIT });
+    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled({ timeout: WAIT });
 
     // YAML round-trip: the file actually changed on disk and the backend
     // reports a clean draft cache.
     const yamlAfter = fs.readFileSync(PROJECT_YML, 'utf8');
     expect(yamlAfter).not.toBe(yamlBefore);
-    const pending = await (await request.get(`${BASE}/api/publish/pending/`)).json();
+    const pending = await (await request.get(`${BASE}/api/commit/pending/`)).json();
     expect(pending.count).toBe(0);
 
     // The published row survives a re-fetch (it's in YAML now, not the cache).
@@ -239,7 +239,7 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
 
     await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
     for (const id of [
-      'workspace-top-bar-publish',
+      'workspace-top-bar-commit',
       'workspace-top-bar-discard',
       'workspace-top-bar-deploy',
       'workspace-top-bar-slack',

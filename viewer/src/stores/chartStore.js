@@ -32,9 +32,9 @@ const createChartSlice = (set, get) => ({
       const result = await chartsApi.saveChart(name, config);
       // Refresh charts list to get updated status
       await get().fetchCharts();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,14 +42,14 @@ const createChartSlice = (set, get) => ({
     }
   },
 
-  // Mark chart for deletion (will be removed from YAML on publish)
+  // Mark chart for deletion (will be removed from YAML on commit)
   deleteChart: async name => {
     try {
       await chartsApi.deleteChart(name);
       await get().fetchCharts();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

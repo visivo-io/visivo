@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all metrics with their status (NEW, MODIFIED, PUBLISHED)
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllMetrics = async (projectId = null) => {
   let url = getUrl('metricsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllMetrics = async (projectId = null) => {
  * Fetch a single metric by name with status information
  */
 export const fetchMetric = async name => {
-  const response = await fetch(getUrl('metricDetail', { name }));
+  const response = await apiFetch(getUrl('metricDetail', { name }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -31,7 +32,7 @@ export const fetchMetric = async name => {
  * Save a metric configuration to cache (draft state)
  */
 export const saveMetric = async (name, config) => {
-  const response = await fetch(getUrl('metricSave', { name }), {
+  const response = await apiFetch(getUrl('metricDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export const saveMetric = async (name, config) => {
  * Delete a metric from cache (revert to published version)
  */
 export const deleteMetric = async name => {
-  const response = await fetch(getUrl('metricDetail', { name }), {
+  const response = await apiFetch(getUrl('metricDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -62,7 +63,7 @@ export const deleteMetric = async name => {
  * Validate a metric configuration without saving
  */
 export const validateMetric = async (name, config) => {
-  const response = await fetch(getUrl('metricValidate', { name }), {
+  const response = await apiFetch(getUrl('metricValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

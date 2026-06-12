@@ -310,3 +310,10 @@ Test Strategy:
 ```
 
 **Plans without a Test Strategy section are incomplete.** Think about verification *before* writing code.
+
+## Analytics & Event Taxonomy
+
+PostHog is the single source of conversion/activation truth across `www`, `visivo` (CLI + viewer), and `core`. The canonical, cross-repo contract for event names, the required `surface`/context properties, and identity stitching is **`../specs/marketing-relaunch/event-taxonomy.md`** — read it before adding or changing any tracking.
+
+- **CLI** emits `cli_command` / `api_request` / `new_installation` (anonymous `machine_id`, opt-out via `VISIVO_TELEMETRY_DISABLED`); the **viewer** onboarding emits events through `viewer/src/components/onboarding/telemetry.js` (`fireEvent` → `posthog.capture`, `surface: viewer`). The CLI never sends or stores email.
+- When you add/extend an onboarding step, command, or activation moment, add/update its event **in the taxonomy doc first**, then implement it (snake_case, `surface` + required props, additive — never rename a live event). After shipping, verify it lands in PostHog (project 193619).

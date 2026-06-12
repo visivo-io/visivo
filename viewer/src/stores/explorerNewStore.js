@@ -1385,7 +1385,7 @@ const createExplorerNewSlice = (set, get) => ({
 
     // Build metrics/dimensions from computed columns, carrying the parent
     // model scope so the backend can nest them under the right model at
-    // publish time.
+    // commit time.
     const metricConfigs = {};
     const dimensionConfigs = {};
     for (const [modelName, ms] of Object.entries(state.explorerModelStates)) {
@@ -1423,7 +1423,7 @@ const createExplorerNewSlice = (set, get) => ({
     // lets us skip an unchanged `saveModel` POST. BUT the user may have
     // added a brand-new computed column to an otherwise-unchanged model —
     // that column still needs to be saved (with parentModel set) so the
-    // publish step nests it under the existing model in YAML. We therefore
+    // commit step nests it under the existing model in YAML. We therefore
     // check the diff for each computed column individually rather than
     // short-circuiting the whole model's iteration.
     const diff = state.explorerDiffResult || {};
@@ -1444,7 +1444,7 @@ const createExplorerNewSlice = (set, get) => ({
       // Save computed columns as metrics/dimensions, scoped to this model.
       // parentModel is consumed by the backend save endpoints to set the
       // Pydantic PrivateAttr `_parent_name` so ProjectWriter nests them
-      // under the model on publish instead of writing to top-level lists.
+      // under the model on commit instead of writing to top-level lists.
       // Skip individual columns whose diff status is null (unchanged) to
       // avoid re-saving pre-existing metrics/dimensions on every save.
       for (const cc of ms.computedColumns) {
@@ -1530,10 +1530,10 @@ const createExplorerNewSlice = (set, get) => ({
         ]);
         // Re-run diff to update status dots
         await get().fetchExplorerDiff();
-        // Sync the TopNav Publish-button state: save just added draft
-        // changes to the backend, so hasUnpublishedChanges should flip true
+        // Sync the TopNav Commit-button state: save just added draft
+        // changes to the backend, so hasUncommittedChanges should flip true
         // without forcing the user to refresh the page.
-        await get().checkPublishStatus?.();
+        await get().checkCommitStatus?.();
       } catch {
         // Cache refresh is best-effort — save already succeeded
       }

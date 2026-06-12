@@ -32,7 +32,7 @@ export const fetchMarkdown = async name => {
  * Save a markdown configuration to cache (draft state)
  */
 export const saveMarkdown = async (name, config) => {
-  const response = await apiFetch(getUrl('markdownSave', { name }), {
+  const response = await apiFetch(getUrl('markdownDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -24,7 +24,7 @@ import { validateName } from './namedModel';
  * - onSave: Callback after successful save
  */
 const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
-  const { saveRelation, deleteRelation, checkPublishStatus } = useStore();
+  const { saveRelation, deleteRelation, checkCommitStatus } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -106,7 +106,7 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete relation');
@@ -173,7 +173,7 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
                 show: true,
                 message: isNewObject
                   ? 'Are you sure you want to delete this relation? This will discard your unsaved changes.'
-                  : 'Are you sure you want to delete this relation? This will mark it for deletion and remove it from YAML when you publish.',
+                  : 'Are you sure you want to delete this relation? This will mark it for deletion and remove it from YAML when you commit.',
                 onConfirm: handleDelete,
                 onCancel: () => setShowDeleteConfirm(false),
                 deleting,

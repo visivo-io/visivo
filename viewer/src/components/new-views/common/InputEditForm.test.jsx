@@ -16,7 +16,7 @@ const seed = (overrides = {}) => {
   act(() => {
     useStore.setState({
       deleteInput: jest.fn(async () => ({ success: true })),
-      checkPublishStatus: jest.fn(async () => {}),
+      checkCommitStatus: jest.fn(async () => {}),
       ...overrides,
     });
   });

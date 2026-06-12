@@ -1,4 +1,5 @@
 import { getUrl } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Fetch all LocalMergeModels with their status
@@ -6,7 +7,7 @@ import { getUrl } from '../contexts/URLContext';
 export const fetchAllLocalMergeModels = async (projectId = null) => {
   let url = getUrl('localMergeModelsList');
   if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +18,7 @@ export const fetchAllLocalMergeModels = async (projectId = null) => {
  * Save a LocalMergeModel configuration to cache (draft state)
  */
 export const saveLocalMergeModel = async (name, config) => {
-  const response = await fetch(getUrl('localMergeModelSave', { name }), {
+  const response = await apiFetch(getUrl('localMergeModelDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export const saveLocalMergeModel = async (name, config) => {
  * Delete a LocalMergeModel (mark for deletion)
  */
 export const deleteLocalMergeModel = async name => {
-  const response = await fetch(getUrl('localMergeModelDetail', { name }), {
+  const response = await apiFetch(getUrl('localMergeModelDetail', { name }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -48,7 +49,7 @@ export const deleteLocalMergeModel = async name => {
  * Validate a LocalMergeModel configuration without saving
  */
 export const validateLocalMergeModel = async (name, config) => {
-  const response = await fetch(getUrl('localMergeModelValidate', { name }), {
+  const response = await apiFetch(getUrl('localMergeModelValidate', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

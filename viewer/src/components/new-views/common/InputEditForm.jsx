@@ -44,7 +44,7 @@ const MULTI_SELECT_DISPLAY_TYPES = ['dropdown', 'checkboxes', 'chips', 'tags', '
  */
 const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, autoSave = false }) => {
   const deleteInput = useStore(state => state.deleteInput);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
 
   const [name, setName] = useState('');
   const [inputType, setInputType] = useState('single-select');
@@ -296,7 +296,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
     try {
       const result = await deleteInput(input.name);
       if (result.success) {
-        await checkPublishStatus();
+        await checkCommitStatus();
         setShowDeleteConfirm(false);
       } else {
         setSaveError(result.error || 'Failed to delete input');
@@ -507,7 +507,7 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure you want to delete this input? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this input? This will mark it for deletion and remove it from YAML when you publish.'}
+                : 'Are you sure you want to delete this input? This will mark it for deletion and remove it from YAML when you commit.'}
             </p>
             <div className="flex gap-2">
               <button

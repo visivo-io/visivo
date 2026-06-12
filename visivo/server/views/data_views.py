@@ -4,6 +4,7 @@ import os
 import re
 from flask import jsonify, request, send_file, send_from_directory
 from visivo.utils import SCHEMA_FILE, VIEWER_PATH
+from visivo.telemetry.config import is_telemetry_enabled
 
 
 def register_data_views(app, flask_app, output_dir):
@@ -69,6 +70,17 @@ def register_data_views(app, flask_app, output_dir):
             <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
             <script src="/hot-reload.js"></script>
         """
+
+        # Honor the CLI/local telemetry opt-out: when telemetry is disabled
+        # (env VISIVO_TELEMETRY_DISABLED, project defaults, or global config),
+        # set the window flag the viewer's PostHog client checks so it never
+        # initializes or captures. When enabled, inject nothing extra so the
+        # viewer's default-on telemetry runs. Cloud (core) never serves through
+        # here, so it has no flag and stays always-on.
+        project_defaults = getattr(flask_app._project, "defaults", None)
+        if not is_telemetry_enabled(project_defaults):
+            scripts = "<script>window.__VISIVO_TELEMETRY_DISABLED=true</script>" + scripts
+
         html = html.replace("</head>", f"{scripts}</head>")
 
         return html

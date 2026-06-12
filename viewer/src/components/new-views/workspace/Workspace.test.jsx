@@ -69,24 +69,24 @@ const resetWorkspaceStore = () => {
       workspaceRightCollapsed: false,
       workspaceRightTab: 'edit',
       workspaceLens: 'preview',
-      hasUnpublishedChanges: false,
+      hasUncommittedChanges: false,
       // Publish-cluster state (H-1) — reset so tests are isolated.
       pendingCount: 0,
       saveActivityCount: 0,
       lastSaveFailed: false,
-      publishLoading: false,
-      publishError: null,
-      publishModalOpen: false,
-      lastPublishedAt: null,
+      commitLoading: false,
+      commitError: null,
+      commitModalOpen: false,
+      lastCommittedAt: null,
       // Stub project that the loader normally hydrates.
       project: {
         id: 'p1',
         project_json: { name: 'analytics-platform' },
       },
-      // Stub a no-op checkPublishStatus / openPublishModal so the
+      // Stub a no-op checkCommitStatus / openCommitModal so the
       // Workspace mount effect doesn't throw.
-      checkPublishStatus: jest.fn(),
-      openPublishModal: jest.fn(),
+      checkCommitStatus: jest.fn(),
+      openCommitModal: jest.fn(),
       // Stub the 12 collection fetches that the route container fires on
       // mount — keeps the test focused on shell behaviour, not data load.
       fetchCharts: jest.fn(),
@@ -205,18 +205,18 @@ describe('VIS-775 Workspace shell', () => {
     expect(chip).toHaveAttribute('data-object-type', 'dashboard');
   });
 
-  test('Publish cluster: disabled + "Saved" when clean, count badge when dirty (H-1)', () => {
+  test('Commit cluster: disabled + "Saved" when clean, count badge when dirty (H-1)', () => {
     // Clean state — the cluster renders, Publish is disabled, pill says Saved.
     renderAt('/workspace');
-    expect(screen.getByTestId('workspace-top-bar-publish')).toBeDisabled();
+    expect(screen.getByTestId('workspace-top-bar-commit')).toBeDisabled();
     expect(screen.getByTestId('workspace-save-pill-clean')).toHaveTextContent('Saved');
     // Mark dirty with a live pending count.
     act(() => {
-      useStore.setState({ hasUnpublishedChanges: true, pendingCount: 3 });
+      useStore.setState({ hasUncommittedChanges: true, pendingCount: 3 });
     });
-    const publish = screen.getByTestId('workspace-top-bar-publish');
+    const publish = screen.getByTestId('workspace-top-bar-commit');
     expect(publish).toBeEnabled();
-    expect(publish).toHaveTextContent('Publish');
+    expect(publish).toHaveTextContent('Commit');
     expect(publish).toHaveTextContent('3');
     expect(screen.getByTestId('workspace-save-pill-dirty')).toHaveTextContent('3 changes');
     expect(screen.getByTestId('workspace-top-bar-discard')).toBeInTheDocument();

@@ -28,7 +28,7 @@ def register_charts_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting chart: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/charts/<chart_name>/save/", methods=["POST"])
+    @app.route("/api/charts/<chart_name>/", methods=["POST"])
     def save_chart(chart_name):
         """Save a chart configuration to cache (draft state)."""
         try:

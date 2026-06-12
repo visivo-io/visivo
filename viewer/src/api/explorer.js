@@ -1,5 +1,6 @@
+import { apiFetch } from './utils';
 export const fetchSourceMetadata = async () => {
-  const response = await fetch('/api/project/sources_metadata/');
+  const response = await apiFetch('/api/project/sources_metadata/');
   if (response.status === 200) {
     const data = await response.json();
     return data;
@@ -11,7 +12,7 @@ export const fetchSourceMetadata = async () => {
 // Lazy-loading API functions
 
 export const fetchDatabases = async sourceName => {
-  const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases/`);
+  const response = await apiFetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases/`);
   if (response.status === 200) {
     const data = await response.json();
     return data;
@@ -21,7 +22,7 @@ export const fetchDatabases = async sourceName => {
 };
 
 export const fetchSchemas = async (sourceName, databaseName) => {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/`
   );
   if (response.status === 200) {
@@ -37,7 +38,7 @@ export const fetchTables = async (sourceName, databaseName, schemaName = null) =
     ? `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/${encodeURIComponent(schemaName)}/tables/`
     : `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/tables/`;
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     const data = await response.json();
     return data;
@@ -47,7 +48,7 @@ export const fetchTables = async (sourceName, databaseName, schemaName = null) =
 };
 
 export const testSourceConnection = async sourceName => {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/project/sources/${encodeURIComponent(sourceName)}/test-connection/`
   );
   if (response.status === 200) {
@@ -59,7 +60,7 @@ export const testSourceConnection = async sourceName => {
 };
 
 export const testSourceConnectionFromConfig = async sourceConfig => {
-  const response = await fetch(`/api/sources/test-connection/`, {
+  const response = await apiFetch(`/api/sources/test-connection/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export const testSourceConnectionFromConfig = async sourceConfig => {
 
 // POST for read: payload contains full working state (SQL, props, layout) that exceeds GET URL length limits.
 export const fetchDiff = async (payload) => {
-  const response = await fetch('/api/explorer/diff/', {
+  const response = await apiFetch('/api/explorer/diff/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -97,7 +98,7 @@ export const fetchColumns = async (sourceName, databaseName, tableName, schemaNa
     ? `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/${encodeURIComponent(schemaName)}/tables/${encodeURIComponent(tableName)}/columns/`
     : `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/tables/${encodeURIComponent(tableName)}/columns/`;
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (response.status === 200) {
     const data = await response.json();
     return data;

@@ -1,4 +1,5 @@
 import { getUrl, isAvailable } from '../contexts/URLContext';
+import { apiFetch } from './utils';
 
 /**
  * Wrapper around fetch that provides meaningful error messages for network failures.
@@ -7,7 +8,7 @@ import { getUrl, isAvailable } from '../contexts/URLContext';
  */
 const fetchWithContext = async (url, options, context) => {
   try {
-    return await fetch(url, options);
+    return await apiFetch(url, options);
   } catch (err) {
     throw new Error(`${context}: server unreachable at ${url} (${err.message})`);
   }

@@ -2,7 +2,7 @@ import tw from 'tailwind-styled-components';
 
 // z-[70]: modals must stack above everything, including the Workspace route
 // overlay (z-[60], which itself sits above Home's z-50 TopNav). Home mounts
-// PublishModal/DeployModal once at the layout level; without this they would
+// CommitModal/DeployModal once at the layout level; without this they would
 // render invisibly UNDER the Workspace overlay.
 export const ModalOverlay = tw.div`
   fixed

@@ -28,7 +28,7 @@ def register_insights_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting insight: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/insights/<insight_name>/save/", methods=["POST"])
+    @app.route("/api/insights/<insight_name>/", methods=["POST"])
     def save_insight(insight_name):
         """Save an insight configuration to cache (draft state)."""
         try:

@@ -32,7 +32,7 @@ export const fetchTable = async name => {
  * Save a table configuration to cache (draft state)
  */
 export const saveTable = async (name, config) => {
-  const response = await apiFetch(getUrl('tableSave', { name }), {
+  const response = await apiFetch(getUrl('tableDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

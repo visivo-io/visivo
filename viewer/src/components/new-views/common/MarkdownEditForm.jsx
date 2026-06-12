@@ -17,7 +17,7 @@ import { validateName } from './namedModel';
  * - onSave: Callback after successful save
  */
 const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
-  const { saveMarkdown, deleteMarkdown, checkPublishStatus } = useStore();
+  const { saveMarkdown, deleteMarkdown, checkCommitStatus } = useStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -106,7 +106,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
     setDeleting(false);
 
     if (result?.success) {
-      await checkPublishStatus();
+      await checkCommitStatus();
       onClose();
     } else {
       setSaveError(result?.error || 'Failed to delete markdown');
@@ -269,7 +269,7 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure you want to delete this markdown? This will discard your unsaved changes.'
-                : 'Are you sure you want to delete this markdown? This will mark it for deletion and remove it from YAML when you publish.'}
+                : 'Are you sure you want to delete this markdown? This will mark it for deletion and remove it from YAML when you commit.'}
             </p>
             <div className="flex gap-2">
               <button

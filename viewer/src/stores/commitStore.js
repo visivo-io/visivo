@@ -1,18 +1,19 @@
-import * as publishApi from '../api/publish';
+import * as commitApi from '../api/commit';
 import { emitFirstPublishTelemetry } from '../components/new-views/workspace/telemetry';
 
 /**
- * Publish Store Slice
+ * Commit Store Slice
  *
- * Manages the publish workflow for writing cached changes to YAML files
- * (Track H / VIS-806). Tracks unpublished changes across every named-child
- * type, the live pending-changes count for the TopBar cluster, and a global
- * save-activity counter so the cluster can show "Saving…" while any draft
- * write is in flight (canvas actions, right-rail forms, level CRUD).
+ * Manages the commit workflow for writing cached changes to YAML files
+ * (Track H / VIS-806, aligned to main's Publish→Commit rename). Tracks
+ * uncommitted changes across every named-child type, the live pending-changes
+ * count for the Workspace TopBar cluster, and a global save-activity counter
+ * so the cluster can show "Saving…" while any draft write is in flight
+ * (canvas actions, right-rail forms, level CRUD).
  */
 
 /**
- * Every named-child fetch action that must re-run after a publish or a
+ * Every named-child fetch action that must re-run after a commit or a
  * discard so the UI reflects the backend's post-flush state. Discard is the
  * critical consumer: the canvas re-renders from these refetches (Q14
  * rollback). Each key is called via `get()[key]?.()` so a missing slice
@@ -35,18 +36,18 @@ const NAMED_CHILD_FETCHERS = [
   'fetchDefaults',
 ];
 
-const createPublishSlice = (set, get) => ({
+const createCommitSlice = (set, get) => ({
   // State
-  hasUnpublishedChanges: false,
+  hasUncommittedChanges: false,
   pendingChanges: [], // List of objects with pending changes
   pendingCount: 0,
-  publishLoading: false,
-  publishError: null,
-  publishModalOpen: false,
+  commitLoading: false,
+  commitError: null,
+  commitModalOpen: false,
   discardLoading: false,
-  // Timestamp of the last successful publish — the TopBar cluster derives
-  // its transient "Published ✓" flash from changes to this value.
-  lastPublishedAt: null,
+  // Timestamp of the last successful commit — the TopBar cluster derives
+  // its transient "Committed ✓" flash from changes to this value.
+  lastCommittedAt: null,
   // Global save-activity tracking (H-1). `saveActivityCount` counts draft
   // writes currently in flight; `lastSaveFailed` latches on a failed write
   // and resets when the next write begins.
@@ -68,36 +69,36 @@ const createPublishSlice = (set, get) => ({
   // Refresh pending-change state (count + list + boolean) in one round trip.
   // Save actions call this after every draft write, so the TopBar count
   // updates live.
-  checkPublishStatus: async () => {
+  checkCommitStatus: async () => {
     try {
-      const data = await publishApi.getPendingChanges();
+      const data = await commitApi.getPendingChanges();
       const pending = data.pending || [];
       const count = typeof data.count === 'number' ? data.count : pending.length;
       set({
         pendingChanges: pending,
         pendingCount: count,
-        hasUnpublishedChanges: count > 0,
+        hasUncommittedChanges: count > 0,
       });
     } catch (error) {
       // Silently fail - endpoint may not be available in dist mode
-      set({ hasUnpublishedChanges: false, pendingChanges: [], pendingCount: 0 });
+      set({ hasUncommittedChanges: false, pendingChanges: [], pendingCount: 0 });
     }
   },
 
   // Fetch all pending changes
   fetchPendingChanges: async () => {
     try {
-      const data = await publishApi.getPendingChanges();
+      const data = await commitApi.getPendingChanges();
       const pending = data.pending || [];
       const count = typeof data.count === 'number' ? data.count : pending.length;
       set({
         pendingChanges: pending,
         pendingCount: count,
-        hasUnpublishedChanges: count > 0,
+        hasUncommittedChanges: count > 0,
       });
       return pending;
     } catch (error) {
-      set({ pendingChanges: [], pendingCount: 0, hasUnpublishedChanges: false });
+      set({ pendingChanges: [], pendingCount: 0, hasUncommittedChanges: false });
       return [];
     }
   },
@@ -106,41 +107,43 @@ const createPublishSlice = (set, get) => ({
     await Promise.all(NAMED_CHILD_FETCHERS.map(key => get()[key]?.()));
   },
 
-  // Publish all cached changes to YAML files
-  publishChanges: async () => {
-    set({ publishLoading: true, publishError: null });
+  // Commit all cached changes to YAML files
+  commitChanges: async () => {
+    set({ commitLoading: true, commitError: null });
     try {
-      const result = await publishApi.publishChanges();
+      const result = await commitApi.commitChanges();
       set({
-        publishLoading: false,
-        hasUnpublishedChanges: false,
+        commitLoading: false,
+        hasUncommittedChanges: false,
         pendingChanges: [],
         pendingCount: 0,
-        publishModalOpen: false,
-        lastPublishedAt: Date.now(),
+        commitModalOpen: false,
+        lastCommittedAt: Date.now(),
       });
+      // The Q22 metric keeps its original event name (taxonomy events are
+      // additive — never renamed once live).
       emitFirstPublishTelemetry();
-      // Refresh every named-child collection to reflect published state
+      // Refresh every named-child collection to reflect committed state
       await get()._refreshNamedChildren();
       return { success: true, result };
     } catch (error) {
-      set({ publishLoading: false, publishError: error.message });
+      set({ commitLoading: false, commitError: error.message });
       return { success: false, error: error.message };
     }
   },
 
   // Discard all cached changes without writing YAML (Q14 rollback). The
-  // named-child refetch is what makes the canvas revert to last-published.
+  // named-child refetch is what makes the canvas revert to last-committed.
   discardChanges: async () => {
     set({ discardLoading: true });
     try {
-      const result = await publishApi.discardChanges();
+      const result = await commitApi.discardChanges();
       set({
         discardLoading: false,
-        hasUnpublishedChanges: false,
+        hasUncommittedChanges: false,
         pendingChanges: [],
         pendingCount: 0,
-        publishError: null,
+        commitError: null,
       });
       await get()._refreshNamedChildren();
       return { success: true, result };
@@ -171,28 +174,28 @@ const createPublishSlice = (set, get) => ({
     await Promise.all([
       get().fetchProject?.(),
       get()._refreshNamedChildren(),
-      get().checkPublishStatus(),
+      get().checkCommitStatus(),
     ]);
   },
 
-  // Open publish modal (fetches pending changes)
-  openPublishModal: async () => {
-    set({ publishModalOpen: true, publishError: null });
+  // Open commit modal (fetches pending changes)
+  openCommitModal: async () => {
+    set({ commitModalOpen: true, commitError: null });
     await get().fetchPendingChanges();
   },
 
-  // Close publish modal
-  closePublishModal: () => {
+  // Close commit modal
+  closeCommitModal: () => {
     set({
-      publishModalOpen: false,
-      publishError: null,
+      commitModalOpen: false,
+      commitError: null,
     });
   },
 
-  // Clear publish error
-  clearPublishError: () => {
-    set({ publishError: null });
+  // Clear commit error
+  clearCommitError: () => {
+    set({ commitError: null });
   },
 });
 
-export default createPublishSlice;
+export default createCommitSlice;

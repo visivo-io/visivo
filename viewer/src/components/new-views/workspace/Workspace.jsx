@@ -26,7 +26,7 @@ const Workspace = () => {
   const project = useStore(s => s.project);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
-  const checkPublishStatus = useStore(s => s.checkPublishStatus);
+  const checkCommitStatus = useStore(s => s.checkCommitStatus);
   const scope = useWorkspaceScope();
 
   // H-2: soft-refresh on backend `project_changed` events (and show the
@@ -127,10 +127,10 @@ const Workspace = () => {
 
   // Check publish status so the Publish · N button has accurate count.
   useEffect(() => {
-    if (typeof checkPublishStatus === 'function') {
-      checkPublishStatus();
+    if (typeof checkCommitStatus === 'function') {
+      checkCommitStatus();
     }
-  }, [checkPublishStatus]);
+  }, [checkCommitStatus]);
 
   // Telemetry — fire on mount and on scope changes only.
   useEffect(() => {

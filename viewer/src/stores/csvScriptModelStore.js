@@ -28,8 +28,8 @@ const createCsvScriptModelSlice = (set, get) => ({
     try {
       const result = await csvScriptModelsApi.saveCsvScriptModel(name, config);
       await get().fetchCsvScriptModels();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {
@@ -42,8 +42,8 @@ const createCsvScriptModelSlice = (set, get) => ({
     try {
       await csvScriptModelsApi.deleteCsvScriptModel(name);
       await get().fetchCsvScriptModels();
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true };
     } catch (error) {

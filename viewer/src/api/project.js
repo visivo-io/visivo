@@ -72,7 +72,7 @@ export const fetchProject = async id => {
  * Save a project configuration to cache (draft state)
  */
 export const saveProject = async (name, config) => {
-  const response = await apiFetch(getUrl('projectSave', { name }), {
+  const response = await apiFetch(getUrl('projectDetail', { name }), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

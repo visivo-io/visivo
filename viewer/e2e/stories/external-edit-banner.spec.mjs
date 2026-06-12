@@ -76,7 +76,7 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
 
   test.beforeAll(async ({ browser, request }) => {
     originalYaml = fs.readFileSync(PROJECT_YML, 'utf8');
-    await request.post(`${BASE}/api/publish/discard/`).catch(() => {});
+    await request.post(`${BASE}/api/commit/discard/`).catch(() => {});
     page = await browser.newPage();
     page._consoleErrors = [];
     page.on('console', msg => {
@@ -85,7 +85,7 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
   });
 
   test.afterAll(async ({ request }) => {
-    await request.post(`${BASE}/api/publish/discard/`).catch(() => {});
+    await request.post(`${BASE}/api/commit/discard/`).catch(() => {});
     if (originalYaml !== undefined && fs.readFileSync(PROJECT_YML, 'utf8') !== originalYaml) {
       fs.writeFileSync(PROJECT_YML, originalYaml);
       await new Promise(resolve => setTimeout(resolve, 4000));
@@ -122,7 +122,7 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
       .toBe(baselineRows);
     await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('workspace-top-bar-publish')).toBeDisabled();
+    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
   });
 
   test('the banner does not block canvas interaction and dismisses on X', async () => {

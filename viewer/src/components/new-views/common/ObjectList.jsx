@@ -15,7 +15,7 @@ const StatusDot = ({ status }) => {
 
   const isNew = status === ObjectStatus.NEW;
   const colorClass = isNew ? 'bg-green-500' : 'bg-amber-500';
-  const title = isNew ? 'New - Not yet published' : 'Modified - Has unpublished changes';
+  const title = isNew ? 'New - Not yet committed' : 'Modified - Has uncommitted changes';
 
   return <span className={`w-2 h-2 rounded-full ${colorClass}`} title={title} />;
 };

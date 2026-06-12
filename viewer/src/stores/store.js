@@ -15,7 +15,7 @@ import createInputJobsSlice from './inputJobsStore';
 import createMarkdownSlice from './markdownStore';
 import createChartSlice from './chartStore';
 import createTableSlice from './tableStore';
-import createPublishSlice from './publishStore';
+import createCommitSlice from './commitStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
 import createInlineCreateSlice from './inlineCreateStore';
@@ -44,7 +44,7 @@ const useStore = create(
     ...createMarkdownSlice(...a),
     ...createChartSlice(...a),
     ...createTableSlice(...a),
-    ...createPublishSlice(...a),
+    ...createCommitSlice(...a),
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
     ...createInlineCreateSlice(...a),

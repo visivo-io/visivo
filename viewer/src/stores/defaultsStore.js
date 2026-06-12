@@ -33,9 +33,9 @@ const createDefaultsSlice = (set, get) => ({
       ok = true;
       // Refresh defaults
       await get().fetchDefaults();
-      // Trigger publish status check
-      if (get().checkPublishStatus) {
-        await get().checkPublishStatus();
+      // Trigger commit status check
+      if (get().checkCommitStatus) {
+        await get().checkCommitStatus();
       }
       return { success: true, result };
     } catch (error) {

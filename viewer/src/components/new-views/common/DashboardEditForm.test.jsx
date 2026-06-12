@@ -14,7 +14,7 @@ beforeEach(() => {
   useStore.mockImplementation(selector => {
     const state = {
       deleteDashboard: mockDeleteDashboard,
-      checkPublishStatus: mockCheckPublishStatus,
+      checkCommitStatus: mockCheckPublishStatus,
       openWorkspaceTab: mockOpenWorkspaceTab,
     };
     return typeof selector === 'function' ? selector(state) : state;

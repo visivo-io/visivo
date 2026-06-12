@@ -24,7 +24,7 @@ beforeEach(() => {
   useStore.mockImplementation(selector => {
     const state = {
       deleteChart: mockDeleteChart,
-      checkPublishStatus: mockCheckPublishStatus,
+      checkCommitStatus: mockCheckPublishStatus,
       fetchInsights: mockFetchInsights,
       insights: [{ name: 'revenue_insight' }, { name: 'cost_insight' }],
     };

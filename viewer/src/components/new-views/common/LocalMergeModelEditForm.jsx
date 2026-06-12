@@ -17,7 +17,7 @@ import { parseRefValue } from '../../../utils/refString';
  */
 const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
   const deleteLocalMergeModel = useStore(state => state.deleteLocalMergeModel);
-  const checkPublishStatus = useStore(state => state.checkPublishStatus);
+  const checkCommitStatus = useStore(state => state.checkCommitStatus);
 
   const [name, setName] = useState('');
   const [sql, setSql] = useState('');
@@ -85,7 +85,7 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
     try {
       const result = await deleteLocalMergeModel(model.name);
       if (result.success) {
-        await checkPublishStatus();
+        await checkCommitStatus();
         onClose();
       } else {
         setError(result.error || 'Failed to delete model');
@@ -207,7 +207,7 @@ const LocalMergeModelEditForm = ({ model, isCreate, onSave, onClose }) => {
             <p className="text-sm text-red-700 mb-2">
               {isNewObject
                 ? 'Are you sure? This will discard your unsaved changes.'
-                : 'Are you sure? This will mark it for deletion on publish.'}
+                : 'Are you sure? This will mark it for deletion on commit.'}
             </p>
             <div className="flex gap-2">
               <button
