@@ -46,7 +46,9 @@ class TestMachineId:
         import os
 
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         # Get machine ID
@@ -99,7 +101,9 @@ class TestMachineId:
         import os
 
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         # Get machine ID twice
@@ -144,7 +148,9 @@ class TestMachineId:
         import os
 
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         # Create corrupted file
@@ -205,7 +211,9 @@ class TestMachineId:
         import os
 
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         # Make directory read-only
@@ -264,7 +272,9 @@ class TestMachineId:
         import os
 
         monkeypatch.setattr(
-            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+            os.path,
+            "exists",
+            lambda path, _exists=os.path.exists: False if path == "/.dockerenv" else _exists(path),
         )
 
         # Clear cached machine ID

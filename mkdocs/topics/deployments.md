@@ -89,7 +89,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
       - key: python
         call: mint/install-python 1.1.0
         with:
-          python-version: 3.10.0
+          python-version: 3.14.6
       
       - key: install-visivo
         use: [python]
@@ -151,7 +151,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
       - key: python
         call: mint/install-python 1.1.0
         with:
-          python-version: 3.10.0
+          python-version: 3.14.6
       
       - key: install-visivo
         use: [python]
@@ -241,7 +241,7 @@ This following can be adapted easily with the `env` variables.
 
           - uses: actions/setup-python@v5
             with:
-              python-version: '3.10' 
+              python-version: '3.14' 
           
           - name: Install Visivo
             run: pip install visivo #(2)!
@@ -293,7 +293,7 @@ This following can be adapted easily with the `env` variables.
 
           - uses: actions/setup-python@v5
             with:
-              python-version: '3.10' 
+              python-version: '3.14' 
           
           - name: Install Visivo
             run: pip install visivo #(2)!
@@ -363,7 +363,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
       - key: python
         call: mint/install-python 1.1.0
         with:
-          python-version: 3.10.0
+          python-version: 3.14.6
       
       - key: install-visivo
         use: [python]
@@ -410,7 +410,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
       - key: python
         call: mint/install-python 1.1.0
         with:
-          python-version: 3.10.0
+          python-version: 3.14.6
       
       - key: install-visivo
         use: [python]
@@ -472,7 +472,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10' 
+          python-version: '3.14' 
       
       - name: Install Visivo
         run: pip install visivo
