@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PiSidebar } from 'react-icons/pi';
+import { PiPlus, PiSidebar } from 'react-icons/pi';
 import LibrarySection from './LibrarySection';
 import useLibraryData from './useLibraryData';
-import { LAYOUT_TYPES, DATA_TYPES } from './LibraryRow';
+import { LAYOUT_TYPES, DATA_TYPES, CREATABLE_TYPES, getTypeDef } from './LibraryRow';
 import useStore from '../../../../stores/store';
 import { useWorkspaceScope } from '../useWorkspaceScope';
 import { emitWorkspaceEvent } from '../telemetry';
@@ -58,13 +58,34 @@ const Library = () => {
   // tinted-bg selected state through the section → subsection → row chain.
   const selectedRowId = useStore(s => s.workspaceActiveTabId);
 
-  // Create-modal openers (per-type). Each store registers its own opener;
-  // we wire the four droppable Layout types here since only those expose a
-  // "+ New X" button in the rail.
-  const openCreateChartModal = useStore(s => s.openCreateChartModal);
-  const openCreateTableModal = useStore(s => s.openCreateTableModal);
-  const openCreateMarkdownModal = useStore(s => s.openCreateMarkdownModal);
-  const openCreateInputModal = useStore(s => s.openCreateInputModal);
+  // Header "+ New" menu — the left-nav entry point for creating any object
+  // type (the per-type "+ New X" buttons live inside each subsection).
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef(null);
+  useEffect(() => {
+    if (!newMenuOpen) return undefined;
+    const onPointerDown = e => {
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target)) {
+        setNewMenuOpen(false);
+      }
+    };
+    const onKeyDown = e => {
+      if (e.key === 'Escape') setNewMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [newMenuOpen]);
+
+  // Shared inline-create flow (stores/inlineCreateStore.js): drafts a
+  // minimal valid config for the type, then we open it as a workspace tab so
+  // the right-rail Edit form is the editing surface. (The old per-type
+  // `openCreate*Modal` flags had no mounted modal in the Workspace — every
+  // "+ New X" was a silent no-op.)
+  const createWorkspaceObject = useStore(s => s.createWorkspaceObject);
 
   const handleRowClick = useCallback(
     obj => {
@@ -106,12 +127,12 @@ const Library = () => {
   );
 
   const handleCreate = useCallback(
-    typeKey => {
-      emitWorkspaceEvent('inline_create_used', { source: 'library', kind: typeKey });
+    (typeKey, source = 'library') => {
+      emitWorkspaceEvent('inline_create_used', { source, kind: typeKey });
       // J-2 (VIS-778): "+ New Chart" inside a scoped dashboard opens the
       // Explorer round-trip overlay (build the insight there, it gets wrapped
       // in a chart and placed back on the dashboard). Outside a dashboard
-      // scope there's no slot to return to, so fall back to the create modal.
+      // scope there's no slot to return to, so draft an empty chart instead.
       if (typeKey === 'chart' && scope.dashboardName) {
         navigate(
           `/workspace/dashboard/${encodeURIComponent(
@@ -122,31 +143,18 @@ const Library = () => {
         );
         return;
       }
-      switch (typeKey) {
-        case 'chart':
-          if (openCreateChartModal) openCreateChartModal();
-          break;
-        case 'table':
-          if (openCreateTableModal) openCreateTableModal();
-          break;
-        case 'markdown':
-          if (openCreateMarkdownModal) openCreateMarkdownModal();
-          break;
-        case 'input':
-          if (openCreateInputModal) openCreateInputModal();
-          break;
-        default:
-          break;
-      }
+      if (!createWorkspaceObject) return;
+      createWorkspaceObject(typeKey).then(result => {
+        if (result?.success && result.name && openWorkspaceTab) {
+          openWorkspaceTab({
+            id: `${typeKey}:${result.name}`,
+            type: typeKey,
+            name: result.name,
+          });
+        }
+      });
     },
-    [
-      openCreateChartModal,
-      openCreateTableModal,
-      openCreateMarkdownModal,
-      openCreateInputModal,
-      navigate,
-      scope.dashboardName,
-    ]
+    [createWorkspaceObject, openWorkspaceTab, navigate, scope.dashboardName]
   );
 
   return (
@@ -160,16 +168,57 @@ const Library = () => {
           <span className="text-[13px] font-semibold text-gray-900">Library</span>
           <span className="text-[11px] text-gray-400">· project</span>
         </div>
-        <button
-          type="button"
-          onClick={toggleLeftCollapsed}
-          title="Collapse left rail"
-          aria-label="Collapse left rail"
-          data-testid="workspace-left-rail-collapse"
-          className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-        >
-          <PiSidebar className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <div className="relative" ref={newMenuRef}>
+            <button
+              type="button"
+              onClick={() => setNewMenuOpen(open => !open)}
+              title="New object"
+              aria-label="New object"
+              aria-expanded={newMenuOpen}
+              data-testid="library-new-object-button"
+              className="inline-flex h-6 items-center gap-0.5 rounded px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary-100/60"
+            >
+              <PiPlus className="h-3.5 w-3.5" /> New
+            </button>
+            {newMenuOpen && (
+              <div
+                data-testid="library-new-object-menu"
+                className="absolute right-0 top-7 z-50 w-44 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+              >
+                {CREATABLE_TYPES.map(typeKey => {
+                  const def = getTypeDef(typeKey);
+                  const Icon = def.icon;
+                  return (
+                    <button
+                      key={typeKey}
+                      type="button"
+                      data-testid={`library-new-object-${typeKey}`}
+                      onClick={() => {
+                        setNewMenuOpen(false);
+                        handleCreate(typeKey, 'library-menu');
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-gray-800 hover:bg-gray-50"
+                    >
+                      {Icon && <Icon style={{ fontSize: 14 }} className="shrink-0" />}
+                      New {def.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={toggleLeftCollapsed}
+            title="Collapse left rail"
+            aria-label="Collapse left rail"
+            data-testid="workspace-left-rail-collapse"
+            className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <PiSidebar className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col overflow-y-auto">
@@ -193,6 +242,7 @@ const Library = () => {
           selectedRowId={selectedRowId}
           onRowClick={handleRowClick}
           onContextAction={handleContextAction}
+          onCreate={handleCreate}
         />
       </div>
 

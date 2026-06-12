@@ -18,6 +18,7 @@ import createTableSlice from './tableStore';
 import createPublishSlice from './publishStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
+import createInlineCreateSlice from './inlineCreateStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
 import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerNewSlice from './explorerNewStore';
@@ -46,6 +47,7 @@ const useStore = create(
     ...createPublishSlice(...a),
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
+    ...createInlineCreateSlice(...a),
     ...createCsvScriptModelSlice(...a),
     ...createLocalMergeModelSlice(...a),
     ...createExplorerNewSlice(...a),

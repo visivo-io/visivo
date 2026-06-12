@@ -185,6 +185,36 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     rerender(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-table-preview')).toBeInTheDocument();
   });
+
+  test('a lineage-click lens intent opens the new object on Lineage, once (VIS-779 Step 4)', () => {
+    // A lineage node click sets a one-shot, object-scoped intent so walking
+    // the DAG doesn't bounce previewable objects back to their Preview lens.
+    seed({
+      workspaceActiveObject: { type: 'chart', name: 'revenue' },
+      workspaceLens: 'lineage',
+      workspaceLensIntent: { objectKey: 'chart:revenue', lens: 'lineage' },
+    });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
+    expect(screen.queryByTestId('chart-preview-mock')).not.toBeInTheDocument();
+    // Consumed: the intent is cleared so it can't re-apply later.
+    expect(useStore.getState().workspaceLensIntent).toBeNull();
+  });
+
+  test('a lens intent scoped to a DIFFERENT object does not apply', () => {
+    seed({
+      workspaceActiveObject: { type: 'chart', name: 'revenue' },
+      workspaceLens: 'preview',
+      workspaceLensIntent: { objectKey: 'table:orders', lens: 'lineage' },
+    });
+    render(<MiddlePane />);
+    expect(screen.getByTestId('workspace-middle-chart-preview')).toBeInTheDocument();
+    // Not consumed either — it belongs to a selection that hasn't happened.
+    expect(useStore.getState().workspaceLensIntent).toEqual({
+      objectKey: 'table:orders',
+      lens: 'lineage',
+    });
+  });
 });
 
 describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {

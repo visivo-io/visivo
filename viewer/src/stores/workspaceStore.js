@@ -59,6 +59,13 @@ const createWorkspaceSlice = (set, get) => ({
   // Lens (sub-bar segmented) ------------------------------------------------
   workspaceLens: 'preview', // 'preview' | 'lineage'
 
+  // One-shot, object-scoped lens request (VIS-779). A lineage node click
+  // round-trips the selection into the workspace AND asks for the new
+  // object's pane to open on the Lineage lens — same shape as the
+  // `?edit=…&lens=lineage` deep link, and like it, scoped to one objectKey
+  // so it can never leak to a later selection. The consuming pane clears it.
+  workspaceLensIntent: null, // { objectKey: 'type:name', lens: 'lineage' } | null
+
   // Outline tree (right-rail Outline tab, VIS-793 / Track F F-3) ------------
   // Selected node key — `'dashboard'` | `'row.N'` | `'row.N.item.M'`. Defaults
   // to the dashboard root so the scoped dashboard reads as selected on entry.
@@ -297,6 +304,15 @@ const createWorkspaceSlice = (set, get) => ({
         dashboardName: activeObject?.type === 'dashboard' ? activeObject.name : null,
       });
     }
+  },
+
+  setWorkspaceLensIntent: (intent) => {
+    if (intent && (!intent.objectKey || !['preview', 'lineage'].includes(intent.lens))) return;
+    set({ workspaceLensIntent: intent || null });
+  },
+
+  clearWorkspaceLensIntent: () => {
+    set({ workspaceLensIntent: null });
   },
 
   // ------------------------------------------------------------------------

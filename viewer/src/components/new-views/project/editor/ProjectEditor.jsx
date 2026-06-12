@@ -64,7 +64,7 @@ const HEALTH_ICONS = {
 };
 
 const HealthRow = ({ summary }) => (
-  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4" data-testid="project-editor-health">
+  <div className="grid grid-cols-2 gap-3 @[620px]/editor:grid-cols-4 @[620px]/editor:gap-4" data-testid="project-editor-health">
     {['dashboards', 'insights', 'models', 'sources'].map(key => {
       const Icon = HEALTH_ICONS[key];
       const colors = getTypeColors(key.slice(0, -1));
@@ -77,11 +77,11 @@ const HealthRow = ({ summary }) => (
           <span className={`inline-flex h-9 w-9 items-center justify-center rounded-md ${colors.bg} ${colors.text}`}>
             <Icon style={{ fontSize: 18 }} />
           </span>
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <span className="text-[20px] font-semibold leading-none tabular-nums text-gray-900">
               {summary[key]}
             </span>
-            <span className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-gray-500">
+            <span className="mt-0.5 truncate text-[11px] font-medium uppercase tracking-wider text-gray-500">
               {key}
             </span>
           </div>
@@ -153,7 +153,7 @@ const ProjectEditor = () => {
   const reorderLevel = useStore(s => s.reorderLevel);
   const deleteLevel = useStore(s => s.deleteLevel);
   const activeObject = useStore(s => s.workspaceActiveObject);
-  const openCreateDashboardModal = useStore(s => s.openCreateDashboardModal);
+  const createDashboard = useStore(s => s.createDashboard);
 
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState({});
@@ -322,10 +322,20 @@ const ProjectEditor = () => {
     return indices.length ? Math.max(...indices) : -1;
   }, [groups]);
 
-  const handleCreateDashboard = useCallback(() => {
+  // Inline create (no modal): persist an empty draft dashboard, then open it
+  // as a workspace tab so the user lands on the empty canvas ready to build.
+  const handleCreateDashboard = useCallback(async () => {
     emitWorkspaceEvent('inline_create_used', { source: 'project-editor', kind: 'dashboard' });
-    if (openCreateDashboardModal) openCreateDashboardModal();
-  }, [openCreateDashboardModal]);
+    if (!createDashboard) return;
+    const result = await createDashboard();
+    if (result?.success && result.name && openWorkspaceTab) {
+      openWorkspaceTab({
+        id: `dashboard:${result.name}`,
+        type: 'dashboard',
+        name: result.name,
+      });
+    }
+  }, [createDashboard, openWorkspaceTab]);
 
   const showSearch = (dashboards || []).length > SEARCH_THRESHOLD;
   const isEmpty = (dashboards || []).length === 0;
@@ -333,10 +343,10 @@ const ProjectEditor = () => {
   return (
     <div
       data-testid="project-editor"
-      className="flex-1 overflow-y-auto"
+      className="@container/editor flex-1 overflow-y-auto"
       onClick={dispatchChromeSelection}
     >
-      <div className="mx-auto max-w-[1100px] px-6 py-8 sm:px-10">
+      <div className="mx-auto max-w-[1100px] px-5 py-8 @[700px]/editor:px-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-[22px] font-semibold text-gray-900">{projectName}</h1>
@@ -354,7 +364,7 @@ const ProjectEditor = () => {
                   onChange={e => setSearch(e.target.value)}
                   onClick={e => e.stopPropagation()}
                   placeholder="Search dashboards…"
-                  className="w-44 bg-transparent text-[12.5px] text-gray-900 outline-none placeholder:text-gray-400"
+                  className="w-28 bg-transparent text-[12.5px] text-gray-900 outline-none placeholder:text-gray-400 @[700px]/editor:w-44"
                 />
               </div>
             )}
@@ -374,8 +384,8 @@ const ProjectEditor = () => {
 
         <HealthRow summary={summary} />
 
-        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
-          <div className="lg:col-span-8">
+        <div className="mt-8 grid grid-cols-1 gap-6 @[860px]/editor:grid-cols-12 @[860px]/editor:gap-8">
+          <div className="@container/groups @[860px]/editor:col-span-8">
             {isEmpty ? (
               <div
                 data-testid="project-editor-empty"
@@ -454,7 +464,7 @@ const ProjectEditor = () => {
             )}
           </div>
 
-          <aside className="lg:col-span-4">
+          <aside className="@[860px]/editor:col-span-4">
             <RecentEdits edits={recentEdits} onSelect={dispatchDashboardSelection} />
           </aside>
         </div>

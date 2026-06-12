@@ -67,16 +67,6 @@ jest.mock('@mui/icons-material/TableChart', () => () => <span data-testid="table
 jest.mock('@mui/icons-material/Add', () => () => <span data-testid="add-icon" />);
 jest.mock('@mui/icons-material/Close', () => () => <span data-testid="close-icon" />);
 
-// Mock EditPanel
-jest.mock('../common/EditPanel', () => ({ editItem, isCreate, onClose }) => (
-  <div data-testid="edit-panel">
-    {editItem?.type === 'source' && <span>Editing source: {editItem.object?.name}</span>}
-    {editItem?.type === 'model' && <span>Editing model: {editItem.object?.name}</span>}
-    {isCreate && <span>Creating new object</span>}
-    <button onClick={onClose}>Close</button>
-  </div>
-));
-
 describe('LineageNew', () => {
   const mockFetchSources = jest.fn();
   const mockFetchModels = jest.fn();
@@ -341,6 +331,27 @@ describe('LineageNew', () => {
     await waitFor(() => {
       expect(input.value).toBe('+db+');
     });
+  });
+
+  it('node click round-trips to the host instead of opening an edit popout', async () => {
+    const mockSource = { name: 'db', type: 'sqlite' };
+    useLineageDag.mockReturnValue({
+      nodes: [
+        { id: 'source-db', data: { label: 'db', name: 'db', objectType: 'source', source: mockSource } },
+      ],
+      edges: [],
+    });
+    const onNodeSelect = jest.fn();
+
+    render(<LineageNew scopeSelector="*" onNodeSelect={onNodeSelect} />);
+    fireEvent.click(await screen.findByTestId('node-source-db'));
+
+    await waitFor(() =>
+      expect(onNodeSelect).toHaveBeenCalledWith({ type: 'source', name: 'db' })
+    );
+    // The legacy in-canvas EditPanel popout is gone — the persistent right
+    // rail (driven by the host's selection) is the only edit surface.
+    expect(screen.queryByTestId('edit-panel')).not.toBeInTheDocument();
   });
 
   it('renders ReactFlow with proper structure', async () => {

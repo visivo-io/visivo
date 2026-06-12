@@ -3,7 +3,6 @@ import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../stores/store';
 import { useLineageDag, computeLayout } from './useLineageDag';
-import { useObjectSave } from '../../../hooks/useObjectSave';
 import SourceNode from './SourceNode';
 import ModelNode from './ModelNode';
 import DimensionNode from './DimensionNode';
@@ -17,18 +16,16 @@ import DashboardNode from './DashboardNode';
 import CsvScriptModelNode from './CsvScriptModelNode';
 import LocalMergeModelNode from './LocalMergeModelNode';
 import InputNode from './InputNode';
-import EditPanel from '../common/EditPanel';
-import CreateButton from '../common/CreateButton';
 import { Button } from '../../styled/Button';
 import { getTypeByValue } from '../common/objectTypeConfigs';
-import { createEmbeddedEditHandler } from '../common/embeddedObjectConfig';
 import { formatRefExpression } from '../../../utils/refString';
 
 /**
  * LineageNew - Lineage view for sources, models, dimensions, metrics, relations, and insights
  * Supports drag-to-connect edges between sources and models
  *
- * Props (all optional — the component works standalone at `/editor`):
+ * Props (all optional — every live mount is via `<LineageCanvas>` in the
+ * Workspace middle pane; `/editor` and `/lineage` are redirects now):
  *   - `scopeSelector`  — externally-derived selector string (e.g. `*`,
  *                        `+dashboardName`). When provided it seeds the
  *                        internal selector and re-syncs whenever the prop
@@ -83,12 +80,6 @@ const LineageNew = ({
   const dashboards = useStore(state => state.dashboards);
   const defaults = useStore(state => state.defaults);
 
-  // Navigation stack for editing - supports drilling into embedded objects
-  // Each item is { type: 'source'|'model'|etc, object: {...}, applyToParent?: fn }
-  // applyToParent is provided by parent forms for embedded objects
-  const [editStack, setEditStack] = useState([]);
-  const [isCreating, setIsCreating] = useState(false);
-  const [createObjectType, setCreateObjectType] = useState('source');
   // `*` is the unscoped sentinel from the Workspace scope hook — LineageNew's
   // own grammar treats an empty selector as "show everything", so we normalise
   // `*` to `''` before it ever reaches `parseSelector`.
@@ -109,27 +100,8 @@ const LineageNew = ({
   const [initialLoadDone, setInitialLoadDone] = useState(embedded);
   const [fixedNode, setFixedNode] = useState(null); // { id, position } for keeping clicked node in place
 
-  // Navigation stack helpers
-  // options.applyToParent: (parentConfig, embeddedConfig) => newParentConfig
-  const pushEdit = useCallback((type, object, options = {}) => {
-    setEditStack(prev => [...prev, { type, object, ...options }]);
-    setIsCreating(false);
-  }, []);
-
-  const popEdit = useCallback(() => {
-    setEditStack(prev => prev.slice(0, -1));
-  }, []);
-
-  const clearEdit = useCallback(() => {
-    setEditStack([]);
-  }, []);
-
-  const currentEdit = editStack.length > 0 ? editStack[editStack.length - 1] : null;
-  const canGoBack = editStack.length > 1;
-
   const reactFlowInstance = useRef(null);
 
-  // Note: Individual save functions are now handled by useObjectSave hook
 
   // Standalone (`/editor`): fetch every collection on mount and flip
   // `initialLoadDone` once they all resolve. Embedded (Workspace): the host
@@ -306,31 +278,10 @@ const LineageNew = ({
       return { nodes: [], edges: [] };
     }
 
-    // Filter to selected nodes first
-    const filteredNodes = dagNodes
-      .filter(node => selectedIds.has(node.id))
-      .map(node => {
-        // Determine if this node is currently being edited (check the top of the stack)
-        const objectType = node.data?.objectType;
-        const nodeName = node.data?.name;
-        const isEditing = currentEdit?.type === objectType && currentEdit?.object?.name === nodeName;
-
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            isEditing,
-            onEdit: obj => {
-              // Clear stack and push this as the new root edit
-              clearEdit();
-              pushEdit(objectType, obj);
-            },
-            // Generic handlers for embedded objects based on configuration
-            onEditEmbeddedSource: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'source'),
-            onEditEmbeddedInsight: createEmbeddedEditHandler(clearEdit, pushEdit, objectType, node.data, 'insight'),
-          },
-        };
-      });
+    // Filter to selected nodes first. Node clicks round-trip into the
+    // workspace selection (right-rail Edit panel) via onNodeSelect — the
+    // legacy in-canvas edit popout is gone, so no per-node edit handlers.
+    const filteredNodes = dagNodes.filter(node => selectedIds.has(node.id));
 
     // Filter edges to only show edges between visible nodes
     const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
@@ -347,7 +298,7 @@ const LineageNew = ({
     }
 
     return { nodes: layoutNodes || [], edges: filteredEdges || [] };
-  }, [dagNodes, dagEdges, selectedIds, currentEdit, clearEdit, pushEdit, fixedNode]);
+  }, [dagNodes, dagEdges, selectedIds, fixedNode]);
 
   // Fit view when initial data loads OR when selector changes (and we have nodes to show)
   useEffect(() => {
@@ -403,7 +354,9 @@ const LineageNew = ({
     []
   );
 
-  // Handle node click - filter to show the clicked node's dependencies (ancestors and descendants) AND open edit panel
+  // Handle node click - filter to show the clicked node's dependencies
+  // (ancestors and descendants) and round-trip the selection to the host
+  // (the Workspace), whose persistent right rail is the edit surface.
   const handleNodeClick = useCallback((event, node) => {
     const nodeName = node.data.name;
     const objectType = node.data.objectType;
@@ -417,20 +370,10 @@ const LineageNew = ({
     // Set selector to +name+ to show the node and all its dependencies
     setSelector(`+${nodeName}+`);
 
-    // Open edit panel for this node
-    // Edit forms expect the store object (with .config, .name, etc.), which is nested in node.data
-    // csvScriptModel and localMergeModel both store their object under the 'model' key
-    const storeObjectKey = (objectType === 'csvScriptModel' || objectType === 'localMergeModel') ? 'model' : objectType;
-    const storeObject = node.data[storeObjectKey] ?? node.data;
-    clearEdit();
-    pushEdit(objectType, storeObject);
-
-    // Round-trip the selection to the host (Workspace MiddlePane) so clicking
-    // a node in the lineage view updates the workspace selection.
     if (onNodeSelect) {
       onNodeSelect({ type: objectType, name: nodeName });
     }
-  }, [clearEdit, pushEdit, onNodeSelect]);
+  }, [onNodeSelect]);
 
   // Right-click on a node (VIS-811 / Track O O-2) — resolve the node to its
   // `{ type, name }` identity and hand it to the host with the raw event so
@@ -495,49 +438,6 @@ const LineageNew = ({
     [models, saveModel, fetchModels]
   );
 
-  // Handle create button selection
-  const handleCreateSelect = useCallback(objectType => {
-    clearEdit();
-    setIsCreating(true);
-    setCreateObjectType(objectType);
-  }, [clearEdit]);
-
-  // Handle panel close
-  const handlePanelClose = useCallback(() => {
-    clearEdit();
-    setIsCreating(false);
-  }, [clearEdit]);
-
-  // Refresh all data after save
-  const refreshData = useCallback(async () => {
-    await fetchSources();
-    await fetchModels();
-    await fetchDimensions();
-    await fetchMetrics();
-    await fetchRelations();
-    await fetchInsights();
-    await fetchMarkdowns();
-    await fetchCharts();
-    await fetchTables();
-    await fetchDashboards();
-    await fetchCsvScriptModels();
-    await fetchLocalMergeModels();
-    await fetchInputs();
-    await fetchDefaults();
-  }, [fetchSources, fetchModels, fetchDimensions, fetchMetrics, fetchRelations, fetchInsights, fetchMarkdowns, fetchCharts, fetchTables, fetchDashboards, fetchCsvScriptModels, fetchLocalMergeModels, fetchInputs, fetchDefaults]);
-
-  // Create success callback for the save handler
-  const onSuccessfulSave = useCallback(async () => {
-    await refreshData();
-    clearEdit();
-    setIsCreating(false);
-  }, [refreshData, clearEdit]);
-
-  // Use unified save handler from custom hook
-  const handleObjectSave = useObjectSave(currentEdit, setEditStack, onSuccessfulSave);
-
-  const isPanelOpen = editStack.length > 0 || isCreating;
-
   return (
     <div className={`flex flex-col ${headerSlot ? 'h-full' : 'h-[calc(100vh-48px)]'}`}>
       {/* Host-supplied chrome (e.g. LineageCanvas scope-indicator strip) */}
@@ -581,9 +481,7 @@ const LineageNew = ({
       {/* Main content area */}
       <div className="flex flex-1 min-h-0">
         {/* DAG area */}
-        <div
-          className={`flex-1 relative ${isPanelOpen ? 'mr-96' : ''} transition-all duration-200`}
-        >
+        <div className="flex-1 relative">
           {/* Loading state */}
           {!initialLoadDone && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
@@ -650,25 +548,7 @@ const LineageNew = ({
             />
           </ReactFlow>
 
-          {/* Create button (FAB) */}
-          <CreateButton onSelect={handleCreateSelect} />
         </div>
-
-        {/* Edit Panel (right side) */}
-        {isPanelOpen && (
-          <div className="fixed top-12 right-0 bottom-0 z-20">
-            <EditPanel
-              editItem={currentEdit}
-              canGoBack={canGoBack}
-              onGoBack={popEdit}
-              onNavigateTo={pushEdit}
-              objectType={createObjectType}
-              isCreate={isCreating}
-              onClose={handlePanelClose}
-              onSave={handleObjectSave}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

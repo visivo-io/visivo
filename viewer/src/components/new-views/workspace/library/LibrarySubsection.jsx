@@ -112,9 +112,9 @@ const LibrarySubsection = ({
             </ul>
           )}
 
-          {/* "+ New X" — only the droppable Layout types get the inline
-              create button; Data-layer types use a different create flow. */}
-          {def.droppable && (
+          {/* "+ New X" — every creatable type gets the inline create button
+              (drafts a minimal valid config; the right rail edits it). */}
+          {def.creatable && onCreate && (
             <button
               type="button"
               onClick={() => onCreate && onCreate(typeKey)}

@@ -80,6 +80,15 @@ const createDashboardSlice = (set, get) => ({
   },
 
   /**
+   * Create a new empty draft dashboard (the Project Editor's "+ New
+   * Dashboard" CTA). Thin alias over the shared inline-create flow
+   * (stores/inlineCreateStore.js) so every "new object" path drafts the
+   * same way; the unleveled draft lands in the "Unassigned" group until
+   * the user assigns it.
+   */
+  createDashboard: async () => get().createWorkspaceObject('dashboard'),
+
+  /**
    * Reassign a dashboard to a different level (draft edit).
    *
    * The Project Editor's drag-between-levels gesture calls this. It persists

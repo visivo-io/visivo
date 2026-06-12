@@ -13,7 +13,7 @@
  *   - "+ New X" delegates to the corresponding store opener + telemetry.
  */
 import React from 'react';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import {
   createMemoryRouter,
   Route,
@@ -97,11 +97,8 @@ const seedStore = (extra = {}) => {
       insights: [{ name: 'revenue_growth' }],
       // Stub the workspace tab action so the test can assert on calls.
       openWorkspaceTab: jest.fn(),
-      // Stub create-modal openers so handleCreate doesn't throw.
-      openCreateChartModal: jest.fn(),
-      openCreateTableModal: jest.fn(),
-      openCreateMarkdownModal: jest.fn(),
-      openCreateInputModal: jest.fn(),
+      // Stub the shared inline-create flow so handleCreate doesn't hit the API.
+      createWorkspaceObject: jest.fn().mockResolvedValue({ success: true, name: 'stub' }),
       ...extra,
     });
   });
@@ -194,20 +191,16 @@ describe('Library', () => {
     expect(screen.queryByTestId('library-row-table-revenue_rows')).not.toBeInTheDocument();
   });
 
-  test('"+ New X" buttons appear only on the four droppable Layout subsections', () => {
+  test('"+ New X" buttons appear on every creatable subsection (all but relation)', () => {
     renderLibrary();
-    expect(screen.getByTestId('library-subsection-chart-create')).toHaveTextContent('New Chart');
-    expect(screen.getByTestId('library-subsection-table-create')).toHaveTextContent('New Table');
-    expect(screen.getByTestId('library-subsection-markdown-create')).toHaveTextContent(
-      'New Markdown'
+    ['chart', 'table', 'markdown', 'input', 'dashboard', 'source', 'model', 'dimension', 'metric', 'insight'].forEach(
+      t => {
+        expect(screen.getByTestId(`library-subsection-${t}-create`)).toBeInTheDocument();
+      }
     );
-    expect(screen.getByTestId('library-subsection-input-create')).toHaveTextContent('New Input');
-    // Dashboards live in Layout Items but are not droppable — no inline create.
-    expect(screen.queryByTestId('library-subsection-dashboard-create')).not.toBeInTheDocument();
-    // Data-layer subsections have no inline create button.
-    ['source', 'model', 'dimension', 'metric', 'relation', 'insight'].forEach(t => {
-      expect(screen.queryByTestId(`library-subsection-${t}-create`)).not.toBeInTheDocument();
-    });
+    // A relation can't be templated (its condition must reference two real
+    // models), so it has no inline create.
+    expect(screen.queryByTestId('library-subsection-relation-create')).not.toBeInTheDocument();
   });
 
   test('Layout-Items rows expose drag handles; Data-Layer rows do not', () => {
@@ -366,20 +359,30 @@ describe('Library', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('"+ New Chart" calls the chart create-modal opener (unscoped)', () => {
-    const openCreateChartModal = jest.fn();
-    seedStore({ openCreateChartModal });
+  test('"+ New Chart" drafts a chart and opens it as a workspace tab (unscoped)', async () => {
+    const createWorkspaceObject = jest
+      .fn()
+      .mockResolvedValue({ success: true, name: 'new-chart' });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
     fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
-    expect(openCreateChartModal).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('chart'));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'chart:new-chart',
+        type: 'chart',
+        name: 'new-chart',
+      })
+    );
   });
 
   test('"+ New Chart" opens the Explorer round-trip overlay when scoped to a dashboard (J-2)', () => {
-    const openCreateChartModal = jest.fn();
-    seedStore({ openCreateChartModal });
+    const createWorkspaceObject = jest.fn();
+    seedStore({ createWorkspaceObject });
     renderLibrary('/workspace/dashboard/overview');
     fireEvent.click(screen.getByTestId('library-subsection-chart-create'));
-    expect(openCreateChartModal).not.toHaveBeenCalled();
+    expect(createWorkspaceObject).not.toHaveBeenCalled();
     expect(screen.getByTestId('location-probe')).toHaveTextContent(
       '/workspace/dashboard/overview/explorer'
     );
@@ -387,12 +390,65 @@ describe('Library', () => {
     expect(screen.getByTestId('location-probe')).toHaveTextContent('slot=new');
   });
 
-  test('"+ New Table" calls the table create-modal opener', () => {
-    const openCreateTableModal = jest.fn();
-    seedStore({ openCreateTableModal });
+  test('a data-layer "+ New Model" drafts a model and opens its tab', async () => {
+    const createWorkspaceObject = jest
+      .fn()
+      .mockResolvedValue({ success: true, name: 'new-model' });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
     renderLibrary();
-    fireEvent.click(screen.getByTestId('library-subsection-table-create'));
-    expect(openCreateTableModal).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('library-subsection-model-create'));
+    await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('model'));
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'model:new-model',
+        type: 'model',
+        name: 'new-model',
+      })
+    );
+  });
+
+  test('the header "+ New" menu lists every creatable type and creates on pick', async () => {
+    const createWorkspaceObject = jest
+      .fn()
+      .mockResolvedValue({ success: true, name: 'new_metric' });
+    const openWorkspaceTab = jest.fn();
+    seedStore({ createWorkspaceObject, openWorkspaceTab });
+    const events = [];
+    const unsubscribe = setWorkspaceTelemetryListener(evt => events.push(evt));
+    try {
+      renderLibrary();
+      fireEvent.click(screen.getByTestId('library-new-object-button'));
+      const menu = screen.getByTestId('library-new-object-menu');
+      expect(menu).toBeInTheDocument();
+      expect(screen.queryByTestId('library-new-object-relation')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('library-new-object-metric'));
+      expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
+      await waitFor(() => expect(createWorkspaceObject).toHaveBeenCalledWith('metric'));
+      await waitFor(() =>
+        expect(openWorkspaceTab).toHaveBeenCalledWith({
+          id: 'metric:new_metric',
+          type: 'metric',
+          name: 'new_metric',
+        })
+      );
+      const created = events.filter(e => e.eventName === 'inline_create_used');
+      expect(created[created.length - 1].payload).toEqual({
+        source: 'library-menu',
+        kind: 'metric',
+      });
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  test('the header "+ New" menu dismisses on Escape', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByTestId('library-new-object-button'));
+    expect(screen.getByTestId('library-new-object-menu')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('library-new-object-menu')).not.toBeInTheDocument();
   });
 
   test('shows the empty placeholder when a subsection has no rows', () => {

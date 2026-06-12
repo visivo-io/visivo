@@ -64,7 +64,6 @@ const TableNode = ({ data, selected }) => {
             <EmbeddedPill
               objectType="insight"
               label={dataField.name || 'data'}
-              onClick={() => data.onEditEmbeddedInsight?.(dataField, 0)}
             />
           </div>
         )}

@@ -67,7 +67,6 @@ const ChartNode = ({ data, selected }) => {
                 key={`insight-${index}`}
                 objectType="insight"
                 label={insight.name || 'insight'}
-                onClick={() => data.onEditEmbeddedInsight?.(insight, index)}
               />
             ))}
           </div>
