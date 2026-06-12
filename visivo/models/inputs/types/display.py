@@ -26,7 +26,11 @@ class SingleSelectDefault(BaseModel):
 
 
 class SingleSelectDisplay(BaseModel):
-    """Display configuration for single-select inputs."""
+    """
+    Display configuration for single-select inputs: which UI component renders the
+    input (dropdown, radio, toggle, tabs, autocomplete, or slider) and which option
+    is selected by default.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -114,7 +118,11 @@ class MultiSelectDefault(BaseModel):
 
 
 class MultiSelectDisplay(BaseModel):
-    """Display configuration for multi-select inputs."""
+    """
+    Display configuration for multi-select inputs: which UI component renders the
+    input (dropdown, checkboxes, chips, tags, range-slider, or date-range) and which
+    values are selected by default.
+    """
 
     model_config = ConfigDict(extra="forbid")
 

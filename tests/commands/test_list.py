@@ -5,6 +5,7 @@ from tests.support.utils import temp_yml_file
 import json
 from click.testing import CliRunner
 from tests.factories.model_factories import (
+    InsightFactory,
     ProjectFactory,
     SourceFactory,
     SqlModelFactory,
@@ -17,7 +18,8 @@ def test_list():
     """Test the list command with different object types"""
     source = SourceFactory(name="test_source")
     model = SqlModelFactory(name="test_model", source="${ ref(test_source) }")
-    project = ProjectFactory(sources=[source], models=[model], dashboards=[])
+    insight = InsightFactory(name="test_insight", model="ref(test_model)")
+    project = ProjectFactory(sources=[source], models=[model], insights=[insight], dashboards=[])
 
     tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
@@ -32,4 +34,10 @@ def test_list():
     response = runner.invoke(list, ["models", "-w", working_dir])
     assert "models:" in response.output
     assert " - test_model" in response.output
+    assert response.exit_code == 0
+
+    # Test listing insights
+    response = runner.invoke(list, ["insights", "-w", working_dir])
+    assert "insights:" in response.output
+    assert " - test_insight" in response.output
     assert response.exit_code == 0

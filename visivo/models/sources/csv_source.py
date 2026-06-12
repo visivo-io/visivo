@@ -8,11 +8,36 @@ from visivo.logger.logger import Logger
 
 
 class CSVFileSource(BaseDuckdbSource):
+    """
+    CSVFileSources let you query a local CSV file directly with SQL — no database required.
+
+    The file is loaded into an in-memory DuckDB connection and exposed as a view named
+    after the source, so models can `SELECT` from it like any other table. Use this for
+    small, version-controlled datasets; for CSVs produced by a command, use a
+    CsvScriptModel instead.
+
+    !!! example
+
+        ``` yaml
+        sources:
+          - name: products_csv
+            type: csv
+            file: data/products.csv
+
+        models:
+          - name: products
+            source: ${ref(products_csv)}
+            sql: SELECT * FROM products_csv
+        ```
+    """
+
     type: Literal["csv"]
-    file: str = Field(..., description="Path to the CSV file.")
-    delimiter: Optional[str] = Field(",", description="CSV delimiter.")
-    encoding: Optional[str] = Field("utf-8", description="CSV file encoding.")
-    has_header: Optional[bool] = Field(True, description="Whether CSV has a header row.")
+    file: str = Field(..., description="Path to the CSV file, relative to the project directory.")
+    delimiter: Optional[str] = Field(",", description="Character separating values in the file.")
+    encoding: Optional[str] = Field("utf-8", description="Text encoding of the CSV file.")
+    has_header: Optional[bool] = Field(
+        True, description="Whether the first row of the file contains column names."
+    )
 
     def get_connection(self, read_only: bool = False):
         """Create an in-memory DuckDB connection with the CSV loaded as a view."""

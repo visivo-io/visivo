@@ -11,17 +11,46 @@ from visivo.query.patterns import CONTEXT_STRING_REF_PATTERN_COMPILED
 # TODO: This should really be a discriminated single selection between a filter, split and sort class rather than this composite object
 class InsightInteraction(BaseModel):
     """
-    Represents a client-side interaction that can be applied to insight data.
+    An InsightInteraction is a client-side transformation applied to an insight's
+    pre-computed data in the viewer — no query re-runs, so results update instantly.
+
+    Each interaction is a `?{ ... }` expression that does one of three things:
+
+    - **filter**: keeps only the rows where a boolean expression is true.
+    - **split**: breaks the insight into one series per distinct value of an expression.
+    - **sort**: orders the rows by an expression (append `ASC`/`DESC` to control direction).
+
+    Reference model columns with `${ref(model).column}` and input values with
+    accessors like `${ref(my-input).value}` to wire interactions up to
+    [inputs](../../Inputs/SingleSelectInput/) for dynamic dashboards.
+
+    ### Example
+    ``` yaml
+    insights:
+      - name: revenue-by-month
+        props:
+          type: bar
+          x: ?{ ${ref(orders).month} }
+          y: ?{ sum(${ref(orders).amount}) }
+        interactions:
+          - filter: ?{ ${ref(orders).region} = ${ref(region-input).value} }
+          - split: ?{ ${ref(orders).product_line} }
+          - sort: ?{ ${ref(orders).month} ASC }
+    ```
     """
 
     filter: Optional[QueryString] = Field(
-        None, description="Filter expression to apply to the data on the client side"
+        None,
+        description="Boolean expression evaluated per row in the viewer; only rows where it is true are kept.",
     )
     split: Optional[QueryString] = Field(
         None,
-        description="Column or expression to split data into multiple plotly series",
+        description="Column or expression whose distinct values break the insight into multiple plotly series.",
     )
-    sort: Optional[QueryString] = Field(None, description="Column or expression to sort data by")
+    sort: Optional[QueryString] = Field(
+        None,
+        description="Column or expression to sort rows by; append `ASC` or `DESC` to control direction.",
+    )
 
     @property
     def field_values(self) -> Dict[str, str]:
