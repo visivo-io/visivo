@@ -45,6 +45,19 @@ tasks:
     use: python
     run: pip install poetry
 
+  # dbt does not support Python 3.14 yet: dbt-core pins mashumaro<3.15, but
+  # mashumaro only gained 3.14 support in 3.15+. Run the dbt integration lane
+  # on 3.12 (the highest Python dbt supports, also a version visivo supports)
+  # while the rest of CI runs on the .python-version interpreter (3.14).
+  - key: python-dbt
+    call: python/install 1.4.5
+    with:
+      python-version: "3.12.10"
+
+  - key: poetry-dbt
+    use: python-dbt
+    run: pip install poetry
+
   - key: cli-dependencies
     use: [code, poetry]
     run: poetry install --with dev --no-root
@@ -341,9 +354,10 @@ tasks:
       - test-projects/integration
 
   - key: dbt-dependencies
-    use: [code, poetry]
+    use: [code, poetry-dbt]
     run: |
       cd test-projects/dbt
+      poetry config virtualenvs.in-project true --local
       poetry install --no-root
     filter:
       - test-projects/dbt/poetry.lock
@@ -353,8 +367,10 @@ tasks:
     use: [dbt-dependencies, visivo-install]
     run: |
       cd test-projects/dbt
-      poetry run dbt seed --profiles-dir .
-      poetry run dbt run --profiles-dir .
+      # dbt runs from its own in-project 3.12 venv (see dbt-dependencies);
+      # visivo comes from visivo-install and runs on 3.14.
+      ./.venv/bin/dbt seed --profiles-dir .
+      ./.venv/bin/dbt run --profiles-dir .
       visivo compile
       visivo run
     filter:
