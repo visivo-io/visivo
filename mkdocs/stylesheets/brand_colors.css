@@ -1,39 +1,359 @@
+/* ==========================================================================
+   Visivo docs — brand-parity theme (VIS-949)
+   --------------------------------------------------------------------------
+   Makes docs.visivo.io read as the same product as visivo.io (www),
+   app.visivo.io, and the `visivo serve` viewer. Single tokens stylesheet —
+   no per-page hand-tuning. Canonical tokens (viewer is source of truth;
+   full ramps mirror www/tailwind.config.js):
+     - primary  mulberry  #713b57  (ramp 50 #f9f6f8 … 900 #160b11)
+     - accent   deep-teal #2d6a6f  (ramp 50 #eef4f4 … 900 #091517)
+     - charcoal (secondary/tertiary) #4f494c
+     - highlight terracotta #d25946 (destructive / sparing accent)
+     - anchors  dark navy #191d33, light #ecefcb
+   Object-type rainbow utility classes live in icon-colors.css.
+   ========================================================================== */
+
+:root {
+  /* ---- mulberry primary ramp ---- */
+  --vz-mulberry-50:  #f9f6f8;
+  --vz-mulberry-100: #e2d7dd;
+  --vz-mulberry-200: #c6b0bb;
+  --vz-mulberry-300: #a9899a;
+  --vz-mulberry-400: #8d6278;
+  --vz-mulberry-500: #713b57;
+  --vz-mulberry-600: #5a2f45;
+  --vz-mulberry-700: #432334;
+  --vz-mulberry-800: #2d1722;
+  --vz-mulberry-900: #160b11;
+
+  /* ---- deep-teal accent ramp ---- */
+  --vz-teal-50:  #eef4f4;
+  --vz-teal-100: #d4e1e2;
+  --vz-teal-200: #a9c3c5;
+  --vz-teal-300: #7fa6a9;
+  --vz-teal-400: #54888c;
+  --vz-teal-500: #2d6a6f;
+  --vz-teal-600: #245558;
+  --vz-teal-700: #1b4042;
+  --vz-teal-800: #122a2d;
+  --vz-teal-900: #091517;
+
+  /* ---- anchors / neutrals ---- */
+  --vz-navy:     #191d33;
+  --vz-charcoal: #4f494c;
+  --vz-terracotta: #d25946;
+}
+
+/* ==========================================================================
+   LIGHT SCHEME
+   ========================================================================== */
 [data-md-color-scheme="visivo_light"] {
-    --md-typeset-a-color: #D25946;
-    --md-default-fg-color--light: #713B57;
-    --md-primary-fg-color: #EEEEEE;
-    --md-primary-fg-color--light: #713B57;
-    --md-primary-fg-color--dark: #191D33;
-    --md-primary-bg-color: #4F494C;
-    --md-primary-bg-color--light: #4F494C;
-    --md-accent-fg-color: #D25946;
-    --md-accent-fg-color--transparent: #526cfe1a;
-    --md-accent-bg-color: #fff;
-    --md-accent-bg-color--light: #ECEFCB;
+  /* Primary (header / nav / brand). Material derives many surfaces from this. */
+  --md-primary-fg-color:        var(--vz-mulberry-500);
+  --md-primary-fg-color--light: var(--vz-mulberry-400);
+  --md-primary-fg-color--dark:  var(--vz-mulberry-700);
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.75);
+
+  /* Accent (hover / active / interactive) → deep teal. */
+  --md-accent-fg-color:             var(--vz-teal-500);
+  --md-accent-fg-color--transparent: rgba(45, 106, 111, 0.10);
+  --md-accent-bg-color:             #ffffff;
+  --md-accent-bg-color--light:      var(--vz-teal-50);
+
+  /* Body links → mulberry (matches www inline links / CTAs). */
+  --md-typeset-a-color: var(--vz-mulberry-600);
+
+  /* Foreground tints. */
+  --md-default-fg-color--light: var(--vz-mulberry-500);
+
+  /* Inline + block code accents. */
+  --md-code-hl-string-color:   var(--vz-teal-600);
+  --md-code-hl-keyword-color:  var(--vz-mulberry-600);
 }
 
+/* ==========================================================================
+   DARK SCHEME
+   ========================================================================== */
 [data-md-color-scheme="visivo_dark"] {
-    --md-typeset-a-color: #D25946;
-    --md-typeset-color: #fff;
-    --md-default-fg-color: #fff;
-    --md-default-fg-color--light: #ECEFCB;
-    --md-primary-fg-color: #191D33;
-    --md-primary-fg-color--dark: #191D33;
-    --md-primary-bg-color: #fff;
-    --md-default-bg-color: #333;
-    --md-primary-bg-color--light: #ECEFCB;
-    --md-accent-fg-color: #D25946;
-    --md-accent-fg-color--transparent: #526cfe1a;
-    --md-accent-bg-color: #4F494C;
-    --md-accent-bg-color--light: #ECEFCB;
+  /* Deep navy chrome — the product top-nav color across viewer/core/www. */
+  --md-primary-fg-color:        var(--vz-navy);
+  --md-primary-fg-color--light: var(--vz-mulberry-300);
+  --md-primary-fg-color--dark:  #0f1120;
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.75);
+
+  /* Slightly desaturated body so it doesn't read as flat #333. */
+  --md-default-bg-color:        #1c2030;
+  --md-default-fg-color:        rgba(255, 255, 255, 0.95);
+  --md-default-fg-color--light: rgba(255, 255, 255, 0.78);
+  --md-default-fg-color--lighter: rgba(255, 255, 255, 0.42);
+  --md-default-fg-color--lightest: rgba(255, 255, 255, 0.12);
+  --md-typeset-color:           rgba(255, 255, 255, 0.92);
+
+  /* Accent → brighter teal so it pops on the dark surface. */
+  --md-accent-fg-color:             var(--vz-teal-300);
+  --md-accent-fg-color--transparent: rgba(127, 166, 169, 0.14);
+  --md-accent-bg-color:             var(--vz-navy);
+  --md-accent-bg-color--light:      var(--vz-teal-800);
+
+  /* Links → light mulberry tint (readable on dark, still on-brand). */
+  --md-typeset-a-color: var(--vz-mulberry-300);
+
+  /* Code surface darker than body for separation. */
+  --md-code-bg-color:   #12152133;
+  --md-code-fg-color:   rgba(255, 255, 255, 0.90);
+  --md-code-hl-string-color:  #7fc7cb;
+  --md-code-hl-keyword-color: var(--vz-mulberry-300);
+
+  /* Admonition / note surfaces — the upstream palette hardcodes these to
+     white, which renders a glaring light box in dark mode. Tie them to a
+     dark surface so callouts read correctly in the dark scheme. */
+  --md-admonition-bg-color: #232838;
+  --md-admonition-fg-color: rgba(255, 255, 255, 0.92);
+
+  /* Footer + table surfaces in the dark scheme. */
+  --md-footer-bg-color:       var(--vz-navy);
+  --md-footer-bg-color--dark: #14172a;
 }
 
-@media screen and (min-width: 60em) {
-    .md-search__form {
-        background-color: #00000010;
-    }
+/* Admonition body/title inherit the dark foreground (the upstream success/
+   note/quote variants otherwise fall back to near-black text). */
+[data-md-color-scheme="visivo_dark"] .md-typeset .admonition,
+[data-md-color-scheme="visivo_dark"] .md-typeset details {
+  background: var(--md-admonition-bg-color);
+  color: var(--md-admonition-fg-color);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset .admonition > *:not(.admonition-title):not(details),
+[data-md-color-scheme="visivo_dark"] .md-typeset details > *:not(summary) {
+  color: var(--md-admonition-fg-color);
+}
 
-    .md-search__form:hover {
-        background-color: #ffffff1f
-    }
+/* ==========================================================================
+   HEADER / NAV — echo the www top bar
+   ========================================================================== */
+.md-header {
+  box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.10);
+}
+[data-md-color-scheme="visivo_dark"] .md-header {
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Brand mark in the header — rounded square like the www logo treatment. */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  border-radius: 7px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* Header tabs (when present) + active states. */
+.md-tabs__link {
+  opacity: 0.82;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.md-tabs__link:hover,
+.md-tabs__link--active {
+  opacity: 1;
+}
+
+/* ---- header CTA button (injected by overrides/partials/header.html) ---- */
+.vz-header-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0.3rem;
+  padding: 0.42rem 0.95rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--vz-mulberry-600);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.10);
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.vz-header-cta:hover {
+  background: var(--vz-mulberry-50);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.18);
+  color: var(--vz-mulberry-700);
+}
+.vz-header-cta:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+/* Hide the CTA on small screens where the header is space-constrained;
+   the install command and signup CTAs still live in the page body. */
+@media screen and (max-width: 76.1875em) {
+  .vz-header-cta { display: none; }
+}
+
+/* ==========================================================================
+   SIDEBAR NAV — brand active state to match www nav links
+   ========================================================================== */
+.md-nav__link--active,
+.md-nav__link--active > .md-ellipsis,
+.md-nav__item--active > .md-nav__link {
+  color: var(--vz-mulberry-600);
+  font-weight: 700;
+}
+[data-md-color-scheme="visivo_dark"] .md-nav__link--active,
+[data-md-color-scheme="visivo_dark"] .md-nav__item--active > .md-nav__link {
+  color: var(--vz-mulberry-300);
+}
+.md-nav__link:focus,
+.md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* Section labels (navigation.sections) in the brand color. */
+.md-nav__item--section > .md-nav__link {
+  color: var(--vz-mulberry-500);
+  font-weight: 700;
+}
+[data-md-color-scheme="visivo_dark"] .md-nav__item--section > .md-nav__link {
+  color: var(--vz-mulberry-300);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY — align with the www design system
+   ========================================================================== */
+.md-typeset h1 {
+  color: var(--vz-mulberry-600);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset h1 {
+  color: #ffffff;
+}
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--md-default-fg-color);
+}
+
+/* Headerlink anchor (¶) on hover → teal. */
+.md-typeset .headerlink:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ==========================================================================
+   CODE BLOCKS — readable in BOTH schemes (was light-on-light in dark before)
+   ========================================================================== */
+.md-typeset code,
+.md-typeset pre > code {
+  border-radius: 6px;
+}
+/* Inline code — subtle mulberry tint in light, restrained in dark. */
+[data-md-color-scheme="visivo_light"] .md-typeset :not(pre) > code {
+  background: var(--vz-mulberry-50);
+  color: var(--vz-mulberry-700);
+}
+/* Fenced code block surface — distinct from the page background. */
+[data-md-color-scheme="visivo_light"] .md-typeset pre > code,
+[data-md-color-scheme="visivo_light"] .highlight {
+  background: #f6f6f7;
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset pre > code,
+[data-md-color-scheme="visivo_dark"] .highlight {
+  background: #11141f;
+  color: rgba(255, 255, 255, 0.90);
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset :not(pre) > code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e9d9e1;
+}
+/* Copy button → teal on hover. */
+.md-clipboard:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ==========================================================================
+   LINKS / BUTTONS / TABLES
+   ========================================================================== */
+.md-typeset a {
+  text-decoration-color: rgba(113, 59, 87, 0.35);
+  text-underline-offset: 2px;
+}
+.md-typeset a:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* Material button utility ([Text](url){ .md-button }) → brand primary. */
+.md-typeset .md-button {
+  border-radius: 8px;
+  border-color: var(--vz-mulberry-500);
+  color: var(--vz-mulberry-600);
+  font-weight: 700;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.md-typeset .md-button:hover,
+.md-typeset .md-button:focus {
+  background: var(--vz-mulberry-500);
+  border-color: var(--vz-mulberry-500);
+  color: #ffffff;
+}
+.md-typeset .md-button--primary {
+  background: var(--vz-mulberry-500);
+  border-color: var(--vz-mulberry-500);
+  color: #ffffff;
+}
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  background: var(--vz-mulberry-600);
+  border-color: var(--vz-mulberry-600);
+}
+
+/* Table header tint. */
+.md-typeset table:not([class]) th {
+  background: var(--vz-mulberry-50);
+  color: var(--vz-mulberry-700);
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset table:not([class]) th {
+  background: rgba(113, 59, 87, 0.22);
+  color: #e9d9e1;
+}
+
+/* Admonition / tab accent → teal so callouts read on-brand. */
+.md-typeset .tabbed-labels > label:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* Search field (desktop) — subtle on the brand header. */
+@media screen and (min-width: 60em) {
+  .md-search__form {
+    background-color: rgba(0, 0, 0, 0.10);
+    border-radius: 8px;
+  }
+  .md-search__form:hover {
+    background-color: rgba(255, 255, 255, 0.20);
+  }
+}
+
+/* ==========================================================================
+   FOOTER — deep navy to match the www footer
+   ========================================================================== */
+.md-footer {
+  background-color: var(--vz-navy);
+}
+.md-footer-meta {
+  background-color: #14172a;
+}
+.md-footer__link:hover .md-footer__title,
+.md-footer__link:focus .md-footer__title {
+  opacity: 1;
+}
+.md-footer-meta__inner a:hover {
+  color: var(--vz-teal-300);
+}
+
+/* Selection highlight → soft mulberry. */
+::selection {
+  background: rgba(113, 59, 87, 0.22);
 }
