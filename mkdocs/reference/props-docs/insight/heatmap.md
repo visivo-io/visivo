@@ -11,7 +11,11 @@ The `heatmap` insight type is used to create heatmaps, which represent data usin
 
 You can customize the colorscale, gridlines, and other properties to fit your data and visualization needs.
 
-!!! tip "Common Uses" - **Correlation Matrices**: Visualizing relationships between variables. - **Frequency Distributions**: Showing how frequently data points occur across categories. - **Geospatial Heatmaps**: Visualizing the density or intensity of occurrences in a 2D space.
+!!! tip "Common Uses"
+
+    - **Correlation Matrices**: Visualizing relationships between variables.
+    - **Frequency Distributions**: Showing how frequently data points occur across categories.
+    - **Geospatial Heatmaps**: Visualizing the density or intensity of occurrences in a 2D space.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attributes) for the full set of configuration options**_
 

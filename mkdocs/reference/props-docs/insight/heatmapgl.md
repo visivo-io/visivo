@@ -11,7 +11,11 @@ The `heatmapgl` insight type is similar to the regular `heatmap` but is rendered
 
 You can customize the colorscale, text annotations, and other properties to create high-performance heatmaps for large-scale data.
 
-!!! tip "Common Uses" - **High-Performance Heatmaps**: Visualizing large datasets efficiently. - **Big Data Visualization**: Rendering heatmaps with thousands or millions of points. - **Correlation Matrices & Density Maps**: Displaying data where relationships or density are critical to analyze.
+!!! tip "Common Uses"
+
+    - **High-Performance Heatmaps**: Visualizing large datasets efficiently.
+    - **Big Data Visualization**: Rendering heatmaps with thousands or millions of points.
+    - **Correlation Matrices & Density Maps**: Displaying data where relationships or density are critical to analyze.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attributes) for the full set of configuration options**_
 

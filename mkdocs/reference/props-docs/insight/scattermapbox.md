@@ -11,7 +11,11 @@ The `scattermapbox` insight type is used to create scatter plots on a Mapbox map
 
 You can plot geographic points with latitude and longitude and customize the marker size, color, and labels to represent data effectively.
 
-!!! tip "Common Uses" - **Geospatial Analysis**: Plotting geographic points on an interactive map. - **Location-Based Data**: Visualizing locations and patterns on a Mapbox map. - **Mapping Events**: Plotting real-world events, like earthquakes or delivery points.
+!!! tip "Common Uses"
+
+    - **Geospatial Analysis**: Plotting geographic points on an interactive map.
+    - **Location-Based Data**: Visualizing locations and patterns on a Mapbox map.
+    - **Mapping Events**: Plotting real-world events, like earthquakes or delivery points.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scattermapbox/#attributes) for the full set of configuration options**_
 

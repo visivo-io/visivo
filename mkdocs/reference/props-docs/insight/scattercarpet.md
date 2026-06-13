@@ -11,7 +11,11 @@ The `scattercarpet` insight type is used to create scatter plots on a 2D carpet 
 
 You can customize the marker size, color, and line connections, similar to standard scatter plots but on a carpet axis.
 
-!!! tip "Common Uses" - **Non-Linear Grids**: Visualizing data points on non-standard grids where the x and y axes are distorted or uneven. - **Data Visualization with Carpet Axes**: Displaying data points in cases where the relationships between variables are non-linear or require a more flexible grid. - **Heatmap-Like Data**: Scatter plots combined with other insights like `carpet` for advanced visualizations.
+!!! tip "Common Uses"
+
+    - **Non-Linear Grids**: Visualizing data points on non-standard grids where the x and y axes are distorted or uneven.
+    - **Data Visualization with Carpet Axes**: Displaying data points in cases where the relationships between variables are non-linear or require a more flexible grid.
+    - **Heatmap-Like Data**: Scatter plots combined with other insights like `carpet` for advanced visualizations.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scattercarpet/#attributes) for the full set of configuration options**_
 

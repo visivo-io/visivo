@@ -11,7 +11,11 @@ The `histogram` insight type is used to create histograms, which represent the d
 
 You can customize bin size, orientation, and colors to fit your data. Histograms are especially useful in statistical analysis, data science, and exploratory data analysis.
 
-!!! tip "Common Uses" - **Data Distribution**: Visualizing how data points are distributed across different ranges. - **Frequency Analysis**: Showing the frequency of values within specific intervals. - **Statistical Summaries**: Understanding the spread, central tendency, and outliers in data.
+!!! tip "Common Uses"
+
+    - **Data Distribution**: Visualizing how data points are distributed across different ranges.
+    - **Frequency Analysis**: Showing the frequency of values within specific intervals.
+    - **Statistical Summaries**: Understanding the spread, central tendency, and outliers in data.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attributes) for the full set of configuration options**_
 

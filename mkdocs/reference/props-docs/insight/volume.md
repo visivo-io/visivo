@@ -11,7 +11,11 @@ The `volume` insight type is used to create 3D volume plots, visualizing 3D scal
 
 You can customize opacity, surface levels, and colors to effectively show the internal structure of the volume.
 
-!!! tip "Common Uses" - **Medical Imaging**: Visualizing 3D scans like MRI or CT data. - **Fluid Dynamics**: Representing 3D fields of density, pressure, or velocity. - **Scientific Visualization**: Displaying volumetric or scalar field data.
+!!! tip "Common Uses"
+
+    - **Medical Imaging**: Visualizing 3D scans like MRI or CT data.
+    - **Fluid Dynamics**: Representing 3D fields of density, pressure, or velocity.
+    - **Scientific Visualization**: Displaying volumetric or scalar field data.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Volume/#attributes) for the full set of configuration options**_
 

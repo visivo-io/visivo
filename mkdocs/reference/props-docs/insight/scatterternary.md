@@ -11,7 +11,11 @@ The `scatterternary` insight type is used to create scatter plots on ternary plo
 
 You can customize marker size, color, and lines to connect points, similar to scatter plots but within a ternary coordinate system.
 
-!!! tip "Common Uses" - **Proportional Data Visualization**: Visualizing data involving three interdependent components. - **Ternary Relationship Analysis**: Exploring how three components relate to one another. - **Chemistry and Economics**: Useful for compositional data visualization.
+!!! tip "Common Uses"
+
+    - **Proportional Data Visualization**: Visualizing data involving three interdependent components.
+    - **Ternary Relationship Analysis**: Exploring how three components relate to one another.
+    - **Chemistry and Economics**: Useful for compositional data visualization.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scatterternary/#attributes) for the full set of configuration options**_
 

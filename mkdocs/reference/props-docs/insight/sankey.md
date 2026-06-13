@@ -11,7 +11,11 @@ The `sankey` insight type is used to create Sankey diagrams, which visualize the
 
 You can customize the colors, labels, and flow paths to represent your data and flows effectively.
 
-!!! tip "Common Uses" - **Flow of Resources**: Visualizing how resources (e.g., money, energy, or materials) move between stages. - **Part-to-Part Relationships**: Displaying how parts contribute to other parts rather than the whole. - **Energy or Supply Chains**: Showing energy transfers or supply chain processes.
+!!! tip "Common Uses"
+
+    - **Flow of Resources**: Visualizing how resources (e.g., money, energy, or materials) move between stages.
+    - **Part-to-Part Relationships**: Displaying how parts contribute to other parts rather than the whole.
+    - **Energy or Supply Chains**: Showing energy transfers or supply chain processes.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attributes) for the full set of configuration options**_
 

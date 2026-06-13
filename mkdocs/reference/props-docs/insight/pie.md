@@ -11,7 +11,11 @@ The `pie` insight type is used to create pie charts, which are circular charts d
 
 You can customize the colors, labels, and hover information to display your data effectively.
 
-!!! tip "Common Uses" - **Part-to-Whole Relationships**: Visualizing how different parts contribute to the whole. - **Categorical Data**: Showing the proportions of different categories in a dataset. - **Survey Data**: Visualizing how responses are distributed among categories.
+!!! tip "Common Uses"
+
+    - **Part-to-Whole Relationships**: Visualizing how different parts contribute to the whole.
+    - **Categorical Data**: Showing the proportions of different categories in a dataset.
+    - **Survey Data**: Visualizing how responses are distributed among categories.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes) for the full set of configuration options**_
 
