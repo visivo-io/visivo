@@ -18,6 +18,8 @@ import {
   insertRowAtIndex,
   setItemRef,
   removeItemAtPath,
+  moveItemBetweenRows,
+  moveItemIntoSlot,
 } from './canvasReorder';
 
 const config = () => ({
@@ -101,6 +103,97 @@ describe('reorderItemsInRow', () => {
     };
     const after = reorderItemsInRow(nested, 'row.0.item.0.row.0', 0, 1);
     expect(names(after.rows[0].items[0].rows[0].items)).toEqual(['ref(y)', 'ref(x)']);
+  });
+});
+
+describe('moveItemBetweenRows (VIS-973 cross-row move)', () => {
+  test('moves an item to the end of another row, preserving its width', () => {
+    const after = moveItemBetweenRows(config(), 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.1' });
+    expect(names(after.rows[0].items)).toEqual(['ref(b)', 'ref(c)']);
+    expect(names(after.rows[1].items)).toEqual(['ref(d)', 'ref(a)']);
+    // 'a' kept its own width (6), not the destination row's.
+    expect(after.rows[1].items[1].width).toBe(6);
+  });
+
+  test('moves an item to a between-items position in another row', () => {
+    const after = moveItemBetweenRows(config(), 'row.0', 2, {
+      kind: 'between-items',
+      rowPath: 'row.1',
+      index: 0,
+    });
+    expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(b)']);
+    expect(names(after.rows[1].items)).toEqual(['ref(c)', 'ref(d)']);
+  });
+
+  test('moves an item into a NESTED sub-row', () => {
+    const nested = {
+      rows: [
+        { height: 'medium', items: [{ width: 6, chart: 'ref(a)' }] },
+        {
+          height: 'medium',
+          items: [{ width: 6, rows: [{ height: 'small', items: [{ width: 12, table: 'ref(n)' }] }] }],
+        },
+      ],
+    };
+    const after = moveItemBetweenRows(nested, 'row.0', 0, {
+      kind: 'end-of-row',
+      rowPath: 'row.1.item.0.row.0',
+    });
+    expect(names(after.rows[0].items)).toEqual([]);
+    expect(names(after.rows[1].items[0].rows[0].items)).toEqual(['ref(n)', 'ref(a)']);
+  });
+
+  test('is a no-op for a same-row target, a missing item, or a non-row target', () => {
+    const c = config();
+    expect(moveItemBetweenRows(c, 'row.0', 0, { kind: 'end-of-row', rowPath: 'row.0' })).toBe(c);
+    expect(moveItemBetweenRows(c, 'row.0', 9, { kind: 'end-of-row', rowPath: 'row.1' })).toBe(c);
+    expect(moveItemBetweenRows(c, 'row.0', 0, { kind: 'between-rows', index: 0 })).toBe(c);
+  });
+});
+
+describe('moveItemIntoSlot (VIS-989 fill an empty slot)', () => {
+  // row 0: [chart a, EMPTY slot, table c]; row 1: [chart d]
+  const slotConfig = () => ({
+    rows: [
+      {
+        height: 'medium',
+        items: [{ width: 6, chart: 'ref(a)' }, { width: 3 }, { width: 3, table: 'ref(c)' }],
+      },
+      { height: 'small', items: [{ width: 12, chart: 'ref(d)' }] },
+    ],
+  });
+
+  test('fills an empty slot in another row with the dragged item (a move)', () => {
+    // Drag row.1 item 0 (chart d) onto row.0's empty slot at index 1.
+    const after = moveItemIntoSlot(slotConfig(), 'row.1', 0, 'row.0.item.1');
+    // The empty slot is now the moved item; the source row keeps its remaining
+    // (here: re-seeded by sanitize elsewhere — the helper leaves it empty).
+    expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(d)', 'ref(c)']);
+    expect(after.rows[0].items[1].chart).toBe('ref(d)');
+    // The moved item kept its own width (12), the slot's width (3) is discarded.
+    expect(after.rows[0].items[1].width).toBe(12);
+    expect(after.rows[1].items).toEqual([]); // source emptied (sanitize re-seeds)
+  });
+
+  test('fills an empty slot within the SAME row (index shift handled)', () => {
+    // Drag row.0 item 0 (chart a) onto the empty slot at index 1 in the same row.
+    const after = moveItemIntoSlot(slotConfig(), 'row.0', 0, 'row.0.item.1');
+    // After removing index 0, the slot shifts to index 0 and is filled with a.
+    expect(names(after.rows[0].items)).toEqual(['ref(a)', 'ref(c)']);
+    expect(after.rows[0].items[0].chart).toBe('ref(a)');
+  });
+
+  test('is a no-op when the target is NOT an empty slot', () => {
+    const c = slotConfig();
+    // row.0 item.0 is a chart (filled), not an empty slot.
+    expect(moveItemIntoSlot(c, 'row.1', 0, 'row.0.item.0')).toBe(c);
+  });
+
+  test('is a no-op for a missing source item or the slot dragged onto itself', () => {
+    const c = slotConfig();
+    expect(moveItemIntoSlot(c, 'row.1', 9, 'row.0.item.1')).toBe(c);
+    // Dragging the empty slot onto itself.
+    expect(moveItemIntoSlot(c, 'row.0', 1, 'row.0.item.1')).toBe(c);
   });
 });
 

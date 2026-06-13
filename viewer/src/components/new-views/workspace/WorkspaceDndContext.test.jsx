@@ -16,6 +16,7 @@ import WorkspaceDndContext, {
   useWorkspaceDrag,
   routeWorkspaceDragEnd,
   mapDragStartData,
+  workspaceCollisionDetection,
 } from './WorkspaceDndContext';
 import useStore from '../../../stores/store';
 
@@ -46,6 +47,115 @@ describe('WorkspaceDndContext provider (VIS-802)', () => {
       </WorkspaceDndContext>
     );
     expect(screen.getByTestId('drag-probe')).toHaveTextContent('null');
+  });
+});
+
+describe('workspaceCollisionDetection — canvas item drag (VIS-974)', () => {
+  // A dnd-kit ClientRect (corners derived) keyed into the droppableRects Map.
+  const rect = (left, top, width, height) => ({
+    left,
+    top,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+  });
+  const container = (id, target) => ({ id, data: { current: { target } } });
+
+  test('a nested item drag resolves to its OWN gap, not the enclosing container body', () => {
+    // The container's in-container zone + the slot's on-item zone both ENCLOSE
+    // the small nested between-items gap; the pointer sits inside all three. The
+    // exclusion must drop the two slot-body zones so the gap is the only
+    // candidate (otherwise the big container wins and the router no-ops — the
+    // "dead gesture" in nested layouts this fixes).
+    const gap = container('gap', {
+      kind: 'between-items',
+      rowPath: 'row.0.item.1.row.0',
+      index: 1,
+    });
+    const inContainer = container('inContainer', {
+      kind: 'in-container',
+      itemPath: 'row.0.item.1',
+    });
+    const onItem = container('onItem', {
+      kind: 'on-item',
+      rowPath: 'row.0.item.1.row.0',
+      index: 0,
+    });
+    const droppableRects = new Map([
+      ['inContainer', rect(400, 0, 400, 400)],
+      ['onItem', rect(400, 0, 190, 130)],
+      ['gap', rect(595, 0, 12, 130)],
+    ]);
+    const result = workspaceCollisionDetection({
+      active: {
+        data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0.item.1.row.0' } },
+      },
+      droppableContainers: [inContainer, onItem, gap],
+      droppableRects,
+      pointerCoordinates: { x: 601, y: 60 },
+      collisionRect: rect(595, 0, 12, 130),
+    });
+    expect(result.length).toBeGreaterThan(0);
+    expect(result[0].id).toBe('gap');
+  });
+
+  test('a canvas item drag still excludes between-rows bands', () => {
+    const gap = container('gap', { kind: 'end-of-row', rowPath: 'row.0' });
+    const band = container('band', { kind: 'between-rows', index: 1 });
+    const droppableRects = new Map([
+      ['gap', rect(700, 0, 18, 200)],
+      ['band', rect(0, 90, 800, 22)],
+    ]);
+    const result = workspaceCollisionDetection({
+      active: { data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0' } } },
+      droppableContainers: [band, gap],
+      droppableRects,
+      // Pointer is over BOTH the band and the trailing gap; the band must be
+      // filtered out for an item drag so the gap wins.
+      pointerCoordinates: { x: 709, y: 100 },
+      collisionRect: rect(700, 95, 18, 10),
+    });
+    expect(result.map(r => r.id)).not.toContain('band');
+    expect(result[0].id).toBe('gap');
+  });
+
+  test('keeps an EMPTY slot on-item zone but drops a FILLED one (VIS-989)', () => {
+    const emptyOnItem = container('empty', { kind: 'on-item', rowPath: 'row.0', index: 1, empty: true });
+    const filledOnItem = container('filled', { kind: 'on-item', rowPath: 'row.0', index: 0 });
+    const droppableRects = new Map([
+      ['empty', rect(400, 0, 190, 130)],
+      ['filled', rect(0, 0, 390, 130)],
+    ]);
+    // Pointer over the empty slot only.
+    const result = workspaceCollisionDetection({
+      active: { data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.1' } } },
+      droppableContainers: [emptyOnItem, filledOnItem],
+      droppableRects,
+      pointerCoordinates: { x: 495, y: 65 },
+      collisionRect: rect(490, 60, 10, 10),
+    });
+    expect(result.map(r => r.id)).toContain('empty');
+    expect(result.map(r => r.id)).not.toContain('filled');
+  });
+
+  test('a canvas ROW drag is scoped to between-rows bands only', () => {
+    const band = container('band', { kind: 'between-rows', index: 1 });
+    const itemGap = container('itemGap', { kind: 'between-items', rowPath: 'row.0', index: 1 });
+    const droppableRects = new Map([
+      ['band', rect(0, 90, 800, 22)],
+      ['itemGap', rect(395, 0, 12, 200)],
+    ]);
+    const result = workspaceCollisionDetection({
+      active: { data: { current: { source: 'canvas', kind: 'row', rowPath: 'row.0' } } },
+      droppableContainers: [band, itemGap],
+      droppableRects,
+      pointerCoordinates: { x: 400, y: 100 },
+      collisionRect: rect(0, 95, 800, 10),
+    });
+    // Row drags resolve only to between-rows bands (closestCenter over the band
+    // group), never to an item gap.
+    expect(result[0].id).toBe('band');
   });
 });
 
@@ -249,14 +359,81 @@ describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
     expect(order).toEqual(['ref(b)', 'ref(a)']);
   });
 
-  test('canvas item drag onto a DIFFERENT row is a noop (cross-row move not supported)', () => {
+  test('canvas item drag onto a DIFFERENT row MOVES the item between rows (VIS-973)', () => {
     const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
     const result = routeWorkspaceDragEnd(
       {
         active: {
           data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 } },
         },
-        over: overCanvas({ kind: 'between-items', rowPath: 'row.1', index: 0 }),
+        // Drop at the end of row 1 → item 'a' leaves row 0 and lands in row 1.
+        over: overCanvas({ kind: 'end-of-row', rowPath: 'row.1' }),
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_move_item');
+    expect(commitCanvasConfig).toHaveBeenCalledTimes(1);
+    const [, nextConfig] = commitCanvasConfig.mock.calls[0];
+    expect(nextConfig.rows[0].items.map(it => it.chart || it.table)).toEqual(['ref(b)']);
+    expect(nextConfig.rows[1].items.map(it => it.chart || it.table)).toEqual(['ref(c)', 'ref(a)']);
+    // The moved item keeps its own width (6), not the destination row's width.
+    expect(nextConfig.rows[1].items[1].width).toBe(6);
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'move_item', rowPath: 'row.0', toRowPath: 'row.1' })
+    );
+  });
+
+  test('canvas item drag onto an EMPTY slot FILLS it (VIS-989)', () => {
+    const commitCanvasConfig = jest.fn();
+    const emit = jest.fn();
+    // row 0: [chart a, EMPTY slot]; row 1: [chart c].
+    const slotConfig = {
+      rows: [
+        { height: 'medium', items: [{ width: 6, chart: 'ref(a)' }, { width: 6 }] },
+        { height: 'small', items: [{ width: 12, chart: 'ref(c)' }] },
+      ],
+    };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.1', itemIndex: 0 } },
+        },
+        over: {
+          data: {
+            current: {
+              kind: 'canvas-drop',
+              dashboardName: 'dash',
+              config: slotConfig,
+              // The empty slot's on-item zone carries `empty: true`.
+              target: { kind: 'on-item', rowPath: 'row.0', index: 1, empty: true },
+            },
+          },
+        },
+      },
+      { commitCanvasConfig, emit }
+    );
+    expect(result).toBe('canvas_fill_slot');
+    const [, nextConfig] = commitCanvasConfig.mock.calls[0];
+    // The empty slot is now chart c; the source row emptied (sanitize re-seeds it).
+    expect(nextConfig.rows[0].items.map(it => it.chart)).toEqual(['ref(a)', 'ref(c)']);
+    expect(nextConfig.rows[1].items).toEqual([]);
+    expect(emit).toHaveBeenCalledWith(
+      'canvas_action',
+      expect.objectContaining({ kind: 'fill_slot', toRowPath: 'row.0', toIndex: 1 })
+    );
+  });
+
+  test('canvas item drag onto a FILLED slot (on-item, not empty) is a noop', () => {
+    const commitCanvasConfig = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: {
+          data: { current: { source: 'canvas', kind: 'item', rowPath: 'row.1', itemIndex: 0 } },
+        },
+        // A populated slot's on-item zone has no `empty` flag → no fill, no overwrite.
+        over: overCanvas({ kind: 'on-item', rowPath: 'row.0', index: 0 }),
       },
       { commitCanvasConfig }
     );

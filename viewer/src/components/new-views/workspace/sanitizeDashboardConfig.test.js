@@ -87,4 +87,34 @@ describe('sanitizeDashboardConfig', () => {
     const config = { rows: [{ items: [{ width: 1, markdown: '   ' }] }] };
     expect(sanitizeDashboardConfig(config).rows[0].items[0]).toEqual({ width: 1 });
   });
+
+  // VIS-989: an empty `items` array is schema-invalid (the backend rejects an
+  // empty ROW). When a move/delete empties a row, sanitize re-seeds it with one
+  // empty slot so it stays a valid, visible, droppable row.
+  test('normalizes an empty top-level row to a single empty slot', () => {
+    const config = { rows: [{ height: 'medium', items: [] }] };
+    const out = sanitizeDashboardConfig(config);
+    expect(out.rows[0].items).toEqual([{}]);
+    expect(out.rows[0].height).toBe('medium');
+  });
+
+  test('normalizes an empty NESTED row to a single empty slot', () => {
+    const config = { rows: [{ items: [{ width: 12, rows: [{ items: [] }] }] }] };
+    const out = sanitizeDashboardConfig(config);
+    expect(out.rows[0].items[0].rows[0].items).toEqual([{}]);
+  });
+
+  test('leaves a non-empty row untouched (no spurious empty slot)', () => {
+    const config = { rows: [{ items: [{ width: 6, chart: 'ref(a)' }] }] };
+    const out = sanitizeDashboardConfig(config);
+    expect(out.rows[0].items).toEqual([{ width: 6, chart: 'ref(a)' }]);
+  });
+
+  test('preserves an empty container (rows: []) — only empty ROW items are re-seeded', () => {
+    const config = { rows: [{ items: [{ width: 12, rows: [] }] }] };
+    const out = sanitizeDashboardConfig(config);
+    // The container item keeps its empty rows array; the OUTER row keeps its item.
+    expect(out.rows[0].items[0].rows).toEqual([]);
+    expect(out.rows[0].items).toHaveLength(1);
+  });
 });

@@ -69,65 +69,134 @@ const itemRefName = item => {
   return 'item';
 };
 
-// ── Drag handle ────────────────────────────────────────────────────────────
-// A grip positioned at the top-left of a row/item box. Dragging it starts a
-// canvas reorder. `rowPath` is the path of the ROW the item lives in (for an
-// item) so the router can reorder within it.
-const CanvasDragHandle = ({ id, box, kind, dragData, label, visible }) => {
+// ── Frame grab (VIS-975) ─────────────────────────────────────────────────────
+// The drag affordance for the SELECTED row/item: a grab-able border ring around
+// the node's box. This REPLACES the former six-dot grip icon — instead of a
+// floating handle, the user grips the frame of the container they already have
+// selected (the gesture the issue asked for).
+//
+// Why a ring (four edge strips) and not the whole body: the centre is left
+// OPEN, so the chart/table/input inside the slot keeps full interactivity
+// (Plotly hover/zoom, table scroll, links) even while the node is selected —
+// only the ~12px border opts into pointer events. The resize layer paints in a
+// HIGHER stacking layer (z-20 vs this layer's z-10), so its edge handles still
+// win on the edges they occupy; move (this) + resize coexist on one frame.
+//
+// Click-vs-drag is handled by the shared PointerSensor's 5px activation
+// constraint: a press that doesn't travel 5px is a click (re-selects via the
+// selection overlay's root delegation), past 5px it's a drag.
+const FRAME = 12; // px thickness of the grab ring
+
+const CanvasFrameGrab = ({ id, box, kind, dragData, label, visible }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: dragData });
-  // Reveal grips only on hover-or-selection (VIS-771 follow-up) — an always-on
-  // grip over every row/item reads as clutter. Keep the actively-dragged grip
-  // mounted (`isDragging`) so a hover change mid-drag can't unmount it and abort
-  // the gesture.
+  // Rendered only for the SELECTED node. Keep it mounted while it is the active
+  // drag (`isDragging`) so a selection change mid-drag can't unmount the source
+  // and abort the gesture.
   if (!box || (!visible && !isDragging)) return null;
-  const isRow = kind === 'row';
-  // Rows: handle sits in the LEFT GUTTER beside the row (clamped to ≥2px so it
-  // never escapes the canvas) and is taller — this keeps it clear of the row's
-  // first ITEM handle, which sits at the item's top-left corner. Without the
-  // gutter offset the row + item-0 handles overlap and the item handle (painted
-  // last) swallows every row-drag pointer.
-  const top = isRow ? box.top + box.height / 2 - 16 : box.top + 4;
-  const left = isRow ? Math.max(2, box.left - 22) : box.left + 4;
+
+  const grabCursor = isDragging ? 'grabbing' : 'grab';
+  const stripBase = {
+    position: 'absolute',
+    background: 'transparent',
+    cursor: grabCursor,
+    touchAction: 'none',
+  };
+  // Each edge strip carries the SAME drag listeners (any edge starts the drag)
+  // AND the composite `data-canvas-path`: a plain (<5px) click on ANY edge of the
+  // frame must re-select this exact node via the selection overlay's root
+  // delegation (`closest('[data-canvas-path]')`). Without the path on every
+  // strip, a click on a non-primary edge would walk up to the canvas chrome and
+  // silently DESELECT to the dashboard. Dashboard's own path node renders earlier
+  // in the DOM, so box queries (querySelector) still resolve to the real slot,
+  // not these strips. The TOP strip is additionally the primary activator: it
+  // carries the dnd-kit `attributes`, the testid, and the aria role/label.
+  const strip = (key, rect, primary = false) => (
+    <div
+      key={key}
+      {...listeners}
+      data-canvas-path={id}
+      {...(primary
+        ? {
+            ...attributes,
+            'data-testid': `canvas-drag-frame-${id}`,
+            'data-canvas-handle-kind': kind,
+            'aria-label': label,
+            title: label,
+            role: 'button',
+          }
+        : { 'aria-hidden': 'true' })}
+      className="pointer-events-auto"
+      style={{ ...stripBase, ...rect }}
+    />
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      data-canvas-frame={id}
+      className="pointer-events-none absolute z-20"
+      style={{
+        top: box.top,
+        left: box.left,
+        width: box.width,
+        height: box.height,
+        opacity: isDragging ? 0.6 : 1,
+      }}
+    >
+      {strip('top', { top: 0, left: 0, width: box.width, height: FRAME }, true)}
+      {strip('bottom', { bottom: 0, left: 0, width: box.width, height: FRAME })}
+      {strip('left', { top: 0, left: 0, width: FRAME, height: box.height })}
+      {strip('right', { top: 0, right: 0, width: FRAME, height: box.height })}
+    </div>
+  );
+};
+
+// ── Row grab gutter (VIS-990) ────────────────────────────────────────────────
+// A row's body is covered by its items, so a single-item row's item-frame and
+// row-frame would coincide — ambiguous. Rows therefore get a DISTINCT affordance:
+// a grab handle in the LEFT gutter (outside the items). Clicking it selects the
+// ROW (it carries the row's data-canvas-path); dragging it drags the row. It is
+// shown consistently for EVERY row (any item count) whenever the row is hovered
+// or selected, so item-vs-row is always visually unambiguous.
+const ROW_GUTTER_W = 16;
+
+const CanvasRowGutter = ({ id, box, dragData, label, visible }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: dragData });
+  if (!box || (!visible && !isDragging)) return null;
+  // Sit in the left margin; clamp to ≥2px so it never escapes the canvas (then it
+  // overlaps the row's leading edge, which is fine — that strip selects the row).
+  const left = Math.max(2, box.left - ROW_GUTTER_W - 2);
   return (
     <button
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       type="button"
-      data-testid={`canvas-drag-handle-${id}`}
-      data-canvas-handle-kind={kind}
-      // Carry the SAME composite path as the row/item the grip belongs to. This
-      // (a) keeps the grip revealed while the cursor is on it — the selection
-      // overlay resolves hover via `closest('[data-canvas-path]')`, which without
-      // this would resolve the grip to dashboard-chrome and clear the hover that
-      // revealed it, making the grip vanish as you reach for it — and (b) makes a
-      // plain click on the grip select that row/item (handy for selecting a row,
-      // whose chrome is otherwise mostly covered by its items). Dashboard's own
-      // path node renders earlier in the DOM, so geometry queries (querySelector)
-      // still resolve to the real row/item box, not this grip.
+      data-testid={`canvas-drag-frame-${id}`}
+      data-canvas-handle-kind="row"
       data-canvas-path={id}
       aria-label={label}
       title={label}
-      className="pointer-events-auto absolute z-20 inline-flex items-center justify-center rounded-md border border-[#c6b0bb] bg-white/95 text-[#713b57] shadow-sm transition-opacity hover:bg-[#f9f6f8]"
+      className="pointer-events-auto absolute z-20 flex items-center justify-center rounded-md border border-[#c6b0bb] bg-white/95 text-[#713b57] shadow-sm transition-opacity hover:bg-[#f9f6f8]"
       style={{
-        top,
+        top: box.top,
         left,
-        width: 18,
-        height: isRow ? 32 : 18,
+        width: ROW_GUTTER_W,
+        height: Math.max(24, box.height),
         cursor: isDragging ? 'grabbing' : 'grab',
         opacity: isDragging ? 0.5 : 1,
         touchAction: 'none',
       }}
     >
-      {/* Six-dot grip (matches the Library row grip idiom). */}
-      <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
+      {/* Vertical six-dot grip — reads as a row drag handle. */}
+      <svg viewBox="0 0 12 16" width="11" height="15" aria-hidden="true">
         <g fill="currentColor">
-          <circle cx="3.5" cy="3" r="1" />
-          <circle cx="8.5" cy="3" r="1" />
-          <circle cx="3.5" cy="6" r="1" />
-          <circle cx="8.5" cy="6" r="1" />
-          <circle cx="3.5" cy="9" r="1" />
-          <circle cx="8.5" cy="9" r="1" />
+          <circle cx="4" cy="4" r="1" />
+          <circle cx="8" cy="4" r="1" />
+          <circle cx="4" cy="8" r="1" />
+          <circle cx="8" cy="8" r="1" />
+          <circle cx="4" cy="12" r="1" />
+          <circle cx="8" cy="12" r="1" />
         </g>
       </svg>
     </button>
@@ -277,8 +346,12 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
     // drop zone, and either its on-item or in-container zone). `prevBox` is the
     // measured box of the previous sibling item (for the before-gap geometry);
     // `labelCtx` is a human-readable position for the grip's aria-label.
-    const emitItem = (item, itemPath, rowPath, ii, box, prevBox, labelCtx) => {
+    const emitItem = (item, itemPath, rowPath, ii, box, prevBox, labelCtx, rowLeft) => {
       const isContainer = Array.isArray(item.rows) && item.rows.length > 0;
+      // An empty slot (no leaf ref, no sub-rows): its on-item zone is a fillable
+      // drop target for canvas item drags (VIS-989), not just Library drags.
+      const isEmpty =
+        !item.chart && !item.table && !item.markdown && !item.input && !isContainer;
 
       handles.push({
         id: itemPath,
@@ -295,15 +368,22 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
         },
       });
 
-      // between-items drop zone in the gap BEFORE this item (index ii).
+      // between-items drop zone in the gap BEFORE this item (index ii). The zone
+      // spans from just left of the gap to the item's left edge; its left edge is
+      // clamped to the parent row's left (VIS-974) so a NESTED first item's gap
+      // can't spill out of its container and overlap the enclosing row's gaps
+      // (which would make a nested item drag ambiguous at the container's edge).
       const gapLeft = prevBox ? prevBox.left + prevBox.width : box.left - 12;
+      const rightEdge = box.left + 6;
+      const rawLeft = gapLeft - 6;
+      const zoneLeft = typeof rowLeft === 'number' ? Math.max(rowLeft, rawLeft) : rawLeft;
       zones.push({
         id: `${rowPath}-before-${ii}`,
         intent: 'between-items',
         box: {
           top: box.top,
-          left: gapLeft - 6,
-          width: Math.max(12, box.left - gapLeft + 12),
+          left: zoneLeft,
+          width: Math.max(12, rightEdge - zoneLeft),
           height: box.height,
         },
         data: {
@@ -314,8 +394,10 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
         },
       });
 
-      // on-item drop zone over the slot itself (VIS-901 #4) — Library-only
-      // affordance. Skipped for container items (they get the in-container zone).
+      // on-item drop zone over the slot itself (VIS-901 #4). For a FILLED slot
+      // this is a Library-only affordance; for an EMPTY slot (`empty: true`) it
+      // also accepts a canvas item drag, which fills the slot (VIS-989). Skipped
+      // for container items (they get the in-container zone).
       if (!isContainer) {
         zones.push({
           id: `${itemPath}-on-item`,
@@ -325,7 +407,7 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
             kind: 'canvas-drop',
             dashboardName,
             config: dashboardConfig,
-            target: { kind: 'on-item', rowPath, index: ii },
+            target: { kind: 'on-item', rowPath, index: ii, empty: isEmpty },
           },
         });
       }
@@ -393,7 +475,8 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
             ii,
             box,
             ii > 0 ? itemBoxes[ii - 1] : null,
-            `item ${ii + 1} in ${rowLabel}`
+            `item ${ii + 1} in ${rowLabel}`,
+            rowBox.left
           );
         });
 
@@ -518,20 +601,31 @@ const useCanvasDndModel = (rootRef, dashboardName, dashboardConfig) => {
   return model;
 };
 
-// Is `key` the row at `rowPath`, or any descendant item/row within it? Used to
-// reveal a row's grip when the cursor is over (or selection is on) any of its
-// items, so row-drag is reachable from anywhere in the row.
-const keyWithinRow = (key, rowPath) =>
-  !!key && (key === rowPath || key.startsWith(`${rowPath}.`));
-
-// Should a handle be revealed given the current hover + selection keys?
-const isHandleVisible = (handle, hoverKey, selectedKey) => {
-  if (handle.kind === 'row') {
-    return keyWithinRow(hoverKey, handle.id) || keyWithinRow(selectedKey, handle.id);
-  }
-  // Item grips reveal only for that exact item.
-  return hoverKey === handle.id || selectedKey === handle.id;
+// Is `key` the row at `rowPath` itself, or one of its DIRECT item children
+// (`rowPath.item.N` with no deeper nesting)? Used to reveal a row's gutter only
+// for its OWN level — a deeply nested selection reveals its immediate enclosing
+// row's gutter, not every ancestor row's, so the affordances don't stack up.
+const isDirectlyInRow = (key, rowPath) => {
+  if (!key) return false;
+  if (key === rowPath) return true;
+  const prefix = `${rowPath}.item.`;
+  if (!key.startsWith(prefix)) return false;
+  return /^\d+$/.test(key.slice(prefix.length));
 };
+
+// Should an ITEM's frame-grab be revealed? VIS-975: drag grips the SELECTED
+// item's frame, so it shows only for the EXACT selected item — exactly one item
+// frame at a time, and hovering an item paints no item frame (the chart stays
+// clean until you select it).
+const isItemFrameVisible = (handle, selectedKey) => handle.id === selectedKey;
+
+// Should a ROW's grab gutter be revealed? VIS-990: shown CONSISTENTLY for every
+// row (any item count) whenever the row itself, or one of its direct items, is
+// hovered OR selected — a single-item row's item-frame is otherwise
+// indistinguishable from its row, so the row always carries its own left-gutter
+// affordance, discoverable on hover and shown alongside a selected child item.
+const isRowGutterVisible = (handle, hoverKey, selectedKey) =>
+  isDirectlyInRow(hoverKey, handle.id) || isDirectlyInRow(selectedKey, handle.id);
 
 const CanvasDndLayer = ({ rootRef, dashboardName }) => {
   const dashboards = useStore(s => s.dashboards);
@@ -555,17 +649,28 @@ const CanvasDndLayer = ({ rootRef, dashboardName }) => {
       {zones.map(z => (
         <CanvasDropZone key={z.id} id={z.id} box={z.box} intent={z.intent} data={z.data} />
       ))}
-      {handles.map(h => (
-        <CanvasDragHandle
-          key={h.id}
-          id={h.id}
-          box={h.box}
-          kind={h.kind}
-          dragData={h.dragData}
-          label={h.label}
-          visible={isHandleVisible(h, hoverKey, selectedKey)}
-        />
-      ))}
+      {handles.map(h =>
+        h.kind === 'row' ? (
+          <CanvasRowGutter
+            key={h.id}
+            id={h.id}
+            box={h.box}
+            dragData={h.dragData}
+            label={h.label}
+            visible={isRowGutterVisible(h, hoverKey, selectedKey)}
+          />
+        ) : (
+          <CanvasFrameGrab
+            key={h.id}
+            id={h.id}
+            box={h.box}
+            kind={h.kind}
+            dragData={h.dragData}
+            label={h.label}
+            visible={isItemFrameVisible(h, selectedKey)}
+          />
+        )
+      )}
     </div>
   );
 };

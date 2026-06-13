@@ -18,6 +18,8 @@ import { emitWorkspaceEvent } from './telemetry';
 import sanitizeDashboardConfig from './sanitizeDashboardConfig';
 import {
   reorderItemsInRow,
+  moveItemBetweenRows,
+  moveItemIntoSlot,
   reorderTopLevelRows,
   reorderRowsInContainer,
   parseNestedRowPath,
@@ -70,7 +72,7 @@ const WorkspaceDragContext = createContext(null);
  * coarser targets (Library → RefDropZone, project-editor level zones) keep
  * working. This is the dnd-kit-recommended composite for overlapping droppables.
  */
-const workspaceCollisionDetection = args => {
+export const workspaceCollisionDetection = args => {
   const drag = args.active?.data?.current;
   let droppableContainers = args.droppableContainers;
   // For CANVAS drags the gap zones overlap (a between-rows band abuts the next
@@ -112,12 +114,27 @@ const workspaceCollisionDetection = args => {
       return closestCenter(scoped);
     }
     // Item drag → everything except between-rows zones AND except the on-item
-    // slot-fill zones (VIS-901 #4): those are a LIBRARY-only affordance (fill /
-    // insert-before a slot). A canvas item reorder must always resolve to a
-    // gap (between-items / end-of-row), never to the slot body, so it can't
-    // silently no-op on an on-item zone.
-    const isOnItem = c => c?.data?.current?.target?.kind === 'on-item';
-    droppableContainers = droppableContainers.filter(c => !isBetweenRows(c) && !isOnItem(c));
+    // slot-fill zones (VIS-901 #4) AND except the in-container zones (VIS-974):
+    // on-item is a LIBRARY-only affordance (fill / insert-before a slot), and
+    // in-container is a LIBRARY-only affordance (append a sub-row). Neither has a
+    // canvas-item router branch, so if the big in-container region — which
+    // ENCLOSES every nested gap of a container — won the collision, a nested item
+    // reorder would silently no-op (the "dead gesture" in nested layouts). A
+    // canvas item reorder must always resolve to a gap (between-items /
+    // end-of-row) at the correct depth, so we drop both slot-body zones here and
+    // let `pointerWithin` pick the smallest gap under the cursor (the deepest
+    // nested one wins, since its centre is nearest the pointer).
+    // A FILLED slot's on-item zone is dropped (a canvas reorder must resolve to a
+    // gap, never replace a populated slot), but an EMPTY slot's on-item zone is
+    // KEPT (VIS-989): dropping a canvas item onto an empty slot fills it.
+    const isFilledOnItem = c => {
+      const t = c?.data?.current?.target;
+      return t?.kind === 'on-item' && !t.empty;
+    };
+    const isInContainer = c => c?.data?.current?.target?.kind === 'in-container';
+    droppableContainers = droppableContainers.filter(
+      c => !isBetweenRows(c) && !isFilledOnItem(c) && !isInContainer(c)
+    );
   }
   const scoped = { ...args, droppableContainers };
   const hits = pointerWithin(scoped);
@@ -280,6 +297,53 @@ export const routeWorkspaceDragEnd = (
             from: fromIndex,
           });
         return 'canvas_reorder_items';
+      }
+
+      // Cross-row item move (VIS-973): drag an item + drop a `between-items`/
+      // `end-of-row` target on a DIFFERENT row → move the item between rows,
+      // preserving it (width included). The drop targets + collision already
+      // surface other rows; only this branch + the move helper were missing.
+      if (
+        dragData.kind === 'item' &&
+        (target.kind === 'between-items' || target.kind === 'end-of-row') &&
+        target.rowPath !== dragData.rowPath
+      ) {
+        const next = moveItemBetweenRows(config, dragData.rowPath, dragData.itemIndex, target);
+        if (next === config) return 'noop';
+        commitCanvasConfig(dashboardName, next, { kind: 'move_item' });
+        emit &&
+          emit('canvas_action', {
+            kind: 'move_item',
+            rowPath: dragData.rowPath,
+            from: dragData.itemIndex,
+            toRowPath: target.rowPath,
+          });
+        return 'canvas_move_item';
+      }
+
+      // Fill an EMPTY slot (VIS-989): drag an item onto an empty slot's on-item
+      // zone → the item fills the slot (a move; the empty placeholder is
+      // discarded). The collision keeps only EMPTY on-item zones for item drags,
+      // so a filled slot can never be silently overwritten.
+      if (dragData.kind === 'item' && target.kind === 'on-item' && target.empty) {
+        const targetItemPath = `${target.rowPath}.item.${target.index}`;
+        const next = moveItemIntoSlot(
+          config,
+          dragData.rowPath,
+          dragData.itemIndex,
+          targetItemPath
+        );
+        if (next === config) return 'noop';
+        commitCanvasConfig(dashboardName, next, { kind: 'fill_slot' });
+        emit &&
+          emit('canvas_action', {
+            kind: 'fill_slot',
+            rowPath: dragData.rowPath,
+            from: dragData.itemIndex,
+            toRowPath: target.rowPath,
+            toIndex: target.index,
+          });
+        return 'canvas_fill_slot';
       }
 
       // Row reorder: drag a row + drop a `between-rows` target.

@@ -36,13 +36,14 @@ const readRows = page =>
     return cfg && Array.isArray(cfg.rows) ? cfg.rows : [];
   }, DASHBOARD);
 
-// Grips are gated on selection — selecting an item in the row reveals the row grip.
+// VIS-975: the drag affordance is the SELECTED node's frame, painted only on the
+// exact selected node. A row's chrome is mostly covered by its items, so select
+// the row through the canvas's outline-selection store, then grab its frame.
 const revealRowHandle = async (page, rowIndex) => {
-  await page
-    .locator(`[data-canvas-path="row.${rowIndex}.item.0"]`)
-    .first()
-    .click({ position: { x: 6, y: 6 }, force: true });
-  const handle = page.getByTestId(`canvas-drag-handle-row.${rowIndex}`);
+  await page.evaluate(rp => {
+    window.useStore.getState().setWorkspaceOutlineSelectedKey(rp);
+  }, `row.${rowIndex}`);
+  const handle = page.getByTestId(`canvas-drag-frame-row.${rowIndex}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
 };

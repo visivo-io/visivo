@@ -113,8 +113,20 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     const handle = screen.getByTestId('canvas-resize-width-row.0.item.0');
     expect(handle).toHaveAttribute('data-resize-axis', 'width');
     expect(handle).toHaveAttribute('aria-label', 'Resize item width');
-    // No height handle on an item selection (that's a row affordance).
-    expect(screen.queryByTestId('canvas-resize-height-row.0.item.0')).not.toBeInTheDocument();
+  });
+
+  test('VIS-986: an item selection ALSO gets a row-height handle spanning its parent row', () => {
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.0' });
+    render(<Host />);
+    // The height handle is reachable from the item the user clicked (height is
+    // otherwise a hard-to-reach row-only affordance).
+    const height = screen.getByTestId('canvas-resize-height-row.0.item.0');
+    expect(height).toHaveAttribute('data-resize-axis', 'height');
+    expect(height).toHaveAttribute('aria-label', 'Resize row height');
+    // Anchored on the PARENT ROW box (width 800) — full-row span, not the item's
+    // 400px box: width = row 800 − 12px inset = 788px, at the row's bottom edge.
+    expect(height.style.width).toBe('788px');
+    expect(height.style.top).toBe('197px');
   });
 
   test('paints a LEFT-edge width handle on an item that has a left neighbour', () => {
@@ -234,6 +246,27 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     expect(mockCommit).toHaveBeenCalledTimes(1);
     const [, nextConfig] = mockCommit.mock.calls[0];
     expect(nextConfig.rows[0].height).toBe('large');
+  });
+
+  test('VIS-986: dragging the item-anchored height handle commits the PARENT ROW height', () => {
+    // The user has an ITEM selected (the common case — a canvas click selects a
+    // slot, not the row), yet dragging the height handle resizes that item's
+    // ROW, snapping through the HeightEnum stops.
+    useStore.setState({ workspaceOutlineSelectedKey: 'row.0.item.0' });
+    render(<Host />);
+    const handle = screen.getByTestId('canvas-resize-height-row.0.item.0');
+
+    // row.0 is "medium" (396px) start; +120px → ~516px → nearest stop "large".
+    firePointerDown(handle, { clientX: 400, clientY: 197, pointerId: 1 });
+    firePointer('pointermove', { clientX: 400, clientY: 197 + 120 });
+    firePointer('pointerup', { clientX: 400, clientY: 197 + 120 });
+
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    const [name, nextConfig] = mockCommit.mock.calls[0];
+    expect(name).toBe('dash');
+    // The PARENT row's height changed — not the item, not a sibling row.
+    expect(nextConfig.rows[0].height).toBe('large');
+    expect(nextConfig.rows[1].height).toBe('small');
   });
 
   test('Shift held during a height drag writes a numeric pixel int (fluid mode)', () => {
