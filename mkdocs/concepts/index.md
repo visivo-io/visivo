@@ -107,4 +107,5 @@ those charts. A **Dashboard** arranges the charts, tables, and inputs into a pag
 - New to Visivo? Start with [Get Started](../index.md) and run your first dashboard.
 - Want field-by-field detail? Every concept page links down into the generated
   [Configuration reference](../reference/configuration/Dashboards/Dashboard/index.md).
-- Curious how it all executes? Read [How It Works](../how_it_works.md).
+- Curious how it all executes? See the [Architecture](architecture.md) page for the
+  compile → run → serve model, or [How It Works](../how_it_works.md) for a worked example.
