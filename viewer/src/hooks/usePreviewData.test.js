@@ -1,5 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePreviewData, useInsightPreviewData, useChartPreviewJob } from './usePreviewData';
+import {
+  usePreviewData,
+  useInsightPreviewData,
+  usePreviewInsightData,
+  useChartPreviewJob,
+} from './usePreviewData';
 import { usePreviewJob } from './usePreviewJob';
 import { useInsightsData } from './useInsightsData';
 import {
@@ -618,5 +623,125 @@ describe('useChartPreviewJob — runHash gating', () => {
 
     rerender({ req: buildRequest({ type: 'indicator', value: '?{MAX(x)}', mode: 'delta' }) });
     expect(useStore.mockStoreState.updateInsightJob).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// usePreviewInsightData — the two-mode resolver (VIS-1002 / design §2 + §8.3).
+//
+// MODE A (published/saved, insight present in the main run): point the chart at
+//   the UN-prefixed key and load via useInsightsData(projectId, [name], 'main').
+// MODE B (unsaved/never-run, insight ABSENT from the main run): keep the
+//   __preview__-prefixed preview-run path (must not regress).
+// ---------------------------------------------------------------------------
+describe('usePreviewInsightData — MODE-A / MODE-B selection', () => {
+  let mockStartRun;
+  let mockResetRun;
+
+  const makePreviewJob = (overrides = {}) => ({
+    runId: null,
+    status: null,
+    progress: 0,
+    progressMessage: '',
+    result: null,
+    error: null,
+    isRunning: false,
+    isCompleted: false,
+    isFailed: false,
+    startRun: mockStartRun,
+    resetRun: mockResetRun,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockStartRun = jest.fn().mockReturnValue(pendingPromise());
+    mockResetRun = jest.fn();
+
+    usePreviewJob.mockReturnValue(makePreviewJob());
+
+    useInsightsData.mockReturnValue({
+      insights: {},
+      insightsData: {},
+      isInsightsLoading: false,
+      hasAllInsightData: false,
+      error: null,
+    });
+
+    hashQueryProps.mockImplementation(() => 'hash');
+    queryPropsHaveChanged.mockReturnValue(false);
+    extractNonQueryProps.mockReturnValue({});
+
+    useStore.mockStoreState = { insightJobs: {}, updateInsightJob: jest.fn() };
+    useStore.mockImplementation(selector => {
+      if (typeof selector === 'function') {
+        return selector(useStore.mockStoreState);
+      }
+      return undefined;
+    });
+    useStore.getState = jest.fn(() => useStore.mockStoreState);
+  });
+
+  test('MODE A: published insight (present in main run) points chart at the un-prefixed key', () => {
+    // Insight IS in the main run → insightNotInMain=false → MODE A.
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    const { result } = renderHook(() =>
+      usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' })
+    );
+
+    // The synthetic chart targets the UN-prefixed key (= the dashboard key).
+    expect(result.current.chartInsightKey).toBe('sales');
+    expect(result.current.insightNotInMain).toBe(false);
+  });
+
+  test('MODE A: loads main-run data via useInsightsData at runId=main, no prefix', () => {
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    renderHook(() => usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' }));
+
+    // The MODE-A load is the exact ChartPreview/dashboard call: default runId,
+    // no storeKeyPrefix.
+    expect(useInsightsData).toHaveBeenCalledWith('proj-1', ['sales'], 'main');
+  });
+
+  test('MODE A: does NOT fire a preview run for a published insight', () => {
+    useStore.mockStoreState.insightJobs = {
+      sales: { data: [{ x: 1 }], query: 'SELECT 1' },
+    };
+
+    renderHook(() => usePreviewInsightData({ name: 'sales' }, { projectId: 'proj-1' }));
+
+    expect(mockStartRun).not.toHaveBeenCalled();
+  });
+
+  test('MODE B: unsaved/never-run insight (absent from main) uses the __preview__ key', () => {
+    // Insight is NOT in the main run → insightNotInMain=true → MODE B.
+    const { result } = renderHook(() =>
+      usePreviewInsightData({ name: 'draft' }, { projectId: 'proj-1' })
+    );
+
+    expect(result.current.chartInsightKey).toBe('__preview__draft');
+    expect(result.current.insightNotInMain).toBe(true);
+  });
+
+  test('MODE B: fires a preview run for an absent insight (regression guard)', () => {
+    renderHook(() => usePreviewInsightData({ name: 'draft' }, { projectId: 'proj-1' }));
+
+    // The existing preview-run path (useInsightPreviewData → startRun) still
+    // fires for the never-run case — ExplorerChartPreview depends on this.
+    expect(mockStartRun).toHaveBeenCalled();
+  });
+
+  test('returns null chartInsightKey when config has no name', () => {
+    const { result } = renderHook(() => usePreviewInsightData({}, { projectId: 'proj-1' }));
+
+    // No name → insightNotInMain=false → MODE A returns the (null) name as key.
+    expect(result.current.chartInsightKey).toBeNull();
   });
 });

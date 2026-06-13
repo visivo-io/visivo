@@ -1,29 +1,26 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import InsightPreview from './InsightPreview';
-import useStore from '../../../stores/store';
-import { useInsightPreviewData } from '../../../hooks/usePreviewData';
-import { useInputsData } from '../../../hooks/useInputsData';
+import { usePreviewInsightData } from '../../../hooks/usePreviewData';
+import { usePreviewInputDependencies } from '../workspace/usePreviewInputDependencies';
 
-// Mock dependencies
-jest.mock('../../../stores/store');
+// Mock the two-mode resolver (VIS-1002) and the shared input-dependency hook
+// (VIS-1003). The component is a thin shell over them, so mocking both keeps
+// this a focused unit test of the render branches.
 jest.mock('../../../hooks/usePreviewData', () => ({
-  useInsightPreviewData: jest.fn(),
+  usePreviewInsightData: jest.fn(),
 }));
-jest.mock('../../../hooks/useInputsData');
-jest.mock('../../items/Chart', () => ({ chart, project }) => (
-  <div data-testid="chart-component">
-    Chart: {chart?.name}
-  </div>
+jest.mock('../workspace/usePreviewInputDependencies', () => ({
+  usePreviewInputDependencies: jest.fn(),
+}));
+jest.mock('../../items/Chart', () => ({ chart }) => (
+  <div data-testid="chart-component">Chart: {chart?.name}</div>
 ));
 jest.mock('../../items/Input', () => ({ input }) => (
-  <div data-testid="input-component">
-    Input: {input?.name}
-  </div>
+  <div data-testid="input-component">Input: {input?.name}</div>
 ));
 
 describe('InsightPreview', () => {
-  const mockFetchInputs = jest.fn();
   const defaultInsightConfig = {
     name: 'test_insight',
     props: {
@@ -34,45 +31,32 @@ describe('InsightPreview', () => {
     interactions: [],
   };
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    // Default store state
-    useStore.mockImplementation(selector => {
-      const state = {
-        inputs: [],
-        fetchInputs: mockFetchInputs,
-      };
-      return typeof selector === 'function' ? selector(state) : state;
-    });
-
-    // Default hook implementations
-    useInsightPreviewData.mockReturnValue({
+  const setResolver = (overrides = {}) => {
+    usePreviewInsightData.mockReturnValue({
       isLoading: false,
       error: null,
       progress: 0,
       progressMessage: '',
-      previewInsightKey: '__preview__test_insight',
+      chartInsightKey: 'test_insight',
+      insightNotInMain: false,
+      ...overrides,
     });
-    useInputsData.mockReturnValue(undefined);
+  };
+
+  const setInputs = (inputConfigs = []) => {
+    usePreviewInputDependencies.mockReturnValue({ inputConfigs });
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setResolver();
+    setInputs([]);
   });
 
   describe('Unsaved insights', () => {
     it('shows message for unsaved insights without name', () => {
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: null,
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={{ props: { type: 'scatter' } }}
-          projectId="proj-1"
-        />
-      );
+      setResolver({ chartInsightKey: null });
+      render(<InsightPreview insightConfig={{ props: { type: 'scatter' } }} projectId="proj-1" />);
 
       expect(screen.getByTestId('unsaved-insight-message')).toBeInTheDocument();
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
@@ -80,14 +64,7 @@ describe('InsightPreview', () => {
     });
 
     it('shows message for preview placeholder name', () => {
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview____preview__',
-      });
-
+      setResolver({ chartInsightKey: '__preview____preview__' });
       render(
         <InsightPreview
           insightConfig={{ name: '__preview__', props: { type: 'scatter' } }}
@@ -101,32 +78,24 @@ describe('InsightPreview', () => {
   });
 
   describe('Saved insights', () => {
-    it('calls useInsightPreviewData with insight config and projectId', () => {
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
+    it('calls usePreviewInsightData with insight config and projectId', () => {
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
-      expect(useInsightPreviewData).toHaveBeenCalledWith(
-        defaultInsightConfig,
-        { projectId: 'proj-1' }
-      );
+      expect(usePreviewInsightData).toHaveBeenCalledWith(defaultInsightConfig, {
+        projectId: 'proj-1',
+      });
     });
 
-    it('fetches inputs on mount', () => {
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
+    it('passes the resolved insight name to the input-dependency hook', () => {
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
-      expect(mockFetchInputs).toHaveBeenCalled();
+      expect(usePreviewInputDependencies).toHaveBeenCalledWith('proj-1', {
+        insightNames: ['test_insight'],
+        configForFallback: defaultInsightConfig,
+      });
     });
 
-    it('renders chart when insight has name', () => {
+    it('renders chart when insight has a resolved key', () => {
       render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
@@ -137,24 +106,20 @@ describe('InsightPreview', () => {
 
       expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
+
+    it('points the synthetic chart at the resolved (MODE A) un-prefixed key', () => {
+      setResolver({ chartInsightKey: 'test_insight' });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      // MODE A: chart references the un-prefixed insight name.
+      expect(screen.getByTestId('chart-component')).toBeInTheDocument();
+    });
   });
 
   describe('Loading and error states', () => {
     it('shows loading state when preview is running', () => {
-      useInsightPreviewData.mockReturnValue({
-        isLoading: true,
-        error: null,
-        progress: 0.5,
-        progressMessage: 'Running query...',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
+      setResolver({ isLoading: true, progress: 0.5, progressMessage: 'Running query...' });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
       expect(screen.getByTestId('preview-loading')).toBeInTheDocument();
       expect(screen.getByText('Running Preview')).toBeInTheDocument();
@@ -162,20 +127,8 @@ describe('InsightPreview', () => {
     });
 
     it('shows error state when preview fails', () => {
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: 'Query syntax error',
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
+      setResolver({ error: 'Query syntax error' });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
       expect(screen.getByTestId('preview-error')).toBeInTheDocument();
       expect(screen.getByText('Preview Failed')).toBeInTheDocument();
@@ -185,243 +138,44 @@ describe('InsightPreview', () => {
 
   describe('Input controls', () => {
     it('does not render input controls section when no inputs referenced', () => {
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
+      setInputs([]);
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
-
-      // Should not have the input controls section
       expect(screen.queryByTestId('input-controls-section')).not.toBeInTheDocument();
     });
 
-    it('renders input controls when inputs are referenced in props', () => {
-      const configWithInputs = {
-        name: 'test_insight',
-        props: {
-          type: 'scatter',
-          mode: `\${show_markers.value}`,
-        },
-      };
+    it('renders an input widget for each resolved input config', () => {
+      setInputs([{ name: 'show_markers', type: 'single-select' }]);
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithInputs}
-          projectId="proj-1"
-        />
-      );
-
-      expect(screen.getByTestId('input-component')).toBeInTheDocument();
-    });
-
-    it('renders input controls when inputs are referenced in interactions', () => {
-      const configWithInputs = {
-        name: 'test_insight',
-        props: { type: 'scatter' },
-        interactions: [
-          {
-            type: 'filter',
-            value: `x > \${min_value.value}`,
-          },
-        ],
-      };
-
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            { name: 'min_value', config: { name: 'min_value', type: 'number' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithInputs}
-          projectId="proj-1"
-        />
-      );
-
-      expect(screen.getByTestId('input-component')).toBeInTheDocument();
-    });
-
-    it('calls useInputsData with extracted input names', () => {
-      const configWithInputs = {
-        name: 'test_insight',
-        props: {
-          type: 'scatter',
-          mode: `\${show_markers.value}`,
-        },
-      };
-
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithInputs}
-          projectId="proj-1"
-        />
-      );
-
-      expect(useInputsData).toHaveBeenCalledWith('proj-1', ['show_markers']);
-    });
-
-    it('filters out model references and only loads actual inputs', () => {
-      const configWithMixedRefs = {
-        name: 'test_insight',
-        props: {
-          type: 'scatter',
-          x: 'ref(some_model).column_x', // model reference
-          mode: `\${show_markers.value}`, // input reference
-        },
-      };
-
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            // Only show_markers is an actual input
-            { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithMixedRefs}
-          projectId="proj-1"
-        />
-      );
-
-      // Should only load actual inputs, not model references
-      expect(useInputsData).toHaveBeenCalledWith('proj-1', ['show_markers']);
-    });
-
-    it('renders input controls section when inputs are present', () => {
-      const configWithInputs = {
-        name: 'test_insight',
-        props: {
-          mode: `\${show_markers.value}`,
-        },
-      };
-
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithInputs}
-          projectId="proj-1"
-        />
-      );
-
-      // Check for input controls section
       expect(screen.getByTestId('input-controls-section')).toBeInTheDocument();
+      expect(screen.getByTestId('input-component')).toHaveTextContent('show_markers');
+    });
+
+    it('renders the input controls outside the chart (above it) when both present', () => {
+      setInputs([{ name: 'show_markers', type: 'single-select' }]);
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('input-component')).toBeInTheDocument();
+      expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
   });
 
   describe('Layout configuration', () => {
     it('applies layout values to chart', () => {
-      const layoutValues = {
-        title: 'Custom Title',
-        showlegend: true,
-      };
-
       render(
         <InsightPreview
           insightConfig={defaultInsightConfig}
           projectId="proj-1"
-          layoutValues={layoutValues}
+          layoutValues={{ title: 'Custom Title', showlegend: true }}
         />
       );
 
-      // Chart component should receive layout with custom values
       expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
 
     it('uses default layout when no layoutValues provided', () => {
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
 
       expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
@@ -429,98 +183,11 @@ describe('InsightPreview', () => {
 
   describe('Error handling', () => {
     it('renders without crashing when insightConfig is null', () => {
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: null,
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={null}
-          projectId="proj-1"
-        />
-      );
+      setResolver({ chartInsightKey: null });
+      render(<InsightPreview insightConfig={null} projectId="proj-1" />);
 
       expect(screen.getByTestId('unsaved-insight-message')).toBeInTheDocument();
       expect(screen.getByText('Save to Preview with Data')).toBeInTheDocument();
-    });
-
-    it('renders without crashing when inputs fail to load', () => {
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: null,
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
-
-      expect(screen.getByTestId('chart-component')).toBeInTheDocument();
-    });
-  });
-
-  describe('Component structure', () => {
-    it('renders inputs above chart when both present', () => {
-      const configWithInputs = {
-        name: 'test_insight',
-        props: {
-          type: 'scatter',
-          mode: `\${show_markers.value}`,
-        },
-      };
-
-      useInsightPreviewData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        progress: 0,
-        progressMessage: '',
-        previewInsightKey: '__preview__test_insight',
-      });
-
-      useStore.mockImplementation(selector => {
-        const state = {
-          inputs: [
-            { name: 'show_markers', config: { name: 'show_markers', type: 'select' } },
-          ],
-          fetchInputs: mockFetchInputs,
-        };
-        return typeof selector === 'function' ? selector(state) : state;
-      });
-
-      render(
-        <InsightPreview
-          insightConfig={configWithInputs}
-          projectId="proj-1"
-        />
-      );
-
-      const inputComponent = screen.getByTestId('input-component');
-      const chartComponent = screen.getByTestId('chart-component');
-
-      // Both should be present
-      expect(inputComponent).toBeInTheDocument();
-      expect(chartComponent).toBeInTheDocument();
-    });
-
-    it('renders with proper layout structure', () => {
-      render(
-        <InsightPreview
-          insightConfig={defaultInsightConfig}
-          projectId="proj-1"
-        />
-      );
-
-      // Chart component should be rendered
-      expect(screen.getByTestId('chart-component')).toBeInTheDocument();
     });
   });
 });

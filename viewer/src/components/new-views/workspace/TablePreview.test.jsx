@@ -32,14 +32,21 @@ jest.mock('../../../hooks/useInsightsData', () => ({
 jest.mock('../../../hooks/useInputsData', () => ({
   useInputsData: jest.fn(),
 }));
+jest.mock('../../items/Input', () => ({
+  __esModule: true,
+  default: ({ input }) => <div data-testid="input-component">{input?.name}</div>,
+}));
 
-const seed = (tables = [], models = []) => {
+const seed = (tables = [], models = [], { inputs = [], insightJobs = {} } = {}) => {
   act(() => {
     useStore.setState({
       tables,
       models,
       fetchTables: jest.fn(),
       fetchModels: jest.fn(),
+      inputs,
+      fetchInputs: jest.fn(),
+      insightJobs,
     });
   });
 };
@@ -76,5 +83,31 @@ describe('TablePreview (VIS-791)', () => {
     seed([], []);
     render(<TablePreview activeObject={{ type: 'table', name: 'missing' }} projectId="p1" />);
     expect(screen.getByTestId('table-preview-empty')).toHaveTextContent(/not found/i);
+  });
+
+  // VIS-1003: input-driven, insight-backed table renders its control widget(s)
+  // (the hardcoded empty input list is replaced by the classified insightNames).
+  test('renders input controls for an input-driven insight-backed table', () => {
+    seed(
+      [{ name: 't', config: { data: '${ref(sales_insight)}' } }],
+      [],
+      {
+        inputs: [{ name: 'region', config: { name: 'region', type: 'single-select' } }],
+        insightJobs: { sales_insight: { inputDependencies: ['region'], pendingInputs: null } },
+      }
+    );
+    render(<TablePreview activeObject={{ type: 'table', name: 't' }} projectId="p1" />);
+
+    expect(screen.getByTestId('input-controls-section')).toBeInTheDocument();
+    expect(screen.getByTestId('input-component')).toHaveTextContent('region');
+    expect(screen.getByTestId('table-renderer-mock')).toBeInTheDocument();
+  });
+
+  test('renders no control strip for a model-backed table with no inputs', () => {
+    seed([{ name: 'orders', config: { data: '${ref(orders_model)}' } }], [{ name: 'orders_model' }]);
+    render(<TablePreview activeObject={{ type: 'table', name: 'orders' }} projectId="p1" />);
+
+    expect(screen.queryByTestId('input-controls-section')).not.toBeInTheDocument();
+    expect(screen.getByTestId('table-renderer-mock')).toBeInTheDocument();
   });
 });

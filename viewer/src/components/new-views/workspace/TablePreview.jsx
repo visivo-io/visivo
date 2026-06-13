@@ -3,11 +3,12 @@ import useStore from '../../../stores/store';
 import Table from '../../items/Table';
 import { useInsightsData } from '../../../hooks/useInsightsData';
 import { useModelsData } from '../../../hooks/useModelsData';
-import { useInputsData } from '../../../hooks/useInputsData';
 import {
   parseRefValue,
   extractRefNamesFromStrings,
 } from '../../../utils/refString';
+import { usePreviewInputDependencies } from './usePreviewInputDependencies';
+import PreviewInputControls from './PreviewInputControls';
 
 /**
  * TablePreview — VIS-791 / N-2.
@@ -82,9 +83,15 @@ const TablePreview = ({ activeObject, projectId }) => {
 
   useModelsData(projectId, modelNames);
   useInsightsData(projectId, insightNames);
-  // Inputs referenced by insight-backed tables (pivot/data) so input-driven
-  // tables resolve their pending values.
-  useInputsData(projectId, []);
+
+  // Resolve the UNION of input widgets across the table's insight-backed parents
+  // (the insightNames it already classifies), with a config fallback across the
+  // table config (props/layout/interactions), and seed defaults so the table
+  // populates immediately (VIS-1003). Replaces the hardcoded empty input list.
+  const { inputConfigs } = usePreviewInputDependencies(projectId, {
+    insightNames,
+    configForFallback: tableConfig,
+  });
 
   if (!tableConfig) {
     return (
@@ -100,9 +107,12 @@ const TablePreview = ({ activeObject, projectId }) => {
   }
 
   return (
-    <div data-testid="table-preview" className="flex flex-1 min-h-0 overflow-auto bg-white p-4">
-      <div className="w-full">
-        <Table table={tableConfig} projectId={projectId} shouldLoad={true} height={600} />
+    <div data-testid="table-preview" className="flex flex-1 min-h-0 flex-col bg-white">
+      <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
+      <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="w-full">
+          <Table table={tableConfig} projectId={projectId} shouldLoad={true} height={600} />
+        </div>
       </div>
     </div>
   );

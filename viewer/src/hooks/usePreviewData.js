@@ -9,6 +9,7 @@ import {
 } from '../utils/queryPropertyDetection';
 import useStore from '../stores/store';
 import { useShallow } from 'zustand/react/shallow';
+import { DEFAULT_RUN_ID } from '../constants';
 
 /**
  * Build the batched preview POST body for a single insight.
@@ -245,6 +246,85 @@ export const useInsightPreviewData = (insightConfig, options = {}) => {
     previewInsightKey,
     data: previewInsightEntry?.data || null,
     insight: previewInsightEntry || null,
+  };
+};
+
+/**
+ * Shared two-mode insight-preview resolver (VIS-1002 / design §2 + §8.3).
+ *
+ * Decides where a single previewed insight's data lives and which synthetic
+ * chart key to point the renderer at, mirroring what the dashboard already
+ * does. The mode is gated on the presence of the insight's MAIN-run job entry
+ * (`insightNotInMain = !insightJobs[name]`) — NOT on data completeness — so it
+ * does not flap while inputs resolve:
+ *
+ *   MODE A — published / saved (dominant case): the insight already has
+ *     main-run data, so point the synthetic chart at the UN-prefixed key
+ *     `insightJobs[name]` and load via `useInsightsData(projectId, [name])` at
+ *     the default `runId='main'` (no prefix) — the exact path
+ *     `workspace/ChartPreview` uses. No preview run, no spinner hang. The prior
+ *     bug always targeted `__preview__name` and only loaded via a preview run
+ *     that fires when the insight is ABSENT — so published insights never
+ *     loaded (inverted).
+ *
+ *   MODE B — unsaved / never-run / query-affecting edit: keep the existing
+ *     `__preview__`-prefixed preview-run path (`useInsightPreviewData`). The
+ *     Explorer right-rail editor (`ExplorerChartPreview`/`useChartPreviewJob`)
+ *     depends on this path, so it must not regress.
+ *
+ * Both underlying hooks are always called (rules of hooks); the result is
+ * selected by mode. The canvas is BIDIRECTIONAL like the dashboard — every
+ * config change re-runs MODE B (no staleness gate here) and inputs always
+ * default, so there is no "waiting for input" empty state.
+ *
+ * @param {Object} insightConfig - Insight configuration object (must have name)
+ * @param {Object} options
+ * @param {string} options.projectId
+ * @returns {Object} { chartInsightKey, isLoading, error, insightNotInMain, ...modeBState }
+ */
+export const usePreviewInsightData = (insightConfig, options = {}) => {
+  const insightName = insightConfig?.name || null;
+
+  // Mode is keyed on PRESENCE of the main-run job entry, never data
+  // completeness — that's what keeps the mode from flapping while an
+  // input-driven insight resolves its default value.
+  const insightNotInMain = useStore(
+    useCallback(
+      state => {
+        if (!insightName) return false;
+        return !state.insightJobs?.[insightName];
+      },
+      [insightName]
+    )
+  );
+
+  // MODE B path (existing): preview-run under the __preview__ prefix. Always
+  // invoked so it tracks edits, but only SELECTED when insightNotInMain.
+  const previewState = useInsightPreviewData(insightConfig, options);
+
+  // MODE A path: load the published insight's main-run data under its
+  // un-prefixed key — identical to the dashboard / ChartPreview call.
+  const mainState = useInsightsData(
+    options.projectId,
+    insightName ? [insightName] : [],
+    DEFAULT_RUN_ID
+  );
+
+  if (insightNotInMain) {
+    return {
+      ...previewState,
+      chartInsightKey: previewState.previewInsightKey,
+      insightNotInMain: true,
+    };
+  }
+
+  return {
+    chartInsightKey: insightName,
+    isLoading: mainState.isInsightsLoading,
+    error: mainState.error,
+    progress: 0,
+    progressMessage: '',
+    insightNotInMain: false,
   };
 };
 

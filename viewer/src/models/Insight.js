@@ -81,9 +81,16 @@ export function processInputRefsInProps(props, inputs) {
 }
 
 /**
- * Extract input names referenced in insight config (props and interactions)
- * Looks for ${inputName.accessor} and ${ref(inputName).accessor} patterns
- * @param {Object} configOrProps - Insight configuration object with props/interactions, or just props object
+ * Extract input names referenced in an object config (props, interactions, AND layout)
+ * Looks for ${inputName.accessor} and ${ref(inputName).accessor} patterns.
+ *
+ * The dependency set is the UNION across props, interactions, and layout
+ * positions (VIS-1003 / design §8.3): an input referenced only from a chart/item
+ * `layout` expression (e.g. an axis range, annotation, title, or shape) must
+ * still surface a control. When passed a bare props object (no props/layout/
+ * interactions keys) the whole object is scanned for backward compatibility.
+ *
+ * @param {Object} configOrProps - Object config with props/interactions/layout, or just a props object
  * @returns {string[]} - Array of unique input names found
  */
 export function extractInputDependenciesFromProps(configOrProps) {
@@ -117,12 +124,14 @@ export function extractInputDependenciesFromProps(configOrProps) {
     }
   }
 
-  // Check if this is a config object (has props or interactions) or just props
+  // Treat the argument as a structured config when it carries any of the
+  // dependency-bearing positions; otherwise scan it as a bare props object.
   const hasPropsKey = 'props' in configOrProps;
   const hasInteractionsKey = 'interactions' in configOrProps;
+  const hasLayoutKey = 'layout' in configOrProps;
 
-  if (hasPropsKey || hasInteractionsKey) {
-    // It's a config object with props and/or interactions
+  if (hasPropsKey || hasInteractionsKey || hasLayoutKey) {
+    // It's a config object with props, interactions, and/or layout positions
     if (configOrProps.props) {
       scanValue(configOrProps.props);
     }
@@ -132,6 +141,11 @@ export function extractInputDependenciesFromProps(configOrProps) {
           scanValue(interaction);
         }
       });
+    }
+    // Layout positions: input refs can drive axis ranges, titles, annotations,
+    // shapes, etc. on a chart/item layout. Detect them so the widget renders.
+    if (configOrProps.layout) {
+      scanValue(configOrProps.layout);
     }
   } else {
     // It's just a props object (backward compatibility for tests)

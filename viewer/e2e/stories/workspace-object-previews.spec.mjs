@@ -14,9 +14,21 @@
  *   (Vite on :3001 proxying to :8001 — `bash scripts/sandbox.sh start`)
  *
  * Object names are from the integration project:
- *   chart   = simple-scatter-chart
- *   table   = new_table
- *   insight = simple-scatter-insight
+ *   chart                = simple-scatter-chart
+ *   table                = new_table
+ *   insight              = simple-scatter-insight        (MODE A: present in main run)
+ *   input-driven chart   = split-input-test-chart        (insight depends on split_threshold)
+ *   input-driven table   = filter-input-test-table       (insight depends on min_x_value)
+ *   input-driven insight = toggle-mode-insight           (props depend on show_markers)
+ *
+ * VIS-1002 (insight preview, MODE A): a PUBLISHED insight that is present in the
+ *   `visivo run` main run renders the saved Plotly chart immediately — no preview
+ *   run, no indefinite spinner. (MODE B — an unsaved/never-run insight firing a
+ *   preview run — is exercised by the Explorer right-rail stories and the
+ *   usePreviewData unit suite; it must not regress.)
+ * VIS-1003 (inputs in previews): an input-driven chart / table / insight renders
+ *   its input control widget(s) ABOVE the body, defaulted, so the body renders
+ *   immediately and the value can be changed live.
  */
 
 import { test, expect } from '@playwright/test';
@@ -97,7 +109,9 @@ test.describe('Workspace per-object Preview lens (Track N)', () => {
     ).toBeVisible({ timeout: 30000 });
   });
 
-  test('Step 4: selecting an insight mounts the InsightPreview as a chart', async ({ page }) => {
+  test('Step 4: a PUBLISHED insight (MODE A) renders the saved chart immediately, no preview run', async ({
+    page,
+  }) => {
     await page.goto(`${BASE_URL}/workspace`);
     await page.waitForLoadState('networkidle');
 
@@ -108,13 +122,79 @@ test.describe('Workspace per-object Preview lens (Track N)', () => {
     });
     await expect(page.getByTestId('insight-preview')).toBeVisible();
 
-    // The Explorer insight render path draws a real Plotly chart.
+    // MODE A: a published insight present in the main run renders the real
+    // Plotly chart directly from main-run data — it must NOT sit on the preview
+    // "Running Preview" spinner (that path is MODE B / unsaved only).
+    await expect(page.getByTestId('preview-loading')).toHaveCount(0);
     await expect(page.locator('.js-plotly-plot svg.main-svg').first()).toBeVisible({
       timeout: 30000,
     });
   });
 
-  test('Step 5: a preview-less object (source) falls back to the Lineage lens', async ({ page }) => {
+  test('Step 6: an input-driven chart renders its input control above a Plotly chart (VIS-1003)', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/workspace`);
+    await page.waitForLoadState('networkidle');
+
+    await openObject(page, 'chart', 'split-input-test-chart');
+
+    await expect(page.getByTestId('workspace-middle-chart-preview')).toBeVisible({
+      timeout: 15000,
+    });
+
+    // The input control strip renders (defaulted) above the chart body.
+    const strip = page.locator('[data-testid="chart-preview"] [data-testid="input-controls-section"]');
+    await expect(strip).toBeVisible({ timeout: 15000 });
+    await expect(strip.getByTestId('preview-input-type-chip')).toBeVisible();
+
+    // And — because the input defaults — the Plotly chart still renders.
+    await expect(page.locator('.js-plotly-plot svg.main-svg').first()).toBeVisible({
+      timeout: 30000,
+    });
+  });
+
+  test('Step 7: an input-driven insight renders its input control above the chart (VIS-1003)', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/workspace`);
+    await page.waitForLoadState('networkidle');
+
+    await openObject(page, 'insight', 'toggle-mode-insight');
+
+    await expect(page.getByTestId('workspace-middle-insight-preview')).toBeVisible({
+      timeout: 15000,
+    });
+
+    const strip = page.locator('[data-testid="insight-preview"] [data-testid="input-controls-section"]');
+    await expect(strip).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.js-plotly-plot svg.main-svg').first()).toBeVisible({
+      timeout: 30000,
+    });
+  });
+
+  test('Step 8: an input-driven table renders its input control and populates (VIS-1003)', async ({
+    page,
+  }) => {
+    await page.goto(`${BASE_URL}/workspace`);
+    await page.waitForLoadState('networkidle');
+
+    await openObject(page, 'table', 'filter-input-test-table');
+
+    await expect(page.getByTestId('workspace-middle-table-preview')).toBeVisible({
+      timeout: 15000,
+    });
+
+    const strip = page.locator('[data-testid="table-preview"] [data-testid="input-controls-section"]');
+    await expect(strip).toBeVisible({ timeout: 15000 });
+
+    // Defaulted input → the table renders (its search toolbar appears).
+    await expect(
+      page.locator('[data-testid="table-preview"]').getByPlaceholder('Search...')
+    ).toBeVisible({ timeout: 30000 });
+  });
+
+  test('Step 9: a preview-less object (source) falls back to the Lineage lens', async ({ page }) => {
     await page.goto(`${BASE_URL}/workspace`);
     await page.waitForLoadState('networkidle');
 
