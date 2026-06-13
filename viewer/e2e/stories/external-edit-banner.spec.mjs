@@ -95,12 +95,13 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
 
   test('an external YAML edit during a dirty session drops drafts and shows the banner', async () => {
     await openCanvas(page);
-    await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
+    // Clean ⇒ the shared nav shows no Commit button.
+    await expect(page.getByTitle('Commit changes')).toHaveCount(0, { timeout: WAIT });
     const baselineRows = (await readRows(page)).length;
 
-    // Dirty the session through a real canvas action.
+    // Dirty the session through a real canvas action → the nav surfaces Commit.
     await addRowViaCanvas(page);
-    await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
+    await expect(page.getByTitle('Commit changes')).toBeVisible({ timeout: WAIT });
     expect((await readRows(page)).length).toBe(baselineRows + 1);
 
     // External edit: touch the YAML outside Visivo (comment append — a real
@@ -117,12 +118,11 @@ test.describe('External-edit banner (VIS-808 / H-2)', () => {
     await page.screenshot({ path: `${SCREENS}/vis808-01-banner.png` });
 
     // ...the draft row is gone (canvas re-rendered from the file's state,
-    // Q15 last-write-wins) and the cluster reads clean again.
+    // Q15 last-write-wins) and the nav returns clean (no Commit button).
     await expect
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
       .toBe(baselineRows);
-    await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
+    await expect(page.getByTitle('Commit changes')).toHaveCount(0, { timeout: WAIT });
   });
 
   test('the banner does not block canvas interaction and dismisses on X', async () => {

@@ -1,7 +1,7 @@
 /**
  * publishStore tests (VIS-806 / Track H H-1).
  *
- * The publish slice drives the TopBar CommitCluster: live pending-change
+ * The publish slice drives the commit affordance (TopNav Commit button + CommitModal): live pending-change
  * count, the global save-activity counter, Publish (flush draft cache to
  * YAML) and Discard (drop the draft cache, Q14 rollback).
  */

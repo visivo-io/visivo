@@ -143,17 +143,15 @@ const Workspace = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardName]);
 
-  // The shell is full-viewport. Home wraps every route in a `pt-12`
-  // container to reserve space for its fixed `<TopNav>`. The Workspace
-  // shell renders its own TopBar (per the delivered B-1 design), so we
-  // anchor the shell to `top-0 bottom-0` to occupy the full viewport
-  // height and visually replace the outer nav. The overlay must sit ABOVE
-  // TopNav's `z-50` — at the old `z-40` the outer nav covered the shell's
-  // TopBar, leaving the Publish cluster visible-but-unclickable (H-1 e2e
-  // caught this: every pointer action on the top bar hit TopNav instead).
+  // The Workspace renders UNDER Home's shared sticky `<TopNav>` (the same nav
+  // every other route uses) rather than as a full-screen overlay — commit /
+  // deploy and the tool switcher all live in that nav. We fill exactly the
+  // viewport below it (56px desktop nav height) so the rails + canvas own
+  // their internal scroll and the page itself never scrolls.
   return (
     <div
-      className="fixed inset-0 z-[60] bg-white"
+      className="flex flex-col bg-white"
+      style={{ height: 'calc(100vh - 56px)' }}
       data-testid="workspace-route-root"
     >
       <WorkspaceShell />

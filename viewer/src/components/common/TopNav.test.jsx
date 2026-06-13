@@ -6,17 +6,20 @@ import TopNav from './TopNav';
 
 const renderNav = (props = {}) =>
   render(
-    <MemoryRouter initialEntries={['/editor']} future={futureFlags}>
+    <MemoryRouter initialEntries={['/workspace']} future={futureFlags}>
       <TopNav {...props} />
     </MemoryRouter>
   );
 
 describe('TopNav', () => {
-  it('renders the four intra-project tools', () => {
+  it('renders the three intra-project tools (Workspace subsumes Editor + Lineage)', () => {
     renderNav();
-    ['Explorer', 'Lineage', 'Editor', 'Dashboards'].forEach(label => {
+    ['Explorer', 'Workspace', 'Dashboards'].forEach(label => {
       expect(screen.getByTitle(label)).toBeInTheDocument();
     });
+    // The legacy Editor / Lineage tools are gone — folded into Workspace.
+    expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Lineage')).not.toBeInTheDocument();
   });
 
   it('defaults to the single Local stage (the viewer has no real stages)', () => {
@@ -24,22 +27,22 @@ describe('TopNav', () => {
     expect(screen.getByText('Local')).toBeInTheDocument();
   });
 
-  it('shows Commit and hides Deploy when there are uncommitted changes', () => {
+  it('shows both Commit and Deploy when there are uncommitted changes', () => {
     renderNav({ hasUncommittedChanges: true });
     expect(screen.getByTitle('Commit changes')).toBeInTheDocument();
-    expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
-  });
-
-  it('shows Deploy and hides Commit when clean', () => {
-    renderNav({ hasUncommittedChanges: false });
     expect(screen.getByTitle('Deploy')).toBeInTheDocument();
+  });
+
+  it('shows neither Commit nor Deploy when the project is clean', () => {
+    renderNav({ hasUncommittedChanges: false });
+    expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
   });
 
-  it('hides Deploy entirely when showDeploy is false (cloud has no deploy)', () => {
-    renderNav({ hasUncommittedChanges: false, showDeploy: false });
+  it('shows Commit but not Deploy when dirty and showDeploy is false (cloud)', () => {
+    renderNav({ hasUncommittedChanges: true, showDeploy: false });
+    expect(screen.getByTitle('Commit changes')).toBeInTheDocument();
     expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Commit changes')).not.toBeInTheDocument();
   });
 
   it('hides version history when no versions are provided (local)', () => {
@@ -74,7 +77,7 @@ describe('TopNav', () => {
 
   it('account variant (no tools, no stages) shows neither tools nor a capsule', () => {
     renderNav({ tools: [], stages: [] });
-    expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
     expect(screen.queryByText('Local')).not.toBeInTheDocument();
   });
 
@@ -82,7 +85,7 @@ describe('TopNav', () => {
     const stages = [{ id: 'prod', name: 'Production', color: '#16a34a', isDefault: true }];
     renderNav({ tools: [], stages, currentStage: stages[0], onAllStages: () => {} });
     expect(screen.getByText('Production')).toBeInTheDocument();
-    expect(screen.queryByTitle('Editor')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Explorer')).not.toBeInTheDocument();
   });
 
   it('stage dropdown always shows the search and lists DEFAULT before STARRED', () => {

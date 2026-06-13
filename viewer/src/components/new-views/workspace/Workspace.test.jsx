@@ -141,10 +141,9 @@ describe('VIS-775 Workspace shell', () => {
   test('mounts the shell at /workspace (unscoped) with the project tab as default', () => {
     renderAt('/workspace');
     expect(screen.getByTestId('workspace-shell')).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-top-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-top-bar-project-name')).toHaveTextContent(
-      'analytics-platform'
-    );
+    // The Workspace no longer renders its own dark top bar — commit / deploy
+    // and the project name live in Home's shared <TopNav>.
+    expect(screen.queryByTestId('workspace-top-bar')).not.toBeInTheDocument();
     // Project tab is hydrated on mount.
     expect(
       screen.getByTestId('workspace-tab-project:analytics-platform')
@@ -205,21 +204,13 @@ describe('VIS-775 Workspace shell', () => {
     expect(chip).toHaveAttribute('data-object-type', 'dashboard');
   });
 
-  test('Commit cluster: disabled + "Saved" when clean, count badge when dirty (H-1)', () => {
-    // Clean state — the cluster renders, Publish is disabled, pill says Saved.
+  test('does not render its own commit cluster — commit lives in the shared TopNav', () => {
     renderAt('/workspace');
-    expect(screen.getByTestId('workspace-top-bar-commit')).toBeDisabled();
-    expect(screen.getByTestId('workspace-save-pill-clean')).toHaveTextContent('Saved');
-    // Mark dirty with a live pending count.
-    act(() => {
-      useStore.setState({ hasUncommittedChanges: true, pendingCount: 3 });
-    });
-    const publish = screen.getByTestId('workspace-top-bar-commit');
-    expect(publish).toBeEnabled();
-    expect(publish).toHaveTextContent('Commit');
-    expect(publish).toHaveTextContent('3');
-    expect(screen.getByTestId('workspace-save-pill-dirty')).toHaveTextContent('3 changes');
-    expect(screen.getByTestId('workspace-top-bar-discard')).toBeInTheDocument();
+    // The dark-bar CommitCluster (save pill + Discard + Commit·N) is gone; the
+    // shared TopNav (mounted by Home, not by the Workspace route) owns commit.
+    expect(screen.queryByTestId('workspace-top-bar-commit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-save-pill-clean')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-top-bar-discard')).not.toBeInTheDocument();
   });
 
   test('fires workspace_mode_entered telemetry on mount with dashboard scope', () => {

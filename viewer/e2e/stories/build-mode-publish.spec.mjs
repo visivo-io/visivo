@@ -1,11 +1,12 @@
 /**
- * Story: Build-mode Save/Publish cluster (VIS-806 / Track H H-1).
+ * Story: Build-mode commit + discard via the shared TopNav (VIS-806 / Track H H-1).
  *
- * The Workspace TopBar mounts <CommitCluster> — the status pill + Discard +
- * Commit·N group. Every canvas action auto-saves to the backend draft cache;
- * the cluster's pending count updates live; Commit opens the confirm modal
- * and flushes the cache to YAML; Discard drops the cache and the canvas
- * reverts to last-committed state.
+ * The Workspace now renders UNDER Home's shared <TopNav>; commit / deploy live
+ * in that nav (a Commit button surfaces only when there are uncommitted draft
+ * changes), and the commit-confirm + Discard flow is the layout-level
+ * <CommitModal>. Every canvas action auto-saves to the backend draft cache,
+ * which flips the nav into the dirty state; Commit flushes the cache to YAML;
+ * Discard (in the modal) drops the cache and the canvas reverts.
  *
  * The commit step REALLY writes test-projects/integration/project.visivo.yml.
  * The suite snapshots the file in beforeAll and restores it byte-for-byte in
@@ -35,6 +36,11 @@ const PROJECT_YML = path.resolve(
 
 test.use({ viewport: { width: 1600, height: 1400 } });
 
+// The commit affordance is now the shared TopNav Commit button (title "Commit
+// changes"); it exists ONLY when the project is dirty. Clean = it's absent.
+const navCommit = page => page.getByTitle('Commit changes');
+const navDeploy = page => page.getByTitle('Deploy');
+
 const readRows = page =>
   page.evaluate(name => {
     const s = window.useStore.getState();
@@ -54,7 +60,7 @@ const openCanvas = async page => {
 };
 
 // Append a 3-up row through the real "+ Add row" affordance — the canvas
-// action whose auto-save the cluster must surface.
+// action whose auto-save flips the nav into the dirty (committable) state.
 const addRowViaCanvas = async page => {
   const before = (await readRows(page)).length;
   await page.getByTestId('canvas-add-row-end-button').click();
@@ -71,8 +77,8 @@ const discardViaApi = async request => {
 };
 
 // Self-contained test setup: drop any leftover drafts on the backend, wait
-// until it reports clean, then open a fresh canvas so the store re-hydrates
-// from the clean state. Keeps every test independent of its predecessors.
+// until it reports clean, then open a fresh canvas. Clean ⇒ the shared nav
+// shows no Commit button. Keeps every test independent of its predecessors.
 const startClean = async (page, request) => {
   await discardViaApi(request);
   await expect
@@ -85,10 +91,10 @@ const startClean = async (page, request) => {
     )
     .toBe(0);
   await openCanvas(page);
-  await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
+  await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
 };
 
-test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
+test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(180000);
 
@@ -117,105 +123,92 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     await page.close();
   });
 
-  test('clean baseline: "Saved" pill, Publish disabled, no Discard', async ({ request }) => {
+  test('clean baseline: no Commit/Deploy in the nav, and the nav is the interactive top surface', async ({
+    request,
+  }) => {
     await startClean(page, request);
-    await expect(page.getByTestId('workspace-save-pill-clean')).toHaveText(/Saved/, {
-      timeout: WAIT,
+    // Clean ⇒ nothing to commit or deploy, so the action slot is empty.
+    await expect(navCommit(page)).toHaveCount(0);
+    await expect(navDeploy(page)).toHaveCount(0);
+
+    // Regression guard for the un-overlay: the workspace must sit UNDER the
+    // shared sticky TopNav now — the element at the very top is the <nav>,
+    // not the workspace root (the old z-[60] overlay covered the nav).
+    const topIsNav = await page.evaluate(() => {
+      const hit = document.elementFromPoint(Math.floor(window.innerWidth / 2), 12);
+      return Boolean(hit && hit.closest('nav'));
     });
-    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
-    await expect(page.getByTestId('workspace-top-bar-discard')).toHaveCount(0);
-
-    // Regression guard: the Workspace overlay must stack ABOVE Home's fixed
-    // TopNav (z-[60] > z-50). At the old z-40 the outer nav covered this bar,
-    // making every cluster button visible-but-unclickable.
-    const coveredByOuterNav = await page.evaluate(() => {
-      const bar = document.querySelector('[data-testid="workspace-top-bar"]');
-      const hit = document.elementFromPoint(Math.floor(window.innerWidth / 2), 24);
-      return !(bar && hit && bar.contains(hit));
-    });
-    expect(coveredByOuterNav, 'workspace top bar is the interactive surface').toBe(false);
-
-    // The bar's Deploy opens the real DeployModal (the outer nav's Deploy is
-    // unreachable in Build mode now).
-    await page.getByTestId('workspace-top-bar-deploy').hover();
-    await page.getByTestId('workspace-top-bar-deploy').click();
-    await expect(page.getByText('Project Deployment')).toBeVisible({ timeout: WAIT });
-    await page.getByRole('button', { name: '×' }).click();
-    await expect(page.getByText('Project Deployment')).toHaveCount(0);
-
-    await page.screenshot({ path: `${SCREENS}/vis806-01-clean-cluster.png` });
+    expect(topIsNav, 'the shared TopNav is the top interactive surface').toBe(true);
+    await page.screenshot({ path: `${SCREENS}/vis806-01-clean-nav.png` });
   });
 
-  test('a canvas action lights the cluster: live count + enabled Publish + Discard', async ({
+  test('a canvas action surfaces Commit + Deploy in the nav; Deploy opens the deploy modal', async ({
     request,
   }) => {
     await startClean(page, request);
     await addRowViaCanvas(page);
 
-    await expect(page.getByTestId('workspace-save-pill-dirty')).toHaveText(/1 change/, {
-      timeout: WAIT,
-    });
-    const publish = page.getByTestId('workspace-top-bar-commit');
-    await expect(publish).toBeEnabled();
-    await expect(publish).toHaveText(/Commit/);
-    await expect(publish).toHaveText(/1/);
-    await expect(page.getByTestId('workspace-top-bar-discard')).toBeVisible();
-    await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-cluster.png` });
+    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
+    await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
+    await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-nav.png` });
+
+    // The nav Deploy opens Home's deploy modal.
+    await navDeploy(page).click();
+    await expect(page.getByText('Project Deployment')).toBeVisible({ timeout: WAIT });
+    await page.getByRole('button', { name: '×' }).click();
+    await expect(page.getByText('Project Deployment')).toHaveCount(0);
   });
 
-  test('Discard: confirm dialog → draft cache dropped → canvas reverts', async ({ request }) => {
+  test('Discard (in the commit modal) drops the draft cache → canvas reverts', async ({
+    request,
+  }) => {
     await startClean(page, request);
     const baselineRows = (await readRows(page)).length;
     await addRowViaCanvas(page);
     expect((await readRows(page)).length).toBe(baselineRows + 1);
-    await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
+    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
 
-    await page.getByTestId('workspace-top-bar-discard').hover();
-    await page.getByTestId('workspace-top-bar-discard').click();
-    await expect(page.getByTestId('workspace-discard-confirm')).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('workspace-discard-confirm')).toHaveText(/Discard 1 change\?/);
+    // Commit button opens the modal; the modal hosts Discard.
+    await navCommit(page).click();
+    await expect(page.getByTestId('commit-modal-pending-list')).toBeVisible({ timeout: WAIT });
+    await page.getByTestId('commit-modal-discard').click();
+    await expect(page.getByTestId('commit-modal-discard-confirm')).toHaveText(
+      /Discard all 1 change\?/
+    );
     await page.screenshot({ path: `${SCREENS}/vis806-03-discard-confirm.png` });
+    await page.getByTestId('commit-modal-discard-confirm-button').click();
 
-    await page.getByTestId('workspace-discard-confirm-button').click();
-    await expect(page.getByTestId('workspace-discard-confirm')).toHaveCount(0, {
-      timeout: WAIT,
-    });
-
-    // Count returns to 0 and the canvas re-renders from last-published state.
-    await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
+    // Modal closes, the nav Commit button is gone, and the canvas re-renders
+    // from last-committed state (the added row is dropped).
+    await expect(page.getByTestId('commit-modal-pending-list')).toHaveCount(0, { timeout: WAIT });
+    await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
     await expect
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
-      .toBe(baselineRows); // reverted — the discarded row is gone
-    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled();
+      .toBe(baselineRows);
     await page.screenshot({ path: `${SCREENS}/vis806-04-after-discard.png` });
   });
 
-  test('Publish: modal lists the pending change → YAML written → "Published ✓" flash → clean', async ({
+  test('Commit: modal lists the pending change → YAML written → nav returns clean', async ({
     request,
   }) => {
     await startClean(page, request);
     const yamlBefore = fs.readFileSync(PROJECT_YML, 'utf8');
     const rowsAfterAdd = (await addRowViaCanvas(page)) + 1;
 
-    await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
-    await page.getByTestId('workspace-top-bar-commit').hover();
-    await page.getByTestId('workspace-top-bar-commit').click();
+    await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
+    await navCommit(page).click();
 
-    // The PublishModal confirm step lists the dashboard's pending change.
+    // The modal confirm step lists the dashboard's pending change.
     const modalCommit = page.getByRole('button', { name: 'Commit Changes' });
     await expect(modalCommit).toBeVisible({ timeout: WAIT });
     await expect(page.getByTestId('commit-modal-pending-list')).toContainText(DASHBOARD);
-    await page.screenshot({ path: `${SCREENS}/vis806-05-publish-modal.png` });
+    await page.screenshot({ path: `${SCREENS}/vis806-05-commit-modal.png` });
 
     await modalCommit.click();
 
-    // Transient success flash (≤2s) then the cluster settles clean.
-    await expect(page.getByTestId('workspace-save-pill-committed')).toBeVisible({
-      timeout: WAIT,
-    });
-    await page.screenshot({ path: `${SCREENS}/vis806-06-published-flash.png` });
-    await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
-    await expect(page.getByTestId('workspace-top-bar-commit')).toBeDisabled({ timeout: WAIT });
+    // The modal closes and the nav returns clean (no Commit button).
+    await expect(page.getByTestId('commit-modal-pending-list')).toHaveCount(0, { timeout: WAIT });
+    await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
 
     // YAML round-trip: the file actually changed on disk and the backend
     // reports a clean draft cache.
@@ -224,42 +217,33 @@ test.describe('Build-mode Save/Publish cluster (VIS-806 / H-1)', () => {
     const pending = await (await request.get(`${BASE}/api/commit/pending/`)).json();
     expect(pending.count).toBe(0);
 
-    // The published row survives a re-fetch (it's in YAML now, not the cache).
+    // The committed row survives a re-fetch (it's in YAML now, not the cache).
     await expect
       .poll(async () => (await readRows(page)).length, { timeout: WAIT })
       .toBe(rowsAfterAdd);
   });
 
-  test('cluster fits a 1280px top bar without pushing Deploy/utilities off-screen', async ({
-    request,
-  }) => {
+  test('the nav commit/deploy actions stay on-screen at 1280px', async ({ request }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await startClean(page, request);
-    await addRowViaCanvas(page); // dirty state = widest cluster (pill+Discard+Publish·N)
+    await addRowViaCanvas(page);
 
-    await expect(page.getByTestId('workspace-save-pill-dirty')).toBeVisible({ timeout: WAIT });
-    for (const id of [
-      'workspace-top-bar-commit',
-      'workspace-top-bar-discard',
-      'workspace-top-bar-deploy',
-      'workspace-top-bar-slack',
-      'workspace-top-bar-docs',
-      'workspace-top-bar-account',
-    ]) {
-      const box = await page.getByTestId(id).boundingBox();
-      expect(box, `${id} is rendered`).toBeTruthy();
-      expect(box.x + box.width, `${id} fits inside 1280px`).toBeLessThanOrEqual(1280);
+    for (const action of [navCommit(page), navDeploy(page)]) {
+      await expect(action).toBeVisible({ timeout: WAIT });
+      const box = await action.boundingBox();
+      expect(box, 'action button is rendered').toBeTruthy();
+      expect(box.x + box.width, 'fits inside 1280px').toBeLessThanOrEqual(1280);
     }
-    await page.screenshot({ path: `${SCREENS}/vis806-07-1280-top-bar.png` });
+    await page.screenshot({ path: `${SCREENS}/vis806-06-1280-nav.png` });
 
     // Clean up the extra draft so afterAll's restore starts from a known state.
-    await page.getByTestId('workspace-top-bar-discard').click();
-    await expect(page.getByTestId('workspace-discard-confirm')).toBeVisible({ timeout: WAIT });
-    await page.getByTestId('workspace-discard-confirm-button').click();
-    await expect(page.getByTestId('workspace-save-pill-clean')).toBeVisible({ timeout: WAIT });
+    await navCommit(page).click();
+    await page.getByTestId('commit-modal-discard').click();
+    await page.getByTestId('commit-modal-discard-confirm-button').click();
+    await expect(navCommit(page)).toHaveCount(0, { timeout: WAIT });
   });
 
-  test('no console errors across the publish/discard gestures', async () => {
+  test('no console errors across the commit/discard gestures', async () => {
     const NOISE = [
       'favicon',
       'DevTools',

@@ -1,5 +1,4 @@
 import React from 'react';
-import TopBar from './TopBar';
 import TabStrip from './TabStrip';
 import LeftRail from './LeftRail';
 import RightRail from './RightRail';
@@ -18,10 +17,10 @@ import useStore from '../../../stores/store';
  * layout-relevant state (collapsed flags + widths) so its outer width divs
  * resize correctly.
  *
- * Layout (matches the delivered B-1 design's bands + columns):
+ * Layout — the shell fills the area below Home's shared sticky `<TopNav>`
+ * (commit / deploy / tools live up there, not in the shell):
  *
- *   ┌──────────── TopBar (h-12 navy, full width) ────────────┐
- *   ├────────────┬──────────────────────────────────────────┤
+ *   ┌────────────┬──────────────────────────────────────────┐
  *   │            │ TabStrip (h-9 white, scoped to active obj)│
  *   │ LeftRail   ├──────────────────────────┬───────────────┤
  *   │ (full-h)   │ MiddlePane               │ RightRail     │
@@ -29,10 +28,10 @@ import useStore from '../../../stores/store';
  *   │            │                          │               │
  *   └────────────┴──────────────────────────┴───────────────┘
  *
- * Key insight: the **left rail anchors full-height** (from the TopBar to
- * the bottom). The **tab strip's width matches what it scopes** — middle +
- * right rail only, NOT the Library — making it visually obvious that tabs
- * control the editor surface, not the project navigator.
+ * Key insight: the **left rail anchors full-height**. The **tab strip's
+ * width matches what it scopes** — middle + right rail only, NOT the
+ * Library — making it visually obvious that tabs control the editor
+ * surface, not the project navigator.
  */
 const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
   // Layout state — for the shell's own width divs only. Children read their
@@ -55,7 +54,6 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      <TopBar />
       {/* Single shared dnd-kit context (VIS-802 / G-1) — spans the Library
           (drag source, left rail) AND the right-rail RefDropZones so a Library
           row dragged onto a form field reaches its drop target. It SUBSUMES
@@ -98,9 +96,9 @@ const WorkspaceShell = ({ testId = 'workspace-shell' }) => {
           </div>
         </div>
       </WorkspaceDndContext>
-      {/* The publish confirm flow (H-1) is Home's layout-level <CommitModal>;
-          its ModalOverlay stacks at z-[70], above this shell's z-[60] route
-          overlay, so the Workspace deliberately does NOT mount a second one. */}
+      {/* Commit / Deploy live in Home's shared <TopNav>; the commit confirm
+          (and Discard) flow is Home's layout-level <CommitModal>. The shell
+          mounts neither a top bar nor a second modal. */}
     </div>
   );
 };
