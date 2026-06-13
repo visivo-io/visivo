@@ -23,7 +23,7 @@ The script installs the `visivo` binary to `~/.visivo/bin` and adds it to your `
 Best for Python developers and data scientists who want to integrate Visivo into existing workflows.
 
 ### Requirements
-- Python 3.10 or higher
+- Python 3.12 or higher
 - Virtual environment recommended
 
 ### Standard Installation
@@ -64,7 +64,7 @@ visivo --version
 For developers who want to contribute or customize Visivo:
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.12+
 - Node.js 16+ (for frontend development)
 - Git
 
@@ -147,11 +147,11 @@ If you have multiple Python versions:
 
 ```bash
 # Specify Python version
-python3.10 -m pip install visivo
+python3.14 -m pip install visivo
 
 # Or use pyenv
-pyenv install 3.10.0
-pyenv local 3.10.0
+pyenv install 3.14.6
+pyenv local 3.14.6
 pip install visivo
 ```
 

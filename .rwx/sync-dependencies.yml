@@ -7,11 +7,11 @@ on:
 
 base:
   image: ubuntu:22.04
-  config: rwx/base 1.0.2
+  config: rwx/base 1.1.1
 
 tasks:
   - key: visivo-code
-    call: mint/git-clone 1.6.4
+    call: git/clone 1.9.5
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
@@ -19,14 +19,14 @@ tasks:
       github-access-token: ${{ github.token }}
 
   - key: core-code
-    call: mint/git-clone 1.6.4
+    call: git/clone 1.9.5
     with:
       repository: https://github.com/visivo-io/core.git
       path: core
       ref: main
       preserve-git-dir: true
       github-access-token: ${{ github.token }}
-        
+
   - key: jq
     run: sudo apt-get update && sudo apt-get install -y jq
 
@@ -38,7 +38,7 @@ tasks:
       - core/app/.nvmrc
 
   - key: node
-    call: mint/install-node 1.1.4
+    call: nodejs/install 1.1.14
     with:
       node-version: ${{ tasks.versions.values.node }}
 
@@ -62,7 +62,7 @@ tasks:
         echo "true" > $MINT_VALUES/has_changes
       fi
   - key: github-cli
-    call: github/install-cli 1.0.5 
+    call: github/install-cli 1.0.10
 
   - key: create-pull-request
     use: [sync-dependencies, github-cli]
