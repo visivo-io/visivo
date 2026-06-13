@@ -1,7 +1,74 @@
-.visivo-purple {
-    color: #713B57;
-  }
+/* ==========================================================================
+   Visivo docs — icon + object-type accent utilities (VIS-949)
+   --------------------------------------------------------------------------
+   The object-type rainbow below mirrors the viewer's source of truth
+   (visivo/viewer/.../objectTypeConfigs.js) and the www homepage Pipeline
+   (src/constants/objectTypeColors.js), so an object reads in the SAME color
+   across docs, the marketing site, app.visivo.io, and the `visivo serve`
+   viewer. Apply on the Concepts/Topics pages, e.g.:
 
-.visivo-orange {
-    color: #D25946;
-    }
+     :material-database:{ .vz-source }  Source
+     ## Models { .vz-model }
+
+   The classes color text/SVG-icon fills; the matching `--vz-bg` / accent
+   border helpers tint a callout or badge.
+   ========================================================================== */
+
+/* Legacy brand-icon helpers (kept — referenced in existing pages). */
+.visivo-purple { color: #713b57; }
+.visivo-orange { color: #d25946; }
+
+/* ---- object-type rainbow (source → dashboard spectrum) ---- */
+.vz-source    { color: #f97316; }  /* orange  — Sources */
+.vz-model     { color: #f59e0b; }  /* amber   — Models */
+.vz-csvmodel  { color: #84cc16; }  /* lime    — CSV Script Models */
+.vz-mergemodel{ color: #22c55e; }  /* green   — Local Merge Models */
+.vz-dimension { color: #14b8a6; }  /* teal    — Dimensions */
+.vz-metric    { color: #06b6d4; }  /* cyan    — Metrics */
+.vz-relation  { color: #3b82f6; }  /* blue    — Relations */
+.vz-input     { color: #6366f1; }  /* indigo  — Inputs */
+.vz-insight   { color: #a855f7; }  /* purple  — Insights */
+.vz-markdown  { color: #8b5cf6; }  /* violet  — Markdowns */
+.vz-table     { color: #d946ef; }  /* fuchsia — Tables */
+.vz-chart     { color: #ec4899; }  /* pink    — Charts */
+.vz-dashboard { color: #f43f5e; }  /* rose    — Dashboards */
+
+/* ---- soft-background badge helpers (object-type chips) ---- */
+.vz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.12em 0.6em;
+  border-radius: 9999px;
+  font-size: 0.78em;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.vz-chip-source    { color: #9a4a0d; background: rgba(249, 115, 22, 0.14); }
+.vz-chip-model     { color: #92560a; background: rgba(245, 158, 11, 0.14); }
+.vz-chip-csvmodel  { color: #4d7c0f; background: rgba(132, 204, 22, 0.16); }
+.vz-chip-mergemodel{ color: #15803d; background: rgba(34, 197, 94, 0.16); }
+.vz-chip-dimension { color: #0f766e; background: rgba(20, 184, 166, 0.16); }
+.vz-chip-metric    { color: #0e7490; background: rgba(6, 182, 212, 0.16); }
+.vz-chip-relation  { color: #1d4ed8; background: rgba(59, 130, 246, 0.14); }
+.vz-chip-input     { color: #4338ca; background: rgba(99, 102, 241, 0.14); }
+.vz-chip-insight   { color: #7e22ce; background: rgba(168, 85, 247, 0.14); }
+.vz-chip-markdown  { color: #6d28d9; background: rgba(139, 92, 246, 0.14); }
+.vz-chip-table     { color: #a21caf; background: rgba(217, 70, 239, 0.14); }
+.vz-chip-chart     { color: #be185d; background: rgba(236, 72, 153, 0.14); }
+.vz-chip-dashboard { color: #be123c; background: rgba(244, 63, 94, 0.14); }
+
+/* Dark-scheme chips: brighten text, keep the same hue family. */
+[data-md-color-scheme="visivo_dark"] .vz-chip-source    { color: #fdba74; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-model     { color: #fcd34d; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-csvmodel  { color: #bef264; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-mergemodel{ color: #86efac; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-dimension { color: #5eead4; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-metric    { color: #67e8f9; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-relation  { color: #93c5fd; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-input     { color: #a5b4fc; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-insight   { color: #d8b4fe; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-markdown  { color: #c4b5fd; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-table     { color: #f0abfc; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-chart     { color: #f9a8d4; }
+[data-md-color-scheme="visivo_dark"] .vz-chip-dashboard { color: #fda4af; }
