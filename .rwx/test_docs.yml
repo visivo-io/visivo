@@ -36,6 +36,19 @@ tasks:
       - poetry.lock
       - pyproject.toml
 
+  # Docs-vs-code parity guard (VIS-874). Fast static checks that keep the
+  # model-generated reference honest and block 2.0-deprecated prose:
+  #   1. the committed schema JSON matches a freshly generated schema,
+  #   2. every model with a generated reference page has a non-empty description,
+  #   3. no banned 2.0 phrases ("traces:" key, "trace types") in docs prose.
+  # These also run in the full suite (test_visivo.yml -> test-cli), but are
+  # pinned here so the docs pipeline alone enforces parity.
+  - key: docs-parity
+    use: cli-dependencies
+    run: |
+      poetry install --with dev
+      poetry run pytest tests/docs/test_docs_parity.py -v --tb=short
+
   - key: mkdocs
     use: cli-dependencies
     run: |
