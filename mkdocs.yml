@@ -108,7 +108,10 @@ nav:
       - Overview: how_tos.md
       - Use Cases: use_cases.md
       - Sources: topics/sources.md
+      - Source Types: topics/source-types.md
+      - Semantic Layer: topics/semantic-layer.md
       - Interactivity: topics/interactivity.md
+      - Inputs: topics/inputs.md
       - Including: topics/including.md
       - Environment Variables: topics/environment-variables.md
       - Linting: topics/linting.md
