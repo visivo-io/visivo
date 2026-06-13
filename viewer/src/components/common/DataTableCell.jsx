@@ -45,7 +45,7 @@ const formatTimestamp = date => {
 
 const formatValue = (value, columnType) => {
   if (value === null || value === undefined) {
-    return <span className="text-secondary-300 italic">null</span>;
+    return <span className="text-secondary-400 italic">null</span>;
   }
 
   // Handle date/timestamp columns first — values may arrive as epoch numbers

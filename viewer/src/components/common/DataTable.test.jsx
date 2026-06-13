@@ -189,4 +189,74 @@ describe('DataTable', () => {
       expect(scroller.className).toMatch(/\bflex-1\b/);
     });
   });
+
+  // VIS-1011: brand beautification — the rendered table/pivot surface must use
+  // the Visivo design-system palette (mauve primary / gray secondary) and read
+  // like a polished card, not default grid chrome. These assertions lock in the
+  // brand styling so a future refactor can't silently regress it to off-brand.
+  describe('VIS-1011 brand styling', () => {
+    it('root is a rounded-lg card with a shadow (data state)', () => {
+      const { container } = render(<DataTable {...defaultProps} />);
+      // eslint-disable-next-line testing-library/no-node-access
+      const root = container.firstChild;
+      expect(root.className).toMatch(/\brounded-lg\b/);
+      expect(root.className).toMatch(/\bshadow-sm\b/);
+    });
+
+    it('root is a rounded-lg card with a shadow (loading state)', () => {
+      const { container } = render(<DataTable {...defaultProps} isLoading />);
+      // eslint-disable-next-line testing-library/no-node-access
+      const root = container.firstChild;
+      expect(root.className).toMatch(/\brounded-lg\b/);
+      expect(root.className).toMatch(/\bshadow-sm\b/);
+    });
+
+    it('renders zebra-striped rows with a brand mauve hover', () => {
+      const { container } = render(<DataTable {...defaultProps} />);
+      // The virtualized body rows are absolutely-positioned flex rows. The
+      // first (even) row is white, the second (odd) row is the light gray
+      // stripe, and every row gets the mauve hover tint.
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const bodyRows = Array.from(container.querySelectorAll('div.flex')).filter(el =>
+        el.className.includes('hover:bg-primary-50')
+      );
+      expect(bodyRows.length).toBeGreaterThanOrEqual(2);
+      expect(bodyRows[0].className).toMatch(/\bbg-white\b/);
+      expect(bodyRows[1].className).toMatch(/\bbg-secondary-50\b/);
+      bodyRows.forEach(row => {
+        expect(row.className).toMatch(/hover:bg-primary-50/);
+      });
+    });
+
+    it('styles the pivot row band with the brand mauve tint', () => {
+      const nestedColumns = [
+        {
+          id: 'region',
+          accessorKey: 'region',
+          header: 'Region',
+          meta: { isPivotRow: true },
+        },
+        { id: 'east', accessorKey: 'east', header: 'East' },
+      ];
+      const rows = [
+        { region: 'North', east: 10 },
+        { region: 'South', east: 20 },
+      ];
+      const columns = [
+        { name: 'region', normalizedType: 'string', isPivotRow: true },
+        { name: 'east', normalizedType: 'number' },
+      ];
+      const { container } = render(
+        <DataTable
+          columns={columns}
+          rows={rows}
+          totalRowCount={2}
+          nestedColumns={nestedColumns}
+        />
+      );
+      // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+      const pivotBand = container.querySelector('.bg-primary-50');
+      expect(pivotBand).not.toBeNull();
+    });
+  });
 });
