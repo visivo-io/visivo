@@ -45,6 +45,18 @@ describe('TopNav', () => {
     expect(screen.queryByTitle('Deploy')).not.toBeInTheDocument();
   });
 
+  it('badges the Commit button with the pending-change count', () => {
+    renderNav({ hasUncommittedChanges: true, commitCount: 3 });
+    expect(screen.getByTitle('Commit changes')).toHaveTextContent(/Commit\s*3/);
+  });
+
+  it('omits the count badge when there are zero pending changes', () => {
+    // (defensive — Commit only renders when dirty, but a 0 count must not badge)
+    renderNav({ hasUncommittedChanges: true, commitCount: 0 });
+    expect(screen.getByTitle('Commit changes')).toHaveTextContent('Commit');
+    expect(screen.getByTitle('Commit changes')).not.toHaveTextContent('0');
+  });
+
   it('hides version history when no versions are provided (local)', () => {
     renderNav();
     expect(screen.queryByText(/PROJECT HISTORY/i)).not.toBeInTheDocument();

@@ -25,6 +25,7 @@ const Home = () => {
   const isNewProject = useStore(state => state.isNewProject);
   const isOnboardingRequested = useStore(state => state.isOnboardingRequested);
   const hasUncommittedChanges = useStore(state => state.hasUncommittedChanges);
+  const pendingCount = useStore(state => state.pendingCount);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
 
@@ -102,6 +103,7 @@ const Home = () => {
         onDeployClick={onDeployClick}
         onCommitClick={onCommitClick}
         hasUncommittedChanges={hasUncommittedChanges}
+        commitCount={pendingCount}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />

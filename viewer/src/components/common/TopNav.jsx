@@ -313,7 +313,7 @@ function VersionPill({ versions, currentVersion, onVersionChange, compact }) {
 }
 
 /* ------------------------------------------------------- commit / deploy */
-function CommitButton({ onClick, compact }) {
+function CommitButton({ onClick, compact, count = 0 }) {
   const [h, setH] = React.useState(false);
   return (
     <button
@@ -328,6 +328,16 @@ function CommitButton({ onClick, compact }) {
       }}
     >
       <VscGitCommit size={16} /> {!compact && 'Commit'}
+      {count > 0 && (
+        <span
+          style={{
+            background: 'rgba(255,255,255,.22)', borderRadius: 99, padding: '0 6px',
+            fontSize: 11, fontWeight: 700, lineHeight: '17px', fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -427,6 +437,8 @@ const TopNav = ({
   // commit / deploy — both surface only when there are uncommitted changes
   // (nothing to commit or deploy on a clean project, so the slot is empty).
   hasUncommittedChanges,
+  // count of pending (uncommitted) changes — shown as a badge on Commit.
+  commitCount = 0,
   onCommitClick,
   onDeployClick,
   // Deploy is only meaningful where deploy exists (local CLI). Cloud has no
@@ -468,7 +480,7 @@ const TopNav = ({
   // where deploy exists) once there are uncommitted changes.
   const action = hasUncommittedChanges ? (
     <>
-      <CommitButton onClick={onCommitClick} compact={narrow} />
+      <CommitButton onClick={onCommitClick} compact={narrow} count={commitCount} />
       {showDeploy && <DeployButton onClick={onDeployClick} compact={narrow} />}
     </>
   ) : null;

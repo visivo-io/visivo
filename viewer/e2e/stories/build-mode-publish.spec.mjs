@@ -149,6 +149,8 @@ test.describe('Build-mode commit + discard via shared TopNav (VIS-806 / H-1)', (
     await addRowViaCanvas(page);
 
     await expect(navCommit(page)).toBeVisible({ timeout: WAIT });
+    // The Commit button badges the live pending-change count.
+    await expect(navCommit(page)).toContainText('1');
     await expect(navDeploy(page)).toBeVisible({ timeout: WAIT });
     await page.screenshot({ path: `${SCREENS}/vis806-02-dirty-nav.png` });
 
