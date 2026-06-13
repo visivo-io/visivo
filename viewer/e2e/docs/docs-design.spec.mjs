@@ -17,6 +17,8 @@ const PAGES = [
   '/installation/',
   '/topics/sources/',
   '/reference/configuration/Dashboards/Dashboard/',
+  '/concepts/',
+  '/cloud/',
 ];
 
 for (const route of PAGES) {

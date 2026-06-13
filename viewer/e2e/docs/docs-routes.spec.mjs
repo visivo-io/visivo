@@ -21,11 +21,21 @@ const ROUTES = [
   { name: 'generated reference (Dashboard)', path: '/reference/configuration/Dashboards/Dashboard/' },
   { name: 'topics (sources)', path: '/topics/sources/' },
   { name: 'installation', path: '/installation/' },
+  { name: 'concepts overview', path: '/concepts/' },
+  { name: 'concept (insight)', path: '/concepts/insight/' },
+  { name: 'cloud overview', path: '/cloud/' },
+  { name: 'cloud (deploy & stages)', path: '/cloud/deploy-and-stages/' },
 ];
 
 // Errors from third-party analytics (gtag/GA) are environmental, not docs bugs.
+// The named-host matches catch the script load itself; the generic
+// "Failed to load resource ... 4xx/5xx" line catches the analytics *beacon*
+// requests (which log only a status, no URL) when GA rate-limits / blocks them.
+// The docs site serves no first-party resource that errors, so a bare
+// resource-load failure can only be one of those cross-origin beacons.
 const isThirdPartyNoise = text =>
-  /googletagmanager|google-analytics|gtag|doubleclick/i.test(text);
+  /googletagmanager|google-analytics|gtag|doubleclick/i.test(text) ||
+  /Failed to load resource: the server responded with a status of \d{3}/i.test(text);
 
 for (const route of ROUTES) {
   test.describe(`docs route: ${route.name}`, () => {
