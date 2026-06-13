@@ -10,7 +10,7 @@ Visivo consists of two main components:
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.12+ (development and release builds use 3.14.6)
 - Node.js 20+
 - Poetry (Python package manager)
 - Yarn (JavaScript package manager)

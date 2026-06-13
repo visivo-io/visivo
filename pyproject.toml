@@ -14,7 +14,7 @@ description = "Visivo CLI for BI and visualizations as code"
 authors = [
     {name = "Visivo People"}
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.12,<3.15"
 readme = "README.md"
 
 [tool.poetry.scripts]
@@ -24,7 +24,7 @@ copy-install-script = "visivo.copy_install_script:copy_script"
 build = "visivo.build:build"
 
 [tool.poetry.dependencies]
-python = " >=3.12,<3.14"
+python = ">=3.12,<3.15"
 Flask = ">=2.2.3"
 PyYAML = ">=6.0"
 aiofiles = ">=24.1.0"
@@ -39,7 +39,7 @@ httpx = ">=0.27.2"
 jsonschema-rs = ">=0.30.0"
 matplotlib = ">=3.7.1"
 networkx = ">=3.1"
-numpy = ">=1.26.0,<2.0.0"
+numpy = ">=2.1.0,<3.0.0"
 psycopg2-binary = ">=2.9.5"
 pydantic = ">=2.9.0"
 pymysql = ">=1.1.0"
@@ -97,7 +97,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-# Pin to py312 so Black doesn't emit Python 3.13-only formatting that fails
-# the AST safety check on CI's Python 3.12 runtime. requires-python allows up
-# to 3.14 for downstream installers, but our CI lane is py312.
+# Target py312 (our lowest supported version) so Black emits formatting that
+# stays valid across the whole 3.12–3.14 support range, even though dev/CI now
+# runs on 3.14. This also keeps the diff stable for contributors on 3.12/3.13.
 target-version = ["py312"]
