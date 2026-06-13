@@ -309,6 +309,43 @@
   background: var(--vz-mulberry-600);
   border-color: var(--vz-mulberry-600);
 }
+/* Dark mode: the outlined (non-primary) button used mulberry-600 text on the
+   navy page background (~1.5:1 contrast — effectively dark-on-dark). Lift the
+   text + border to mulberry-300 so it reads, and keep the filled-on-hover
+   state legible with white text. */
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button {
+  border-color: var(--vz-mulberry-300);
+  color: var(--vz-mulberry-300);
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button:hover,
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button:focus {
+  background: var(--vz-mulberry-400);
+  border-color: var(--vz-mulberry-400);
+  color: #ffffff;
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button--primary {
+  background: var(--vz-mulberry-400);
+  border-color: var(--vz-mulberry-400);
+  color: #ffffff;
+}
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button--primary:hover,
+[data-md-color-scheme="visivo_dark"] .md-typeset .md-button--primary:focus {
+  background: var(--vz-mulberry-300);
+  border-color: var(--vz-mulberry-300);
+  color: var(--vz-navy);
+}
+
+/* Centered button row (e.g. home page CTAs). The buttons live in a
+   `markdown`-enabled <div> so pymdownx.emoji renders the leading icon
+   shortcodes — a raw-HTML wrapper would leave them as literal text. */
+.md-typeset .vz-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+}
 
 /* Table header tint. */
 .md-typeset table:not([class]) th {

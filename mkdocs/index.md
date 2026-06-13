@@ -164,11 +164,7 @@ Now that you have a running dashboard, explore what's possible:
 
 ---
 
-<div style="text-align: center; margin-top: 2rem;">
-  <a href="https://github.com/visivo-io/visivo" class="md-button md-button--primary">
-    :octicons-star-16: Star us on GitHub
-  </a>
-  <a href="https://app.visivo.io" class="md-button">
-    :material-cloud: Try Visivo Cloud
-  </a>
+<div class="vz-button-row" markdown>
+[:octicons-star-16: Star us on GitHub](https://github.com/visivo-io/visivo){ .md-button .md-button--primary }
+[:material-cloud: Try Visivo Cloud](https://app.visivo.io){ .md-button }
 </div>
