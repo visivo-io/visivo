@@ -14,9 +14,10 @@
    border helpers tint a callout or badge.
    ========================================================================== */
 
-/* Legacy brand-icon helpers (kept — referenced in existing pages). */
-.visivo-purple { color: #713b57; }
-.visivo-orange { color: #d25946; }
+/* NOTE (VIS-987): the legacy `.visivo-purple` / `.visivo-orange` brand-icon
+   helpers and the per-object-type left-border accents now live in extra.css
+   (single home for object-type color helpers). The rainbow text + chip
+   helpers below remain the source of truth for inline object-type color. */
 
 /* ---- object-type rainbow (source → dashboard spectrum) ---- */
 .vz-source    { color: #f97316; }  /* orange  — Sources */

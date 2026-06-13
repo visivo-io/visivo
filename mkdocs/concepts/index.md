@@ -4,9 +4,16 @@ Visivo is BI-as-code: you describe your dashboards in YAML, version them in git,
 render them with the CLI or in [Visivo Cloud](../cloud/index.md). Almost everything you build
 is one of **six core objects**. Learn these and the rest of the documentation falls into place.
 
-<div class="grid cards" markdown>
+!!! visivo "The object-type rainbow"
+    Each Visivo object has a fixed color, from Sources (orange) through to
+    Dashboards (rose). You'll see the same glyphs and colors across these docs,
+    [the marketing site](https://visivo.io), and the lineage graph in
+    [Visivo Cloud](../cloud/index.md) — so an object reads the same everywhere.
 
--   :material-database:{ .lg .middle } **Source**
+<div class="grid cards vz-cards-accent" markdown>
+
+-   :visivo-source:{ .lg .middle .vz-source } **Source**
+    { .vz-accent-source }
 
     ---
 
@@ -15,7 +22,8 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
     [:octicons-arrow-right-24: Source](source.md)
 
--   :material-table:{ .lg .middle } **Model**
+-   :visivo-model:{ .lg .middle .vz-model } **Model**
+    { .vz-accent-model }
 
     ---
 
@@ -24,7 +32,8 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
     [:octicons-arrow-right-24: Model](model.md)
 
--   :material-layers-triple:{ .lg .middle } **Semantic layer**
+-   :visivo-metric:{ .lg .middle .vz-metric } **Semantic layer**
+    { .vz-accent-metric }
 
     ---
 
@@ -33,7 +42,8 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
     [:octicons-arrow-right-24: Semantic layer](semantic-layer.md)
 
--   :material-chart-line:{ .lg .middle } **Insight**
+-   :visivo-insight:{ .lg .middle .vz-insight } **Insight**
+    { .vz-accent-insight }
 
     ---
 
@@ -42,7 +52,8 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
     [:octicons-arrow-right-24: Insight](insight.md)
 
--   :material-form-dropdown:{ .lg .middle } **Input**
+-   :visivo-input:{ .lg .middle .vz-input } **Input**
+    { .vz-accent-input }
 
     ---
 
@@ -51,7 +62,8 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
     [:octicons-arrow-right-24: Input](input.md)
 
--   :material-view-dashboard:{ .lg .middle } **Dashboard**
+-   :visivo-dashboard:{ .lg .middle .vz-dashboard } **Dashboard**
+    { .vz-accent-dashboard }
 
     ---
 
@@ -64,12 +76,19 @@ is one of **six core objects**. Learn these and the rest of the documentation fa
 
 ## How they fit together
 
-```text
-Source  →  Model  →  Insight  →  Dashboard
-   │         │          ▲            ▲
-   │         │          │            │
-   └─ Semantic layer ───┘        Input ┘
-      (Metrics, Dimensions, Relations)
+```mermaid
+flowchart LR
+    S[Source]:::source --> M[Model]:::model --> I[Insight]:::insight --> C[Chart]:::chart --> D[Dashboard]:::dashboard
+    SL[Semantic layer<br/>Metrics · Dimensions · Relations]:::metric --> I
+    IN[Input]:::input --> I
+
+    classDef source fill:#fff7ed,stroke:#f97316,color:#9a3412;
+    classDef model fill:#fffbeb,stroke:#f59e0b,color:#92400e;
+    classDef metric fill:#ecfeff,stroke:#06b6d4,color:#155e75;
+    classDef insight fill:#faf5ff,stroke:#a855f7,color:#6b21a8;
+    classDef input fill:#eef2ff,stroke:#6366f1,color:#3730a3;
+    classDef chart fill:#fdf2f8,stroke:#ec4899,color:#9d174d;
+    classDef dashboard fill:#fff1f2,stroke:#f43f5e,color:#9f1239;
 ```
 
 A **Source** connects to your data. A **Model** turns that Source into a query result.

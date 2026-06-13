@@ -1,4 +1,5 @@
 site_name: Visivo Docs
+site_url: https://docs.visivo.io
 plugins:
   - mkdocs-video
   - autolinks
@@ -25,7 +26,11 @@ markdown_extensions:
   - mkdocs-click
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid-vz
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - attr_list
   - abbr
   - pymdownx.snippets
@@ -43,10 +48,19 @@ repo_name: visivo-io/visivo
 theme:
   name: material
   custom_dir: mkdocs/overrides
+  font: false
   features:
     - content.tabs.link
     - navigation.indexes
     - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.prune
+    - navigation.top
+    - navigation.path
+    - navigation.tracking
+    - navigation.instant
+    - toc.follow
     - content.tooltips
     - content.code.annotate
     - content.code.copy
@@ -54,6 +68,10 @@ theme:
   favicon: assets/favicon_io/favicon-32x32.png
   icon:
     annotation: material/arrow-right-circle
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    previous: material/chevron-left
+    next: material/chevron-right
   palette:
     - media: '(prefers-color-scheme: light)'
       scheme: visivo_light
@@ -74,6 +92,9 @@ extra:
 extra_css:
   - stylesheets/brand_colors.css
   - stylesheets/icon-colors.css
+  - stylesheets/extra.css
+extra_javascript:
+  - javascripts/mermaid-init.js
 nav:
   - Get Started:
       - Quick Start: index.md
