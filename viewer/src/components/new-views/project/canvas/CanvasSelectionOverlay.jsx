@@ -265,7 +265,10 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
           <div
             data-testid={`canvas-overlay-hover-${hoverBox.kind}`}
             className={[
-              'pointer-events-none absolute rounded-md ring-1 ring-[#c6b0bb]',
+              // rounded-lg matches the item card's own corner radius so the
+              // outline hugs the card instead of cutting a tighter arc inside it
+              // (the "double-line" effect, VIS-990 polish).
+              'pointer-events-none absolute rounded-lg ring-1 ring-[#c6b0bb]',
               hoverBox.kind === 'row' ? 'bg-[#713b57]/[0.02]' : '',
             ].join(' ')}
             style={{
@@ -282,7 +285,10 @@ const CanvasSelectionOverlay = ({ rootRef }) => {
       {selectedBox && selectedBox.rect && (
         <div
           data-testid={`canvas-overlay-selected-${selectedBox.kind}`}
-          className="pointer-events-none absolute rounded-md ring-2 ring-[#713b57] ring-offset-1 ring-offset-[#f9fafb] bg-[#713b57]/[0.03]"
+          // rounded-lg (matches the card radius) + NO ring-offset: the offset
+          // gap was what produced the ugly double line against the card's own
+          // border (VIS-990 polish). The 2px mulberry ring now hugs the card edge.
+          className="pointer-events-none absolute rounded-lg ring-2 ring-[#713b57] bg-[#713b57]/[0.03]"
           style={{
             top: selectedBox.rect.top,
             left: selectedBox.rect.left,

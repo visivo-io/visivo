@@ -175,12 +175,27 @@ const dndDrag = async (page, source, target) => {
   await page.waitForTimeout(40);
 };
 
+// VIS-975: the drag affordance is the SELECTED node's frame (a border-ring grab
+// surface), painted only on the exact selected node. Reveal an item's frame by
+// selecting it (click).
 const revealItemHandle = async (page, itemPath) => {
   await page
     .locator(`[data-canvas-path="${itemPath}"]`)
     .first()
     .click({ position: { x: 6, y: 6 }, force: true });
-  const handle = page.getByTestId(`canvas-drag-handle-${itemPath}`);
+  const handle = page.getByTestId(`canvas-drag-frame-${itemPath}`);
+  await expect(handle).toBeVisible({ timeout: WAIT });
+  return handle;
+};
+
+// Reveal a (possibly nested) ROW's frame. A row's chrome is mostly covered by
+// its items, so select it through the canvas's outline-selection store — the
+// frame is painted only when that exact row is the selection (VIS-975).
+const revealRowHandleByPath = async (page, rowPath) => {
+  await page.evaluate(rp => {
+    window.useStore.getState().setWorkspaceOutlineSelectedKey(rp);
+  }, rowPath);
+  const handle = page.getByTestId(`canvas-drag-frame-${rowPath}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
 };
@@ -286,11 +301,10 @@ test.describe('Canvas nested DnD + resize (VIS-903)', () => {
     };
     const beforeSig = await sig();
 
-    // Reveal the first sub-row's grip by selecting its first item, then drag the
-    // ROW grip to the trailing append band of the container's sibling group.
-    await revealItemHandle(page, `${firstSubRowPath}.item.0`);
-    const rowHandle = page.getByTestId(`canvas-drag-handle-${firstSubRowPath}`);
-    await expect(rowHandle).toBeVisible({ timeout: WAIT });
+    // Select the nested sub-row to reveal its frame, then drag it to the trailing
+    // append band of the container's sibling group (VIS-975: the row frame is
+    // painted only when that exact row is selected).
+    const rowHandle = await revealRowHandleByPath(page, firstSubRowPath);
     const appendBand = page.getByTestId(
       `canvas-dropzone-${container.containerPath}.row-before-${container.subRowCount}`
     );

@@ -556,6 +556,82 @@ export const removeItemAtPath = (config, itemPath) => {
   return changed ? next : config;
 };
 
+/**
+ * Move an EXISTING item from `fromRowPath`/`fromIndex` into another row, at the
+ * `between-items`/`end-of-row` `target` (VIS-973). Unlike a Library insert this
+ * preserves the moved item exactly (its leaf ref AND its width — a move, not a
+ * fresh slot), so it does NOT apply the smart-width default. Cross-row only:
+ * same-row reorder stays on `reorderItemsInRow` (removing then re-inserting in
+ * one row would shift the target index). Removing the item from the source row
+ * never shifts the (different) target row's indices, so the target descriptor
+ * stays valid after the removal. Returns config unchanged for an invalid path,
+ * a missing item, or a same-row target.
+ */
+export const moveItemBetweenRows = (config, fromRowPath, fromIndex, target) => {
+  if (!config || !target) return config;
+  if (target.kind !== 'between-items' && target.kind !== 'end-of-row') return config;
+  if (target.rowPath === fromRowPath) return config; // same-row → reorderItemsInRow
+  const item = itemsAtRowPath(config, fromRowPath)[fromIndex];
+  if (!item || typeof item !== 'object') return config;
+
+  const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
+  if (removed === config) return config;
+
+  const segments = parseCanvasPath(target.rowPath);
+  if (!segments.length || segments[segments.length - 1].kind !== 'row') return config;
+  return withRowsAtRowPath(removed, segments, rows => {
+    const lastRowIndex = segments[segments.length - 1].index;
+    return rows.map((row, ri) => {
+      if (ri !== lastRowIndex) return row;
+      const items = Array.isArray(row.items) ? [...row.items] : [];
+      const insertAt =
+        target.kind === 'end-of-row'
+          ? items.length
+          : Math.max(0, Math.min(target.index ?? items.length, items.length));
+      items.splice(insertAt, 0, item);
+      return { ...row, items };
+    });
+  });
+};
+
+/**
+ * Move an EXISTING item from `fromRowPath`/`fromIndex` INTO an empty slot at
+ * `targetItemPath` (VIS-989): the dragged item fills the slot — its leaf ref and
+ * width are preserved (a move), and the empty placeholder it lands on is
+ * discarded. Returns config unchanged unless the target is a genuine empty slot
+ * and the source/target differ. The source row may be left empty; the shell's
+ * sanitize step re-seeds it with an empty slot so it stays a valid, droppable row.
+ */
+export const moveItemIntoSlot = (config, fromRowPath, fromIndex, targetItemPath) => {
+  if (!config || !targetItemPath) return config;
+  const item = itemsAtRowPath(config, fromRowPath)[fromIndex];
+  if (!item || typeof item !== 'object') return config;
+
+  const targetSegs = parseCanvasPath(targetItemPath);
+  if (!targetSegs.length || targetSegs[targetSegs.length - 1].kind !== 'item') return config;
+  const targetIndex = targetSegs[targetSegs.length - 1].index;
+  const targetRowPath = targetSegs
+    .slice(0, -1)
+    .map(s => `${s.kind}.${s.index}`)
+    .join('.');
+
+  // Only fill a genuine empty slot, and never the dragged item's own slot.
+  const targetItem = itemsAtRowPath(config, targetRowPath)[targetIndex];
+  if (!isEmptySlot(targetItem)) return config;
+  if (targetRowPath === fromRowPath && targetIndex === fromIndex) return config;
+
+  const removed = removeItemAtPath(config, `${fromRowPath}.item.${fromIndex}`);
+  if (removed === config) return config;
+
+  // Removing the source shifts the target index left by one only when both live
+  // in the SAME row and the source sat before the target.
+  let adjustedTargetPath = targetItemPath;
+  if (targetRowPath === fromRowPath && fromIndex < targetIndex) {
+    adjustedTargetPath = `${targetRowPath}.item.${targetIndex - 1}`;
+  }
+  return withItemAtPath(removed, adjustedTargetPath, () => item);
+};
+
 // ── Resize helpers (VIS-777 / Track D D-4) ──────────────────────────────────
 // The canvas resize overlay (CanvasResizeLayer) turns the selection's edge
 // handles into real gestures. These are the pure, immutable config transforms

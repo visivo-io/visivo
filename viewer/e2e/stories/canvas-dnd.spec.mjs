@@ -139,40 +139,38 @@ const dndDrag = async (page, source, target) => {
   return { sb, tb };
 };
 
-// Canvas drag-grips are gated on hover/selection (not painted at rest). We reveal
-// via SELECTION (click) rather than hover: a selected key persists for the whole
-// gesture, whereas a hover key is cleared on any reflow (so a hover-revealed grip
-// could vanish mid-grab). Clicking also exercises canvas selection (the grip
-// carries the row/item's data-canvas-path). `.first()` (DOM order) is the
-// dashboard slot, not the grip.
+// VIS-975: the drag affordance is now the SELECTED node's frame (a border-ring
+// grab surface), not a hover grip icon. We reveal it via SELECTION (click): the
+// selected key persists for the whole gesture, and the frame is painted only on
+// the exact selected node. `.first()` (DOM order) is the dashboard slot.
 //
 // The select-click uses `{ force: true }` to skip Playwright's actionability /
 // occlusion check. The click target (the slot's top-left corner) is intentionally
 // overlaid by the item's Plotly chart AND, on a re-entrant call (e.g. a serial
-// retry where a prior selection already revealed this grip), by the grip button
-// itself — Playwright would otherwise abort with "<button …drag-handle…> subtree
-// intercepts pointer events" and retry until it times out. We only need the click
-// to land on the slot element to trigger selection; what visually sits on top of
-// that point is irrelevant, so forcing the dispatch is correct and removes the
-// retry flake.
+// retry where a prior selection already revealed this frame), by the frame strip
+// itself — Playwright would otherwise abort with "subtree intercepts pointer
+// events" and retry until it times out. We only need the click to land on the
+// slot element to trigger selection, so forcing the dispatch is correct and
+// removes the retry flake.
 const revealItemHandle = async (page, itemPath) => {
   await page
     .locator(`[data-canvas-path="${itemPath}"]`)
     .first()
     .click({ position: { x: 6, y: 6 }, force: true });
-  const handle = page.getByTestId(`canvas-drag-handle-${itemPath}`);
+  const handle = page.getByTestId(`canvas-drag-frame-${itemPath}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
 };
 const revealRowHandle = async (page, rowIndex) => {
-  // Selecting any item in the row reveals the row's grip (keyWithinRow), and the
-  // selection persists through scroll. `force: true` for the same occlusion
-  // reason as revealItemHandle.
-  await page
-    .locator(`[data-canvas-path="row.${rowIndex}.item.0"]`)
-    .first()
-    .click({ position: { x: 6, y: 6 }, force: true });
-  const handle = page.getByTestId(`canvas-drag-handle-row.${rowIndex}`);
+  // VIS-975: the row frame is painted only when the ROW itself is selected (an
+  // item selection no longer reveals its parent row's affordance). The row's
+  // chrome is mostly covered by its items, so select the row through the same
+  // outline-selection store the canvas writes — the single selection source of
+  // truth — then grab its frame.
+  await page.evaluate(rp => {
+    window.useStore.getState().setWorkspaceOutlineSelectedKey(rp);
+  }, `row.${rowIndex}`);
+  const handle = page.getByTestId(`canvas-drag-frame-row.${rowIndex}`);
   await expect(handle).toBeVisible({ timeout: WAIT });
   return handle;
 };
@@ -207,7 +205,7 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     await page.close();
   });
 
-  test('drag grips are gated on hover (hidden at rest); drop zones stay mounted', async () => {
+  test('frame grab is gated on selection (hidden at rest); drop zones stay mounted', async () => {
     await openCanvas(page);
 
     // Find a row that has ≥2 items so reorder is meaningful; the integration
@@ -216,17 +214,19 @@ test.describe('Canvas drag-and-drop (VIS-771 / D-3)', () => {
     const multiItemRow = rows.findIndex(r => (r.items || []).length >= 2);
     expect(multiItemRow, 'a row with ≥2 items exists').toBeGreaterThanOrEqual(0);
 
-    // At rest (dashboard selected, no hover) NO grips are painted — the canvas
-    // reads clean.
-    await expect(page.getByTestId(`canvas-drag-handle-row.${multiItemRow}`)).toHaveCount(0);
+    // VIS-975: the legacy six-dot grip icon is gone entirely, and at rest
+    // (dashboard selected) NO frame is painted — the canvas reads clean.
+    await expect(page.locator('[data-testid^="canvas-drag-handle-"]')).toHaveCount(0);
+    await expect(page.getByTestId(`canvas-drag-frame-row.${multiItemRow}`)).toHaveCount(0);
     await expect(
-      page.getByTestId(`canvas-drag-handle-row.${multiItemRow}.item.0`)
+      page.getByTestId(`canvas-drag-frame-row.${multiItemRow}.item.0`)
     ).toHaveCount(0);
 
-    // Hovering an item reveals that item's grip AND its row's grip (so row-drag
-    // is reachable). revealItemHandle asserts the item grip is visible.
+    // Selecting an item reveals only THAT item's frame (selection-gated, exactly
+    // one frame). revealItemHandle asserts the item frame is visible.
     await revealItemHandle(page, `row.${multiItemRow}.item.0`);
-    await expect(page.getByTestId(`canvas-drag-handle-row.${multiItemRow}`)).toBeVisible();
+    // The parent row's frame is NOT also painted (exactly one frame on screen).
+    await expect(page.getByTestId(`canvas-drag-frame-row.${multiItemRow}`)).toHaveCount(0);
 
     // Drop zones are always mounted (dnd-kit measures them by rect even though
     // they're pointer-events-none so they never swallow selection clicks).

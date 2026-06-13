@@ -51,7 +51,13 @@ const sanitizeItem = item => {
 const sanitizeRow = row => {
   if (!row || typeof row !== 'object') return row;
   const items = Array.isArray(row.items) ? row.items.map(sanitizeItem) : row.items;
-  return { ...row, items };
+  // A ROW must always hold at least one item — the backend rejects an empty
+  // `items` array (an empty row is schema-invalid, unlike an empty ITEM slot).
+  // When a move/delete empties a row, keep ONE empty slot (`{}`) so the row stays
+  // visible AND a drop target (Dashboard renders the `canvas-empty-slot`
+  // placeholder for it) instead of collapsing to zero-height dead space (VIS-989).
+  const safeItems = Array.isArray(items) && items.length === 0 ? [{}] : items;
+  return { ...row, items: safeItems };
 };
 
 /**

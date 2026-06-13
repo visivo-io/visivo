@@ -65,6 +65,20 @@ const kindForKey = key => {
   return parts[parts.length - 2] === 'item' ? 'item' : 'row';
 };
 
+// The path of the ROW that owns an item selection (strip the trailing
+// `.item.N`). Used to surface the row-height handle from an item selection
+// (VIS-986): row height is governed by the ROW, but the user almost always has
+// an ITEM selected (a canvas click selects the innermost slot), so the height
+// affordance has to be reachable from that item — anchored on its parent row.
+//   `row.0.item.1`              → `row.0`
+//   `row.0.item.1.row.0.item.1` → `row.0.item.1.row.0`
+//   `row.0` (a row key)         → itself
+const parentRowPathOf = key => {
+  if (!key) return null;
+  const i = key.lastIndexOf('.item.');
+  return i > 0 ? key.slice(0, i) : key;
+};
+
 // Measure a node's box relative to the overlay root (same idiom as the sibling
 // overlays — absolute positioning inside the shared positioned ancestor).
 const measure = (el, rootEl) => {
@@ -120,6 +134,11 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
 
   // Measured box of the selected node, kept fresh against reflow.
   const [box, setBox] = useState(null);
+  // Measured box of the ROW that governs height for the current selection: the
+  // selected row itself, or — for an item selection — its parent row. The
+  // row-height handle (VIS-986) is anchored on this so it spans the full row and
+  // sits at the row's bottom edge even when only a single item is selected.
+  const [heightBox, setHeightBox] = useState(null);
   // Live drag state — null at rest; otherwise the in-flight gesture descriptor:
   //   { kind: 'width'|'height'|'corner', startX, startY, colPx, startCols,
   //     liveCols, startPx, livePx, fluid, label, box }
@@ -149,10 +168,19 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
     const root = rootRef.current;
     if (!root || !selectedKey || selectedKind === 'chrome') {
       setBox(null);
+      setHeightBox(null);
       return;
     }
     const el = root.querySelector(`[data-canvas-path="${selectedKey}"]`);
     setBox(el ? measure(el, root) : null);
+    // The height-governing row box: for a row selection it's the same node; for
+    // an item selection it's the parent row (so the height handle spans the row).
+    const rowPath = selectedKind === 'item' ? parentRowPathOf(selectedKey) : selectedKey;
+    const rowEl =
+      rowPath && rowPath !== selectedKey
+        ? root.querySelector(`[data-canvas-path="${rowPath}"]`)
+        : el;
+    setHeightBox(rowEl ? measure(rowEl, root) : null);
   }, [rootRef, selectedKey, selectedKind]);
 
   // Re-measure on selection change + reflow. We deliberately DO NOT re-measure
@@ -399,6 +427,17 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   // render below is untouched (chart stays static).
   const ghost = (() => {
     if (!drag) return null;
+    // A pure height drag resizes the ROW, so preview the full row box
+    // (heightBox) growing — even when the gesture started from a single item's
+    // bottom edge (VIS-986).
+    if (drag.kind === 'height' && heightBox) {
+      return {
+        top: heightBox.top,
+        left: heightBox.left,
+        width: heightBox.width,
+        height: heightBox.height * (drag.livePx / Math.max(1, drag.startPx)),
+      };
+    }
     let w = box.width;
     let h = box.height;
     let left = box.left;
@@ -411,21 +450,23 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
       w = box.width * (drag.liveCols / Math.max(1, drag.startCols));
       left = box.left + box.width - w;
     }
-    if (drag.kind === 'height' || drag.kind === 'corner') {
+    if (drag.kind === 'corner') {
       h = box.height * (drag.livePx / Math.max(1, drag.startPx));
     }
     return { top: box.top, left, width: w, height: h };
   })();
 
   // Which handles to show: an ITEM selection gets the right-edge width handle
-  // (+ the bottom-edge height handle on its row is owned by a ROW selection);
-  // a container item additionally gets the corner. A ROW selection gets the
+  // PLUS the row-height handle anchored on its parent row (VIS-986 — so height
+  // is reachable from the item the user actually clicked, not only from a
+  // hard-to-hit row selection). A container item uses the corner for both axes,
+  // so it does NOT also get the standalone height bar. A ROW selection gets the
   // bottom-edge height handle. An item with a LEFT neighbour also gets a
   // left-edge width handle that moves the shared boundary; the first item in a
   // row has no shared left boundary and so gets no left handle.
   const showWidthHandle = selection.isItem;
   const showLeftWidthHandle = selection.isItem && hasLeftNeighbor;
-  const showHeightHandle = !selection.isItem; // row selection
+  const showHeightHandle = !isContainerItem && !!heightBox; // rows + non-container items
   const showCornerHandle = isContainerItem;
 
   const handleBase =
@@ -434,7 +475,11 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   return (
     <div
       data-testid="canvas-resize-layer"
-      className="pointer-events-none absolute inset-0 z-20"
+      // z-40 (above the Add Row layer's z-30): the resize handles are painted
+      // only on the SELECTED node and must win the pointer over the Add Row
+      // between-rows pill that sits in the same row-bottom gap — otherwise the
+      // pill steals the row-height resize zone (VIS-986 follow-up).
+      className="pointer-events-none absolute inset-0 z-40"
     >
       {/* Selected-node frame (subtle, so the handles read as edge affordances). */}
       <div
@@ -517,7 +562,9 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
         />
       )}
 
-      {/* Row BOTTOM-EDGE height handle (↕). */}
+      {/* Row BOTTOM-EDGE height handle (↕). Anchored on the height-governing ROW
+          box, so it spans the full row at its bottom edge — reachable whether
+          the user selected the row or just one of its items (VIS-986). */}
       {showHeightHandle && (
         <div
           role="button"
@@ -525,17 +572,19 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           data-testid={`canvas-resize-height-${selectedKey}`}
           data-resize-axis="height"
           aria-label="Resize row height"
-          title="Drag to resize height — hold Shift for a precise pixel value"
+          title="Drag to resize row height (small / medium / large / xlarge) — hold Shift for a precise pixel value"
           className={`${handleBase} opacity-80`}
           onPointerDown={e => beginDrag(e, 'height')}
           style={{
-            top: box.top + box.height - 3,
-            left: box.left + 6,
-            width: Math.max(0, box.width - 12),
-            height: 6,
+            // A taller hit zone (10px) so the row-height handle is easy to grab
+            // (VIS-986 follow-up — a 6px strip was too fiddly to land on).
+            top: heightBox.top + heightBox.height - 5,
+            left: heightBox.left + 6,
+            width: Math.max(0, heightBox.width - 12),
+            height: 10,
             cursor: 'row-resize',
             background: drag?.kind === 'height' ? MULBERRY : `${MULBERRY}99`,
-            borderRadius: 3,
+            borderRadius: 4,
             touchAction: 'none',
           }}
         />
@@ -578,7 +627,7 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
             top: Math.max(2, box.top - 8),
             left:
               drag.kind === 'height'
-                ? box.left + box.width / 2 - 40
+                ? (heightBox || box).left + (heightBox || box).width / 2 - 40
                 : drag.kind === 'width-left'
                   ? box.left
                   : box.left + box.width - 30,
