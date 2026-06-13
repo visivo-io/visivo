@@ -75,20 +75,37 @@ extra_css:
   - stylesheets/brand_colors.css
   - stylesheets/icon-colors.css
 nav:
-  - Quick Start: index.md
-  - AI Usage: ai-usage.md
-  - Installation: installation.md
-  - Change Log: https://github.com/visivo-io/visivo/releases
-  - Topics:
-      - Linting: topics/linting.md
-      - Including: topics/including.md
+  - Get Started:
+      - Quick Start: index.md
+      - Installation: installation.md
+      - Build with AI: ai-usage.md
+      - Change Log: https://github.com/visivo-io/visivo/releases
+  - Tutorials:
+      - Overview: how_tos.md
+      - Use Cases: use_cases.md
       - Sources: topics/sources.md
-      - Environment Variables: topics/environment-variables.md
-      - Deployment: topics/deployments.md
-      - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md
+      - Including: topics/including.md
+      - Environment Variables: topics/environment-variables.md
+      - Linting: topics/linting.md
+      - Testing: topics/testing.md
       - Annotations & Shapes: topics/annotations.md
+      - Deployment: topics/deployments.md
       - Telemetry: topics/telemetry.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - Source: concepts/source.md
+      - Model: concepts/model.md
+      - Semantic Layer: concepts/semantic-layer.md
+      - Insight: concepts/insight.md
+      - Input: concepts/input.md
+      - Dashboard: concepts/dashboard.md
+  - Cloud:
+      - Overview: cloud/index.md
+      - Deploy & Stages: cloud/deploy-and-stages.md
+      - Hosting & Sharing: cloud/hosting-and-sharing.md
+      - Teams & Roles: cloud/teams-and-roles.md
+      - Authentication: cloud/authentication.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
@@ -287,7 +304,9 @@ nav:
       - Functions:
           - Run Time:
               - reference/functions/runtime_functions/index.md
-  - Background:
-      - background/index.md
+  - Compare:
+      - Overview: compare.md
       - Viewpoint: viewpoint.md
+  - About:
+      - background/index.md
       - How It Works: how_it_works.md
