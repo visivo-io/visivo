@@ -112,6 +112,29 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     rebuild();
   }, [rebuild]);
 
+  // Close the open template menu when a pointer press lands OUTSIDE it (and
+  // outside any Add-row trigger, so the trigger's own toggle still works). A
+  // chart card can otherwise sit in front of the menu's gap on hover; dismissing
+  // on outside-press guarantees the menu never gets stranded behind content
+  // (the user's report). Capture phase so it fires before the canvas handlers.
+  useEffect(() => {
+    if (!openMenu) return undefined;
+    const onPointerDown = e => {
+      const t = e.target;
+      if (
+        t &&
+        t.closest &&
+        (t.closest('[data-testid="row-template-menu"]') ||
+          t.closest('button[data-testid*="add-row"]'))
+      ) {
+        return;
+      }
+      setOpenMenu(null);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [openMenu]);
+
   useEffect(() => {
     const root = rootRef.current;
     if (!root) {
@@ -182,7 +205,9 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
     return (
       <div
         data-testid="canvas-add-row-empty"
-        className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center"
+        className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center ${
+          openMenu ? 'z-[100]' : 'z-10'
+        }`}
       >
         <div className="pointer-events-auto relative flex flex-col items-center">
           <button
@@ -227,7 +252,11 @@ const CanvasAddRow = ({ rootRef, dashboardName }) => {
   return (
     <div
       data-testid="canvas-add-row"
-      className="pointer-events-none absolute inset-0 z-30"
+      // While a template menu is open the whole layer jumps to a very high z so
+      // the menu always sits ABOVE the dashboard cards (a hovered chart could
+      // otherwise raise its own stacking context over the menu — the user's
+      // report). At rest it stays at z-30.
+      className={`pointer-events-none absolute inset-0 ${openMenu ? 'z-[100]' : 'z-30'}`}
     >
       {/* Between-rows hover-reveal pills. */}
       {gapBoxes.map(gap => {

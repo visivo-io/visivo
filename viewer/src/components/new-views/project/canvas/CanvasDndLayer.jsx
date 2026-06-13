@@ -85,7 +85,11 @@ const itemRefName = item => {
 // Click-vs-drag is handled by the shared PointerSensor's 5px activation
 // constraint: a press that doesn't travel 5px is a click (re-selects via the
 // selection overlay's root delegation), past 5px it's a drag.
-const FRAME = 12; // px thickness of the grab ring
+//
+// The ring is intentionally GENEROUS (18px) and faintly TINTED so the grab zone
+// is discoverable — a thin transparent band was too easy to miss and gave only a
+// brief grab-cursor window (VIS-990 polish). The tint brightens while dragging.
+const FRAME = 18; // px thickness of the grab ring
 
 const CanvasFrameGrab = ({ id, box, kind, dragData, label, visible }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, data: dragData });
@@ -95,9 +99,11 @@ const CanvasFrameGrab = ({ id, box, kind, dragData, label, visible }) => {
   if (!box || (!visible && !isDragging)) return null;
 
   const grabCursor = isDragging ? 'grabbing' : 'grab';
+  // A faint mulberry tint makes the grab band visible (so users see WHERE to
+  // grab + that it's draggable); it deepens on hover/drag.
   const stripBase = {
     position: 'absolute',
-    background: 'transparent',
+    background: isDragging ? 'rgba(113,59,87,0.16)' : 'rgba(113,59,87,0.07)',
     cursor: grabCursor,
     touchAction: 'none',
   };

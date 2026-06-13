@@ -124,9 +124,10 @@ describe('CanvasResizeLayer (VIS-777)', () => {
     expect(height).toHaveAttribute('data-resize-axis', 'height');
     expect(height).toHaveAttribute('aria-label', 'Resize row height');
     // Anchored on the PARENT ROW box (width 800) — full-row span, not the item's
-    // 400px box: width = row 800 − 12px inset = 788px, at the row's bottom edge.
+    // 400px box: width = row 800 − 12px inset = 788px, at the row's bottom edge
+    // (top = rowBottom 200 − 5px so the 10px-tall hit zone straddles the edge).
     expect(height.style.width).toBe('788px');
-    expect(height.style.top).toBe('197px');
+    expect(height.style.top).toBe('195px');
   });
 
   test('paints a LEFT-edge width handle on an item that has a left neighbour', () => {

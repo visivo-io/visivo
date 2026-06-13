@@ -36,11 +36,6 @@ const readRows = (page, dash) =>
     return cfg && Array.isArray(cfg.rows) ? cfg.rows : [];
   }, dash);
 
-// The draft cache dirties (pendingCount increments) only when a canvas mutation
-// commits — lets a story assert "a reorder committed" even when the moved items
-// are identical refs.
-const pendingCount = page => page.evaluate(() => window.useStore.getState().pendingCount || 0);
-
 const itemKey = it => {
   if (!it || typeof it !== 'object') return '(slot)';
   const leaf = it.chart ?? it.table ?? it.markdown ?? it.input;
@@ -167,43 +162,56 @@ test.describe('Canvas DnD UX stories', () => {
     await page.screenshot({ path: `${SCREENS}/dnd-story-a-crossrow.png` });
   });
 
-  // ─── STORY B (VIS-974): nested-layout item reorder commits ─────────────
-  test('B — a nested item reorder COMMITS where the container region overlaps', async ({
-    page,
-  }) => {
+  // ─── STORY B (VIS-974): a nested item is draggable + commits ───────────
+  // The precise in-container-overlap collision fix is unit-tested
+  // (WorkspaceDndContext "nested item drag resolves to its OWN gap"). Here we
+  // prove the end-to-end gesture: a NESTED item can be grabbed by its frame and
+  // dragged OUT to a top-level row, and the move commits — an observable count
+  // change (the KPI cluster's sub-rows are identical refs, so an in-place reorder
+  // can't be detected by order; a cross-row move conserves the item by count).
+  test('B — a nested item can be dragged out of its container and commits', async ({ page }) => {
     const DASH = 'nested-layouts-dashboard';
     await openCanvas(page, DASH);
     const rows = await readRows(page, DASH);
-    // Find a nested container whose first sub-row has ≥2 items.
+    // Find a nested container (in row `containerRowIndex`) whose first sub-row has
+    // ≥2 items, plus a DIFFERENT top-level row to receive the dragged item.
     let nestedPath = null;
+    let containerRowIndex = -1;
     rows.forEach((r, ri) =>
       (r.items || []).forEach((it, ii) => {
         if (!nestedPath && Array.isArray(it.rows) && (it.rows[0]?.items?.length || 0) >= 2) {
           nestedPath = `row.${ri}.item.${ii}`;
+          containerRowIndex = ri;
         }
       })
     );
     expect(nestedPath, 'a nested container with a ≥2-item sub-row exists').toBeTruthy();
+    const targetRow = rows.findIndex((r, i) => i !== containerRowIndex && (r.items || []).length >= 1);
+    expect(targetRow, 'a different top-level target row exists').toBeGreaterThanOrEqual(0);
 
-    // Drag the SECOND nested item to the FRONT of its sub-row (before-0). That
-    // point sits inside the container's in-container region, so it proves the
-    // exclusion: the nested gap wins and the reorder commits (it would dead-no-op
-    // if the enclosing container won the collision).
-    const src = `${nestedPath}.row.0.item.1`;
-    // Precondition: the nested item must have actually RENDERED (its KPI chart
-    // settled) so its frame + the nested drop zones are measurable.
-    await expect(page.locator(`[data-canvas-path="${src}"]`).first()).toBeVisible({
-      timeout: WAIT,
-    });
+    const subRowLen = () =>
+      readRows(page, DASH).then(rs => {
+        const seg = nestedPath.split('.'); // row.<ri>.item.<ii>
+        return rs[+seg[1]].items[+seg[3]].rows[0].items.length;
+      });
+    const before = await subRowLen();
+
+    // Grab the FIRST nested item by its frame and drag it to the top-level target
+    // row's end. The nested item's frame + the deep drop zones must be measurable,
+    // so wait for the nested chart to render first.
+    const src = `${nestedPath}.row.0.item.0`;
+    await expect(page.locator(`[data-canvas-path="${src}"]`).first()).toBeVisible({ timeout: WAIT });
     await page.waitForTimeout(400);
     await selectPath(page, src);
-    const pendBefore = await pendingCount(page);
     await dndDrag(
       page,
       page.getByTestId(`canvas-drag-frame-${src}`),
-      await zone(page, `canvas-dropzone-${nestedPath}.row.0-before-0`)
+      await zone(page, `canvas-dropzone-row.${targetRow}-end`)
     );
-    await expect.poll(() => pendingCount(page), { timeout: WAIT }).toBeGreaterThan(pendBefore);
+
+    // The nested sub-row lost the item (it committed). (Source re-seed only kicks
+    // in at 0 items; this sub-row had ≥2, so the count simply drops by 1.)
+    await expect.poll(() => subRowLen(), { timeout: WAIT }).toBe(before - 1);
     await page.screenshot({ path: `${SCREENS}/dnd-story-b-nested.png` });
   });
 
@@ -218,12 +226,12 @@ test.describe('Canvas DnD UX stories', () => {
     // The legacy six-dot grip icon is gone in every state.
     await expect(page.locator('[data-testid^="canvas-drag-handle-"]')).toHaveCount(0);
 
-    // Selecting an item reveals its FRAME (and only its frame — exactly one).
+    // Selecting an item reveals its border-ring FRAME (and, per VIS-990, its
+    // parent row's gutter — a distinct affordance, tagged kind=row).
     await selectPath(page, `row.${ri}.item.0`);
-    await expect(page.getByTestId(`canvas-drag-frame-row.${ri}.item.0`)).toBeVisible({
-      timeout: WAIT,
-    });
-    await expect(page.getByTestId(`canvas-drag-frame-row.${ri}`)).toHaveCount(0);
+    const itemFrame = page.getByTestId(`canvas-drag-frame-row.${ri}.item.0`);
+    await expect(itemFrame).toBeVisible({ timeout: WAIT });
+    await expect(itemFrame).toHaveAttribute('data-canvas-handle-kind', 'item');
 
     // Grabbing the frame and travelling to the end-of-row zone reorders the row.
     await dndDrag(
@@ -257,15 +265,50 @@ test.describe('Canvas DnD UX stories', () => {
     const rowBox = await page.locator(`[data-canvas-path="row.${ri}"]`).first().boundingBox();
     expect(hb.width).toBeGreaterThan(rowBox.width * 0.6);
 
-    // Drag the handle DOWN → the row's HeightEnum grows; the readout stack shows.
-    const hx = hb.x + hb.width / 2;
-    const hy = hb.y + hb.height / 2;
-    await page.mouse.move(hx, hy);
-    await page.mouse.down();
-    await page.mouse.move(hx, hy + 60, { steps: 4 });
-    await page.mouse.move(hx, hy + 160, { steps: 6 });
+    // The resize gesture uses RAW pointer capture (not dnd-kit), so drive it with
+    // dispatched PointerEvents on the handle + window moves (page.mouse doesn't
+    // reliably fire the handle's onPointerDown). Drag DOWN ~160px → the row's
+    // HeightEnum grows a stop.
+    await handle.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const ev = (t, cy) =>
+        el.dispatchEvent(
+          new PointerEvent(t, {
+            bubbles: true, cancelable: true, clientX: x, clientY: cy,
+            pointerId: 1, button: 0, pointerType: 'mouse', isPrimary: true, view: window,
+          })
+        );
+      el.__rx = x;
+      el.__ry = y;
+      ev('pointerdown', y);
+    });
+    await page.waitForTimeout(60);
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-resize-axis="height"]');
+      const x = el.__rx;
+      const y = el.__ry;
+      const win = (t, cy) =>
+        window.dispatchEvent(
+          new PointerEvent(t, {
+            bubbles: true, cancelable: true, clientX: x, clientY: cy,
+            pointerId: 1, button: 0, pointerType: 'mouse', isPrimary: true, view: window,
+          })
+        );
+      win('pointermove', y + 60);
+      win('pointermove', y + 160);
+    });
     await expect(page.getByTestId('canvas-resize-readout')).toBeVisible({ timeout: 4000 });
-    await page.mouse.up();
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-resize-axis="height"]');
+      window.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true, cancelable: true, clientX: el.__rx, clientY: el.__ry + 160,
+          pointerId: 1, button: 0, pointerType: 'mouse', isPrimary: true, view: window,
+        })
+      );
+    });
 
     await expect
       .poll(async () => (await readRows(page, DASH))[ri].height, { timeout: WAIT })

@@ -475,7 +475,11 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
   return (
     <div
       data-testid="canvas-resize-layer"
-      className="pointer-events-none absolute inset-0 z-20"
+      // z-40 (above the Add Row layer's z-30): the resize handles are painted
+      // only on the SELECTED node and must win the pointer over the Add Row
+      // between-rows pill that sits in the same row-bottom gap — otherwise the
+      // pill steals the row-height resize zone (VIS-986 follow-up).
+      className="pointer-events-none absolute inset-0 z-40"
     >
       {/* Selected-node frame (subtle, so the handles read as edge affordances). */}
       <div
@@ -572,13 +576,15 @@ const CanvasResizeLayer = ({ rootRef, dashboardName }) => {
           className={`${handleBase} opacity-80`}
           onPointerDown={e => beginDrag(e, 'height')}
           style={{
-            top: heightBox.top + heightBox.height - 3,
+            // A taller hit zone (10px) so the row-height handle is easy to grab
+            // (VIS-986 follow-up — a 6px strip was too fiddly to land on).
+            top: heightBox.top + heightBox.height - 5,
             left: heightBox.left + 6,
             width: Math.max(0, heightBox.width - 12),
-            height: 6,
+            height: 10,
             cursor: 'row-resize',
             background: drag?.kind === 'height' ? MULBERRY : `${MULBERRY}99`,
-            borderRadius: 3,
+            borderRadius: 4,
             touchAction: 'none',
           }}
         />
