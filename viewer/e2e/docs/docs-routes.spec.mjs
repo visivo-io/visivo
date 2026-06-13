@@ -20,6 +20,8 @@ const ROUTES = [
   { name: 'home (quick start)', path: '/' },
   { name: 'generated reference (Dashboard)', path: '/reference/configuration/Dashboards/Dashboard/' },
   { name: 'topics (sources)', path: '/topics/sources/' },
+  { name: 'topics (CI/CD for BI)', path: '/topics/ci-cd/' },
+  { name: 'editorial guidelines', path: '/contributing/editorial-guidelines/' },
   { name: 'installation', path: '/installation/' },
   { name: 'concepts overview', path: '/concepts/' },
   { name: 'concept (insight)', path: '/concepts/insight/' },

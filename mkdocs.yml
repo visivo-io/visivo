@@ -114,6 +114,7 @@ nav:
       - Linting: topics/linting.md
       - Testing: topics/testing.md
       - Annotations & Shapes: topics/annotations.md
+      - CI/CD for BI: topics/ci-cd.md
       - Deployment: topics/deployments.md
       - Telemetry: topics/telemetry.md
   - Concepts:
@@ -334,3 +335,4 @@ nav:
   - About:
       - background/index.md
       - How It Works: how_it_works.md
+      - Editorial Guidelines: contributing/editorial-guidelines.md

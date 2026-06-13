@@ -97,10 +97,10 @@ An **Insight** reads a Model (optionally pulling reusable definitions from the
 those charts. A **Dashboard** arranges the charts, tables, and inputs into a page.
 
 !!! note "How many concepts are there, really?"
-    These six objects are the mental model we use throughout the docs. You will
-    occasionally see Charts and Tables called out separately — they are containers
-    that arrange Insights on a Dashboard. The exact count is being reconciled across
-    surfaces; for learning purposes, start with the six above.
+    Six. These six objects are the canonical concept set across the docs, and
+    every page uses them consistently. Charts and Tables are not a seventh and
+    eighth concept; they are containers that arrange Insights on a Dashboard, so
+    they live inside the Dashboard concept rather than alongside it.
 
 ## Where to go next
 
