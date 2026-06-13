@@ -286,6 +286,80 @@ pre,
   border-left: 3px solid #f43f5e !important;
 }
 
+/* --------------------------------------------------------------------------
+   Card-level accent (VIS-987 QA fix). In Markdown `grid cards`, an attr_list
+   like `{ .vz-accent-source }` attaches to the card's first PARAGRAPH, not the
+   <li> — so the colored border landed on a zero-padding inline <p> and was
+   invisible, while the card edge kept the neutral `.vz-cards-accent` border.
+   Lift each accent onto its containing card via :has() (well-supported in all
+   evergreen browsers) and suppress the stray inner-<p> border so the rainbow
+   reads on the card's left edge as intended. Order: source → dashboard.
+   -------------------------------------------------------------------------- */
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-source),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-source) {
+  border-left-color: #f97316 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-model),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-model) {
+  border-left-color: #f59e0b !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-csvmodel),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-csvmodel) {
+  border-left-color: #84cc16 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-mergemodel),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-mergemodel) {
+  border-left-color: #22c55e !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-dimension),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-dimension) {
+  border-left-color: #14b8a6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-metric),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-metric),
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-semantic),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-semantic) {
+  border-left-color: #06b6d4 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-relation),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-relation) {
+  border-left-color: #3b82f6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-input),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-input) {
+  border-left-color: #6366f1 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-insight),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-insight) {
+  border-left-color: #a855f7 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-markdown),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-markdown) {
+  border-left-color: #8b5cf6 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-table),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-table) {
+  border-left-color: #d946ef !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-chart),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-chart) {
+  border-left-color: #ec4899 !important;
+}
+.md-typeset .grid.cards.vz-cards-accent > ul > li:has(> .vz-accent-dashboard),
+.md-typeset .grid.cards.vz-cards-accent > :is(ul, ol) > li:has(> .vz-accent-dashboard) {
+  border-left-color: #f43f5e !important;
+}
+/* The accent now lives on the card; drop the stray border from the inner
+   heading <p> so it isn't doubled up next to the icon. */
+.md-typeset .grid.cards.vz-cards-accent > ul > li > p[class*='vz-accent-'],
+.md-typeset
+  .grid.cards.vz-cards-accent
+  > :is(ul, ol)
+  > li
+  > p[class*='vz-accent-'] {
+  border-left: 0 !important;
+}
+
 /* The semantic-layer grouping (Metrics/Dimensions/Relations) uses cyan, its
    center-of-mass color, on the Concepts overview. */
 .vz-semantic {

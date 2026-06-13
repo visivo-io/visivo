@@ -45,6 +45,7 @@ markdown_extensions:
           - mkdocs/overrides/.icons
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
+edit_uri: edit/main/mkdocs/
 theme:
   name: material
   custom_dir: mkdocs/overrides
@@ -60,7 +61,9 @@ theme:
     - navigation.path
     - navigation.tracking
     - navigation.instant
+    - navigation.footer
     - toc.follow
+    - content.action.edit
     - content.tooltips
     - content.code.annotate
     - content.code.copy
