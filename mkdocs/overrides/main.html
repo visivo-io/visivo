@@ -1,0 +1,143 @@
+{#-
+  Visivo docs SEO + AIO head override (VIS-999).
+
+  Extends Material's base.html and fills the `extrahead` block (Material leaves
+  it empty). We add, per page:
+    - Open Graph + Twitter Card tags (built from page meta with brand defaults)
+    - explicit canonical (base.html already emits one; this re-asserts it on og:url)
+    - site-level JSON-LD: Organization + SoftwareApplication (mirrors the www
+      index.html schema so search + answer engines see one consistent entity)
+    - per-article JSON-LD: TechArticle for content pages (skips the homepage)
+
+  Truth guardrails (keep in sync with www/CLAUDE.md "What Visivo IS / IS NOT"):
+  charts come from Insights backed by a semantic layer of Metrics, Dimensions,
+  and Relations (the 2.0 model). Embedding is private beta (no public SDK).
+
+  Material already emits <meta name="description"> and <link rel="canonical">
+  from base.html's site_meta block, so we do NOT duplicate those here.
+-#}
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {#-
+    Robust homepage detection. page.is_homepage is unreliable here because the
+    root index.md is nested under the "Get Started" nav section, so we also treat
+    the page that builds to the site root as the homepage.
+  -#}
+  {% set is_home = (page and (page.is_homepage or page.url in ("", ".", "/", "index.html"))) %}
+
+  {#- Resolve a title/description/canonical for this page with brand fallbacks. -#}
+  {% if page and page.meta and page.meta.title %}
+    {% set og_title = page.meta.title ~ " - " ~ config.site_name %}
+  {% elif page and page.title and not is_home %}
+    {% set og_title = (page.title | striptags) ~ " - " ~ config.site_name %}
+  {% else %}
+    {% set og_title = config.site_name %}
+  {% endif %}
+
+  {% if page and page.meta and page.meta.description %}
+    {% set og_desc = page.meta.description %}
+  {% else %}
+    {% set og_desc = config.site_description %}
+  {% endif %}
+
+  {% set og_url = page.canonical_url if page and page.canonical_url else config.site_url %}
+  {% set og_image = "https://visivo.io/og-image.png" %}
+
+  {#- Open Graph -#}
+  <meta property="og:site_name" content="Visivo Docs">
+  <meta property="og:type" content="{{ 'website' if is_home else 'article' }}">
+  <meta property="og:title" content="{{ og_title }}">
+  {% if og_desc %}<meta property="og:description" content="{{ og_desc }}">{% endif %}
+  <meta property="og:url" content="{{ og_url }}">
+  <meta property="og:image" content="{{ og_image }}">
+
+  {#- Twitter Card -#}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ og_title }}">
+  {% if og_desc %}<meta name="twitter:description" content="{{ og_desc }}">{% endif %}
+  <meta name="twitter:image" content="{{ og_image }}">
+
+  {#- llms.txt discovery hint for answer engines. -#}
+  <link rel="alternate" type="text/plain" title="llms.txt" href="{{ '/llms.txt' | url }}">
+
+  {#- Site-level Organization entity (mirrors www index.html). -#}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Visivo",
+    "url": "https://visivo.io/",
+    "logo": "https://visivo.io/images/logo.webp",
+    "description": "Visivo is an AI-native, open-source BI-as-code platform. Define a semantic layer of metrics, dimensions, and relations and dashboards as version-controlled code, explore them with Insights, develop locally with instant feedback, and deploy without breaking production.",
+    "sameAs": [
+      "https://github.com/visivo-io"
+    ]
+  }
+  </script>
+
+  {#- Site-level SoftwareApplication entity (mirrors www index.html). -#}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Visivo",
+    "url": "https://visivo.io/",
+    "applicationCategory": "BusinessApplication",
+    "applicationSubCategory": "Business Intelligence",
+    "operatingSystem": "macOS, Linux, Windows",
+    "description": "AI-native, open-source business intelligence as code. Define data sources, a semantic layer of metrics, dimensions, and relations, and dashboards as version-controlled YAML, then explore interactively with Insights. Install the CLI with pip install visivo or curl -fsSL https://visivo.sh | bash, develop locally with visivo serve, and deploy with a hosted cloud platform at app.visivo.io.",
+    "softwareHelp": "https://docs.visivo.io",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Visivo",
+      "url": "https://visivo.io/"
+    },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Open Source",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free, open-source CLI. Install with pip install visivo or curl -fsSL https://visivo.sh | bash.",
+        "url": "https://visivo.io/get-started"
+      },
+      {
+        "@type": "Offer",
+        "name": "Cloud",
+        "price": "15",
+        "priceCurrency": "USD",
+        "description": "Hosted cloud platform with a 14-day free trial.",
+        "url": "https://visivo.io/pricing"
+      }
+    ],
+    "keywords": "BI-as-code, AI-native BI, semantic layer, metrics, dimensions, relations, Insights, dashboards, version control, CI/CD, open source"
+  }
+  </script>
+
+  {#- Per-page TechArticle for documentation content (skip the homepage). -#}
+  {% if page and not is_home and og_desc %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": {{ (page.title | striptags) | tojson }},
+    "description": {{ og_desc | tojson }},
+    "url": "{{ og_url }}",
+    "image": "{{ og_image }}",
+    "inLanguage": "en",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "Visivo Docs",
+      "url": "https://docs.visivo.io/"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Visivo",
+      "url": "https://visivo.io/",
+      "logo": "https://visivo.io/images/logo.webp"
+    }
+  }
+  </script>
+  {% endif %}
+{% endblock %}
