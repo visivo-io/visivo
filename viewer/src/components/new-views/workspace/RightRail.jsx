@@ -1,7 +1,9 @@
 import React from 'react';
-import { PiList, PiPencil, PiSidebar } from 'react-icons/pi';
+import { PiList, PiPencil, PiSidebar, PiTreeStructure } from 'react-icons/pi';
 import useStore from '../../../stores/store';
+import useWorkspaceScope from './useWorkspaceScope';
 import OutlineTreePanel from './OutlineTreePanel';
+import SourceOutlineTreePanel from './SourceOutlineTreePanel';
 import RightRailEditPanel from './RightRailEditPanel';
 import { emitWorkspaceEvent } from './telemetry';
 
@@ -18,10 +20,19 @@ import { emitWorkspaceEvent } from './telemetry';
  *     auto-saves with a debounce (no Save buttons for the structure forms).
  */
 
-const TABS = [
-  { key: 'outline', label: 'Outline', icon: PiList },
-  { key: 'edit', label: 'Edit', icon: PiPencil },
-];
+// The Outline tab is contextual: for a `source` it browses the schema tree, so
+// it reads "Data" with a tree icon (VIS-1004 §8.5 — show the outline only where
+// relevant, renamed to fit the object). Every other object keeps "Outline".
+const getTabs = isSource =>
+  isSource
+    ? [
+        { key: 'outline', label: 'Data', icon: PiTreeStructure },
+        { key: 'edit', label: 'Edit', icon: PiPencil },
+      ]
+    : [
+        { key: 'outline', label: 'Outline', icon: PiList },
+        { key: 'edit', label: 'Edit', icon: PiPencil },
+      ];
 
 const TabBtn = ({ tab, active, onClick }) => {
   const Icon = tab.icon;
@@ -50,9 +61,14 @@ const TabBtn = ({ tab, active, onClick }) => {
   );
 };
 
-const RightRailBody = ({ activeTab }) => {
+const RightRailBody = ({ activeTab, selectedItem }) => {
   if (activeTab === 'outline') {
-    // VIS-793 / Track F F-3 — the real Outline tree of the scoped dashboard.
+    // VIS-1004 — when a `source` is the active object, the Outline ("Data") tab
+    // browses its db → schema → table → column tree instead of dead-ending on
+    // NoDashboardState. Every other object keeps the dashboard outline (F-3).
+    if (selectedItem && selectedItem.type === 'source') {
+      return <SourceOutlineTreePanel sourceName={selectedItem.name} />;
+    }
     return <OutlineTreePanel />;
   }
   // Edit is the default tab — also the fallthrough so any unknown tab key
@@ -63,6 +79,8 @@ const RightRailBody = ({ activeTab }) => {
 
 const RightRailExpanded = ({
   activeTab,
+  tabs,
+  selectedItem,
   onSelectTab,
   onCollapse,
 }) => {
@@ -74,7 +92,7 @@ const RightRailExpanded = ({
     >
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-gray-200 pl-2 pr-3">
         <div role="tablist" aria-label="Right rail" className="flex h-full items-center gap-1">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <TabBtn
               key={tab.key}
               tab={tab}
@@ -94,12 +112,12 @@ const RightRailExpanded = ({
           <PiSidebar className="h-4 w-4 -scale-x-100" />
         </button>
       </div>
-      <RightRailBody activeTab={activeTab} />
+      <RightRailBody activeTab={activeTab} selectedItem={selectedItem} />
     </aside>
   );
 };
 
-const RightRailCollapsed = ({ activeTab, onExpand }) => {
+const RightRailCollapsed = ({ activeTab, tabs, onExpand }) => {
   return (
     <aside
       data-testid="workspace-right-rail"
@@ -117,7 +135,7 @@ const RightRailCollapsed = ({ activeTab, onExpand }) => {
         <PiSidebar className="h-4 w-4 -scale-x-100" />
       </button>
       <div className="flex flex-1 flex-col items-center gap-1 py-2">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = tab.key === activeTab;
           return (
@@ -150,6 +168,12 @@ const RightRail = () => {
   const activeTab = useStore(s => s.workspaceRightTab);
   const setRightTab = useStore(s => s.setWorkspaceRightTab);
 
+  // The active object decides BOTH which Outline body mounts (source → schema
+  // tree) and the Outline tab label (source → "Data"). VIS-1004.
+  const { selectedItem } = useWorkspaceScope();
+  const isSource = selectedItem?.type === 'source';
+  const tabs = React.useMemo(() => getTabs(isSource), [isSource]);
+
   // Wrap the store setter so the right-rail tab switch fires telemetry
   // (VIS-793). Only emit when the tab actually changes — re-clicking the
   // active tab is a no-op.
@@ -163,10 +187,12 @@ const RightRail = () => {
   );
 
   return collapsed ? (
-    <RightRailCollapsed activeTab={activeTab} onExpand={toggleCollapsed} />
+    <RightRailCollapsed activeTab={activeTab} tabs={tabs} onExpand={toggleCollapsed} />
   ) : (
     <RightRailExpanded
       activeTab={activeTab}
+      tabs={tabs}
+      selectedItem={selectedItem}
       onSelectTab={onSelectTab}
       onCollapse={toggleCollapsed}
     />

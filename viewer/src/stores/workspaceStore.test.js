@@ -574,6 +574,58 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
   });
 
+  // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
+
+  test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {
+    const key = 'source-outline::analytics_db::db::main::table::orders';
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(key);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(key);
+    // The dashboard outline key is never touched by the source selection.
+    expect(useStore.getState().workspaceOutlineSelectedKey).not.toBe(key);
+    // Re-selecting the same key toggles the selection off.
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(key);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
+  });
+
+  test('toggleWorkspaceSourceOutlineExpanded adds/removes a node per source', () => {
+    act(() => {
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_b', 'node-2');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual(['node-1']);
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+    // Toggling the same node removes it without touching the other source.
+    act(() => {
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([]);
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+  });
+
+  test('setWorkspaceSourceOutlineExpanded replaces a source expanded set (auto-expand)', () => {
+    act(() => {
+      useStore
+        .getState()
+        .setWorkspaceSourceOutlineExpanded('src_a', ['db::main', 'db::main::schema::public']);
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([
+      'db::main',
+      'db::main::schema::public',
+    ]);
+    // Non-array input is ignored.
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineExpanded('src_a', 'not-an-array');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([
+      'db::main',
+      'db::main::schema::public',
+    ]);
+  });
+
   test('addDashboardRow appends an empty row, selects it, and persists the draft', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {

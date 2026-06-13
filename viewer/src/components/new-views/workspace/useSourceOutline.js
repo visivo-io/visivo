@@ -1,0 +1,317 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isAvailable } from '../../../contexts/URLContext';
+import { fetchSourceMetadata } from '../../../api/explorer';
+import {
+  generateSourceSchema,
+  fetchSchemaGenerationStatus,
+  fetchSourceTables,
+  fetchTableColumns,
+} from '../../../api/sourceSchemaJobs';
+
+/**
+ * useSourceOutline — VIS-1004 data feed for the right-rail source outline.
+ *
+ * Mirrors the Explorer's backend + frontend (SourceBrowser) but normalises the
+ * two divergent shapes into ONE nested db → schema → table → column tree:
+ *
+ *   - **Nested (primary):** `fetchSourceMetadata()` → the legacy introspect
+ *     path is the only feed carrying db/schema. Shape:
+ *       { sources: [{ name, type, status, databases:[
+ *           { name, schemas:[{ name, tables:[{ name, columns:[colName,…] }] }],
+ *                   tables:[{ name, columns:[colName,…] }] }  // schemas|tables
+ *       ] }] }
+ *     Columns here are bare strings (no type info).
+ *   - **Flat (fallback):** the cached `source-schema-jobs` path
+ *     (`fetchSourceTables` / `fetchTableColumns`) is source → table → column
+ *     with NO db/schema and column objects `{ name, type }`. Used to enrich
+ *     column types and as the cold-source generate target.
+ *
+ * Both normalise to nodes of the form:
+ *   { key, kind: 'database'|'schema'|'table'|'column', name, type?, children? }
+ * keyed with the disjoint `source-outline::…` grammar so the dashboard outline
+ * consumers never collide.
+ *
+ * `isAvailable` gating means this degrades cleanly in dist/cloud (every source
+ * endpoint URL is null there) — `available` flips false and the panel renders
+ * the "available under `visivo serve`" empty state instead of dead-ending.
+ */
+
+const KEY_ROOT = 'source-outline';
+
+export const sourceRootKey = src => `${KEY_ROOT}::${src}`;
+export const dbKey = (src, db) => `${sourceRootKey(src)}::db::${db}`;
+export const schemaKey = (src, db, schema) => `${dbKey(src, db)}::schema::${schema}`;
+export const tableKey = (src, db, schema, table) =>
+  schema != null
+    ? `${schemaKey(src, db, schema)}::table::${table}`
+    : `${dbKey(src, db)}::table::${table}`;
+export const columnKey = (parentTableKey, col) => `${parentTableKey}::col::${col}`;
+
+/**
+ * Normalise the nested `fetchSourceMetadata` entry for one source into the
+ * shared node tree. Returns `{ nodes, status, error }`.
+ */
+const normalizeNested = (sourceName, entry) => {
+  if (!entry) return { nodes: [], status: 'missing', error: null };
+  const databases = Array.isArray(entry.databases) ? entry.databases : [];
+
+  const databaseNodes = databases.map(db => {
+    const dKey = dbKey(sourceName, db.name);
+
+    const buildTableNode = (table, schemaName) => {
+      const tKey = tableKey(sourceName, db.name, schemaName, table.name);
+      const columns = Array.isArray(table.columns) ? table.columns : [];
+      return {
+        key: tKey,
+        kind: 'table',
+        name: table.name,
+        children: columns.map(col => {
+          // Nested columns are bare strings; flat columns are { name, type }.
+          const colName = typeof col === 'string' ? col : col?.name;
+          const colType = typeof col === 'string' ? null : col?.type || null;
+          return {
+            key: columnKey(tKey, colName),
+            kind: 'column',
+            name: colName,
+            type: colType,
+          };
+        }),
+      };
+    };
+
+    if (Array.isArray(db.schemas)) {
+      return {
+        key: dKey,
+        kind: 'database',
+        name: db.name,
+        children: db.schemas.map(schema => {
+          const sKey = schemaKey(sourceName, db.name, schema.name);
+          const tables = Array.isArray(schema.tables) ? schema.tables : [];
+          return {
+            key: sKey,
+            kind: 'schema',
+            name: schema.name,
+            children: tables.map(t => buildTableNode(t, schema.name)),
+          };
+        }),
+      };
+    }
+
+    const tables = Array.isArray(db.tables) ? db.tables : [];
+    return {
+      key: dKey,
+      kind: 'database',
+      name: db.name,
+      // No schemas → tables hang directly off the database.
+      children: tables.map(t => buildTableNode(t, null)),
+      error: db.error || null,
+    };
+  });
+
+  return {
+    nodes: databaseNodes,
+    status: entry.status || 'connected',
+    error: entry.error || null,
+  };
+};
+
+/**
+ * Build a flat-fallback tree (no db/schema) from the cached schema-jobs path.
+ * Synthesises a single pseudo-database node so the renderer stays uniform.
+ */
+const buildFlatTree = (sourceName, tables) => {
+  const dKey = dbKey(sourceName, sourceName);
+  return [
+    {
+      key: dKey,
+      kind: 'database',
+      name: sourceName,
+      flat: true,
+      children: (tables || []).map(table => {
+        const name = typeof table === 'string' ? table : table.name;
+        const tKey = tableKey(sourceName, sourceName, null, name);
+        return {
+          key: tKey,
+          kind: 'table',
+          name,
+          // Columns lazy-load on expand for the flat path (see loadFlatColumns).
+          children: null,
+        };
+      }),
+    },
+  ];
+};
+
+export default function useSourceOutline(sourceName) {
+  // The nested feed is the source of truth; `null` until first load completes.
+  const [nestedNodes, setNestedNodes] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | loading | connected | connection_failed | missing | error
+  const [error, setError] = useState(null);
+
+  // Flat-fallback state (cold source generate + lazy column loads).
+  const [flatNodes, setFlatNodes] = useState(null);
+  const [flatColumns, setFlatColumns] = useState({}); // tableKey -> column nodes
+  const [generating, setGenerating] = useState(null); // { status, progress, message } | null
+  const cancelledRef = useRef(false);
+
+  const available = useMemo(
+    () => isAvailable('sourcesMetadata') || isAvailable('sourceSchemaJobsList'),
+    []
+  );
+  const nestedAvailable = useMemo(() => isAvailable('sourcesMetadata'), []);
+
+  const loadNested = useCallback(async () => {
+    if (!sourceName || !nestedAvailable) return;
+    setStatus('loading');
+    setError(null);
+    try {
+      const data = await fetchSourceMetadata();
+      if (cancelledRef.current) return;
+      const entry = (data?.sources || []).find(s => s.name === sourceName);
+      const { nodes, status: entryStatus, error: entryError } = normalizeNested(
+        sourceName,
+        entry
+      );
+      setNestedNodes(nodes);
+      setStatus(entryStatus);
+      setError(entryError);
+    } catch (e) {
+      if (cancelledRef.current) return;
+      setStatus('error');
+      setError(e.message);
+      setNestedNodes([]);
+    }
+  }, [sourceName, nestedAvailable]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    // Reset per-source so switching sources never bleeds stale nodes.
+    setNestedNodes(null);
+    setFlatNodes(null);
+    setFlatColumns({});
+    setGenerating(null);
+    setStatus('idle');
+    setError(null);
+    loadNested();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [sourceName, loadNested]);
+
+  /**
+   * Cold-source "Generate schema" — lifted from SourceBrowser.handleGenerateSchema.
+   * Triggers the schema-jobs generate run, polls to completion, then loads the
+   * flat tables as a fallback feed (the nested feed remains primary when it can
+   * connect; this fills the tree for sources the nested introspect can't reach).
+   */
+  const generateSchema = useCallback(async () => {
+    if (!sourceName || !isAvailable('sourceSchemaJobCreate')) return;
+    setGenerating({ status: 'starting', progress: 0, message: '' });
+    setError(null);
+    try {
+      const { run_id: runId } = await generateSourceSchema(sourceName);
+      const maxWaitTime = 120000;
+      const pollInterval = 2000;
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitTime) {
+        if (cancelledRef.current) return;
+        const st = await fetchSchemaGenerationStatus(runId);
+        setGenerating({
+          status: st.status,
+          progress: st.progress || 0,
+          message: st.progress_message || '',
+        });
+
+        if (st.status === 'completed') {
+          const tables = await fetchSourceTables(sourceName);
+          if (cancelledRef.current) return;
+          setFlatNodes(buildFlatTree(sourceName, tables));
+          setGenerating(null);
+          // Re-attempt the nested feed; it may now connect/cache.
+          loadNested();
+          return;
+        }
+        if (st.status === 'failed') {
+          throw new Error(st.error || 'Schema generation failed');
+        }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+      throw new Error('Schema generation timed out');
+    } catch (e) {
+      if (cancelledRef.current) return;
+      setGenerating(null);
+      setError(e.message);
+    }
+  }, [sourceName, loadNested]);
+
+  /**
+   * Lazy-load columns for a flat-fallback table on expand (the flat path has no
+   * eager column data). No-op for the nested feed, whose columns are eager.
+   */
+  const loadFlatColumns = useCallback(
+    async tKey => {
+      if (!sourceName || flatColumns[tKey]) return;
+      // tableKey grammar: …::table::<name>
+      const match = tKey.match(/::table::(.+)$/);
+      const tableName = match ? match[1] : null;
+      if (!tableName) return;
+      try {
+        const cols = await fetchTableColumns(sourceName, tableName);
+        if (cancelledRef.current) return;
+        setFlatColumns(prev => ({
+          ...prev,
+          [tKey]: (cols || []).map(c => {
+            const name = typeof c === 'string' ? c : c.name;
+            return {
+              key: columnKey(tKey, name),
+              kind: 'column',
+              name,
+              type: typeof c === 'string' ? null : c.type || null,
+            };
+          }),
+        }));
+      } catch (e) {
+        if (cancelledRef.current) return;
+        setFlatColumns(prev => ({ ...prev, [tKey]: { error: e.message } }));
+      }
+    },
+    [sourceName, flatColumns]
+  );
+
+  // Prefer the nested tree; fall back to the generated flat tree. A source is
+  // "cold" (offer Generate) when the nested feed connected with zero databases
+  // AND no flat tree has been generated yet.
+  const nodes = useMemo(() => {
+    if (nestedNodes && nestedNodes.length > 0) return nestedNodes;
+    if (flatNodes && flatNodes.length > 0) return flatNodes;
+    if (nestedNodes && nestedNodes.length === 0) return [];
+    return null;
+  }, [nestedNodes, flatNodes]);
+
+  const isCold = useMemo(() => {
+    if (!available) return false;
+    if (generating) return false;
+    if (flatNodes && flatNodes.length > 0) return false;
+    // Empty nested result (no dbs / connection_failed) → cold, offer generate.
+    return (
+      status === 'connection_failed' ||
+      status === 'missing' ||
+      (nestedNodes != null && nestedNodes.length === 0)
+    );
+  }, [available, generating, flatNodes, status, nestedNodes]);
+
+  return {
+    available,
+    loading: status === 'loading' && nestedNodes == null,
+    nodes,
+    status,
+    error,
+    isCold,
+    generating,
+    generateSchema,
+    loadFlatColumns,
+    flatColumns,
+    reload: loadNested,
+  };
+}
