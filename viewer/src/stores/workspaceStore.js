@@ -79,6 +79,24 @@ const createWorkspaceSlice = (set, get) => ({
   // hovering never mutates selection.
   workspaceCanvasHoverKey: null,
 
+  // Source outline (right-rail "Data" tab when a `source` is the active object,
+  // VIS-1004). A DISJOINT selection-key grammar from the dashboard outline so
+  // the two consumers never collide:
+  //   `source-outline::<src>::db::<d>` ·
+  //   `…::schema::<s>` · `…::table::<t>` · `…::col::<c>`
+  // The dashboard's `parseOutlineKey` safely falls through for these keys (it
+  // only recognises `dashboard` / `row.N` / `row.N.item.M`), and this lives on
+  // its own store key so a source selection can never leak into the dashboard
+  // Edit form. `null` = nothing selected in the source tree.
+  workspaceSourceOutlineSelectedKey: null,
+
+  // Per-source, per-session expand/collapse memory for the source outline. Keyed
+  // by source name → array of expanded node keys (db/schema/table). Arrays (not
+  // Sets) keep the slice serialisable and test-friendly; the panel rehydrates a
+  // Set from these on render. NOT persisted across reloads — session-only, as the
+  // schema can change between sessions (VIS-1004 §8.5).
+  workspaceSourceOutlineExpanded: {},
+
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
   workspaceRightWidth: 360,
@@ -339,6 +357,55 @@ const createWorkspaceSlice = (set, get) => ({
         ? state
         : { workspaceCanvasHoverKey: key || null }
     );
+  },
+
+  /**
+   * Select a node in the source outline (VIS-1004). `key` follows the disjoint
+   * `source-outline::…` grammar; passing the already-selected key (or `null`)
+   * toggles the selection off. Stored separately from the dashboard outline key
+   * so the two never collide.
+   */
+  setWorkspaceSourceOutlineSelectedKey: (key) => {
+    if (key != null && typeof key !== 'string') return;
+    set(state => ({
+      workspaceSourceOutlineSelectedKey:
+        state.workspaceSourceOutlineSelectedKey === key ? null : key || null,
+    }));
+  },
+
+  /**
+   * Toggle a node's expand state in the source outline for a given source.
+   * Per-source, per-session — `sourceName` partitions the expanded set so two
+   * sources keep independent disclosure state.
+   */
+  toggleWorkspaceSourceOutlineExpanded: (sourceName, nodeKey) => {
+    if (!sourceName || !nodeKey) return;
+    set(state => {
+      const current = state.workspaceSourceOutlineExpanded[sourceName] || [];
+      const next = current.includes(nodeKey)
+        ? current.filter(k => k !== nodeKey)
+        : [...current, nodeKey];
+      return {
+        workspaceSourceOutlineExpanded: {
+          ...state.workspaceSourceOutlineExpanded,
+          [sourceName]: next,
+        },
+      };
+    });
+  },
+
+  /**
+   * Replace the expanded-node set for a source (e.g. auto-expanding the tree
+   * after a cold-source schema generation completes). `nodeKeys` is an array.
+   */
+  setWorkspaceSourceOutlineExpanded: (sourceName, nodeKeys) => {
+    if (!sourceName || !Array.isArray(nodeKeys)) return;
+    set(state => ({
+      workspaceSourceOutlineExpanded: {
+        ...state.workspaceSourceOutlineExpanded,
+        [sourceName]: nodeKeys,
+      },
+    }));
   },
 
   /**
