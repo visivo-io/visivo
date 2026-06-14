@@ -85,7 +85,15 @@ test.describe('Workspace source outline + caching (VIS-1004)', () => {
     await expect(
       page.getByTestId('source-outline-tree').or(page.getByTestId('source-outline-cold'))
     ).toBeVisible({ timeout: WAIT });
-    await page.waitForTimeout(600);
+    // Wait until the introspection result is actually written to the session cache
+    // before navigating away — otherwise (esp. under parallel load) a slow first
+    // introspect may not have cached yet, and the re-select would legitimately
+    // re-fetch. Polling the store removes that timing assumption.
+    await page.waitForFunction(
+      () => !!window.useStore?.getState?.().workspaceSourceOutlineDataCache?.['local-duckdb'],
+      null,
+      { timeout: WAIT }
+    );
     expect(metaCalls).toBeGreaterThan(0);
 
     // Visit a different source (its own introspect), then return to duckdb.
