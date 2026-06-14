@@ -194,7 +194,7 @@ const PerObjectPane = ({ activeObject, projectId }) => {
           <PreviewLensPicker
             value={lens}
             onChange={setLensEffective}
-            previewLabel="Preview"
+            previewLabel="Canvas"
             previewDisabled={!hasPreview}
           />
         }
