@@ -164,9 +164,13 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
     return lenses.map(l => ({ value: l.key, label: l.label, icon: LENS_ICON[l.key] }));
   }, [hasCanvasLens, lenses]);
 
+  // The read-only / dirty affordance describes the OBJECT's canvas lens; the
+  // universal Lineage lens is its own read-only DAG and carries no pill.
+  const showAffordance = lens !== 'lineage';
   const lensPicker = (
     <div className="flex items-center gap-2">
-      {activeLensMeta.kind === 'editable' ? (
+      {showAffordance &&
+        (activeLensMeta.kind === 'editable' ? (
         <span
           data-testid="canvas-dirty-indicator"
           data-dirty={dirty ? 'true' : 'false'}
@@ -188,7 +192,7 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
           <PiLockSimple className="h-3 w-3" aria-hidden="true" />
           Read-only
         </span>
-      )}
+        ))}
       <Segmented
         ariaLabel="View"
         tone="light"

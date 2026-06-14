@@ -74,6 +74,8 @@ describe('ObjectCanvasFrame', () => {
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
     expect(screen.getByTestId('workspace-middle-chart-lineage')).toBeInTheDocument();
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
+    // The universal Lineage lens is its own read-only DAG — no canvas pill.
+    expect(screen.queryByTestId('canvas-readonly-pill')).not.toBeInTheDocument();
   });
 
   test('a serve-only canvas degrades to the unavailable state on the dist build', async () => {
