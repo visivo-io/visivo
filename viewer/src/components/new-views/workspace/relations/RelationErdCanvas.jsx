@@ -15,9 +15,10 @@ import { useObjectCanvasDirty } from '../ObjectCanvasFrame';
 import { useRelationErdDag, relationModelNames } from './useRelationErdDag';
 import { useModelColumns } from './useModelColumns';
 import ErdModelNode from './ErdModelNode';
+import RelationNode from './RelationNode';
 import JoinOperatorPopover from './JoinOperatorPopover';
 import AddModelMention from './AddModelMention';
-import RelationPillEdge, { RELATION_EDGE_MARKER } from './RelationPillEdge';
+import RelationLinkEdge from './RelationLinkEdge';
 import { mergeById } from './erdNodeMerge';
 import ErdTidyButton from './ErdTidyButton';
 
@@ -51,6 +52,8 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   const models = useStore(s => s.models);
   const relations = useStore(s => s.relations);
   const storeActiveObject = useStore(s => s.workspaceActiveObject);
+  const openEditRelationModal = useStore(s => s.openEditRelationModal);
+  const getRelationByName = useStore(s => s.getRelationByName);
   const { setDirty } = useObjectCanvasDirty();
 
   const { fitView } = useReactFlow();
@@ -99,29 +102,33 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   const setErdNodePositions = useStore(s => s.setErdNodePositions);
   const clearErdLayout = useStore(s => s.clearErdLayout);
   const savedPositions = erdLayout.nodes;
-  const savedWaypoints = erdLayout.waypoints;
 
-  const { nodes: seededNodes, edges: baseEdges } = useRelationErdDag({
+  const { nodes: seededNodes, edges } = useRelationErdDag({
     scopeModelNames,
     extraModelNames,
     columnsByModel,
     savedPositions,
-    savedWaypoints,
     layoutVersion,
   });
 
-  const edges = useMemo(
-    () =>
-      baseEdges.map(edge => ({
-        ...edge,
-        markerEnd: RELATION_EDGE_MARKER,
-        data: { ...edge.data, scopeKey },
-      })),
-    [baseEdges, scopeKey]
+  const nodeTypes = useMemo(
+    () => ({ erdModelNode: ErdModelNode, relationNode: RelationNode }),
+    []
   );
+  const edgeTypes = useMemo(() => ({ relationLinkEdge: RelationLinkEdge }), []);
 
-  const nodeTypes = useMemo(() => ({ erdModelNode: ErdModelNode }), []);
-  const edgeTypes = useMemo(() => ({ relationEdge: RelationPillEdge }), []);
+  // Click a relation node → open the existing relation editor.
+  const onNodeClick = useCallback(
+    (_event, node) => {
+      if (node?.type === 'relationNode' && node.data?.relationName) {
+        const relation = getRelationByName
+          ? getRelationByName(node.data.relationName)
+          : { name: node.data.relationName };
+        if (openEditRelationModal) openEditRelationModal(relation);
+      }
+    },
+    [getRelationByName, openEditRelationModal]
+  );
 
   // Controlled draggable nodes (mergeById §6). Reseed when the hook output, scope,
   // or layoutVersion changes.
@@ -276,6 +283,7 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
             nodesDraggable
             onNodesChange={onNodesChange}
             onNodeDragStop={onNodeDragStop}
+            onNodeClick={onNodeClick}
             onConnectStart={onConnectStart}
             onConnect={onConnect}
             onConnectEnd={onConnectEnd}

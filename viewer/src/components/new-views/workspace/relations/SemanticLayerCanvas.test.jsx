@@ -53,9 +53,8 @@ jest.mock('reactflow', () => {
     applyNodeChanges: (changes, nodes) => nodes,
     useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
     useNodesInitialized: () => true,
-    // RelationPillEdge module-level imports (it's required transitively).
+    // RelationLinkEdge module-level imports (it's required transitively).
     BaseEdge: () => null,
-    EdgeLabelRenderer: ({ children }) => children,
     getBezierPath: () => ['M0,0 L1,1', 0, 0],
     useStore: () => new Map(),
     useStoreApi: () => ({ getState: () => ({ nodeInternals: new Map() }) }),
@@ -65,6 +64,7 @@ jest.mock('reactflow/dist/style.css', () => ({}), { virtual: true });
 
 const mockSetErdNodePositions = jest.fn();
 const mockClearErdLayout = jest.fn();
+const mockOpenEditRelationModal = jest.fn();
 
 function mockStore(state) {
   const full = {
@@ -76,7 +76,8 @@ function mockStore(state) {
     fetchRelations: jest.fn(),
     fetchMetrics: jest.fn(),
     fetchDimensions: jest.fn(),
-    getRelationByName: () => undefined,
+    getRelationByName: name => (full.relations || []).find(r => r.name === name),
+    openEditRelationModal: mockOpenEditRelationModal,
     getErdLayout: () => ({ nodes: {}, waypoints: {} }),
     workspaceErdLayoutVersion: {},
     setErdNodePositions: mockSetErdNodePositions,
@@ -136,7 +137,7 @@ describe('SemanticLayerCanvas', () => {
     expect(screen.getByTestId('erd-dimension-pill-status')).toBeInTheDocument();
   });
 
-  it('renders relations as edges', () => {
+  it('renders a relation as its own node + two link edges', () => {
     mockStore({ models: [{ name: 'orders' }, { name: 'users' }] });
     useRelationErdDag.mockReturnValue({
       nodes: [
@@ -152,18 +153,36 @@ describe('SemanticLayerCanvas', () => {
           position: { x: 0, y: 0 },
           data: { name: 'users', columns: ['id'] },
         },
+        {
+          id: 'erd-relnode-orders_to_users',
+          type: 'relationNode',
+          position: { x: 0, y: 0 },
+          data: { relationName: 'orders_to_users', isDefault: false },
+        },
       ],
       edges: [
         {
-          id: 'erd-rel-orders_to_users',
+          id: 'erd-reledge-orders_to_users-a',
+          type: 'relationLinkEdge',
           source: 'erd-model-orders',
+          target: 'erd-relnode-orders_to_users',
+        },
+        {
+          id: 'erd-reledge-orders_to_users-b',
+          type: 'relationLinkEdge',
+          source: 'erd-relnode-orders_to_users',
           target: 'erd-model-users',
         },
       ],
     });
 
     render(<SemanticLayerCanvas />);
-    expect(screen.getByTestId('rf-edge-erd-rel-orders_to_users')).toBeInTheDocument();
+    // The relation renders as a node (its model-card type is remapped, but the
+    // relationNode type is preserved so the pill renders).
+    expect(screen.getByTestId('rf-node-erd-relnode-orders_to_users')).toBeInTheDocument();
+    expect(screen.getByTestId('erd-relation-node-orders_to_users')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-edge-erd-reledge-orders_to_users-a')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-edge-erd-reledge-orders_to_users-b')).toBeInTheDocument();
   });
 
   it('drives the dag with the project fields and a tiled grid layout', () => {
@@ -196,12 +215,15 @@ describe('SemanticLayerCanvas', () => {
     });
   };
 
-  it('wraps in a provider, registers relationEdge, and drives controlled drag', () => {
+  it('wraps in a provider, registers relationLinkEdge + relationNode, and drives controlled drag', () => {
     oneModel();
     render(<SemanticLayerCanvas />);
     expect(screen.getByTestId('rf-provider')).toBeInTheDocument();
-    expect(rfProps.current.edgeTypes).toHaveProperty('relationEdge');
+    expect(rfProps.current.edgeTypes).toHaveProperty('relationLinkEdge');
+    expect(rfProps.current.nodeTypes).toHaveProperty('semanticLayerModelNode');
+    expect(rfProps.current.nodeTypes).toHaveProperty('relationNode');
     expect(rfProps.current.nodesDraggable).toBe(true);
+    expect(typeof rfProps.current.onNodeClick).toBe('function');
   });
 
   it('passes the saved layout overlays + layoutVersion into the dag hook', () => {
@@ -210,9 +232,36 @@ describe('SemanticLayerCanvas', () => {
     expect(useRelationErdDag).toHaveBeenCalledWith(
       expect.objectContaining({
         savedPositions: expect.any(Object),
-        savedWaypoints: expect.any(Object),
         layoutVersion: 0,
       })
+    );
+  });
+
+  it('onNodeClick on a relationNode opens the relation editor', () => {
+    mockStore({
+      models: [{ name: 'orders' }, { name: 'users' }],
+      relations: [{ name: 'orders_to_users', condition: 'x = y' }],
+    });
+    useRelationErdDag.mockReturnValue({
+      nodes: [
+        {
+          id: 'erd-relnode-orders_to_users',
+          type: 'relationNode',
+          position: { x: 0, y: 0 },
+          data: { relationName: 'orders_to_users' },
+        },
+      ],
+      edges: [],
+    });
+    render(<SemanticLayerCanvas />);
+    act(() => {
+      rfProps.current.onNodeClick(
+        {},
+        { type: 'relationNode', data: { relationName: 'orders_to_users' } }
+      );
+    });
+    expect(mockOpenEditRelationModal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders_to_users' })
     );
   });
 

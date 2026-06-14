@@ -1,20 +1,24 @@
 /* eslint-disable no-template-curly-in-string */
 /**
- * Story: Semantic Layer ERD graph overhaul (build spec §8 Step 6).
+ * Story: Semantic Layer ERD graph — relation-as-node refactor.
  *
  * Exercises the reactflow ERD machine on the integration project's Semantic
- * Layer page:
+ * Layer page, where each relation is now a FIRST-CLASS NODE (a styled pill) with
+ * two undirected relation-coloured link edges to its two models' columns:
  *   (a) drag a model card → its position persists into
  *       window.useStore.getState().workspaceErdLayout['semantic-layer'].nodes
- *   (b) cards never overlap and the layout fills multiple columns (the §4.4
- *       acceptance gate proxy — no edge path overlaps a non-endpoint card body)
- *   (c) click a relation pill → the RelationEditForm modal opens (relationModalOpen)
+ *   (b) cards never overlap and the layout fills multiple columns (the acceptance
+ *       gate proxy — no node body overlapped by another)
+ *   (c) the relation renders as a node `erd-relation-node-local_to_local` with
+ *       two `relationLinkEdge` lines; clicking it opens the relation editor
+ *       (relationModalOpen)
+ *   (d) the relation node is itself draggable + persists its position
  *   (e) Tidy layout clears positions and re-fits
  *
- * The column→column drag-to-author gesture and pill waypoint drag are too brittle
- * to drive through Playwright pointer events reliably; they're covered by unit +
- * component tests (RelationPillEdge.test.jsx, useRelationErdDag.test.js). This
- * story asserts the wiring that IS reliably drivable through the real canvas.
+ * The column→column drag-to-author gesture is too brittle to drive through
+ * Playwright pointer events reliably; it's covered by unit + component tests
+ * (useRelationErdDag.test.js, RelationNode.test.jsx). This story asserts the
+ * wiring that IS reliably drivable through the real canvas.
  *
  * Precondition: an isolated sandbox running the integration project. The runner
  * passes VIS_CANVAS_BASE / PLAYWRIGHT_BASE_URL pointing at it.
@@ -104,23 +108,78 @@ test.describe('Semantic Layer ERD overhaul (reactflow machine)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('(c) clicking a relation pill opens the relation edit modal', async ({ page }) => {
+  test('(c) the relation is a node with two link edges; clicking it opens the edit modal', async ({
+    page,
+  }) => {
     const errors = collectErrors(page);
     await openSemanticLayer(page);
 
-    // The integration project ships local_to_local; its pill renders on the edge.
-    const pill = page.locator('[data-testid^="erd-relation-pill-"]').first();
-    await expect(pill).toBeVisible({ timeout: WAIT });
-    await pill.click();
+    // The integration project ships local_to_local; it now renders as its OWN
+    // node (a pill), not an edge label.
+    const relNode = page.getByTestId('erd-relation-node-local_to_local');
+    await expect(relNode).toBeVisible({ timeout: WAIT });
 
-    // The existing RelationEditForm modal opens (relationModalOpen → true).
+    // Two undirected relationLinkEdge lines attach the relation node to its two
+    // models (one per `erd-reledge-local_to_local-{a,b}` edge). React-Flow tags
+    // each edge <g> with data-id={edge.id} and the relationLinkEdge type class.
     await expect
-      .poll(async () => page.evaluate(() => window.useStore?.getState?.().relationModalOpen === true), {
-        timeout: WAIT,
-      })
+      .poll(
+        async () =>
+          page.evaluate(() =>
+            document.querySelectorAll(
+              '.react-flow__edge.react-flow__edge-relationLinkEdge[data-id^="erd-reledge-local_to_local"]'
+            ).length
+          ),
+        { timeout: WAIT }
+      )
+      .toBe(2);
+
+    // Click the relation node → the existing RelationEditForm modal opens.
+    await relNode.click();
+    await expect
+      .poll(
+        async () => page.evaluate(() => window.useStore?.getState?.().relationModalOpen === true),
+        { timeout: WAIT }
+      )
       .toBe(true);
 
-    await page.screenshot({ path: `${SCREENS}/sl-erd-03-pill-edit.png` });
+    await page.screenshot({ path: `${SCREENS}/sl-erd-03-relation-node-edit.png` });
+    expect(errors).toEqual([]);
+  });
+
+  test('(d) the relation node is draggable and persists its position', async ({ page }) => {
+    const errors = collectErrors(page);
+    await openSemanticLayer(page);
+
+    const relNode = page.getByTestId('erd-relation-node-local_to_local');
+    await expect(relNode).toBeVisible({ timeout: WAIT });
+    const box = await relNode.boundingBox();
+    expect(box).not.toBeNull();
+
+    // Drag the relation node ~120px down/right — it's a first-class draggable node.
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 80, startY + 110, { steps: 8 });
+    await page.mouse.move(startX + 130, startY + 160, { steps: 8 });
+    await page.mouse.up();
+
+    // The drag-stop persisted the relation NODE's position into the scope bucket.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const layout = window.useStore?.getState?.().workspaceErdLayout?.['semantic-layer'];
+            return layout
+              ? Object.keys(layout.nodes || {}).some(id => id.startsWith('erd-relnode-'))
+              : false;
+          }),
+        { timeout: WAIT }
+      )
+      .toBe(true);
+
+    await page.screenshot({ path: `${SCREENS}/sl-erd-05-relation-node-drag.png` });
     expect(errors).toEqual([]);
   });
 

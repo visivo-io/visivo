@@ -71,9 +71,8 @@ jest.mock('reactflow', () => {
     applyNodeChanges: (changes, nodes) => nodes,
     useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
     useNodesInitialized: () => true,
-    // RelationPillEdge module-level imports (it's required transitively).
+    // RelationLinkEdge module-level imports (it's required transitively).
     BaseEdge: () => null,
-    EdgeLabelRenderer: ({ children }) => children,
     getBezierPath: () => ['M0,0 L1,1', 0, 0],
     useStore: () => new Map(),
     useStoreApi: () => ({ getState: () => ({ nodeInternals: new Map() }) }),
@@ -87,6 +86,7 @@ const mockFetchModels = jest.fn();
 const mockFetchRelations = jest.fn();
 const mockSetErdNodePositions = jest.fn();
 const mockClearErdLayout = jest.fn();
+const mockOpenEditRelationModal = jest.fn();
 
 function mockStore(models, extra = {}) {
   const state = {
@@ -95,6 +95,7 @@ function mockStore(models, extra = {}) {
     fetchModels: mockFetchModels,
     fetchRelations: mockFetchRelations,
     getRelationByName: name => (state.relations || []).find(r => r.name === name),
+    openEditRelationModal: mockOpenEditRelationModal,
     workspaceActiveObject: null,
     // Session-only ERD layout slice.
     getErdLayout: () => ({ nodes: {}, waypoints: {} }),
@@ -145,7 +146,7 @@ describe('RelationErdCanvas', () => {
     expect(screen.getByTestId('erd-column-orders-user_id')).toBeInTheDocument();
   });
 
-  it('renders existing relations as edges', () => {
+  it('renders a relation as its own node plus two link edges', () => {
     mockStore([
       { name: 'orders', columns: ['user_id'] },
       { name: 'users', columns: ['id'] },
@@ -164,20 +165,40 @@ describe('RelationErdCanvas', () => {
           position: { x: 0, y: 0 },
           data: { name: 'users', columns: ['id'] },
         },
+        {
+          id: 'erd-relnode-orders_to_users',
+          type: 'relationNode',
+          position: { x: 0, y: 0 },
+          data: { relationName: 'orders_to_users', isDefault: false },
+        },
       ],
       edges: [
         {
-          id: 'erd-rel-orders_to_users',
+          id: 'erd-reledge-orders_to_users-a',
+          type: 'relationLinkEdge',
           source: 'erd-model-orders',
-          target: 'erd-model-users',
+          target: 'erd-relnode-orders_to_users',
           sourceHandle: 'user_id',
+          data: { relationName: 'orders_to_users', modelEnd: 'source', column: 'user_id' },
+        },
+        {
+          id: 'erd-reledge-orders_to_users-b',
+          type: 'relationLinkEdge',
+          source: 'erd-relnode-orders_to_users',
+          target: 'erd-model-users',
           targetHandle: 'id',
+          data: { relationName: 'orders_to_users', modelEnd: 'target', column: 'id' },
         },
       ],
     });
 
     render(<RelationErdCanvas />);
-    expect(screen.getByTestId('rf-edge-erd-rel-orders_to_users')).toBeInTheDocument();
+    // The relation renders as a first-class node (a pill), not an edge label.
+    expect(screen.getByTestId('rf-node-erd-relnode-orders_to_users')).toBeInTheDocument();
+    expect(screen.getByTestId('erd-relation-node-orders_to_users')).toBeInTheDocument();
+    // Two undirected link edges attach it to the two model cards.
+    expect(screen.getByTestId('rf-edge-erd-reledge-orders_to_users-a')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-edge-erd-reledge-orders_to_users-b')).toBeInTheDocument();
   });
 
   it('shows the empty state when there are no models', () => {
@@ -243,14 +264,54 @@ describe('RelationErdCanvas', () => {
     });
   };
 
-  it('wraps the canvas in a ReactFlowProvider and registers the relationEdge type', () => {
+  it('wraps the canvas in a ReactFlowProvider and registers the relationLinkEdge + relationNode types', () => {
     oneModel();
     render(<RelationErdCanvas />);
     expect(screen.getByTestId('rf-provider')).toBeInTheDocument();
-    expect(rfProps.current.edgeTypes).toHaveProperty('relationEdge');
+    expect(rfProps.current.edgeTypes).toHaveProperty('relationLinkEdge');
+    expect(rfProps.current.nodeTypes).toHaveProperty('erdModelNode');
+    expect(rfProps.current.nodeTypes).toHaveProperty('relationNode');
     expect(rfProps.current.nodesDraggable).toBe(true);
     expect(typeof rfProps.current.onNodesChange).toBe('function');
     expect(typeof rfProps.current.onNodeDragStop).toBe('function');
+    expect(typeof rfProps.current.onNodeClick).toBe('function');
+  });
+
+  it('onNodeClick on a relationNode opens the relation editor via the store', () => {
+    mockStore([{ name: 'orders' }, { name: 'users' }], {
+      relations: [{ name: 'orders_to_users', condition: 'x = y' }],
+    });
+    useRelationErdDag.mockReturnValue({
+      nodes: [
+        {
+          id: 'erd-relnode-orders_to_users',
+          type: 'relationNode',
+          position: { x: 0, y: 0 },
+          data: { relationName: 'orders_to_users' },
+        },
+      ],
+      edges: [],
+    });
+    render(<RelationErdCanvas />);
+    act(() => {
+      rfProps.current.onNodeClick(
+        {},
+        { type: 'relationNode', data: { relationName: 'orders_to_users' } }
+      );
+    });
+    expect(mockOpenEditRelationModal).toHaveBeenCalledTimes(1);
+    expect(mockOpenEditRelationModal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'orders_to_users' })
+    );
+  });
+
+  it('onNodeClick on a model node does NOT open the relation editor', () => {
+    oneModel();
+    render(<RelationErdCanvas />);
+    act(() => {
+      rfProps.current.onNodeClick({}, { type: 'erdModelNode', data: { name: 'orders' } });
+    });
+    expect(mockOpenEditRelationModal).not.toHaveBeenCalled();
   });
 
   it('onNodeDragStop persists the moved node via setErdNodePositions(scope, ...)', () => {

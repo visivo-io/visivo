@@ -2,7 +2,7 @@
  * erdGeometry.js — the SINGLE source of truth for ERD model-card geometry.
  *
  * `useRelationErdDag.js`, `ErdModelNode.jsx`, `edgeRouting.js`, and
- * `RelationPillEdge.jsx` all import these consts from here so the layout engine
+ * `RelationLinkEdge.jsx` all import these consts from here so the layout engine
  * (dagre via `layoutSize`), the card renderer, and the edge router agree on the
  * exact pixel geometry of a card. Nothing re-declares these values.
  *

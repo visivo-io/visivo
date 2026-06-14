@@ -14,8 +14,9 @@ import { useRelationErdDag } from './useRelationErdDag';
 import { useModelColumns } from './useModelColumns';
 import { groupFieldsByModel } from './semanticFields';
 import SemanticLayerErdModelNode from './SemanticLayerErdModelNode';
+import RelationNode from './RelationNode';
 import JoinOperatorPopover from './JoinOperatorPopover';
-import RelationPillEdge, { RELATION_EDGE_MARKER } from './RelationPillEdge';
+import RelationLinkEdge from './RelationLinkEdge';
 import { mergeById } from './erdNodeMerge';
 import ErdTidyButton from './ErdTidyButton';
 
@@ -60,8 +61,9 @@ const SemanticLayerCanvasInner = () => {
   const layoutVersion = useStore(s => s.workspaceErdLayoutVersion[SCOPE_KEY] || 0);
   const setErdNodePositions = useStore(s => s.setErdNodePositions);
   const clearErdLayout = useStore(s => s.clearErdLayout);
+  const openEditRelationModal = useStore(s => s.openEditRelationModal);
+  const getRelationByName = useStore(s => s.getRelationByName);
   const savedPositions = erdLayout.nodes;
-  const savedWaypoints = erdLayout.waypoints;
 
   const { fitView } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
@@ -84,36 +86,43 @@ const SemanticLayerCanvasInner = () => {
     [models, metrics, dimensions]
   );
 
-  const { nodes: baseNodes, edges: baseEdges } = useRelationErdDag({
+  const { nodes: baseNodes, edges } = useRelationErdDag({
     columnsByModel,
     fieldsByModel,
     layout: 'grid',
     savedPositions,
-    savedWaypoints,
     layoutVersion,
   });
 
-  // The hook already folded metrics/dimensions into each node's data and sized
-  // the card; the Semantic Layer just swaps in its richer card renderer.
+  // The hook already folded metrics/dimensions into each MODEL node's data and
+  // sized the card; the Semantic Layer just swaps the model card type in for its
+  // richer renderer. Relation nodes keep their own `relationNode` type.
   const seededNodes = useMemo(
-    () => baseNodes.map(node => ({ ...node, type: 'semanticLayerModelNode' })),
+    () =>
+      baseNodes.map(node =>
+        node.type === 'erdModelNode' ? { ...node, type: 'semanticLayerModelNode' } : node
+      ),
     [baseNodes]
   );
 
-  // Stamp the scope key into each edge's data so the pill persists waypoints to
-  // the right bucket, and attach the relation-blue arrow marker.
-  const edges = useMemo(
-    () =>
-      baseEdges.map(edge => ({
-        ...edge,
-        markerEnd: RELATION_EDGE_MARKER,
-        data: { ...edge.data, scopeKey: SCOPE_KEY },
-      })),
-    [baseEdges]
+  const nodeTypes = useMemo(
+    () => ({ semanticLayerModelNode: SemanticLayerErdModelNode, relationNode: RelationNode }),
+    []
   );
+  const edgeTypes = useMemo(() => ({ relationLinkEdge: RelationLinkEdge }), []);
 
-  const nodeTypes = useMemo(() => ({ semanticLayerModelNode: SemanticLayerErdModelNode }), []);
-  const edgeTypes = useMemo(() => ({ relationEdge: RelationPillEdge }), []);
+  // Click a relation node → open the existing relation editor.
+  const onNodeClick = useCallback(
+    (_event, node) => {
+      if (node?.type === 'relationNode' && node.data?.relationName) {
+        const relation = getRelationByName
+          ? getRelationByName(node.data.relationName)
+          : { name: node.data.relationName };
+        if (openEditRelationModal) openEditRelationModal(relation);
+      }
+    },
+    [getRelationByName, openEditRelationModal]
+  );
 
   // Controlled nodes: keep a moved/in-flight node, overlay saved, seed new, drop
   // deleted (mergeById §6). Effect deps mirror the hook's memo keys via the
@@ -243,6 +252,7 @@ const SemanticLayerCanvasInner = () => {
               nodesDraggable
               onNodesChange={onNodesChange}
               onNodeDragStop={onNodeDragStop}
+              onNodeClick={onNodeClick}
               onConnectStart={onConnectStart}
               onConnect={onConnect}
               onConnectEnd={onConnectEnd}

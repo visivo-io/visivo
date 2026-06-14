@@ -9,12 +9,24 @@ import { runLayout, packBoxes } from './layoutEngine';
  * Builds the React-Flow graph for the Relations ERD builder:
  *   - one `erdModelNode` per (in-scope) project model, carrying the model's
  *     column list so each column can render its own connection handle;
- *   - one edge per existing relation, parsed from the relation's `condition`
- *     (`${ref(A).colA} <op> ${ref(B).colB}`) into A.colA ↔ B.colB, wired to the
- *     per-column handles (`sourceHandle` / `targetHandle`) so the edge lands on
- *     the exact column rows.
+ *   - one `relationNode` per existing relation (a styled pill that is itself a
+ *     first-class, draggable node), parsed from the relation's `condition`
+ *     (`${ref(A).colA} <op> ${ref(B).colB}`) into A.colA ↔ B.colB;
+ *   - TWO `relationLinkEdge` edges per relation, running modelA → relationNode →
+ *     modelB. They are built DIRECTIONALLY (so dagre ranks `A → rel → B`
+ *     horizontally) but rendered UNDIRECTED (no arrowheads) — the join is
+ *     two-way, so a directional table→table arrow would be semantically wrong.
+ *     Each edge's MODEL end is wired to the per-column handle (`sourceHandle` /
+ *     `targetHandle`) so the line lands on the exact column row.
  *
- * Reuses computeLayout (dagre LR) from the lineage harness for positions.
+ * The relation node replaces the old single model→model `relationEdge` + its
+ * pill label. Parallel relations between the same two models are now distinct
+ * relation NODES (naturally separated by the layout), so the parallel-index /
+ * perpendicular-offset machinery is gone, and the pill is no longer a draggable
+ * edge waypoint — the relation node itself is the draggable lever and its
+ * position persists like any model node.
+ *
+ * Reuses computeLayout (dagre LR, via runLayout) for positions.
  *
  * ### Scoping (VIS-1006b)
  * By default the graph shows EVERY project model. When `scopeModelNames` is
@@ -39,7 +51,9 @@ import { runLayout, packBoxes } from './layoutEngine';
  */
 
 const ERD_NODE_ID = name => `erd-model-${name}`;
-const ERD_EDGE_ID = relationName => `erd-rel-${relationName}`;
+const ERD_REL_NODE_ID = name => `erd-relnode-${name}`;
+const ERD_REL_EDGE_A_ID = name => `erd-reledge-${name}-a`;
+const ERD_REL_EDGE_B_ID = name => `erd-reledge-${name}-b`;
 
 // ERD model-card geometry lives in erdGeometry.js — the single source of truth
 // shared by the card renderer, the layout engine, and the edge router. Re-export
@@ -119,9 +133,10 @@ export function useRelationErdDag(options = {}) {
     columnsByModel = {},
     fieldsByModel = {},
     layout = 'dagre',
-    // Session-persisted (per-scope) overlays from workspaceErdLayoutStore (§6).
+    // Session-persisted (per-scope) node positions from workspaceErdLayoutStore
+    // (§6). Relation nodes are just nodes, so their dragged positions overlay
+    // here too.
     savedPositions = {},
-    savedWaypoints = {},
     // Bumped by Tidy / clearErdLayout — a memo dep so a reset forces a full
     // auto-layout (version-bump-as-dep beats imperative clear-then-rerun).
     layoutVersion = 0,
@@ -143,15 +158,11 @@ export function useRelationErdDag(options = {}) {
         `${name}:${(fieldsByModel[name]?.metrics || []).length},${(fieldsByModel[name]?.dimensions || []).length}`
     )
     .join('|');
-  // Stable keys for the saved overlays so the memo recomputes when a user moves a
-  // card or drags a pill (without churning on fresh object identity each render).
+  // Stable key for the saved positions so the memo recomputes when a user moves a
+  // card or relation node (without churning on fresh object identity each render).
   const savedPosKey = Object.keys(savedPositions || {})
     .sort()
     .map(id => `${id}:${savedPositions[id]?.x},${savedPositions[id]?.y}`)
-    .join('|');
-  const savedWpKey = Object.keys(savedWaypoints || {})
-    .sort()
-    .map(id => `${id}:${savedWaypoints[id]?.x},${savedWaypoints[id]?.y}`)
     .join('|');
 
   return useMemo(() => {
@@ -183,7 +194,7 @@ export function useRelationErdDag(options = {}) {
       visibleModels.map(model => [model.name, columnsForModel(model)])
     );
 
-    const nodes = visibleModels.map(model => {
+    const modelNodes = visibleModels.map(model => {
       const columns = columnsByNodeModel.get(model.name) || [];
       // Fold in the model's metrics + dimensions when provided (the Semantic
       // Layer ERD); the scoped Relation ERD passes none, so these stay empty.
@@ -222,74 +233,99 @@ export function useRelationErdDag(options = {}) {
       return ci || null;
     };
 
+    const relationNodes = [];
     const edges = [];
     relationList.forEach(relation => {
       const condition = relation.condition || relation.config?.condition;
       const parsed = parseRelationCondition(condition);
       if (!parsed) return;
-      // Only wire edges whose endpoints are models we actually rendered.
+      // Only render a relation whose BOTH endpoints are models we drew.
       if (!modelNames.has(parsed.a.model) || !modelNames.has(parsed.b.model)) return;
-      const sourceHandle = resolveHandle(parsed.a.model, parsed.a.column);
-      const targetHandle = resolveHandle(parsed.b.model, parsed.b.column);
-      const sourceId = ERD_NODE_ID(parsed.a.model);
-      const targetId = ERD_NODE_ID(parsed.b.model);
-      // Group parallel edges by the SORTED unordered pair so A→B and B→A collapse
-      // into one group (they get distinct perpendicular offsets + pills).
-      const pairKey = [sourceId, targetId].sort().join('|');
-      edges.push({
-        id: ERD_EDGE_ID(relation.name),
-        type: 'relationEdge',
-        source: sourceId,
-        // Omit the handle entirely (rather than passing a non-existent one) when
-        // the column can't be resolved, so React-Flow connects at the node.
-        ...(sourceHandle ? { sourceHandle } : {}),
-        target: targetId,
-        ...(targetHandle ? { targetHandle } : {}),
-        animated: true,
+
+      const joinType = relation.join_type || relation.config?.join_type || 'inner';
+      const isDefault = Boolean(relation.is_default ?? relation.config?.is_default);
+      const relNodeId = ERD_REL_NODE_ID(relation.name);
+
+      // The relation is its own node — a styled pill placed BETWEEN its models.
+      relationNodes.push({
+        id: relNodeId,
+        type: 'relationNode',
+        position: { x: 0, y: 0 },
+        // A small pill; width scales with the name so dagre/the packer give it
+        // enough room between the two model cards.
+        layoutSize: { width: Math.max(120, relation.name.length * 7 + 56), height: 40 },
         data: {
           relationName: relation.name,
-          joinType: relation.join_type || relation.config?.join_type || 'inner',
-          isDefault: Boolean(relation.is_default ?? relation.config?.is_default),
+          joinType,
+          isDefault,
           condition,
-          // The two cards' full column lists so the edge can deterministically
-          // anchor on the exact column ROW (columnAnchor) under any zoom.
-          sourceColumns: columnsByNodeModel.get(parsed.a.model) || [],
-          targetColumns: columnsByNodeModel.get(parsed.b.model) || [],
-          // Forced bend from a pill drag (per-scope session override); null →
-          // auto-route. Threaded from savedWaypoints by edge id.
-          waypoint: savedWaypoints?.[ERD_EDGE_ID(relation.name)] || null,
-          _pairKey: pairKey,
+          modelA: parsed.a.model,
+          columnA: parsed.a.column,
+          modelB: parsed.b.model,
+          columnB: parsed.b.column,
+        },
+      });
+
+      const handleA = resolveHandle(parsed.a.model, parsed.a.column);
+      const handleB = resolveHandle(parsed.b.model, parsed.b.column);
+
+      // Edge A: modelA → relationNode. Directional so dagre ranks A left of the
+      // pill; rendered undirected (the link edge draws no arrowhead). The MODEL
+      // end (source) is wired to A's column handle.
+      edges.push({
+        id: ERD_REL_EDGE_A_ID(relation.name),
+        type: 'relationLinkEdge',
+        source: ERD_NODE_ID(parsed.a.model),
+        ...(handleA ? { sourceHandle: handleA } : {}),
+        target: relNodeId,
+        data: {
+          relationName: relation.name,
+          modelEnd: 'source',
+          column: parsed.a.column,
+          // The model card's full column list so the edge anchors on the exact
+          // column ROW (columnAnchor) under any zoom.
+          columns: columnsByNodeModel.get(parsed.a.model) || [],
+        },
+      });
+
+      // Edge B: relationNode → modelB. The MODEL end is the TARGET here, wired to
+      // B's column handle.
+      edges.push({
+        id: ERD_REL_EDGE_B_ID(relation.name),
+        type: 'relationLinkEdge',
+        source: relNodeId,
+        target: ERD_NODE_ID(parsed.b.model),
+        ...(handleB ? { targetHandle: handleB } : {}),
+        data: {
+          relationName: relation.name,
+          modelEnd: 'target',
+          column: parsed.b.column,
+          columns: columnsByNodeModel.get(parsed.b.model) || [],
         },
       });
     });
 
-    // Stamp parallel-edge index/count per sorted pair, so duplicate relations
-    // between the same two models render as distinct, separately-clickable curves.
-    const pairCounts = new Map();
-    edges.forEach(e => pairCounts.set(e.data._pairKey, (pairCounts.get(e.data._pairKey) || 0) + 1));
-    const pairSeen = new Map();
-    edges.forEach(e => {
-      const idx = pairSeen.get(e.data._pairKey) || 0;
-      e.data.parallelIndex = idx;
-      e.data.parallelCount = pairCounts.get(e.data._pairKey) || 1;
-      pairSeen.set(e.data._pairKey, idx + 1);
-      delete e.data._pairKey;
-    });
+    // The relation nodes go into the SAME nodes array as the model nodes, so the
+    // clustering + dagre layout places them between their models (the `A → rel →
+    // B` edge chain ranks them horizontally). connectedComponents groups
+    // modelA + relNode + modelB into one component (a relation node always has 2
+    // edges → never a degenerate singleton).
+    const nodes = [...modelNodes, ...relationNodes];
 
     // Seed positions via the pluggable layout machine (Union-Find clustering →
-    // per-cluster dagre → masonry pack). Connected models form a dagre cluster;
-    // disconnected models pack as singletons (identical to the legacy tiled
-    // grid). The edge/drag system calls runLayout too — this is the only seam.
+    // per-cluster dagre → masonry pack). Connected models + relation nodes form a
+    // dagre cluster; disconnected models pack as singletons. The drag system calls
+    // runLayout too — this is the only seam.
     const { nodes: seededNodes } = runLayout({
       nodes,
       edges,
       options: { layout, direction: 'LR' },
     });
 
-    // Overlay session-saved positions onto the seed: a moved card keeps its saved
-    // x/y, only un-saved cards consume seed slots. So adding a model drops it into
-    // the next open slot WITHOUT reshuffling moved cards (§3 / §6). Tidy clears
-    // saves → a full auto-layout runs (zero overlays).
+    // Overlay session-saved positions onto the seed: a moved card/relation node
+    // keeps its saved x/y, only un-saved nodes consume seed slots. So adding a
+    // model drops it into the next open slot WITHOUT reshuffling moved nodes
+    // (§3 / §6). Tidy clears saves → a full auto-layout runs (zero overlays).
     const overlaidNodes = seededNodes.map(node => {
       const saved = savedPositions?.[node.id];
       return saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)
@@ -309,10 +345,9 @@ export function useRelationErdDag(options = {}) {
     fieldsKey,
     layout,
     savedPosKey,
-    savedWpKey,
     layoutVersion,
   ]);
 }
 
-export { ERD_NODE_ID, ERD_EDGE_ID };
+export { ERD_NODE_ID, ERD_REL_NODE_ID, ERD_REL_EDGE_A_ID, ERD_REL_EDGE_B_ID };
 export default useRelationErdDag;

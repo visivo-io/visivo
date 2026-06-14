@@ -9,6 +9,9 @@ import {
   estimateErdNodeHeight,
   packGridLayout,
   ERD_NODE_ID,
+  ERD_REL_NODE_ID,
+  ERD_REL_EDGE_A_ID,
+  ERD_REL_EDGE_B_ID,
 } from './useRelationErdDag';
 
 // Mock the store so we can drive `models` / `relations` with controlled state.
@@ -71,7 +74,7 @@ describe('modelColumns', () => {
 describe('useRelationErdDag', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('builds one node per model carrying its columns', () => {
+  it('builds one model node per model carrying its columns', () => {
     mockStoreState({
       models: [
         { name: 'orders', columns: ['id', 'user_id'] },
@@ -91,7 +94,7 @@ describe('useRelationErdDag', () => {
     expect(users.data.columns).toEqual(['id', 'email']);
   });
 
-  it('builds an edge per existing relation, wired to the column handles', () => {
+  it('emits ONE relationNode + TWO relationLinkEdge edges per relation', () => {
     mockStoreState({
       models: [
         { name: 'orders', columns: ['user_id'] },
@@ -108,29 +111,49 @@ describe('useRelationErdDag', () => {
     });
 
     const { result } = renderHook(() => useRelationErdDag());
-    const { edges } = result.current;
+    const { nodes, edges } = result.current;
 
-    expect(edges).toHaveLength(1);
-    const edge = edges[0];
-    expect(edge.type).toBe('relationEdge'); // tagged for the custom edge
-    expect(edge.source).toBe(ERD_NODE_ID('orders'));
-    expect(edge.target).toBe(ERD_NODE_ID('users'));
-    expect(edge.sourceHandle).toBe('user_id');
-    expect(edge.targetHandle).toBe('id');
-    expect(edge.data.relationName).toBe('orders_to_users');
-    expect(edge.data.joinType).toBe('left');
-    expect(edge.data.isDefault).toBe(true);
-    // The edge carries both cards' column lists for deterministic anchoring.
-    expect(edge.data.sourceColumns).toEqual(['user_id']);
-    expect(edge.data.targetColumns).toEqual(['id']);
-    // Single relation in its pair → index 0 of 1.
-    expect(edge.data.parallelIndex).toBe(0);
-    expect(edge.data.parallelCount).toBe(1);
-    // No saved waypoint by default.
-    expect(edge.data.waypoint).toBeNull();
+    // The relation is its own node, placed alongside the two model nodes.
+    const relNode = nodes.find(n => n.id === ERD_REL_NODE_ID('orders_to_users'));
+    expect(relNode).toBeDefined();
+    expect(relNode.type).toBe('relationNode');
+    expect(relNode.position).toBeDefined();
+    // It carries both endpoints' model + column.
+    expect(relNode.data.relationName).toBe('orders_to_users');
+    expect(relNode.data.joinType).toBe('left');
+    expect(relNode.data.isDefault).toBe(true);
+    expect(relNode.data.modelA).toBe('orders');
+    expect(relNode.data.columnA).toBe('user_id');
+    expect(relNode.data.modelB).toBe('users');
+    expect(relNode.data.columnB).toBe('id');
+    expect(relNode.data.condition).toBe('${ref(orders).user_id} = ${ref(users).id}');
+    // The relation node has a sensible layout size.
+    expect(relNode.layoutSize.width).toBeGreaterThanOrEqual(120);
+    expect(relNode.layoutSize.height).toBe(40);
+
+    // TWO undirected link edges: modelA → relNode and relNode → modelB.
+    expect(edges).toHaveLength(2);
+    const edgeA = edges.find(e => e.id === ERD_REL_EDGE_A_ID('orders_to_users'));
+    const edgeB = edges.find(e => e.id === ERD_REL_EDGE_B_ID('orders_to_users'));
+
+    expect(edgeA.type).toBe('relationLinkEdge');
+    expect(edgeA.source).toBe(ERD_NODE_ID('orders'));
+    expect(edgeA.target).toBe(ERD_REL_NODE_ID('orders_to_users'));
+    expect(edgeA.sourceHandle).toBe('user_id'); // model end wired to its column
+    expect(edgeA.data.modelEnd).toBe('source');
+    expect(edgeA.data.column).toBe('user_id');
+    expect(edgeA.data.columns).toEqual(['user_id']);
+
+    expect(edgeB.type).toBe('relationLinkEdge');
+    expect(edgeB.source).toBe(ERD_REL_NODE_ID('orders_to_users'));
+    expect(edgeB.target).toBe(ERD_NODE_ID('users'));
+    expect(edgeB.targetHandle).toBe('id'); // model end wired to its column
+    expect(edgeB.data.modelEnd).toBe('target');
+    expect(edgeB.data.column).toBe('id');
+    expect(edgeB.data.columns).toEqual(['id']);
   });
 
-  it('tags every edge type:relationEdge', () => {
+  it('tags every edge type:relationLinkEdge with no arrowhead/parallel metadata', () => {
     mockStoreState({
       models: [
         { name: 'a', columns: ['x'] },
@@ -139,10 +162,17 @@ describe('useRelationErdDag', () => {
       relations: [{ name: 'a_b', condition: '${ref(a).x} = ${ref(b).x}' }],
     });
     const { result } = renderHook(() => useRelationErdDag());
-    result.current.edges.forEach(e => expect(e.type).toBe('relationEdge'));
+    result.current.edges.forEach(e => {
+      expect(e.type).toBe('relationLinkEdge');
+      // The parallel-offset machinery is gone (relations are distinct nodes now).
+      expect(e.data.parallelIndex).toBeUndefined();
+      expect(e.data.parallelCount).toBeUndefined();
+      // No waypoint threading either.
+      expect(e.data.waypoint).toBeUndefined();
+    });
   });
 
-  it('groups parallel edges by the SORTED pair (A→B and B→A collapse)', () => {
+  it('makes parallel relations DISTINCT relation nodes (no parallel offset)', () => {
     mockStoreState({
       models: [
         { name: 'orders', columns: ['user_id', 'account_id'] },
@@ -150,20 +180,22 @@ describe('useRelationErdDag', () => {
       ],
       relations: [
         { name: 'rel1', condition: '${ref(orders).user_id} = ${ref(users).id}' },
-        // Reversed direction + different columns → same sorted pair group.
         { name: 'rel2', condition: '${ref(users).account_id} = ${ref(orders).account_id}' },
       ],
     });
     const { result } = renderHook(() => useRelationErdDag());
-    const edges = result.current.edges;
-    expect(edges).toHaveLength(2);
-    // Both share parallelCount 2 with distinct indices 0 and 1.
-    edges.forEach(e => expect(e.data.parallelCount).toBe(2));
-    const indices = edges.map(e => e.data.parallelIndex).sort();
-    expect(indices).toEqual([0, 1]);
+    const { nodes, edges } = result.current;
+
+    // Two relations → two relation nodes (naturally separated by the layout).
+    expect(nodes.filter(n => n.type === 'relationNode')).toHaveLength(2);
+    expect(nodes.find(n => n.id === ERD_REL_NODE_ID('rel1'))).toBeDefined();
+    expect(nodes.find(n => n.id === ERD_REL_NODE_ID('rel2'))).toBeDefined();
+    // Four link edges (2 per relation), all of the link type.
+    expect(edges).toHaveLength(4);
+    edges.forEach(e => expect(e.type).toBe('relationLinkEdge'));
   });
 
-  it('threads a saved waypoint into edge.data.waypoint by edge id', () => {
+  it('overlays savedPositions onto a relation NODE too', () => {
     mockStoreState({
       models: [
         { name: 'a', columns: ['x'] },
@@ -171,13 +203,19 @@ describe('useRelationErdDag', () => {
       ],
       relations: [{ name: 'a_b', condition: '${ref(a).x} = ${ref(b).x}' }],
     });
+    const relId = ERD_REL_NODE_ID('a_b');
     const { result } = renderHook(() =>
-      useRelationErdDag({ savedWaypoints: { 'erd-rel-a_b': { x: 12, y: 34 } } })
+      useRelationErdDag({
+        layout: 'grid',
+        savedPositions: { [relId]: { x: 777, y: 555 } },
+      })
     );
-    expect(result.current.edges[0].data.waypoint).toEqual({ x: 12, y: 34 });
+    const relNode = result.current.nodes.find(n => n.id === relId);
+    // The relation node is just a node — its dragged position overlays the seed.
+    expect(relNode.position).toEqual({ x: 777, y: 555 });
   });
 
-  it('overlays savedPositions onto the seed for saved ids only', () => {
+  it('overlays savedPositions onto the seed for saved model ids only', () => {
     mockStoreState({
       models: [
         { name: 'a', columns: ['x'] },
@@ -193,12 +231,11 @@ describe('useRelationErdDag', () => {
     );
     const nodeA = result.current.nodes.find(n => n.id === ERD_NODE_ID('a'));
     const nodeB = result.current.nodes.find(n => n.id === ERD_NODE_ID('b'));
-    // The saved node takes its saved position; un-saved nodes keep their seed.
     expect(nodeA.position).toEqual({ x: 999, y: 888 });
     expect(nodeB.position).not.toEqual({ x: 999, y: 888 });
   });
 
-  it('resolves the edge handles case-insensitively against the cards’ columns', () => {
+  it('resolves the model-end handles case-insensitively against the cards’ columns', () => {
     // The condition uses lowercase `.x`, but the hydrated columns are uppercase
     // `X` (DuckDB upper-cases unquoted identifiers). The edge must still wire to
     // the real `X` handle — otherwise React-Flow drops the edge.
@@ -211,12 +248,13 @@ describe('useRelationErdDag', () => {
     });
 
     const { result } = renderHook(() => useRelationErdDag());
-    const edge = result.current.edges[0];
-    expect(edge.sourceHandle).toBe('X');
-    expect(edge.targetHandle).toBe('X');
+    const edgeA = result.current.edges.find(e => e.id === ERD_REL_EDGE_A_ID('o_to_u'));
+    const edgeB = result.current.edges.find(e => e.id === ERD_REL_EDGE_B_ID('o_to_u'));
+    expect(edgeA.sourceHandle).toBe('X');
+    expect(edgeB.targetHandle).toBe('X');
   });
 
-  it('omits the handle (node-level connection) when the column is absent', () => {
+  it('omits the model-end handle (node-level connection) when the column is absent', () => {
     mockStoreState({
       models: [
         { name: 'orders', columns: ['id'] },
@@ -226,10 +264,11 @@ describe('useRelationErdDag', () => {
     });
 
     const { result } = renderHook(() => useRelationErdDag());
-    const edge = result.current.edges[0];
+    const edgeA = result.current.edges.find(e => e.id === ERD_REL_EDGE_A_ID('o_to_u'));
+    const edgeB = result.current.edges.find(e => e.id === ERD_REL_EDGE_B_ID('o_to_u'));
     // `missing` has no handle → omitted; `id` resolves exactly.
-    expect(edge.sourceHandle).toBeUndefined();
-    expect(edge.targetHandle).toBe('id');
+    expect(edgeA.sourceHandle).toBeUndefined();
+    expect(edgeB.targetHandle).toBe('id');
   });
 
   it('uses hydrated columns to resolve handles when the record has none', () => {
@@ -241,21 +280,21 @@ describe('useRelationErdDag', () => {
     const { result } = renderHook(() =>
       useRelationErdDag({ columnsByModel: { orders: ['X'], users: ['X'] } })
     );
-    const edge = result.current.edges[0];
-    expect(edge.sourceHandle).toBe('X');
-    expect(edge.targetHandle).toBe('X');
+    const edgeA = result.current.edges.find(e => e.id === ERD_REL_EDGE_A_ID('o_to_u'));
+    const edgeB = result.current.edges.find(e => e.id === ERD_REL_EDGE_B_ID('o_to_u'));
+    expect(edgeA.sourceHandle).toBe('X');
+    expect(edgeB.targetHandle).toBe('X');
   });
 
-  it('drops relations whose endpoints are not both rendered models', () => {
+  it('drops relations (no node, no edges) whose endpoints are not both rendered', () => {
     mockStoreState({
       models: [{ name: 'orders', columns: ['user_id'] }],
-      relations: [
-        { name: 'orphan', condition: '${ref(orders).user_id} = ${ref(users).id}' },
-      ],
+      relations: [{ name: 'orphan', condition: '${ref(orders).user_id} = ${ref(users).id}' }],
     });
 
     const { result } = renderHook(() => useRelationErdDag());
     expect(result.current.edges).toHaveLength(0);
+    expect(result.current.nodes.find(n => n.type === 'relationNode')).toBeUndefined();
   });
 
   it('scopes the rendered models to scopeModelNames (+ extras)', () => {
@@ -373,17 +412,12 @@ describe('packGridLayout', () => {
     const nodes = Array.from({ length: 9 }, (_, i) => node(`n${i}`, 120));
     const packed = packGridLayout(nodes);
     const xs = new Set(packed.map(n => n.position.x));
-    // ceil(sqrt(9 * 1.6)) = 4 distinct columns → more than one x.
     expect(xs.size).toBeGreaterThan(1);
   });
 
   it('stacks cards in a column by their measured height without overlap', () => {
-    // Two nodes forced into the same column (only one column for 1 node? use 3
-    // short + assert the second card in a column starts below the first).
     const nodes = [node('a', 100), node('b', 100), node('c', 100), node('d', 100)];
     const packed = packGridLayout(nodes);
-    // Group by column x; within a column, ys must be strictly increasing and
-    // gap >= the card height (no overlap).
     const byCol = {};
     packed.forEach(n => {
       byCol[n.position.x] = byCol[n.position.x] || [];
