@@ -698,3 +698,89 @@ describe('workspace store slice', () => {
     expect(returned).toBe(false);
   });
 });
+
+describe('workspace pivot draft actions (VIS-1008)', () => {
+  beforeEach(() => {
+    act(() => {
+      useStore.setState({ workspacePivotDraft: null, tables: [], saveTable: undefined });
+    });
+  });
+
+  test('setWorkspacePivotDraft normalises a partial draft (defaults missing shelves to [])', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({
+        tableName: 'sales-pivot-table',
+        columns: ['${ref(s).region}'],
+      });
+    });
+    const draft = useStore.getState().workspacePivotDraft;
+    expect(draft).toEqual({
+      tableName: 'sales-pivot-table',
+      columns: ['${ref(s).region}'],
+      rows: [],
+      values: [],
+    });
+  });
+
+  test('setWorkspacePivotDraft with a falsy value clears the draft', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ tableName: 't', columns: [] });
+      useStore.getState().setWorkspacePivotDraft(null);
+    });
+    expect(useStore.getState().workspacePivotDraft).toBeNull();
+  });
+
+  test('resetWorkspacePivotDraft clears the draft', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ tableName: 't', columns: [] });
+      useStore.getState().resetWorkspacePivotDraft();
+    });
+    expect(useStore.getState().workspacePivotDraft).toBeNull();
+  });
+
+  test('commitWorkspacePivotDraft merges the draft onto the existing table config and calls saveTable', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [
+          {
+            name: 'sales-pivot-table',
+            config: { name: 'sales-pivot-table', rows_per_page: 25, format_cells: { foo: 1 } },
+          },
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: ['${ref(s).category}'],
+          values: ['sum(${ref(s).revenue})'],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result).toEqual({ success: true });
+    expect(saveTable).toHaveBeenCalledTimes(1);
+    const [name, config] = saveTable.mock.calls[0];
+    expect(name).toBe('sales-pivot-table');
+    // Existing non-pivot fields are preserved; the three shelves are overwritten.
+    expect(config).toEqual({
+      name: 'sales-pivot-table',
+      rows_per_page: 25,
+      format_cells: { foo: 1 },
+      columns: ['${ref(s).region}'],
+      rows: ['${ref(s).category}'],
+      values: ['sum(${ref(s).revenue})'],
+    });
+  });
+
+  test('commitWorkspacePivotDraft returns failure when there is no draft', async () => {
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result.success).toBe(false);
+  });
+});

@@ -66,6 +66,16 @@ const createWorkspaceSlice = (set, get) => ({
   // so it can never leak to a later selection. The consuming pane clears it.
   workspaceLensIntent: null, // { objectKey: 'type:name', lens: 'lineage' } | null
 
+  // Pivot playground draft (table `build` lens, VIS-1008) --------------------
+  // The in-flight pivot config the drag-to-shelf builder owns while the user
+  // composes it: `{ tableName, columns, rows, values }`. `columns`/`rows` are
+  // arrays of `${ref(name).field}` strings; `values` are aggregation expressions
+  // (`sum(${ref(name).field})`). Seeded from the table record on lens open,
+  // re-runs the live result on every change, and committed back through the
+  // table store's `saveTable` on an explicit Save. Null when no build lens is
+  // open. Scoped by `tableName` so it can't leak across object selections.
+  workspacePivotDraft: null,
+
   // Outline tree (right-rail Outline tab, VIS-793 / Track F F-3) ------------
   // Selected node key — `'dashboard'` | `'row.N'` | `'row.N.item.M'`. Defaults
   // to the dashboard root so the scoped dashboard reads as selected on entry.
@@ -529,6 +539,59 @@ const createWorkspaceSlice = (set, get) => ({
         ? { type: activeTab.type, name: activeTab.name }
         : null,
     });
+  },
+
+  // Pivot playground draft actions (VIS-1008) -------------------------------
+  /**
+   * Replace the pivot build draft. Accepts a full draft object
+   * `{ tableName, columns, rows, values }`; missing shelf arrays default to
+   * empty so consumers can always spread them safely. A falsy draft clears it.
+   */
+  setWorkspacePivotDraft: (draft) => {
+    if (!draft) {
+      set({ workspacePivotDraft: null });
+      return;
+    }
+    set({
+      workspacePivotDraft: {
+        tableName: draft.tableName ?? null,
+        columns: Array.isArray(draft.columns) ? draft.columns : [],
+        rows: Array.isArray(draft.rows) ? draft.rows : [],
+        values: Array.isArray(draft.values) ? draft.values : [],
+      },
+    });
+  },
+
+  /** Clear the pivot build draft (on lens close / object change). */
+  resetWorkspacePivotDraft: () => {
+    set({ workspacePivotDraft: null });
+  },
+
+  /**
+   * Commit the current pivot build draft back to its table through the table
+   * store's `saveTable(name, config)` action. Merges the draft's three pivot
+   * shelves onto the table's existing config so non-pivot fields (rows_per_page,
+   * format_cells, …) are preserved. Returns the `saveTable` result (a promise
+   * resolving to `{ success, … }`), or `{ success: false }` when there's no
+   * draft / no save action.
+   */
+  commitWorkspacePivotDraft: async () => {
+    const draft = get().workspacePivotDraft;
+    const saveTable = get().saveTable;
+    if (!draft || !draft.tableName || typeof saveTable !== 'function') {
+      return { success: false, error: 'No pivot draft to commit' };
+    }
+    const tables = get().tables || [];
+    const record = tables.find((t) => t.name === draft.tableName) || null;
+    const existing = record ? record.config || record : {};
+    const nextConfig = {
+      ...existing,
+      name: draft.tableName,
+      columns: draft.columns,
+      rows: draft.rows,
+      values: draft.values,
+    };
+    return saveTable(draft.tableName, nextConfig);
   },
 });
 

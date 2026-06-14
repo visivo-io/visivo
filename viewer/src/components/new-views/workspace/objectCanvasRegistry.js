@@ -26,6 +26,11 @@ const ChartPreview = React.lazy(() => import('./ChartPreview'));
 const TablePreview = React.lazy(() => import('./TablePreview'));
 const MarkdownPreview = React.lazy(() => import('./MarkdownPreview'));
 const MarkdownEditorCanvas = React.lazy(() => import('./MarkdownEditorCanvas'));
+// PivotPlayground is the table object canvas's editable `build` lens (VIS-1008):
+// a drag-to-shelf pivot builder (Field List → Columns/Rows/Values shelves → a
+// live Result table). It owns a local draft, re-runs the result on every change,
+// reports dirtiness to the frame, and commits via the table store on Save.
+const PivotPlayground = React.lazy(() => import('./pivot/PivotPlayground'));
 const InputPreview = React.lazy(() => import('./InputPreview'));
 const InsightPreview = React.lazy(() => import('./InsightPreview'));
 // SourceErd is the Source canvas body — a React-Flow ERD of the source's tables
@@ -72,8 +77,13 @@ export const OBJECT_CANVAS_REGISTRY = {
     Component: TablePreview,
     availability: 'always',
     defaultLens: 'preview',
-    // VIS-1008 adds { key:'build', label:'Build', kind:'editable' } here.
-    lenses: [READONLY_PREVIEW()],
+    // VIS-1008: `preview` stays the read-only Canvas (TablePreview); `build` is
+    // the editable drag-to-shelf pivot playground (PivotPlayground) that owns its
+    // own draft, re-runs the live result, and reports dirtiness to the frame.
+    lenses: [
+      READONLY_PREVIEW(),
+      { key: 'build', label: 'Build', kind: 'editable', Component: PivotPlayground },
+    ],
     emptyHint: 'No table selected.',
   },
   markdown: {

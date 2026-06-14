@@ -56,6 +56,21 @@ describe('objectCanvasRegistry', () => {
     });
   });
 
+  test('table exposes a second editable "build" lens with its own body (VIS-1008)', () => {
+    const tbl = OBJECT_CANVAS_REGISTRY.table;
+    expect(tbl.defaultLens).toBe('preview');
+    expect(tbl.lenses).toHaveLength(2);
+    // preview stays the read-only Canvas (asserted by the "first lens" test).
+    const build = tbl.lenses.find(l => l.key === 'build');
+    expect(build).toBeTruthy();
+    expect(build.label).toBe('Build');
+    expect(build.kind).toBe('editable');
+    // The editable build lens carries its OWN lazy body (the pivot playground),
+    // distinct from the read-only preview body.
+    expect(build.Component).toBeTruthy();
+    expect(build.Component).not.toBe(tbl.Component);
+  });
+
   test('markdown exposes a second editable "edit" lens with its own body (VIS-1010)', () => {
     const md = OBJECT_CANVAS_REGISTRY.markdown;
     expect(md.defaultLens).toBe('preview');

@@ -207,6 +207,14 @@ describe('mapDragStartData — drag preview mapping (VIS-901 #5)', () => {
     const out = mapDragStartData({ source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 });
     expect(out.type).toBe('chart');
   });
+
+  test('pivot field drag maps to a pivot-field preview with the field label (VIS-1008)', () => {
+    const out = mapDragStartData({
+      source: 'pivot-field',
+      field: { name: 'revenue', label: 'Revenue', source: 's' },
+    });
+    expect(out).toEqual({ kind: 'pivot-field', name: 'Revenue' });
+  });
 });
 
 describe('routeWorkspaceDragEnd (VIS-802)', () => {
@@ -297,6 +305,51 @@ describe('routeWorkspaceDragEnd (VIS-802)', () => {
       {
         active: { data: { current: { source: 'library', type: 'chart', name: 'c1' } } },
         over: { data: { current: { kind: 'something-else' } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+});
+
+describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
+  test('pivot field drop on a pivot shelf invokes the shelf onDropField', () => {
+    const onDropField = jest.fn();
+    const emit = jest.fn();
+    const field = { name: 'revenue', source: 'sales-insight', label: 'Revenue' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field } } },
+        over: { data: { current: { kind: 'pivot-field', shelf: 'values', onDropField } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('pivot_field_accepted');
+    expect(onDropField).toHaveBeenCalledWith(field);
+    expect(emit).toHaveBeenCalledWith(
+      'pivot_field_drop',
+      expect.objectContaining({ shelf: 'values', field: 'revenue' })
+    );
+  });
+
+  test('pivot field drop with no field is a noop (no onDropField call)', () => {
+    const onDropField = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field: null } } },
+        over: { data: { current: { kind: 'pivot-field', shelf: 'rows', onDropField } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+    expect(onDropField).not.toHaveBeenCalled();
+  });
+
+  test('a pivot field dropped on a non-pivot target is a noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field: { name: 'x' } } } },
+        over: { data: { current: { kind: 'ref-slot', allowedTypes: [] } } },
       },
       {}
     );
