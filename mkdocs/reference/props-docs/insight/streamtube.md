@@ -11,7 +11,11 @@ The `streamtube` insight type is used to create 3D streamtube plots for visualiz
 
 You can customize the color, tube size, and vector paths to highlight patterns and behaviors in the flow data.
 
-!!! tip "Common Uses" - **Fluid Dynamics**: Visualizing fluid flow in 3D space. - **Vector Field Analysis**: Representing wind, magnetic, or electric fields. - **Flow Visualization**: Showing flow behavior across time or space.
+!!! tip "Common Uses"
+
+    - **Fluid Dynamics**: Visualizing fluid flow in 3D space.
+    - **Vector Field Analysis**: Representing wind, magnetic, or electric fields.
+    - **Flow Visualization**: Showing flow behavior across time or space.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Streamtube/#attributes) for the full set of configuration options**_
 

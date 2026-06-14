@@ -11,7 +11,11 @@ The `scatterpolar` insight type is used to create scatter plots on polar coordin
 
 You can customize the marker size, color, and lines to connect points, similar to standard scatter plots, but within a polar coordinate system.
 
-!!! tip "Common Uses" - **Cyclic Data Visualization**: Representing cyclic data such as time of day, seasonality, or wind direction. - **Directional Data**: Visualizing data with directional components, such as angular measurements. - **Circular Data Analysis**: Useful for data where radial distance and angle are key factors.
+!!! tip "Common Uses"
+
+    - **Cyclic Data Visualization**: Representing cyclic data such as time of day, seasonality, or wind direction.
+    - **Directional Data**: Visualizing data with directional components, such as angular measurements.
+    - **Circular Data Analysis**: Useful for data where radial distance and angle are key factors.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scatterpolar/#attributes) for the full set of configuration options**_
 

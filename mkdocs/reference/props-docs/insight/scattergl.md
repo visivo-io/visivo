@@ -11,7 +11,11 @@ The `scattergl` insight type is used to create scatter plots with WebGL renderin
 
 You can customize the marker size, color, and add lines to connect points, similar to the `scatter` insight type, but with WebGL's performance advantages.
 
-!!! tip "Common Uses" - **Large Datasets**: Efficiently visualizing datasets with thousands or millions of points. - **Performance Optimization**: Use when scatter plots with standard rendering struggle with performance. - **Real-Time Data**: Useful for real-time visualizations with large or dynamic datasets.
+!!! tip "Common Uses"
+
+    - **Large Datasets**: Efficiently visualizing datasets with thousands or millions of points.
+    - **Performance Optimization**: Use when scatter plots with standard rendering struggle with performance.
+    - **Real-Time Data**: Useful for real-time visualizations with large or dynamic datasets.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attributes) for the full set of configuration options**_
 

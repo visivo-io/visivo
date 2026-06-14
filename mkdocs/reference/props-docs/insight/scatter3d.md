@@ -11,7 +11,11 @@ The `scatter3d` insight type is used to create 3D scatter plots, which visualize
 
 You can customize the marker size, color, and add lines to connect points in 3D space to represent the data effectively.
 
-!!! tip "Common Uses" - **3D Relationship Analysis**: Exploring the relationship between three numerical variables. - **Pattern Detection**: Identifying trends and clusters in three dimensions. - **High-Dimensional Data**: Visualizing higher-dimensional datasets.
+!!! tip "Common Uses"
+
+    - **3D Relationship Analysis**: Exploring the relationship between three numerical variables.
+    - **Pattern Detection**: Identifying trends and clusters in three dimensions.
+    - **High-Dimensional Data**: Visualizing higher-dimensional datasets.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attributes) for the full set of configuration options**_
 

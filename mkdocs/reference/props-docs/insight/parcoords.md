@@ -11,7 +11,11 @@ The `parcoords` insight type is used to create parallel coordinates plots, which
 
 You can customize the axis scaling, color mapping, and line properties to represent your data effectively.
 
-!!! tip "Common Uses" - **Multivariate Data Analysis**: Visualizing relationships between multiple variables. - **Data Exploration**: Exploring patterns and outliers in high-dimensional datasets. - **Decision Making**: Identifying optimal points or anomalies in multi-variable data.
+!!! tip "Common Uses"
+
+    - **Multivariate Data Analysis**: Visualizing relationships between multiple variables.
+    - **Data Exploration**: Exploring patterns and outliers in high-dimensional datasets.
+    - **Decision Making**: Identifying optimal points or anomalies in multi-variable data.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attributes) for the full set of configuration options**_
 

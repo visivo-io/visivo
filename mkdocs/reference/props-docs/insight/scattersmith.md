@@ -11,7 +11,11 @@ The `scattersmith` insight type is used to create scatter plots on a Smith chart
 
 You can customize marker size, color, and lines to connect points, similar to scatter plots, but specifically tailored for Smith charts.
 
-!!! tip "Common Uses" - **Impedance and Reflection Coefficients**: Visualizing electrical properties in transmission lines. - **Complex Data Visualization**: Representing data points in terms of complex numbers. - **Electrical Engineering Analysis**: Useful for RF and microwave engineering applications.
+!!! tip "Common Uses"
+
+    - **Impedance and Reflection Coefficients**: Visualizing electrical properties in transmission lines.
+    - **Complex Data Visualization**: Representing data points in terms of complex numbers.
+    - **Electrical Engineering Analysis**: Useful for RF and microwave engineering applications.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#attributes) for the full set of configuration options**_
 

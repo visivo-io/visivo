@@ -11,7 +11,11 @@ The `ohlc` insight type is used to create OHLC (Open, High, Low, Close) charts, 
 
 You can customize the colors, bar widths, and date ranges to represent financial data effectively.
 
-!!! tip "Common Uses" - **Stock Market Visualization**: Displaying price movement data for stocks, currencies, or commodities. - **Financial Time Series**: Visualizing price fluctuations over time. - **Trading Analysis**: Understanding market trends through candlestick-like visualizations.
+!!! tip "Common Uses"
+
+    - **Stock Market Visualization**: Displaying price movement data for stocks, currencies, or commodities.
+    - **Financial Time Series**: Visualizing price fluctuations over time.
+    - **Trading Analysis**: Understanding market trends through candlestick-like visualizations.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes) for the full set of configuration options**_
 

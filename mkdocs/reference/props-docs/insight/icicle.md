@@ -11,7 +11,11 @@ The `icicle` insight type is used to create icicle charts, which are a variation
 
 You can customize the colors, labels, and depth of the icicle chart to represent your hierarchical data effectively.
 
-!!! tip "Common Uses" - **Hierarchical Data Representation**: Visualizing categories and subcategories in a hierarchy. - **Part-to-Whole Relationships**: Showing how parts relate to the whole, with breakdowns for subcategories. - **Drill-Down Analysis**: Allowing users to explore different levels of data.
+!!! tip "Common Uses"
+
+    - **Hierarchical Data Representation**: Visualizing categories and subcategories in a hierarchy.
+    - **Part-to-Whole Relationships**: Showing how parts relate to the whole, with breakdowns for subcategories.
+    - **Drill-Down Analysis**: Allowing users to explore different levels of data.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attributes) for the full set of configuration options**_
 

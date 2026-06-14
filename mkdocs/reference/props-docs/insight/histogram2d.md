@@ -11,7 +11,11 @@ The `histogram2d` insight type is used to create 2D histograms, where data is bi
 
 You can customize the binning along both axes, as well as the colorscale and aggregation method, to better represent your data.
 
-!!! tip "Common Uses" - **Joint Distributions**: Visualizing the relationship between two variables. - **Density Plots**: Showing the density of data points across two dimensions. - **Statistical Analysis**: Identifying patterns, correlations, or anomalies in bivariate data.
+!!! tip "Common Uses"
+
+    - **Joint Distributions**: Visualizing the relationship between two variables.
+    - **Density Plots**: Showing the density of data points across two dimensions.
+    - **Statistical Analysis**: Identifying patterns, correlations, or anomalies in bivariate data.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#attributes) for the full set of configuration options**_
 

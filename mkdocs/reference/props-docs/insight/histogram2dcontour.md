@@ -11,7 +11,11 @@ The `histogram2dcontour` insight type is used to create 2D contour plots that re
 
 You can customize the binning along both axes, contour lines, and the color mapping to suit your data. This insight type is useful for visualizing patterns and clusters in bivariate data.
 
-!!! tip "Common Uses" - **Density Contours**: Showing how data points are distributed and clustered. - **Joint Distribution Analysis**: Visualizing the relationship between two variables with density contours. - **Bivariate Statistical Analysis**: Analyzing two variables and their joint behavior.
+!!! tip "Common Uses"
+
+    - **Density Contours**: Showing how data points are distributed and clustered.
+    - **Joint Distribution Analysis**: Visualizing the relationship between two variables with density contours.
+    - **Bivariate Statistical Analysis**: Analyzing two variables and their joint behavior.
 
 _**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dcontour/#attributes) for the full set of configuration options**_
 
