@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import useStore from '../../../../stores/store';
 import { computeLayout } from '../../lineage/useLineageDag';
+import {
+  ERD_NODE_WIDTH,
+  ERD_GRID_GAP_X,
+  ERD_GRID_GAP_Y,
+  estimateErdNodeHeight,
+} from './erdGeometry';
 
 /**
  * useRelationErdDag — the ERD twin of useLineageDag (VIS-1006).
@@ -40,38 +46,10 @@ import { computeLayout } from '../../lineage/useLineageDag';
 const ERD_NODE_ID = name => `erd-model-${name}`;
 const ERD_EDGE_ID = relationName => `erd-rel-${relationName}`;
 
-// ERD model-card geometry (must track ErdModelNode / SemanticLayerErdModelNode).
-// dagre lays out by these so tall cards (many columns, metric/dimension pills)
-// don't overlap the card below — the fixed-50px default did exactly that.
-const ERD_NODE_WIDTH = 260; // cards are min-w-[200] max-w-[280]
-const ERD_HEADER_H = 36; // tinted model header (px-3 py-2)
-const ERD_ROW_H = 30; // one column row (px-3 py-1.5)
-const ERD_EMPTY_H = 30; // "No columns loaded" row
-const ERD_SECTION_H = 30; // a field section's border + label + padding
-const ERD_PILL_ROW_H = 22; // one wrapped row of field pills
-const ERD_PILLS_PER_ROW = 2; // ~2 max-w-[120] pills per ~260px card
-const ERD_CARD_VPAD = 10; // 2px borders + rounding slack
-
-/**
- * Estimate a model card's rendered height so dagre can space cards without
- * overlap. Counts the header, every column row (or the empty-state row), and a
- * field section per non-empty metrics / dimensions group (label + wrapped pill
- * rows). Deliberately a touch generous — over-spacing beats overlap.
- */
-export const estimateErdNodeHeight = ({ columns = [], metrics = [], dimensions = [] } = {}) => {
-  let height = ERD_HEADER_H;
-  height += columns.length > 0 ? columns.length * ERD_ROW_H : ERD_EMPTY_H;
-  const sectionHeight = names =>
-    names.length > 0
-      ? ERD_SECTION_H + Math.ceil(names.length / ERD_PILLS_PER_ROW) * ERD_PILL_ROW_H
-      : 0;
-  height += sectionHeight(metrics);
-  height += sectionHeight(dimensions);
-  return height + ERD_CARD_VPAD;
-};
-
-const ERD_GRID_GAP_X = 56; // horizontal gutter between card columns
-const ERD_GRID_GAP_Y = 28; // vertical gutter between stacked cards
+// ERD model-card geometry lives in erdGeometry.js — the single source of truth
+// shared by the card renderer, the layout engine, and the edge router. Re-export
+// `estimateErdNodeHeight` so existing importers (and tests) keep working.
+export { estimateErdNodeHeight };
 
 /**
  * Pack model cards into a tiled (masonry) grid instead of dagre rows. The
