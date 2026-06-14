@@ -224,7 +224,13 @@ class SqlalchemySource(Source, ABC):
                         cols = [c["name"] for c in inspector.get_columns(table, schema=schema)]
                     except Exception:
                         cols = []
-                    table_entries.append({"name": table, "columns": cols})
+                    table_entries.append(
+                        {
+                            "name": table,
+                            "columns": cols,
+                            "foreign_keys": self._introspect_foreign_keys(inspector, table, schema),
+                        }
+                    )
 
                 db_entry["schemas"].append({"name": schema, "tables": table_entries})
         else:
@@ -240,11 +246,44 @@ class SqlalchemySource(Source, ABC):
                     cols = [c["name"] for c in inspector.get_columns(table)]
                 except Exception:
                     cols = []
-                table_entries.append({"name": table, "columns": cols})
+                table_entries.append(
+                    {
+                        "name": table,
+                        "columns": cols,
+                        "foreign_keys": self._introspect_foreign_keys(inspector, table),
+                    }
+                )
 
             db_entry["tables"] = table_entries
 
         return db_entry
+
+    def _introspect_foreign_keys(self, inspector, table, schema=None):
+        """Return this table's foreign keys in a compact, viewer-friendly shape.
+
+        Powers the source ERD's relationship edges (VIS-1014). Best-effort:
+        sources/dialects that don't expose FK metadata (or fail) yield an empty
+        list rather than breaking the whole introspection.
+        """
+        try:
+            raw = inspector.get_foreign_keys(table, schema=schema)
+        except Exception:
+            return []
+        foreign_keys = []
+        for fk in raw or []:
+            columns = fk.get("constrained_columns") or []
+            referred_table = fk.get("referred_table")
+            if not columns or not referred_table:
+                continue
+            foreign_keys.append(
+                {
+                    "columns": columns,
+                    "references_schema": fk.get("referred_schema"),
+                    "references_table": referred_table,
+                    "references_columns": fk.get("referred_columns") or [],
+                }
+            )
+        return foreign_keys
 
     def get_sqlglot_dialect(self):
         from visivo.query.sqlglot_utils import get_sqlglot_dialect
