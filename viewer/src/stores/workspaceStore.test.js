@@ -784,4 +784,93 @@ describe('workspace pivot draft actions (VIS-1008)', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test('commitWorkspacePivotDraftAsNew saves a uniquely-named new table and opens its tab', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        tables: [
+          {
+            name: 'sales-pivot-table',
+            config: {
+              name: 'sales-pivot-table',
+              data: '${ref(sales_data)}',
+              format_cells: { foo: 1 },
+            },
+          },
+          // The default new name (sales-pivot-table_pivot) is free, so it is used.
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: ['${ref(s).category}'],
+          values: ['sum(${ref(s).revenue})'],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
+    expect(result.name).toBe('sales-pivot-table_pivot');
+    expect(saveTable).toHaveBeenCalledTimes(1);
+    const [name, config] = saveTable.mock.calls[0];
+    expect(name).toBe('sales-pivot-table_pivot');
+    // New table carries forward the source `data` ref + display config + the
+    // draft shelves under the fresh name.
+    expect(config).toEqual({
+      data: '${ref(sales_data)}',
+      format_cells: { foo: 1 },
+      name: 'sales-pivot-table_pivot',
+      columns: ['${ref(s).region}'],
+      rows: ['${ref(s).category}'],
+      values: ['sum(${ref(s).revenue})'],
+    });
+    // The new table is opened as a workspace tab.
+    const tabs = useStore.getState().workspaceTabs;
+    expect(tabs.some(t => t.type === 'table' && t.name === 'sales-pivot-table_pivot')).toBe(
+      true
+    );
+  });
+
+  test('commitWorkspacePivotDraftAsNew disambiguates against existing names', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        tables: [
+          { name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } },
+          { name: 'sales-pivot-table_pivot', config: { name: 'sales-pivot-table_pivot' } },
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    // sales-pivot-table_pivot is taken → _2 suffix.
+    expect(result.name).toBe('sales-pivot-table_pivot_2');
+  });
+
+  test('commitWorkspacePivotDraftAsNew returns failure when there is no draft', async () => {
+    act(() => {
+      useStore.setState({ saveTable: jest.fn(), workspacePivotDraft: null });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(false);
+  });
 });

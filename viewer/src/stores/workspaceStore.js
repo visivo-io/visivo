@@ -40,6 +40,7 @@
  */
 
 import { emitWorkspaceEvent } from '../components/new-views/workspace/telemetry';
+import { generateUniqueName } from '../utils/uniqueName';
 
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
@@ -592,6 +593,50 @@ const createWorkspaceSlice = (set, get) => ({
       values: draft.values,
     };
     return saveTable(draft.tableName, nextConfig);
+  },
+
+  /**
+   * Commit the current pivot build draft as a BRAND-NEW table (the "Add as a new
+   * table" path from the pivot Save modal). Generates a unique name from the
+   * source table's name + the existing tables, creates a fresh table config
+   * carrying only the three pivot shelves, persists it via `saveTable`, and (on
+   * success) opens it as a workspace tab. Returns `{ success, name }` so callers
+   * can react (open the tab, toast, …). The original table is left untouched.
+   */
+  commitWorkspacePivotDraftAsNew: async () => {
+    const draft = get().workspacePivotDraft;
+    const saveTable = get().saveTable;
+    if (!draft || typeof saveTable !== 'function') {
+      return { success: false, error: 'No pivot draft to commit' };
+    }
+    const tables = get().tables || [];
+    const existingNames = tables.map((t) => t.name).filter(Boolean);
+    const base = draft.tableName ? `${draft.tableName}_pivot` : 'pivot_table';
+    const newName = generateUniqueName(base, existingNames);
+
+    const sourceRecord = tables.find((t) => t.name === draft.tableName) || null;
+    const sourceConfig = sourceRecord ? sourceRecord.config || sourceRecord : {};
+    // Carry forward the source table's `data` ref (and non-pivot display config)
+    // so the new table resolves against the same parent; override name + shelves.
+    const { data, format_cells, rows_per_page } = sourceConfig;
+    const nextConfig = {
+      ...(data !== undefined ? { data } : {}),
+      ...(format_cells !== undefined ? { format_cells } : {}),
+      ...(rows_per_page !== undefined ? { rows_per_page } : {}),
+      name: newName,
+      columns: draft.columns,
+      rows: draft.rows,
+      values: draft.values,
+    };
+
+    const result = await saveTable(newName, nextConfig);
+    if (result && result.success) {
+      const openTab = get().openWorkspaceTab;
+      if (typeof openTab === 'function') {
+        openTab({ type: 'table', name: newName });
+      }
+    }
+    return { ...(result || {}), name: newName };
   },
 });
 

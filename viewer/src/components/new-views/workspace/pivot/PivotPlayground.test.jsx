@@ -129,7 +129,7 @@ describe('PivotPlayground (VIS-1008)', () => {
     expect(screen.getByTestId('shelf-mock-columns-count')).toHaveTextContent('1');
   });
 
-  test('Save is disabled when clean and commits the draft when dirty', async () => {
+  test('Save is disabled when clean and opens the replace/add-new modal when dirty', async () => {
     const saveTable = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {
       useStore.setState({
@@ -145,11 +145,65 @@ describe('PivotPlayground (VIS-1008)', () => {
     fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
     expect(save).not.toBeDisabled();
 
+    // Save no longer commits silently — it opens the choice modal.
     fireEvent.click(save);
+    expect(screen.getByTestId('pivot-save-modal')).toBeInTheDocument();
+    expect(saveTable).not.toHaveBeenCalled();
+    expect(screen.getByTestId('pivot-save-replace')).toBeInTheDocument();
+    expect(screen.getByTestId('pivot-save-add-new')).toBeInTheDocument();
+  });
+
+  test('Replace commits the draft over the current table', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    fireEvent.click(screen.getByTestId('pivot-save-replace'));
+
     await waitFor(() => expect(saveTable).toHaveBeenCalledTimes(1));
     const [name, config] = saveTable.mock.calls[0];
     expect(name).toBe('sales-pivot-table');
     expect(config.columns).toEqual(['${ref(sales-insight).revenue}']);
+    // Modal closes after the save resolves.
+    await waitFor(() =>
+      expect(screen.queryByTestId('pivot-save-modal')).not.toBeInTheDocument()
+    );
+  });
+
+  test('Add as new creates a brand-new uniquely-named table and opens it', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    const openWorkspaceTab = jest.fn();
+    act(() => {
+      useStore.setState({
+        saveTable,
+        openWorkspaceTab,
+        tables: [{ name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } }],
+      });
+    });
+    renderPlayground({ record: { name: 'sales-pivot-table' } });
+
+    fireEvent.click(screen.getByTestId('shelf-mock-columns-drop'));
+    fireEvent.click(screen.getByTestId('pivot-playground-save'));
+    fireEvent.click(screen.getByTestId('pivot-save-add-new'));
+
+    await waitFor(() => expect(saveTable).toHaveBeenCalledTimes(1));
+    const [newName, config] = saveTable.mock.calls[0];
+    // A NEW name, distinct from the source table.
+    expect(newName).not.toBe('sales-pivot-table');
+    expect(newName).toContain('sales-pivot-table');
+    expect(config.name).toBe(newName);
+    expect(config.columns).toEqual(['${ref(sales-insight).revenue}']);
+    // The new table is opened as a workspace tab.
+    await waitFor(() =>
+      expect(openWorkspaceTab).toHaveBeenCalledWith({ type: 'table', name: newName })
+    );
   });
 
   test('renders the empty state when no table is selected', () => {

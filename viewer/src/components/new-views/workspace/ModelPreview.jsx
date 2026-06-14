@@ -5,29 +5,16 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import useStore from '../../../stores/store';
 import { useModelQueryJob } from '../../../hooks/useModelQueryJob';
 import { parseRefValue } from '../../../utils/refString';
-import { getTypeColors, getTypeIcon } from '../common/objectTypeConfigs';
+import FieldPill from '../common/FieldPill';
 
 /**
  * SemanticFieldsStrip — the model's dimension + metric pills (VIS-1009 secondary).
  *
- * A compact strip of the model's semantic-layer fields, colored + iconed via the
- * shared objectTypeConfigs (dimension=teal, metric=cyan). Renders nothing when
- * the model owns no fields, so it never adds chrome to a plain SQL model.
+ * A compact strip of the model's semantic-layer fields, rendered with the shared
+ * `FieldPill` (colored + iconed via objectTypeConfigs — dimension=teal,
+ * metric=cyan). Renders nothing when the model owns no fields, so it never adds
+ * chrome to a plain SQL model.
  */
-const FieldPill = ({ type, name }) => {
-  const colors = getTypeColors(type);
-  const Icon = getTypeIcon(type);
-  return (
-    <span
-      data-testid={`model-field-pill-${type}-${name}`}
-      title={`${type}: ${name}`}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${colors.bg} ${colors.text} ${colors.border}`}
-    >
-      {Icon && <Icon style={{ fontSize: 12 }} aria-hidden="true" />}
-      {name}
-    </span>
-  );
-};
 
 const SemanticFieldsStrip = ({ modelName }) => {
   const dimensions = useStore(s => s.dimensions);
@@ -68,10 +55,20 @@ const SemanticFieldsStrip = ({ modelName }) => {
         Fields
       </span>
       {ownedDimensions.map(d => (
-        <FieldPill key={`dim-${d.name}`} type="dimension" name={d.name} />
+        <FieldPill
+          key={`dim-${d.name}`}
+          type="dimension"
+          name={d.name}
+          data-testid={`model-field-pill-dimension-${d.name}`}
+        />
       ))}
       {ownedMetrics.map(m => (
-        <FieldPill key={`met-${m.name}`} type="metric" name={m.name} />
+        <FieldPill
+          key={`met-${m.name}`}
+          type="metric"
+          name={m.name}
+          data-testid={`model-field-pill-metric-${m.name}`}
+        />
       ))}
     </div>
   );

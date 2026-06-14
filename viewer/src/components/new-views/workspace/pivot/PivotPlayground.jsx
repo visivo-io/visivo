@@ -5,6 +5,7 @@ import { useObjectCanvasDirty } from '../ObjectCanvasFrame';
 import PivotFieldList from './PivotFieldList';
 import PivotShelf from './PivotShelf';
 import PivotResultPanel from './PivotResultPanel';
+import PivotSaveModal from './PivotSaveModal';
 import usePivotPlaygroundFields from './usePivotPlaygroundFields';
 import {
   seedDraftFromRecord,
@@ -44,6 +45,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
   const setWorkspacePivotDraft = useStore(s => s.setWorkspacePivotDraft);
   const resetWorkspacePivotDraft = useStore(s => s.resetWorkspacePivotDraft);
   const commitWorkspacePivotDraft = useStore(s => s.commitWorkspacePivotDraft);
+  const commitWorkspacePivotDraftAsNew = useStore(s => s.commitWorkspacePivotDraftAsNew);
 
   const { fields, sourceName, isLoading: fieldsLoading } = usePivotPlaygroundFields(
     projectId,
@@ -58,6 +60,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
   // selections, so without this the previous table's draft would leak).
   const [draft, setDraft] = useState(() => seedDraftFromRecord(record));
   const [saving, setSaving] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   const seededNameRef = useRef(null);
   useEffect(() => {
@@ -115,19 +118,43 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
     }));
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (!isDirty || typeof commitWorkspacePivotDraft !== 'function') return;
+  // Save opens a "replace or add new" choice rather than silently committing.
+  const handleSaveClick = useCallback(() => {
+    if (!isDirty) return;
+    setSaveModalOpen(true);
+  }, [isDirty]);
+
+  // Push the latest local draft into the store mirror so whichever commit action
+  // the modal picks operates on exactly what's on screen.
+  const syncDraftToStore = useCallback(() => {
+    if (typeof setWorkspacePivotDraft === 'function') {
+      setWorkspacePivotDraft({ tableName: name, ...serializeDraft(draft) });
+    }
+  }, [setWorkspacePivotDraft, name, draft]);
+
+  const handleReplace = useCallback(async () => {
+    if (typeof commitWorkspacePivotDraft !== 'function') return;
     setSaving(true);
     try {
-      // Ensure the store mirror reflects the latest draft before committing.
-      if (typeof setWorkspacePivotDraft === 'function') {
-        setWorkspacePivotDraft({ tableName: name, ...serializeDraft(draft) });
-      }
+      syncDraftToStore();
       await commitWorkspacePivotDraft();
+      setSaveModalOpen(false);
     } finally {
       setSaving(false);
     }
-  }, [isDirty, commitWorkspacePivotDraft, setWorkspacePivotDraft, name, draft]);
+  }, [commitWorkspacePivotDraft, syncDraftToStore]);
+
+  const handleAddNew = useCallback(async () => {
+    if (typeof commitWorkspacePivotDraftAsNew !== 'function') return;
+    setSaving(true);
+    try {
+      syncDraftToStore();
+      await commitWorkspacePivotDraftAsNew();
+      setSaveModalOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }, [commitWorkspacePivotDraftAsNew, syncDraftToStore]);
 
   const pivotConfig = useMemo(() => draftToPivotConfig(draft), [draft]);
 
@@ -158,7 +185,7 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
           type="button"
           data-testid="pivot-playground-save"
           disabled={!isDirty || saving}
-          onClick={handleSave}
+          onClick={handleSaveClick}
           className={[
             'rounded-md px-3 py-1 text-[12px] font-semibold transition-colors',
             isDirty && !saving
@@ -169,6 +196,15 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
+
+      <PivotSaveModal
+        open={saveModalOpen}
+        tableName={name}
+        saving={saving}
+        onReplace={handleReplace}
+        onAddNew={handleAddNew}
+        onCancel={() => setSaveModalOpen(false)}
+      />
 
       <div className="flex flex-1 min-h-0 min-w-0">
         {/* LEFT — field list */}

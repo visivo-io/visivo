@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { getTypeColors } from '../../common/objectTypeConfigs';
+import FieldPill from '../../common/FieldPill';
 
 /**
  * PivotFieldList — VIS-1008.
@@ -11,45 +11,34 @@ import { getTypeColors } from '../../common/objectTypeConfigs';
  * `{ source: 'pivot-field', field }` so the context's `pivot-field` router
  * branch can hand the field to whichever shelf it lands on.
  *
+ * Pivot fields are a table's data columns, so they render with the app's shared
+ * `FieldPill` (icon + colors from objectTypeConfigs, the SAME look used for the
+ * model preview's Semantic Fields strip) — typed `dimension` since they are the
+ * dimensional columns you drag onto Columns / Rows / Values.
+ *
  * Fields are resolved upstream by `usePivotPlaygroundFields` and passed in as
  * `{ name, label, source }` descriptors.
  */
 
-const FieldPill = ({ field }) => {
-  const colors = getTypeColors('dimension');
+const PivotField = ({ field }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `pivot-field:${field.source || ''}:${field.name}`,
     data: { source: 'pivot-field', field },
   });
 
   return (
-    <button
-      type="button"
+    <FieldPill
+      as="button"
+      type="dimension"
+      name={field.name}
+      label={field.label}
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       data-testid={`pivot-field-${field.name}`}
       title={`Drag "${field.label}" onto a shelf`}
-      className={[
-        'flex w-full cursor-grab items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-[12px] font-medium transition-colors',
-        colors.border,
-        colors.bg,
-        colors.text,
-        isDragging ? 'opacity-40' : 'hover:brightness-95',
-      ].join(' ')}
-    >
-      <svg viewBox="0 0 14 14" width="11" height="11" aria-hidden="true" className="shrink-0 opacity-60">
-        <g fill="currentColor">
-          <circle cx="3" cy="3" r="1.3" />
-          <circle cx="3" cy="7" r="1.3" />
-          <circle cx="3" cy="11" r="1.3" />
-          <circle cx="8" cy="3" r="1.3" />
-          <circle cx="8" cy="7" r="1.3" />
-          <circle cx="8" cy="11" r="1.3" />
-        </g>
-      </svg>
-      <span className="truncate">{field.label}</span>
-    </button>
+      className={`w-full cursor-grab justify-start ${isDragging ? 'opacity-40' : 'hover:brightness-95'}`}
+    />
   );
 };
 
@@ -71,7 +60,7 @@ const PivotFieldList = ({ fields = [], isLoading = false }) => {
             {isLoading ? 'Loading fields…' : 'No fields available for this table.'}
           </p>
         ) : (
-          fields.map(field => <FieldPill key={field.name} field={field} />)
+          fields.map(field => <PivotField key={field.name} field={field} />)
         )}
       </div>
     </div>
