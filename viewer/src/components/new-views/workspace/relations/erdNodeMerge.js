@@ -3,18 +3,22 @@
  *
  * `mergeById(prev, seeded, saved)` decides each node's position when the hook
  * re-seeds (a model added/removed, columns hydrated, scope changed, Tidy bumped
- * the version). The clauses (spec §6, the highest-likelihood regression):
+ * the version). The clauses:
  *
- *   1. id in BOTH prev and seeded  → keep prev.position (preserves a moved or
- *      mid-drag node — never clobber in-flight).
- *   2. overlay saved[id] if present → session-persisted position wins over a
- *      fresh seed.
- *   3. genuinely NEW id (in seeded, not prev) → saved[id] ?? seeded.position
- *      (the new node gets its fresh slot).
+ *   1. SAVED id (user moved it) → its saved position wins, whether or not it was
+ *      in prev. This preserves a moved card across any re-seed.
+ *   2. id in prev but NOT saved → keep prev.position ONLY when the fresh seed
+ *      hasn't moved it (a stable auto-seed); otherwise adopt the fresh seed. This
+ *      lets a late column-hydration / model-add re-pack un-moved cards (else a
+ *      stale estimate freezes a too-short slot and the taller card overlaps its
+ *      neighbour) while never clobbering a mid-drag node (the sync effect doesn't
+ *      run mid-drag — onNodesChange owns live positions — so prev === seed there).
+ *   3. genuinely NEW id (in seeded, not prev, not saved) → seeded.position (fresh
+ *      slot).
  *   4. drop ids no longer in seeded (deleted nodes).
  *
  * Always carries the LATEST seeded `data`/`type`/`layoutSize` forward (so new
- * columns/fields/edges reflect), only the POSITION is reconciled.
+ * columns/fields/edges reflect); only the POSITION is reconciled.
  */
 export function mergeById(prev, seeded, saved = {}) {
   const prevById = new Map((prev || []).map(n => [n.id, n]));
@@ -25,12 +29,18 @@ export function mergeById(prev, seeded, saved = {}) {
     const savedValid = savedPos && Number.isFinite(savedPos.x) && Number.isFinite(savedPos.y);
 
     let position;
-    if (prevNode) {
-      // Clause 1: keep the in-flight/moved position; clause 2: saved overlays it.
-      position = savedValid ? { x: savedPos.x, y: savedPos.y } : prevNode.position;
+    if (savedValid) {
+      // Clause 1: a user-moved card keeps its saved position, always.
+      position = { x: savedPos.x, y: savedPos.y };
+    } else if (prevNode) {
+      // Clause 2: keep the prior auto-seed position, but adopt the fresh seed
+      // when the layout machine re-packed this card (e.g. columns hydrated and
+      // the card grew). The sync effect never runs mid-drag, so prev here is a
+      // settled auto-seed, never an in-flight drag.
+      position = seedNode.position || prevNode.position;
     } else {
-      // Clause 3: a new node takes its saved slot or its fresh seed.
-      position = savedValid ? { x: savedPos.x, y: savedPos.y } : seedNode.position;
+      // Clause 3: a new node takes its fresh slot.
+      position = seedNode.position;
     }
     // Latest data/type/size, reconciled position. (Clause 4 — dropped ids — falls
     // out: we only map over `seeded`, so removed ids are naturally absent.)
