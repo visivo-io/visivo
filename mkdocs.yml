@@ -1,5 +1,10 @@
 site_name: Visivo Docs
 site_url: https://docs.visivo.io
+site_description: Documentation for Visivo, the AI-native open-source BI-as-code platform.
+  Define data sources, a semantic layer of metrics, dimensions, and relations, and
+  dashboards as version-controlled YAML, then explore them interactively with Insights.
+  Develop locally with visivo serve and deploy to Visivo Cloud.
+site_author: Visivo
 plugins:
   - mkdocs-video
   - autolinks
