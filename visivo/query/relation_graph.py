@@ -17,16 +17,33 @@ from visivo.query.resolvers.field_resolver import FieldResolver
 import networkx as nx
 
 
-class AmbiguousJoinError(Exception):
+class JoinPathError(Exception):
+    """Base class for join-path resolution errors.
+
+    Carries structured attributes (``model_a`` / ``model_b`` — the model pair the
+    failure is about — and ``kind``, a stable machine-readable discriminator) so
+    callers (e.g. the viewer's Relations ERD builder, VIS-1006/VIS-1007) can act
+    on the failure without parsing the human-readable message.
+    """
+
+    kind: str = "join_path"
+
+    def __init__(self, message: str, model_a: Optional[str] = None, model_b: Optional[str] = None):
+        super().__init__(message)
+        self.model_a = model_a
+        self.model_b = model_b
+
+
+class AmbiguousJoinError(JoinPathError):
     """Raised when multiple join paths exist between models."""
 
-    pass
+    kind = "ambiguous_join"
 
 
-class NoJoinPathError(Exception):
+class NoJoinPathError(JoinPathError):
     """Raised when no join path exists between models."""
 
-    pass
+    kind = "no_join_path"
 
 
 class RelationGraph:
@@ -106,6 +123,21 @@ class RelationGraph:
                 resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
                 self._resolved_conditions[relation.condition] = resolved_condition
 
+                # networkx.Graph keeps a single edge per node pair, so when more
+                # than one relation is declared for the same pair, add_edge would
+                # silently let the LAST one win. Break that tie on is_default:
+                # only overwrite an existing edge if the incoming relation is the
+                # default (or the existing edge isn't), so an explicit
+                # is_default=True relation always wins regardless of declaration
+                # order. (VIS-1006)
+                if self.graph.has_edge(model_list[0], model_list[1]):
+                    existing = self.graph.get_edge_data(model_list[0], model_list[1])
+                    existing_is_default = bool(existing.get("is_default"))
+                    incoming_is_default = bool(relation.is_default)
+                    if existing_is_default and not incoming_is_default:
+                        # Keep the already-installed default edge.
+                        continue
+
                 # Add edge with relation details (undirected, so order doesn't matter)
                 self.graph.add_edge(
                     model_list[0],
@@ -155,9 +187,17 @@ class RelationGraph:
             List of join conditions along the path
         """
         if not self.graph.has_node(model1):
-            raise NoJoinPathError(f"Model '{model1}' not found in relation graph")
+            raise NoJoinPathError(
+                f"Model '{model1}' not found in relation graph",
+                model_a=model1,
+                model_b=model2,
+            )
         if not self.graph.has_node(model2):
-            raise NoJoinPathError(f"Model '{model2}' not found in relation graph")
+            raise NoJoinPathError(
+                f"Model '{model2}' not found in relation graph",
+                model_a=model1,
+                model_b=model2,
+            )
 
         try:
             # Find shortest path
@@ -175,7 +215,9 @@ class RelationGraph:
                 raise AmbiguousJoinError(
                     f"Multiple join paths found between '{model1}' and '{model2}':\n"
                     + "\n".join(f"  - {p}" for p in path_descriptions)
-                    + "\n\nPlease specify a preferred path using relation preferences."
+                    + "\n\nPlease specify a preferred path using relation preferences.",
+                    model_a=model1,
+                    model_b=model2,
                 )
 
             # Build join conditions from the path
@@ -195,7 +237,9 @@ class RelationGraph:
         except nx.NetworkXNoPath:
             raise NoJoinPathError(
                 f"No join path found between models '{model1}' and '{model2}'. "
-                f"Please define a relation between these models."
+                f"Please define a relation between these models.",
+                model_a=model1,
+                model_b=model2,
             )
 
     def _find_minimum_spanning_tree(self, models: List[str]) -> List[Tuple[str, str, str]]:
@@ -214,7 +258,7 @@ class RelationGraph:
         # Check all models exist
         for model in models:
             if not self.graph.has_node(model):
-                raise NoJoinPathError(f"Model '{model}' not found in relation graph")
+                raise NoJoinPathError(f"Model '{model}' not found in relation graph", model_a=model)
 
         # Find all paths between each pair of models
         all_edges = []

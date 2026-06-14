@@ -37,6 +37,11 @@ const SourceErd = React.lazy(() => import('./source/SourceErd'));
 // it (VIS-1001 fixes the latent bug where those distinct type strings fell to
 // lineage because the registry only keyed 'model').
 const ModelCanvas = React.lazy(() => import('./ModelPreview'));
+// RelationErdCanvas is the Relation canvas body (VIS-1006): a React-Flow ERD
+// builder where dragging column→column authors a relation. It's editable (it
+// writes relations via the relation store) and serve-only (it needs the live
+// project's models + relations from the CLI server).
+const RelationErdCanvas = React.lazy(() => import('./relations/RelationErdCanvas'));
 
 const READONLY_PREVIEW = (label = 'Canvas') => ({ key: 'preview', label, kind: 'readonly' });
 
@@ -106,6 +111,16 @@ export const OBJECT_CANVAS_REGISTRY = {
   model: MODEL_DESCRIPTOR,
   csvScriptModel: MODEL_DESCRIPTOR,
   localMergeModel: MODEL_DESCRIPTOR,
+  relation: {
+    Component: RelationErdCanvas,
+    availability: 'serve',
+    availabilityKey: 'relationsList',
+    defaultLens: 'preview',
+    // The Canvas lens IS the ERD builder — authoring relations by dragging
+    // column→column writes to the relation store, so it's editable.
+    lenses: [{ key: 'preview', label: 'Canvas', kind: 'editable' }],
+    emptyHint: 'No relation selected.',
+  },
 };
 
 /** Resolve the descriptor for an object type, or null when none exists. */

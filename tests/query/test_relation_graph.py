@@ -1072,3 +1072,170 @@ class TestRelationGraphScoping:
 
         # Edge should exist
         assert graph.graph.has_edge("orders", "users")
+
+
+class TestDefaultRelationTieBreak:
+    """is_default breaks the tie when multiple relations exist for the SAME model pair.
+
+    networkx.Graph keeps a single edge per node pair, so without a tie-break the
+    last-declared relation silently wins. These tests assert the is_default=True
+    relation is the one installed on the edge regardless of declaration order.
+    """
+
+    def _build(self, tmpdir, relations):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            relations=relations,
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        schema_base = tmpdir.mkdir("schemas")
+        for model in [model_a, model_b]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {model_hash: {"id": "INTEGER", "user_id": "INTEGER", "email": "VARCHAR"}}
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        return RelationGraph(dag=dag, field_resolver=resolver)
+
+    def test_default_wins_when_declared_after_non_default(self, tmpdir):
+        """A default relation declared AFTER a non-default for the same pair still wins."""
+        non_default = Relation(
+            name="by_email",
+            condition="${ref(orders).email} = ${ref(users).email}",
+            is_default=False,
+        )
+        default = Relation(
+            name="by_id",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+            is_default=True,
+        )
+        graph = self._build(tmpdir, [non_default, default])
+
+        edge = graph.graph.get_edge_data("orders", "users")
+        assert edge["is_default"] is True
+        assert edge["relation"].name == "by_id"
+
+    def test_default_wins_when_declared_before_non_default(self, tmpdir):
+        """A default relation declared BEFORE a non-default for the same pair still wins."""
+        default = Relation(
+            name="by_id",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
+            is_default=True,
+        )
+        non_default = Relation(
+            name="by_email",
+            condition="${ref(orders).email} = ${ref(users).email}",
+            is_default=False,
+        )
+        graph = self._build(tmpdir, [default, non_default])
+
+        edge = graph.graph.get_edge_data("orders", "users")
+        assert edge["is_default"] is True
+        assert edge["relation"].name == "by_id"
+
+
+class TestStructuredJoinErrorAttributes:
+    """NoJoinPathError / AmbiguousJoinError carry structured model_a/model_b/kind."""
+
+    def test_no_join_path_error_attributes(self, tmpdir):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        model_b = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b],
+            dashboards=[],
+        )
+        dag = project.dag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        with pytest.raises(NoJoinPathError) as exc_info:
+            graph._find_path_between_two("orders", "users")
+
+        err = exc_info.value
+        assert err.model_a == "orders"
+        assert err.model_b == "users"
+        assert err.kind == "no_join_path"
+
+    def test_nonexistent_model_error_attributes(self, tmpdir):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        model_a = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a],
+            dashboards=[],
+        )
+        dag = project.dag()
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        with pytest.raises(NoJoinPathError) as exc_info:
+            graph._find_path_between_two("orders", "nonexistent")
+
+        err = exc_info.value
+        assert err.model_a == "orders"
+        assert err.model_b == "nonexistent"
+        assert err.kind == "no_join_path"
+
+    def test_ambiguous_join_error_attributes(self, tmpdir):
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+
+        model_a = SqlModel(name="a", sql="SELECT * FROM a", source="ref(test_source)")
+        model_b = SqlModel(name="b", sql="SELECT * FROM b", source="ref(test_source)")
+        model_c = SqlModel(name="c", sql="SELECT * FROM c", source="ref(test_source)")
+        model_d = SqlModel(name="d", sql="SELECT * FROM d", source="ref(test_source)")
+
+        rel_ab = Relation(name="a_to_b", condition="${ref(a).id} = ${ref(b).a_id}")
+        rel_ac = Relation(name="a_to_c", condition="${ref(a).id} = ${ref(c).a_id}")
+        rel_bd = Relation(name="b_to_d", condition="${ref(b).id} = ${ref(d).b_id}")
+        rel_cd = Relation(name="c_to_d", condition="${ref(c).id} = ${ref(d).c_id}")
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[model_a, model_b, model_c, model_d],
+            relations=[rel_ab, rel_ac, rel_bd, rel_cd],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        schema_base = tmpdir.mkdir("schemas")
+        for model in [model_a, model_b, model_c, model_d]:
+            model_hash = model.name_hash()
+            schema_dir = schema_base.mkdir(model.name)
+            schema_file = schema_dir.join("schema.json")
+            schema_data = {
+                model_hash: {
+                    "id": "INTEGER",
+                    "a_id": "INTEGER",
+                    "b_id": "INTEGER",
+                    "c_id": "INTEGER",
+                }
+            }
+            schema_file.write(json.dumps(schema_data))
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        with pytest.raises(AmbiguousJoinError) as exc_info:
+            graph._find_path_between_two("a", "d")
+
+        err = exc_info.value
+        assert err.model_a == "a"
+        assert err.model_b == "d"
+        assert err.kind == "ambiguous_join"

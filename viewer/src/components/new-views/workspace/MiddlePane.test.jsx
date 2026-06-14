@@ -220,8 +220,9 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
 
 describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {
   // `source` now has its own ERD Canvas lens (VIS-1005), so it's no longer a
-  // preview-less type — dimension/metric/relation still exercise the fallback.
-  test.each(['dimension', 'metric', 'relation'])(
+  // preview-less type — dimension/metric still exercise the fallback (source got
+  // an ERD canvas in VIS-1005, relation an ERD builder in VIS-1006).
+  test.each(['dimension', 'metric'])(
     'a selected %s (no custom preview) locks onto the Lineage lens',
     (type) => {
       seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });

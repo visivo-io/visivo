@@ -48,12 +48,11 @@ describe('objectCanvasRegistry', () => {
     );
   });
 
-  test('the first lens of every registered type is the read-only "Canvas" preview', () => {
+  test('the first lens of every registered type is the "Canvas" preview', () => {
     types.forEach(type => {
       const first = OBJECT_CANVAS_REGISTRY[type].lenses[0];
       expect(first.key).toBe('preview');
       expect(first.label).toBe('Canvas');
-      expect(first.kind).toBe('readonly');
     });
   });
 
@@ -61,7 +60,6 @@ describe('objectCanvasRegistry', () => {
     const md = OBJECT_CANVAS_REGISTRY.markdown;
     expect(md.defaultLens).toBe('preview');
     expect(md.lenses).toHaveLength(2);
-    // preview stays the read-only Canvas (asserted by the "first lens" test).
     const edit = md.lenses.find(l => l.key === 'edit');
     expect(edit).toBeTruthy();
     expect(edit.label).toBe('Edit');
@@ -72,13 +70,34 @@ describe('objectCanvasRegistry', () => {
     expect(edit.Component).not.toBe(md.Component);
   });
 
+  test("most canvas previews are read-only; relation's Canvas is the editable ERD builder", () => {
+    types
+      .filter(type => type !== 'relation')
+      .forEach(type => {
+        expect(OBJECT_CANVAS_REGISTRY[type].lenses[0].kind).toBe('readonly');
+      });
+    // VIS-1006: the Relation Canvas lens IS the ERD builder — dragging
+    // column→column authors a relation, so its first lens is editable.
+    expect(OBJECT_CANVAS_REGISTRY.relation.lenses[0].kind).toBe('editable');
+  });
+
+  test('relation is a serve-only canvas gated on the relations list endpoint (VIS-1006)', () => {
+    const d = OBJECT_CANVAS_REGISTRY.relation;
+    expect(d.availability).toBe('serve');
+    expect(d.availabilityKey).toBe('relationsList');
+    expect(d.defaultLens).toBe('preview');
+    expect(d.Component).toBeTruthy();
+  });
+
   test('getCanvasDescriptor / hasCanvas', () => {
     expect(getCanvasDescriptor('chart')).toBe(OBJECT_CANVAS_REGISTRY.chart);
     expect(getCanvasDescriptor('mystery')).toBeNull();
-    // `source` now has the ERD canvas (VIS-1005) → it resolves a descriptor.
+    // source (VIS-1005) + relation (VIS-1006) now resolve real descriptors.
     expect(getCanvasDescriptor('source')).toBe(OBJECT_CANVAS_REGISTRY.source);
+    expect(getCanvasDescriptor('relation')).toBe(OBJECT_CANVAS_REGISTRY.relation);
     expect(hasCanvas('chart')).toBe(true);
     expect(hasCanvas('source')).toBe(true);
+    expect(hasCanvas('relation')).toBe(true);
   });
 
   test('source has the CLI-only (serve) ERD canvas gated on sourcesMetadata (VIS-1005)', () => {
