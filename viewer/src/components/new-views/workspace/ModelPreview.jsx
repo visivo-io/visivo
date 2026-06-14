@@ -20,10 +20,18 @@ import { parseRefValue } from '../../../utils/refString';
  * COLLECTION_KEY['model'] = 'models'). The source name is read from the model's
  * `source` ref (falling back to the first available source / project default).
  */
-const ModelPreview = ({ activeObject }) => {
+const ModelPreview = ({ activeObject, record: providedRecord }) => {
   const name = activeObject?.name || null;
   const models = useStore(s => s.models);
   const fetchModels = useStore(s => s.fetchModels);
+  // The Library surfaces the whole model family as type 'model', so the Model
+  // canvas must resolve a record across all three collections — a SqlModel, a
+  // csvScriptModel, or a localMergeModel — or it would dead-end on "not found"
+  // for the latter two (whose records never live in `models`).
+  const csvScriptModels = useStore(s => s.csvScriptModels);
+  const fetchCsvScriptModels = useStore(s => s.fetchCsvScriptModels);
+  const localMergeModels = useStore(s => s.localMergeModels);
+  const fetchLocalMergeModels = useStore(s => s.fetchLocalMergeModels);
   const sources = useStore(s => s.sources);
   const fetchSources = useStore(s => s.fetchSources);
   const defaults = useStore(s => s.defaults);
@@ -33,23 +41,39 @@ const ModelPreview = ({ activeObject }) => {
     useModelQueryJob();
 
   useEffect(() => {
-    if ((!models || models.length === 0) && typeof fetchModels === 'function') {
-      fetchModels();
-    }
-    if ((!sources || sources.length === 0) && typeof fetchSources === 'function') {
-      fetchSources();
-    }
-    if (!defaults && typeof fetchDefaults === 'function') {
-      fetchDefaults();
-    }
-  }, [models, fetchModels, sources, fetchSources, defaults, fetchDefaults]);
+    if ((!models || models.length === 0) && typeof fetchModels === 'function') fetchModels();
+    if ((!csvScriptModels || csvScriptModels.length === 0) && typeof fetchCsvScriptModels === 'function')
+      fetchCsvScriptModels();
+    if ((!localMergeModels || localMergeModels.length === 0) && typeof fetchLocalMergeModels === 'function')
+      fetchLocalMergeModels();
+    if ((!sources || sources.length === 0) && typeof fetchSources === 'function') fetchSources();
+    if (!defaults && typeof fetchDefaults === 'function') fetchDefaults();
+  }, [
+    models,
+    fetchModels,
+    csvScriptModels,
+    fetchCsvScriptModels,
+    localMergeModels,
+    fetchLocalMergeModels,
+    sources,
+    fetchSources,
+    defaults,
+    fetchDefaults,
+  ]);
 
-  const record = useMemo(
-    () => (Array.isArray(models) ? models.find(m => m.name === name) || null : null),
-    [models, name]
+  const record = useMemo(() => {
+    const find = arr => (Array.isArray(arr) ? arr.find(m => m.name === name) || null : null);
+    return find(models) || find(csvScriptModels) || find(localMergeModels) || null;
+  }, [models, csvScriptModels, localMergeModels, name]);
+
+  // The frame resolves the record (via useCanvasRecord) and passes the unwrapped
+  // config as `record` — use it so csvScriptModel / localMergeModel (whose
+  // records live in their own collections, not `models`) also render the Model
+  // canvas. Falls back to the local `models` lookup when mounted standalone.
+  const config = useMemo(
+    () => providedRecord || (record ? record.config || record : null),
+    [providedRecord, record]
   );
-
-  const config = useMemo(() => (record ? record.config || record : null), [record]);
   const sql = config?.sql || '';
 
   const sourceName = useMemo(() => {

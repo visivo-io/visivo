@@ -137,19 +137,20 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     ['input', 'input-preview-mock'],
     ['insight', 'insight-preview-mock'],
     ['model', 'model-preview-mock'],
-  ])('defaults a selected %s to the Preview lens, mounting its custom preview', (type, previewTestId) => {
+  ])('defaults a selected %s to the Preview lens, mounting its custom preview', async (type, previewTestId) => {
     seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId(`workspace-middle-${type}-preview`)).toBeInTheDocument();
-    expect(screen.getByTestId(previewTestId)).toBeInTheDocument();
+    // The body is lazy (code-split, VIS-1001) — it resolves through Suspense.
+    expect(await screen.findByTestId(previewTestId)).toBeInTheDocument();
     expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
   });
 
-  test('a Track-N type can flip from its Preview to the Lineage lens', () => {
+  test('a Track-N type can flip from its Preview to the Lineage lens', async () => {
     seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceLens: 'preview' });
     render(<MiddlePane />);
-    // Defaults to its custom preview.
-    expect(screen.getByTestId('chart-preview-mock')).toBeInTheDocument();
+    // Defaults to its custom preview (lazy → resolves through Suspense).
+    expect(await screen.findByTestId('chart-preview-mock')).toBeInTheDocument();
 
     // Lineage is selectable — clicking it flips to the universal DAG view.
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
@@ -158,7 +159,7 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     expect(screen.queryByTestId('chart-preview-mock')).not.toBeInTheDocument();
   });
 
-  test('flipping one object to Lineage does NOT leak the lens to the next object (resets to Preview)', () => {
+  test('flipping one object to Lineage does NOT leak the lens to the next object (resets to Preview)', async () => {
     // Regression: PerObjectPane is a single reused React instance, so a chart
     // flipped to Lineage would leak its lens — selecting a table next opened it
     // on Lineage instead of its Preview default. The lens must reset on switch.
@@ -173,7 +174,7 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     });
     rerender(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-table-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('table-preview-mock')).toBeInTheDocument();
+    expect(await screen.findByTestId('table-preview-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('workspace-middle-table-lineage')).not.toBeInTheDocument();
 
     // Same-type navigation also re-defaults: flip table → Lineage, pick another table.
