@@ -16,6 +16,8 @@ const PAGES = [
   '/',
   '/installation/',
   '/topics/sources/',
+  '/topics/ci-cd/',
+  '/contributing/editorial-guidelines/',
   '/reference/configuration/Dashboards/Dashboard/',
   '/concepts/',
   '/concepts/architecture/',
