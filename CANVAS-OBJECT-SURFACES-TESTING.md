@@ -46,6 +46,45 @@ read-only canvases). The icon still works in **Explorer**.
 
 ---
 
+## 1b. Post-review fixes (2026-06-14)
+
+Six issues raised reviewing the consolidated PR are fixed here. These **supersede**
+the stale notes in §7–§10 below (kept for history; corrections inline).
+
+1. **Pivot pills + Save (was §9 known-limitation).** The Build lens now uses the
+   **app-wide metric/dimension/model-column pill** (`FieldPill`, off
+   `objectTypeConfigs` — no bespoke teal). **Save** opens a modal:
+   **Replace current table** (commits the pivot back) or **Add as a new table**
+   (generates a uniquely-named table + opens it as a tab). e2e `canvas-pivot-save`.
+2. **Right-rail tab gating.** The right rail shows **Outline only for a dashboard**
+   and **Data only for a source**; every other object shows **Edit** alone
+   (no more empty Outline tab everywhere). Unit `RightRail.test.jsx`.
+3. **Metric live preview (was §10 known-limitation — now FIXED).** The synthetic
+   single-metric insight cast the string-date split through `date_trunc(...)` and
+   hit a Binder Error; the split expression is now `CAST(... AS TIMESTAMP)` first,
+   so `avg_value` renders a **real chart** with the default split + time-grain (and
+   on a finer day grain). e2e `canvas-metric-preview`.
+4. **Project page governance removed (reverses §7).** The Relations / Semantic
+   Fields lists are gone from the Project editor — that surface moves to the new
+   Semantic Layer page (#5 below).
+5. **Relations scoping + columns + Semantic Layer page (corrects §8).** A
+   relation's ERD now shows **only its two joined models** (parsed from the
+   `${ref()}` operands), each **with its real columns hydrated** from cached model
+   data (the old "No columns loaded" is fixed). Add more models via an **@-mention
+   search** or by **dropping a Library model** onto the canvas. SEPARATELY, a new
+   project-wide **Semantic Layer page** (`/workspace/semantic-layer`, linked from a
+   CTA on the Project page **before the dashboards**) renders every model with its
+   metric (cyan) + dimension (teal) pills and all relations as edges; drag
+   column→column to author a new relation. e2e `relations-and-semantic`.
+6. **Source introspection regression fixed.** The source **Data** tab + the source
+   **ERD** read the backend **cached schema** feed (like the Explorer) into the
+   Zustand store — auto-loading when a cache exists, offering **Generate** when it
+   doesn't, and rehydrating instantly on re-select. (A prior change had pointed
+   these at the live introspect, which returns 0 dbs for duckdb → blank.) e2e
+   `canvas-source-data`.
+
+---
+
 ## 2. VIS-1001 — Unified object-canvas framework
 
 Every non-dashboard object now opens through one shared **ObjectCanvasFrame**:
