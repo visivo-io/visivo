@@ -1,12 +1,7 @@
 import { useMemo } from 'react';
 import useStore from '../../../../stores/store';
-import { computeLayout } from '../../lineage/useLineageDag';
-import {
-  ERD_NODE_WIDTH,
-  ERD_GRID_GAP_X,
-  ERD_GRID_GAP_Y,
-  estimateErdNodeHeight,
-} from './erdGeometry';
+import { ERD_NODE_WIDTH, estimateErdNodeHeight } from './erdGeometry';
+import { runLayout, packBoxes } from './layoutEngine';
 
 /**
  * useRelationErdDag — the ERD twin of useLineageDag (VIS-1006).
@@ -52,32 +47,23 @@ const ERD_EDGE_ID = relationName => `erd-rel-${relationName}`;
 export { estimateErdNodeHeight };
 
 /**
- * Pack model cards into a tiled (masonry) grid instead of dagre rows. The
- * Semantic Layer overview is mostly disconnected models, so a left-to-right
- * dagre layout stacks them all in one tall rank; a shortest-column grid tiles
- * them compactly. Each card drops into whichever column is currently shortest
- * (using its measured `layoutSize.height`), so variable-height cards pack tight
- * without overlap. The column count is biased WIDER than square so the grid
- * fills the wide canvas (a near-square strip wastes horizontal space and makes
- * fitView zoom the cards down to unreadable) — capped at the node count.
+ * Pack model cards into a tiled (masonry) grid — a thin wrapper over the layout
+ * engine's `packBoxes`. The Semantic Layer overview is mostly disconnected
+ * models, so a left-to-right dagre layout stacks them all in one tall rank; a
+ * shortest-column grid tiles them compactly. When every card is a singleton (no
+ * relations), `packBoxes` output is IDENTICAL to the historic implementation,
+ * so existing callers/tests are unaffected. Retained so direct importers keep
+ * working; the hook itself now lays out via `runLayout`.
  */
 export const packGridLayout = nodes => {
   if (!Array.isArray(nodes) || nodes.length === 0) return nodes;
-  const columns = Math.min(
-    nodes.length,
-    Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.6)))
-  );
-  const colHeights = new Array(columns).fill(0);
-  return nodes.map(node => {
-    let col = 0;
-    for (let i = 1; i < columns; i += 1) {
-      if (colHeights[i] < colHeights[col]) col = i;
-    }
-    const x = col * (ERD_NODE_WIDTH + ERD_GRID_GAP_X);
-    const y = colHeights[col];
-    colHeights[col] += (node.layoutSize?.height ?? 80) + ERD_GRID_GAP_Y;
-    return { ...node, position: { x, y } };
-  });
+  const boxes = nodes.map(node => ({
+    id: node.id,
+    width: node.layoutSize?.width ?? ERD_NODE_WIDTH,
+    height: node.layoutSize?.height ?? 80,
+  }));
+  const origins = packBoxes(boxes);
+  return nodes.map(node => ({ ...node, position: origins[node.id] || { x: 0, y: 0 } }));
 };
 
 /**
@@ -247,22 +233,17 @@ export function useRelationErdDag(options = {}) {
       });
     });
 
-    let layoutNodes = nodes;
-    if (layout === 'grid') {
-      // Tiled grid (Semantic Layer overview) — pack disconnected models compactly
-      // instead of a tall dagre rank.
-      layoutNodes = packGridLayout(nodes);
-    } else {
-      try {
-        layoutNodes = computeLayout(nodes, edges);
-      } catch {
-        // computeLayout needs dagre; if it throws (e.g. unmocked in a bare test)
-        // keep zeroed positions so the graph still renders.
-        layoutNodes = nodes;
-      }
-    }
+    // Seed positions via the pluggable layout machine (Union-Find clustering →
+    // per-cluster dagre → masonry pack). Connected models form a dagre cluster;
+    // disconnected models pack as singletons (identical to the legacy tiled
+    // grid). The edge/drag system calls runLayout too — this is the only seam.
+    const { nodes: seededNodes } = runLayout({
+      nodes,
+      edges,
+      options: { layout, direction: 'LR' },
+    });
 
-    return { nodes: layoutNodes, edges };
+    return { nodes: seededNodes, edges };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [models, relations, scopeKey, extraKey, columnsByModel, fieldsByModel, fieldsKey, layout]);
 }

@@ -11,10 +11,16 @@ import { parseRefValue } from '../../../utils/refString';
  * @param {Array} edges - Array of edges
  * @param {Object} fixedNode - Optional { id, position } to keep a node at its current position
  *                              The entire graph will be offset to center around this fixed node
+ * @param {Object} opts - Optional dagre knobs (all back-compat; defaults preserve
+ *                        the historic behavior exactly):
+ *                          - ranksep (default 100) between-rank spacing
+ *                          - nodesep (default 50)  within-rank spacing
+ *                          - rankdir (default 'LR') layout direction
  */
-export function computeLayout(nodes, edges, fixedNode = null) {
+export function computeLayout(nodes, edges, fixedNode = null, opts = {}) {
+  const { ranksep = 100, nodesep = 50, rankdir = 'LR' } = opts;
   const graph = new dagre.graphlib.Graph();
-  graph.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 100 });
+  graph.setGraph({ rankdir, nodesep, ranksep });
   graph.setDefaultEdgeLabel(() => ({}));
 
   // Add nodes to graph
