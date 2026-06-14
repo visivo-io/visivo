@@ -18,6 +18,7 @@ const PAGES = [
   '/topics/sources/',
   '/reference/configuration/Dashboards/Dashboard/',
   '/concepts/',
+  '/concepts/architecture/',
   '/cloud/',
 ];
 

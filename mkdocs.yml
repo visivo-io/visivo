@@ -123,6 +123,7 @@ nav:
       - Telemetry: topics/telemetry.md
   - Concepts:
       - Overview: concepts/index.md
+      - Architecture: concepts/architecture.md
       - Source: concepts/source.md
       - Model: concepts/model.md
       - Semantic Layer: concepts/semantic-layer.md

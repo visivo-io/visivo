@@ -22,6 +22,7 @@ const ROUTES = [
   { name: 'topics (sources)', path: '/topics/sources/' },
   { name: 'installation', path: '/installation/' },
   { name: 'concepts overview', path: '/concepts/' },
+  { name: 'concepts architecture', path: '/concepts/architecture/' },
   { name: 'concept (insight)', path: '/concepts/insight/' },
   { name: 'cloud overview', path: '/cloud/' },
   { name: 'cloud (deploy & stages)', path: '/cloud/deploy-and-stages/' },
