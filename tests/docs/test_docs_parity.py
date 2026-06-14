@@ -33,7 +33,7 @@ from pathlib import Path
 
 import pytest
 
-from visivo.parsers.mkdocs import Mkdocs
+from visivo.parsers.mkdocs import INSIGHT_PROPS_INDEX_MODEL, Mkdocs
 from visivo.parsers.schema_generator import generate_schema
 from visivo.utils import SCHEMA_FILE
 
@@ -53,13 +53,19 @@ def mkdocs():
 
 @pytest.fixture(scope="module")
 def documented_models(mkdocs):
-    """Exactly the models that get a generated reference page.
+    """Exactly the Pydantic models that get a generated reference page.
 
     Derived from ``Mkdocs.model_to_path_map`` — the same map the doc generator
     iterates in ``write_pydantic_md_files`` — so this list can never drift from
     what is actually written to ``mkdocs/reference/configuration/``.
+
+    The synthetic ``INSIGHT_PROPS_INDEX_MODEL`` (the Insight Props card-grid
+    index page, VIS-988) is excluded: it is not a Pydantic model and has no
+    schema ``$defs`` entry — it is a hand-templated index whose prose is
+    generated unconditionally, so the empty-page concern (VIS-968) does not
+    apply to it.
     """
-    return sorted(mkdocs.model_to_path_map.keys())
+    return sorted(k for k in mkdocs.model_to_path_map if k != INSIGHT_PROPS_INDEX_MODEL)
 
 
 # ===========================================================================

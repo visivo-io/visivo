@@ -292,6 +292,98 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     return full_doc
 
 
+# One-line, human-readable descriptions for each insight prop (chart) type.
+# The generated prop schemas all carry the same generic "A schema to validate
+# plotly trace properties" description, so the card grid needs a curated map.
+# Keep this in sync with the prop models discovered from the schema; any prop
+# without an entry falls back to a generic blurb (and the build still passes).
+INSIGHT_PROP_DESCRIPTIONS = {
+    "Area": "Filled line chart for showing volume or cumulative trends over a continuous axis.",
+    "Bar": "Vertical or horizontal bars for comparing categorical values.",
+    "Barpolar": "Bars plotted on a polar (radial) axis — wind roses and circular comparisons.",
+    "Box": "Box-and-whisker plot summarizing distribution, quartiles, and outliers.",
+    "Candlestick": "Financial OHLC chart showing open, high, low, and close per period.",
+    "Carpet": "Carpet axis base layer for parametric carpet plots.",
+    "Choropleth": "Region-shaded geographic map driven by a per-area value.",
+    "Choroplethmap": "Region-shaded map rendered on a MapLibre base map.",
+    "Choroplethmapbox": "Region-shaded map rendered on a Mapbox base map.",
+    "Cone": "3D cone field for visualizing vector directions and magnitudes.",
+    "Contour": "Filled contour lines representing a 2D scalar field or density.",
+    "Contourcarpet": "Contour lines drawn on a carpet axis.",
+    "Densitymap": "Heat-density layer on a MapLibre base map.",
+    "Densitymapbox": "Heat-density layer on a Mapbox base map.",
+    "Funnel": "Stage-by-stage funnel showing drop-off through a process.",
+    "Funnelarea": "Area-proportional funnel for share-of-stage comparisons.",
+    "Heatmap": "Color-encoded matrix for showing magnitude across two dimensions.",
+    "Histogram": "Distribution of a single variable binned into buckets.",
+    "Histogram2d": "2D histogram binning two variables into a colored grid.",
+    "Histogram2dcontour": "2D histogram rendered as contour lines.",
+    "Icicle": "Hierarchical icicle chart for nested part-to-whole data.",
+    "Image": "Pixel image / raster layer rendered from a 2D array.",
+    "Indicator": "Single-value KPI gauge, number, or delta indicator.",
+    "Isosurface": "3D isosurface extracted from a volumetric scalar field.",
+    "Line": "Line chart connecting points to show trends over a continuous axis.",
+    "Mesh3d": "3D triangular mesh surface from a set of vertices.",
+    "Ohlc": "Open-high-low-close financial bars.",
+    "Parcats": "Parallel-categories diagram for relationships between categorical fields.",
+    "Parcoords": "Parallel-coordinates plot for multi-dimensional numeric data.",
+    "Pie": "Pie chart for part-to-whole proportions across a few categories.",
+    "Sankey": "Sankey flow diagram showing weighted links between nodes.",
+    "Scatter": "Points, lines, or markers on Cartesian axes — the most versatile chart.",
+    "Scatter3d": "Points and lines plotted in 3D space.",
+    "Scattercarpet": "Scatter points plotted on a carpet axis.",
+    "Scattergeo": "Points plotted on a geographic map by latitude/longitude.",
+    "Scattergl": "WebGL-accelerated scatter for large point counts.",
+    "Scattermap": "Scatter points on a MapLibre base map.",
+    "Scattermapbox": "Scatter points on a Mapbox base map.",
+    "Scatterpolar": "Scatter points on a polar (radial) axis.",
+    "Scatterpolargl": "WebGL-accelerated scatter on a polar axis.",
+    "Scattersmith": "Scatter points on a Smith chart (impedance/RF).",
+    "Scatterternary": "Scatter points on a ternary (three-component) plot.",
+    "Splom": "Scatter-plot matrix comparing many numeric dimensions pairwise.",
+    "Streamtube": "3D streamtubes tracing flow through a vector field.",
+    "Sunburst": "Radial hierarchy chart for nested part-to-whole data.",
+    "Surface": "3D surface plot of a scalar field over an x/y grid.",
+    "Treemap": "Nested rectangles sized by value for hierarchical data.",
+    "Violin": "Violin plot combining a box plot with a kernel-density distribution.",
+    "Volume": "Volumetric rendering of a 3D scalar field.",
+    "Waterfall": "Running-total bars showing how an initial value is increased or decreased.",
+}
+
+
+def insight_props_index(prop_model_links: list) -> str:
+    """Builds the Props index page rendered as a searchable Material `.grid.cards`
+    grid — one card per insight prop (chart) type, linking to its full generated
+    reference page. `prop_model_links` is a list of (model_name, relative_link)
+    tuples; the link is relative to the index page's directory."""
+    cards = []
+    for model_name, link in prop_model_links:
+        description = INSIGHT_PROP_DESCRIPTIONS.get(
+            model_name,
+            f"Plotly `{model_name.lower()}` chart type.",
+        )
+        cards.append(
+            f"-   :material-chart-line:{{ .lg .middle }} **{model_name}**\n\n"
+            f"    ---\n\n"
+            f"    {description}\n\n"
+            f"    [:octicons-arrow-right-24: {model_name} props]({link})"
+        )
+
+    cards_block = "\n\n".join(cards)
+    return (
+        "# Insight Props\n"
+        "Every Insight sets a `props.type` that selects a chart type. Each type "
+        "has its own set of plotly properties you configure under the Insight's "
+        "`props` object.\n\n"
+        "Pick a chart type below to see its full set of configurable properties. "
+        "Use the search bar (press `/`) to jump straight to a prop type or "
+        "property by name.\n\n"
+        '<div class="grid cards" markdown>\n\n'
+        f"{cards_block}\n\n"
+        "</div>\n"
+    )
+
+
 def from_insightprop_model(model_defs: dict, model_name: str) -> str:
     model_def = model_defs.get(model_name, {})
     if not model_def:
