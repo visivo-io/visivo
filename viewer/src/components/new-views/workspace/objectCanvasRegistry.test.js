@@ -57,6 +57,21 @@ describe('objectCanvasRegistry', () => {
     });
   });
 
+  test('markdown exposes a second editable "edit" lens with its own body (VIS-1010)', () => {
+    const md = OBJECT_CANVAS_REGISTRY.markdown;
+    expect(md.defaultLens).toBe('preview');
+    expect(md.lenses).toHaveLength(2);
+    // preview stays the read-only Canvas (asserted by the "first lens" test).
+    const edit = md.lenses.find(l => l.key === 'edit');
+    expect(edit).toBeTruthy();
+    expect(edit.label).toBe('Edit');
+    expect(edit.kind).toBe('editable');
+    // The editable lens carries its OWN lazy body (the split editor), distinct
+    // from the read-only preview body.
+    expect(edit.Component).toBeTruthy();
+    expect(edit.Component).not.toBe(md.Component);
+  });
+
   test('getCanvasDescriptor / hasCanvas', () => {
     expect(getCanvasDescriptor('chart')).toBe(OBJECT_CANVAS_REGISTRY.chart);
     expect(getCanvasDescriptor('mystery')).toBeNull();

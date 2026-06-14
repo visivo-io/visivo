@@ -25,6 +25,7 @@ import React from 'react';
 const ChartPreview = React.lazy(() => import('./ChartPreview'));
 const TablePreview = React.lazy(() => import('./TablePreview'));
 const MarkdownPreview = React.lazy(() => import('./MarkdownPreview'));
+const MarkdownEditorCanvas = React.lazy(() => import('./MarkdownEditorCanvas'));
 const InputPreview = React.lazy(() => import('./InputPreview'));
 const InsightPreview = React.lazy(() => import('./InsightPreview'));
 // ModelPreview is the Model canvas body; csvScriptModel + localMergeModel share
@@ -63,8 +64,13 @@ export const OBJECT_CANVAS_REGISTRY = {
     Component: MarkdownPreview,
     availability: 'always',
     defaultLens: 'preview',
-    // VIS-1010 adds { key:'edit', label:'Edit', kind:'editable' } here.
-    lenses: [READONLY_PREVIEW()],
+    // VIS-1010: `preview` stays the read-only Canvas (MarkdownPreview); `edit`
+    // is the bidirectional split editor (MarkdownEditorCanvas) that owns its own
+    // draft + debounced save and reports dirtiness to the frame.
+    lenses: [
+      READONLY_PREVIEW(),
+      { key: 'edit', label: 'Edit', kind: 'editable', Component: MarkdownEditorCanvas },
+    ],
     emptyHint: 'No markdown selected.',
   },
   input: {
