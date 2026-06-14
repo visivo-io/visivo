@@ -25,6 +25,7 @@ jest.mock('../../../api/sourceSchemaJobs', () => ({
   fetchSchemaGenerationStatus: jest.fn(),
   fetchSourceTables: jest.fn(),
   fetchTableColumns: jest.fn(),
+  fetchSourceSchemaJobs: jest.fn(),
 }));
 
 const { fetchSourceMetadata } = require('../../../api/explorer');
@@ -32,6 +33,7 @@ const {
   generateSourceSchema,
   fetchSchemaGenerationStatus,
   fetchSourceTables,
+  fetchSourceSchemaJobs,
 } = require('../../../api/sourceSchemaJobs');
 
 const SRC = 'analytics_db';
@@ -66,6 +68,7 @@ const resetStore = () => {
     useStore.setState({
       workspaceSourceOutlineSelectedKey: null,
       workspaceSourceOutlineExpanded: {},
+      workspaceSourceOutlineDataCache: {},
     });
   });
 };
@@ -83,6 +86,11 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     resetStore();
     setServerEnv();
     fetchSourceMetadata.mockResolvedValue(NESTED_CONNECTED);
+    // The has_cached_schema signal authoritatively decides cold vs warm. Default
+    // to a warm (cached) source so connected tests never see the Generate state.
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: SRC, has_cached_schema: true },
+    ]);
   });
 
   afterEach(() => {
@@ -148,6 +156,10 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
         { name: SRC, type: 'postgresql', status: 'connection_failed', databases: [] },
       ],
     });
+    // The API has no cached schema for this source → authoritatively cold.
+    fetchSourceSchemaJobs.mockResolvedValue([
+      { source_name: SRC, has_cached_schema: false },
+    ]);
     generateSourceSchema.mockResolvedValue({ run_id: 'run-1' });
     fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1 });
     fetchSourceTables.mockResolvedValue([{ name: 'events' }]);

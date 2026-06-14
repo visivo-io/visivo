@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useStore from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
 import { fetchSourceMetadata } from '../../../api/explorer';
 import {
+  fetchSourceSchemaJobs,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
   fetchSourceTables,
@@ -152,6 +154,10 @@ export default function useSourceOutline(sourceName) {
   const [flatNodes, setFlatNodes] = useState(null);
   const [flatColumns, setFlatColumns] = useState({}); // tableKey -> column nodes
   const [generating, setGenerating] = useState(null); // { status, progress, message } | null
+  // Authoritative "does the API have a cached schema for this source" signal
+  // (from the schema-jobs list, the same one SourceBrowser uses). null = unknown.
+  // This — NOT the live-introspect result — decides whether to offer "Generate".
+  const [hasCachedSchema, setHasCachedSchema] = useState(null);
   const cancelledRef = useRef(false);
 
   const available = useMemo(
@@ -160,11 +166,31 @@ export default function useSourceOutline(sourceName) {
   );
   const nestedAvailable = useMemo(() => isAvailable('sourcesMetadata'), []);
 
+  // Read the authoritative cached-schema flag from the cheap schema-jobs list.
+  // Returns true | false | null (unknown / endpoint unavailable). Never throws.
+  const readHasCachedSchema = useCallback(async () => {
+    if (!isAvailable('sourceSchemaJobsList')) return null;
+    try {
+      const jobs = await fetchSourceSchemaJobs();
+      const job = (jobs || []).find(j => (j.source_name || j.name) === sourceName);
+      return job ? !!job.has_cached_schema : null;
+    } catch {
+      return null;
+    }
+  }, [sourceName]);
+
   const loadNested = useCallback(async () => {
     if (!sourceName || !nestedAvailable) return;
     setStatus('loading');
     setError(null);
     try {
+      // Cheap, authoritative cold check first: only offer "Generate" when the API
+      // genuinely has no cached schema (not merely because a live introspect was
+      // empty/failed) — VIS-1004 caching fix.
+      const cachedFlag = await readHasCachedSchema();
+      if (cancelledRef.current) return;
+      setHasCachedSchema(cachedFlag);
+
       const data = await fetchSourceMetadata();
       if (cancelledRef.current) return;
       const entry = (data?.sources || []).find(s => s.name === sourceName);
@@ -175,24 +201,44 @@ export default function useSourceOutline(sourceName) {
       setNestedNodes(nodes);
       setStatus(entryStatus);
       setError(entryError);
+      // Cache the (expensive) introspection + the cached-schema flag so
+      // re-selecting this source is instant — no re-introspection.
+      useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
+        nodes,
+        status: entryStatus,
+        error: entryError,
+        hasCachedSchema: cachedFlag,
+      });
     } catch (e) {
       if (cancelledRef.current) return;
       setStatus('error');
       setError(e.message);
       setNestedNodes([]);
     }
-  }, [sourceName, nestedAvailable]);
+  }, [sourceName, nestedAvailable, readHasCachedSchema]);
 
   useEffect(() => {
     cancelledRef.current = false;
-    // Reset per-source so switching sources never bleeds stale nodes.
-    setNestedNodes(null);
+    // Reset transient flat-fallback state per source (switching never bleeds it).
     setFlatNodes(null);
     setFlatColumns({});
     setGenerating(null);
-    setStatus('idle');
     setError(null);
-    loadNested();
+    // Hydrate from the per-session cache if we've already introspected this
+    // source — avoids a costly re-introspect on every (re)select. Cache miss →
+    // reset to loading and fetch once.
+    const cached = useStore.getState().workspaceSourceOutlineDataCache?.[sourceName];
+    if (cached) {
+      setNestedNodes(cached.nodes);
+      setStatus(cached.status);
+      setError(cached.error || null);
+      setHasCachedSchema(cached.hasCachedSchema ?? null);
+    } else {
+      setNestedNodes(null);
+      setStatus('idle');
+      setHasCachedSchema(null);
+      loadNested();
+    }
     return () => {
       cancelledRef.current = true;
     };
@@ -293,13 +339,26 @@ export default function useSourceOutline(sourceName) {
     if (!available) return false;
     if (generating) return false;
     if (flatNodes && flatNodes.length > 0) return false;
-    // Empty nested result (no dbs / connection_failed) → cold, offer generate.
+    // AUTHORITATIVE: the API tells us whether a schema is cached. Only offer
+    // "Generate" when it genuinely has none — never just because a live
+    // introspect came back empty/failed while a cache exists (VIS-1004 fix).
+    if (hasCachedSchema === true) return false;
+    if (hasCachedSchema === false) return true;
+    // Unknown (schema-jobs endpoint unavailable) → fall back to the introspect
+    // heuristic so non-schema-jobs environments still surface a cold source.
     return (
       status === 'connection_failed' ||
       status === 'missing' ||
       (nestedNodes != null && nestedNodes.length === 0)
     );
-  }, [available, generating, flatNodes, status, nestedNodes]);
+  }, [available, generating, flatNodes, hasCachedSchema, status, nestedNodes]);
+
+  // Force-refresh: evict the per-session cache for this source, then re-fetch
+  // (the only path that pays for a fresh introspect once the cache is warm).
+  const reload = useCallback(() => {
+    useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, null);
+    loadNested();
+  }, [sourceName, loadNested]);
 
   return {
     available,
@@ -312,6 +371,6 @@ export default function useSourceOutline(sourceName) {
     generateSchema,
     loadFlatColumns,
     flatColumns,
-    reload: loadNested,
+    reload,
   };
 }

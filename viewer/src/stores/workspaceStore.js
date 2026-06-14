@@ -97,6 +97,13 @@ const createWorkspaceSlice = (set, get) => ({
   // schema can change between sessions (VIS-1004 §8.5).
   workspaceSourceOutlineExpanded: {},
 
+  // Per-SESSION cache of the (expensive) source introspection result, keyed by
+  // source name → { nodes, status, error }. Live introspection is costly for
+  // warehouses (Snowflake/BigQuery), so the source outline reads this cache on
+  // re-select instead of re-introspecting every mount; a manual reload refreshes
+  // it. Session-only (schema can change between sessions). (VIS-1004 caching.)
+  workspaceSourceOutlineDataCache: {},
+
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
   workspaceRightWidth: 360,
@@ -406,6 +413,19 @@ const createWorkspaceSlice = (set, get) => ({
         [sourceName]: nodeKeys,
       },
     }));
+  },
+
+  // Cache the introspected outline data for a source so re-selecting it doesn't
+  // re-introspect (VIS-1004 caching). Pass `null` payload to evict (force a
+  // reload to re-fetch).
+  setWorkspaceSourceOutlineData: (sourceName, payload) => {
+    if (!sourceName) return;
+    set(state => {
+      const cache = { ...state.workspaceSourceOutlineDataCache };
+      if (payload == null) delete cache[sourceName];
+      else cache[sourceName] = payload;
+      return { workspaceSourceOutlineDataCache: cache };
+    });
   },
 
   /**
