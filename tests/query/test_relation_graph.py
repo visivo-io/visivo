@@ -10,7 +10,12 @@ This module tests the RelationGraph class which handles:
 
 import pytest
 import json
-from visivo.query.relation_graph import RelationGraph, NoJoinPathError, AmbiguousJoinError
+from visivo.query.relation_graph import (
+    RelationGraph,
+    NoJoinPathError,
+    AmbiguousJoinError,
+    join_error_to_structured_fields,
+)
 from visivo.query.resolvers.field_resolver import FieldResolver
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.relation import Relation
@@ -1239,3 +1244,63 @@ class TestStructuredJoinErrorAttributes:
         assert err.model_a == "a"
         assert err.model_b == "d"
         assert err.kind == "ambiguous_join"
+
+
+class TestStructuredJoinErrorFields:
+    """VIS-1007: typed fields the preview run-status payload threads to the viewer."""
+
+    def test_no_join_path_maps_to_missing_relation(self):
+        err = NoJoinPathError("no path", model_a="orders", model_b="users")
+        fields = join_error_to_structured_fields(err)
+        assert fields == {
+            "error_type": "missing_relation",
+            "error_models": ["orders", "users"],
+        }
+
+    def test_ambiguous_join_maps_to_ambiguous_relation(self):
+        err = AmbiguousJoinError("ambiguous", model_a="a", model_b="d")
+        fields = join_error_to_structured_fields(err)
+        assert fields == {
+            "error_type": "ambiguous_relation",
+            "error_models": ["a", "d"],
+        }
+
+    def test_omits_none_models_from_pair(self):
+        err = NoJoinPathError("partial", model_a="orders", model_b=None)
+        fields = join_error_to_structured_fields(err)
+        assert fields["error_models"] == ["orders"]
+
+    def test_unmapped_kind_returns_none(self):
+        # Base JoinPathError has kind 'join_path' which has no wire mapping,
+        # so callers fall back to the generic error path.
+        from visivo.query.relation_graph import JoinPathError
+
+        err = JoinPathError("base", model_a="x", model_b="y")
+        assert join_error_to_structured_fields(err) is None
+
+    def test_two_unjoined_models_join_plan_carries_pair(self, tmpdir):
+        """get_join_plan over two unjoined models raises NoJoinPathError that
+        carries BOTH model names so the inline join builder can seed them."""
+        source = DuckdbSource(name="test_source", database="test.duckdb", type="duckdb")
+        orders = SqlModel(name="orders", sql="SELECT * FROM orders", source="ref(test_source)")
+        users = SqlModel(name="users", sql="SELECT * FROM users", source="ref(test_source)")
+
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders, users],
+            dashboards=[],
+        )
+        dag = project.dag()
+
+        resolver = FieldResolver(dag=dag, output_dir=str(tmpdir), native_dialect="duckdb")
+        graph = RelationGraph(dag=dag, field_resolver=resolver)
+
+        with pytest.raises(NoJoinPathError) as exc_info:
+            graph.get_join_plan(["orders", "users"])
+
+        err = exc_info.value
+        assert {err.model_a, err.model_b} == {"orders", "users"}
+        fields = join_error_to_structured_fields(err)
+        assert fields["error_type"] == "missing_relation"
+        assert set(fields["error_models"]) == {"orders", "users"}

@@ -3,6 +3,7 @@ import Chart from '../../items/Chart';
 import { usePreviewInsightData } from '../../../hooks/usePreviewData';
 import { usePreviewInputDependencies } from '../workspace/usePreviewInputDependencies';
 import PreviewInputControls from '../workspace/PreviewInputControls';
+import { MissingRelationCard, AmbiguousRelationCard } from './InsightPreviewRelationCards';
 import CircularProgress from '@mui/material/CircularProgress';
 
 /**
@@ -26,10 +27,8 @@ import CircularProgress from '@mui/material/CircularProgress';
  * - layoutValues: Optional layout configuration for the chart
  */
 const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
-  const { isLoading, error, progress, progressMessage, chartInsightKey } = usePreviewInsightData(
-    insightConfig,
-    { projectId }
-  );
+  const { isLoading, error, errorDetails, progress, progressMessage, chartInsightKey, resetPreview } =
+    usePreviewInsightData(insightConfig, { projectId });
 
   // Union of input widgets this insight depends on (runtime inputDependencies +
   // pendingInputs, with a props/layout/interactions config fallback), defaults
@@ -87,6 +86,23 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   }
 
   if (error) {
+    // Typed relation failures (VIS-1007) get an inline fix card instead of a
+    // dead-end red error. A successful save re-triggers the preview by
+    // resetting the run state, which re-fires the preview effect.
+    const errorType = errorDetails?.error_type;
+    const errorModels = errorDetails?.error_models || [];
+    const handleRelationSaved = () => {
+      if (typeof resetPreview === 'function') resetPreview();
+    };
+
+    if (errorType === 'missing_relation' && errorModels.length >= 2) {
+      return <MissingRelationCard models={errorModels} onRelationSaved={handleRelationSaved} />;
+    }
+
+    if (errorType === 'ambiguous_relation' && errorModels.length >= 2) {
+      return <AmbiguousRelationCard models={errorModels} onRelationSaved={handleRelationSaved} />;
+    }
+
     const errorMessage = typeof error === 'string' ? error : error?.message || String(error);
     return (
       <div

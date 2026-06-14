@@ -197,6 +197,23 @@ describe('usePreviewData', () => {
     expect(result.current.error).toBe('Query failed');
   });
 
+  test('passes through structured errorDetails from previewJob (VIS-1007)', () => {
+    usePreviewJob.mockReturnValue({
+      ...mockPreviewJobBase,
+      status: 'failed',
+      isFailed: true,
+      error: 'No relation connects orders and users.',
+      errorDetails: { error_type: 'missing_relation', error_models: ['orders', 'users'] },
+    });
+
+    const { result } = renderHook(() => usePreviewData('insights', { name: 'test' }));
+
+    expect(result.current.errorDetails).toEqual({
+      error_type: 'missing_relation',
+      error_models: ['orders', 'users'],
+    });
+  });
+
   test('resetPreview calls previewJob.resetRun', () => {
     const { result } = renderHook(() =>
       usePreviewData('insights', { name: 'test' })

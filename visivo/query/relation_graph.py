@@ -46,6 +46,32 @@ class NoJoinPathError(JoinPathError):
     kind = "no_join_path"
 
 
+# Maps a JoinPathError's class-level ``kind`` to the wire ``error_type`` the
+# viewer keys its inline-fix UI off of (VIS-1007). Keeping the mapping here —
+# next to the errors — means the preview executor never has to know about the
+# graph internals beyond importing this helper.
+_JOIN_ERROR_KIND_TO_ERROR_TYPE = {
+    "no_join_path": "missing_relation",
+    "ambiguous_join": "ambiguous_relation",
+}
+
+
+def join_error_to_structured_fields(error: "JoinPathError") -> Optional[Dict[str, object]]:
+    """Translate a JoinPathError into the structured fields the preview run
+    status payload carries (``error_type`` + ``error_models``).
+
+    Returns ``None`` for an error whose ``kind`` has no mapped wire type (so the
+    caller falls back to the generic error path). ``error_models`` is the
+    ``[model_a, model_b]`` pair (omitting ``None`` entries) the failure is about
+    — the two endpoints the inline join builder seeds with.
+    """
+    error_type = _JOIN_ERROR_KIND_TO_ERROR_TYPE.get(getattr(error, "kind", None))
+    if error_type is None:
+        return None
+    error_models = [m for m in (error.model_a, error.model_b) if m]
+    return {"error_type": error_type, "error_models": error_models}
+
+
 class RelationGraph:
     """
     Manages model relationships and finds optimal join paths.
@@ -282,8 +308,22 @@ class RelationGraph:
         # Check if all models are connected
         if tree_graph.number_of_nodes() < len(models):
             missing = model_set - set(tree_graph.nodes())
+            # Surface a concrete model PAIR so the inline join-fix card has two
+            # endpoints to seed the relation builder with. When 2+ models are
+            # unreachable (the common "two models, no relation" case the
+            # tree_graph is empty for) pair the first two; otherwise pair the
+            # single disconnected model with a model it could not reach.
+            connected = [m for m in models if m not in missing]
+            missing_ordered = [m for m in models if m in missing]
+            if len(missing_ordered) >= 2:
+                pair_a, pair_b = missing_ordered[0], missing_ordered[1]
+            else:
+                pair_a = missing_ordered[0] if missing_ordered else None
+                pair_b = connected[0] if connected else None
             raise NoJoinPathError(
-                f"Cannot connect all models. Missing connections for: {', '.join(missing)}"
+                f"Cannot connect all models. Missing connections for: {', '.join(missing)}",
+                model_a=pair_a,
+                model_b=pair_b,
             )
 
         # Find minimum spanning tree
@@ -301,7 +341,11 @@ class RelationGraph:
 
             return joins
         else:
-            raise NoJoinPathError("Models form disconnected components and cannot be joined")
+            raise NoJoinPathError(
+                "Models form disconnected components and cannot be joined",
+                model_a=models[0] if len(models) > 0 else None,
+                model_b=models[1] if len(models) > 1 else None,
+            )
 
     def get_join_condition(self, model1: str, model2: str) -> Optional[str]:
         """

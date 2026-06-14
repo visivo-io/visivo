@@ -20,6 +20,30 @@ jest.mock('../../items/Input', () => ({ input }) => (
   <div data-testid="input-component">Input: {input?.name}</div>
 ));
 
+// Mock the relation cards (which embed the VIS-1006 JoinOperatorPopover) so
+// this stays a focused unit test of InsightPreview's branch selection. The
+// cards' own behavior (popover + saveRelation) is covered by their own tests
+// and the popover's tests.
+jest.mock('./InsightPreviewRelationCards', () => ({
+  MissingRelationCard: ({ models, onRelationSaved }) => (
+    <div data-testid="missing-relation-card">
+      <span data-testid="missing-relation-models">{(models || []).join(',')}</span>
+      <div data-testid="join-operator-popover">JoinOperatorPopover</div>
+      <button data-testid="missing-relation-save" onClick={() => onRelationSaved?.({})}>
+        save
+      </button>
+    </div>
+  ),
+  AmbiguousRelationCard: ({ models, onRelationSaved }) => (
+    <div data-testid="ambiguous-relation-card">
+      <span data-testid="ambiguous-relation-models">{(models || []).join(',')}</span>
+      <button data-testid="ambiguous-relation-save" onClick={() => onRelationSaved?.({})}>
+        pick
+      </button>
+    </div>
+  ),
+}));
+
 describe('InsightPreview', () => {
   const defaultInsightConfig = {
     name: 'test_insight',
@@ -31,14 +55,18 @@ describe('InsightPreview', () => {
     interactions: [],
   };
 
+  const resetPreview = jest.fn();
+
   const setResolver = (overrides = {}) => {
     usePreviewInsightData.mockReturnValue({
       isLoading: false,
       error: null,
+      errorDetails: null,
       progress: 0,
       progressMessage: '',
       chartInsightKey: 'test_insight',
       insightNotInMain: false,
+      resetPreview,
       ...overrides,
     });
   };
@@ -133,6 +161,66 @@ describe('InsightPreview', () => {
       expect(screen.getByTestId('preview-error')).toBeInTheDocument();
       expect(screen.getByText('Preview Failed')).toBeInTheDocument();
       expect(screen.getByText('Query syntax error')).toBeInTheDocument();
+    });
+
+    it('renders the plain error block (not a relation card) for an untyped error', () => {
+      setResolver({ error: 'Query syntax error', errorDetails: null });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('preview-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('missing-relation-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ambiguous-relation-card')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Typed relation errors (VIS-1007)', () => {
+    it('renders the missing-relation card (with the popover) for missing_relation', () => {
+      setResolver({
+        error: 'No relation connects orders and users.',
+        errorDetails: { error_type: 'missing_relation', error_models: ['orders', 'users'] },
+      });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('missing-relation-card')).toBeInTheDocument();
+      // The card embeds the VIS-1006 JoinOperatorPopover, seeded with the pair.
+      expect(screen.getByTestId('join-operator-popover')).toBeInTheDocument();
+      expect(screen.getByTestId('missing-relation-models')).toHaveTextContent('orders,users');
+      // The plain red error block is NOT shown.
+      expect(screen.queryByTestId('preview-error')).not.toBeInTheDocument();
+    });
+
+    it('re-triggers the preview (resetPreview) when the relation is saved', () => {
+      setResolver({
+        error: 'No relation connects orders and users.',
+        errorDetails: { error_type: 'missing_relation', error_models: ['orders', 'users'] },
+      });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      screen.getByTestId('missing-relation-save').click();
+      expect(resetPreview).toHaveBeenCalled();
+    });
+
+    it('renders the ambiguous-relation card for ambiguous_relation', () => {
+      setResolver({
+        error: 'Multiple join paths between a and d.',
+        errorDetails: { error_type: 'ambiguous_relation', error_models: ['a', 'd'] },
+      });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('ambiguous-relation-card')).toBeInTheDocument();
+      expect(screen.getByTestId('ambiguous-relation-models')).toHaveTextContent('a,d');
+      expect(screen.queryByTestId('preview-error')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the plain error when the model pair is incomplete', () => {
+      setResolver({
+        error: 'No relation connects orders.',
+        errorDetails: { error_type: 'missing_relation', error_models: ['orders'] },
+      });
+      render(<InsightPreview insightConfig={defaultInsightConfig} projectId="proj-1" />);
+
+      expect(screen.getByTestId('preview-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('missing-relation-card')).not.toBeInTheDocument();
     });
   });
 

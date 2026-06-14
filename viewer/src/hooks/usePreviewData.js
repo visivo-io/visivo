@@ -63,6 +63,7 @@ export const usePreviewData = (type, config, options = {}) => {
     isFailed,
     status: jobStatus,
     error: jobError,
+    errorDetails: jobErrorDetails,
     progress,
     progressMessage,
     result,
@@ -148,6 +149,9 @@ export const usePreviewData = (type, config, options = {}) => {
     isCompleted,
     isFailed,
     error: error || jobError,
+    // Structured fields for the typed-error UI (VIS-1007). Only set on a
+    // missing/ambiguous relation failure; null otherwise.
+    errorDetails: jobErrorDetails,
     progress,
     progressMessage,
     result,
@@ -322,6 +326,9 @@ export const usePreviewInsightData = (insightConfig, options = {}) => {
     chartInsightKey: insightName,
     isLoading: mainState.isInsightsLoading,
     error: mainState.error,
+    // MODE A reads published main-run data (no preview run), so a typed
+    // missing-relation failure can't arise here — keep the shape consistent.
+    errorDetails: null,
     progress: 0,
     progressMessage: '',
     insightNotInMain: false,
@@ -361,6 +368,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     isFailed,
     status: jobStatus,
     error: jobError,
+    errorDetails: jobErrorDetails,
     progress,
     progressMessage,
     result,
@@ -491,6 +499,7 @@ export const useChartPreviewJob = (previewRequest, options = {}) => {
     isCompleted,
     isFailed,
     error: localError || jobError || insightsDataState.error,
+    errorDetails: jobErrorDetails,
     progress,
     progressMessage,
     runId,

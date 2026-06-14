@@ -393,6 +393,10 @@ class _FakeRunner:
     # for them) and the captured failure message to report through
     # `failed_job_results`. Cleared between tests.
     fail_insights = {}
+    # Per-class config: insight -> structured ``error_details`` dict to attach
+    # to the soft-failed JobResult (mirrors run_insight_job typing a
+    # JoinPathError). Cleared between tests.
+    fail_error_details = {}
 
     def __init__(self, project, output_dir, **kwargs):
         self.project = project
@@ -422,6 +426,9 @@ class _FakeRunner:
                 fake_result.item = fake_item
                 fake_result.success = False
                 fake_result.message = _FakeRunner.fail_insights[segment]
+                # Structured fields the real run_insight_job attaches for
+                # JoinPathError failures (None for ordinary failures).
+                fake_result.error_details = _FakeRunner.fail_error_details.get(segment)
                 self.failed_job_results.append(fake_result)
                 continue
             path = os.path.join(insights_dir, f"{segment}.json")
@@ -444,6 +451,7 @@ class TestExecutePreviewJob:
     def setup_method(self, _):
         _FakeRunner.instances = []
         _FakeRunner.fail_insights = {}
+        _FakeRunner.fail_error_details = {}
 
     def _patched_execute(self, **kwargs):
         return patch("visivo.server.jobs.preview_job_executor.FilteredRunner", _FakeRunner)
@@ -688,3 +696,88 @@ class TestExecutePreviewJob:
 
         last_kwargs = run_manager.update_status.call_args_list[-1].kwargs
         assert "Insight file not found" in last_kwargs.get("error", "")
+
+    # ----------------------------------------------------------------
+    # VIS-1007: type a missing/ambiguous relation failure through the
+    # run-status payload so the viewer can pop the inline join builder.
+    # ----------------------------------------------------------------
+
+    def test_missing_relation_failure_threads_structured_error(self, tmp_path):
+        """A soft-failed insight whose JobResult carries join ``error_details``
+        fails the run with those typed fields (``error_type='missing_relation'``
+        and the offending model pair) on ``update_status`` — not the generic
+        execution-failed message."""
+        ins = InsightFactory(name="cross_model")
+        project = _make_project(insights=[ins])
+        flask_app = _make_flask_app_mock(project)
+        run_manager = _fresh_run_manager_mock()
+
+        _FakeRunner.fail_insights = {"cross_model": "No relation connects orders and users."}
+        _FakeRunner.fail_error_details = {
+            "cross_model": {
+                "error_type": "missing_relation",
+                "error_models": ["orders", "users"],
+            }
+        }
+
+        with self._patched_execute():
+            execute_preview_job(
+                "job-missing-rel",
+                ["cross_model"],
+                flask_app,
+                str(tmp_path),
+                run_manager,
+                context_objects=None,
+            )
+
+        # No success result; the run was FAILED with structured fields.
+        assert "job-missing-rel" not in run_manager._results
+        failed_calls = [
+            call
+            for call in run_manager.update_status.call_args_list
+            if call.args and call.args[1] == RunStatus.FAILED
+        ]
+        assert failed_calls, "expected a FAILED update_status call"
+        last_failed = failed_calls[-1].kwargs
+        assert last_failed["error_details"] == {
+            "error_type": "missing_relation",
+            "error_models": ["orders", "users"],
+        }
+        # The human-readable fallback still names both models.
+        assert "orders" in last_failed["error"]
+        assert "users" in last_failed["error"]
+
+    def test_ambiguous_relation_failure_threads_structured_error(self, tmp_path):
+        """An ambiguous-join soft failure threads ``error_type='ambiguous_relation'``."""
+        ins = InsightFactory(name="diamond")
+        project = _make_project(insights=[ins])
+        flask_app = _make_flask_app_mock(project)
+        run_manager = _fresh_run_manager_mock()
+
+        _FakeRunner.fail_insights = {"diamond": "Multiple join paths between a and d."}
+        _FakeRunner.fail_error_details = {
+            "diamond": {
+                "error_type": "ambiguous_relation",
+                "error_models": ["a", "d"],
+            }
+        }
+
+        with self._patched_execute():
+            execute_preview_job(
+                "job-ambig",
+                ["diamond"],
+                flask_app,
+                str(tmp_path),
+                run_manager,
+                context_objects=None,
+            )
+
+        failed_calls = [
+            call
+            for call in run_manager.update_status.call_args_list
+            if call.args and call.args[1] == RunStatus.FAILED
+        ]
+        assert failed_calls
+        last_failed = failed_calls[-1].kwargs
+        assert last_failed["error_details"]["error_type"] == "ambiguous_relation"
+        assert last_failed["error_details"]["error_models"] == ["a", "d"]
