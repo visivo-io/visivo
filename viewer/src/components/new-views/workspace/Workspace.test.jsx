@@ -274,7 +274,25 @@ describe('VIS-775 Workspace shell', () => {
     };
     act(() => { useStore.setState(fetchers); });
     renderAt('/workspace');
-    Object.values(fetchers).forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
+    // Route-driven collections fire exactly once.
+    [
+      fetchers.fetchCharts,
+      fetchers.fetchTables,
+      fetchers.fetchMarkdowns,
+      fetchers.fetchInputs,
+      fetchers.fetchSources,
+      fetchers.fetchModels,
+      fetchers.fetchCsvScriptModels,
+      fetchers.fetchLocalMergeModels,
+      fetchers.fetchInsights,
+    ].forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
+    // The semantic-layer collections (relations/metrics/dimensions) are also
+    // self-fetched by the ProjectEditor governance surface (VIS-1013) when they
+    // mount empty, so the route may drive them more than once — assert at-least-
+    // once rather than exactly-once.
+    expect(fetchers.fetchRelations.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchers.fetchMetrics.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchers.fetchDimensions.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   test('project tab does not auto-reopen after the user closes it (regression: re-opens on nav)', () => {

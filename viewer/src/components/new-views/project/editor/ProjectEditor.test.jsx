@@ -25,6 +25,20 @@ const seed = (extra = {}) => {
       csvScriptModels: [],
       localMergeModels: [],
       sources: [{ name: 's1' }, { name: 's2' }, { name: 's3' }],
+      // VIS-1013 governance collections + their lazy fetchers. Seeded non-empty
+      // so the mount-time fetch-if-empty stays a no-op in most tests.
+      relations: [
+        {
+          name: 'local_to_local',
+          status: 'PUBLISHED',
+          config: { join_type: 'inner', condition: '${ref(m1).id} = ${ref(m2).id}' },
+        },
+      ],
+      metrics: [{ name: 'revenue', config: { name: 'revenue', expression: 'sum(amount)' } }],
+      dimensions: [{ name: 'region', config: { name: 'region', expression: 'addr_region' } }],
+      fetchRelations: jest.fn(),
+      fetchMetrics: jest.fn(),
+      fetchDimensions: jest.fn(),
       workspaceActiveObject: null,
       openWorkspaceTab: jest.fn(),
       reassignDashboardLevel: jest.fn(),
@@ -265,5 +279,92 @@ describe('ProjectEditor', () => {
     expect(
       screen.queryByTestId('level-group-header-__unassigned__-delete')
     ).not.toBeInTheDocument();
+  });
+
+  // --- VIS-1013: project-level governance surface ----------------------------
+
+  test('renders the governance section with the relations + fields lists and counts', () => {
+    render(<ProjectEditor />);
+    expect(screen.getByTestId('project-governance')).toBeInTheDocument();
+    expect(screen.getByTestId('project-relations-list')).toBeInTheDocument();
+    expect(screen.getByTestId('project-fields-list')).toBeInTheDocument();
+    // counts: 1 relation, 2 fields (1 metric + 1 dimension)
+    expect(screen.getByTestId('project-governance-relations-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('project-governance-fields-count')).toHaveTextContent('2');
+    // rows for the seeded objects
+    expect(screen.getByTestId('project-relations-row-local_to_local')).toBeInTheDocument();
+    expect(screen.getByTestId('project-fields-row-revenue')).toBeInTheDocument();
+    expect(screen.getByTestId('project-fields-row-region')).toBeInTheDocument();
+  });
+
+  test('clicking a relation row opens its per-object editor tab + telemetry', () => {
+    const openWorkspaceTab = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ openWorkspaceTab });
+      render(<ProjectEditor />);
+      fireEvent.click(screen.getByTestId('project-relations-row-local_to_local'));
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'relation:local_to_local',
+        type: 'relation',
+        name: 'local_to_local',
+      });
+      expect(
+        events.some(
+          e =>
+            e.eventName === 'project_editor_action' &&
+            e.payload.kind === 'open_governance_object' &&
+            e.payload.type === 'relation' &&
+            e.payload.name === 'local_to_local'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
+
+  test('clicking a metric row opens its per-object editor tab', () => {
+    const openWorkspaceTab = jest.fn();
+    seed({ openWorkspaceTab });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-fields-row-revenue'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'metric:revenue',
+      type: 'metric',
+      name: 'revenue',
+    });
+  });
+
+  test('clicking a dimension row opens its per-object editor tab', () => {
+    const openWorkspaceTab = jest.fn();
+    seed({ openWorkspaceTab });
+    render(<ProjectEditor />);
+    fireEvent.click(screen.getByTestId('project-fields-row-region'));
+    expect(openWorkspaceTab).toHaveBeenCalledWith({
+      id: 'dimension:region',
+      type: 'dimension',
+      name: 'region',
+    });
+  });
+
+  test('fetches governance collections on mount when empty', () => {
+    const fetchRelations = jest.fn();
+    const fetchMetrics = jest.fn();
+    const fetchDimensions = jest.fn();
+    seed({ relations: [], metrics: [], dimensions: [], fetchRelations, fetchMetrics, fetchDimensions });
+    render(<ProjectEditor />);
+    expect(fetchRelations).toHaveBeenCalledTimes(1);
+    expect(fetchMetrics).toHaveBeenCalledTimes(1);
+    expect(fetchDimensions).toHaveBeenCalledTimes(1);
+  });
+
+  test('shows governance empty states when no relations or fields exist', () => {
+    seed({ relations: [], metrics: [], dimensions: [] });
+    render(<ProjectEditor />);
+    expect(screen.getByTestId('project-relations-list')).toHaveTextContent(/No relations defined/i);
+    expect(screen.getByTestId('project-fields-list')).toHaveTextContent(/No semantic fields/i);
+    expect(screen.getByTestId('project-governance-relations-count')).toHaveTextContent('0');
+    expect(screen.getByTestId('project-governance-fields-count')).toHaveTextContent('0');
   });
 });
