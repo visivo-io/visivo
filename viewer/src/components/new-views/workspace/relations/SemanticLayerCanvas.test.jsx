@@ -85,13 +85,20 @@ describe('SemanticLayerCanvas', () => {
         },
       ],
     });
+    // The hook now folds metrics/dimensions onto each node (so it can also size
+    // the card for the grid layout); the canvas renders whatever it returns.
     useRelationErdDag.mockReturnValue({
       nodes: [
         {
           id: 'erd-model-orders',
           type: 'erdModelNode',
           position: { x: 0, y: 0 },
-          data: { name: 'orders', columns: ['id'] },
+          data: {
+            name: 'orders',
+            columns: ['id'],
+            metrics: ['total'],
+            dimensions: ['status'],
+          },
         },
       ],
       edges: [],
@@ -133,12 +140,16 @@ describe('SemanticLayerCanvas', () => {
     expect(screen.getByTestId('rf-edge-erd-rel-orders_to_users')).toBeInTheDocument();
   });
 
-  it('passes scopeAll to the dag so every model renders', () => {
+  it('drives the dag with the project fields and a tiled grid layout', () => {
     mockStore({ models: [{ name: 'orders' }] });
     useRelationErdDag.mockReturnValue({ nodes: [], edges: [] });
     render(<SemanticLayerCanvas />);
+    // No scope → every model renders; fields are folded in by the hook; the
+    // overview lays out as a tiled grid (not dagre rows).
     expect(useRelationErdDag).toHaveBeenCalledWith(
-      expect.objectContaining({ scopeAll: true })
+      expect.objectContaining({ layout: 'grid', fieldsByModel: expect.any(Object) })
     );
+    const call = useRelationErdDag.mock.calls[0][0];
+    expect(call.scopeModelNames == null).toBe(true);
   });
 });

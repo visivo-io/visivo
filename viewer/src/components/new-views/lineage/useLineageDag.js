@@ -19,10 +19,14 @@ export function computeLayout(nodes, edges, fixedNode = null) {
 
   // Add nodes to graph
   nodes.forEach(node => {
-    // Estimate node width from name length (~8px per char + padding for icon/status/handles)
+    // A node may carry an explicit measured size (`layoutSize`) — ERD model
+    // cards vary wildly in height (header + N column rows + metric/dimension pill
+    // sections), so a fixed 50px height makes dagre pack tall cards on top of one
+    // another. When present, honour it; otherwise fall back to the lineage-pill
+    // estimate (name length → width, fixed 50px height).
     const nameLen = (node.data.name || '').length;
-    const width = Math.max(180, nameLen * 8 + 80);
-    const height = 50;
+    const width = node.layoutSize?.width ?? Math.max(180, nameLen * 8 + 80);
+    const height = node.layoutSize?.height ?? 50;
     graph.setNode(node.id, { width, height });
   });
 

@@ -65,30 +65,29 @@ const SemanticLayerCanvas = () => {
   const allModelNames = useMemo(() => (models || []).map(m => m.name), [models]);
   const { columnsByModel } = useModelColumns(allModelNames);
 
-  // Build the base graph (all models + relation edges + hydrated columns).
-  const { nodes: baseNodes, edges } = useRelationErdDag({
-    scopeAll: true,
-    columnsByModel,
-  });
-
-  // Fold each model's metrics + dimensions onto its node so the card can render
-  // the field pill sections.
+  // Fold each model's metrics + dimensions by name so the hook can both render
+  // the field pill sections AND size each card (the pill sections add height the
+  // dagre layout must account for, else tall cards overlap the one below).
   const fieldsByModel = useMemo(
     () => groupFieldsByModel(models || [], metrics || [], dimensions || []),
     [models, metrics, dimensions]
   );
 
+  // Build the base graph (all models + relation edges + hydrated columns +
+  // folded fields). The overview is mostly disconnected models, so lay it out as
+  // a tiled grid (not dagre rows) — packs compactly, fills the wide canvas, and
+  // keeps cards readable instead of zooming them to nothing.
+  const { nodes: baseNodes, edges } = useRelationErdDag({
+    columnsByModel,
+    fieldsByModel,
+    layout: 'grid',
+  });
+
+  // The hook already folded metrics/dimensions into each node's data and sized
+  // the card; the Semantic Layer just swaps in its richer card renderer.
   const nodes = useMemo(
-    () =>
-      baseNodes.map(node => {
-        const fields = fieldsByModel[node.data.name] || { metrics: [], dimensions: [] };
-        return {
-          ...node,
-          type: 'semanticLayerModelNode',
-          data: { ...node.data, metrics: fields.metrics, dimensions: fields.dimensions },
-        };
-      }),
-    [baseNodes, fieldsByModel]
+    () => baseNodes.map(node => ({ ...node, type: 'semanticLayerModelNode' })),
+    [baseNodes]
   );
 
   const nodeTypes = useMemo(() => ({ semanticLayerModelNode: SemanticLayerErdModelNode }), []);
@@ -175,6 +174,7 @@ const SemanticLayerCanvas = () => {
             minZoom={0.1}
             maxZoom={2}
             fitView
+            fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
             style={{ background: '#f8fafc' }}
             defaultEdgeOptions={{ animated: true }}
           >

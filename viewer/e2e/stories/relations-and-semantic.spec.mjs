@@ -124,6 +124,28 @@ test.describe('Relations ERD scoping + Semantic Layer (VIS-1006/1014)', () => {
     // edge is ATTACHED rather than visible.
     await expect(page.locator('.react-flow__edge').first()).toBeAttached({ timeout: WAIT });
 
+    // The overview lays the cards out as a TILED GRID (not one tall dagre rank):
+    // gather every model card's box and assert (1) they span more than one
+    // column (>1 distinct left edge) and (2) no two cards overlap.
+    const boxes = await page
+      .locator('.react-flow__node')
+      .evaluateAll(nodes =>
+        nodes.map(n => {
+          const r = n.getBoundingClientRect();
+          return { x: r.left, y: r.top, w: r.width, h: r.height };
+        })
+      );
+    expect(boxes.length).toBeGreaterThan(3);
+    const columns = new Set(boxes.map(b => Math.round(b.x / 20)));
+    expect(columns.size).toBeGreaterThan(1); // tiled across multiple columns
+    const overlaps = (a, b) =>
+      a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        expect(overlaps(boxes[i], boxes[j])).toBe(false); // cards never overlap
+      }
+    }
+
     await page.screenshot({ path: `${SCREENS}/relsem-02-semantic-layer.png` });
     expect(errors).toEqual([]);
   });

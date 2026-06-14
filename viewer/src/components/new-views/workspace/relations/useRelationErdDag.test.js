@@ -6,6 +6,8 @@ import {
   parseRelationCondition,
   relationModelNames,
   modelColumns,
+  estimateErdNodeHeight,
+  packGridLayout,
   ERD_NODE_ID,
 } from './useRelationErdDag';
 
@@ -259,5 +261,67 @@ describe('relationModelNames', () => {
     expect(relationModelNames({ condition: '${ref(a).x} = 5' })).toEqual([]);
     expect(relationModelNames(null)).toEqual([]);
     expect(relationModelNames({})).toEqual([]);
+  });
+});
+
+describe('estimateErdNodeHeight', () => {
+  it('grows with column count', () => {
+    const few = estimateErdNodeHeight({ columns: ['a', 'b'] });
+    const many = estimateErdNodeHeight({ columns: ['a', 'b', 'c', 'd', 'e', 'f'] });
+    expect(many).toBeGreaterThan(few);
+  });
+
+  it('adds height for metric and dimension pill sections', () => {
+    const base = estimateErdNodeHeight({ columns: ['a'] });
+    const withMetrics = estimateErdNodeHeight({ columns: ['a'], metrics: ['m1', 'm2'] });
+    const withBoth = estimateErdNodeHeight({
+      columns: ['a'],
+      metrics: ['m1', 'm2'],
+      dimensions: ['d1'],
+    });
+    expect(withMetrics).toBeGreaterThan(base);
+    expect(withBoth).toBeGreaterThan(withMetrics);
+  });
+
+  it('still has a sensible height with no columns (empty-state row)', () => {
+    expect(estimateErdNodeHeight({ columns: [] })).toBeGreaterThan(0);
+    expect(estimateErdNodeHeight()).toBeGreaterThan(0);
+  });
+});
+
+describe('packGridLayout', () => {
+  const node = (id, height) => ({ id, layoutSize: { width: 260, height }, position: { x: 0, y: 0 } });
+
+  it('tiles nodes across multiple columns (not a single tall rank)', () => {
+    const nodes = Array.from({ length: 9 }, (_, i) => node(`n${i}`, 120));
+    const packed = packGridLayout(nodes);
+    const xs = new Set(packed.map(n => n.position.x));
+    // ceil(sqrt(9 * 1.6)) = 4 distinct columns → more than one x.
+    expect(xs.size).toBeGreaterThan(1);
+  });
+
+  it('stacks cards in a column by their measured height without overlap', () => {
+    // Two nodes forced into the same column (only one column for 1 node? use 3
+    // short + assert the second card in a column starts below the first).
+    const nodes = [node('a', 100), node('b', 100), node('c', 100), node('d', 100)];
+    const packed = packGridLayout(nodes);
+    // Group by column x; within a column, ys must be strictly increasing and
+    // gap >= the card height (no overlap).
+    const byCol = {};
+    packed.forEach(n => {
+      byCol[n.position.x] = byCol[n.position.x] || [];
+      byCol[n.position.x].push(n.position.y);
+    });
+    Object.values(byCol).forEach(ys => {
+      const sorted = [...ys].sort((p, q) => p - q);
+      for (let i = 1; i < sorted.length; i += 1) {
+        expect(sorted[i] - sorted[i - 1]).toBeGreaterThanOrEqual(100);
+      }
+    });
+  });
+
+  it('returns the input unchanged when empty', () => {
+    expect(packGridLayout([])).toEqual([]);
+    expect(packGridLayout(null)).toBeNull();
   });
 });

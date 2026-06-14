@@ -40,6 +40,68 @@ import { computeLayout } from '../../lineage/useLineageDag';
 const ERD_NODE_ID = name => `erd-model-${name}`;
 const ERD_EDGE_ID = relationName => `erd-rel-${relationName}`;
 
+// ERD model-card geometry (must track ErdModelNode / SemanticLayerErdModelNode).
+// dagre lays out by these so tall cards (many columns, metric/dimension pills)
+// don't overlap the card below — the fixed-50px default did exactly that.
+const ERD_NODE_WIDTH = 260; // cards are min-w-[200] max-w-[280]
+const ERD_HEADER_H = 36; // tinted model header (px-3 py-2)
+const ERD_ROW_H = 30; // one column row (px-3 py-1.5)
+const ERD_EMPTY_H = 30; // "No columns loaded" row
+const ERD_SECTION_H = 30; // a field section's border + label + padding
+const ERD_PILL_ROW_H = 22; // one wrapped row of field pills
+const ERD_PILLS_PER_ROW = 2; // ~2 max-w-[120] pills per ~260px card
+const ERD_CARD_VPAD = 10; // 2px borders + rounding slack
+
+/**
+ * Estimate a model card's rendered height so dagre can space cards without
+ * overlap. Counts the header, every column row (or the empty-state row), and a
+ * field section per non-empty metrics / dimensions group (label + wrapped pill
+ * rows). Deliberately a touch generous — over-spacing beats overlap.
+ */
+export const estimateErdNodeHeight = ({ columns = [], metrics = [], dimensions = [] } = {}) => {
+  let height = ERD_HEADER_H;
+  height += columns.length > 0 ? columns.length * ERD_ROW_H : ERD_EMPTY_H;
+  const sectionHeight = names =>
+    names.length > 0
+      ? ERD_SECTION_H + Math.ceil(names.length / ERD_PILLS_PER_ROW) * ERD_PILL_ROW_H
+      : 0;
+  height += sectionHeight(metrics);
+  height += sectionHeight(dimensions);
+  return height + ERD_CARD_VPAD;
+};
+
+const ERD_GRID_GAP_X = 56; // horizontal gutter between card columns
+const ERD_GRID_GAP_Y = 28; // vertical gutter between stacked cards
+
+/**
+ * Pack model cards into a tiled (masonry) grid instead of dagre rows. The
+ * Semantic Layer overview is mostly disconnected models, so a left-to-right
+ * dagre layout stacks them all in one tall rank; a shortest-column grid tiles
+ * them compactly. Each card drops into whichever column is currently shortest
+ * (using its measured `layoutSize.height`), so variable-height cards pack tight
+ * without overlap. The column count is biased WIDER than square so the grid
+ * fills the wide canvas (a near-square strip wastes horizontal space and makes
+ * fitView zoom the cards down to unreadable) — capped at the node count.
+ */
+export const packGridLayout = nodes => {
+  if (!Array.isArray(nodes) || nodes.length === 0) return nodes;
+  const columns = Math.min(
+    nodes.length,
+    Math.max(3, Math.ceil(Math.sqrt(nodes.length * 1.6)))
+  );
+  const colHeights = new Array(columns).fill(0);
+  return nodes.map(node => {
+    let col = 0;
+    for (let i = 1; i < columns; i += 1) {
+      if (colHeights[i] < colHeights[col]) col = i;
+    }
+    const x = col * (ERD_NODE_WIDTH + ERD_GRID_GAP_X);
+    const y = colHeights[col];
+    colHeights[col] += (node.layoutSize?.height ?? 80) + ERD_GRID_GAP_Y;
+    return { ...node, position: { x, y } };
+  });
+};
+
 /**
  * Pull the column list off a model record, tolerating the several shapes the
  * store can hold (top-level `columns`, nested `config.columns`, or none).
@@ -87,7 +149,13 @@ export const relationModelNames = relation => {
 };
 
 export function useRelationErdDag(options = {}) {
-  const { scopeModelNames = null, extraModelNames = [], columnsByModel = {} } = options;
+  const {
+    scopeModelNames = null,
+    extraModelNames = [],
+    columnsByModel = {},
+    fieldsByModel = {},
+    layout = 'dagre',
+  } = options;
   const models = useStore(state => state.models);
   const relations = useStore(state => state.relations);
 
@@ -96,6 +164,15 @@ export function useRelationErdDag(options = {}) {
     ? [...scopeModelNames].sort().join('|')
     : '__all__';
   const extraKey = Array.isArray(extraModelNames) ? [...extraModelNames].sort().join('|') : '';
+  // Field counts feed each card's estimated height (and thus the layout), so the
+  // memo must recompute when a model's metric/dimension set changes.
+  const fieldsKey = Object.keys(fieldsByModel)
+    .sort()
+    .map(
+      name =>
+        `${name}:${(fieldsByModel[name]?.metrics || []).length},${(fieldsByModel[name]?.dimensions || []).length}`
+    )
+    .join('|');
 
   return useMemo(() => {
     const modelList = Array.isArray(models) ? models : [];
@@ -126,17 +203,33 @@ export function useRelationErdDag(options = {}) {
       visibleModels.map(model => [model.name, columnsForModel(model)])
     );
 
-    const nodes = visibleModels.map(model => ({
-      id: ERD_NODE_ID(model.name),
-      type: 'erdModelNode',
-      position: { x: 0, y: 0 },
-      data: {
-        name: model.name,
-        objectType: 'model',
-        columns: columnsByNodeModel.get(model.name) || [],
-        model,
-      },
-    }));
+    const nodes = visibleModels.map(model => {
+      const columns = columnsByNodeModel.get(model.name) || [];
+      // Fold in the model's metrics + dimensions when provided (the Semantic
+      // Layer ERD); the scoped Relation ERD passes none, so these stay empty.
+      const fields = fieldsByModel[model.name] || { metrics: [], dimensions: [] };
+      const metrics = fields.metrics || [];
+      const dimensions = fields.dimensions || [];
+      return {
+        id: ERD_NODE_ID(model.name),
+        type: 'erdModelNode',
+        position: { x: 0, y: 0 },
+        // Measured card size so dagre spaces tall cards (many columns + pills)
+        // without overlap — honoured by computeLayout via `layoutSize`.
+        layoutSize: {
+          width: ERD_NODE_WIDTH,
+          height: estimateErdNodeHeight({ columns, metrics, dimensions }),
+        },
+        data: {
+          name: model.name,
+          objectType: 'model',
+          columns,
+          metrics,
+          dimensions,
+          model,
+        },
+      };
+    });
 
     // Resolve a relation's condition column to the matching card handle id:
     // exact match first, then case-insensitive (DuckDB casing). Returns null
@@ -177,17 +270,23 @@ export function useRelationErdDag(options = {}) {
     });
 
     let layoutNodes = nodes;
-    try {
-      layoutNodes = computeLayout(nodes, edges);
-    } catch {
-      // computeLayout needs dagre; if it throws (e.g. unmocked in a bare test)
-      // keep zeroed positions so the graph still renders.
-      layoutNodes = nodes;
+    if (layout === 'grid') {
+      // Tiled grid (Semantic Layer overview) — pack disconnected models compactly
+      // instead of a tall dagre rank.
+      layoutNodes = packGridLayout(nodes);
+    } else {
+      try {
+        layoutNodes = computeLayout(nodes, edges);
+      } catch {
+        // computeLayout needs dagre; if it throws (e.g. unmocked in a bare test)
+        // keep zeroed positions so the graph still renders.
+        layoutNodes = nodes;
+      }
     }
 
     return { nodes: layoutNodes, edges };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [models, relations, scopeKey, extraKey, columnsByModel]);
+  }, [models, relations, scopeKey, extraKey, columnsByModel, fieldsByModel, fieldsKey, layout]);
 }
 
 export { ERD_NODE_ID, ERD_EDGE_ID };
