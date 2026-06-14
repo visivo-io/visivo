@@ -19,9 +19,21 @@ describe('DataTableHeader', () => {
     render(
       <DataTableHeader column={defaultColumn} sorting={{ column: 'amount', direction: 'asc' }} />
     );
-    expect(screen.getByLabelText('View profile for amount')).toBeInTheDocument();
-    // Sort icon is rendered when sorted - the info button's aria-label confirms the header rendered,
-    // and we verify sorting callback behavior in the 'cycles sort direction' test
+    // A sorted column renders an accessible sort indicator. Assert that
+    // directly rather than via the info button, which only renders for Explorer
+    // (onInfoClick-bearing) tables.
+    expect(screen.getByLabelText('Sorted ascending')).toBeInTheDocument();
+  });
+
+  it('renders the column-profile button only when onInfoClick is provided', () => {
+    // Read-only tables (canvas / project previews) pass no onInfoClick, so the
+    // dead profile button must not render (VIS acceptance — info icon is an
+    // Explorer-only affordance).
+    const { rerender } = render(<DataTableHeader column={defaultColumn} />);
+    expect(screen.queryByTitle('View column profile')).not.toBeInTheDocument();
+
+    rerender(<DataTableHeader column={defaultColumn} onInfoClick={jest.fn()} />);
+    expect(screen.getByTitle('View column profile')).toBeInTheDocument();
   });
 
   it('cycles sort direction on click', () => {
