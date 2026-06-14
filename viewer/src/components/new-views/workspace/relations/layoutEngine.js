@@ -70,10 +70,10 @@ export function connectedComponents(nodes, edges) {
  * Shortest-column masonry packer with variable box width + height. Each box is a
  * super-node `{ id, width, height }`; returns `{ [id]: { x, y } }` origins.
  *
- * Column count is biased WIDER than square (`ceil(sqrt(n * 1.6))`, capped at n,
- * floored at 3 unless fewer boxes) so the canvas fills wide and `fitView`
- * doesn't zoom cards unreadable. Each box drops into whichever column is
- * currently shortest.
+ * Column count is roughly SQUARE (`ceil(sqrt(n))`, capped at n, floored at 2) so
+ * the packed bounding box stays close to the viewport's aspect ratio — a much
+ * wider grid forces `fitView` to zoom every card down to unreadable, a much
+ * taller one wastes horizontal space. Each box drops into the shortest column.
  *
  * BACK-COMPAT: when every box is a singleton card (width === ERD_NODE_WIDTH), the
  * x/y origins are IDENTICAL to the legacy `packGridLayout` — the column x-step is
@@ -85,7 +85,7 @@ export function connectedComponents(nodes, edges) {
 export function packBoxes(boxes) {
   if (!Array.isArray(boxes) || boxes.length === 0) return {};
   const n = boxes.length;
-  const cols = Math.min(n, Math.max(3, Math.ceil(Math.sqrt(n * 1.6))));
+  const cols = Math.min(n, Math.max(2, Math.ceil(Math.sqrt(n))));
 
   const colHeights = new Array(cols).fill(0); // running y per column
   const colMaxWidth = new Array(cols).fill(0); // widest box dropped in each column
@@ -129,7 +129,7 @@ export function packBoxes(boxes) {
  *
  * STEP 1 CLUSTER       Union-Find over edges (self-loops ignored).
  * STEP 2 PER-CLUSTER   dagre LR per multi-node component (singletons skip dagre).
- *                      Adaptive ranksep for tall cards (maxH > 200 → 1.5*maxH).
+ *                      Moderate fixed ranksep (~160px horizontal) for the pill.
  * STEP 3 NORMALIZE     shift each cluster to min-x=0, min-y=0; record bbox.
  * STEP 4 PACK          packBoxes treats each cluster bbox as a super-node.
  * STEP 5 TRANSLATE     finalPos = superNodeOrigin + nodeLocalClusterPos.
@@ -170,14 +170,14 @@ export function clusterGridEngine({ nodes, edges, options = {} }) {
       e => e.source !== e.target && memberSet.has(e.source) && memberSet.has(e.target)
     );
 
-    // Adaptive ranksep: a tall card needs the LR gap widened so the next rank
-    // clears it. 1.5× the tallest card when it exceeds 200px (spec §3 step 2).
-    const maxH = members.reduce(
-      (m, node) => Math.max(m, node.layoutSize?.height ?? 0),
-      0
-    );
+    // dagre LR: `ranksep` is the HORIZONTAL gap between joined cards (not the
+    // vertical clearance — tall cards are spaced vertically by `nodesep` + their
+    // own measured height, which dagre already accounts for). A moderate, fixed
+    // horizontal gap keeps related tables close while leaving room for the
+    // relation pill + arrow at the midpoint. (An earlier 1.5×cardHeight ranksep
+    // pushed joined cards ~400px apart — wrong axis.)
     const dagreOpts = {
-      ranksep: maxH > 200 ? Math.max(100, 1.5 * maxH) : options.ranksep ?? 100,
+      ranksep: options.ranksep ?? 160,
       nodesep: options.nodesep ?? 50,
       rankdir: options.direction ?? 'LR',
     };

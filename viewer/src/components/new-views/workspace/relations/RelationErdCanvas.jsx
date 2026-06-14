@@ -6,6 +6,7 @@ import ReactFlow, {
   ReactFlowProvider,
   applyNodeChanges,
   useReactFlow,
+  useNodesInitialized,
 } from 'reactflow';
 import { useDroppable } from '@dnd-kit/core';
 import 'reactflow/dist/style.css';
@@ -53,6 +54,7 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   const { setDirty } = useObjectCanvasDirty();
 
   const { fitView } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
 
   // Models the user added on top of the scoped set (@-mention / Library drop).
   const [extraModelNames, setExtraModelNames] = useState([]);
@@ -143,13 +145,15 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   );
 
   // Imperative fit on mount (and on Tidy / scope change) — never after a drag-stop.
+  // Wait for `nodesInitialized` so fitView frames measured cards, not a no-op on
+  // unmeasured nodes.
   const fittedScopeRef = useRef(null);
   useEffect(() => {
-    if (fittedScopeRef.current !== scopeKey && rfNodes.length > 0) {
+    if (nodesInitialized && fittedScopeRef.current !== scopeKey && rfNodes.length > 0) {
       fittedScopeRef.current = scopeKey;
       fitView({ padding: 0.2, maxZoom: 1.2 });
     }
-  }, [scopeKey, rfNodes.length, fitView]);
+  }, [nodesInitialized, scopeKey, rfNodes.length, fitView]);
 
   const handleTidy = useCallback(() => {
     if (clearErdLayout) clearErdLayout(scopeKey);
@@ -238,23 +242,26 @@ const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
 
   return (
     <div data-testid="relation-erd" className="relative flex h-full w-full flex-col">
-      {/* Canvas toolbar: @-mention add-model + Tidy layout. */}
+      {/* Canvas toolbar (in-flow header row so it never overlaps a card):
+          @-mention add-model + scope chip on the left, Tidy layout on the right. */}
       <div
         data-testid="relation-erd-toolbar"
-        className="absolute left-3 top-3 z-10 flex items-center gap-2"
+        className="flex items-center justify-between gap-2 border-b border-gray-100 bg-white px-3 py-1.5"
       >
-        <AddModelMention
-          models={models || []}
-          excludeNames={visibleModelNames}
-          onAdd={addModelToCanvas}
-          testId="relation-erd-add-model"
-        />
+        <div className="flex items-center gap-2">
+          <AddModelMention
+            models={models || []}
+            excludeNames={visibleModelNames}
+            onAdd={addModelToCanvas}
+            testId="relation-erd-add-model"
+          />
+          {scopeModelNames && (
+            <span className="rounded-md bg-gray-50 px-2 py-1 text-[11px] text-gray-500">
+              Scoped to this relation
+            </span>
+          )}
+        </div>
         <ErdTidyButton onTidy={handleTidy} hasEdits={hasEdits} testId="relation-erd-reset-layout" />
-        {scopeModelNames && (
-          <span className="rounded-md bg-white/80 px-2 py-1 text-[11px] text-gray-500 shadow-sm">
-            Scoped to this relation
-          </span>
-        )}
       </div>
 
       {!hasModels ? (

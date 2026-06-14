@@ -70,6 +70,7 @@ jest.mock('reactflow', () => {
     ReactFlowProvider: ({ children }) => <div data-testid="rf-provider">{children}</div>,
     applyNodeChanges: (changes, nodes) => nodes,
     useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
+    useNodesInitialized: () => true,
     // RelationPillEdge module-level imports (it's required transitively).
     BaseEdge: () => null,
     EdgeLabelRenderer: ({ children }) => children,

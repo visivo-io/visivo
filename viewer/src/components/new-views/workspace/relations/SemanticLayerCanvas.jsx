@@ -6,6 +6,7 @@ import ReactFlow, {
   ReactFlowProvider,
   applyNodeChanges,
   useReactFlow,
+  useNodesInitialized,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import useStore from '../../../../stores/store';
@@ -63,6 +64,7 @@ const SemanticLayerCanvasInner = () => {
   const savedWaypoints = erdLayout.waypoints;
 
   const { fitView } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
 
   // Hydrate every collection the project ERD reads from.
   useEffect(() => {
@@ -135,14 +137,16 @@ const SemanticLayerCanvasInner = () => {
     [setErdNodePositions]
   );
 
-  // Imperative fit on mount (and on Tidy) — never after a drag-stop.
+  // Imperative fit on mount (and on Tidy) — never after a drag-stop. Wait for
+  // `nodesInitialized` (React Flow has measured every card) so fitView frames the
+  // real bounding box instead of no-opping on unmeasured nodes.
   const didMountFit = useRef(false);
   useEffect(() => {
-    if (!didMountFit.current && rfNodes.length > 0) {
+    if (nodesInitialized && !didMountFit.current && rfNodes.length > 0) {
       didMountFit.current = true;
       fitView({ padding: 0.2, maxZoom: 1.2 });
     }
-  }, [rfNodes.length, fitView]);
+  }, [nodesInitialized, rfNodes.length, fitView]);
 
   const handleTidy = useCallback(() => {
     if (clearErdLayout) clearErdLayout(SCOPE_KEY);
@@ -219,10 +223,10 @@ const SemanticLayerCanvasInner = () => {
       {!hasModels ? (
         <EmptyState />
       ) : (
-        <div className="relative flex-1">
+        <div className="relative flex flex-1 flex-col">
           <div
             data-testid="semantic-layer-erd-toolbar"
-            className="absolute left-3 top-3 z-10 flex items-center gap-2"
+            className="flex items-center justify-end gap-2 border-b border-gray-100 bg-white px-3 py-1.5"
           >
             <ErdTidyButton
               onTidy={handleTidy}
@@ -230,27 +234,29 @@ const SemanticLayerCanvasInner = () => {
               testId="semantic-layer-erd-reset-layout"
             />
           </div>
-          <ReactFlow
-            nodes={rfNodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            nodesDraggable
-            onNodesChange={onNodesChange}
-            onNodeDragStop={onNodeDragStop}
-            onConnectStart={onConnectStart}
-            onConnect={onConnect}
-            onConnectEnd={onConnectEnd}
-            isValidConnection={isValidConnection}
-            minZoom={0.1}
-            maxZoom={2}
-            fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
-            style={{ background: '#f8fafc' }}
-          >
-            <Background color="#e2e8f0" gap={16} />
-            <Controls />
-            <MiniMap style={{ background: '#f1f5f9' }} />
-          </ReactFlow>
+          <div className="relative flex-1">
+            <ReactFlow
+              nodes={rfNodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              nodesDraggable
+              onNodesChange={onNodesChange}
+              onNodeDragStop={onNodeDragStop}
+              onConnectStart={onConnectStart}
+              onConnect={onConnect}
+              onConnectEnd={onConnectEnd}
+              isValidConnection={isValidConnection}
+              minZoom={0.1}
+              maxZoom={2}
+              fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
+              style={{ background: '#f8fafc' }}
+            >
+              <Background color="#e2e8f0" gap={16} />
+              <Controls />
+              <MiniMap style={{ background: '#f1f5f9' }} />
+            </ReactFlow>
+          </div>
         </div>
       )}
 

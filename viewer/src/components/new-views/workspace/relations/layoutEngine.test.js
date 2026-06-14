@@ -139,12 +139,12 @@ describe('packBoxes', () => {
   });
 });
 
-describe('packGridLayout (legacy wrapper) === packBoxes for singletons', () => {
-  it('produces byte-identical positions to the historic fixed-slot grid', () => {
+describe('packGridLayout (thin wrapper) === packBoxes for singletons', () => {
+  it('produces fixed-slot masonry positions matching the grid algorithm', () => {
     const nodes = Array.from({ length: 7 }, (_, i) => node(`n${i}`, 100 + i * 10));
     const packed = packGridLayout(nodes);
-    // Recompute the historic algorithm inline and assert equality.
-    const cols = Math.min(7, Math.max(3, Math.ceil(Math.sqrt(7 * 1.6))));
+    // Recompute the (square-biased) masonry inline and assert equality.
+    const cols = Math.min(7, Math.max(2, Math.ceil(Math.sqrt(7))));
     const colHeights = new Array(cols).fill(0);
     const expected = nodes.map(n => {
       let col = 0;
@@ -209,13 +209,16 @@ describe('clusterGridEngine / runLayout', () => {
     });
   });
 
-  it('applies adaptive ranksep for tall cards (>200px) without crashing', () => {
-    // A 300px-tall card in a 2-node cluster triggers ranksep = 1.5*300 = 450.
+  it('lays out a 2-node cluster with finite positions (moderate fixed ranksep)', () => {
+    // Tall cards are spaced vertically by nodesep + their own height (dagre
+    // handles that); the horizontal ranksep stays a moderate fixed gap so joined
+    // cards sit close with room for the relation pill.
     const nodes = [node('A', 300), node('B', 300)];
     const edges = [edge('A', 'B')];
     const { nodes: out } = clusterGridEngine({ nodes, edges, options: {} });
     expect(out).toHaveLength(2);
     out.forEach(n => expect(Number.isFinite(n.position.x)).toBe(true));
+    out.forEach(n => expect(Number.isFinite(n.position.y)).toBe(true));
   });
 
   it('returns the input array for an empty node set', () => {
