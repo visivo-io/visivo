@@ -105,3 +105,204 @@
     a.appendChild(r);
   })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
 </script>
+
+<!--
+  PostHog observability for docs.visivo.io (VIS-998) — the docs leg of the
+  unified www → docs → CLI → cloud telemetry initiative (P0). PostHog is the
+  single source of conversion truth; GA4 above stays running in tandem.
+
+  • Public project key (193619) — shared with the www site and the visivo CLI
+    telemetry (visivo/telemetry/config.py). phc_* keys are PUBLIC client keys
+    and are safe to embed in shipped HTML.
+  • Host us.i.posthog.com (the www site uses the same host).
+  • Material runs with `navigation.instant`, so a full page load only happens
+    once; subsequent nav swaps the <main> in place. We init PostHog once, then
+    fire a manual `$pageview` (+ `docs_page_viewed`) on every `location$`
+    change so SPA-style nav still tracks. Referrer / UA are captured by default
+    so ChatGPT / Perplexity / Claude referrals + AI-crawler hits are visible.
+  • Conversion CTAs are delegated to autocapture + an explicit click handler:
+    the header "Start free" → app.visivo.io and copy-to-clipboard on install /
+    code blocks. Taxonomy: ../../specs/marketing-relaunch/event-taxonomy.md
+    (snake_case, surface: docs, no PII).
+
+  If the key ever needs rotating, it is the same public key used in
+  www/src/analytics/posthog.js and visivo/telemetry/config.py.
+-->
+<script>
+  (function () {
+    /* Public PostHog project key (193619) — shared across www, CLI, and docs.
+       This is a PUBLIC client key; embedding it in shipped HTML is intended. */
+    var PHC_KEY = "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj";
+    var PHC_HOST = "https://us.i.posthog.com";
+
+    /* Only load PostHog on the real docs origin so local dev / sandbox / CI
+       builds (127.0.0.1, localhost, file://) never pollute the prod project. */
+    var host = (window.location && window.location.hostname) || "";
+    var IS_DOCS_PROD = host === "docs.visivo.io" || host.endsWith(".docs.visivo.io");
+
+    /* Capture the very first referrer/UA so AI-referral traffic (chatgpt.com,
+       perplexity.ai, claude.ai, etc.) and AI-crawler hits are attributable
+       even after instant-nav rewrites document.referrer. */
+    var entryReferrer = document.referrer || "";
+
+    function pageProps(extra) {
+      var props = {
+        surface: "docs",
+        $current_url: window.location.href,
+        docs_path: window.location.pathname,
+        docs_referrer: entryReferrer,
+      };
+      if (extra) {
+        for (var k in extra) {
+          if (Object.prototype.hasOwnProperty.call(extra, k)) props[k] = extra[k];
+        }
+      }
+      return props;
+    }
+
+    function track(event, extra) {
+      if (window.posthog && typeof window.posthog.capture === "function") {
+        window.posthog.capture(event, pageProps(extra));
+      }
+    }
+
+    /* Wire conversion-CTA + page-change handlers. Re-run on every Material
+       `document$` tick so instant-nav-swapped content keeps its listeners. */
+    function wireHandlers() {
+      /* Header "Start free" → app.visivo.io (the single primary CTA). */
+      var cta = document.querySelector(".vz-header-cta");
+      if (cta && !cta.dataset.phWired) {
+        cta.dataset.phWired = "1";
+        cta.addEventListener("click", function () {
+          track("cta_clicked", { target: "start_free", cta_location: "docs_header" });
+        });
+      }
+
+      /* Install / code-block copy buttons (Material renders a copy button per
+         fenced block). Treat a copy as an install/code-copy conversion signal. */
+      var copyBtns = document.querySelectorAll(".md-clipboard");
+      for (var i = 0; i < copyBtns.length; i++) {
+        var btn = copyBtns[i];
+        if (btn.dataset.phWired) continue;
+        btn.dataset.phWired = "1";
+        btn.addEventListener("click", function (ev) {
+          var target = ev.currentTarget;
+          var codeId = target.getAttribute("data-clipboard-target") || "";
+          var codeEl = codeId ? document.querySelector(codeId) : null;
+          var text = codeEl ? (codeEl.innerText || "") : "";
+          /* Heuristic: surface install commands distinctly from generic copies. */
+          var isInstall =
+            /pip\s+install\s+visivo|visivo\.sh|curl\s+-fsSL\s+https:\/\/visivo\.sh|brew\s+install\s+visivo/i.test(
+              text
+            );
+          if (isInstall) {
+            track("install_command_copied", {
+              command_preview: text.slice(0, 120),
+            });
+          } else {
+            track("code_snippet_copied", {});
+          }
+        });
+      }
+    }
+
+    function init() {
+      if (!IS_DOCS_PROD) return;
+      if (!window.posthog || typeof window.posthog.init !== "function") return;
+
+      window.posthog.init(PHC_KEY, {
+        api_host: PHC_HOST,
+        /* Material owns navigation (instant nav) — fire pageviews manually so
+           SPA-style nav is tracked exactly once per location change. */
+        capture_pageview: false,
+        capture_pageleave: true,
+        persistence: "localStorage+cookie",
+        autocapture: true,
+        loaded: function (ph) {
+          /* Super property so every docs event carries surface: docs. */
+          ph.register({ surface: "docs" });
+        },
+      });
+
+      /* Initial pageview for the full load. */
+      track("docs_page_viewed");
+
+      /* Material's reactive observables: document$ fires after each instant-nav
+         content swap; location$ fires on every URL change. Use document$ for
+         re-wiring handlers (it's available on the Material `window`). */
+      if (typeof window.document$ !== "undefined" && window.document$.subscribe) {
+        window.document$.subscribe(function () {
+          wireHandlers();
+        });
+      } else {
+        wireHandlers();
+      }
+
+      var lastPath = window.location.pathname;
+      if (typeof window.location$ !== "undefined" && window.location$.subscribe) {
+        window.location$.subscribe(function (url) {
+          var path = (url && url.pathname) || window.location.pathname;
+          if (path === lastPath) return; /* dedupe initial emit */
+          lastPath = path;
+          track("docs_page_viewed");
+        });
+      }
+    }
+
+    /* Lazy-load posthog-js from the PostHog asset CDN, then init. */
+    function loadPostHog() {
+      if (!IS_DOCS_PROD) return;
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split(".");
+              2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                });
+            }
+            ((p = t.createElement("script")).type = "text/javascript"),
+              (p.crossOrigin = "anonymous"),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") +
+                "/static/array.js"),
+              (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r);
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = "posthog";
+                  return "posthog" !== a && (e += "." + a), t || (e += " (stub)"), e;
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + ".people (stub)";
+                },
+                o =
+                  "init me ws ys ps bs capture je Di ks register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing _start_queue_if_opted_in _dom_loaded debug getPageViewId captureTraceFeedback captureTraceMetric".split(
+                    " "
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+      init();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", loadPostHog);
+    } else {
+      loadPostHog();
+    }
+  })();
+</script>
