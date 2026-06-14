@@ -20,19 +20,22 @@ import { emitWorkspaceEvent } from './telemetry';
  *     auto-saves with a debounce (no Save buttons for the structure forms).
  */
 
-// The Outline tab is contextual: for a `source` it browses the schema tree, so
-// it reads "Data" with a tree icon (VIS-1004 §8.5 — show the outline only where
-// relevant, renamed to fit the object). Every other object keeps "Outline".
-const getTabs = isSource =>
-  isSource
-    ? [
-        { key: 'outline', label: 'Data', icon: PiTreeStructure },
-        { key: 'edit', label: 'Edit', icon: PiPencil },
-      ]
-    : [
-        { key: 'outline', label: 'Outline', icon: PiList },
-        { key: 'edit', label: 'Edit', icon: PiPencil },
-      ];
+// The Outline-style first tab is contextual and ONLY offered where it's
+// meaningful (VIS-1004 §8.5 — show the outline only where relevant):
+//   - dashboard → "Outline" (the compact tree of the scoped dashboard).
+//   - source    → "Data" (the db → schema → table → column tree).
+//   - every other object type → no Outline/Data tab at all, just "Edit".
+const EDIT_TAB = { key: 'edit', label: 'Edit', icon: PiPencil };
+
+const getTabs = type => {
+  if (type === 'dashboard') {
+    return [{ key: 'outline', label: 'Outline', icon: PiList }, EDIT_TAB];
+  }
+  if (type === 'source') {
+    return [{ key: 'outline', label: 'Data', icon: PiTreeStructure }, EDIT_TAB];
+  }
+  return [EDIT_TAB];
+};
 
 const TabBtn = ({ tab, active, onClick }) => {
   const Icon = tab.icon;
@@ -168,11 +171,16 @@ const RightRail = () => {
   const activeTab = useStore(s => s.workspaceRightTab);
   const setRightTab = useStore(s => s.setWorkspaceRightTab);
 
-  // The active object decides BOTH which Outline body mounts (source → schema
-  // tree) and the Outline tab label (source → "Data"). VIS-1004.
+  // The active object decides the tab set: only a dashboard (Outline) or a
+  // source (Data) gets an outline-style first tab; every other type is Edit-only
+  // (VIS-1004). The active object also decides which Outline body mounts
+  // (source → schema tree).
   const { selectedItem } = useWorkspaceScope();
-  const isSource = selectedItem?.type === 'source';
-  const tabs = React.useMemo(() => getTabs(isSource), [isSource]);
+  const tabs = React.useMemo(() => getTabs(selectedItem?.type), [selectedItem?.type]);
+
+  // Guard against a stale `outline` selection on an Edit-only object: if the
+  // active tab isn't one this object offers, render Edit instead of a blank rail.
+  const effectiveTab = tabs.some(t => t.key === activeTab) ? activeTab : 'edit';
 
   // Wrap the store setter so the right-rail tab switch fires telemetry
   // (VIS-793). Only emit when the tab actually changes — re-clicking the
@@ -187,10 +195,10 @@ const RightRail = () => {
   );
 
   return collapsed ? (
-    <RightRailCollapsed activeTab={activeTab} tabs={tabs} onExpand={toggleCollapsed} />
+    <RightRailCollapsed activeTab={effectiveTab} tabs={tabs} onExpand={toggleCollapsed} />
   ) : (
     <RightRailExpanded
-      activeTab={activeTab}
+      activeTab={effectiveTab}
       tabs={tabs}
       selectedItem={selectedItem}
       onSelectTab={onSelectTab}

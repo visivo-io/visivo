@@ -117,7 +117,15 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
     }
 
     const dimRef = formatRefExpression(parentModelName, splitField);
-    const xExpr = showGrain ? `date_trunc('${grain}', ${dimRef})` : dimRef;
+    // The split candidate is heuristically date-like (DATE_HINT on its name), but
+    // the underlying column may be a VARCHAR (e.g. `formatted_date` =
+    // strftime(date,'%Y-%m-%d')). date_trunc only accepts a date/timestamp, so we
+    // CAST the expression to TIMESTAMP first — DuckDB parses ISO-ish date strings
+    // and the cast is a no-op for genuine DATE/TIMESTAMP columns, so the grain
+    // works on either a string-date or a real date/time dimension.
+    const xExpr = showGrain
+      ? `date_trunc('${grain}', CAST(${dimRef} AS TIMESTAMP))`
+      : dimRef;
     return {
       name: `__metric_preview__${name}`,
       props: {

@@ -160,3 +160,73 @@ describe('RightRail Outline body branch (VIS-1004)', () => {
     expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Outline');
   });
 });
+
+describe('RightRail tab set per object type (Outline only for dashboards, Data for sources)', () => {
+  const resetForType = ({ tabType, tabName, rightTab = 'edit' }) => {
+    act(() => {
+      useStore.setState({
+        workspaceRightCollapsed: false,
+        workspaceRightTab: rightTab,
+        workspaceTabs: [{ id: 't1', type: tabType, name: tabName }],
+        workspaceActiveTabId: 't1',
+        workspaceActiveObject: { type: tabType, name: tabName },
+        workspaceOutlineSelectedKey: 'dashboard',
+        workspaceSourceOutlineSelectedKey: null,
+        workspaceSourceOutlineExpanded: {},
+        dashboards: [],
+        saveDashboard: jest.fn(),
+      });
+    });
+  };
+
+  const renderAt = entry => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <Route path="/workspace/dashboard/:dashboardName" element={<RightRail />} />
+      ),
+      { initialEntries: [entry], future: futureFlags }
+    );
+    return render(<RouterProvider router={router} future={futureFlags} />);
+  };
+
+  test('dashboard offers exactly an Outline tab + an Edit tab', () => {
+    resetForType({ tabType: 'dashboard', tabName: 'simple-dashboard' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Outline');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+  });
+
+  test('source offers a Data tab (the schema tree) + an Edit tab', () => {
+    resetForType({ tabType: 'source', tabName: 'analytics_db' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Data');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+  });
+
+  // The edit forms for `insight` / `chart` fire async fetches on mount (act
+  // noise unrelated to the tab set), so this matrix uses the synchronous edit
+  // types — the tab-set rule is type-agnostic for every non-dashboard/source.
+  test.each(['model', 'table', 'metric', 'dimension', 'relation', 'input'])(
+    'a %s offers ONLY an Edit tab (no Outline/Data tab)',
+    type => {
+      resetForType({ tabType: type, tabName: `my_${type}` });
+      renderAt('/workspace/dashboard/simple-dashboard');
+      expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+      expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+    }
+  );
+
+  test('a stale `outline` active tab on an Edit-only object falls back to the Edit panel', () => {
+    // Active object is a metric (Edit-only) but the store still holds a stale
+    // `outline` tab from a previous dashboard selection. The rail must not render
+    // a blank/Outline body — it falls back to the Edit panel.
+    resetForType({ tabType: 'metric', tabName: 'revenue', rightTab: 'outline' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
+  });
+});

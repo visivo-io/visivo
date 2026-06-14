@@ -10,8 +10,6 @@ import {
   UNASSIGNED_KEY,
 } from './useProjectEditorData';
 import LevelGroup from './LevelGroup';
-import ProjectRelationsList from './ProjectRelationsList';
-import ProjectFieldsList from './ProjectFieldsList';
 
 const levelIndexFromKey = levelKey => {
   if (typeof levelKey !== 'string') return -1;
@@ -135,69 +133,6 @@ const RecentEdits = ({ edits, onSelect }) => (
   </div>
 );
 
-/**
- * GovernanceSection — VIS-1013.
- *
- * The project-wide governance surface beneath the dashboard level groups: a flat
- * list of every Relation and (mirroring it) every semantic field (Metrics +
- * Dimensions). Each list deep-links into the per-object editor. Counts in the
- * headings give a steward an at-a-glance census of the semantic layer.
- */
-const GovernanceSection = ({
-  relations,
-  metrics,
-  dimensions,
-  onOpenRelation,
-  onOpenField,
-}) => {
-  const relationCount = relations.length;
-  const fieldCount = metrics.length + dimensions.length;
-
-  return (
-    <section
-      data-testid="project-governance"
-      className="mt-10 grid grid-cols-1 gap-6 @[860px]/editor:grid-cols-2 @[860px]/editor:gap-8"
-      onClick={e => e.stopPropagation()}
-    >
-      <div>
-        <div className="mb-2 flex items-baseline gap-2">
-          <h2 className="text-[13px] font-semibold text-gray-900">Relations</h2>
-          <span
-            data-testid="project-governance-relations-count"
-            className="text-[11px] font-medium tabular-nums text-gray-400"
-          >
-            {relationCount}
-          </span>
-        </div>
-        <p className="mb-2.5 text-[12px] leading-relaxed text-gray-500">
-          Every join the semantic layer can use to combine models.
-        </p>
-        <ProjectRelationsList relations={relations} onOpenRelation={onOpenRelation} />
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-baseline gap-2">
-          <h2 className="text-[13px] font-semibold text-gray-900">Semantic Fields</h2>
-          <span
-            data-testid="project-governance-fields-count"
-            className="text-[11px] font-medium tabular-nums text-gray-400"
-          >
-            {fieldCount}
-          </span>
-        </div>
-        <p className="mb-2.5 text-[12px] leading-relaxed text-gray-500">
-          Every metric and dimension your models expose.
-        </p>
-        <ProjectFieldsList
-          metrics={metrics}
-          dimensions={dimensions}
-          onOpenField={onOpenField}
-        />
-      </div>
-    </section>
-  );
-};
-
 const ProjectEditor = () => {
   const project = useStore(s => s.project);
   const dashboards = useStore(s => s.dashboards);
@@ -208,15 +143,6 @@ const ProjectEditor = () => {
   const localMergeModels = useStore(s => s.localMergeModels);
   const sources = useStore(s => s.sources);
   const defaults = useStore(s => s.defaults);
-  // VIS-1013 governance surface: the semantic-layer collections + their lazy
-  // fetchers. The workspace route does not pre-fetch these, so we fetch-if-empty
-  // on mount (mirroring the dashboards self-fetch below).
-  const relations = useStore(s => s.relations);
-  const fetchRelations = useStore(s => s.fetchRelations);
-  const metrics = useStore(s => s.metrics);
-  const fetchMetrics = useStore(s => s.fetchMetrics);
-  const dimensions = useStore(s => s.dimensions);
-  const fetchDimensions = useStore(s => s.fetchDimensions);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const openWorkspaceTabBackground = useStore(s => s.openWorkspaceTabBackground);
   // M-2a level CRUD (merged from feature). Drag-between-levels reassignment now
@@ -244,18 +170,6 @@ const ProjectEditor = () => {
   useEffect(() => {
     if ((!dashboards || dashboards.length === 0) && fetchDashboards) {
       fetchDashboards();
-    }
-    // VIS-1013: hydrate the governance collections on a direct visit. These are
-    // not part of the workspace route's collection fetch, so without this the
-    // governance lists would be permanently empty.
-    if ((!relations || relations.length === 0) && fetchRelations) {
-      fetchRelations();
-    }
-    if ((!metrics || metrics.length === 0) && fetchMetrics) {
-      fetchMetrics();
-    }
-    if ((!dimensions || dimensions.length === 0) && fetchDimensions) {
-      fetchDimensions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -344,37 +258,6 @@ const ProjectEditor = () => {
       });
     },
     [openWorkspaceTabBackground]
-  );
-
-  // VIS-1013: governance deep-links. Clicking a relation/metric/dimension row
-  // opens (or focuses) that object's per-object editor tab — the same
-  // openWorkspaceTab contract the Library rows use, so the right rail follows.
-  const handleOpenRelation = useCallback(
-    name => {
-      if (openWorkspaceTab) {
-        openWorkspaceTab({ id: `relation:${name}`, type: 'relation', name });
-      }
-      emitWorkspaceEvent('project_editor_action', {
-        kind: 'open_governance_object',
-        type: 'relation',
-        name,
-      });
-    },
-    [openWorkspaceTab]
-  );
-
-  const handleOpenField = useCallback(
-    (type, name) => {
-      if (openWorkspaceTab) {
-        openWorkspaceTab({ id: `${type}:${name}`, type, name });
-      }
-      emitWorkspaceEvent('project_editor_action', {
-        kind: 'open_governance_object',
-        type,
-        name,
-      });
-    },
-    [openWorkspaceTab]
   );
 
   const dispatchChromeSelection = useCallback(() => {
@@ -585,14 +468,6 @@ const ProjectEditor = () => {
             <RecentEdits edits={recentEdits} onSelect={dispatchDashboardSelection} />
           </aside>
         </div>
-
-        <GovernanceSection
-          relations={relations || []}
-          metrics={metrics || []}
-          dimensions={dimensions || []}
-          onOpenRelation={handleOpenRelation}
-          onOpenField={handleOpenField}
-        />
       </div>
     </div>
   );
