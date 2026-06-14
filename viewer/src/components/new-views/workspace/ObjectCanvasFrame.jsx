@@ -232,6 +232,8 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
         ) : (
           <CanvasBody
             type={type}
+            lens={lens}
+            lensMeta={activeLensMeta}
             descriptor={descriptor}
             activeObject={activeObject}
             projectId={projectId}
@@ -246,21 +248,25 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
  * CanvasBody — the canvas-lens region. Mounts the lazy body inside <Suspense>
  * (the frame's loading state shows during chunk fetch), gated by availability.
  *
+ * Each lens renders its own body: a lens entry may carry its own lazy
+ * `Component` (e.g. an editable `edit` / `build` / `field` lens), otherwise the
+ * descriptor's default `Component` (the preview body) is used. The body receives
+ * the active `lens` so a single component can branch per lens if it prefers.
+ *
  * The body resolves + renders its own record (and its own empty / not-found
  * state, as each preview already does); the frame just RESOLVES the record via
  * `useCanvasRecord` and passes it down so csvScriptModel / localMergeModel —
  * whose records live in their own collections, not `models` — render the Model
- * canvas instead of "not found". Centralising the empty states in the frame is
- * a follow-up; VIS-1001 keeps the bodies' states to avoid visual regression.
+ * canvas instead of "not found".
  */
-const CanvasBody = ({ type, descriptor, activeObject, projectId }) => {
+const CanvasBody = ({ type, lens, lensMeta, descriptor, activeObject, projectId }) => {
   const { config } = useCanvasRecord(type, activeObject?.name || null);
-  const Body = descriptor.Component;
+  const Body = lensMeta?.Component || descriptor.Component;
   const unavailable =
     descriptor.availability === 'serve' && !safeAvailable(descriptor.availabilityKey);
 
   return (
-    <div data-testid={`workspace-middle-${type}-preview`} className="flex flex-1 min-h-0 min-w-0">
+    <div data-testid={`workspace-middle-${type}-${lens}`} className="flex flex-1 min-h-0 min-w-0">
       {unavailable ? (
         <FrameState
           testId="canvas-unavailable"
@@ -272,7 +278,7 @@ const CanvasBody = ({ type, descriptor, activeObject, projectId }) => {
         <React.Suspense
           fallback={<FrameState testId="canvas-loading" title="Loading canvas…" />}
         >
-          <Body activeObject={activeObject} projectId={projectId} record={config} />
+          <Body activeObject={activeObject} projectId={projectId} record={config} lens={lens} />
         </React.Suspense>
       )}
     </div>
