@@ -121,13 +121,14 @@ test.describe('Semantic Layer ERD overhaul (reactflow machine)', () => {
 
     // Two undirected relationLinkEdge lines attach the relation node to its two
     // models (one per `erd-reledge-local_to_local-{a,b}` edge). React-Flow tags
-    // each edge <g> with data-id={edge.id} and the relationLinkEdge type class.
+    // each edge <g> with the relationLinkEdge type class + a
+    // data-testid="rf__edge-{edge.id}".
     await expect
       .poll(
         async () =>
           page.evaluate(() =>
             document.querySelectorAll(
-              '.react-flow__edge.react-flow__edge-relationLinkEdge[data-id^="erd-reledge-local_to_local"]'
+              '.react-flow__edge-relationLinkEdge[data-testid^="rf__edge-erd-reledge-local_to_local"]'
             ).length
           ),
         { timeout: WAIT }
