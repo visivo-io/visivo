@@ -170,14 +170,14 @@ export function clusterGridEngine({ nodes, edges, options = {} }) {
       e => e.source !== e.target && memberSet.has(e.source) && memberSet.has(e.target)
     );
 
-    // dagre LR: `ranksep` is the HORIZONTAL gap between joined cards (not the
-    // vertical clearance — tall cards are spaced vertically by `nodesep` + their
-    // own measured height, which dagre already accounts for). A moderate, fixed
-    // horizontal gap keeps related tables close while leaving room for the
-    // relation pill + arrow at the midpoint. (An earlier 1.5×cardHeight ranksep
-    // pushed joined cards ~400px apart — wrong axis.)
+    // dagre LR: `ranksep` is the HORIZONTAL gap between adjacent ranks. A binary
+    // relation lays out as a 3-rank chain `model → relationNode → model`, so the
+    // relation pill sits in its OWN rank between the two cards — the gap only
+    // needs to seat the short connector lines, not a midpoint pill. A small gap
+    // keeps clusters compact (a wide cluster forces fitView to shrink every card
+    // at the overview zoom). Vertical spacing is `nodesep` + measured height.
     const dagreOpts = {
-      ranksep: options.ranksep ?? 160,
+      ranksep: options.ranksep ?? 90,
       nodesep: options.nodesep ?? 50,
       rankdir: options.direction ?? 'LR',
     };
