@@ -9,8 +9,8 @@
  * column list so `TableErdNode` can render the column rows and `ErdTableContextMenu`
  * can build a `SELECT * FROM <schema>.<table>`.
  *
- * v1 produces NO edges (foreign-key edges land in VIS-1014); we still return an
- * `edges: []` array so callers stay uniform with the lineage DAG shape.
+ * Foreign keys (introspected per table, VIS-1014) become relationship edges
+ * between table nodes whose referenced table is also in this source's ERD.
  *
  * This is a PURE builder over the metadata entry — no store reads, no fetches —
  * so SourceErd owns the fetch lifecycle and this stays trivially testable.
@@ -52,6 +52,7 @@ export function flattenSourceTables(entry) {
         schema: schemaName,
         table: table.name,
         columns,
+        foreignKeys: Array.isArray(table.foreign_keys) ? table.foreign_keys : [],
       });
     };
 
@@ -94,8 +95,28 @@ export function useSourceErdDag(sourceName, entry) {
     },
   }));
 
-  // v1: no edges. FK edges land in VIS-1014.
-  return { nodes, edges: [] };
+  // VIS-1014: a relationship edge per foreign key whose referenced table is also
+  // diagrammed in this source. The FK's first column pair drives the handles.
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const edges = [];
+  tables.forEach(t => {
+    (t.foreignKeys || []).forEach((fk, i) => {
+      if (!fk || fk.references_table == null) return;
+      const targetId = erdNodeId(t.database, fk.references_schema ?? t.schema, fk.references_table);
+      if (!nodeIds.has(targetId) || targetId === t.id) return;
+      edges.push({
+        id: `${t.id}::fk::${i}::${targetId}`,
+        source: t.id,
+        target: targetId,
+        sourceHandle: (fk.columns && fk.columns[0]) || null,
+        targetHandle: (fk.references_columns && fk.references_columns[0]) || null,
+        type: 'smoothstep',
+        data: { columns: fk.columns || [], referencesColumns: fk.references_columns || [] },
+      });
+    });
+  });
+
+  return { nodes, edges };
 }
 
 export default useSourceErdDag;

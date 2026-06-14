@@ -45,6 +45,36 @@ const FLAT_DB = {
   ],
 };
 
+// A source whose `books` table has a foreign key onto `authors` (VIS-1014).
+const WITH_FK = {
+  name: 'lib',
+  databases: [
+    {
+      name: 'main',
+      schemas: [
+        {
+          name: 'public',
+          tables: [
+            { name: 'authors', columns: ['id', 'name'], foreign_keys: [] },
+            {
+              name: 'books',
+              columns: ['id', 'author_id'],
+              foreign_keys: [
+                {
+                  columns: ['author_id'],
+                  references_schema: 'public',
+                  references_table: 'authors',
+                  references_columns: ['id'],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 describe('flattenSourceTables', () => {
   test('flattens every table across schemas into one descriptor each', () => {
     const tables = flattenSourceTables(NESTED);
@@ -110,6 +140,45 @@ describe('useSourceErdDag', () => {
   test('yields no nodes for a source with no databases', () => {
     const { result } = renderHook(() => useSourceErdDag('empty', { databases: [] }));
     expect(result.current.nodes).toEqual([]);
+    expect(result.current.edges).toEqual([]);
+  });
+
+  test('draws a foreign-key edge between diagrammed tables (VIS-1014)', () => {
+    const { result } = renderHook(() => useSourceErdDag('lib', WITH_FK));
+    const { nodes, edges } = result.current;
+    expect(nodes).toHaveLength(2);
+    expect(edges).toHaveLength(1);
+    const [edge] = edges;
+    expect(edge.source).toBe(erdNodeId('main', 'public', 'books'));
+    expect(edge.target).toBe(erdNodeId('main', 'public', 'authors'));
+    expect(edge.sourceHandle).toBe('author_id');
+    expect(edge.targetHandle).toBe('id');
+  });
+
+  test('skips a foreign key whose referenced table is not in the ERD', () => {
+    const orphan = {
+      name: 'lib',
+      databases: [
+        {
+          name: 'main',
+          schemas: [
+            {
+              name: 'public',
+              tables: [
+                {
+                  name: 'books',
+                  columns: ['author_id'],
+                  foreign_keys: [
+                    { columns: ['author_id'], references_table: 'missing', references_columns: ['id'] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { result } = renderHook(() => useSourceErdDag('lib', orphan));
     expect(result.current.edges).toEqual([]);
   });
 });
