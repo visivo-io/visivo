@@ -219,11 +219,11 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
 });
 
 describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {
-  // `source` now has its own ERD Canvas lens (VIS-1005), so it's no longer a
-  // preview-less type — dimension/metric still exercise the fallback (source got
-  // an ERD canvas in VIS-1005, relation an ERD builder in VIS-1006).
-  test.each(['dimension', 'metric'])(
-    'a selected %s (no custom preview) locks onto the Lineage lens',
+  // Every first-class object type now has a canvas (source ERD VIS-1005,
+  // relation ERD VIS-1006, dimension/metric Field Lens VIS-1009, …), so the
+  // preview-less fallback is exercised by genuinely unregistered types.
+  test.each(['gadget', 'gizmo'])(
+    'a selected %s (no canvas descriptor) locks onto the Lineage lens',
     (type) => {
       seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
       render(<MiddlePane />);
@@ -233,16 +233,15 @@ describe('MiddlePane — universal Lineage fallback for preview-less objects (VI
     }
   );
 
-  test('the Preview option is muted for a preview-less type and cannot flip away from Lineage', () => {
-    // `dimension` has no canvas descriptor (source now does — VIS-1005).
-    seed({ workspaceActiveObject: { type: 'dimension', name: 'd' }, workspaceLens: 'preview' });
+  test('the Canvas option is muted for a preview-less type and cannot flip away from Lineage', () => {
+    seed({ workspaceActiveObject: { type: 'gadget', name: 'g' }, workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
 
-    // The Preview option is disabled — clicking it does not flip away from Lineage.
+    // The Canvas option is disabled — clicking it does not flip away from Lineage.
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-preview'));
-    expect(screen.getByTestId('workspace-middle-dimension-lineage')).toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-middle-dimension-preview')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-gadget-lineage')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-middle-gadget-preview')).not.toBeInTheDocument();
   });
 
   test('an unknown object type also defaults to the universal Lineage lens', () => {

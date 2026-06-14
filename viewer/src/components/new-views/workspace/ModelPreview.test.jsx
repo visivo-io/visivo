@@ -26,15 +26,19 @@ jest.mock('../../../hooks/useModelQueryJob', () => ({
   useModelQueryJob: () => mockJobState,
 }));
 
-const seed = (models = [], sources = [], defaults = null) => {
+const seed = (models = [], sources = [], defaults = null, fields = {}) => {
   act(() => {
     useStore.setState({
       models,
       sources,
       defaults,
+      dimensions: fields.dimensions || [],
+      metrics: fields.metrics || [],
       fetchModels: jest.fn(),
       fetchSources: jest.fn(),
       fetchDefaults: jest.fn(),
+      fetchDimensions: jest.fn(),
+      fetchMetrics: jest.fn(),
     });
   });
 };
@@ -125,5 +129,27 @@ describe('ModelPreview (VIS-801)', () => {
     seed([], []);
     render(<ModelPreview activeObject={{ type: 'model', name: 'missing' }} />);
     expect(screen.getByTestId('model-preview-empty')).toHaveTextContent(/not found/i);
+  });
+
+  test('renders the Semantic Fields strip with the model dimension + metric pills (VIS-1009)', () => {
+    seed(
+      [{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }],
+      [{ name: 'db' }],
+      null,
+      {
+        dimensions: [{ name: 'region', parentModel: 'orders', config: { expression: 'region' } }],
+        metrics: [{ name: 'revenue', parentModel: 'orders', config: { expression: 'SUM(r)' } }],
+      }
+    );
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    expect(screen.getByTestId('model-semantic-fields')).toBeInTheDocument();
+    expect(screen.getByTestId('model-field-pill-dimension-region')).toBeInTheDocument();
+    expect(screen.getByTestId('model-field-pill-metric-revenue')).toBeInTheDocument();
+  });
+
+  test('omits the Semantic Fields strip for a model that owns no fields', () => {
+    seed([{ name: 'orders', config: { sql: 'SELECT 1', source: '${ref(db)}' } }], [{ name: 'db' }]);
+    render(<ModelPreview activeObject={{ type: 'model', name: 'orders' }} />);
+    expect(screen.queryByTestId('model-semantic-fields')).not.toBeInTheDocument();
   });
 });

@@ -89,15 +89,40 @@ describe('objectCanvasRegistry', () => {
     expect(d.Component).toBeTruthy();
   });
 
+  test('dimension + metric have the CLI-only (serve) Field Lens canvas (VIS-1009)', () => {
+    ['dimension', 'metric'].forEach(type => {
+      const d = OBJECT_CANVAS_REGISTRY[type];
+      expect(d).toBeTruthy();
+      // serve-gated on sourcesMetadata (they evaluate against a source/model).
+      expect(d.availability).toBe('serve');
+      expect(d.availabilityKey).toBe('sourcesMetadata');
+      expect(d.defaultLens).toBe('preview');
+      // A single read-only Field Lens body (the "first lens" test asserts the
+      // preview/Canvas/readonly shape).
+      expect(d.lenses).toHaveLength(1);
+      expect(d.Component).toBeTruthy();
+      expect(typeof d.emptyHint).toBe('string');
+    });
+    // The two fields have DISTINCT bodies (DimensionInspector vs MetricPlayground).
+    expect(OBJECT_CANVAS_REGISTRY.dimension.Component).not.toBe(
+      OBJECT_CANVAS_REGISTRY.metric.Component
+    );
+  });
+
   test('getCanvasDescriptor / hasCanvas', () => {
     expect(getCanvasDescriptor('chart')).toBe(OBJECT_CANVAS_REGISTRY.chart);
     expect(getCanvasDescriptor('mystery')).toBeNull();
     // source (VIS-1005) + relation (VIS-1006) now resolve real descriptors.
     expect(getCanvasDescriptor('source')).toBe(OBJECT_CANVAS_REGISTRY.source);
+    // relation (VIS-1006) + dimension/metric (VIS-1009) now resolve descriptors.
     expect(getCanvasDescriptor('relation')).toBe(OBJECT_CANVAS_REGISTRY.relation);
+    expect(getCanvasDescriptor('dimension')).toBe(OBJECT_CANVAS_REGISTRY.dimension);
+    expect(getCanvasDescriptor('metric')).toBe(OBJECT_CANVAS_REGISTRY.metric);
     expect(hasCanvas('chart')).toBe(true);
     expect(hasCanvas('source')).toBe(true);
     expect(hasCanvas('relation')).toBe(true);
+    expect(hasCanvas('dimension')).toBe(true);
+    expect(hasCanvas('metric')).toBe(true);
   });
 
   test('source has the CLI-only (serve) ERD canvas gated on sourcesMetadata (VIS-1005)', () => {

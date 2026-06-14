@@ -39,9 +39,15 @@ const SourceErd = React.lazy(() => import('./source/SourceErd'));
 const ModelCanvas = React.lazy(() => import('./ModelPreview'));
 // RelationErdCanvas is the Relation canvas body (VIS-1006): a React-Flow ERD
 // builder where dragging column→column authors a relation. It's editable (it
-// writes relations via the relation store) and serve-only (it needs the live
-// project's models + relations from the CLI server).
+// writes relations via the relation store) and serve-only.
 const RelationErdCanvas = React.lazy(() => import('./relations/RelationErdCanvas'));
+// The Field Lens bodies (VIS-1009): a per-field studio for a dimension /
+// metric. Both `serve`-gated on `sourcesMetadata` because they evaluate the
+// field's expression against its parent model's source. DimensionInspector
+// profiles the dimension expression as a derived column; MetricPlayground
+// previews the metric as a synthetic insight with split-by + time-grain.
+const DimensionInspector = React.lazy(() => import('./fields/DimensionInspector'));
+const MetricPlayground = React.lazy(() => import('./fields/MetricPlayground'));
 
 const READONLY_PREVIEW = (label = 'Canvas') => ({ key: 'preview', label, kind: 'readonly' });
 
@@ -120,6 +126,26 @@ export const OBJECT_CANVAS_REGISTRY = {
     // column→column writes to the relation store, so it's editable.
     lenses: [{ key: 'preview', label: 'Canvas', kind: 'editable' }],
     emptyHint: 'No relation selected.',
+  },
+  // The semantic-layer fields get a focused per-field studio (VIS-1009) — the
+  // Field Lens — instead of muting the Canvas to lineage. Both are CLI-only
+  // (`serve`) because they evaluate the field's expression against a real
+  // source/model (gated on `sourcesMetadata`, mirroring the source ERD).
+  dimension: {
+    Component: DimensionInspector,
+    availability: 'serve',
+    availabilityKey: 'sourcesMetadata',
+    defaultLens: 'preview',
+    lenses: [READONLY_PREVIEW()],
+    emptyHint: 'No dimension selected.',
+  },
+  metric: {
+    Component: MetricPlayground,
+    availability: 'serve',
+    availabilityKey: 'sourcesMetadata',
+    defaultLens: 'preview',
+    lenses: [READONLY_PREVIEW()],
+    emptyHint: 'No metric selected.',
   },
 };
 
