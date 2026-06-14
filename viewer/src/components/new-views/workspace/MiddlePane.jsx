@@ -5,6 +5,11 @@ import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
 import ObjectCanvasFrame from './ObjectCanvasFrame';
 import useStore from '../../../stores/store';
+import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
+
+// The Semantic Layer page (VIS-1014) is heavy (React-Flow), so lazy-load it like
+// the per-object canvas bodies — it only loads when the page is opened.
+const SemanticLayerCanvas = React.lazy(() => import('./relations/SemanticLayerCanvas'));
 
 /**
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
@@ -60,6 +65,50 @@ const ProjectPane = ({ activeObject }) => {
     </section>
   );
 };
+
+// The project-wide Semantic Layer page (VIS-1014). A NEW multi-object surface
+// (NOT a per-object canvas): an ERD of every model with its metrics + dimensions
+// and all relations as edges. Reached from the Project view's "Semantic Layer"
+// button (which opens a `{ type: 'semantic-layer' }` workspace tab).
+const RelationIcon = getTypeIcon('relation');
+const RELATION_COLORS = getTypeColors('relation');
+
+const SemanticLayerPane = () => (
+  <section
+    data-testid="workspace-middle-semantic-layer"
+    className="flex h-full w-full flex-col bg-gray-50"
+  >
+    <SubBar
+      testId="workspace-subbar-semantic-layer"
+      left={
+        <div className="flex items-center gap-2 text-[12px]">
+          <span
+            className={`inline-flex h-5 w-5 items-center justify-center rounded ${RELATION_COLORS.bg} ${RELATION_COLORS.text}`}
+          >
+            {RelationIcon && <RelationIcon style={{ fontSize: 13 }} />}
+          </span>
+          <span className="font-semibold text-gray-900">Semantic Layer</span>
+          <span className="text-gray-400">·</span>
+          <span className="text-gray-500">models · metrics · dimensions · relations</span>
+        </div>
+      }
+    />
+    <div data-testid="workspace-middle-semantic-layer-canvas" className="flex flex-1 min-h-0">
+      <React.Suspense
+        fallback={
+          <div
+            data-testid="workspace-middle-semantic-layer-loading"
+            className="flex flex-1 items-center justify-center text-[13px] text-gray-400"
+          >
+            Loading semantic layer…
+          </div>
+        }
+      >
+        <SemanticLayerCanvas />
+      </React.Suspense>
+    </div>
+  </section>
+);
 
 const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   const name = activeObject?.name;
@@ -129,6 +178,9 @@ const MiddlePane = () => {
 
   if (obj.type === 'project') {
     return <ProjectPane activeObject={obj} />;
+  }
+  if (obj.type === 'semantic-layer') {
+    return <SemanticLayerPane />;
   }
   if (obj.type === 'dashboard') {
     return (

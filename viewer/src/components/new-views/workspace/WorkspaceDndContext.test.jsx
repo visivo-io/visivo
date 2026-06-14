@@ -357,6 +357,55 @@ describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
   });
 });
 
+describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {
+  test('a Library model dropped on the ERD canvas adds the model', () => {
+    const onAddModel = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'model', name: 'orders' } } },
+        over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('erd_add_model');
+    expect(onAddModel).toHaveBeenCalledWith('orders');
+    expect(emit).toHaveBeenCalledWith(
+      'relation_erd_add_model',
+      expect.objectContaining({ name: 'orders', accepted: true })
+    );
+  });
+
+  test('csvScriptModel + localMergeModel are accepted as models too', () => {
+    const onAddModel = jest.fn();
+    ['csvScriptModel', 'localMergeModel'].forEach(type => {
+      onAddModel.mockClear();
+      const result = routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'library', type, name: `m_${type}` } } },
+          over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+        },
+        {}
+      );
+      expect(result).toBe('erd_add_model');
+      expect(onAddModel).toHaveBeenCalledWith(`m_${type}`);
+    });
+  });
+
+  test('a non-model Library row dropped on the ERD is rejected (no add)', () => {
+    const onAddModel = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'c1' } } },
+        over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+      },
+      {}
+    );
+    expect(result).toBe('erd_add_model_rejected');
+    expect(onAddModel).not.toHaveBeenCalled();
+  });
+});
+
 describe('routeWorkspaceDragEnd — canvas D-3 branches (VIS-771)', () => {
   const canvasConfig = () => ({
     rows: [

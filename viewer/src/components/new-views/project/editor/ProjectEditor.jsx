@@ -55,6 +55,8 @@ const DASH_COLORS = getTypeColors('dashboard');
 const InsightIcon = getTypeIcon('insight');
 const ModelIcon = getTypeIcon('model');
 const SourceIcon = getTypeIcon('source');
+const RelationIcon = getTypeIcon('relation');
+const RELATION_COLORS = getTypeColors('relation');
 
 const HEALTH_ICONS = {
   dashboards: DashboardIcon,
@@ -271,6 +273,20 @@ const ProjectEditor = () => {
     emitWorkspaceEvent('project_editor_action', { kind: 'select_chrome' });
   }, [openWorkspaceTab, projectName]);
 
+  // VIS-1014: open the project-wide Semantic Layer page (an ERD of every model
+  // with its metrics/dimensions + all relations). A workspace tab keyed by the
+  // synthetic `semantic-layer` type, dispatched by MiddlePane.
+  const handleOpenSemanticLayer = useCallback(() => {
+    if (openWorkspaceTab) {
+      openWorkspaceTab({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    }
+    emitWorkspaceEvent('project_editor_action', { kind: 'open_semantic_layer' });
+  }, [openWorkspaceTab]);
+
   const handleToggle = useCallback(levelKey => {
     setCollapsed(prev => ({ ...prev, [levelKey]: !prev[levelKey] }));
   }, []);
@@ -383,6 +399,41 @@ const ProjectEditor = () => {
         </div>
 
         <HealthRow summary={summary} />
+
+        {/* VIS-1014: Semantic Layer entry — a project-wide ERD of every model
+            with its metrics + dimensions and all relations. Placed BEFORE the
+            dashboards section so the data layer reads ahead of the presentation
+            layer. Opens the multi-object Semantic Layer page. */}
+        <section
+          data-testid="project-semantic-layer-cta"
+          className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${RELATION_COLORS.bg} ${RELATION_COLORS.text}`}
+            >
+              {RelationIcon && <RelationIcon style={{ fontSize: 22 }} />}
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[14px] font-semibold text-gray-900">Semantic Layer</h2>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-gray-500">
+                Every model with its metrics and dimensions, plus the relations that join them.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            data-testid="project-open-semantic-layer"
+            onClick={e => {
+              e.stopPropagation();
+              handleOpenSemanticLayer();
+            }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-600"
+          >
+            Open Semantic Layer
+          </button>
+        </section>
 
         <div className="mt-8 grid grid-cols-1 gap-6 @[860px]/editor:grid-cols-12 @[860px]/editor:gap-8">
           <div className="@container/groups @[860px]/editor:col-span-8">

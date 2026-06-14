@@ -4,9 +4,27 @@ import { render, screen } from '@testing-library/react';
 import RelationErdCanvas from './RelationErdCanvas';
 import useStore from '../../../../stores/store';
 import { useRelationErdDag } from './useRelationErdDag';
+import { useModelColumns } from './useModelColumns';
 
 jest.mock('../../../../stores/store');
-jest.mock('./useRelationErdDag');
+// Mock only the dag HOOK; keep the real `relationModelNames` helper so the
+// component's scope derivation runs against the genuine ref-parsing logic.
+jest.mock('./useRelationErdDag', () => ({
+  ...jest.requireActual('./useRelationErdDag'),
+  useRelationErdDag: jest.fn(),
+}));
+jest.mock('./useModelColumns');
+
+// The canvas drop zone uses dnd-kit's useDroppable; stub it so the test doesn't
+// need a DndContext provider.
+jest.mock('@dnd-kit/core', () => ({
+  useDroppable: () => ({ setNodeRef: jest.fn() }),
+}));
+
+// ObjectCanvasFrame's dirty context — RelationErdCanvas calls useObjectCanvasDirty.
+jest.mock('../ObjectCanvasFrame', () => ({
+  useObjectCanvasDirty: () => ({ setDirty: jest.fn(), dirty: false }),
+}));
 
 // Mock reactflow the same way the lineage tests do: render each node + edge as a
 // testable div, and expose the connect callbacks so we don't need a real canvas.
@@ -47,17 +65,23 @@ jest.mock('reactflow/dist/style.css', () => ({}), { virtual: true });
 const mockFetchModels = jest.fn();
 const mockFetchRelations = jest.fn();
 
-function mockStore(models) {
+function mockStore(models, extra = {}) {
   const state = {
     models,
     relations: [],
     fetchModels: mockFetchModels,
     fetchRelations: mockFetchRelations,
+    getRelationByName: name => (state.relations || []).find(r => r.name === name),
+    workspaceActiveObject: null,
+    ...extra,
   };
   useStore.mockImplementation(selector => selector(state));
 }
 
 describe('RelationErdCanvas', () => {
+  beforeEach(() => {
+    useModelColumns.mockReturnValue({ columnsByModel: {}, loading: false });
+  });
   afterEach(() => jest.clearAllMocks());
 
   it('renders a model node card per model from the dag', () => {
@@ -134,5 +158,43 @@ describe('RelationErdCanvas', () => {
 
     render(<RelationErdCanvas />);
     expect(screen.getByTestId('relation-erd-empty')).toBeInTheDocument();
+  });
+
+  it('renders the @-mention add-model toolbar', () => {
+    mockStore([{ name: 'orders', columns: ['id'] }]);
+    useRelationErdDag.mockReturnValue({
+      nodes: [
+        {
+          id: 'erd-model-orders',
+          type: 'erdModelNode',
+          position: { x: 0, y: 0 },
+          data: { name: 'orders', columns: ['id'] },
+        },
+      ],
+      edges: [],
+    });
+
+    render(<RelationErdCanvas />);
+    expect(screen.getByTestId('relation-erd-toolbar')).toBeInTheDocument();
+    expect(screen.getByTestId('relation-erd-add-model-input')).toBeInTheDocument();
+  });
+
+  it('passes the active relation’s models as the dag scope', () => {
+    mockStore([{ name: 'orders' }, { name: 'users' }, { name: 'extra' }], {
+      relations: [
+        {
+          name: 'orders_to_users',
+          config: { condition: '${ref(orders).id} = ${ref(users).id}' },
+        },
+      ],
+      workspaceActiveObject: { type: 'relation', name: 'orders_to_users' },
+    });
+    useRelationErdDag.mockReturnValue({ nodes: [], edges: [] });
+
+    render(<RelationErdCanvas activeObject={{ type: 'relation', name: 'orders_to_users' }} />);
+
+    expect(useRelationErdDag).toHaveBeenCalledWith(
+      expect.objectContaining({ scopeModelNames: ['orders', 'users'] })
+    );
   });
 });

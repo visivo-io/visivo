@@ -258,6 +258,29 @@ export const routeWorkspaceDragEnd = (
     return 'ref_accepted';
   }
 
+  // ── Branch 2a: Library model → Relation ERD canvas (VIS-1006b) ───────────
+  // A Library MODEL row dropped on the Relation ERD's canvas droppable (which
+  // carries `{ kind: 'erd-canvas', onAddModel }`) adds that model to the ERD so
+  // the user can author a new relation against it. Only models are accepted; any
+  // other library type is a no-op (the ERD relates models, not charts/etc.).
+  if (dragData.source === 'library' && dropData.kind === 'erd-canvas') {
+    const isModel =
+      dragData.type === 'model' ||
+      dragData.type === 'csvScriptModel' ||
+      dragData.type === 'localMergeModel';
+    emit &&
+      emit('relation_erd_add_model', {
+        type: dragData.type,
+        name: dragData.name,
+        accepted: isModel,
+      });
+    if (!isModel) return 'erd_add_model_rejected';
+    if (typeof dropData.onAddModel === 'function') {
+      dropData.onAddModel(dragData.name);
+    }
+    return 'erd_add_model';
+  }
+
   // ── Branch 2b: Pivot field → pivot shelf (VIS-1008) ──────────────────────
   // The Table `build` lens (PivotPlayground) registers its field pills + its
   // Columns/Rows/Values shelves with this same shared context (dnd-kit contexts
