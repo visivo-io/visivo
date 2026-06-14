@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  ReactFlowProvider,
+  applyNodeChanges,
+  useReactFlow,
+} from 'reactflow';
 import { useDroppable } from '@dnd-kit/core';
 import 'reactflow/dist/style.css';
 import useStore from '../../../../stores/store';
@@ -9,25 +16,16 @@ import { useModelColumns } from './useModelColumns';
 import ErdModelNode from './ErdModelNode';
 import JoinOperatorPopover from './JoinOperatorPopover';
 import AddModelMention from './AddModelMention';
+import RelationPillEdge, { RELATION_EDGE_MARKER } from './RelationPillEdge';
+import { mergeById } from './erdNodeMerge';
+import ErdTidyButton from './ErdTidyButton';
 
 /**
  * RelationErdCanvas — the Relations ERD builder (VIS-1006).
  *
- * A React-Flow canvas (cloned from the lineage harness) that:
- *   - renders the relation's OWN models as column-listing cards (ErdModelNode),
- *     each card listing the model's REAL columns (hydrated via useModelColumns);
- *   - draws every existing relation as an edge between the two joined columns;
- *   - lets you SCOPE to a single relation's models, then ADD more models to the
- *     canvas (drag a Library model row, or @-mention search) to author a NEW
- *     relation by dragging column→column — onConnect(End) opens the
- *     JoinOperatorPopover pre-filled with the dragged endpoints.
- *
- * Mounted as the Relation type's Canvas lens body by ObjectCanvasFrame, so it
- * receives `{ activeObject, projectId, record, lens }` (it reads its data from
- * the store, so those are advisory). When the active object is a specific
- * relation, the ERD is SCOPED to that relation's two models (plus any the user
- * adds). When no relation is active (e.g. the Semantic Layer page reuses this
- * harness with `scopeAll`), it shows every model.
+ * Wrapped in a ReactFlowProvider (the custom edge + pill require it). Controlled
+ * draggable nodes with per-scope session persistence + a Tidy action. scopeKey =
+ * 'relation:'+activeRelationName (or 'relation:__all__' for scopeAll).
  *
  * data-testid: `relation-erd`.
  */
@@ -46,14 +44,7 @@ const ErdEmptyState = () => (
   </div>
 );
 
-/**
- * @param {object} props
- * @param {object} [props.activeObject] the active workspace object (advisory). When
- *   `{ type: 'relation', name }` the ERD scopes to that relation's models.
- * @param {boolean} [props.scopeAll] force show-all-models (the Semantic Layer
- *   page passes this to reuse the harness as a project-wide ERD).
- */
-const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
+const RelationErdCanvasInner = ({ activeObject = null, scopeAll = false }) => {
   const fetchModels = useStore(s => s.fetchModels);
   const fetchRelations = useStore(s => s.fetchRelations);
   const models = useStore(s => s.models);
@@ -61,40 +52,38 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
   const storeActiveObject = useStore(s => s.workspaceActiveObject);
   const { setDirty } = useObjectCanvasDirty();
 
-  // Models the user has added to the canvas on top of the scoped set (via the
-  // @-mention picker or a Library model drop).
+  const { fitView } = useReactFlow();
+
+  // Models the user added on top of the scoped set (@-mention / Library drop).
   const [extraModelNames, setExtraModelNames] = useState([]);
 
-  // Hydrate the two collections the ERD reads from.
   useEffect(() => {
     if ((!models || models.length === 0) && typeof fetchModels === 'function') fetchModels();
     if (typeof fetchRelations === 'function') fetchRelations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Resolve the active relation. Prefer the explicit prop, fall back to the
-  // store's active object (so this works whether the frame passes it or not).
   const active = activeObject || storeActiveObject;
-  const activeRelationName =
-    !scopeAll && active?.type === 'relation' ? active.name : null;
+  const activeRelationName = !scopeAll && active?.type === 'relation' ? active.name : null;
 
-  // The scoped model set for a single relation: parse its condition for the two
-  // joined model names (ref parsing via the shared helper — NOT SQL parsing).
+  // Per-scope session key: one relation, the scopeAll overview, or unscoped.
+  const scopeKey = scopeAll
+    ? 'relation:__all__'
+    : activeRelationName
+      ? `relation:${activeRelationName}`
+      : 'relation:__all__';
+
   const scopeModelNames = useMemo(() => {
-    if (scopeAll || !activeRelationName) return null; // null → show all models
+    if (scopeAll || !activeRelationName) return null;
     const relation = (relations || []).find(r => r.name === activeRelationName);
     const names = relationModelNames(relation);
     return names.length > 0 ? names : null;
   }, [scopeAll, activeRelationName, relations]);
 
-  // Reset the user-added models whenever the scope (relation / scopeAll) changes
-  // so a previous relation's additions don't bleed into another's canvas.
   useEffect(() => {
     setExtraModelNames([]);
   }, [activeRelationName, scopeAll]);
 
-  // The models actually on the canvas (scoped + extras) — drives both the column
-  // hydration and the @-mention exclude list.
   const visibleModelNames = useMemo(() => {
     if (!scopeModelNames) return (models || []).map(m => m.name);
     return [...new Set([...scopeModelNames, ...extraModelNames])];
@@ -102,18 +91,74 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
 
   const { columnsByModel } = useModelColumns(visibleModelNames);
 
-  const { nodes, edges } = useRelationErdDag({
+  // Session-persisted layout for this scope.
+  const erdLayout = useStore(s => s.getErdLayout(scopeKey));
+  const layoutVersion = useStore(s => s.workspaceErdLayoutVersion[scopeKey] || 0);
+  const setErdNodePositions = useStore(s => s.setErdNodePositions);
+  const clearErdLayout = useStore(s => s.clearErdLayout);
+  const savedPositions = erdLayout.nodes;
+  const savedWaypoints = erdLayout.waypoints;
+
+  const { nodes: seededNodes, edges: baseEdges } = useRelationErdDag({
     scopeModelNames,
     extraModelNames,
     columnsByModel,
+    savedPositions,
+    savedWaypoints,
+    layoutVersion,
   });
 
-  const nodeTypes = useMemo(() => ({ erdModelNode: ErdModelNode }), []);
+  const edges = useMemo(
+    () =>
+      baseEdges.map(edge => ({
+        ...edge,
+        markerEnd: RELATION_EDGE_MARKER,
+        data: { ...edge.data, scopeKey },
+      })),
+    [baseEdges, scopeKey]
+  );
 
-  // A canvas-wide droppable so a Library model row dropped anywhere on the ERD
-  // is added to the scoped set. The shell's single WorkspaceDndContext routes
-  // the drop (see its onDragEnd model-drop branch) to `onAddModel` via this
-  // zone's data payload.
+  const nodeTypes = useMemo(() => ({ erdModelNode: ErdModelNode }), []);
+  const edgeTypes = useMemo(() => ({ relationEdge: RelationPillEdge }), []);
+
+  // Controlled draggable nodes (mergeById §6). Reseed when the hook output, scope,
+  // or layoutVersion changes.
+  const [rfNodes, setRfNodes] = useState([]);
+  useEffect(() => {
+    setRfNodes(prev => mergeById(prev, seededNodes, savedPositions));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seededNodes, scopeKey, layoutVersion]);
+
+  const onNodesChange = useCallback(
+    changes => setRfNodes(ns => applyNodeChanges(changes, ns)),
+    []
+  );
+  const onNodeDragStop = useCallback(
+    (_event, node) => {
+      if (node && setErdNodePositions) {
+        setErdNodePositions(scopeKey, { [node.id]: node.position });
+      }
+    },
+    [setErdNodePositions, scopeKey]
+  );
+
+  // Imperative fit on mount (and on Tidy / scope change) — never after a drag-stop.
+  const fittedScopeRef = useRef(null);
+  useEffect(() => {
+    if (fittedScopeRef.current !== scopeKey && rfNodes.length > 0) {
+      fittedScopeRef.current = scopeKey;
+      fitView({ padding: 0.2, maxZoom: 1.2 });
+    }
+  }, [scopeKey, rfNodes.length, fitView]);
+
+  const handleTidy = useCallback(() => {
+    if (clearErdLayout) clearErdLayout(scopeKey);
+    setTimeout(() => fitView({ padding: 0.2, maxZoom: 1.2 }), 0);
+  }, [clearErdLayout, fitView, scopeKey]);
+
+  const hasEdits = Object.keys(savedPositions || {}).length > 0;
+
+  // Canvas-wide droppable (Library model drop adds a model to the scope).
   const addModelToCanvas = useCallback(name => {
     if (!name) return;
     setExtraModelNames(prev => (prev.includes(name) ? prev : [...prev, name]));
@@ -124,32 +169,23 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
     data: { kind: 'erd-canvas', onAddModel: addModelToCanvas },
   });
 
-  // The in-flight drag's start endpoint, captured on onConnectStart so we can
-  // build the popover's "From" side even if the drop lands on empty canvas.
   const connectStartRef = useRef(null);
-  const [popover, setPopover] = useState(null); // { x, y, initialA, initialB }
+  const [popover, setPopover] = useState(null);
 
-  // Map a reactflow node id back to its model name (id = `erd-model-<name>`).
   const modelNameForNode = useCallback(
     nodeId => {
-      const node = nodes.find(n => n.id === nodeId);
+      const node = rfNodes.find(n => n.id === nodeId);
       return node?.data?.name || null;
     },
-    [nodes]
+    [rfNodes]
   );
 
   const onConnectStart = useCallback((_event, params) => {
-    connectStartRef.current = params; // { nodeId, handleId, handleType }
+    connectStartRef.current = params;
   }, []);
 
-  // Reject same-model self-joins; everything else (column→column across models)
-  // is a candidate the popover will let the user refine.
-  const isValidConnection = useCallback(
-    connection => connection.source !== connection.target,
-    []
-  );
+  const isValidConnection = useCallback(connection => connection.source !== connection.target, []);
 
-  // A completed column→column drag: open the popover pre-filled with both ends.
   const onConnect = useCallback(
     connection => {
       const sourceModel = modelNameForNode(connection.source);
@@ -165,14 +201,11 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
     [modelNameForNode]
   );
 
-  // A drag that ends on empty canvas still opens the popover with the "From"
-  // side filled, so authoring isn't lost on a near-miss drop.
   const onConnectEnd = useCallback(
     event => {
       const start = connectStartRef.current;
       connectStartRef.current = null;
-      const targetIsPane =
-        event?.target?.classList?.contains?.('react-flow__pane') ?? false;
+      const targetIsPane = event?.target?.classList?.contains?.('react-flow__pane') ?? false;
       if (!targetIsPane || !start) return;
       const sourceModel = modelNameForNode(start.nodeId);
       if (!sourceModel) return;
@@ -197,16 +230,15 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
 
   const closePopover = useCallback(() => setPopover(null), []);
 
-  // Mark the canvas dirty while the author popover is open (an unsaved draft).
   useEffect(() => {
     if (setDirty) setDirty(Boolean(popover));
   }, [popover, setDirty]);
 
-  const hasModels = nodes.length > 0;
+  const hasModels = seededNodes.length > 0;
 
   return (
     <div data-testid="relation-erd" className="relative flex h-full w-full flex-col">
-      {/* Canvas toolbar: @-mention search to add a model to the ERD (VIS-1006b). */}
+      {/* Canvas toolbar: @-mention add-model + Tidy layout. */}
       <div
         data-testid="relation-erd-toolbar"
         className="absolute left-3 top-3 z-10 flex items-center gap-2"
@@ -217,6 +249,7 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
           onAdd={addModelToCanvas}
           testId="relation-erd-add-model"
         />
+        <ErdTidyButton onTidy={handleTidy} hasEdits={hasEdits} testId="relation-erd-reset-layout" />
         {scopeModelNames && (
           <span className="rounded-md bg-white/80 px-2 py-1 text-[11px] text-gray-500 shadow-sm">
             Scoped to this relation
@@ -229,18 +262,21 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
       ) : (
         <div ref={setDropRef} data-testid="relation-erd-dropzone" className="relative flex-1">
           <ReactFlow
-            nodes={nodes}
+            nodes={rfNodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodesDraggable
+            onNodesChange={onNodesChange}
+            onNodeDragStop={onNodeDragStop}
             onConnectStart={onConnectStart}
             onConnect={onConnect}
             onConnectEnd={onConnectEnd}
             isValidConnection={isValidConnection}
             minZoom={0.1}
             maxZoom={2}
-            fitView
+            fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
             style={{ background: '#f8fafc' }}
-            defaultEdgeOptions={{ animated: true }}
           >
             <Background color="#e2e8f0" gap={16} />
             <Controls />
@@ -263,5 +299,11 @@ const RelationErdCanvas = ({ activeObject = null, scopeAll = false }) => {
     </div>
   );
 };
+
+const RelationErdCanvas = props => (
+  <ReactFlowProvider>
+    <RelationErdCanvasInner {...props} />
+  </ReactFlowProvider>
+);
 
 export default RelationErdCanvas;

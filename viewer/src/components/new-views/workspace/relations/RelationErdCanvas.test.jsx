@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import RelationErdCanvas from './RelationErdCanvas';
 import useStore from '../../../../stores/store';
 import { useRelationErdDag } from './useRelationErdDag';
@@ -26,27 +26,37 @@ jest.mock('../ObjectCanvasFrame', () => ({
   useObjectCanvasDirty: () => ({ setDirty: jest.fn(), dirty: false }),
 }));
 
-// Mock reactflow the same way the lineage tests do: render each node + edge as a
-// testable div, and expose the connect callbacks so we don't need a real canvas.
+// Capture the props handed to <ReactFlow> so tests can drive onNodesChange /
+// onNodeDragStop and assert nodesDraggable / edgeTypes wiring.
+const rfProps = { current: null };
+const mockFitView = jest.fn();
+
+// Mock reactflow: render each node + edge as a testable div, expose the connect
+// callbacks, and provide a passthrough ReactFlowProvider + applyNodeChanges +
+// useReactFlow so the controlled-drag + imperative-fit wiring runs.
 jest.mock('reactflow', () => {
-  const MockReactFlow = ({ nodes, edges, nodeTypes, children }) => (
-    <div data-testid="react-flow">
-      {nodes.map(node => {
-        const NodeComp = nodeTypes?.[node.type];
-        return (
-          <div key={node.id} data-testid={`rf-node-${node.id}`}>
-            {NodeComp ? <NodeComp data={node.data} selected={false} /> : node.data?.name}
+  const MockReactFlow = props => {
+    rfProps.current = props;
+    const { nodes, edges, nodeTypes, children } = props;
+    return (
+      <div data-testid="react-flow">
+        {nodes.map(node => {
+          const NodeComp = nodeTypes?.[node.type];
+          return (
+            <div key={node.id} data-testid={`rf-node-${node.id}`}>
+              {NodeComp ? <NodeComp data={node.data} selected={false} /> : node.data?.name}
+            </div>
+          );
+        })}
+        {edges.map(edge => (
+          <div key={edge.id} data-testid={`rf-edge-${edge.id}`}>
+            {edge.source} -&gt; {edge.target}
           </div>
-        );
-      })}
-      {edges.map(edge => (
-        <div key={edge.id} data-testid={`rf-edge-${edge.id}`}>
-          {edge.source} -&gt; {edge.target}
-        </div>
-      ))}
-      {children}
-    </div>
-  );
+        ))}
+        {children}
+      </div>
+    );
+  };
   MockReactFlow.displayName = 'MockReactFlow';
   return {
     __esModule: true,
@@ -55,7 +65,17 @@ jest.mock('reactflow', () => {
     Controls: () => <div data-testid="controls" />,
     MiniMap: () => <div data-testid="minimap" />,
     Handle: () => null,
-    Position: { Left: 'left', Right: 'right' },
+    Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
+    MarkerType: { ArrowClosed: 'arrowclosed', Arrow: 'arrow' },
+    ReactFlowProvider: ({ children }) => <div data-testid="rf-provider">{children}</div>,
+    applyNodeChanges: (changes, nodes) => nodes,
+    useReactFlow: () => ({ fitView: mockFitView, screenToFlowPosition: p => p }),
+    // RelationPillEdge module-level imports (it's required transitively).
+    BaseEdge: () => null,
+    EdgeLabelRenderer: ({ children }) => children,
+    getBezierPath: () => ['M0,0 L1,1', 0, 0],
+    useStore: () => new Map(),
+    useStoreApi: () => ({ getState: () => ({ nodeInternals: new Map() }) }),
   };
 });
 
@@ -64,6 +84,8 @@ jest.mock('reactflow/dist/style.css', () => ({}), { virtual: true });
 
 const mockFetchModels = jest.fn();
 const mockFetchRelations = jest.fn();
+const mockSetErdNodePositions = jest.fn();
+const mockClearErdLayout = jest.fn();
 
 function mockStore(models, extra = {}) {
   const state = {
@@ -73,6 +95,11 @@ function mockStore(models, extra = {}) {
     fetchRelations: mockFetchRelations,
     getRelationByName: name => (state.relations || []).find(r => r.name === name),
     workspaceActiveObject: null,
+    // Session-only ERD layout slice.
+    getErdLayout: () => ({ nodes: {}, waypoints: {} }),
+    workspaceErdLayoutVersion: {},
+    setErdNodePositions: mockSetErdNodePositions,
+    clearErdLayout: mockClearErdLayout,
     ...extra,
   };
   useStore.mockImplementation(selector => selector(state));
@@ -196,5 +223,64 @@ describe('RelationErdCanvas', () => {
     expect(useRelationErdDag).toHaveBeenCalledWith(
       expect.objectContaining({ scopeModelNames: ['orders', 'users'] })
     );
+  });
+
+  // ---- Step 5 wiring: controlled drag + provider + edgeTypes + Tidy + fitView ----
+
+  const oneModel = () => {
+    mockStore([{ name: 'orders', columns: ['id'] }]);
+    useRelationErdDag.mockReturnValue({
+      nodes: [
+        {
+          id: 'erd-model-orders',
+          type: 'erdModelNode',
+          position: { x: 0, y: 0 },
+          data: { name: 'orders', columns: ['id'] },
+        },
+      ],
+      edges: [],
+    });
+  };
+
+  it('wraps the canvas in a ReactFlowProvider and registers the relationEdge type', () => {
+    oneModel();
+    render(<RelationErdCanvas />);
+    expect(screen.getByTestId('rf-provider')).toBeInTheDocument();
+    expect(rfProps.current.edgeTypes).toHaveProperty('relationEdge');
+    expect(rfProps.current.nodesDraggable).toBe(true);
+    expect(typeof rfProps.current.onNodesChange).toBe('function');
+    expect(typeof rfProps.current.onNodeDragStop).toBe('function');
+  });
+
+  it('onNodeDragStop persists the moved node via setErdNodePositions(scope, ...)', () => {
+    oneModel();
+    render(<RelationErdCanvas />);
+    // The mount fit already fired; clear it so we can assert the DRAG-STOP alone
+    // does NOT trigger fitView (the hard §6 test — fit must not fight the drag).
+    mockFitView.mockClear();
+    act(() => {
+      rfProps.current.onNodeDragStop({}, { id: 'erd-model-orders', position: { x: 42, y: 7 } });
+    });
+    expect(mockSetErdNodePositions).toHaveBeenCalledWith('relation:__all__', {
+      'erd-model-orders': { x: 42, y: 7 },
+    });
+    // fitView is NOT called as a result of a drag-stop.
+    expect(mockFitView).not.toHaveBeenCalled();
+  });
+
+  it('the Tidy button clears the scope layout and re-fits', () => {
+    jest.useFakeTimers();
+    oneModel();
+    render(<RelationErdCanvas />);
+    const tidy = screen.getByTestId('relation-erd-reset-layout');
+    act(() => {
+      tidy.click();
+    });
+    expect(mockClearErdLayout).toHaveBeenCalledWith('relation:__all__');
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    expect(mockFitView).toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });
