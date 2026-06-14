@@ -107,10 +107,13 @@ const TablePreview = ({ activeObject, projectId }) => {
   }
 
   return (
-    <div data-testid="table-preview" className="flex flex-1 min-h-0 flex-col bg-white">
+    <div data-testid="table-preview" className="flex flex-1 min-h-0 min-w-0 flex-col bg-white">
       <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
-      <div className="flex-1 min-h-0 overflow-auto p-4">
-        <div className="w-full">
+      {/* min-w-0 lets this flex child shrink below the table's intrinsic width so
+          the inner overflow-auto scrolls a wide table instead of overflowing the
+          canvas; w-full max-w-full keeps the body within the pane. */}
+      <div className="flex-1 min-h-0 min-w-0 overflow-auto p-4">
+        <div className="w-full max-w-full min-w-0">
           <Table table={tableConfig} projectId={projectId} shouldLoad={true} height={600} />
         </div>
       </div>

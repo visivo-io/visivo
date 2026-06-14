@@ -209,7 +209,7 @@ const PerObjectPane = ({ activeObject, projectId }) => {
       ) : (
         <div
           data-testid={`workspace-middle-${type}-preview`}
-          className="flex flex-1 min-h-0"
+          className="flex flex-1 min-h-0 min-w-0"
         >
           <PreviewComponent activeObject={activeObject} projectId={projectId} />
         </div>
