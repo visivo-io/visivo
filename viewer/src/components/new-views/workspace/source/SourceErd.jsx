@@ -3,7 +3,11 @@ import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider } from 'rea
 import 'reactflow/dist/style.css';
 import { PiGraph } from 'react-icons/pi';
 import { isAvailable } from '../../../../contexts/URLContext';
-import { fetchSourceMetadata } from '../../../../api/explorer';
+import {
+  fetchSourceSchemaJobs,
+  fetchSourceTables,
+  fetchTableColumns,
+} from '../../../../api/sourceSchemaJobs';
 import { getTypeColors } from '../../common/objectTypeConfigs';
 import { computeLayout } from '../../lineage/useLineageDag';
 import { useSourceErdDag } from './useSourceErdDag';
@@ -14,17 +18,20 @@ import ErdTableContextMenu from './ErdTableContextMenu';
  * SourceErd — the Source object's Canvas lens (VIS-1005).
  *
  * A React-Flow ERD of every table in the source (one node per table, flattened
- * across databases/schemas). v1 has no edges — foreign-key edges land in
- * VIS-1014. Right-clicking a table opens `ErdTableContextMenu` ("Create a model
- * to query this table" / "Copy qualified name").
+ * across databases/schemas). Right-clicking a table opens `ErdTableContextMenu`
+ * ("Create a model to query this table" / "Copy qualified name").
  *
- * Data comes from the server-only `sourcesMetadata` introspection feed, the same
- * one `useSourceOutline` reads. The component is `serve`-gated by the frame's
- * availability, but its OWN fetch also no-ops on dist (`isAvailable` false) so a
- * direct mount degrades cleanly instead of dead-fetching.
+ * Data comes from the SAME BACKEND-CACHED schema feed `useSourceOutline` and the
+ * Explorer's SourceBrowser read — NOT the live introspect (which returns zero
+ * databases for file sources like duckdb, leaving the ERD empty). The cached
+ * tables + columns are shaped into the `{ databases: [{ name, tables }] }` entry
+ * `useSourceErdDag` flattens, so its FK-edge logic stays intact (the cached feed
+ * carries no foreign_keys yet → zero edges, which is correct). The component is
+ * `serve`-gated by the frame's availability, but its OWN fetch also no-ops on
+ * dist (`isAvailable` false) so a direct mount degrades cleanly.
  *
- * States (mirroring useSourceOutline): unavailable · loading · connection-failed
- * · empty · ready. None of them ever leaves an infinite spinner.
+ * States: unavailable · loading · no-cache (Generate from the Data tab) · empty
+ * · ready. None of them ever leaves an infinite spinner.
  */
 
 const NODE_BASE_HEIGHT = 44; // header
@@ -54,7 +61,7 @@ const SourceErdCanvas = ({ activeObject }) => {
   const sourceName = activeObject?.name || null;
   const available = useMemo(() => {
     try {
-      return isAvailable('sourcesMetadata');
+      return isAvailable('sourceSchemaJobsList');
     } catch {
       // No global URL config (e.g. a bare unit test) → behave as available so
       // the canvas renders. The fetch is mocked in that context.
@@ -84,12 +91,45 @@ const SourceErdCanvas = ({ activeObject }) => {
     setError(null);
     (async () => {
       try {
-        const data = await fetchSourceMetadata();
+        // Authoritative cached-schema check (same feed SourceBrowser uses). No
+        // cache → 'missing' → the "Generate from the Data tab" empty state.
+        const jobs = await fetchSourceSchemaJobs();
         if (cancelledRef.current) return;
-        const found = (data?.sources || []).find(s => s.name === sourceName) || null;
-        setEntry(found);
-        setStatus(found?.status || (found ? 'connected' : 'missing'));
-        setError(found?.error || null);
+        const job = (jobs || []).find(j => (j.source_name || j.name) === sourceName);
+        if (!job || !job.has_cached_schema) {
+          setEntry(null);
+          setStatus('missing');
+          return;
+        }
+
+        // Load the flat cached tables, then each table's columns. Shape them into
+        // the `{ databases: [{ name, tables }] }` entry useSourceErdDag flattens.
+        const tables = await fetchSourceTables(sourceName);
+        if (cancelledRef.current) return;
+        const tableEntries = await Promise.all(
+          (tables || []).map(async t => {
+            const name = typeof t === 'string' ? t : t.name;
+            let columns = [];
+            try {
+              const cols = await fetchTableColumns(sourceName, name);
+              columns = (cols || []).map(c =>
+                typeof c === 'string' ? { name: c } : { name: c.name, type: c.type }
+              );
+            } catch {
+              columns = [];
+            }
+            return { name, columns };
+          })
+        );
+        if (cancelledRef.current) return;
+        // Single pseudo-database named after the source — the cached feed is flat
+        // (no db/schema layer), matching how useSourceOutline renders it.
+        setEntry({
+          name: sourceName,
+          status: 'connected',
+          databases: [{ name: sourceName, tables: tableEntries }],
+        });
+        setStatus('connected');
       } catch (e) {
         if (cancelledRef.current) return;
         setEntry(null);
@@ -172,7 +212,7 @@ const SourceErdCanvas = ({ activeObject }) => {
         title="No tables to show"
         body={
           error ||
-          "This source hasn't been introspected yet, or it couldn't be reached. Generate its schema from the Data tab to see its tables."
+          "This source's schema hasn't been generated yet. Generate its schema from the Data tab to see its tables."
         }
       />
     );
@@ -182,7 +222,7 @@ const SourceErdCanvas = ({ activeObject }) => {
       <FrameMessage
         testId="source-erd-connection-failed"
         title="Couldn't load tables"
-        body={error || 'The source could not be introspected.'}
+        body={error || "The source's cached schema could not be loaded."}
       />
     );
   }

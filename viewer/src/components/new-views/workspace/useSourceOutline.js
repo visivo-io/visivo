@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useStore from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
-import { fetchSourceMetadata } from '../../../api/explorer';
 import {
   fetchSourceSchemaJobs,
   generateSourceSchema,
@@ -13,29 +12,35 @@ import {
 /**
  * useSourceOutline — VIS-1004 data feed for the right-rail source outline.
  *
- * Mirrors the Explorer's backend + frontend (SourceBrowser) but normalises the
- * two divergent shapes into ONE nested db → schema → table → column tree:
+ * Reads the BACKEND-CACHED schema (the same `source-schema-jobs` feed the
+ * Explorer's SourceBrowser uses), NOT the live introspect. The live introspect
+ * (`/api/project/sources_metadata/`) returns zero databases for file sources
+ * like duckdb, which is what left the Data tab showing "0 DBS / No tables".
  *
- *   - **Nested (primary):** `fetchSourceMetadata()` → the legacy introspect
- *     path is the only feed carrying db/schema. Shape:
- *       { sources: [{ name, type, status, databases:[
- *           { name, schemas:[{ name, tables:[{ name, columns:[colName,…] }] }],
- *                   tables:[{ name, columns:[colName,…] }] }  // schemas|tables
- *       ] }] }
- *     Columns here are bare strings (no type info).
- *   - **Flat (fallback):** the cached `source-schema-jobs` path
- *     (`fetchSourceTables` / `fetchTableColumns`) is source → table → column
- *     with NO db/schema and column objects `{ name, type }`. Used to enrich
- *     column types and as the cold-source generate target.
+ * Mirrors SourceBrowser exactly:
+ *   1. List sources via `fetchSourceSchemaJobs()` → read this source's
+ *      `has_cached_schema` flag (AUTHORITATIVE — decides warm vs cold).
+ *   2. WARM (cached): load the flat cached tables via `fetchSourceTables`, then
+ *      lazy-load each table's columns via `fetchTableColumns` on expand.
+ *   3. COLD (no cache): expose `isCold` so the panel shows the "Generate schema"
+ *      prompt. `generateSchema` runs `generateSourceSchema` + polls
+ *      `fetchSchemaGenerationStatus`, then loads the now-cached flat tables.
  *
- * Both normalise to nodes of the form:
- *   { key, kind: 'database'|'schema'|'table'|'column', name, type?, children? }
- * keyed with the disjoint `source-outline::…` grammar so the dashboard outline
- * consumers never collide.
+ * The cached feed is flat (source → table → column, NO db/schema layer). We
+ * synthesise a single pseudo-database node so the panel's recursive renderer
+ * (db → table → column) stays uniform — the same shape SourceBrowser renders
+ * (source → table → column) one level deeper.
+ *
+ * Nodes are keyed with the disjoint `source-outline::…` grammar so the dashboard
+ * outline consumers never collide. Columns lazy-load into `flatColumns[tableKey]`.
  *
  * `isAvailable` gating means this degrades cleanly in dist/cloud (every source
  * endpoint URL is null there) — `available` flips false and the panel renders
  * the "available under `visivo serve`" empty state instead of dead-ending.
+ *
+ * The loaded result (tables + cached flag) is cached in the per-session
+ * `workspaceSourceOutlineDataCache` store slice so re-selecting a source is
+ * instant — NO re-fetch on re-select.
  */
 
 const KEY_ROOT = 'source-outline';
@@ -50,78 +55,11 @@ export const tableKey = (src, db, schema, table) =>
 export const columnKey = (parentTableKey, col) => `${parentTableKey}::col::${col}`;
 
 /**
- * Normalise the nested `fetchSourceMetadata` entry for one source into the
- * shared node tree. Returns `{ nodes, status, error }`.
+ * Build the flat cached-schema tree (no db/schema). Synthesises a single
+ * pseudo-database node (named after the source) so the renderer stays uniform.
+ * Columns are `null` (lazy-loaded on expand via loadFlatColumns).
  */
-const normalizeNested = (sourceName, entry) => {
-  if (!entry) return { nodes: [], status: 'missing', error: null };
-  const databases = Array.isArray(entry.databases) ? entry.databases : [];
-
-  const databaseNodes = databases.map(db => {
-    const dKey = dbKey(sourceName, db.name);
-
-    const buildTableNode = (table, schemaName) => {
-      const tKey = tableKey(sourceName, db.name, schemaName, table.name);
-      const columns = Array.isArray(table.columns) ? table.columns : [];
-      return {
-        key: tKey,
-        kind: 'table',
-        name: table.name,
-        children: columns.map(col => {
-          // Nested columns are bare strings; flat columns are { name, type }.
-          const colName = typeof col === 'string' ? col : col?.name;
-          const colType = typeof col === 'string' ? null : col?.type || null;
-          return {
-            key: columnKey(tKey, colName),
-            kind: 'column',
-            name: colName,
-            type: colType,
-          };
-        }),
-      };
-    };
-
-    if (Array.isArray(db.schemas)) {
-      return {
-        key: dKey,
-        kind: 'database',
-        name: db.name,
-        children: db.schemas.map(schema => {
-          const sKey = schemaKey(sourceName, db.name, schema.name);
-          const tables = Array.isArray(schema.tables) ? schema.tables : [];
-          return {
-            key: sKey,
-            kind: 'schema',
-            name: schema.name,
-            children: tables.map(t => buildTableNode(t, schema.name)),
-          };
-        }),
-      };
-    }
-
-    const tables = Array.isArray(db.tables) ? db.tables : [];
-    return {
-      key: dKey,
-      kind: 'database',
-      name: db.name,
-      // No schemas → tables hang directly off the database.
-      children: tables.map(t => buildTableNode(t, null)),
-      error: db.error || null,
-    };
-  });
-
-  return {
-    nodes: databaseNodes,
-    status: entry.status || 'connected',
-    error: entry.error || null,
-  };
-};
-
-/**
- * Build a flat-fallback tree (no db/schema) from the cached schema-jobs path.
- * Synthesises a single pseudo-database node so the renderer stays uniform.
- */
-const buildFlatTree = (sourceName, tables) => {
+const buildCachedTree = (sourceName, tables) => {
   const dKey = dbKey(sourceName, sourceName);
   return [
     {
@@ -131,12 +69,17 @@ const buildFlatTree = (sourceName, tables) => {
       flat: true,
       children: (tables || []).map(table => {
         const name = typeof table === 'string' ? table : table.name;
+        const colCount =
+          typeof table === 'object' && table != null && table.column_count != null
+            ? table.column_count
+            : null;
         const tKey = tableKey(sourceName, sourceName, null, name);
         return {
           key: tKey,
           kind: 'table',
           name,
-          // Columns lazy-load on expand for the flat path (see loadFlatColumns).
+          columnCount: colCount,
+          // Columns lazy-load on expand for the cached path (see loadFlatColumns).
           children: null,
         };
       }),
@@ -145,29 +88,26 @@ const buildFlatTree = (sourceName, tables) => {
 };
 
 export default function useSourceOutline(sourceName) {
-  // The nested feed is the source of truth; `null` until first load completes.
-  const [nestedNodes, setNestedNodes] = useState(null);
-  const [status, setStatus] = useState('idle'); // idle | loading | connected | connection_failed | missing | error
+  // The cached tree is the source of truth; `null` until first load completes.
+  const [nodes, setNodes] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [error, setError] = useState(null);
 
-  // Flat-fallback state (cold source generate + lazy column loads).
-  const [flatNodes, setFlatNodes] = useState(null);
-  const [flatColumns, setFlatColumns] = useState({}); // tableKey -> column nodes
+  // Per-table lazy column loads, keyed by tableKey -> column nodes (or { error }).
+  const [flatColumns, setFlatColumns] = useState({});
   const [generating, setGenerating] = useState(null); // { status, progress, message } | null
   // Authoritative "does the API have a cached schema for this source" signal
   // (from the schema-jobs list, the same one SourceBrowser uses). null = unknown.
-  // This — NOT the live-introspect result — decides whether to offer "Generate".
+  // This — NOT a live-introspect result — decides whether to offer "Generate".
   const [hasCachedSchema, setHasCachedSchema] = useState(null);
   const cancelledRef = useRef(false);
 
-  const available = useMemo(
-    () => isAvailable('sourcesMetadata') || isAvailable('sourceSchemaJobsList'),
-    []
-  );
-  const nestedAvailable = useMemo(() => isAvailable('sourcesMetadata'), []);
+  const available = useMemo(() => isAvailable('sourceSchemaJobsList'), []);
 
-  // Read the authoritative cached-schema flag from the cheap schema-jobs list.
-  // Returns true | false | null (unknown / endpoint unavailable). Never throws.
+  /**
+   * Read the authoritative cached-schema flag from the cheap schema-jobs list.
+   * Returns true | false | null (unknown / endpoint unavailable). Never throws.
+   */
   const readHasCachedSchema = useCallback(async () => {
     if (!isAvailable('sourceSchemaJobsList')) return null;
     try {
@@ -179,76 +119,80 @@ export default function useSourceOutline(sourceName) {
     }
   }, [sourceName]);
 
-  const loadNested = useCallback(async () => {
-    if (!sourceName || !nestedAvailable) return;
+  /**
+   * Load the cached flat tables and cache the result. Mirrors
+   * SourceBrowser.toggleNode(sourceKey, () => fetchSourceTables(src)).
+   */
+  const loadCached = useCallback(async () => {
+    if (!sourceName || !available) return;
     setStatus('loading');
     setError(null);
     try {
-      // Cheap, authoritative cold check first: only offer "Generate" when the API
-      // genuinely has no cached schema (not merely because a live introspect was
-      // empty/failed) — VIS-1004 caching fix.
       const cachedFlag = await readHasCachedSchema();
       if (cancelledRef.current) return;
       setHasCachedSchema(cachedFlag);
 
-      const data = await fetchSourceMetadata();
+      // Only fetch tables when the API confirms a cached schema exists; a cold
+      // source resolves to the Generate prompt without a wasted 404 round-trip.
+      if (cachedFlag !== true) {
+        setNodes(null);
+        setStatus('ready');
+        useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
+          nodes: null,
+          tables: null,
+          hasCachedSchema: cachedFlag,
+        });
+        return;
+      }
+
+      const tables = await fetchSourceTables(sourceName);
       if (cancelledRef.current) return;
-      const entry = (data?.sources || []).find(s => s.name === sourceName);
-      const { nodes, status: entryStatus, error: entryError } = normalizeNested(
-        sourceName,
-        entry
-      );
-      setNestedNodes(nodes);
-      setStatus(entryStatus);
-      setError(entryError);
-      // Cache the (expensive) introspection + the cached-schema flag so
-      // re-selecting this source is instant — no re-introspection.
+      const tree = buildCachedTree(sourceName, tables);
+      setNodes(tree);
+      setStatus('ready');
+      // Cache the cached-tables tree + flag so re-selecting this source is
+      // instant — no re-fetch (VIS-1004 caching fix).
       useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
-        nodes,
-        status: entryStatus,
-        error: entryError,
+        nodes: tree,
+        tables,
         hasCachedSchema: cachedFlag,
       });
     } catch (e) {
       if (cancelledRef.current) return;
       setStatus('error');
       setError(e.message);
-      setNestedNodes([]);
+      setNodes([]);
     }
-  }, [sourceName, nestedAvailable, readHasCachedSchema]);
+  }, [sourceName, available, readHasCachedSchema]);
 
   useEffect(() => {
     cancelledRef.current = false;
-    // Reset transient flat-fallback state per source (switching never bleeds it).
-    setFlatNodes(null);
+    // Reset transient per-source state (switching never bleeds it).
     setFlatColumns({});
     setGenerating(null);
     setError(null);
-    // Hydrate from the per-session cache if we've already introspected this
-    // source — avoids a costly re-introspect on every (re)select. Cache miss →
-    // reset to loading and fetch once.
+    // Hydrate from the per-session cache if we've already loaded this source —
+    // avoids a re-fetch on every (re)select. Cache miss → fetch once.
     const cached = useStore.getState().workspaceSourceOutlineDataCache?.[sourceName];
     if (cached) {
-      setNestedNodes(cached.nodes);
-      setStatus(cached.status);
-      setError(cached.error || null);
+      setNodes(cached.nodes ?? null);
+      setStatus('ready');
       setHasCachedSchema(cached.hasCachedSchema ?? null);
     } else {
-      setNestedNodes(null);
+      setNodes(null);
       setStatus('idle');
       setHasCachedSchema(null);
-      loadNested();
+      loadCached();
     }
     return () => {
       cancelledRef.current = true;
     };
-  }, [sourceName, loadNested]);
+  }, [sourceName, loadCached]);
 
   /**
    * Cold-source "Generate schema" — lifted from SourceBrowser.handleGenerateSchema.
    * Triggers the schema-jobs generate run, polls to completion, then loads the
-   * flat tables as a fallback feed (the nested feed remains primary when it can
-   * connect; this fills the tree for sources the nested introspect can't reach).
+   * now-cached flat tables.
    */
   const generateSchema = useCallback(async () => {
     if (!sourceName || !isAvailable('sourceSchemaJobCreate')) return;
@@ -272,10 +216,16 @@ export default function useSourceOutline(sourceName) {
         if (st.status === 'completed') {
           const tables = await fetchSourceTables(sourceName);
           if (cancelledRef.current) return;
-          setFlatNodes(buildFlatTree(sourceName, tables));
+          const tree = buildCachedTree(sourceName, tables);
+          setNodes(tree);
+          setHasCachedSchema(true);
+          setStatus('ready');
           setGenerating(null);
-          // Re-attempt the nested feed; it may now connect/cache.
-          loadNested();
+          useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, {
+            nodes: tree,
+            tables,
+            hasCachedSchema: true,
+          });
           return;
         }
         if (st.status === 'failed') {
@@ -289,11 +239,11 @@ export default function useSourceOutline(sourceName) {
       setGenerating(null);
       setError(e.message);
     }
-  }, [sourceName, loadNested]);
+  }, [sourceName]);
 
   /**
-   * Lazy-load columns for a flat-fallback table on expand (the flat path has no
-   * eager column data). No-op for the nested feed, whose columns are eager.
+   * Lazy-load columns for a cached table on expand (the cached path carries no
+   * eager column data). Mirrors SourceBrowser's per-table fetchTableColumns.
    */
   const loadFlatColumns = useCallback(
     async tKey => {
@@ -325,44 +275,25 @@ export default function useSourceOutline(sourceName) {
     [sourceName, flatColumns]
   );
 
-  // Prefer the nested tree; fall back to the generated flat tree. A source is
-  // "cold" (offer Generate) when the nested feed connected with zero databases
-  // AND no flat tree has been generated yet.
-  const nodes = useMemo(() => {
-    if (nestedNodes && nestedNodes.length > 0) return nestedNodes;
-    if (flatNodes && flatNodes.length > 0) return flatNodes;
-    if (nestedNodes && nestedNodes.length === 0) return [];
-    return null;
-  }, [nestedNodes, flatNodes]);
-
+  // A source is "cold" (offer Generate) when the API authoritatively reports no
+  // cached schema. Only `hasCachedSchema === false` is cold — never merely an
+  // empty/failed read (VIS-1004 fix). Generation in-flight is not cold.
   const isCold = useMemo(() => {
     if (!available) return false;
     if (generating) return false;
-    if (flatNodes && flatNodes.length > 0) return false;
-    // AUTHORITATIVE: the API tells us whether a schema is cached. Only offer
-    // "Generate" when it genuinely has none — never just because a live
-    // introspect came back empty/failed while a cache exists (VIS-1004 fix).
-    if (hasCachedSchema === true) return false;
-    if (hasCachedSchema === false) return true;
-    // Unknown (schema-jobs endpoint unavailable) → fall back to the introspect
-    // heuristic so non-schema-jobs environments still surface a cold source.
-    return (
-      status === 'connection_failed' ||
-      status === 'missing' ||
-      (nestedNodes != null && nestedNodes.length === 0)
-    );
-  }, [available, generating, flatNodes, hasCachedSchema, status, nestedNodes]);
+    if (nodes && nodes.length > 0) return false;
+    return hasCachedSchema === false;
+  }, [available, generating, nodes, hasCachedSchema]);
 
-  // Force-refresh: evict the per-session cache for this source, then re-fetch
-  // (the only path that pays for a fresh introspect once the cache is warm).
+  // Force-refresh: evict the per-session cache for this source, then re-fetch.
   const reload = useCallback(() => {
     useStore.getState().setWorkspaceSourceOutlineData?.(sourceName, null);
-    loadNested();
-  }, [sourceName, loadNested]);
+    loadCached();
+  }, [sourceName, loadCached]);
 
   return {
     available,
-    loading: status === 'loading' && nestedNodes == null,
+    loading: status === 'loading' && nodes == null,
     nodes,
     status,
     error,

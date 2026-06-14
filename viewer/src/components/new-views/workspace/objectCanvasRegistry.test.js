@@ -140,10 +140,12 @@ describe('objectCanvasRegistry', () => {
     expect(hasCanvas('metric')).toBe(true);
   });
 
-  test('source has the CLI-only (serve) ERD canvas gated on sourcesMetadata (VIS-1005)', () => {
+  test('source has the CLI-only (serve) ERD canvas gated on the cached-schema feed (VIS-1005)', () => {
     const d = OBJECT_CANVAS_REGISTRY.source;
     expect(d.availability).toBe('serve');
-    expect(d.availabilityKey).toBe('sourcesMetadata');
+    // The ERD reads the cached-schema feed (not the live introspect), so it is
+    // gated on `sourceSchemaJobsList` to match (fix-source-introspection).
+    expect(d.availabilityKey).toBe('sourceSchemaJobsList');
     expect(d.defaultLens).toBe('preview');
     expect(d.Component).toBeTruthy();
   });

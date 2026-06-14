@@ -115,11 +115,12 @@ export const OBJECT_CANVAS_REGISTRY = {
   },
   // Source gets a real Canvas lens (the table ERD) instead of muting to lineage
   // (VIS-1005). It's CLI-only (`serve`) because the ERD reads the server's
-  // introspection feed (`sourcesMetadata`).
+  // cached-schema feed (`sourceSchemaJobsList`) — the same feed SourceBrowser and
+  // the Data tab use, not the live introspect (which is empty for duckdb).
   source: {
     Component: SourceErd,
     availability: 'serve',
-    availabilityKey: 'sourcesMetadata',
+    availabilityKey: 'sourceSchemaJobsList',
     defaultLens: 'preview',
     lenses: [READONLY_PREVIEW()],
     emptyHint: 'No source selected.',

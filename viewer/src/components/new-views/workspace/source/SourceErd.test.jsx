@@ -1,9 +1,10 @@
 /**
  * SourceErd — the Source object's ERD Canvas lens (VIS-1005).
  *
- * Renders one node per table from the mocked `sources_metadata` feed, and shows
- * graceful loading / empty / connection-failed / unavailable states instead of
- * an infinite spinner. React-Flow + dagre are mocked (the lineage tests' pattern).
+ * Renders one node per table from the BACKEND-CACHED schema feed (the same
+ * `source-schema-jobs` endpoints SourceBrowser + useSourceOutline read), and
+ * shows graceful loading / no-cache / empty / unavailable states instead of an
+ * infinite spinner. React-Flow + dagre are mocked (the lineage tests' pattern).
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
@@ -13,11 +14,17 @@ import {
   createURLConfig,
 } from '../../../../contexts/URLContext';
 
-// Mock the metadata feed.
-jest.mock('../../../../api/explorer', () => ({
-  fetchSourceMetadata: jest.fn(),
+// Mock the cached-schema feed.
+jest.mock('../../../../api/sourceSchemaJobs', () => ({
+  fetchSourceSchemaJobs: jest.fn(),
+  fetchSourceTables: jest.fn(),
+  fetchTableColumns: jest.fn(),
 }));
-const { fetchSourceMetadata } = require('../../../../api/explorer');
+const {
+  fetchSourceSchemaJobs,
+  fetchSourceTables,
+  fetchTableColumns,
+} = require('../../../../api/sourceSchemaJobs');
 
 // Mock computeLayout (dagre) — return the nodes with dummy positions.
 jest.mock('../../lineage/useLineageDag', () => ({
@@ -48,40 +55,21 @@ jest.mock('reactflow', () => {
   };
 });
 
-const SRC = 'analytics_db';
-
-const CONNECTED = {
-  sources: [
-    {
-      name: SRC,
-      type: 'postgresql',
-      status: 'connected',
-      databases: [
-        {
-          name: 'main',
-          schemas: [
-            {
-              name: 'public',
-              tables: [
-                { name: 'orders', columns: ['id', 'amount'] },
-                { name: 'users', columns: ['id', 'email'] },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-const EMPTY_CONNECTED = {
-  sources: [{ name: SRC, type: 'duckdb', status: 'connected', databases: [] }],
-};
+const SRC = 'local-duckdb';
 
 beforeEach(() => {
   jest.clearAllMocks();
   setGlobalURLConfig(createURLConfig({ environment: 'server' }));
-  fetchSourceMetadata.mockResolvedValue(CONNECTED);
+  // Warm (cached) source with two tables by default.
+  fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: true }]);
+  fetchSourceTables.mockResolvedValue([
+    { name: 'orders', column_count: 2 },
+    { name: 'users', column_count: 2 },
+  ]);
+  fetchTableColumns.mockResolvedValue([
+    { name: 'id', type: 'INTEGER' },
+    { name: 'amount', type: 'DOUBLE' },
+  ]);
 });
 
 afterEach(() => {
@@ -89,31 +77,35 @@ afterEach(() => {
 });
 
 describe('SourceErd (VIS-1005)', () => {
-  test('renders one ERD node per table from the mocked metadata', async () => {
+  test('renders one ERD node per table from the cached schema', async () => {
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd')).toBeInTheDocument();
     expect(await screen.findByTestId('source-erd-node-orders')).toBeInTheDocument();
     expect(screen.getByTestId('source-erd-node-users')).toBeInTheDocument();
+    // It reads the cached feed, never the live introspect.
+    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
   });
 
-  test('shows the empty state for a connected source with no tables', async () => {
-    fetchSourceMetadata.mockResolvedValue(EMPTY_CONNECTED);
+  test('shows the empty state for a cached source with no tables', async () => {
+    fetchSourceTables.mockResolvedValue([]);
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd-empty')).toBeInTheDocument();
     expect(screen.queryByTestId('source-erd')).not.toBeInTheDocument();
   });
 
-  test('shows the connection-failed state when the source is missing from the feed', async () => {
-    fetchSourceMetadata.mockResolvedValue({ sources: [] });
+  test('shows the no-cache state when the source has no cached schema', async () => {
+    fetchSourceSchemaJobs.mockResolvedValue([{ source_name: SRC, has_cached_schema: false }]);
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd-connection-failed')).toBeInTheDocument();
+    // It never fetches tables for a source with no cached schema.
+    expect(fetchSourceTables).not.toHaveBeenCalled();
   });
 
-  test('shows the connection-failed state when introspection throws', async () => {
-    fetchSourceMetadata.mockRejectedValue(new Error('boom'));
+  test('shows the connection-failed state when the cached load throws', async () => {
+    fetchSourceSchemaJobs.mockRejectedValue(new Error('boom'));
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd-connection-failed')).toBeInTheDocument();
@@ -124,6 +116,6 @@ describe('SourceErd (VIS-1005)', () => {
     render(<SourceErd activeObject={{ type: 'source', name: SRC }} />);
 
     expect(await screen.findByTestId('source-erd-unavailable')).toBeInTheDocument();
-    expect(fetchSourceMetadata).not.toHaveBeenCalled();
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
   });
 });

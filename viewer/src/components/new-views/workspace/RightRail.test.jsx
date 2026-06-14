@@ -24,6 +24,11 @@ jest.mock('../../../api/explorer', () => ({
   fetchSourceMetadata: jest.fn(() => Promise.resolve({ sources: [] })),
 }));
 jest.mock('../../../api/sourceSchemaJobs', () => ({
+  // No cached schema by default → the source outline lands on the cold-source
+  // "Generate schema" affordance (the cached-schema feed drives warm vs cold).
+  fetchSourceSchemaJobs: jest.fn(() =>
+    Promise.resolve([{ source_name: 'analytics_db', has_cached_schema: false }])
+  ),
   generateSourceSchema: jest.fn(),
   fetchSchemaGenerationStatus: jest.fn(),
   fetchSourceTables: jest.fn(() => Promise.resolve([])),
@@ -141,8 +146,8 @@ describe('RightRail Outline body branch (VIS-1004)', () => {
     expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
     // The Outline tab is relabelled "Data" for a source.
     expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Data');
-    // Let the source-metadata fetch settle so its state update is wrapped in act
-    // (the mock resolves an empty source → the cold-source affordance).
+    // Let the cached-schema check settle so its state update is wrapped in act
+    // (the mock reports no cached schema → the cold-source affordance).
     expect(await screen.findByTestId('source-outline-cold')).toBeInTheDocument();
   });
 

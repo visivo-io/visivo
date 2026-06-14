@@ -1,12 +1,14 @@
 /**
  * SourceOutlineTreePanel tests (VIS-1004 / Canvas Object Surfaces, Track N).
  *
- * The panel renders a source's database → schema → table → column tree from the
- * nested `fetchSourceMetadata` feed (mirroring the Explorer's SourceBrowser),
- * dispatches selection through the DISJOINT `workspaceSourceOutlineSelectedKey`
- * store slice, remembers expand/collapse per source, offers a cold-source
- * "Generate schema" affordance, and degrades to an empty state when the source
- * endpoints are null (dist/cloud).
+ * The panel renders a source's database → table → column tree from the
+ * BACKEND-CACHED schema feed (the same `source-schema-jobs` endpoints the
+ * Explorer's SourceBrowser uses), NOT the live introspect. Selection dispatches
+ * through the DISJOINT `workspaceSourceOutlineSelectedKey` store slice, expand /
+ * collapse persists per source, columns lazy-load on expand, a cold source
+ * offers a "Generate schema" affordance, the loaded tree is cached so re-select
+ * is instant, and the panel degrades to an empty state when the source endpoints
+ * are null (dist/cloud).
  */
 import React from 'react';
 import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
@@ -17,51 +19,24 @@ import {
   createURLConfig,
 } from '../../../contexts/URLContext';
 
-jest.mock('../../../api/explorer', () => ({
-  fetchSourceMetadata: jest.fn(),
-}));
 jest.mock('../../../api/sourceSchemaJobs', () => ({
+  fetchSourceSchemaJobs: jest.fn(),
   generateSourceSchema: jest.fn(),
   fetchSchemaGenerationStatus: jest.fn(),
   fetchSourceTables: jest.fn(),
   fetchTableColumns: jest.fn(),
-  fetchSourceSchemaJobs: jest.fn(),
 }));
 
-const { fetchSourceMetadata } = require('../../../api/explorer');
 const {
+  fetchSourceSchemaJobs,
   generateSourceSchema,
   fetchSchemaGenerationStatus,
   fetchSourceTables,
-  fetchSourceSchemaJobs,
+  fetchTableColumns,
 } = require('../../../api/sourceSchemaJobs');
 
-const SRC = 'analytics_db';
-
-// A connected source with a database that has a schema, a table, and columns.
-const NESTED_CONNECTED = {
-  sources: [
-    {
-      name: SRC,
-      type: 'postgresql',
-      status: 'connected',
-      databases: [
-        {
-          name: 'main',
-          schemas: [
-            {
-              name: 'public',
-              tables: [
-                { name: 'orders', columns: ['id', 'amount'] },
-                { name: 'users', columns: ['id', 'email'] },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
+const SRC = 'local-duckdb';
+const DB_KEY = `source-outline::${SRC}::db::${SRC}`;
 
 const resetStore = () => {
   act(() => {
@@ -85,11 +60,17 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     jest.clearAllMocks();
     resetStore();
     setServerEnv();
-    fetchSourceMetadata.mockResolvedValue(NESTED_CONNECTED);
-    // The has_cached_schema signal authoritatively decides cold vs warm. Default
-    // to a warm (cached) source so connected tests never see the Generate state.
+    // Warm (cached) source by default: the cached-schema feed drives the tree.
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: SRC, has_cached_schema: true },
+    ]);
+    fetchSourceTables.mockResolvedValue([
+      { name: 'orders', column_count: 2 },
+      { name: 'users', column_count: 2 },
+    ]);
+    fetchTableColumns.mockResolvedValue([
+      { name: 'id', type: 'INTEGER' },
+      { name: 'amount', type: 'DOUBLE' },
     ]);
   });
 
@@ -97,84 +78,99 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     setServerEnv();
   });
 
-  test('renders the nested db → schema → table tree from mocked metadata', async () => {
+  test('renders the cached db → table tree from the source-schema-jobs feed', async () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
 
-    // Source root renders immediately; the tree fills after the metadata load.
+    // Source root renders immediately; the tree fills after the cached load.
     expect(screen.getByTestId('workspace-source-outline')).toBeInTheDocument();
     expect(await screen.findByTestId('source-outline-node-root')).toBeInTheDocument();
 
-    // The database grouping node renders under the (default-expanded) root.
-    const dbKey = `source-outline::${SRC}::db::main`;
-    expect(await screen.findByTestId(`source-outline-node-${dbKey}`)).toBeInTheDocument();
+    // The (pseudo) database grouping node renders under the default-expanded root.
+    expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
 
-    // Children are collapsed by default — expanding the db reveals its schema.
-    fireEvent.click(screen.getByTestId(`source-outline-node-${dbKey}-toggle`));
+    // Tables are children of the db node; expanding the db reveals them.
+    fireEvent.click(screen.getByTestId(`source-outline-node-${DB_KEY}-toggle`));
     expect(
-      await screen.findByTestId(`source-outline-node-${dbKey}::schema::public`)
+      await screen.findByTestId(`source-outline-node-${DB_KEY}::table::orders`)
+    ).toBeInTheDocument();
+    // It reads from the cached feed, never the live introspect.
+    expect(fetchSourceTables).toHaveBeenCalledWith(SRC);
+  });
+
+  test('expanding a table lazy-loads its columns from the cached feed', async () => {
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    const tableKey = `${DB_KEY}::table::orders`;
+
+    fireEvent.click(await screen.findByTestId(`source-outline-node-${DB_KEY}-toggle`));
+    const tableToggle = await screen.findByTestId(
+      `source-outline-node-${tableKey}-toggle`
+    );
+    // Columns are NOT fetched until the table expands.
+    expect(fetchTableColumns).not.toHaveBeenCalled();
+
+    fireEvent.click(tableToggle);
+    await waitFor(() => expect(fetchTableColumns).toHaveBeenCalledWith(SRC, 'orders'));
+    expect(
+      await screen.findByTestId(`source-outline-node-${tableKey}::col::id`)
     ).toBeInTheDocument();
   });
 
-  test('expand/collapse toggles a node and persists per source in the store', async () => {
+  test('expand/collapse persists per source in the store', async () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
-    const dbKey = `source-outline::${SRC}::db::main`;
-    const schemaKey = `${dbKey}::schema::public`;
-
-    // The schema node exists (db is expanded by default since the root + db are
-    // not in the collapsed-by-default set — expand state defaults to collapsed,
-    // so first we expand the root, db, then the schema to reach a table).
-    const dbToggle = await screen.findByTestId(`source-outline-node-${dbKey}-toggle`);
+    const dbToggle = await screen.findByTestId(`source-outline-node-${DB_KEY}-toggle`);
     fireEvent.click(dbToggle);
-    expect(useStore.getState().workspaceSourceOutlineExpanded[SRC]).toContain(dbKey);
-
-    // The table appears once the schema is expanded.
-    const schemaToggle = screen.getByTestId(`source-outline-node-${schemaKey}-toggle`);
-    fireEvent.click(schemaToggle);
-    expect(useStore.getState().workspaceSourceOutlineExpanded[SRC]).toContain(schemaKey);
-    expect(
-      await screen.findByTestId(`source-outline-node-${schemaKey}::table::orders`)
-    ).toBeInTheDocument();
+    expect(useStore.getState().workspaceSourceOutlineExpanded[SRC]).toContain(DB_KEY);
   });
 
   test('clicking a node writes the disjoint source-outline selection key', async () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
-    const dbNode = await screen.findByTestId(
-      `source-outline-node-source-outline::${SRC}::db::main`
-    );
+    const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);
     fireEvent.click(dbNode);
-    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(
-      `source-outline::${SRC}::db::main`
-    );
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(DB_KEY);
     // The dashboard outline key is never touched.
     expect(useStore.getState().workspaceOutlineSelectedKey).not.toContain('source-outline');
   });
 
+  test('re-selecting a source reads the cached tree without re-fetching', async () => {
+    const { unmount } = render(<SourceOutlineTreePanel sourceName={SRC} />);
+    expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+    expect(fetchSourceTables).toHaveBeenCalledTimes(1);
+
+    unmount();
+    jest.clearAllMocks();
+    // Re-mounting the same source hydrates from the store cache — no re-fetch.
+    render(<SourceOutlineTreePanel sourceName={SRC} />);
+    expect(await screen.findByTestId(`source-outline-node-${DB_KEY}`)).toBeInTheDocument();
+    expect(fetchSourceTables).not.toHaveBeenCalled();
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
+  });
+
   test('cold source offers Generate schema and fills the tree after polling', async () => {
-    // Nested feed returns a connection_failed source (zero databases) → cold.
-    fetchSourceMetadata.mockResolvedValue({
-      sources: [
-        { name: SRC, type: 'postgresql', status: 'connection_failed', databases: [] },
-      ],
-    });
-    // The API has no cached schema for this source → authoritatively cold.
+    // The API authoritatively reports no cached schema for this source → cold.
     fetchSourceSchemaJobs.mockResolvedValue([
       { source_name: SRC, has_cached_schema: false },
     ]);
     generateSourceSchema.mockResolvedValue({ run_id: 'run-1' });
     fetchSchemaGenerationStatus.mockResolvedValue({ status: 'completed', progress: 1 });
-    fetchSourceTables.mockResolvedValue([{ name: 'events' }]);
+    fetchSourceTables.mockResolvedValue([{ name: 'events', column_count: 3 }]);
 
     render(<SourceOutlineTreePanel sourceName={SRC} />);
 
     const generateBtn = await screen.findByTestId('source-outline-generate');
     expect(screen.getByTestId('source-outline-cold')).toBeInTheDocument();
+    // Cold sources never fetch tables until Generate runs.
+    expect(fetchSourceTables).not.toHaveBeenCalled();
 
     fireEvent.click(generateBtn);
 
     await waitFor(() => expect(generateSourceSchema).toHaveBeenCalledWith(SRC));
-    // After generation completes the flat tree (events table) is rendered.
+    // After generation completes the db node renders; expanding it reveals the
+    // newly-cached `events` table.
+    const dbNode = await screen.findByTestId(`source-outline-node-${DB_KEY}`);
+    expect(dbNode).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`source-outline-node-${DB_KEY}-toggle`));
     expect(
-      await screen.findByTestId(`source-outline-node-source-outline::${SRC}::db::${SRC}`)
+      await screen.findByTestId(`source-outline-node-${DB_KEY}::table::events`)
     ).toBeInTheDocument();
   });
 
@@ -183,7 +179,8 @@ describe('SourceOutlineTreePanel (VIS-1004)', () => {
     render(<SourceOutlineTreePanel sourceName={SRC} />);
     expect(screen.getByTestId('source-outline-unavailable')).toBeInTheDocument();
     expect(screen.getByText(/visivo serve/i)).toBeInTheDocument();
-    // The nested feed is never called when unavailable.
-    expect(fetchSourceMetadata).not.toHaveBeenCalled();
+    // The cached feed is never called when unavailable.
+    expect(fetchSourceSchemaJobs).not.toHaveBeenCalled();
+    expect(fetchSourceTables).not.toHaveBeenCalled();
   });
 });

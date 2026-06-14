@@ -21,13 +21,14 @@ import useSourceOutline, { sourceRootKey } from './useSourceOutline';
  * Mounted by branching `RightRail::RightRailBody` on the active object type —
  * `source` → this panel, anything else → the dashboard `OutlineTreePanel`.
  *
- * Renders the source's database → schema → table → column tree as an
- * Explorer-style expandable, searchable tree. It REUSES `OutlineTreePanel`'s
- * recursive Node shell idiom (the mulberry selection bar + caret disclosure +
- * indent + truncation) rather than importing the left-nav `SchemaTreeNode`, and
- * layers the Explorer's in-tree search + type badges on top. Data + the
- * cold-source generate/poll flow come from `useSourceOutline` (mirroring the
- * Explorer's SourceBrowser backend + frontend).
+ * Renders the source's database → table → column tree as an Explorer-style
+ * expandable, searchable tree. It REUSES `OutlineTreePanel`'s recursive Node
+ * shell idiom (the mulberry selection bar + caret disclosure + indent +
+ * truncation) rather than importing the left-nav `SchemaTreeNode`, and layers
+ * the Explorer's in-tree search + type badges on top. Data + the cold-source
+ * generate/poll flow come from `useSourceOutline`, which reads the SAME
+ * BACKEND-CACHED schema feed the Explorer's SourceBrowser uses (not the live
+ * introspect, which returns zero databases for file sources like duckdb).
  *
  * Selection / expand state:
  *   - Selection writes a DISJOINT `source-outline::…` key into the new
@@ -267,8 +268,9 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
 
   const renderTableNode = (table, level) => {
     if (!nodeMatches(table, query)) return null;
-    // Nested feed columns are eager (`table.children`); flat feed lazy-loads
-    // into `flatColumns[tableKey]`. Either supplies the column rows.
+    // Columns lazy-load into `flatColumns[tableKey]` on expand (the cached feed
+    // carries no eager column data). `table.children` only matters if a future
+    // feed ever supplies columns eagerly.
     const lazyCols = flatColumns?.[table.key];
     const cols = Array.isArray(table.children)
       ? table.children
@@ -277,6 +279,13 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
         : null;
     const hasChildren = cols == null || cols.length > 0;
     const collapsed = !expandedSet.has(table.key);
+    // Show the loaded column count once expanded; before that, fall back to the
+    // cached `column_count` the tables list provides so the row isn't bare.
+    const colCount = Array.isArray(cols)
+      ? cols.length
+      : typeof table.columnCount === 'number'
+        ? table.columnCount
+        : null;
 
     return (
       <Node
@@ -286,7 +295,7 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
         icon={KIND_ICON.table}
         iconClassName={tableColors.text}
         label={table.name}
-        meta={Array.isArray(cols) ? `${cols.length} col${cols.length === 1 ? '' : 's'}` : null}
+        meta={colCount != null ? `${colCount} col${colCount === 1 ? '' : 's'}` : null}
         selected={selectedKey === table.key}
         selectionKey={table.key}
         onSelect={setSelectedKey}
@@ -368,8 +377,8 @@ const SourceOutlineTreePanel = ({ sourceName }) => {
         <EmptyState
           icon={PiSpinnerGap}
           testId="source-outline-loading"
-          title="Introspecting source…"
-          body="Reading databases, schemas, and tables."
+          title="Loading schema…"
+          body="Reading the source's cached tables."
         />
       ) : isCold ? (
         <EmptyState
