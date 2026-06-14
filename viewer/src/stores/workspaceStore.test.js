@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * Workspace store slice — tab management (VIS-775 / Track B B2).
  *

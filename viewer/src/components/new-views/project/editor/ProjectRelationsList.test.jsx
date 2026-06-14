@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import ProjectRelationsList, { summarizeRelation } from './ProjectRelationsList';
