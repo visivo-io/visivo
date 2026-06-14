@@ -93,8 +93,10 @@ describe('ObjectCanvasFrame', () => {
   });
 
   test('a type with no descriptor parks on Lineage with the Canvas option muted', () => {
-    render(frameFor('source', 'db'));
-    expect(screen.getByTestId('workspace-middle-source-lineage')).toBeInTheDocument();
+    // `dimension` has no canvas descriptor (source now does — VIS-1005), so it
+    // still exercises the no-descriptor → muted-Canvas → Lineage fallback.
+    render(frameFor('dimension', 'revenue_dim'));
+    expect(screen.getByTestId('workspace-middle-dimension-lineage')).toBeInTheDocument();
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-lens-picker-option-preview')).toBeDisabled();
   });

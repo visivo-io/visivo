@@ -28,6 +28,11 @@ const MarkdownPreview = React.lazy(() => import('./MarkdownPreview'));
 const MarkdownEditorCanvas = React.lazy(() => import('./MarkdownEditorCanvas'));
 const InputPreview = React.lazy(() => import('./InputPreview'));
 const InsightPreview = React.lazy(() => import('./InsightPreview'));
+// SourceErd is the Source canvas body — a React-Flow ERD of the source's tables
+// (VIS-1005). It is `serve`-gated on `sourcesMetadata` because it relies on the
+// server-only introspection feed; on the dist build the frame shows its
+// "unavailable" state instead of muting the Canvas lens to Lineage.
+const SourceErd = React.lazy(() => import('./source/SourceErd'));
 // ModelPreview is the Model canvas body; csvScriptModel + localMergeModel share
 // it (VIS-1001 fixes the latent bug where those distinct type strings fell to
 // lineage because the registry only keyed 'model').
@@ -86,6 +91,17 @@ export const OBJECT_CANVAS_REGISTRY = {
     defaultLens: 'preview',
     lenses: [READONLY_PREVIEW()],
     emptyHint: 'No insight selected.',
+  },
+  // Source gets a real Canvas lens (the table ERD) instead of muting to lineage
+  // (VIS-1005). It's CLI-only (`serve`) because the ERD reads the server's
+  // introspection feed (`sourcesMetadata`).
+  source: {
+    Component: SourceErd,
+    availability: 'serve',
+    availabilityKey: 'sourcesMetadata',
+    defaultLens: 'preview',
+    lenses: [READONLY_PREVIEW()],
+    emptyHint: 'No source selected.',
   },
   model: MODEL_DESCRIPTOR,
   csvScriptModel: MODEL_DESCRIPTOR,

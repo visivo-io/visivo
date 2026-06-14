@@ -75,10 +75,18 @@ describe('objectCanvasRegistry', () => {
   test('getCanvasDescriptor / hasCanvas', () => {
     expect(getCanvasDescriptor('chart')).toBe(OBJECT_CANVAS_REGISTRY.chart);
     expect(getCanvasDescriptor('mystery')).toBeNull();
-    // `source` has no canvas yet (VIS-1005 registers it) → falls to lineage.
-    expect(getCanvasDescriptor('source')).toBeNull();
+    // `source` now has the ERD canvas (VIS-1005) → it resolves a descriptor.
+    expect(getCanvasDescriptor('source')).toBe(OBJECT_CANVAS_REGISTRY.source);
     expect(hasCanvas('chart')).toBe(true);
-    expect(hasCanvas('source')).toBe(false);
+    expect(hasCanvas('source')).toBe(true);
+  });
+
+  test('source has the CLI-only (serve) ERD canvas gated on sourcesMetadata (VIS-1005)', () => {
+    const d = OBJECT_CANVAS_REGISTRY.source;
+    expect(d.availability).toBe('serve');
+    expect(d.availabilityKey).toBe('sourcesMetadata');
+    expect(d.defaultLens).toBe('preview');
+    expect(d.Component).toBeTruthy();
   });
 
   test('previewRegistry shim still resolves component + hasPreview', () => {
