@@ -119,6 +119,12 @@ export function useRelationErdDag(options = {}) {
     columnsByModel = {},
     fieldsByModel = {},
     layout = 'dagre',
+    // Session-persisted (per-scope) overlays from workspaceErdLayoutStore (§6).
+    savedPositions = {},
+    savedWaypoints = {},
+    // Bumped by Tidy / clearErdLayout — a memo dep so a reset forces a full
+    // auto-layout (version-bump-as-dep beats imperative clear-then-rerun).
+    layoutVersion = 0,
   } = options;
   const models = useStore(state => state.models);
   const relations = useStore(state => state.relations);
@@ -136,6 +142,16 @@ export function useRelationErdDag(options = {}) {
       name =>
         `${name}:${(fieldsByModel[name]?.metrics || []).length},${(fieldsByModel[name]?.dimensions || []).length}`
     )
+    .join('|');
+  // Stable keys for the saved overlays so the memo recomputes when a user moves a
+  // card or drags a pill (without churning on fresh object identity each render).
+  const savedPosKey = Object.keys(savedPositions || {})
+    .sort()
+    .map(id => `${id}:${savedPositions[id]?.x},${savedPositions[id]?.y}`)
+    .join('|');
+  const savedWpKey = Object.keys(savedWaypoints || {})
+    .sort()
+    .map(id => `${id}:${savedWaypoints[id]?.x},${savedWaypoints[id]?.y}`)
     .join('|');
 
   return useMemo(() => {
@@ -215,13 +231,19 @@ export function useRelationErdDag(options = {}) {
       if (!modelNames.has(parsed.a.model) || !modelNames.has(parsed.b.model)) return;
       const sourceHandle = resolveHandle(parsed.a.model, parsed.a.column);
       const targetHandle = resolveHandle(parsed.b.model, parsed.b.column);
+      const sourceId = ERD_NODE_ID(parsed.a.model);
+      const targetId = ERD_NODE_ID(parsed.b.model);
+      // Group parallel edges by the SORTED unordered pair so A→B and B→A collapse
+      // into one group (they get distinct perpendicular offsets + pills).
+      const pairKey = [sourceId, targetId].sort().join('|');
       edges.push({
         id: ERD_EDGE_ID(relation.name),
-        source: ERD_NODE_ID(parsed.a.model),
+        type: 'relationEdge',
+        source: sourceId,
         // Omit the handle entirely (rather than passing a non-existent one) when
         // the column can't be resolved, so React-Flow connects at the node.
         ...(sourceHandle ? { sourceHandle } : {}),
-        target: ERD_NODE_ID(parsed.b.model),
+        target: targetId,
         ...(targetHandle ? { targetHandle } : {}),
         animated: true,
         data: {
@@ -229,8 +251,29 @@ export function useRelationErdDag(options = {}) {
           joinType: relation.join_type || relation.config?.join_type || 'inner',
           isDefault: Boolean(relation.is_default ?? relation.config?.is_default),
           condition,
+          // The two cards' full column lists so the edge can deterministically
+          // anchor on the exact column ROW (columnAnchor) under any zoom.
+          sourceColumns: columnsByNodeModel.get(parsed.a.model) || [],
+          targetColumns: columnsByNodeModel.get(parsed.b.model) || [],
+          // Forced bend from a pill drag (per-scope session override); null →
+          // auto-route. Threaded from savedWaypoints by edge id.
+          waypoint: savedWaypoints?.[ERD_EDGE_ID(relation.name)] || null,
+          _pairKey: pairKey,
         },
       });
+    });
+
+    // Stamp parallel-edge index/count per sorted pair, so duplicate relations
+    // between the same two models render as distinct, separately-clickable curves.
+    const pairCounts = new Map();
+    edges.forEach(e => pairCounts.set(e.data._pairKey, (pairCounts.get(e.data._pairKey) || 0) + 1));
+    const pairSeen = new Map();
+    edges.forEach(e => {
+      const idx = pairSeen.get(e.data._pairKey) || 0;
+      e.data.parallelIndex = idx;
+      e.data.parallelCount = pairCounts.get(e.data._pairKey) || 1;
+      pairSeen.set(e.data._pairKey, idx + 1);
+      delete e.data._pairKey;
     });
 
     // Seed positions via the pluggable layout machine (Union-Find clustering →
@@ -243,9 +286,32 @@ export function useRelationErdDag(options = {}) {
       options: { layout, direction: 'LR' },
     });
 
-    return { nodes: seededNodes, edges };
+    // Overlay session-saved positions onto the seed: a moved card keeps its saved
+    // x/y, only un-saved cards consume seed slots. So adding a model drops it into
+    // the next open slot WITHOUT reshuffling moved cards (§3 / §6). Tidy clears
+    // saves → a full auto-layout runs (zero overlays).
+    const overlaidNodes = seededNodes.map(node => {
+      const saved = savedPositions?.[node.id];
+      return saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)
+        ? { ...node, position: { x: saved.x, y: saved.y } }
+        : node;
+    });
+
+    return { nodes: overlaidNodes, edges };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [models, relations, scopeKey, extraKey, columnsByModel, fieldsByModel, fieldsKey, layout]);
+  }, [
+    models,
+    relations,
+    scopeKey,
+    extraKey,
+    columnsByModel,
+    fieldsByModel,
+    fieldsKey,
+    layout,
+    savedPosKey,
+    savedWpKey,
+    layoutVersion,
+  ]);
 }
 
 export { ERD_NODE_ID, ERD_EDGE_ID };

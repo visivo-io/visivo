@@ -112,6 +112,7 @@ describe('useRelationErdDag', () => {
 
     expect(edges).toHaveLength(1);
     const edge = edges[0];
+    expect(edge.type).toBe('relationEdge'); // tagged for the custom edge
     expect(edge.source).toBe(ERD_NODE_ID('orders'));
     expect(edge.target).toBe(ERD_NODE_ID('users'));
     expect(edge.sourceHandle).toBe('user_id');
@@ -119,6 +120,82 @@ describe('useRelationErdDag', () => {
     expect(edge.data.relationName).toBe('orders_to_users');
     expect(edge.data.joinType).toBe('left');
     expect(edge.data.isDefault).toBe(true);
+    // The edge carries both cards' column lists for deterministic anchoring.
+    expect(edge.data.sourceColumns).toEqual(['user_id']);
+    expect(edge.data.targetColumns).toEqual(['id']);
+    // Single relation in its pair → index 0 of 1.
+    expect(edge.data.parallelIndex).toBe(0);
+    expect(edge.data.parallelCount).toBe(1);
+    // No saved waypoint by default.
+    expect(edge.data.waypoint).toBeNull();
+  });
+
+  it('tags every edge type:relationEdge', () => {
+    mockStoreState({
+      models: [
+        { name: 'a', columns: ['x'] },
+        { name: 'b', columns: ['x'] },
+      ],
+      relations: [{ name: 'a_b', condition: '${ref(a).x} = ${ref(b).x}' }],
+    });
+    const { result } = renderHook(() => useRelationErdDag());
+    result.current.edges.forEach(e => expect(e.type).toBe('relationEdge'));
+  });
+
+  it('groups parallel edges by the SORTED pair (A→B and B→A collapse)', () => {
+    mockStoreState({
+      models: [
+        { name: 'orders', columns: ['user_id', 'account_id'] },
+        { name: 'users', columns: ['id', 'account_id'] },
+      ],
+      relations: [
+        { name: 'rel1', condition: '${ref(orders).user_id} = ${ref(users).id}' },
+        // Reversed direction + different columns → same sorted pair group.
+        { name: 'rel2', condition: '${ref(users).account_id} = ${ref(orders).account_id}' },
+      ],
+    });
+    const { result } = renderHook(() => useRelationErdDag());
+    const edges = result.current.edges;
+    expect(edges).toHaveLength(2);
+    // Both share parallelCount 2 with distinct indices 0 and 1.
+    edges.forEach(e => expect(e.data.parallelCount).toBe(2));
+    const indices = edges.map(e => e.data.parallelIndex).sort();
+    expect(indices).toEqual([0, 1]);
+  });
+
+  it('threads a saved waypoint into edge.data.waypoint by edge id', () => {
+    mockStoreState({
+      models: [
+        { name: 'a', columns: ['x'] },
+        { name: 'b', columns: ['x'] },
+      ],
+      relations: [{ name: 'a_b', condition: '${ref(a).x} = ${ref(b).x}' }],
+    });
+    const { result } = renderHook(() =>
+      useRelationErdDag({ savedWaypoints: { 'erd-rel-a_b': { x: 12, y: 34 } } })
+    );
+    expect(result.current.edges[0].data.waypoint).toEqual({ x: 12, y: 34 });
+  });
+
+  it('overlays savedPositions onto the seed for saved ids only', () => {
+    mockStoreState({
+      models: [
+        { name: 'a', columns: ['x'] },
+        { name: 'b', columns: ['x'] },
+        { name: 'c', columns: ['x'] },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useRelationErdDag({
+        layout: 'grid',
+        savedPositions: { [ERD_NODE_ID('a')]: { x: 999, y: 888 } },
+      })
+    );
+    const nodeA = result.current.nodes.find(n => n.id === ERD_NODE_ID('a'));
+    const nodeB = result.current.nodes.find(n => n.id === ERD_NODE_ID('b'));
+    // The saved node takes its saved position; un-saved nodes keep their seed.
+    expect(nodeA.position).toEqual({ x: 999, y: 888 });
+    expect(nodeB.position).not.toEqual({ x: 999, y: 888 });
   });
 
   it('resolves the edge handles case-insensitively against the cards’ columns', () => {
