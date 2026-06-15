@@ -26,7 +26,8 @@ const createLocalMergeModelSlice = (set, get) => ({
   // Save local merge model to cache
   saveLocalMergeModel: async (name, config) => {
     try {
-      const result = await localMergeModelsApi.saveLocalMergeModel(name, config);
+      const projectId = get().project?.id;
+      const result = await localMergeModelsApi.saveLocalMergeModel(name, config, projectId);
       await get().fetchLocalMergeModels();
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();
@@ -40,7 +41,8 @@ const createLocalMergeModelSlice = (set, get) => ({
   // Mark local merge model for deletion
   deleteLocalMergeModel: async name => {
     try {
-      await localMergeModelsApi.deleteLocalMergeModel(name);
+      const projectId = get().project?.id;
+      await localMergeModelsApi.deleteLocalMergeModel(name, projectId);
       await get().fetchLocalMergeModels();
       if (get().checkCommitStatus) {
         await get().checkCommitStatus();

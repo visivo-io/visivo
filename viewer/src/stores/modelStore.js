@@ -30,7 +30,8 @@ const createModelSlice = (set, get) => ({
   // Save model to cache
   saveModel: async (name, config) => {
     try {
-      const result = await modelsApi.saveModel(name, config);
+      const projectId = get().project?.id;
+      const result = await modelsApi.saveModel(name, config, projectId);
       // Refresh models list to get updated status
       await get().fetchModels();
       // Trigger commit status check
@@ -48,7 +49,8 @@ const createModelSlice = (set, get) => ({
   // Mark model for deletion (will be removed from YAML on commit)
   deleteModel: async name => {
     try {
-      await modelsApi.deleteModel(name);
+      const projectId = get().project?.id;
+      await modelsApi.deleteModel(name, projectId);
       await get().fetchModels();
       // Trigger commit status check
       if (get().checkCommitStatus) {

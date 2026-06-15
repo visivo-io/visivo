@@ -26,7 +26,8 @@ const createDefaultsSlice = (set, get) => ({
   // Save defaults to cache
   saveDefaults: async config => {
     try {
-      const result = await defaultsApi.saveDefaults(config);
+      const projectId = get().project?.id;
+      const result = await defaultsApi.saveDefaults(config, projectId);
       // Refresh defaults
       await get().fetchDefaults();
       // Trigger commit status check

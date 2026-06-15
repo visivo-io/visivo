@@ -29,7 +29,8 @@ const createRelationSlice = (set, get) => ({
   // Save relation to cache
   saveRelation: async (name, config) => {
     try {
-      const result = await relationsApi.saveRelation(name, config);
+      const projectId = get().project?.id;
+      const result = await relationsApi.saveRelation(name, config, projectId);
       // Refresh relations list to get updated status
       await get().fetchRelations();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createRelationSlice = (set, get) => ({
   // Mark relation for deletion (will be removed from YAML on commit)
   deleteRelation: async name => {
     try {
-      await relationsApi.deleteRelation(name);
+      const projectId = get().project?.id;
+      await relationsApi.deleteRelation(name, projectId);
       await get().fetchRelations();
       // Trigger commit status check
       if (get().checkCommitStatus) {

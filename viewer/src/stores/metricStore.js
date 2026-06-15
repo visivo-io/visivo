@@ -29,7 +29,8 @@ const createMetricSlice = (set, get) => ({
   // Save metric to cache
   saveMetric: async (name, config) => {
     try {
-      const result = await metricsApi.saveMetric(name, config);
+      const projectId = get().project?.id;
+      const result = await metricsApi.saveMetric(name, config, projectId);
       // Refresh metrics list to get updated status
       await get().fetchMetrics();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createMetricSlice = (set, get) => ({
   // Mark metric for deletion (will be removed from YAML on commit)
   deleteMetric: async name => {
     try {
-      await metricsApi.deleteMetric(name);
+      const projectId = get().project?.id;
+      await metricsApi.deleteMetric(name, projectId);
       await get().fetchMetrics();
       // Trigger commit status check
       if (get().checkCommitStatus) {

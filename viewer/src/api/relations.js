@@ -31,8 +31,10 @@ export const fetchRelation = async name => {
 /**
  * Save a relation configuration to cache (draft state)
  */
-export const saveRelation = async (name, config) => {
-  const response = await apiFetch(getUrl('relationDetail', { name }), {
+export const saveRelation = async (name, config, projectId = null) => {
+  let url = getUrl('relationDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveRelation = async (name, config) => {
 /**
  * Delete a relation from cache (revert to published version)
  */
-export const deleteRelation = async name => {
-  const response = await apiFetch(getUrl('relationDetail', { name }), {
+export const deleteRelation = async (name, projectId = null) => {
+  let url = getUrl('relationDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

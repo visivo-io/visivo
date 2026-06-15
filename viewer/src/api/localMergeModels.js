@@ -17,8 +17,10 @@ export const fetchAllLocalMergeModels = async (projectId = null) => {
 /**
  * Save a LocalMergeModel configuration to cache (draft state)
  */
-export const saveLocalMergeModel = async (name, config) => {
-  const response = await apiFetch(getUrl('localMergeModelDetail', { name }), {
+export const saveLocalMergeModel = async (name, config, projectId = null) => {
+  let url = getUrl('localMergeModelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,8 +37,10 @@ export const saveLocalMergeModel = async (name, config) => {
 /**
  * Delete a LocalMergeModel (mark for deletion)
  */
-export const deleteLocalMergeModel = async name => {
-  const response = await apiFetch(getUrl('localMergeModelDetail', { name }), {
+export const deleteLocalMergeModel = async (name, projectId = null) => {
+  let url = getUrl('localMergeModelDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

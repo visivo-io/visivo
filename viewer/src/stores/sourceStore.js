@@ -38,7 +38,8 @@ const createSourceSlice = (set, get) => ({
   // Save source to cache
   saveSource: async (name, config) => {
     try {
-      const result = await sourcesApi.saveSource(name, config);
+      const projectId = get().project?.id;
+      const result = await sourcesApi.saveSource(name, config, projectId);
       // Refresh sources list to get updated status
       await get().fetchSources();
       // Trigger commit status check
@@ -54,7 +55,8 @@ const createSourceSlice = (set, get) => ({
   // Mark source for deletion (will be removed from YAML on commit)
   deleteSource: async name => {
     try {
-      await sourcesApi.deleteSource(name);
+      const projectId = get().project?.id;
+      await sourcesApi.deleteSource(name, projectId);
       await get().fetchSources();
       // Trigger commit status check
       if (get().checkCommitStatus) {

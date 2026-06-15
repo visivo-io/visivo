@@ -29,7 +29,8 @@ const createInputSlice = (set, get) => ({
   // Save input to cache
   saveInput: async (name, config) => {
     try {
-      const result = await inputsApi.saveInput(name, config);
+      const projectId = get().project?.id;
+      const result = await inputsApi.saveInput(name, config, projectId);
       // Refresh inputs list to get updated status
       await get().fetchInputs();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createInputSlice = (set, get) => ({
   // Mark input for deletion (will be removed from YAML on commit)
   deleteInput: async name => {
     try {
-      await inputsApi.deleteInput(name);
+      const projectId = get().project?.id;
+      await inputsApi.deleteInput(name, projectId);
       await get().fetchInputs();
       // Trigger commit status check
       if (get().checkCommitStatus) {

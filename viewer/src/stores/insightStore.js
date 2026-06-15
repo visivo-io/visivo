@@ -30,7 +30,8 @@ const createInsightSlice = (set, get) => ({
   // Save insight to cache
   saveInsight: async (name, config) => {
     try {
-      const result = await insightsApi.saveInsight(name, config);
+      const projectId = get().project?.id;
+      const result = await insightsApi.saveInsight(name, config, projectId);
       // Refresh insights list to get updated status
       await get().fetchInsights();
       // Trigger commit status check
@@ -48,7 +49,8 @@ const createInsightSlice = (set, get) => ({
   // Mark insight for deletion (will be removed from YAML on commit)
   deleteInsight: async name => {
     try {
-      await insightsApi.deleteInsight(name);
+      const projectId = get().project?.id;
+      await insightsApi.deleteInsight(name, projectId);
       await get().fetchInsights();
       // Trigger commit status check
       if (get().checkCommitStatus) {
