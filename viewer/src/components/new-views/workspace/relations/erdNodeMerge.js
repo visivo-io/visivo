@@ -19,6 +19,15 @@
  *
  * Always carries the LATEST seeded `data`/`type`/`layoutSize` forward (so new
  * columns/fields/edges reflect); only the POSITION is reconciled.
+ *
+ * CRITICAL: when a node already existed, we PRESERVE the React-Flow-measured
+ * fields (`width`/`height`/`positionAbsolute` — written onto the controlled node
+ * by `applyNodeChanges` after RF's ResizeObserver fires). A re-seed rebuilt from
+ * the layout output alone carries NO width/height, so RF would mark the node
+ * unmeasured and set `visibility:hidden`; because the rendered size is unchanged
+ * the ResizeObserver never re-fires, so the node would stay hidden forever (a
+ * blank canvas when columns hydrate after first paint). Starting from `prevNode`
+ * keeps the measurement intact; RF re-measures only if the real size changes.
  */
 export function mergeById(prev, seeded, saved = {}) {
   const prevById = new Map((prev || []).map(n => [n.id, n]));
@@ -42,8 +51,21 @@ export function mergeById(prev, seeded, saved = {}) {
       // Clause 3: a new node takes its fresh slot.
       position = seedNode.position;
     }
-    // Latest data/type/size, reconciled position. (Clause 4 — dropped ids — falls
-    // out: we only map over `seeded`, so removed ids are naturally absent.)
+
+    if (prevNode) {
+      // Start from prevNode to preserve RF's measured fields (width/height/
+      // positionAbsolute/internals), then overlay the latest seeded content +
+      // reconciled position. (Clause 4 — dropped ids — falls out: we map over
+      // `seeded`, so removed ids are naturally absent.)
+      return {
+        ...prevNode,
+        data: seedNode.data,
+        type: seedNode.type,
+        layoutSize: seedNode.layoutSize,
+        position,
+      };
+    }
+    // New node: take it as-seeded (RF will measure it on mount).
     return { ...seedNode, position };
   });
 }

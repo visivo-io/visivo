@@ -71,6 +71,31 @@ describe('mergeById (controlled-node reconciliation §6)', () => {
     expect(out.find(x => x.id === 'a').position).toEqual({ x: 7, y: 8 });
   });
 
+  it('PRESERVES the RF-measured width/height across a re-seed (else nodes hide)', () => {
+    // RF wrote width/height onto the controlled node after measuring it. The
+    // re-seed from the layout output carries NONE — if mergeById dropped the
+    // measured dims, RF would mark the node unmeasured and hide it permanently
+    // (the ResizeObserver never re-fires on an unchanged size). The measured
+    // fields must survive.
+    const prev = [
+      n('a', 0, 0, { width: 191, height: 124, positionAbsolute: { x: 0, y: 0 } }),
+    ];
+    const seeded = [n('a', 0, 0, { layoutSize: { width: 260, height: 130 } })]; // no width/height
+    const a = mergeById(prev, seeded, {}).find(x => x.id === 'a');
+    expect(a.width).toBe(191);
+    expect(a.height).toBe(124);
+    expect(a.positionAbsolute).toEqual({ x: 0, y: 0 });
+    // ...while still adopting the latest seeded layoutSize.
+    expect(a.layoutSize).toEqual({ width: 260, height: 130 });
+  });
+
+  it('a brand-new node has no measured dims to carry (RF measures it on mount)', () => {
+    const out = mergeById([], [n('b', 5, 5)], {});
+    const b = out.find(x => x.id === 'b');
+    expect(b.width).toBeUndefined();
+    expect(b.height).toBeUndefined();
+  });
+
   it('handles empty prev / empty seeded gracefully', () => {
     expect(mergeById([], [], {})).toEqual([]);
     expect(mergeById(undefined, undefined, undefined)).toEqual([]);
