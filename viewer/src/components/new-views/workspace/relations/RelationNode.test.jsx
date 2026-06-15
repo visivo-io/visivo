@@ -1,7 +1,7 @@
 /* eslint-disable no-template-curly-in-string, testing-library/no-node-access, testing-library/no-container */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow';
+import { ReactFlowProvider } from 'reactflow';
 import RelationNode from './RelationNode';
 import RelationLinkEdge from './RelationLinkEdge';
 import { getTypeColors } from '../../common/objectTypeConfigs';
@@ -89,81 +89,44 @@ describe('RelationNode (relation-as-node pill)', () => {
   });
 });
 
-// Seeds nodeInternals into the live RF store so the edge can read live geometry.
-const Seeder = ({ internals, children }) => {
-  const api = useStoreApi();
-  const seeded = React.useRef(false);
-  if (!seeded.current) {
-    api.setState({ nodeInternals: internals });
-    seeded.current = true;
-  }
-  return children;
-};
-
 const finitePaths = container =>
   Array.from(container.querySelectorAll('path'))
     .map(p => p.getAttribute('d'))
     .filter(Boolean);
 
-describe('RelationLinkEdge (real ReactFlowProvider)', () => {
-  // nodeInternals carry NO width/height (jsdom never fires ResizeObserver) so the
-  // null-geometry guard chain is exercised on the first paint.
-  const baseInternals = () =>
-    new Map([
-      [
-        'erd-model-orders',
-        {
-          id: 'erd-model-orders',
-          position: { x: 0, y: 0 },
-          data: { name: 'orders', columns: ['user_id'] },
-        },
-      ],
-      [
-        'erd-relnode-orders_to_users',
-        {
-          id: 'erd-relnode-orders_to_users',
-          position: { x: 400, y: 0 },
-          data: { relationName: 'orders_to_users' },
-        },
-      ],
-    ]);
-
-  const mountEdge = ({ internals, edgeProps } = {}) =>
+describe('RelationLinkEdge (built on React Flow handle positions)', () => {
+  // React Flow computes sourceX/Y + targetX/Y from the ACTUAL rendered handle
+  // positions (the edge sets sourceHandle/targetHandle = the column id) and hands
+  // them to the edge — there is NO geometry estimation in the edge. The edge just
+  // draws a bezier between the two points. BaseEdge is presentational, so no
+  // provider is needed here.
+  const mountEdge = props =>
     render(
-      <ReactFlowProvider>
-        <ReactFlow nodes={[]} edges={[]} />
-        <Seeder internals={internals || baseInternals()}>
-          <svg>
-            <RelationLinkEdge
-              id="erd-reledge-orders_to_users-a"
-              source="erd-model-orders"
-              target="erd-relnode-orders_to_users"
-              sourceHandle="user_id"
-              data={{
-                relationName: 'orders_to_users',
-                modelEnd: 'source',
-                column: 'user_id',
-                columns: ['user_id'],
-              }}
-              {...edgeProps}
-            />
-          </svg>
-        </Seeder>
-      </ReactFlowProvider>
+      <svg>
+        <RelationLinkEdge
+          id="erd-reledge-orders_to_users-a"
+          sourceX={100}
+          sourceY={50}
+          sourcePosition="right"
+          targetX={400}
+          targetY={120}
+          targetPosition="left"
+          {...props}
+        />
+      </svg>
     );
 
-  it('renders a FINITE path even when nodeInternals lacks width/height', () => {
+  it('draws a finite bezier path between the source and target handle positions', () => {
     const { container } = mountEdge();
     const dValues = finitePaths(container);
     expect(dValues.length).toBeGreaterThan(0);
     dValues.forEach(d => expect(d).not.toMatch(/NaN/));
   });
 
-  it('renders no arrowhead marker and no pill label', () => {
+  it('renders no arrowhead marker and no pill label (undirected)', () => {
     const { container } = mountEdge();
-    // No EdgeLabelRenderer pill content (the pill is the node now).
+    // The pill is the node now — no label on the edge.
     expect(container.querySelector('[data-testid^="erd-relation-pill-"]')).toBeNull();
-    // The BaseEdge path has no marker-end reference (undirected link).
     const path = container.querySelector('path');
     expect(path).toBeInTheDocument();
     expect(path.getAttribute('marker-end')).toBeFalsy();
@@ -174,34 +137,5 @@ describe('RelationLinkEdge (real ReactFlowProvider)', () => {
     const path = container.querySelector('path');
     const stroke = path.getAttribute('stroke') || path.style.stroke;
     expect(stroke).toMatch(/#3b82f6|rgb\(59, 130, 246\)/);
-  });
-
-  it('handles the relationNode → model (target model end) direction with a finite path', () => {
-    const internals = new Map([
-      [
-        'erd-relnode-orders_to_users',
-        {
-          id: 'erd-relnode-orders_to_users',
-          position: { x: 0, y: 0 },
-          data: { relationName: 'orders_to_users' },
-        },
-      ],
-      [
-        'erd-model-users',
-        { id: 'erd-model-users', position: { x: 400, y: 0 }, data: { name: 'users', columns: ['id'] } },
-      ],
-    ]);
-    const { container } = mountEdge({
-      internals,
-      edgeProps: {
-        id: 'erd-reledge-orders_to_users-b',
-        source: 'erd-relnode-orders_to_users',
-        target: 'erd-model-users',
-        sourceHandle: undefined,
-        targetHandle: 'id',
-        data: { relationName: 'orders_to_users', modelEnd: 'target', column: 'id', columns: ['id'] },
-      },
-    });
-    finitePaths(container).forEach(d => expect(d).not.toMatch(/NaN/));
   });
 });

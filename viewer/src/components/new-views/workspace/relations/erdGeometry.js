@@ -1,10 +1,10 @@
 /**
  * erdGeometry.js — the SINGLE source of truth for ERD model-card geometry.
  *
- * `useRelationErdDag.js`, `ErdModelNode.jsx`, `edgeRouting.js`, and
- * `RelationLinkEdge.jsx` all import these consts from here so the layout engine
- * (dagre via `layoutSize`), the card renderer, and the edge router agree on the
- * exact pixel geometry of a card. Nothing re-declares these values.
+ * `useRelationErdDag.js` and `ErdModelNode.jsx` import these consts from here so
+ * the layout engine (dagre via `layoutSize`) and the card renderer agree on the
+ * exact pixel geometry of a card. (Edges no longer estimate geometry — React Flow
+ * gives the link edge the real handle positions.) Nothing re-declares these.
  *
  * The pixel values must track the rendered card markup:
  *   - header  : `px-3 py-2`   = 36px  (ERD_HEADER_H)
