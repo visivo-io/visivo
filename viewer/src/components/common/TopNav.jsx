@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import Dropdown from './Dropdown';
-import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiUser, FiUsers, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
+import { FiChevronDown, FiFolder, FiCheck, FiX, FiSearch, FiClock, FiLogOut, FiLayers, FiArrowRight } from 'react-icons/fi';
 import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
@@ -376,7 +376,7 @@ function localMenu(close) {
   );
 }
 
-function UserMenu({ user, onSignOut }) {
+function UserMenu({ user, onSignOut, items = [] }) {
   const initial = user?.name ? user.name[0].toUpperCase() : 'U';
   const trigger = (
     <span style={{ display: 'inline-flex', cursor: 'pointer' }}>
@@ -394,8 +394,15 @@ function UserMenu({ user, onSignOut }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{user.name}</div>
               {user.email && <div style={{ fontSize: 11.5, color: '#6b7280' }}>{user.email}</div>}
             </div>
-            <Row onClick={close} style={{ borderRadius: 6 }}><FiUser size={15} color="#6b7280" /> Account</Row>
-            <Row onClick={close} style={{ borderRadius: 6 }}><FiUsers size={15} color="#6b7280" /> Organization</Row>
+            {items.map(item => (
+              <Row
+                key={item.label}
+                onClick={() => { item.onClick && item.onClick(); close(); }}
+                style={{ borderRadius: 6 }}
+              >
+                {item.icon ? <item.icon size={15} color="#6b7280" /> : null} {item.label}
+              </Row>
+            ))}
             <Row onClick={() => { onSignOut && onSignOut(); close(); }} style={{ borderRadius: 6 }}><FiLogOut size={15} color="#6b7280" /> Sign out</Row>
           </div>
         ) : (
@@ -432,6 +439,9 @@ const TopNav = ({
   // user (cloud) — absent ⇒ local login/docs/community menu
   user,
   onSignOut,
+  // cloud: items shown above "Sign out" in the user menu ({label, icon, onClick}).
+  // The host app (core) supplies these so the shared viewer carries no app routes.
+  userMenuItems,
   // cloud unifiers: a custom logo node (the account menu) and an "All stages"
   // link in the stage dropdown. Absent locally → plain logo, no all-stages.
   renderLogo,
@@ -504,7 +514,7 @@ const TopNav = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
             {showProject && action}
-            <UserMenu user={user} onSignOut={onSignOut} />
+            <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
           </div>
         </div>
         {banner}
@@ -529,7 +539,7 @@ const TopNav = ({
           {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
-          <UserMenu user={user} onSignOut={onSignOut} />
+          <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
         </div>
       </div>
       {banner}
