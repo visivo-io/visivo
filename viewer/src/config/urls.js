@@ -121,6 +121,10 @@ const URL_PATTERNS = {
     // Model data endpoint
     modelData: '/api/models/{name}/data/',
 
+    // Model schema endpoints (run-phase column schema artifact)
+    modelSchema: '/api/models/{name}/schema/',
+    modelSchemaColumns: '/api/models/{name}/schema/columns/',
+
     // Exploration persistence endpoints
     explorationsList: '/api/explorations/',
     explorationDetail: '/api/explorations/{id}/',
@@ -242,6 +246,15 @@ const URL_PATTERNS = {
 
     // Model data endpoint (not available in dist)
     modelData: null,
+
+    // Model schema endpoints — null in dist for now. The dist build does NOT
+    // yet copy {output_dir}/main/schemas/{model}/schema.json into /data/ (see
+    // dist_phase.py, which copies insights.json / inputs.json / parquet but not
+    // model schemas), so there is no static JSON to point at. With these null,
+    // the frontend falls back to model data. Set modelSchema to
+    // '/data/schemas/models/{name}/schema.json' once dist_phase copies them.
+    modelSchema: null,
+    modelSchemaColumns: null,
 
     // Exploration persistence endpoints (not available in dist)
     explorationsList: null,

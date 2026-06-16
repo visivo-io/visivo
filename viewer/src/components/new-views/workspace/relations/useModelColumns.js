@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { fetchModelColumnNames } from '../../../../api/modelSchema';
 import { fetchModelData } from '../../../../api/modelData';
 
 /**
@@ -8,18 +9,19 @@ import { fetchModelData } from '../../../../api/modelData';
  * slice never populates that field (it carries config/sql/source, not the run
  * result's columns). So cards rendered "No columns loaded".
  *
- * This hook closes that gap by fetching each model's PRE-COMPUTED data
- * (`/api/models/{name}/data/`, exposed via `fetchModelData`) — the same cached
- * run artifact the Explorer reads — and extracting its `columns` list. That
- * endpoint is the most reliable column source: it reflects the model's actual
- * output schema (post-SQL, post-join) without re-running the query or guessing
- * a table name from the SQL. It returns `{ available, columns }`; we keep only
- * the names.
+ * This hook closes that gap by reading each model's run-phase SCHEMA artifact
+ * (`/api/models/{name}/schema/`, exposed via `fetchModelColumnNames`) — the
+ * cheap, cloud-safe column+type metadata written during `visivo run`. It
+ * reflects the model's actual output schema (post-SQL, post-join) without
+ * re-running the query or guessing a table name from the SQL. When the schema
+ * artifact is unavailable (e.g. dist, until the dist build ships it) the hook
+ * falls back to the model's cached run DATA (`fetchModelData`) and takes its
+ * `columns` list. Either way we keep only the names.
  *
  * @param {string[]} modelNames - the model names to hydrate (the ERD's models).
  * @returns {{ columnsByModel: Record<string,string[]>, loading: boolean }}
  *   `columnsByModel[name]` is the model's column-name array (`[]` until loaded
- *   or when the model has no cached data). Models already carrying a usable
+ *   or when the model has no schema/data). Models already carrying a usable
  *   column list are reported as-is by the caller; this hook only fills gaps.
  */
 export function useModelColumns(modelNames) {
@@ -59,12 +61,16 @@ export function useModelColumns(modelNames) {
     Promise.all(
       toFetch.map(async name => {
         try {
+          // Schema artifact first (column names + types, cloud-safe).
+          const cols = await fetchModelColumnNames(name);
+          if (cols.length) return [name, cols];
+          // Fallback: the model's cached run data (e.g. when the schema
+          // artifact isn't available in this environment).
           const data = await fetchModelData(name);
-          const cols = Array.isArray(data?.columns) ? data.columns.filter(Boolean) : [];
-          return [name, cols];
+          return [name, Array.isArray(data?.columns) ? data.columns.filter(Boolean) : []];
         } catch {
-          // A model with no cached data (never run) just resolves to no columns;
-          // the card keeps its empty state rather than throwing.
+          // A model with no schema or cached data (never run) just resolves to
+          // no columns; the card keeps its empty state rather than throwing.
           return [name, []];
         }
       })
