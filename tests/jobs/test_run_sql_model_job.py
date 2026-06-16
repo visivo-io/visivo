@@ -1,5 +1,8 @@
 """Tests for run_sql_model_job to verify Input logic removal."""
 
+import json
+import os
+
 import pytest
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.inputs.types.single_select import SingleSelectInput
@@ -8,6 +11,7 @@ from visivo.models.project import Project
 from visivo.models.insight import Insight
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.interaction import InsightInteraction
+from visivo.models.sources.sqlite_source import SqliteSource
 from tests.factories.model_factories import SourceFactory
 from tests.support.utils import temp_folder
 
@@ -102,3 +106,49 @@ class TestSqlModelJobNoInputLogic:
         assert (
             sql_job.action == model_query_and_schema_action
         ), f"Expected model_query_and_schema_action, got {sql_job.action.__name__}"
+
+
+class TestSqlModelSchemaArtifact:
+    """Verify _build_and_write_schema emits the envelope and preserves the
+    legacy {name_hash: {col: type}} block the field resolver depends on."""
+
+    def test_writes_envelope_and_preserves_legacy_hash_block(self):
+        from visivo.jobs.run_sql_model_job import _build_and_write_schema
+
+        source = SqliteSource(name="source", database=":memory:", type="sqlite")
+        model = SqlModel(
+            name="orders_enriched",
+            sql="SELECT 1 AS id, 'x' AS name",
+            source=f"ref({source.name})",
+        )
+        output_dir = temp_folder()
+
+        result = _build_and_write_schema(model, source, output_dir)
+
+        # The return value (used by callers) is still the {hash: {col: type}} dict.
+        model_hash = model.name_hash()
+        assert model_hash in result
+        assert set(result[model_hash].keys()) == {"id", "name"}
+
+        schema_file = os.path.join(output_dir, "main", "schemas", model.name, "schema.json")
+        assert os.path.exists(schema_file)
+        with open(schema_file) as fp:
+            data = json.load(fp)
+
+        # Envelope fields present.
+        assert data["model_name"] == "orders_enriched"
+        assert data["model_type"] == "sql"
+        assert "generated_at" in data
+        assert data["metadata"]["source_dialect"] == source.get_sqlglot_dialect()
+
+        # Columns block mirrors the SQLGlot-inferred column map.
+        assert set(data["columns"].keys()) == {"id", "name"}
+        for col in data["columns"].values():
+            assert "type" in col
+            assert "nullable" in col
+
+        # Legacy {name_hash: {col: type_string}} block preserved AND first key.
+        assert next(iter(data.keys())) == model_hash
+        legacy = data[model_hash]
+        assert set(legacy.keys()) == {"id", "name"}
+        assert all(isinstance(v, str) for v in legacy.values())
