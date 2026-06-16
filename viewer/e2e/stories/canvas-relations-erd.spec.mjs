@@ -64,6 +64,48 @@ test.describe('Relations ERD builder (VIS-1006)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('ERD cards render output columns from the model schema endpoint', async ({ page }) => {
+    const errors = collectErrors(page);
+
+    // Watch model API traffic: useModelColumns must hit the run-phase SCHEMA
+    // artifact (/api/models/<name>/schema/), not the heavier /data/ endpoint.
+    const schemaCalls = [];
+    const dataCalls = [];
+    const modelApi = /\/api\/models\/([^/]+)\/(schema|data)\//;
+    page.on('request', req => {
+      const m = modelApi.exec(req.url());
+      if (!m) return;
+      if (m[2] === 'schema') schemaCalls.push(m[1]);
+      else dataCalls.push(m[1]);
+    });
+
+    await openWorkspace(page);
+    await selectLibraryObject(page, 'relation', 'local_to_local');
+    await expect(page.getByTestId('relation-erd')).toBeVisible({ timeout: WAIT });
+
+    // The model cards hydrate their columns from the schema artifact. The
+    // integration project's local_test_table model outputs columns x and y.
+    await expect(
+      page.getByTestId('erd-column-local_test_table-x')
+    ).toBeVisible({ timeout: WAIT });
+    await expect(
+      page.getByTestId('erd-column-local_test_table-y')
+    ).toBeVisible({ timeout: WAIT });
+    await expect(
+      page.getByTestId('erd-column-another_local_test_table-new_x')
+    ).toBeVisible({ timeout: WAIT });
+
+    // The columns came from the schema endpoint — and the ERD did NOT fall
+    // back to /data/ for the models whose schema resolved.
+    expect(schemaCalls).toContain('local_test_table');
+    expect(schemaCalls).toContain('another_local_test_table');
+    expect(dataCalls).not.toContain('local_test_table');
+    expect(dataCalls).not.toContain('another_local_test_table');
+
+    await page.screenshot({ path: `${SCREENS}/vis1006-03-erd-columns-from-schema.png` });
+    expect(errors).toEqual([]);
+  });
+
   test('the relation Canvas lens flips to Lineage and back', async ({ page }) => {
     const errors = collectErrors(page);
     await openWorkspace(page);
