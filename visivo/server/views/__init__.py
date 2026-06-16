@@ -28,6 +28,7 @@ from visivo.server.views.telemetry_views import register_telemetry_views
 from visivo.server.views.explorer_views import register_explorer_views
 from visivo.server.views.expression_views import register_expression_views
 from visivo.server.views.model_data_views import register_model_data_views
+from visivo.server.views.model_schema_views import register_model_schema_views
 
 
 def register_views(app, flask_app, output_dir):
@@ -62,3 +63,4 @@ def register_views(app, flask_app, output_dir):
     register_explorer_views(app, flask_app, output_dir)
     register_expression_views(app, flask_app, output_dir)
     register_model_data_views(app, flask_app, output_dir)
+    register_model_schema_views(app, flask_app, output_dir)
