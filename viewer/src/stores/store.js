@@ -16,6 +16,7 @@ import createMarkdownSlice from './markdownStore';
 import createChartSlice from './chartStore';
 import createTableSlice from './tableStore';
 import createCommitSlice from './commitStore';
+import createCloudEditSlice from './cloudEditStore';
 import createDefaultsSlice from './defaultsStore';
 import createDashboardSlice from './dashboardStore';
 import createCsvScriptModelSlice from './csvScriptModelStore';
@@ -42,6 +43,7 @@ const useStore = create(
     ...createChartSlice(...a),
     ...createTableSlice(...a),
     ...createCommitSlice(...a),
+    ...createCloudEditSlice(...a),
     ...createDefaultsSlice(...a),
     ...createDashboardSlice(...a),
     ...createCsvScriptModelSlice(...a),

@@ -102,6 +102,13 @@ const URL_PATTERNS = {
     commitPending: '/api/commit/pending/',
     commit: '/api/commit/',
 
+    // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
+    projectCapabilities: '/api/projects/{projectId}/capabilities/',
+    projectDraft: '/api/projects/{projectId}/draft/',
+    stageBranch: '/api/stages/branch/',
+    projectChanges: '/api/projects/{projectId}/changes/',
+    projectCommit: '/api/projects/{projectId}/commit/',
+
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
     sourceSchemaJobDetail: '/api/source-schema-jobs/{name}/',
@@ -220,6 +227,13 @@ const URL_PATTERNS = {
     commitStatus: null,
     commitPending: null,
     commit: null,
+
+    // Cloud-editing endpoints (not available in dist)
+    projectCapabilities: null,
+    projectDraft: null,
+    stageBranch: null,
+    projectChanges: null,
+    projectCommit: null,
 
     // Source schema jobs endpoints (not available in dist)
     sourceSchemaJobsList: null,
