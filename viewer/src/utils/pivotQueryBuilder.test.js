@@ -24,6 +24,27 @@ describe('buildPivotQuery', () => {
     );
   });
 
+  it('builds a single-aggregated-row pivot when there are NO rows', () => {
+    // Columns + values but no rows: omit GROUP BY and restrict the inner SELECT
+    // to the pivot + value columns so DuckDB collapses to one aggregated row
+    // (a SELECT * would implicitly group by every other column).
+    const sql = buildPivotQuery(
+      {
+        columns: ['${ref(insight).region}'],
+        rows: [],
+        values: ['sum(${ref(insight).revenue})', 'count(${ref(insight).revenue})'],
+      },
+      propsMapping,
+      'tbl'
+    );
+    expect(sql).toBe(
+      'PIVOT (SELECT "region_hash_abc", "revenue_hash_xyz" FROM "tbl") ' +
+        'ON "region_hash_abc" USING sum("revenue_hash_xyz"), count("revenue_hash_xyz")'
+    );
+    // No trailing GROUP BY for the no-rows case.
+    expect(sql).not.toMatch(/GROUP BY/);
+  });
+
   it('handles multiple row fields', () => {
     const sql = buildPivotQuery(
       {

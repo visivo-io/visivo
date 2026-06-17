@@ -88,14 +88,18 @@ export const serializeDraft = draft => {
 };
 
 /**
- * The DuckDB pivot config the result pipeline consumes — only a real pivot
- * (columns AND rows AND values) or a column-select (columns only) produces a
- * runnable config; anything else returns null so the result panel shows its
- * empty hint instead of erroring.
+ * The DuckDB pivot config the result pipeline consumes. A runnable config is:
+ *   - a PIVOT — pivot `columns` + aggregated `values`; `rows` (the grouping) are
+ *     OPTIONAL: with rows it's a classic pivot, without rows it collapses to a
+ *     single aggregated row pivoted across the column values; or
+ *   - a column-select — `columns` only (no aggregation).
+ * Anything else (e.g. columns with no values and no rows-as-select, or values
+ * with no pivot column) returns null so the panel shows its empty hint instead
+ * of erroring.
  */
 export const draftToPivotConfig = draft => {
   const { columns, rows, values } = serializeDraft(draft);
-  if (columns.length && rows.length && values.length) return { columns, rows, values };
+  if (columns.length && values.length) return { columns, rows, values };
   if (columns.length && !rows.length && !values.length) return { columns };
   return null;
 };

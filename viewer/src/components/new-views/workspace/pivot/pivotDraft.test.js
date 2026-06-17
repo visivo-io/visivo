@@ -90,7 +90,7 @@ describe('pivotDraft', () => {
     expect(serializeDraft(seedDraftFromRecord(config))).toEqual(config);
   });
 
-  test('draftToPivotConfig yields a pivot config only when columns+rows+values present', () => {
+  test('draftToPivotConfig yields a pivot config when columns+values present (rows optional)', () => {
     const full = {
       columns: [{ field: 'region', source: 's' }],
       rows: [{ field: 'category', source: 's' }],
@@ -100,6 +100,22 @@ describe('pivotDraft', () => {
       columns: ['${ref(s).region}'],
       rows: ['${ref(s).category}'],
       values: ['sum(${ref(s).revenue})'],
+    });
+
+    // columns + values, NO rows → still a runnable pivot (single aggregated row).
+    expect(
+      draftToPivotConfig({
+        columns: [{ field: 'category', source: 's' }],
+        rows: [],
+        values: [
+          { field: 'value', source: 's', agg: 'sum' },
+          { field: 'value', source: 's', agg: 'count' },
+        ],
+      })
+    ).toEqual({
+      columns: ['${ref(s).category}'],
+      rows: [],
+      values: ['sum(${ref(s).value})', 'count(${ref(s).value})'],
     });
 
     // columns only → column-select config
@@ -113,6 +129,15 @@ describe('pivotDraft', () => {
         columns: [{ field: 'region', source: 's' }],
         rows: [{ field: 'category', source: 's' }],
         values: [],
+      })
+    ).toBeNull();
+
+    // values but no pivot column → not runnable (a pivot needs a column to pivot ON)
+    expect(
+      draftToPivotConfig({
+        columns: [],
+        rows: [{ field: 'category', source: 's' }],
+        values: [{ field: 'value', source: 's', agg: 'sum' }],
       })
     ).toBeNull();
 
