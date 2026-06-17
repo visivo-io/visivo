@@ -43,30 +43,17 @@ const TypeBadge = ({ type }) => {
 const CommitModal = () => {
   const commitModalOpen = useStore(state => state.commitModalOpen);
   const closeCommitModal = useStore(state => state.closeCommitModal);
+  const pendingChanges = useStore(state => state.pendingChanges);
   const commitLoading = useStore(state => state.commitLoading);
+  const commitError = useStore(state => state.commitError);
   const commitChanges = useStore(state => state.commitChanges);
-  // Cloud (core) vs local (Flask): in the cloud the dirty set and the commit
-  // action come from the draft's project-scoped endpoints.
-  const isCloud = useStore(state => state.isCloud);
-  const flaskPending = useStore(state => state.pendingChanges);
-  const flaskError = useStore(state => state.commitError);
-  const cloudPending = useStore(state => state.cloudPendingChanges);
-  const cloudError = useStore(state => state.cloudEditError);
-  const commitCloud = useStore(state => state.commitCloud);
-
-  const pendingChanges = isCloud ? cloudPending : flaskPending;
-  const commitError = isCloud ? cloudError : flaskError;
 
   if (!commitModalOpen) return null;
 
+  // commitChanges handles every backend: it publishes (closing the modal on
+  // success), no-ops when there's nothing to commit, and surfaces run/role
+  // gate actions as commitError otherwise.
   const handleCommit = async () => {
-    if (isCloud) {
-      // commitCloud surfaces run/role gates via {success:false, action, error};
-      // on success it switches to the next draft and clears the dirty set.
-      const result = await commitCloud();
-      if (result?.success) closeCommitModal();
-      return;
-    }
     await commitChanges();
   };
 

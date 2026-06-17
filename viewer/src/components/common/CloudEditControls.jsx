@@ -29,19 +29,19 @@ const btnStyle = (bg, disabled) => ({
  *   - can_branch → Branch (fork onto a new stage)
  * An editor on the default stage gets Branch only (edit_action === 'branch_required').
  *
- * Self-gating: renders null unless `isCloud` (the capabilities probe succeeded).
- * In local `visivo serve` (Flask) the probe 404s, isCloud stays false, and this
- * is invisible — local editing is unchanged.
+ * Backend-agnostic: rendered purely from the `capabilities` endpoint. Both
+ * servers answer it (Flask local reports can_edit + no branch; Django cloud
+ * reports the user's stage role). Renders null until capabilities load / when
+ * the user can neither edit nor branch.
  */
 const CloudEditControls = () => {
-  const isCloud = useStore(state => state.isCloud);
   const capabilities = useStore(state => state.capabilities);
   const startEdit = useStore(state => state.startEdit);
   const startBranch = useStore(state => state.startBranch);
   const project = useStore(state => state.project);
   const [busy, setBusy] = useState(false);
 
-  if (!isCloud || !capabilities) return null;
+  if (!capabilities) return null;
   const { can_edit: canEdit, can_branch: canBranch } = capabilities;
   if (!canEdit && !canBranch) return null;
 

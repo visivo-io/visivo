@@ -205,8 +205,75 @@ def register_commit_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting pending changes: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
+    # ---- Project-scoped contract -------------------------------------------
+    # Mirrors core/Django (/api/projects/<id>/capabilities|changes|draft|commit/)
+    # so the viewer is backend-agnostic: it calls one set of endpoints and never
+    # branches on local-vs-cloud. visivo serve is single-user and always an
+    # editable draft, with no stages — so you can edit but not branch.
+
+    @app.route("/api/projects/<project_id>/capabilities/", methods=["GET"])
+    def get_project_capabilities(project_id=None):
+        return jsonify(
+            {
+                "can_view": True,
+                "can_edit": True,
+                "can_branch": False,
+                "is_default_stage": True,
+                "edit_action": "edit",
+            }
+        )
+
+    @app.route("/api/projects/<project_id>/changes/", methods=["GET"])
+    def get_project_changes(project_id=None):
+        """The dirty set a commit would publish, in core's shape."""
+        try:
+            change_managers = [
+                ("source", flask_app.source_manager),
+                ("model", flask_app.model_manager),
+                ("dimension", flask_app.dimension_manager),
+                ("metric", flask_app.metric_manager),
+                ("relation", flask_app.relation_manager),
+                ("insight", flask_app.insight_manager),
+                ("markdown", flask_app.markdown_manager),
+                ("chart", flask_app.chart_manager),
+                ("table", flask_app.table_manager),
+                ("dashboard", flask_app.dashboard_manager),
+                ("csvScriptModel", flask_app.csv_script_model_manager),
+                ("localMergeModel", flask_app.local_merge_model_manager),
+                ("input", flask_app.input_manager),
+            ]
+            to_publish, to_remove = [], []
+            for type_name, manager in change_managers:
+                for name in list(manager.cached_objects.keys()):
+                    status = manager.get_status(name)
+                    if status and status != ObjectStatus.PUBLISHED:
+                        entry = {"name": name, "type": type_name, "status": status.value}
+                        if status == ObjectStatus.DELETED:
+                            to_remove.append(entry)
+                        else:
+                            to_publish.append(entry)
+            if flask_app._cached_defaults is not None:
+                to_publish.append({"name": "defaults", "type": "defaults", "status": "modified"})
+            return jsonify(
+                {
+                    "to_publish": to_publish,
+                    "to_remove": to_remove,
+                    "has_changes": bool(to_publish or to_remove),
+                }
+            )
+        except Exception as e:
+            Logger.instance().error(f"Error getting project changes: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/projects/<project_id>/draft/", methods=["POST"])
+    def create_project_draft(project_id=None):
+        """Local serve is always an editable draft, so Edit is idempotent —
+        echo the project id back and the viewer keeps editing in place."""
+        return jsonify({"id": project_id, "name": project_id})
+
     @app.route("/api/commit/", methods=["POST"])
-    def commit_changes():
+    @app.route("/api/projects/<project_id>/commit/", methods=["POST"])
+    def commit_changes(project_id=None):
         """Write all cached changes to YAML files."""
         try:
             # Build named_children dict for ProjectWriter

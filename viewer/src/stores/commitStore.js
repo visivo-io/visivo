@@ -1,78 +1,82 @@
-import * as commitApi from '../api/commit';
+import * as cloudEditingApi from '../api/cloudEditing';
 
 /**
- * Commit Store Slice
+ * Commit Store Slice — backend-agnostic.
  *
- * Manages the commit workflow for writing cached changes to YAML files.
- * Tracks uncommitted changes across sources and models.
+ * Drives the commit workflow off the project-scoped endpoints
+ * (/api/projects/<id>/changes/ and /commit/). Both servers implement them:
+ * Flask (visivo serve) and Django (cloud). No local-vs-cloud branching.
  */
 const createCommitSlice = (set, get) => ({
   // State
   hasUncommittedChanges: false,
-  pendingChanges: [], // List of objects with pending changes
+  pendingChanges: [], // [{name, type, status}]
   commitLoading: false,
   commitError: null,
   commitModalOpen: false,
 
-  // Check if there are any uncommitted changes. In the cloud (isCloud) the
-  // draft's /changes/ endpoint is the source of truth and also sets the badge;
-  // locally it's the Flask /api/commit/status/ endpoint.
+  // Refresh the dirty set + the commit badge from the project's /changes/.
   checkCommitStatus: async () => {
-    if (get().isCloud) {
-      await get().fetchCloudChanges?.();
+    const projectId = get().project?.id;
+    if (!projectId) {
+      set({ hasUncommittedChanges: false });
       return;
     }
     try {
-      const data = await commitApi.getCommitStatus();
-      set({ hasUncommittedChanges: data.has_unpublished_changes });
+      const changes = await cloudEditingApi.fetchChanges(projectId);
+      const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
+      set({ hasUncommittedChanges: !!changes.has_changes, pendingChanges: pending });
     } catch (error) {
-      // Silently fail - endpoint may not be available in dist mode
+      // Endpoint may be unavailable (e.g. dist mode) — fail closed.
       set({ hasUncommittedChanges: false });
     }
   },
 
-  // Fetch all pending changes
+  // Kept for callers that fetch the list directly; same source as the badge.
   fetchPendingChanges: async () => {
-    try {
-      const data = await commitApi.getPendingChanges();
-      set({ pendingChanges: data.pending || [] });
-      return data.pending || [];
-    } catch (error) {
-      set({ pendingChanges: [] });
-      return [];
-    }
+    await get().checkCommitStatus();
+    return get().pendingChanges;
   },
 
-  // Commit all cached changes to YAML files
+  // Commit (publish) the project's draft.
   commitChanges: async () => {
+    const projectId = get().project?.id;
+    if (!projectId) return { success: false, error: 'No active project' };
     set({ commitLoading: true, commitError: null });
-    try {
-      const result = await commitApi.commitChanges();
+    const { status, body } = await cloudEditingApi.commitDraft(projectId);
+    // Cloud: 201 publishes (+next_draft); 200 {committed:false} is a no-op.
+    // Local: 200 is success. So success = 201, or 200 unless committed===false.
+    const isSuccess = status === 201 || (status === 200 && body.committed !== false);
+    if (isSuccess) {
+      // Cloud hands back a fresh draft to keep editing; merge to retarget the id.
+      if (body.next_draft) get().setProject?.({ ...get().project, ...body.next_draft });
       set({
         commitLoading: false,
         hasUncommittedChanges: false,
         pendingChanges: [],
         commitModalOpen: false,
       });
-      // Refresh sources and models to reflect committed state
+      // Refresh sources and models to reflect the committed state.
       await get().fetchSources?.();
       await get().fetchModels?.();
-      return { success: true, result };
-    } catch (error) {
-      set({ commitLoading: false, commitError: error.message });
-      return { success: false, error: error.message };
+      return { success: true, result: body };
     }
+    if (status === 200) {
+      set({ commitLoading: false });
+      return { success: false, committed: false, detail: body.detail };
+    }
+    // 4xx gates: 409 run_required/run_in_progress/run_failed, 403 branch_required,
+    // 422 invalid. Surface the action + message.
+    const error =
+      body.detail || (body.errors && JSON.stringify(body.errors)) || 'Failed to commit changes';
+    set({ commitLoading: false, commitError: error });
+    return { success: false, action: body.action, error };
   },
 
-  // Open commit modal (fetches pending changes). Cloud reads the draft's
-  // /changes/; local reads the Flask pending list.
+  // Open commit modal (loads the dirty set).
   openCommitModal: async () => {
     set({ commitModalOpen: true, commitError: null });
-    if (get().isCloud) {
-      await get().fetchCloudChanges?.();
-      return;
-    }
-    await get().fetchPendingChanges();
+    await get().checkCommitStatus();
   },
 
   // Close commit modal

@@ -28,11 +28,10 @@ const Home = () => {
   const hasUncommittedChanges = useStore(state => state.hasUncommittedChanges);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
-  // Cloud-editing (core only): the capabilities probe drives the Edit/Branch
-  // entry and the viewer's tool gating. In local serve the probe 404s, so
-  // isCloud stays false and none of this engages.
+  // The capabilities endpoint drives the Edit/Branch entry and the viewer's
+  // tool gating. Both servers answer it (Flask local + Django cloud), so the
+  // viewer needs no local-vs-cloud branching.
   const projectId = useStore(state => state.project?.id);
-  const isCloud = useStore(state => state.isCloud);
   const capabilities = useStore(state => state.capabilities);
   const fetchCapabilities = useStore(state => state.fetchCapabilities);
 
@@ -41,9 +40,8 @@ const Home = () => {
     checkCommitStatus();
   }, [checkCommitStatus]);
 
-  // Probe cloud capabilities whenever the active project changes, then refresh
-  // the commit badge — checkCommitStatus routes to the draft's /changes/
-  // endpoint once isCloud is known (no-op/Flask path locally).
+  // Probe capabilities whenever the active project changes, then refresh the
+  // commit badge — both come from the project's endpoints (Flask + Django).
   useEffect(() => {
     if (!projectId) return;
     (async () => {
@@ -52,11 +50,11 @@ const Home = () => {
     })();
   }, [projectId, fetchCapabilities, checkCommitStatus]);
 
-  // A pure viewer in the cloud (no edit, no branch) sees Dashboards only;
-  // everyone who can edit/branch keeps the full toolset. Undefined => TopNav
-  // uses its default tools (local serve, or any editor/maintainer).
+  // A pure viewer (no edit, no branch) sees Dashboards only; everyone who can
+  // edit/branch keeps the full toolset. Undefined capabilities => TopNav uses
+  // its default tools.
   const restrictedToDashboards =
-    isCloud && capabilities && !capabilities.can_edit && !capabilities.can_branch;
+    capabilities && !capabilities.can_edit && !capabilities.can_branch;
   const tools = restrictedToDashboards
     ? [{ id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate }]
     : undefined;

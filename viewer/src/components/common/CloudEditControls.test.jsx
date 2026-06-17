@@ -7,7 +7,6 @@ jest.mock('../../stores/store');
 
 const mockStore = (overrides = {}) => {
   const state = {
-    isCloud: true,
     capabilities: { can_edit: true, can_branch: true, edit_action: 'edit' },
     startEdit: jest.fn().mockResolvedValue({ success: true }),
     startBranch: jest.fn().mockResolvedValue({ success: true }),
@@ -21,8 +20,8 @@ const mockStore = (overrides = {}) => {
 describe('CloudEditControls', () => {
   afterEach(() => jest.clearAllMocks());
 
-  it('renders nothing in local mode (isCloud false)', () => {
-    mockStore({ isCloud: false });
+  it('renders nothing until capabilities load', () => {
+    mockStore({ capabilities: null });
     render(<CloudEditControls />);
     expect(screen.queryByText('Edit')).not.toBeInTheDocument();
     expect(screen.queryByText('Branch')).not.toBeInTheDocument();
