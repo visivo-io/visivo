@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useStore, { ObjectStatus } from '../../../stores/store';
 import RefTextArea from './RefTextArea';
+import Select from '../../common/Select';
 import {
   FormInput,
-  FormSelect,
   FormFooter,
   FormAlert,
   FormCheckbox,
@@ -127,17 +127,20 @@ const RelationEditForm = ({ relation, isCreate, onClose, onSave }) => {
           error={errors.name}
         />
 
-        <FormSelect
-          id="joinType"
-          label="Join Type"
-          value={joinType}
-          onChange={e => setJoinType(e.target.value)}
-        >
-          <option value="inner">Inner Join</option>
-          <option value="left">Left Join</option>
-          <option value="right">Right Join</option>
-          <option value="full">Full Join</option>
-        </FormSelect>
+        <div className="relative">
+          <Select id="joinType" aria-label="Join Type" value={joinType} onChange={setJoinType}>
+            <option value="inner">Inner Join</option>
+            <option value="left">Left Join</option>
+            <option value="right">Right Join</option>
+            <option value="full">Full Join</option>
+          </Select>
+          <label
+            htmlFor="joinType"
+            className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
+          >
+            Join Type
+          </label>
+        </div>
 
         <RefTextArea
           value={condition}

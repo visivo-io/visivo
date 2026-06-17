@@ -1,6 +1,6 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MissingRelationCard, AmbiguousRelationCard } from './InsightPreviewRelationCards';
 import useStore from '../../../stores/store';
 
@@ -50,8 +50,12 @@ describe('MissingRelationCard', () => {
     // The real popover renders, pre-seeded with both model endpoints so the
     // user only has to pick columns.
     expect(screen.getByTestId('join-operator-popover')).toBeInTheDocument();
-    expect(screen.getByTestId('join-endpoint-a-column-select')).not.toBeDisabled();
-    expect(screen.getByTestId('join-endpoint-b-column-select')).not.toBeDisabled();
+    expect(
+      within(screen.getByTestId('join-endpoint-a-column-select')).getByRole('combobox')
+    ).not.toBeDisabled();
+    expect(
+      within(screen.getByTestId('join-endpoint-b-column-select')).getByRole('combobox')
+    ).not.toBeDisabled();
   });
 
   it('saves the relation and fires onRelationSaved (re-run trigger) on save', async () => {
@@ -60,13 +64,14 @@ describe('MissingRelationCard', () => {
 
     fireEvent.click(screen.getByTestId('missing-relation-draw-join'));
 
-    // Pick a column on each side so a condition can be built.
-    fireEvent.change(screen.getByTestId('join-endpoint-a-column-select'), {
-      target: { value: 'user_id' },
-    });
-    fireEvent.change(screen.getByTestId('join-endpoint-b-column-select'), {
-      target: { value: 'id' },
-    });
+    // Pick a column on each side so a condition can be built. The column pickers
+    // are the brand <Select>; open each portaled menu and click the option.
+    const pickColumn = (testId, col) => {
+      fireEvent.mouseDown(within(screen.getByTestId(testId)).getByRole('combobox'));
+      fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === col));
+    };
+    pickColumn('join-endpoint-a-column-select', 'user_id');
+    pickColumn('join-endpoint-b-column-select', 'id');
 
     fireEvent.click(screen.getByTestId('join-popover-save'));
 

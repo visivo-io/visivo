@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import { DndContext } from '@dnd-kit/core';
 import ItemEditForm, {
   getItemLeafRef,
@@ -237,10 +238,13 @@ describe('ItemEditForm — container variant (Item.rows)', () => {
     expect(screen.getByLabelText('Move nested row 2 down')).toBeDisabled();
   });
 
-  test('editing a nested row height reports the updated container item', () => {
+  test('editing a nested row height reports the updated container item', async () => {
     const onChange = jest.fn();
     renderContainer({ onChange });
-    fireEvent.change(screen.getByLabelText('Row 1 height'), { target: { value: 'large' } });
+    // Row height is the brand <Select>; pick "large" from its portaled menu.
+    await selectEvent.select(screen.getByLabelText('Row 1 height'), 'large', {
+      container: document.body,
+    });
     const next = onChange.mock.calls[0][0];
     expect(next.rows[0].height).toBe('large');
   });

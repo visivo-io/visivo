@@ -12,6 +12,7 @@ import { getTypeByValue } from './objectTypeConfigs';
 import { setAtPath } from './embeddedObjectUtils';
 import { parseRefValue, formatRef } from '../../../utils/refString';
 import EmbeddedPill from '../lineage/EmbeddedPill';
+import Select from '../../common/Select';
 
 /**
  * ChartEditForm - Form component for editing/creating charts
@@ -287,19 +288,19 @@ const ChartEditForm = ({ chart, isCreate, onClose, onSave, onNavigateToEmbedded 
                     onRemove={() => removeInsight(index)}
                     className="flex-1 min-w-0"
                   />
-                  <select
+                  <Select
                     aria-label={`Change insight ${index + 1}`}
+                    data-testid={`change-insight-select-${index}`}
+                    size="sm"
+                    className="min-w-[160px]"
                     value={insight}
-                    onChange={e => updateInsight(index, e.target.value)}
-                    className="px-2 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    title="Change insight"
-                  >
-                    {availableInsights.map(i => (
-                      <option key={i} value={i} disabled={insights.includes(i) && i !== insight}>
-                        {i}
-                      </option>
-                    ))}
-                  </select>
+                    options={availableInsights.map(i => ({
+                      value: i,
+                      label: i,
+                      isDisabled: insights.includes(i) && i !== insight,
+                    }))}
+                    onChange={value => updateInsight(index, value)}
+                  />
                 </div>
               ))
             )}

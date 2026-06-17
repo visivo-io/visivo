@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import ExplorerSaveModal from './ExplorerSaveModal';
@@ -288,7 +289,9 @@ describe('ExplorerSaveModal', () => {
       });
       renderModal({ onClose: mockOnClose });
       expect(screen.getByTestId('after-save-dashboard')).toBeDisabled();
-      expect(screen.getByTestId('after-save-dashboard-select')).toBeDisabled();
+      expect(
+        within(screen.getByTestId('after-save-dashboard-select')).getByRole('combobox')
+      ).toBeDisabled();
     });
 
     it('navigates to /workspace when "Open in Workspace" is chosen', async () => {
@@ -305,12 +308,16 @@ describe('ExplorerSaveModal', () => {
       withDashboards();
       renderModal({ onClose: mockOnClose });
       fireEvent.click(screen.getByTestId('after-save-dashboard'));
-      fireEvent.change(screen.getByTestId('after-save-dashboard-select'), {
-        target: { value: 'ops' },
-      });
-      fireEvent.change(screen.getByTestId('after-save-slot-select'), {
-        target: { value: '0:end' },
-      });
+      await selectEvent.select(
+        within(screen.getByTestId('after-save-dashboard-select')).getByRole('combobox'),
+        'ops',
+        { container: document.body }
+      );
+      await selectEvent.select(
+        within(screen.getByTestId('after-save-slot-select')).getByRole('combobox'),
+        'At end of row 1',
+        { container: document.body }
+      );
       fireEvent.click(screen.getByTestId('save-modal-confirm'));
       await waitFor(() => {
         expect(mockPlaceChart).toHaveBeenCalledWith('ops', 'revenue_chart', '0:end');
@@ -339,11 +346,19 @@ describe('ExplorerSaveModal', () => {
     it('slot picker lists one option per row plus a new-row option', () => {
       withDashboards();
       renderModal({ onClose: mockOnClose });
-      // 'sales' has 2 rows → 2 "at end of" + 1 "new row".
+      // Enable the dashboard branch so the slot select isn't disabled.
+      fireEvent.click(screen.getByTestId('after-save-dashboard'));
+      // 'sales' has 2 rows → 2 "at end of" + 1 "new row" (options render when open).
       const slotSelect = screen.getByTestId('after-save-slot-select');
-      expect(slotSelect).toContainHTML('At end of row 1');
-      expect(slotSelect).toContainHTML('At end of row 2');
-      expect(slotSelect).toContainHTML('In a new row at the end');
+      selectEvent.openMenu(within(slotSelect).getByRole('combobox'));
+      const optionText = screen.getAllByRole('option').map((o) => o.textContent);
+      expect(optionText).toEqual(
+        expect.arrayContaining([
+          'At end of row 1',
+          'At end of row 2',
+          'In a new row at the end',
+        ])
+      );
     });
 
     it('does not navigate when staying in Explorer (default)', async () => {

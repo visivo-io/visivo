@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../stores/store';
 import EmbeddedPill from '../new-views/lineage/EmbeddedPill';
+import Select from '../common/Select';
 
 /**
  * Session-scoped key for remembering the last-used "After save" choice (J-1 /
@@ -231,8 +232,6 @@ const ExplorerSaveModal = ({ onClose }) => {
 
   const radioBase =
     'flex items-start gap-2 text-sm text-secondary-700 cursor-pointer select-none';
-  const selectBase =
-    'rounded-md border border-secondary-300 text-sm px-2 py-1 text-secondary-700 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
   return (
     <div
@@ -352,36 +351,32 @@ const ExplorerSaveModal = ({ onClose }) => {
               />
               <span className="flex flex-wrap items-center gap-1.5">
                 <span>Add to dashboard</span>
-                <select
-                  data-testid="after-save-dashboard-select"
-                  className={selectBase}
-                  value={targetDashboard}
-                  disabled={saving || !hasDashboards || afterSave !== AFTER_SAVE_DASHBOARD}
-                  onChange={(e) => {
-                    setTargetDashboard(e.target.value);
-                    setTargetSlot('new');
-                  }}
-                >
-                  {(dashboards || []).map((d) => (
-                    <option key={d.name} value={d.name}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="min-w-[160px]">
+                  <Select
+                    data-testid="after-save-dashboard-select"
+                    aria-label="Add to dashboard"
+                    size="sm"
+                    value={targetDashboard}
+                    options={(dashboards || []).map((d) => ({ value: d.name, label: d.name }))}
+                    disabled={saving || !hasDashboards || afterSave !== AFTER_SAVE_DASHBOARD}
+                    onChange={(value) => {
+                      setTargetDashboard(value);
+                      setTargetSlot('new');
+                    }}
+                  />
+                </div>
                 <span>in slot</span>
-                <select
-                  data-testid="after-save-slot-select"
-                  className={selectBase}
-                  value={targetSlot}
-                  disabled={saving || !hasDashboards || afterSave !== AFTER_SAVE_DASHBOARD}
-                  onChange={(e) => setTargetSlot(e.target.value)}
-                >
-                  {slotOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="min-w-[170px]">
+                  <Select
+                    data-testid="after-save-slot-select"
+                    aria-label="Slot"
+                    size="sm"
+                    value={targetSlot}
+                    options={slotOptions}
+                    disabled={saving || !hasDashboards || afterSave !== AFTER_SAVE_DASHBOARD}
+                    onChange={setTargetSlot}
+                  />
+                </div>
               </span>
             </label>
           </div>

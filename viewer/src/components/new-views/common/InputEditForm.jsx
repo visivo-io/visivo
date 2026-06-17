@@ -11,6 +11,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import CodeIcon from '@mui/icons-material/Code';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import RefTextArea from './RefTextArea';
+import Select from '../../common/Select';
 import { validateName } from './namedModel';
 import { validateInputDraft, buildInputConfig } from './inputConfigValidation';
 import useDebouncedSave from '../workspace/useDebouncedSave';
@@ -326,18 +327,15 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
         />
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Type</label>
-          <select
+          <label className="block text-sm font-medium text-gray-700" id="input-type-label">
+            Type
+          </label>
+          <Select
+            aria-label="Type"
             value={inputType}
-            onChange={e => setInputType(e.target.value)}
-            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            {INPUT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+            options={INPUT_TYPES}
+            onChange={setInputType}
+          />
         </div>
 
         <FormInput
@@ -474,17 +472,12 @@ const InputEditForm = ({ input, isCreate, onClose, onSave, onSaveStatusChange, a
         {/* Display Type */}
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">Display</label>
-          <select
+          <Select
+            aria-label="Display"
             value={displayType}
-            onChange={e => setDisplayType(e.target.value)}
-            className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            {displayTypes.map(d => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+            options={displayTypes.map(d => ({ value: d, label: d }))}
+            onChange={setDisplayType}
+          />
         </div>
 
         {/* Default Value */}

@@ -5,7 +5,7 @@
  * drag, so we mock `useDroppable` to (a) capture the droppable `data` payload —
  * proving the shelf wires `{ kind:'pivot-field', shelf, onDropField }` the shared
  * router needs — and (b) drive the `onDropField` callback directly to exercise
- * the drop path. Chip removal + the Values aggregation `<select>` are real DOM
+ * the drop path. Chip removal + the Values aggregation picker (brand Select) are real DOM
  * interactions.
  */
 import React from 'react';

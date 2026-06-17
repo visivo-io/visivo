@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import ChartEditForm from './ChartEditForm';
 import useStore from '../../../stores/store';
 
@@ -58,8 +59,9 @@ const renderForm = async (props = {}) => {
   return utils;
 };
 
-// The pill label is a <span>; the change-select repeats the name in an <option>,
-// so scope text queries to the span to assert on the styled pill specifically.
+// The pill label is a <span>; the change-select (brand <Select>) may repeat the
+// name in its value/option text, so scope text queries to the span to assert on
+// the styled pill specifically.
 const getPillLabel = (row, name) =>
   within(row)
     .getAllByText(name)
@@ -99,9 +101,12 @@ describe('ChartEditForm — ref insight pills', () => {
 
   test('the change-select still lets you swap which insight is referenced', async () => {
     await renderForm();
-    const select = screen.getByLabelText('Change insight 1');
-    expect(select).toHaveValue('revenue_insight');
-    fireEvent.change(select, { target: { value: 'cost_insight' } });
+    const select = screen.getByTestId('change-insight-select-0');
+    // The brand <Select> shows the current ref as its selected value.
+    expect(select).toHaveTextContent('revenue_insight');
+    await selectEvent.select(within(select).getByRole('combobox'), 'cost_insight', {
+      container: document.body,
+    });
     const row = screen.getByTestId('ref-insight-row-0');
     expect(getPillLabel(row, 'cost_insight')).toBeInTheDocument();
   });

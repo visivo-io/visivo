@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDataTableColumns } from '../../hooks/useDataTableColumns.jsx';
 import { useAdaptiveColumnSizing } from '../../hooks/useAdaptiveColumnSizing';
 import ColumnVisibilityPicker from './ColumnVisibilityPicker';
+import Select from './Select';
 import { PiCaretLeft, PiCaretRight, PiSpinner } from 'react-icons/pi';
 
 const ROW_HEIGHT = 36;
@@ -346,17 +347,18 @@ const DataTable = ({
           {/* Page size selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-secondary-500">Rows:</span>
-            <select
-              className="text-xs border border-secondary-200 rounded-md px-1.5 py-0.5 bg-white text-secondary-700 cursor-pointer transition-colors hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400"
+            <Select
+              data-testid="datatable-page-size"
+              aria-label="Rows per page"
+              size="sm"
+              className="min-w-[90px]"
               value={pageSize}
-              onChange={e => onPageSizeChange?.(Number(e.target.value))}
-            >
-              {pageSizeOptions.map(opt => (
-                <option key={opt} value={opt}>
-                  {opt.toLocaleString()}
-                </option>
-              ))}
-            </select>
+              options={pageSizeOptions.map(opt => ({
+                value: opt,
+                label: opt.toLocaleString(),
+              }))}
+              onChange={v => onPageSizeChange?.(Number(v))}
+            />
           </div>
 
           {/* Page navigation */}

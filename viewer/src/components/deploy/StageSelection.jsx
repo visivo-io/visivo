@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Loading from '../common/Loading';
+import Select from '../common/Select';
 import DeployLoader from './DeployLoader';
 import AddStageForm from './AddStageForm';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -184,20 +185,15 @@ const StageSelection = ({ status }) => {
             <label htmlFor="stage-select" className="block text-sm font-medium text-gray-700 mb-2">
               Deployment Environment
             </label>
-            <select
+            <Select
               id="stage-select"
+              data-testid="stage-select"
+              placeholder="Select a stage..."
               value={selectedStage}
-              onChange={e => setSelectedStage(e.target.value)}
+              options={stages.map(stage => ({ value: stage.name, label: stage.name }))}
+              onChange={value => setSelectedStage(value || '')}
               disabled={deploying}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Select a stage...</option>
-              {stages.map(stage => (
-                <option key={stage.id || stage.name} value={stage.name}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Add Stage Button */}

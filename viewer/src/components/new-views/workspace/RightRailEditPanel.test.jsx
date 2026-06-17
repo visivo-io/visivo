@@ -7,6 +7,7 @@
  */
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import {
   createMemoryRouter,
   Route,
@@ -229,9 +230,11 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     // There is no Save button in the structure form.
     expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
 
-    // Change the row height select → schedules a debounced save.
-    const heightSelect = screen.getByLabelText('Row 1 height');
-    fireEvent.change(heightSelect, { target: { value: 'large' } });
+    // Change the row height select → schedules a debounced save. The brand
+    // <Select> menu portals to document.body; open it + click synchronously
+    // (fake timers are active, so react-select-event's async select can't run).
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
 
     // Pending immediately, save fires only after the debounce window.
     expect(saveDashboard).not.toHaveBeenCalled();
@@ -270,7 +273,8 @@ describe('RightRailEditPanel auto-save (VIS-802)', () => {
     renderPanel();
 
     // Any edit (row height) triggers a save of the full config.
-    fireEvent.change(screen.getByLabelText('Row 1 height'), { target: { value: 'large' } });
+    selectEvent.openMenu(screen.getByLabelText('Row 1 height'));
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'large'));
     await act(async () => {
       jest.advanceTimersByTime(600);
     });

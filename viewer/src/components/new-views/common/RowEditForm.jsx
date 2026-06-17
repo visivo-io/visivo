@@ -2,6 +2,7 @@ import React from 'react';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AddIcon from '@mui/icons-material/Add';
 import ItemEditForm, { getItemLeafRef } from './ItemEditForm';
+import Select from '../../common/Select';
 
 const HEIGHT_OPTIONS = ['compact', 'xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'];
 
@@ -99,18 +100,15 @@ const RowEditForm = ({
 
       <div className="flex items-center gap-2">
         <label className="text-xs text-gray-600">Height:</label>
-        <select
-          value={row?.height || 'medium'}
-          onChange={e => onHeightChange(e.target.value)}
-          className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        <Select
+          size="sm"
+          className="min-w-[120px]"
           aria-label={`Row ${rowIndex + 1} height`}
-        >
-          {HEIGHT_OPTIONS.map(h => (
-            <option key={h} value={h}>
-              {h}
-            </option>
-          ))}
-        </select>
+          data-testid={`row-${rowId}-height-select`}
+          value={row?.height || 'medium'}
+          options={HEIGHT_OPTIONS.map(h => ({ value: h, label: h }))}
+          onChange={onHeightChange}
+        />
       </div>
 
       {/* Items */}
