@@ -42,7 +42,11 @@ const CloudEditControls = () => {
   const [busy, setBusy] = useState(false);
 
   if (!capabilities) return null;
-  const { can_edit: canEdit, can_branch: canBranch } = capabilities;
+  const { can_edit: canEdit, can_branch: canBranch, is_draft: isDraft } = capabilities;
+  // Already on an editable draft → you're editing; publishing is the Commit
+  // button, so no Edit/Branch entry here. Entry only appears on a published
+  // (non-draft) view.
+  if (isDraft) return null;
   if (!canEdit && !canBranch) return null;
 
   const onEdit = async () => {

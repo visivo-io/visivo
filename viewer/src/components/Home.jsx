@@ -50,11 +50,11 @@ const Home = () => {
     })();
   }, [projectId, fetchCapabilities, checkCommitStatus]);
 
-  // A pure viewer (no edit, no branch) sees Dashboards only; everyone who can
-  // edit/branch keeps the full toolset. Undefined capabilities => TopNav uses
-  // its default tools.
-  const restrictedToDashboards =
-    capabilities && !capabilities.can_edit && !capabilities.can_branch;
+  // The full editor (Explorer/Lineage/Editor) only unlocks when you're on an
+  // editable draft. A published project — or any non-draft view — is
+  // Dashboards-only; you click Edit/Branch to enter a draft first. Undefined
+  // capabilities => TopNav uses its default tools (no gating).
+  const restrictedToDashboards = capabilities && !capabilities.is_draft;
   const tools = restrictedToDashboards
     ? [{ id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate }]
     : undefined;

@@ -7,7 +7,7 @@ jest.mock('../../stores/store');
 
 const mockStore = (overrides = {}) => {
   const state = {
-    capabilities: { can_edit: true, can_branch: true, edit_action: 'edit' },
+    capabilities: { can_edit: true, can_branch: true, edit_action: 'edit', is_draft: false },
     startEdit: jest.fn().mockResolvedValue({ success: true }),
     startBranch: jest.fn().mockResolvedValue({ success: true }),
     project: { id: 'proj-1', name: 'p', stage: 'prod' },
@@ -28,7 +28,14 @@ describe('CloudEditControls', () => {
   });
 
   it('renders nothing for a pure viewer (no edit, no branch)', () => {
-    mockStore({ capabilities: { can_edit: false, can_branch: false } });
+    mockStore({ capabilities: { can_edit: false, can_branch: false, is_draft: false } });
+    render(<CloudEditControls />);
+    expect(screen.queryByText('Edit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Branch')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing when already on a draft (you are editing — use Commit)', () => {
+    mockStore({ capabilities: { can_edit: true, can_branch: true, is_draft: true } });
     render(<CloudEditControls />);
     expect(screen.queryByText('Edit')).not.toBeInTheDocument();
     expect(screen.queryByText('Branch')).not.toBeInTheDocument();

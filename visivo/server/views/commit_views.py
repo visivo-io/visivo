@@ -220,6 +220,10 @@ def register_commit_views(app, flask_app, output_dir):
                 "can_branch": False,
                 "is_default_stage": True,
                 "edit_action": "edit",
+                # visivo serve is always an editable working copy — you're
+                # always "on a draft", so the editor is unlocked directly (no
+                # Edit step) and you just edit + Commit.
+                "is_draft": True,
             }
         )
 
