@@ -6,10 +6,9 @@ import useStore from '../../../../stores/store';
 import { useDuckDB } from '../../../../contexts/DuckDBContext';
 import { useModelQueryJob } from '../../../../hooks/useModelQueryJob';
 import { getConnection } from '../../../../duckdb/duckdb';
-import { profileTableLocally, histogramTableLocally } from '../../../../duckdb/profiling';
+import { profileTableLocally } from '../../../../duckdb/profiling';
 import { getTypeColors } from '../../common/objectTypeConfigs';
-import ProfileStats from '../../../explorerNew/ProfileStats';
-import Histogram from '../../../explorerNew/Histogram';
+import DimensionProfileDashboard from './DimensionProfileDashboard';
 import { useFieldParentModel } from './useFieldParentModel';
 
 /**
@@ -19,10 +18,10 @@ import { useFieldParentModel } from './useFieldParentModel';
  * expression, runs the parent model's SQL against its source (the same
  * `useModelQueryJob` path ModelPreview / the Explorer SQL editor use), loads the
  * rows into DuckDB-WASM, and PROFILES the dimension expression as a DERIVED
- * column (`<expression> AS <dimension>`). The profile reuses the EXACT Explorer
- * profiling stack — `profileTableLocally` / `histogramTableLocally` rendered
- * through <ProfileStats> + <Histogram> (the same pair <ColumnProfilePanel> uses)
- * — so a dimension reads like any other column.
+ * column (`<expression> AS <dimension>`). The profile is computed with
+ * `profileTableLocally` and rendered as a DASHBOARD-style column profile via
+ * <DimensionProfileDashboard> (KPI tiles + a distribution chart with bin toggles
+ * + a box-plot + a quality bar) — the dashboard owns its own histogram recompute.
  *
  * The frame mounts this read-only `preview` lens; editing lives in the right rail.
  */
@@ -73,7 +72,6 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
 
   const [hasRun, setHasRun] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [histogram, setHistogram] = useState(null);
   const [profiling, setProfiling] = useState(false);
   const [profileError, setProfileError] = useState(null);
   const tableRef = useRef(null);
@@ -84,7 +82,6 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
     if (!sourceName || !modelSql) return;
     setHasRun(true);
     setProfile(null);
-    setHistogram(null);
     setProfileError(null);
     executeQuery(sourceName, modelSql).catch(() => {});
   }, [sourceName, modelSql, executeQuery]);
@@ -101,7 +98,6 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
       setProfiling(true);
       setProfileError(null);
       setProfile(null);
-      setHistogram(null);
       try {
         const conn = await getConnection(db);
         const baseTable = `dim_base_${Date.now()}`;
@@ -126,10 +122,6 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
         if (cancelled) return;
         const col = (profileResult.columns || []).find(c => c.name === DERIVED_COL) || null;
         setProfile(col ? { ...col, name, row_count: profileResult.row_count } : null);
-
-        const hist = await histogramTableLocally(db, derivedTable, DERIVED_COL);
-        if (cancelled) return;
-        setHistogram(hist);
       } catch (err) {
         if (!cancelled) setProfileError(err.message || String(err));
       } finally {
@@ -260,13 +252,13 @@ const DimensionInspector = ({ activeObject, record: providedRecord }) => {
             <span className="text-sm text-gray-600">Profiling the expression…</span>
           </div>
         ) : profile ? (
-          <div className="space-y-4">
-            <span className="inline-block rounded bg-secondary-100 px-2 py-0.5 font-mono text-xs text-secondary-600">
-              {profile.type}
-            </span>
-            <ProfileStats profile={profile} rowCount={rowCount} />
-            {histogram && <Histogram data={histogram} />}
-          </div>
+          <DimensionProfileDashboard
+            db={db}
+            tableName={tableRef.current}
+            column={DERIVED_COL}
+            profile={profile}
+            rowCount={rowCount}
+          />
         ) : (
           <FieldCallout
             testId="dimension-inspector-empty"

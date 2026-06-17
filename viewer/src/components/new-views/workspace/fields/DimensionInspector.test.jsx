@@ -3,13 +3,12 @@
  *
  * The Field Lens body for a dimension: it shows the dimension expression, runs
  * its parent model's SQL (via useModelQueryJob), loads the rows into DuckDB and
- * profiles the dimension as a DERIVED column using the EXACT Explorer profiling
- * stack (mockProfileTableLocally / mockHistogramTableLocally → ProfileStats + Histogram).
+ * profiles the dimension as a DERIVED column, then mounts the dashboard-style
+ * profile (DimensionProfileDashboard — KPI tiles + distribution + box-plot).
  *
  * We mock the data layer: the model-query job hook (so we can drive it to a
  * completed state with rows), the DuckDB context + connection, and the two
- * profiling helpers. ProfileStats / Histogram render for real so a real profile
- * panel mounts.
+ * profiling helpers. The dashboard renders for real so the profile panel mounts.
  */
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
@@ -160,8 +159,9 @@ describe('DimensionInspector (VIS-1009)', () => {
       <DimensionInspector activeObject={{ type: 'dimension', name: 'x_rounded' }} projectId="p1" />
     );
 
-    // The real ProfileStats panel renders (Distinct stat from the mocked profile).
-    expect(await screen.findByText('Distinct')).toBeInTheDocument();
+    // The dashboard-style profile panel mounts (KPI tiles + distribution).
+    expect(await screen.findByTestId('dimension-profile-dashboard')).toBeInTheDocument();
+    expect(await screen.findByTestId('dim-kpi-distinct')).toBeInTheDocument();
     expect(mockProfileTableLocally).toHaveBeenCalled();
     // The derived column is created with the dimension expression aliased.
     const createCalls = mockConn.query.mock.calls.map(c => c[0]).join('\n');
