@@ -14,6 +14,8 @@ from visivo.tokens.server import (
     token_received_event,
     FLASK_PORT,
 )
+from visivo.telemetry.config import is_telemetry_enabled
+from visivo.telemetry.machine_id import get_machine_id
 
 PROFILE_PATH = os.path.expanduser("~/.visivo/profile.yml")
 CALLBACK_RESPONSE_WAIT_TIME = 120
@@ -56,6 +58,16 @@ def authorize(host):
     redirect_url = f"http://localhost:{FLASK_PORT}/authorize-device-token"
 
     params = {"redirect_url": redirect_url, "name": device_name}
+
+    # Only attach the anonymous machine_id when telemetry is enabled, so the server can
+    # stitch machine_id<->account in PostHog (VIS-842). Never send email/PII -- machine_id
+    # is the same anonymous PostHog distinct_id the CLI already uses for telemetry, and the
+    # existing telemetry opt-out covers this disclosure.
+    if is_telemetry_enabled():
+        try:
+            params["machine_id"] = get_machine_id()
+        except Exception:
+            pass  # never block authorize on telemetry id resolution
 
     query_string = urllib.parse.urlencode(params)
 

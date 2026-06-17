@@ -1,5 +1,6 @@
 import threading
 import time
+import urllib.parse
 from click.testing import CliRunner
 import pytest
 
@@ -133,3 +134,77 @@ def test_authorize_existing_token_overwrite(monkeypatch):
 
     assert result.exit_code == 0
     assert "Waiting for visivo token response" in result.output
+
+
+def _capture_opened_url(monkeypatch):
+    """
+    Patch open_url (where it is used in authorize) to capture the URL it is
+    called with, returning a one-element list that will hold the captured URL.
+    """
+    captured = []
+
+    def fake_open_url(url):
+        captured.append(url)
+        return True
+
+    monkeypatch.setattr("visivo.commands.authorize.open_url", fake_open_url)
+    return captured
+
+
+def test_authorize_includes_machine_id_when_telemetry_enabled(monkeypatch):
+    """
+    When telemetry is enabled, the opened authorize URL must carry the anonymous
+    machine_id (the PostHog distinct_id) so the server can stitch it to the account.
+    """
+    known_machine_id = "11111111-2222-3333-4444-555555555555"
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    monkeypatch.setattr("visivo.commands.authorize.is_telemetry_enabled", lambda: True)
+    monkeypatch.setattr("visivo.commands.authorize.get_machine_id", lambda: known_machine_id)
+    monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
+
+    captured = _capture_opened_url(monkeypatch)
+
+    runner = CliRunner()
+    result = runner.invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert len(captured) == 1
+    opened_url = captured[0]
+    parsed = urllib.parse.urlparse(opened_url)
+    query = urllib.parse.parse_qs(parsed.query)
+
+    assert query.get("machine_id") == [known_machine_id]
+    # Regression: original params are still present.
+    assert "redirect_url" in query
+    assert query.get("name") is not None
+
+
+def test_authorize_excludes_machine_id_when_telemetry_disabled(monkeypatch):
+    """
+    When telemetry is disabled (opt-out), the opened authorize URL must NOT carry
+    machine_id, so no stitching happens and the CLI stays anonymous.
+    """
+    monkeypatch.setattr("visivo.commands.authorize.get_existing_token", lambda host=None: None)
+    monkeypatch.setattr("visivo.commands.authorize.is_telemetry_enabled", lambda: False)
+
+    def fail_get_machine_id():
+        raise AssertionError("get_machine_id must not be called when telemetry is disabled")
+
+    monkeypatch.setattr("visivo.commands.authorize.get_machine_id", fail_get_machine_id)
+    monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
+
+    captured = _capture_opened_url(monkeypatch)
+
+    runner = CliRunner()
+    result = runner.invoke(authorize, ["--host", "http://localhost:3030"])
+
+    assert result.exit_code == 0
+    assert len(captured) == 1
+    opened_url = captured[0]
+    parsed = urllib.parse.urlparse(opened_url)
+    query = urllib.parse.parse_qs(parsed.query)
+
+    assert "machine_id" not in query
+    # Regression: original params are still present.
+    assert "redirect_url" in query
+    assert query.get("name") is not None
