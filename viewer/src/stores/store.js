@@ -24,6 +24,7 @@ import createLocalMergeModelSlice from './localMergeModelStore';
 import createExplorerNewSlice from './explorerNewStore';
 import createModelJobsSlice from './modelJobsStore';
 import createWorkspaceSlice from './workspaceStore';
+import createWorkspaceErdLayoutSlice from './workspaceErdLayoutStore';
 import createLibraryPrefsSlice from './libraryPrefsStore';
 
 // Re-export ObjectStatus for convenience
@@ -53,6 +54,9 @@ const useStore = create(
     ...createExplorerNewSlice(...a),
     ...createModelJobsSlice(...a),
     ...createWorkspaceSlice(...a),
+    // Session-only ERD layout (dragged node positions + pill waypoints), kept
+    // OUTSIDE persist() — ephemeral view state, not config.
+    ...createWorkspaceErdLayoutSlice(...a),
     // Persisted slices — Zustand 5's `persist` middleware can only be applied
     // once per store API (calling it twice at the same level silently breaks
     // the second). We compose every persisted slice into a single `persist`

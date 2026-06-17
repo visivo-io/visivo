@@ -40,6 +40,7 @@
  */
 
 import { emitWorkspaceEvent } from '../components/new-views/workspace/telemetry';
+import { generateUniqueName } from '../utils/uniqueName';
 
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
@@ -66,6 +67,16 @@ const createWorkspaceSlice = (set, get) => ({
   // so it can never leak to a later selection. The consuming pane clears it.
   workspaceLensIntent: null, // { objectKey: 'type:name', lens: 'lineage' } | null
 
+  // Pivot playground draft (table `build` lens, VIS-1008) --------------------
+  // The in-flight pivot config the drag-to-shelf builder owns while the user
+  // composes it: `{ tableName, columns, rows, values }`. `columns`/`rows` are
+  // arrays of `${ref(name).field}` strings; `values` are aggregation expressions
+  // (`sum(${ref(name).field})`). Seeded from the table record on lens open,
+  // re-runs the live result on every change, and committed back through the
+  // table store's `saveTable` on an explicit Save. Null when no build lens is
+  // open. Scoped by `tableName` so it can't leak across object selections.
+  workspacePivotDraft: null,
+
   // Outline tree (right-rail Outline tab, VIS-793 / Track F F-3) ------------
   // Selected node key — `'dashboard'` | `'row.N'` | `'row.N.item.M'`. Defaults
   // to the dashboard root so the scoped dashboard reads as selected on entry.
@@ -78,6 +89,31 @@ const createWorkspaceSlice = (set, get) => ({
   // being painted (VIS-771 follow-up). Kept out of the Outline selection key so
   // hovering never mutates selection.
   workspaceCanvasHoverKey: null,
+
+  // Source outline (right-rail "Data" tab when a `source` is the active object,
+  // VIS-1004). A DISJOINT selection-key grammar from the dashboard outline so
+  // the two consumers never collide:
+  //   `source-outline::<src>::db::<d>` ·
+  //   `…::schema::<s>` · `…::table::<t>` · `…::col::<c>`
+  // The dashboard's `parseOutlineKey` safely falls through for these keys (it
+  // only recognises `dashboard` / `row.N` / `row.N.item.M`), and this lives on
+  // its own store key so a source selection can never leak into the dashboard
+  // Edit form. `null` = nothing selected in the source tree.
+  workspaceSourceOutlineSelectedKey: null,
+
+  // Per-source, per-session expand/collapse memory for the source outline. Keyed
+  // by source name → array of expanded node keys (db/schema/table). Arrays (not
+  // Sets) keep the slice serialisable and test-friendly; the panel rehydrates a
+  // Set from these on render. NOT persisted across reloads — session-only, as the
+  // schema can change between sessions (VIS-1004 §8.5).
+  workspaceSourceOutlineExpanded: {},
+
+  // Per-SESSION cache of the (expensive) source introspection result, keyed by
+  // source name → { nodes, status, error }. Live introspection is costly for
+  // warehouses (Snowflake/BigQuery), so the source outline reads this cache on
+  // re-select instead of re-introspecting every mount; a manual reload refreshes
+  // it. Session-only (schema can change between sessions). (VIS-1004 caching.)
+  workspaceSourceOutlineDataCache: {},
 
   // Resize state (Phase 0 visual stub; actual resizing comes later) --------
   workspaceLeftWidth: 320,
@@ -342,6 +378,68 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
+   * Select a node in the source outline (VIS-1004). `key` follows the disjoint
+   * `source-outline::…` grammar; passing the already-selected key (or `null`)
+   * toggles the selection off. Stored separately from the dashboard outline key
+   * so the two never collide.
+   */
+  setWorkspaceSourceOutlineSelectedKey: (key) => {
+    if (key != null && typeof key !== 'string') return;
+    set(state => ({
+      workspaceSourceOutlineSelectedKey:
+        state.workspaceSourceOutlineSelectedKey === key ? null : key || null,
+    }));
+  },
+
+  /**
+   * Toggle a node's expand state in the source outline for a given source.
+   * Per-source, per-session — `sourceName` partitions the expanded set so two
+   * sources keep independent disclosure state.
+   */
+  toggleWorkspaceSourceOutlineExpanded: (sourceName, nodeKey) => {
+    if (!sourceName || !nodeKey) return;
+    set(state => {
+      const current = state.workspaceSourceOutlineExpanded[sourceName] || [];
+      const next = current.includes(nodeKey)
+        ? current.filter(k => k !== nodeKey)
+        : [...current, nodeKey];
+      return {
+        workspaceSourceOutlineExpanded: {
+          ...state.workspaceSourceOutlineExpanded,
+          [sourceName]: next,
+        },
+      };
+    });
+  },
+
+  /**
+   * Replace the expanded-node set for a source (e.g. auto-expanding the tree
+   * after a cold-source schema generation completes). `nodeKeys` is an array.
+   */
+  setWorkspaceSourceOutlineExpanded: (sourceName, nodeKeys) => {
+    if (!sourceName || !Array.isArray(nodeKeys)) return;
+    set(state => ({
+      workspaceSourceOutlineExpanded: {
+        ...state.workspaceSourceOutlineExpanded,
+        [sourceName]: nodeKeys,
+      },
+    }));
+  },
+
+  // Cache the introspected outline data for a source so re-selecting it doesn't
+  // re-introspect (VIS-1004 caching). Pass `null` payload to evict (force a
+  // reload to re-fetch).
+  setWorkspaceSourceOutlineData: (sourceName, payload) => {
+    if (!sourceName) return;
+    set(state => {
+      const cache = { ...state.workspaceSourceOutlineDataCache };
+      if (payload == null) delete cache[sourceName];
+      else cache[sourceName] = payload;
+      return { workspaceSourceOutlineDataCache: cache };
+    });
+  },
+
+  /**
    * Optimistically replace a dashboard's draft config in the in-memory
    * `dashboards` list WITHOUT persisting. The right-rail Edit forms (VIS-802)
    * call this on every change so the Outline tree, canvas, and the form's own
@@ -442,6 +540,103 @@ const createWorkspaceSlice = (set, get) => ({
         ? { type: activeTab.type, name: activeTab.name }
         : null,
     });
+  },
+
+  // Pivot playground draft actions (VIS-1008) -------------------------------
+  /**
+   * Replace the pivot build draft. Accepts a full draft object
+   * `{ tableName, columns, rows, values }`; missing shelf arrays default to
+   * empty so consumers can always spread them safely. A falsy draft clears it.
+   */
+  setWorkspacePivotDraft: (draft) => {
+    if (!draft) {
+      set({ workspacePivotDraft: null });
+      return;
+    }
+    set({
+      workspacePivotDraft: {
+        tableName: draft.tableName ?? null,
+        columns: Array.isArray(draft.columns) ? draft.columns : [],
+        rows: Array.isArray(draft.rows) ? draft.rows : [],
+        values: Array.isArray(draft.values) ? draft.values : [],
+      },
+    });
+  },
+
+  /** Clear the pivot build draft (on lens close / object change). */
+  resetWorkspacePivotDraft: () => {
+    set({ workspacePivotDraft: null });
+  },
+
+  /**
+   * Commit the current pivot build draft back to its table through the table
+   * store's `saveTable(name, config)` action. Merges the draft's three pivot
+   * shelves onto the table's existing config so non-pivot fields (rows_per_page,
+   * format_cells, …) are preserved. Returns the `saveTable` result (a promise
+   * resolving to `{ success, … }`), or `{ success: false }` when there's no
+   * draft / no save action.
+   */
+  commitWorkspacePivotDraft: async () => {
+    const draft = get().workspacePivotDraft;
+    const saveTable = get().saveTable;
+    if (!draft || !draft.tableName || typeof saveTable !== 'function') {
+      return { success: false, error: 'No pivot draft to commit' };
+    }
+    const tables = get().tables || [];
+    const record = tables.find((t) => t.name === draft.tableName) || null;
+    const existing = record ? record.config || record : {};
+    const nextConfig = {
+      ...existing,
+      name: draft.tableName,
+      columns: draft.columns,
+      rows: draft.rows,
+      values: draft.values,
+    };
+    return saveTable(draft.tableName, nextConfig);
+  },
+
+  /**
+   * Commit the current pivot build draft as a BRAND-NEW table (the "Add as a new
+   * table" path from the pivot Save modal). Generates a unique name from the
+   * source table's name + the existing tables, creates a fresh table config
+   * carrying only the three pivot shelves, persists it via `saveTable`, and (on
+   * success) opens it as a workspace tab. Returns `{ success, name }` so callers
+   * can react (open the tab, toast, …). The original table is left untouched.
+   */
+  commitWorkspacePivotDraftAsNew: async () => {
+    const draft = get().workspacePivotDraft;
+    const saveTable = get().saveTable;
+    if (!draft || typeof saveTable !== 'function') {
+      return { success: false, error: 'No pivot draft to commit' };
+    }
+    const tables = get().tables || [];
+    const existingNames = tables.map((t) => t.name).filter(Boolean);
+    const base = draft.tableName ? `${draft.tableName}_pivot` : 'pivot_table';
+    const newName = generateUniqueName(base, existingNames);
+
+    const sourceRecord = tables.find((t) => t.name === draft.tableName) || null;
+    const sourceConfig = sourceRecord ? sourceRecord.config || sourceRecord : {};
+    // Carry forward the source table's `data` ref (and non-pivot display config)
+    // so the new table resolves against the same parent; override name + shelves.
+    const { data, format_cells, rows_per_page } = sourceConfig;
+    const nextConfig = {
+      ...(data !== undefined ? { data } : {}),
+      ...(format_cells !== undefined ? { format_cells } : {}),
+      ...(rows_per_page !== undefined ? { rows_per_page } : {}),
+      name: newName,
+      columns: draft.columns,
+      rows: draft.rows,
+      values: draft.values,
+    };
+
+    const result = await saveTable(newName, nextConfig);
+    if (result && result.success) {
+      const openTab = get().openWorkspaceTab;
+      if (typeof openTab === 'function') {
+        openTab({ type: 'table', name: newName });
+      }
+    }
+    return { ...(result || {}), name: newName };
   },
 });
 

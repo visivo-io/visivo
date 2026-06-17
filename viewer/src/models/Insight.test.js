@@ -458,6 +458,46 @@ describe('extractInputDependenciesFromProps', () => {
     };
     expect(extractInputDependenciesFromProps(props)).toEqual(['dynamic']);
   });
+
+  // VIS-1003 / §8.3: union detection across props + interactions + LAYOUT.
+  it('extracts an input referenced only from a layout position (axis range)', () => {
+    const config = {
+      props: { type: 'scatter' },
+      layout: { xaxis: { range: ['${start_date.value}', '${end_date.value}'] } },
+    };
+    const result = extractInputDependenciesFromProps(config);
+    expect(result).toContain('start_date');
+    expect(result).toContain('end_date');
+    expect(result.length).toBe(2);
+  });
+
+  it('extracts an input from a layout title via ${ref(input).accessor}', () => {
+    const config = {
+      props: { type: 'bar' },
+      layout: { title: { text: 'Sales for ${ref(region).value}' } },
+    };
+    expect(extractInputDependenciesFromProps(config)).toEqual(['region']);
+  });
+
+  it('unions input deps across props, interactions, AND layout', () => {
+    const config = {
+      props: { mode: '${show_markers.value}' },
+      interactions: [{ filter: 'x > ${min_value.value}' }],
+      layout: { yaxis: { range: [0, '${y_max.value}'] } },
+    };
+    const result = extractInputDependenciesFromProps(config);
+    expect(result).toContain('show_markers');
+    expect(result).toContain('min_value');
+    expect(result).toContain('y_max');
+    expect(result.length).toBe(3);
+  });
+
+  it('treats a config with only a layout key as a structured config (not bare props)', () => {
+    const config = { layout: { xaxis: { range: ['${lo.value}', '${hi.value}'] } } };
+    const result = extractInputDependenciesFromProps(config);
+    expect(result).toContain('lo');
+    expect(result).toContain('hi');
+  });
 });
 /* eslint-enable no-template-curly-in-string */
 

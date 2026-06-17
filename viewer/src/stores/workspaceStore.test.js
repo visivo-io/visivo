@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- test fixtures use literal Visivo `${ref(...)}` strings */
 /**
  * Workspace store slice — tab management (VIS-775 / Track B B2).
  *
@@ -574,6 +575,58 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
   });
 
+  // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
+
+  test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {
+    const key = 'source-outline::analytics_db::db::main::table::orders';
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(key);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBe(key);
+    // The dashboard outline key is never touched by the source selection.
+    expect(useStore.getState().workspaceOutlineSelectedKey).not.toBe(key);
+    // Re-selecting the same key toggles the selection off.
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineSelectedKey(key);
+    });
+    expect(useStore.getState().workspaceSourceOutlineSelectedKey).toBeNull();
+  });
+
+  test('toggleWorkspaceSourceOutlineExpanded adds/removes a node per source', () => {
+    act(() => {
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_b', 'node-2');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual(['node-1']);
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+    // Toggling the same node removes it without touching the other source.
+    act(() => {
+      useStore.getState().toggleWorkspaceSourceOutlineExpanded('src_a', 'node-1');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([]);
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_b).toEqual(['node-2']);
+  });
+
+  test('setWorkspaceSourceOutlineExpanded replaces a source expanded set (auto-expand)', () => {
+    act(() => {
+      useStore
+        .getState()
+        .setWorkspaceSourceOutlineExpanded('src_a', ['db::main', 'db::main::schema::public']);
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([
+      'db::main',
+      'db::main::schema::public',
+    ]);
+    // Non-array input is ignored.
+    act(() => {
+      useStore.getState().setWorkspaceSourceOutlineExpanded('src_a', 'not-an-array');
+    });
+    expect(useStore.getState().workspaceSourceOutlineExpanded.src_a).toEqual([
+      'db::main',
+      'db::main::schema::public',
+    ]);
+  });
+
   test('addDashboardRow appends an empty row, selects it, and persists the draft', () => {
     const saveDashboard = jest.fn(() => Promise.resolve({ success: true }));
     act(() => {
@@ -644,5 +697,180 @@ describe('workspace store slice', () => {
       returned = useStore.getState().updateDashboardConfigOptimistic('missing', { rows: [] });
     });
     expect(returned).toBe(false);
+  });
+});
+
+describe('workspace pivot draft actions (VIS-1008)', () => {
+  beforeEach(() => {
+    act(() => {
+      useStore.setState({ workspacePivotDraft: null, tables: [], saveTable: undefined });
+    });
+  });
+
+  test('setWorkspacePivotDraft normalises a partial draft (defaults missing shelves to [])', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({
+        tableName: 'sales-pivot-table',
+        columns: ['${ref(s).region}'],
+      });
+    });
+    const draft = useStore.getState().workspacePivotDraft;
+    expect(draft).toEqual({
+      tableName: 'sales-pivot-table',
+      columns: ['${ref(s).region}'],
+      rows: [],
+      values: [],
+    });
+  });
+
+  test('setWorkspacePivotDraft with a falsy value clears the draft', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ tableName: 't', columns: [] });
+      useStore.getState().setWorkspacePivotDraft(null);
+    });
+    expect(useStore.getState().workspacePivotDraft).toBeNull();
+  });
+
+  test('resetWorkspacePivotDraft clears the draft', () => {
+    act(() => {
+      useStore.getState().setWorkspacePivotDraft({ tableName: 't', columns: [] });
+      useStore.getState().resetWorkspacePivotDraft();
+    });
+    expect(useStore.getState().workspacePivotDraft).toBeNull();
+  });
+
+  test('commitWorkspacePivotDraft merges the draft onto the existing table config and calls saveTable', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        tables: [
+          {
+            name: 'sales-pivot-table',
+            config: { name: 'sales-pivot-table', rows_per_page: 25, format_cells: { foo: 1 } },
+          },
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: ['${ref(s).category}'],
+          values: ['sum(${ref(s).revenue})'],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result).toEqual({ success: true });
+    expect(saveTable).toHaveBeenCalledTimes(1);
+    const [name, config] = saveTable.mock.calls[0];
+    expect(name).toBe('sales-pivot-table');
+    // Existing non-pivot fields are preserved; the three shelves are overwritten.
+    expect(config).toEqual({
+      name: 'sales-pivot-table',
+      rows_per_page: 25,
+      format_cells: { foo: 1 },
+      columns: ['${ref(s).region}'],
+      rows: ['${ref(s).category}'],
+      values: ['sum(${ref(s).revenue})'],
+    });
+  });
+
+  test('commitWorkspacePivotDraft returns failure when there is no draft', async () => {
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraft();
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test('commitWorkspacePivotDraftAsNew saves a uniquely-named new table and opens its tab', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        workspaceActiveTabId: null,
+        tables: [
+          {
+            name: 'sales-pivot-table',
+            config: {
+              name: 'sales-pivot-table',
+              data: '${ref(sales_data)}',
+              format_cells: { foo: 1 },
+            },
+          },
+          // The default new name (sales-pivot-table_pivot) is free, so it is used.
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: ['${ref(s).category}'],
+          values: ['sum(${ref(s).revenue})'],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(true);
+    expect(result.name).toBe('sales-pivot-table_pivot');
+    expect(saveTable).toHaveBeenCalledTimes(1);
+    const [name, config] = saveTable.mock.calls[0];
+    expect(name).toBe('sales-pivot-table_pivot');
+    // New table carries forward the source `data` ref + display config + the
+    // draft shelves under the fresh name.
+    expect(config).toEqual({
+      data: '${ref(sales_data)}',
+      format_cells: { foo: 1 },
+      name: 'sales-pivot-table_pivot',
+      columns: ['${ref(s).region}'],
+      rows: ['${ref(s).category}'],
+      values: ['sum(${ref(s).revenue})'],
+    });
+    // The new table is opened as a workspace tab.
+    const tabs = useStore.getState().workspaceTabs;
+    expect(tabs.some(t => t.type === 'table' && t.name === 'sales-pivot-table_pivot')).toBe(
+      true
+    );
+  });
+
+  test('commitWorkspacePivotDraftAsNew disambiguates against existing names', async () => {
+    const saveTable = jest.fn(() => Promise.resolve({ success: true }));
+    act(() => {
+      useStore.setState({
+        saveTable,
+        workspaceTabs: [],
+        tables: [
+          { name: 'sales-pivot-table', config: { name: 'sales-pivot-table' } },
+          { name: 'sales-pivot-table_pivot', config: { name: 'sales-pivot-table_pivot' } },
+        ],
+        workspacePivotDraft: {
+          tableName: 'sales-pivot-table',
+          columns: ['${ref(s).region}'],
+          rows: [],
+          values: [],
+        },
+      });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    // sales-pivot-table_pivot is taken → _2 suffix.
+    expect(result.name).toBe('sales-pivot-table_pivot_2');
+  });
+
+  test('commitWorkspacePivotDraftAsNew returns failure when there is no draft', async () => {
+    act(() => {
+      useStore.setState({ saveTable: jest.fn(), workspacePivotDraft: null });
+    });
+    let result;
+    await act(async () => {
+      result = await useStore.getState().commitWorkspacePivotDraftAsNew();
+    });
+    expect(result.success).toBe(false);
   });
 });

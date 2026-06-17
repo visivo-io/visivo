@@ -18,6 +18,23 @@ import RightRail from './RightRail';
 import useStore from '../../../stores/store';
 import { setWorkspaceTelemetryListener } from './telemetry';
 
+// SourceOutlineTreePanel (mounted for source scope) hits the source-metadata +
+// schema-jobs APIs on mount — stub them so the branch test stays isolated.
+jest.mock('../../../api/explorer', () => ({
+  fetchSourceMetadata: jest.fn(() => Promise.resolve({ sources: [] })),
+}));
+jest.mock('../../../api/sourceSchemaJobs', () => ({
+  // No cached schema by default → the source outline lands on the cold-source
+  // "Generate schema" affordance (the cached-schema feed drives warm vs cold).
+  fetchSourceSchemaJobs: jest.fn(() =>
+    Promise.resolve([{ source_name: 'analytics_db', has_cached_schema: false }])
+  ),
+  generateSourceSchema: jest.fn(),
+  fetchSchemaGenerationStatus: jest.fn(),
+  fetchSourceTables: jest.fn(() => Promise.resolve([])),
+  fetchTableColumns: jest.fn(() => Promise.resolve([])),
+}));
+
 const resetStore = (overrides = {}) => {
   act(() => {
     useStore.setState({
@@ -87,5 +104,129 @@ describe('RightRail (VIS-793)', () => {
     } finally {
       unsubscribe();
     }
+  });
+});
+
+describe('RightRail Outline body branch (VIS-1004)', () => {
+  // Drive the active object via a workspace tab so `useWorkspaceScope` yields
+  // the desired `selectedItem.type`. A `source` tab takes precedence over the
+  // dashboard URL param (see useWorkspaceScope), so the source outline mounts.
+  const resetForScope = ({ tabType, tabName, dashboards = [] }) => {
+    act(() => {
+      useStore.setState({
+        workspaceRightCollapsed: false,
+        workspaceRightTab: 'outline',
+        workspaceTabs: [{ id: 't1', type: tabType, name: tabName }],
+        workspaceActiveTabId: 't1',
+        workspaceActiveObject: { type: tabType, name: tabName },
+        workspaceOutlineSelectedKey: 'dashboard',
+        workspaceSourceOutlineSelectedKey: null,
+        workspaceSourceOutlineExpanded: {},
+        dashboards,
+        saveDashboard: jest.fn(),
+      });
+    });
+  };
+
+  const renderAt = (entry) => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <Route path="/workspace/dashboard/:dashboardName" element={<RightRail />} />
+      ),
+      { initialEntries: [entry], future: futureFlags }
+    );
+    return render(<RouterProvider router={router} future={futureFlags} />);
+  };
+
+  test('source scope mounts the source outline (not the dashboard outline)', async () => {
+    resetForScope({ tabType: 'source', tabName: 'analytics_db' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+
+    expect(screen.getByTestId('workspace-source-outline')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
+    // The Outline tab is relabelled "Data" for a source.
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Data');
+    // Let the cached-schema check settle so its state update is wrapped in act
+    // (the mock reports no cached schema → the cold-source affordance).
+    expect(await screen.findByTestId('source-outline-cold')).toBeInTheDocument();
+  });
+
+  test('dashboard scope mounts the dashboard outline (not the source outline)', () => {
+    resetForScope({ tabType: 'dashboard', tabName: 'simple-dashboard' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+
+    expect(screen.getByTestId('workspace-right-rail-outline')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-source-outline')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Outline');
+  });
+});
+
+describe('RightRail tab set per object type (Outline only for dashboards, Data for sources)', () => {
+  const resetForType = ({ tabType, tabName, rightTab = 'edit' }) => {
+    act(() => {
+      useStore.setState({
+        workspaceRightCollapsed: false,
+        workspaceRightTab: rightTab,
+        workspaceTabs: [{ id: 't1', type: tabType, name: tabName }],
+        workspaceActiveTabId: 't1',
+        workspaceActiveObject: { type: tabType, name: tabName },
+        workspaceOutlineSelectedKey: 'dashboard',
+        workspaceSourceOutlineSelectedKey: null,
+        workspaceSourceOutlineExpanded: {},
+        dashboards: [],
+        saveDashboard: jest.fn(),
+      });
+    });
+  };
+
+  const renderAt = entry => {
+    const router = createMemoryRouter(
+      createRoutesFromElements(
+        <Route path="/workspace/dashboard/:dashboardName" element={<RightRail />} />
+      ),
+      { initialEntries: [entry], future: futureFlags }
+    );
+    return render(<RouterProvider router={router} future={futureFlags} />);
+  };
+
+  test('dashboard offers exactly an Outline tab + an Edit tab', () => {
+    resetForType({ tabType: 'dashboard', tabName: 'simple-dashboard' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Outline');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+  });
+
+  test('source offers a Data tab (the schema tree) + an Edit tab', () => {
+    resetForType({ tabType: 'source', tabName: 'analytics_db' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-outline')).toHaveTextContent('Data');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+  });
+
+  // The edit forms for `insight` / `chart` fire async fetches on mount (act
+  // noise unrelated to the tab set), so this matrix uses the synchronous edit
+  // types — the tab-set rule is type-agnostic for every non-dashboard/source.
+  test.each(['model', 'table', 'metric', 'dimension', 'relation', 'input'])(
+    'a %s offers ONLY an Edit tab (no Outline/Data tab)',
+    type => {
+      resetForType({ tabType: type, tabName: `my_${type}` });
+      renderAt('/workspace/dashboard/simple-dashboard');
+      expect(screen.getByTestId('workspace-right-rail-tab-edit')).toBeInTheDocument();
+      expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+    }
+  );
+
+  test('a stale `outline` active tab on an Edit-only object falls back to the Edit panel', () => {
+    // Active object is a metric (Edit-only) but the store still holds a stale
+    // `outline` tab from a previous dashboard selection. The rail must not render
+    // a blank/Outline body — it falls back to the Edit panel.
+    resetForType({ tabType: 'metric', tabName: 'revenue', rightTab: 'outline' });
+    renderAt('/workspace/dashboard/simple-dashboard');
+    expect(screen.getByTestId('workspace-right-rail-tab-edit')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+    expect(screen.queryByTestId('workspace-right-rail-tab-outline')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-right-rail-outline')).not.toBeInTheDocument();
   });
 });

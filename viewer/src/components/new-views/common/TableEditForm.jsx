@@ -10,6 +10,7 @@ import { validateName } from './namedModel';
 import { getTypeByValue } from './objectTypeConfigs';
 import { parseRefValue, formatRef } from '../../../utils/refString';
 import RefTextArea from './RefTextArea';
+import Select from '../../common/Select';
 
 /**
  * TableEditForm - Form component for editing/creating tables
@@ -223,18 +224,16 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
 
             {/* Rows per page field */}
             <div className="relative">
-              <select
+              <Select
                 id="tableRowsPerPage"
+                aria-label="Rows Per Page"
                 value={rowsPerPage}
-                onChange={e => setRowsPerPage(parseInt(e.target.value, 10))}
-                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {ROWS_PER_PAGE_OPTIONS.map(option => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                options={ROWS_PER_PAGE_OPTIONS.map(option => ({
+                  value: option,
+                  label: String(option),
+                }))}
+                onChange={value => setRowsPerPage(parseInt(value, 10))}
+              />
               <label
                 htmlFor="tableRowsPerPage"
                 className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
@@ -285,34 +284,39 @@ const TableEditForm = ({ table, isCreate, onClose, onSave, onNavigateToEmbedded 
                 })()
               ) : (
                 <div className="relative">
-                  <select
+                  <Select
                     id="tableData"
+                    aria-label="Data"
+                    placeholder="Select a data source..."
                     value={dataRef}
-                    onChange={e => setDataRef(e.target.value)}
-                    className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.data ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select a data source...</option>
-                    {availableInsights.length > 0 && (
-                      <optgroup label="Insights">
-                        {availableInsights.map(i => (
-                          <option key={`insight-${i.name}`} value={i.name}>
-                            {i.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {availableModels.length > 0 && (
-                      <optgroup label="Models">
-                        {availableModels.map(m => (
-                          <option key={`model-${m.name}`} value={m.name}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
+                    options={[
+                      ...(availableInsights.length > 0
+                        ? [
+                            {
+                              label: 'Insights',
+                              options: availableInsights.map(i => ({
+                                value: i.name,
+                                label: i.name,
+                                type: 'insight',
+                              })),
+                            },
+                          ]
+                        : []),
+                      ...(availableModels.length > 0
+                        ? [
+                            {
+                              label: 'Models',
+                              options: availableModels.map(m => ({
+                                value: m.name,
+                                label: m.name,
+                                type: 'model',
+                              })),
+                            },
+                          ]
+                        : []),
+                    ]}
+                    onChange={value => setDataRef(value || '')}
+                  />
                   <label
                     htmlFor="tableData"
                     className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"

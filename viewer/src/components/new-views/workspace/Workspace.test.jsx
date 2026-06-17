@@ -8,7 +8,7 @@
  * middle pane based on the active object type.
  */
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import {
   createMemoryRouter,
   Route,
@@ -231,7 +231,7 @@ describe('VIS-775 Workspace shell', () => {
     }
   });
 
-  test('collapsed left-rail highlights the type matching the active object', () => {
+  test('collapsed left-rail highlights the type matching the active object', async () => {
     // Regression: collapsed strip needs an active-section indicator so the
     // user can identify their context at a glance. Render first so the
     // Workspace mount-effect runs (it sets activeObject to project), then
@@ -244,9 +244,14 @@ describe('VIS-775 Workspace shell', () => {
         workspaceActiveObject: { type: 'chart', name: 'revenue_chart' },
       });
     });
-    expect(
-      screen.getByTestId('workspace-left-rail-collapsed-chart')
-    ).toHaveAttribute('data-active', 'true');
+    // waitFor polls (flushing the chart canvas body's lazy Suspense resolution
+    // inside act, VIS-1001) while asserting the collapsed-strip highlight.
+    await waitFor(() =>
+      expect(screen.getByTestId('workspace-left-rail-collapsed-chart')).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+    );
     expect(
       screen.getByTestId('workspace-left-rail-collapsed-source')
     ).toHaveAttribute('data-active', 'false');
@@ -269,7 +274,25 @@ describe('VIS-775 Workspace shell', () => {
     };
     act(() => { useStore.setState(fetchers); });
     renderAt('/workspace');
-    Object.values(fetchers).forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
+    // Route-driven collections fire exactly once.
+    [
+      fetchers.fetchCharts,
+      fetchers.fetchTables,
+      fetchers.fetchMarkdowns,
+      fetchers.fetchInputs,
+      fetchers.fetchSources,
+      fetchers.fetchModels,
+      fetchers.fetchCsvScriptModels,
+      fetchers.fetchLocalMergeModels,
+      fetchers.fetchInsights,
+    ].forEach(fn => expect(fn).toHaveBeenCalledTimes(1));
+    // The semantic-layer collections (relations/metrics/dimensions) are also
+    // self-fetched by the ProjectEditor governance surface (VIS-1013) when they
+    // mount empty, so the route may drive them more than once — assert at-least-
+    // once rather than exactly-once.
+    expect(fetchers.fetchRelations.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchers.fetchMetrics.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(fetchers.fetchDimensions.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   test('project tab does not auto-reopen after the user closes it (regression: re-opens on nav)', () => {

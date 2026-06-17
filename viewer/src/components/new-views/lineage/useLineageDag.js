@@ -11,18 +11,28 @@ import { parseRefValue } from '../../../utils/refString';
  * @param {Array} edges - Array of edges
  * @param {Object} fixedNode - Optional { id, position } to keep a node at its current position
  *                              The entire graph will be offset to center around this fixed node
+ * @param {Object} opts - Optional dagre knobs (all back-compat; defaults preserve
+ *                        the historic behavior exactly):
+ *                          - ranksep (default 100) between-rank spacing
+ *                          - nodesep (default 50)  within-rank spacing
+ *                          - rankdir (default 'LR') layout direction
  */
-export function computeLayout(nodes, edges, fixedNode = null) {
+export function computeLayout(nodes, edges, fixedNode = null, opts = {}) {
+  const { ranksep = 100, nodesep = 50, rankdir = 'LR' } = opts;
   const graph = new dagre.graphlib.Graph();
-  graph.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 100 });
+  graph.setGraph({ rankdir, nodesep, ranksep });
   graph.setDefaultEdgeLabel(() => ({}));
 
   // Add nodes to graph
   nodes.forEach(node => {
-    // Estimate node width from name length (~8px per char + padding for icon/status/handles)
+    // A node may carry an explicit measured size (`layoutSize`) — ERD model
+    // cards vary wildly in height (header + N column rows + metric/dimension pill
+    // sections), so a fixed 50px height makes dagre pack tall cards on top of one
+    // another. When present, honour it; otherwise fall back to the lineage-pill
+    // estimate (name length → width, fixed 50px height).
     const nameLen = (node.data.name || '').length;
-    const width = Math.max(180, nameLen * 8 + 80);
-    const height = 50;
+    const width = node.layoutSize?.width ?? Math.max(180, nameLen * 8 + 80);
+    const height = node.layoutSize?.height ?? 50;
     graph.setNode(node.id, { width, height });
   });
 

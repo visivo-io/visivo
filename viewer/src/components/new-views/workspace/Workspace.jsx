@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import useStore from '../../../stores/store';
 import WorkspaceShell from './WorkspaceShell';
 import { emitWorkspaceEvent, markBuildModeEntered } from './telemetry';
@@ -23,6 +23,10 @@ import useProjectChangeListener from './useProjectChangeListener';
 const Workspace = () => {
   const { dashboardName } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  // The `/workspace/semantic-layer` route opens the project-wide Semantic Layer
+  // page (VIS-1014) — a synthetic workspace tab dispatched by MiddlePane.
+  const isSemanticLayerRoute = location.pathname === '/workspace/semantic-layer';
   const project = useStore(s => s.project);
   const openWorkspaceTab = useStore(s => s.openWorkspaceTab);
   const setWorkspaceLens = useStore(s => s.setWorkspaceLens);
@@ -107,6 +111,13 @@ const Workspace = () => {
         name: dashboardName,
       });
     }
+    if (isSemanticLayerRoute) {
+      openWorkspaceTab({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+    }
     // Deep-link from the flip card's "Expand / Open full lineage" gesture:
     // `?edit=<type>:<name>` opens a real tab for the subject (so the tab strip
     // gains it and it becomes active), and `?lens=lineage` shows the full
@@ -123,7 +134,15 @@ const Workspace = () => {
         }
       }
     }
-  }, [project, projectName, dashboardName, searchParams, openWorkspaceTab, setWorkspaceLens]);
+  }, [
+    project,
+    projectName,
+    dashboardName,
+    isSemanticLayerRoute,
+    searchParams,
+    openWorkspaceTab,
+    setWorkspaceLens,
+  ]);
 
   // Check publish status so the Publish · N button has accurate count.
   useEffect(() => {

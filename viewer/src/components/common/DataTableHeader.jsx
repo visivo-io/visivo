@@ -74,7 +74,11 @@ const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick, isCompres
           />
         )}
         {isSorted && (
-          <span className="text-primary-500 flex-shrink-0">
+          <span
+            className="text-primary-500 flex-shrink-0"
+            role="img"
+            aria-label={`Sorted ${sortDirection === 'asc' ? 'ascending' : 'descending'}`}
+          >
             {sortDirection === 'asc' ? (
               <PiSortAscending size={14} />
             ) : (
@@ -82,14 +86,21 @@ const DataTableHeader = ({ column, sorting, onSortChange, onInfoClick, isCompres
             )}
           </span>
         )}
-        <button
-          className="text-secondary-300 hover:text-primary-500 flex-shrink-0 p-0.5 rounded hover:bg-secondary-100 transition-colors"
-          onClick={handleInfoClick}
-          title="View column profile"
-          aria-label={`View profile for ${column.name}`}
-        >
-          <PiInfo size={14} />
-        </button>
+        {/* The column-profile button is an Explorer-only affordance: it opens
+            the profile drawer wired via onInfoClick (onColumnProfileRequest).
+            Read-only tables (canvas/project previews) don't pass a handler, so
+            render the icon only where it actually does something instead of a
+            dead button. */}
+        {onInfoClick && (
+          <button
+            className="text-secondary-300 hover:text-primary-500 flex-shrink-0 p-0.5 rounded hover:bg-secondary-100 transition-colors"
+            onClick={handleInfoClick}
+            title="View column profile"
+            aria-label={`View profile for ${column.name}`}
+          >
+            <PiInfo size={14} />
+          </button>
+        )}
       </div>
 
       {/* Null percentage bar */}

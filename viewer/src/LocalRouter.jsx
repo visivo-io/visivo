@@ -81,6 +81,17 @@ const LocalRouter = createBrowserRouter(
           }}
         />
         <Route
+          id="workspace-semantic-layer"
+          path="/workspace/semantic-layer"
+          element={<Workspace />}
+          loader={loadProject}
+          handle={{
+            crumb: () => (
+              <BreadcrumbLink to="/workspace/semantic-layer">Semantic Layer</BreadcrumbLink>
+            ),
+          }}
+        />
+        <Route
           id="workspace-dashboard"
           path="/workspace/dashboard/:dashboardName"
           element={<Workspace />}

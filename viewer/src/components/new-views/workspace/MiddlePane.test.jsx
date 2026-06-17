@@ -137,19 +137,20 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     ['input', 'input-preview-mock'],
     ['insight', 'insight-preview-mock'],
     ['model', 'model-preview-mock'],
-  ])('defaults a selected %s to the Preview lens, mounting its custom preview', (type, previewTestId) => {
+  ])('defaults a selected %s to the Preview lens, mounting its custom preview', async (type, previewTestId) => {
     seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId(`workspace-middle-${type}-preview`)).toBeInTheDocument();
-    expect(screen.getByTestId(previewTestId)).toBeInTheDocument();
+    // The body is lazy (code-split, VIS-1001) — it resolves through Suspense.
+    expect(await screen.findByTestId(previewTestId)).toBeInTheDocument();
     expect(screen.queryByTestId('lineage-canvas-mock')).not.toBeInTheDocument();
   });
 
-  test('a Track-N type can flip from its Preview to the Lineage lens', () => {
+  test('a Track-N type can flip from its Preview to the Lineage lens', async () => {
     seed({ workspaceActiveObject: { type: 'chart', name: 'revenue' }, workspaceLens: 'preview' });
     render(<MiddlePane />);
-    // Defaults to its custom preview.
-    expect(screen.getByTestId('chart-preview-mock')).toBeInTheDocument();
+    // Defaults to its custom preview (lazy → resolves through Suspense).
+    expect(await screen.findByTestId('chart-preview-mock')).toBeInTheDocument();
 
     // Lineage is selectable — clicking it flips to the universal DAG view.
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-lineage'));
@@ -158,7 +159,7 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     expect(screen.queryByTestId('chart-preview-mock')).not.toBeInTheDocument();
   });
 
-  test('flipping one object to Lineage does NOT leak the lens to the next object (resets to Preview)', () => {
+  test('flipping one object to Lineage does NOT leak the lens to the next object (resets to Preview)', async () => {
     // Regression: PerObjectPane is a single reused React instance, so a chart
     // flipped to Lineage would leak its lens — selecting a table next opened it
     // on Lineage instead of its Preview default. The lens must reset on switch.
@@ -173,7 +174,7 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
     });
     rerender(<MiddlePane />);
     expect(screen.getByTestId('workspace-middle-table-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('table-preview-mock')).toBeInTheDocument();
+    expect(await screen.findByTestId('table-preview-mock')).toBeInTheDocument();
     expect(screen.queryByTestId('workspace-middle-table-lineage')).not.toBeInTheDocument();
 
     // Same-type navigation also re-defaults: flip table → Lineage, pick another table.
@@ -218,8 +219,11 @@ describe('MiddlePane — Track-N custom previews for non-dashboard objects (VIS-
 });
 
 describe('MiddlePane — universal Lineage fallback for preview-less objects (VIS-779)', () => {
-  test.each(['source', 'dimension', 'metric', 'relation'])(
-    'a selected %s (no custom preview) locks onto the Lineage lens',
+  // Every first-class object type now has a canvas (source ERD VIS-1005,
+  // relation ERD VIS-1006, dimension/metric Field Lens VIS-1009, …), so the
+  // preview-less fallback is exercised by genuinely unregistered types.
+  test.each(['gadget', 'gizmo'])(
+    'a selected %s (no canvas descriptor) locks onto the Lineage lens',
     (type) => {
       seed({ workspaceActiveObject: { type, name: `my-${type}` }, workspaceLens: 'preview' });
       render(<MiddlePane />);
@@ -229,15 +233,15 @@ describe('MiddlePane — universal Lineage fallback for preview-less objects (VI
     }
   );
 
-  test('the Preview option is muted for a preview-less type and cannot flip away from Lineage', () => {
-    seed({ workspaceActiveObject: { type: 'source', name: 'db' }, workspaceLens: 'preview' });
+  test('the Canvas option is muted for a preview-less type and cannot flip away from Lineage', () => {
+    seed({ workspaceActiveObject: { type: 'gadget', name: 'g' }, workspaceLens: 'preview' });
     render(<MiddlePane />);
     expect(screen.getByTestId('lineage-canvas-mock')).toBeInTheDocument();
 
-    // The Preview option is disabled — clicking it does not flip away from Lineage.
+    // The Canvas option is disabled — clicking it does not flip away from Lineage.
     fireEvent.click(screen.getByTestId('workspace-lens-picker-option-preview'));
-    expect(screen.getByTestId('workspace-middle-source-lineage')).toBeInTheDocument();
-    expect(screen.queryByTestId('workspace-middle-source-preview')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-middle-gadget-lineage')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-middle-gadget-preview')).not.toBeInTheDocument();
   });
 
   test('an unknown object type also defaults to the universal Lineage lens', () => {

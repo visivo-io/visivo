@@ -6,6 +6,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RefTextArea from './RefTextArea';
+import Select from '../../common/Select';
 import { SchemaEditor } from './SchemaEditor';
 import { getSchema, CHART_TYPES, isSchemaLoaded, preloadSchemas } from '../../../schemas/schemas';
 import { validateName } from './namedModel';
@@ -362,18 +363,13 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
             {/* Chart Type selector */}
             <div className="relative">
-              <select
+              <Select
                 id="propsType"
+                aria-label="Chart Type"
                 value={propsType}
-                onChange={e => setPropsType(e.target.value)}
-                className={`block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.propsType ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                {CHART_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                options={CHART_TYPES}
+                onChange={setPropsType}
+              />
               <label
                 htmlFor="propsType"
                 className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
@@ -464,17 +460,12 @@ const InsightEditForm = ({ insight, isCreate, onClose, onSave, onGoBack, isPrevi
 
                     {/* Interaction Type Selector */}
                     <div className="relative">
-                      <select
+                      <Select
+                        aria-label="Type"
                         value={interaction.type}
-                        onChange={e => updateInteractionType(index, e.target.value)}
-                        className="block w-full px-3 py-2 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        {INTERACTION_TYPES.map(t => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
+                        options={INTERACTION_TYPES}
+                        onChange={value => updateInteractionType(index, value)}
+                      />
                       <label className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500">
                         Type
                       </label>

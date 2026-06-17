@@ -1,11 +1,15 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
 import SubBar, { PreviewLensPicker } from './SubBar';
 import ProjectCanvas from '../project/canvas/ProjectCanvas';
 import ProjectEditor from '../project/editor/ProjectEditor';
 import LineageCanvas from '../lineage/LineageCanvas';
-import { getPreviewComponent } from './previewRegistry';
+import ObjectCanvasFrame from './ObjectCanvasFrame';
 import useStore from '../../../stores/store';
+import { getTypeIcon, getTypeColors } from '../common/objectTypeConfigs';
+
+// The Semantic Layer page (VIS-1014) is heavy (React-Flow), so lazy-load it like
+// the per-object canvas bodies — it only loads when the page is opened.
+const SemanticLayerCanvas = React.lazy(() => import('./relations/SemanticLayerCanvas'));
 
 /**
  * MiddlePane — dispatches on `activeObject.type` (VIS-775 / Track B B2).
@@ -13,13 +17,11 @@ import useStore from '../../../stores/store';
  *   project    → ProjectEditor (Track M M-1 — health row + level groups)
  *   dashboard  → ProjectCanvas (render-only Dashboard wrapper, VIS-767) when
  *                scoped, placeholder otherwise; the Lineage lens mounts <LineageCanvas>
- *   _          → PerObjectPane (chart/model/insight/input/table/markdown/
- *                source/dimension/metric/relation/unknown). Track-N types
- *                (chart/table/markdown/input/insight/model) mount their custom
- *                Preview component (from previewRegistry, reusing the existing
- *                renderer) in the Preview lens; every other type has no preview
- *                and falls back to the universal Lineage lens (VIS-779),
- *                mounting <LineageCanvas> with the Preview option muted.
+ *   _          → <ObjectCanvasFrame> (VIS-1001) — the shared per-object canvas
+ *                shell. It resolves the type's descriptor from the object-canvas
+ *                registry and mounts the right body / lens / canonical state.
+ *                Types without a descriptor (source/dimension/metric/relation/
+ *                unknown) park on the universal Lineage lens with Canvas muted.
  *
  * Each variant renders the `<SubBar>` above its viewport so the lens picker
  * stays close to the surface it switches the view of (per the chat
@@ -63,6 +65,50 @@ const ProjectPane = ({ activeObject }) => {
     </section>
   );
 };
+
+// The project-wide Semantic Layer page (VIS-1014). A NEW multi-object surface
+// (NOT a per-object canvas): an ERD of every model with its metrics + dimensions
+// and all relations as edges. Reached from the Project view's "Semantic Layer"
+// button (which opens a `{ type: 'semantic-layer' }` workspace tab).
+const RelationIcon = getTypeIcon('relation');
+const RELATION_COLORS = getTypeColors('relation');
+
+const SemanticLayerPane = () => (
+  <section
+    data-testid="workspace-middle-semantic-layer"
+    className="flex h-full w-full flex-col bg-gray-50"
+  >
+    <SubBar
+      testId="workspace-subbar-semantic-layer"
+      left={
+        <div className="flex items-center gap-2 text-[12px]">
+          <span
+            className={`inline-flex h-5 w-5 items-center justify-center rounded ${RELATION_COLORS.bg} ${RELATION_COLORS.text}`}
+          >
+            {RelationIcon && <RelationIcon style={{ fontSize: 13 }} />}
+          </span>
+          <span className="font-semibold text-gray-900">Semantic Layer</span>
+          <span className="text-gray-400">·</span>
+          <span className="text-gray-500">models · metrics · dimensions · relations</span>
+        </div>
+      }
+    />
+    <div data-testid="workspace-middle-semantic-layer-canvas" className="flex flex-1 min-h-0">
+      <React.Suspense
+        fallback={
+          <div
+            data-testid="workspace-middle-semantic-layer-loading"
+            className="flex flex-1 items-center justify-center text-[13px] text-gray-400"
+          >
+            Loading semantic layer…
+          </div>
+        }
+      >
+        <SemanticLayerCanvas />
+      </React.Suspense>
+    </div>
+  </section>
+);
 
 const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   const name = activeObject?.name;
@@ -113,110 +159,13 @@ const DashboardPane = ({ activeObject, lens, onLensChange, projectId }) => {
   );
 };
 
-const PerObjectPane = ({ activeObject, projectId }) => {
-  const name = activeObject?.name || '(unnamed)';
-  const type = activeObject?.type || 'object';
-  // Track N: a subset of object types (chart / table / markdown / input /
-  // insight / model) now have a custom Preview component registered in
-  // previewRegistry; each reuses that type's EXISTING renderer. Types WITHOUT a
-  // registered preview (source, dimension, metric, relation, unknown, …) have no
-  // preview surface, so they default to — and stay parked on — the universal
-  // Lineage lens (VIS-779), with the Preview option muted (N-7 / VIS-803 is
-  // canceled; the fallback is the plain Lineage lens, not a bespoke component).
-  const PreviewComponent = getPreviewComponent(type);
-  const hasPreview = Boolean(PreviewComponent);
-  const objectKey = `${type}:${name}`;
-
-  // A deep link (`?edit=<type>:<name>&lens=lineage`) — e.g. the flip card's
-  // "Open full lineage" Expand — requests the Lineage lens for THIS specific
-  // object. Honour it as the initial/reset lens, but scope it to the named
-  // object so it can't leak to the next selection (the param stays in the URL
-  // after the user navigates within the Workspace).
-  const [searchParams] = useSearchParams();
-  const deepLinkLens = React.useMemo(() => {
-    if (searchParams.get('lens') !== 'lineage') return null;
-    return searchParams.get('edit') === objectKey ? 'lineage' : null;
-  }, [searchParams, objectKey]);
-  // A lineage node click requests the Lineage lens for the object it selects
-  // (VIS-779 Step 4 — walking the DAG must not bounce back to Preview). Same
-  // object-scoped shape as the deep link; one-shot, cleared after consumption.
-  const lensIntent = useStore(s => s.workspaceLensIntent);
-  const clearWorkspaceLensIntent = useStore(s => s.clearWorkspaceLensIntent);
-  const intentLens =
-    lensIntent && lensIntent.objectKey === objectKey ? lensIntent.lens : null;
-  const requestedLens = deepLinkLens || intentLens;
-  const defaultLens = hasPreview ? 'preview' : 'lineage';
-
-  // Types with a custom preview default to the Preview lens (their primary
-  // surface); fallback types default to — and lock onto — Lineage. A matching
-  // deep link overrides the default. The shared store lens defaults to 'preview'
-  // (the dashboard *canvas* default), which isn't meaningful for objects with no
-  // preview surface, so the per-object lens is tracked locally.
-  const [lensEffective, setLensEffective] = React.useState(requestedLens || defaultLens);
-  // Reset the lens to the object's default (or the requested lens) whenever the
-  // active object changes. React reuses this same PerObjectPane instance when the
-  // user switches between two non-dashboard objects (same component, same tree
-  // position), so without this the previous object's lens selection would leak:
-  // flipping a chart to Lineage and then selecting a table would open the table
-  // on Lineage instead of its Preview default. Keyed on type+name so navigating
-  // between two objects of the same type also re-defaults.
-  const prevKeyRef = React.useRef(objectKey);
-  React.useEffect(() => {
-    if (prevKeyRef.current !== objectKey) {
-      prevKeyRef.current = objectKey;
-      setLensEffective(requestedLens || defaultLens);
-    }
-  }, [objectKey, requestedLens, defaultLens]);
-  // The intent is single-use: clear it once this pane has consumed it so it
-  // can't re-apply on a later visit to the same object.
-  React.useEffect(() => {
-    if (intentLens && clearWorkspaceLensIntent) {
-      clearWorkspaceLensIntent();
-    }
-  }, [intentLens, clearWorkspaceLensIntent]);
-  // A fallback type can never show Preview — clamp any stale 'preview' selection.
-  const lens = hasPreview ? lensEffective : 'lineage';
-  return (
-    <section
-      data-testid={`workspace-middle-${type}`}
-      className="flex h-full w-full flex-col bg-gray-50"
-    >
-      <SubBar
-        testId={`workspace-subbar-${type}`}
-        left={
-          <div className="flex items-center gap-2 text-[12px]">
-            <span className="font-semibold text-gray-900">{name}</span>
-            <span className="text-gray-400">·</span>
-            <span className="text-gray-500">{type}</span>
-          </div>
-        }
-        right={
-          <PreviewLensPicker
-            value={lens}
-            onChange={setLensEffective}
-            previewLabel="Canvas"
-            previewDisabled={!hasPreview}
-          />
-        }
-      />
-      {lens === 'lineage' ? (
-        <div
-          data-testid={`workspace-middle-${type}-lineage`}
-          className="flex flex-1 min-h-0"
-        >
-          <LineageCanvas />
-        </div>
-      ) : (
-        <div
-          data-testid={`workspace-middle-${type}-preview`}
-          className="flex flex-1 min-h-0"
-        >
-          <PreviewComponent activeObject={activeObject} projectId={projectId} />
-        </div>
-      )}
-    </section>
-  );
-};
+// Every non-dashboard object (chart, model, insight, input, table, markdown,
+// source, dimension, metric, relation, csvScriptModel, localMergeModel, unknown)
+// routes through the shared ObjectCanvasFrame (VIS-1001), which owns the SubBar,
+// the N-way lens picker, the per-object local lens, and the canonical states.
+const PerObjectPane = ({ activeObject, projectId }) => (
+  <ObjectCanvasFrame activeObject={activeObject} projectId={projectId} />
+);
 
 const MiddlePane = () => {
   // Everything the dispatcher needs comes from the store — no prop-drilling.
@@ -230,6 +179,9 @@ const MiddlePane = () => {
   if (obj.type === 'project') {
     return <ProjectPane activeObject={obj} />;
   }
+  if (obj.type === 'semantic-layer') {
+    return <SemanticLayerPane />;
+  }
   if (obj.type === 'dashboard') {
     return (
       <DashboardPane
@@ -240,10 +192,6 @@ const MiddlePane = () => {
       />
     );
   }
-  // Every non-dashboard object (chart, model, insight, input, table, markdown,
-  // source, dimension, metric, relation, unknown) routes through PerObjectPane.
-  // Track-N types render their custom Preview; the rest fall back to the
-  // universal Lineage lens (VIS-779).
   return <PerObjectPane activeObject={obj} projectId={projectId} />;
 };
 

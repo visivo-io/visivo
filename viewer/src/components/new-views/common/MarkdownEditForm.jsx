@@ -4,6 +4,7 @@ import { Button, ButtonOutline } from '../../styled/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { validateName } from './namedModel';
+import Select from '../../common/Select';
 
 /**
  * MarkdownEditForm - Form component for editing/creating markdowns
@@ -213,18 +214,13 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
             {/* Horizontal Alignment */}
             <div className="relative">
-              <select
+              <Select
                 id="markdownAlign"
+                aria-label="Horizontal Alignment"
                 value={align}
-                onChange={e => setAlign(e.target.value)}
-                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {ALIGN_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                options={ALIGN_OPTIONS}
+                onChange={setAlign}
+              />
               <label
                 htmlFor="markdownAlign"
                 className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"
@@ -235,18 +231,13 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
             {/* Vertical Justify */}
             <div className="relative">
-              <select
+              <Select
                 id="markdownJustify"
+                aria-label="Vertical Distribution"
                 value={justify}
-                onChange={e => setJustify(e.target.value)}
-                className="block w-full px-3 py-2.5 text-sm text-gray-900 bg-white rounded-md border border-gray-300 appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {JUSTIFY_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                options={JUSTIFY_OPTIONS}
+                onChange={setJustify}
+              />
               <label
                 htmlFor="markdownJustify"
                 className="absolute text-sm duration-200 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white px-1 left-2 text-gray-500"

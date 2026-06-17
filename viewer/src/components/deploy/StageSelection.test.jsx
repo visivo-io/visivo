@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import StageSelection from './StageSelection';
 
 jest.mock('../common/Loading', () => () => <div data-testid="loading-spinner" />);
@@ -45,12 +46,12 @@ it('displays fetched stages in select dropdown', async () => {
 
   render(<StageSelection status="stage" />);
 
-  await waitFor(() => {
-    expect(screen.getByLabelText(/deployment environment/i)).toBeInTheDocument();
-  });
-
+  const select = await screen.findByTestId('stage-select');
+  // Options render as real DOM when the brand <Select> menu opens.
+  fireEvent.mouseDown(within(select).getByRole('combobox'));
+  const optionText = screen.getAllByRole('option').map(o => o.textContent);
   mockStages.stages.forEach(stage => {
-    expect(screen.getByText(stage.name)).toBeInTheDocument();
+    expect(optionText).toContain(stage.name);
   });
 });
 
@@ -61,8 +62,12 @@ it('handles stage selection and enables deploy button', async () => {
 
   render(<StageSelection status="stage" />);
 
-  const select = await screen.findByLabelText(/deployment environment/i);
-  fireEvent.change(select, { target: { value: 'staging' } });
+  await screen.findByTestId('stage-select');
+  await selectEvent.select(
+    within(screen.getByTestId('stage-select')).getByRole('combobox'),
+    'staging',
+    { container: document.body }
+  );
 
   const button = screen.getByRole('button', { name: /deploy to staging/i });
   expect(button).not.toBeDisabled();
@@ -96,11 +101,15 @@ it('triggers deployment when clicking Deploy', async () => {
       json: async () => ({ deploy_id: 'abc123' }),
     });
 
-  jest.useFakeTimers();
-
   render(<StageSelection status="stage" />);
-  const select = await screen.findByLabelText(/deployment environment/i);
-  fireEvent.change(select, { target: { value: 'staging' } });
+  await screen.findByTestId('stage-select');
+  // Pick the stage via the brand <Select> (open the portaled menu + click) before
+  // switching to fake timers — react-select-event's async helpers need real timers.
+  const combo = within(screen.getByTestId('stage-select')).getByRole('combobox');
+  fireEvent.mouseDown(combo);
+  fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'staging'));
+
+  jest.useFakeTimers();
 
   const deployButton = screen.getByRole('button', { name: /deploy to staging/i });
   fireEvent.click(deployButton);

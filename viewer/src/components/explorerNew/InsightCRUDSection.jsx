@@ -8,6 +8,7 @@ import { getRequiredFields } from '../new-views/common/insightRequiredFields';
 import { SchemaEditor } from '../new-views/common/SchemaEditor/SchemaEditor';
 import { flattenSchemaProperties } from '../new-views/common/SchemaEditor/utils/schemaUtils';
 import RefTextArea from '../new-views/common/RefTextArea';
+import Select from '../common/Select';
 
 const InteractionRow = ({ interaction, index, insightName, updateInsightInteraction, handleRemoveInteraction }) => {
   const { isOver, setNodeRef } = useDroppable({
@@ -26,20 +27,16 @@ const InteractionRow = ({ interaction, index, insightName, updateInsightInteract
       data-testid={`insight-interaction-${index}`}
       className="flex items-center gap-2"
     >
-      <select
+      <Select
         data-testid={`interaction-type-select-${index}`}
+        size="sm"
+        className="min-w-[110px]"
         value={interaction.type || 'filter'}
-        onChange={(e) => {
-          updateInsightInteraction(insightName, index, { type: e.target.value });
+        options={INTERACTION_TYPES}
+        onChange={(type) => {
+          updateInsightInteraction(insightName, index, { type });
         }}
-        className="text-xs border border-gray-300 rounded-md px-1.5 py-1 bg-white"
-      >
-        {INTERACTION_TYPES.map((it) => (
-          <option key={it.value} value={it.value}>
-            {it.label}
-          </option>
-        ))}
-      </select>
+      />
       <div
         ref={setNodeRef}
         className={`flex-1 ${isOver ? 'ring-2 ring-primary-400 rounded' : ''}`}
@@ -124,8 +121,8 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
   }, [type]);
 
   const handleTypeChange = useCallback(
-    (e) => {
-      setInsightType(insightName, e.target.value);
+    (value) => {
+      setInsightType(insightName, value);
     },
     [insightName, setInsightType]
   );
@@ -297,18 +294,13 @@ const InsightCRUDSection = ({ insightName, isExpanded, onToggleExpand }) => {
           {/* Type Selector */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-            <select
+            <Select
               data-testid={`insight-type-select-${insightName}`}
+              size="sm"
               value={type}
+              options={CHART_TYPES}
               onChange={handleTypeChange}
-              className="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition-colors"
-            >
-              {CHART_TYPES.map((ct) => (
-                <option key={ct.value} value={ct.value}>
-                  {ct.label}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Properties (SchemaEditor) */}

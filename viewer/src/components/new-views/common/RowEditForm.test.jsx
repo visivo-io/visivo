@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import { DndContext } from '@dnd-kit/core';
 import RowEditForm, { getItemRef } from './RowEditForm';
 
@@ -47,7 +48,8 @@ describe('RowEditForm — standalone render', () => {
   test('renders the row header, height select, and one slot per item', () => {
     renderRow();
     expect(screen.getByText('Row 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Row 1 height')).toHaveValue('medium');
+    // The brand <Select> shows the current height as its selected value.
+    expect(screen.getByTestId('row-0-height-select')).toHaveTextContent('medium');
     // Each item slot is a RefDropZone with the id row-<rowId>-item-<idx>.
     expect(screen.getByTestId('ref-dropzone-row-0-item-0')).toBeInTheDocument();
     expect(screen.getByTestId('ref-dropzone-row-0-item-1')).toBeInTheDocument();
@@ -80,7 +82,7 @@ describe('RowEditForm — standalone render', () => {
     expect(onSelectRef).toHaveBeenCalledWith({ type: 'chart', name: 'rev_chart' });
   });
 
-  test('height change, width change, add/remove item, remove row all fire callbacks', () => {
+  test('height change, width change, add/remove item, remove row all fire callbacks', async () => {
     const onHeightChange = jest.fn();
     const onItemWidthChange = jest.fn();
     const onAddItem = jest.fn();
@@ -88,7 +90,11 @@ describe('RowEditForm — standalone render', () => {
     const onRemoveRow = jest.fn();
     renderRow({ onHeightChange, onItemWidthChange, onAddItem, onRemoveItem, onRemoveRow });
 
-    fireEvent.change(screen.getByLabelText('Row 1 height'), { target: { value: 'large' } });
+    await selectEvent.select(
+      within(screen.getByTestId('row-0-height-select')).getByRole('combobox'),
+      'large',
+      { container: document.body }
+    );
     expect(onHeightChange).toHaveBeenCalledWith('large');
 
     fireEvent.change(screen.getByLabelText('Item 1 width'), { target: { value: '3' } });

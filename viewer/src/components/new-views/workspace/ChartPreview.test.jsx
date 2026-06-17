@@ -28,10 +28,22 @@ jest.mock('../../../hooks/useInsightsData', () => ({
 jest.mock('../../../hooks/useInputsData', () => ({
   useInputsData: jest.fn(),
 }));
+// Spy on the Input widget so we can assert controls render OUTSIDE the mocked
+// Chart (above it), independent of the chart's spinner gate.
+jest.mock('../../items/Input', () => ({
+  __esModule: true,
+  default: ({ input }) => <div data-testid="input-component">{input?.name}</div>,
+}));
 
-const seed = (charts = []) => {
+const seed = (charts = [], { inputs = [], insightJobs = {} } = {}) => {
   act(() => {
-    useStore.setState({ charts, fetchCharts: jest.fn(), insightJobs: {} });
+    useStore.setState({
+      charts,
+      fetchCharts: jest.fn(),
+      insightJobs,
+      inputs,
+      fetchInputs: jest.fn(),
+    });
   });
 };
 
@@ -66,5 +78,34 @@ describe('ChartPreview (VIS-784)', () => {
     seed([]);
     render(<ChartPreview activeObject={{ type: 'chart', name: 'missing' }} projectId="p1" />);
     expect(screen.getByTestId('chart-preview-empty')).toHaveTextContent(/not found/i);
+  });
+
+  // VIS-1003: input-driven chart renders its control widget ABOVE the chart,
+  // outside the spinner gate, from the union of its parent insights' deps.
+  test('renders input controls outside the Chart for an input-driven chart', () => {
+    seed(
+      [{ name: 'revenue', config: { insights: ['${ref(rev-insight)}'] } }],
+      {
+        inputs: [{ name: 'region', config: { name: 'region', type: 'single-select' } }],
+        insightJobs: { 'rev-insight': { inputDependencies: ['region'], pendingInputs: null } },
+      }
+    );
+    render(<ChartPreview activeObject={{ type: 'chart', name: 'revenue' }} projectId="p1" />);
+
+    // Control strip renders, with the resolved input widget, alongside the chart.
+    expect(screen.getByTestId('input-controls-section')).toBeInTheDocument();
+    expect(screen.getByTestId('input-component')).toHaveTextContent('region');
+    expect(screen.getByTestId('chart-renderer-mock')).toBeInTheDocument();
+  });
+
+  test('renders no control strip for a chart with no input dependencies', () => {
+    seed(
+      [{ name: 'revenue', config: { insights: ['${ref(rev-insight)}'] } }],
+      { insightJobs: { 'rev-insight': { inputDependencies: [], pendingInputs: [] } } }
+    );
+    render(<ChartPreview activeObject={{ type: 'chart', name: 'revenue' }} projectId="p1" />);
+
+    expect(screen.queryByTestId('input-controls-section')).not.toBeInTheDocument();
+    expect(screen.getByTestId('chart-renderer-mock')).toBeInTheDocument();
   });
 });

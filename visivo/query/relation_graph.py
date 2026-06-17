@@ -17,16 +17,59 @@ from visivo.query.resolvers.field_resolver import FieldResolver
 import networkx as nx
 
 
-class AmbiguousJoinError(Exception):
+class JoinPathError(Exception):
+    """Base class for join-path resolution errors.
+
+    Carries structured attributes (``model_a`` / ``model_b`` — the model pair the
+    failure is about — and ``kind``, a stable machine-readable discriminator) so
+    callers (e.g. the viewer's Relations ERD builder, VIS-1006/VIS-1007) can act
+    on the failure without parsing the human-readable message.
+    """
+
+    kind: str = "join_path"
+
+    def __init__(self, message: str, model_a: Optional[str] = None, model_b: Optional[str] = None):
+        super().__init__(message)
+        self.model_a = model_a
+        self.model_b = model_b
+
+
+class AmbiguousJoinError(JoinPathError):
     """Raised when multiple join paths exist between models."""
 
-    pass
+    kind = "ambiguous_join"
 
 
-class NoJoinPathError(Exception):
+class NoJoinPathError(JoinPathError):
     """Raised when no join path exists between models."""
 
-    pass
+    kind = "no_join_path"
+
+
+# Maps a JoinPathError's class-level ``kind`` to the wire ``error_type`` the
+# viewer keys its inline-fix UI off of (VIS-1007). Keeping the mapping here —
+# next to the errors — means the preview executor never has to know about the
+# graph internals beyond importing this helper.
+_JOIN_ERROR_KIND_TO_ERROR_TYPE = {
+    "no_join_path": "missing_relation",
+    "ambiguous_join": "ambiguous_relation",
+}
+
+
+def join_error_to_structured_fields(error: "JoinPathError") -> Optional[Dict[str, object]]:
+    """Translate a JoinPathError into the structured fields the preview run
+    status payload carries (``error_type`` + ``error_models``).
+
+    Returns ``None`` for an error whose ``kind`` has no mapped wire type (so the
+    caller falls back to the generic error path). ``error_models`` is the
+    ``[model_a, model_b]`` pair (omitting ``None`` entries) the failure is about
+    — the two endpoints the inline join builder seeds with.
+    """
+    error_type = _JOIN_ERROR_KIND_TO_ERROR_TYPE.get(getattr(error, "kind", None))
+    if error_type is None:
+        return None
+    error_models = [m for m in (error.model_a, error.model_b) if m]
+    return {"error_type": error_type, "error_models": error_models}
 
 
 class RelationGraph:
@@ -106,6 +149,21 @@ class RelationGraph:
                 resolved_condition = self.field_resolver.resolve(relation.condition, alias=False)
                 self._resolved_conditions[relation.condition] = resolved_condition
 
+                # networkx.Graph keeps a single edge per node pair, so when more
+                # than one relation is declared for the same pair, add_edge would
+                # silently let the LAST one win. Break that tie on is_default:
+                # only overwrite an existing edge if the incoming relation is the
+                # default (or the existing edge isn't), so an explicit
+                # is_default=True relation always wins regardless of declaration
+                # order. (VIS-1006)
+                if self.graph.has_edge(model_list[0], model_list[1]):
+                    existing = self.graph.get_edge_data(model_list[0], model_list[1])
+                    existing_is_default = bool(existing.get("is_default"))
+                    incoming_is_default = bool(relation.is_default)
+                    if existing_is_default and not incoming_is_default:
+                        # Keep the already-installed default edge.
+                        continue
+
                 # Add edge with relation details (undirected, so order doesn't matter)
                 self.graph.add_edge(
                     model_list[0],
@@ -155,9 +213,17 @@ class RelationGraph:
             List of join conditions along the path
         """
         if not self.graph.has_node(model1):
-            raise NoJoinPathError(f"Model '{model1}' not found in relation graph")
+            raise NoJoinPathError(
+                f"Model '{model1}' not found in relation graph",
+                model_a=model1,
+                model_b=model2,
+            )
         if not self.graph.has_node(model2):
-            raise NoJoinPathError(f"Model '{model2}' not found in relation graph")
+            raise NoJoinPathError(
+                f"Model '{model2}' not found in relation graph",
+                model_a=model1,
+                model_b=model2,
+            )
 
         try:
             # Find shortest path
@@ -175,7 +241,9 @@ class RelationGraph:
                 raise AmbiguousJoinError(
                     f"Multiple join paths found between '{model1}' and '{model2}':\n"
                     + "\n".join(f"  - {p}" for p in path_descriptions)
-                    + "\n\nPlease specify a preferred path using relation preferences."
+                    + "\n\nPlease specify a preferred path using relation preferences.",
+                    model_a=model1,
+                    model_b=model2,
                 )
 
             # Build join conditions from the path
@@ -195,7 +263,9 @@ class RelationGraph:
         except nx.NetworkXNoPath:
             raise NoJoinPathError(
                 f"No join path found between models '{model1}' and '{model2}'. "
-                f"Please define a relation between these models."
+                f"Please define a relation between these models.",
+                model_a=model1,
+                model_b=model2,
             )
 
     def _find_minimum_spanning_tree(self, models: List[str]) -> List[Tuple[str, str, str]]:
@@ -214,7 +284,7 @@ class RelationGraph:
         # Check all models exist
         for model in models:
             if not self.graph.has_node(model):
-                raise NoJoinPathError(f"Model '{model}' not found in relation graph")
+                raise NoJoinPathError(f"Model '{model}' not found in relation graph", model_a=model)
 
         # Find all paths between each pair of models
         all_edges = []
@@ -238,8 +308,22 @@ class RelationGraph:
         # Check if all models are connected
         if tree_graph.number_of_nodes() < len(models):
             missing = model_set - set(tree_graph.nodes())
+            # Surface a concrete model PAIR so the inline join-fix card has two
+            # endpoints to seed the relation builder with. When 2+ models are
+            # unreachable (the common "two models, no relation" case the
+            # tree_graph is empty for) pair the first two; otherwise pair the
+            # single disconnected model with a model it could not reach.
+            connected = [m for m in models if m not in missing]
+            missing_ordered = [m for m in models if m in missing]
+            if len(missing_ordered) >= 2:
+                pair_a, pair_b = missing_ordered[0], missing_ordered[1]
+            else:
+                pair_a = missing_ordered[0] if missing_ordered else None
+                pair_b = connected[0] if connected else None
             raise NoJoinPathError(
-                f"Cannot connect all models. Missing connections for: {', '.join(missing)}"
+                f"Cannot connect all models. Missing connections for: {', '.join(missing)}",
+                model_a=pair_a,
+                model_b=pair_b,
             )
 
         # Find minimum spanning tree
@@ -257,7 +341,11 @@ class RelationGraph:
 
             return joins
         else:
-            raise NoJoinPathError("Models form disconnected components and cannot be joined")
+            raise NoJoinPathError(
+                "Models form disconnected components and cannot be joined",
+                model_a=models[0] if len(models) > 0 else None,
+                model_b=models[1] if len(models) > 1 else None,
+            )
 
     def get_join_condition(self, model1: str, model2: str) -> Optional[str]:
         """

@@ -15,10 +15,24 @@ import {
   Button,
   TextField,
   InputAdornment,
+  ThemeProvider,
+  createTheme,
 } from '@mui/material';
 import { mkConfig, generateCsv } from 'export-to-csv';
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000];
+
+// Brand-aligned MUI theme for the pivot toolbar controls (search field + CSV
+// download). Without this the raw MUI controls fall back to the default blue
+// palette, clashing with the Visivo mauve brand. Colors mirror the design-system
+// tokens (primary mauve #713b57 / secondary gray #4f494c) from src/index.css.
+const pivotToolbarTheme = createTheme({
+  palette: {
+    primary: { main: '#713b57' },
+    secondary: { main: '#4f494c' },
+  },
+  shape: { borderRadius: 8 },
+});
 
 const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const [globalFilter, setGlobalFilter] = useState('');
@@ -182,71 +196,81 @@ const PivotableTable = ({ table, sourceData, itemWidth, height, width }) => {
   const tableHeight = height ? height - 60 : undefined;
 
   const headerBanner = isPivotMode && pivotMeta ? (
-    <div className="flex items-center gap-4 text-xs text-secondary-600">
-      <span className="font-semibold">{pivotMeta.aggregationLabel}</span>
-      <span className="text-secondary-300">|</span>
-      <span>Columns: <span className="font-medium">{pivotMeta.pivotFieldName}</span></span>
-      <span className="text-secondary-300">|</span>
-      <span>Rows: <span className="font-medium">{pivotMeta.rowFieldNames.join(', ')}</span></span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-secondary-600">
+      <span className="inline-flex items-center rounded-full bg-primary-100 px-2 py-0.5 font-semibold uppercase tracking-wide text-primary-700">
+        {pivotMeta.aggregationLabel}
+      </span>
+      <span className="text-secondary-500">
+        Columns: <span className="font-medium text-secondary-700">{pivotMeta.pivotFieldName}</span>
+      </span>
+      <span className="text-secondary-300" aria-hidden="true">·</span>
+      <span className="text-secondary-500">
+        Rows: <span className="font-medium text-secondary-700">{pivotMeta.rowFieldNames.join(', ')}</span>
+      </span>
     </div>
   ) : null;
 
   return (
     <ItemContainer id={itemNameToSlug(table.name)}>
       {/* Toolbar */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '8px 12px',
-          gap: '8px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <TextField
-          value={globalFilter}
-          onChange={e => {
-            setGlobalFilter(e.target.value);
-            setPage(0);
+      <ThemeProvider theme={pivotToolbarTheme}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 12px',
+            gap: '8px',
+            flexWrap: 'wrap',
+            borderBottom: '1px solid var(--color-secondary-100)',
           }}
-          placeholder="Search..."
-          size="small"
-          variant="outlined"
-          sx={{ maxWidth: 300 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: globalFilter ? (
-              <InputAdornment position="end">
-                <IconButton
-                  onClick={() => {
-                    setGlobalFilter('');
-                    setPage(0);
-                  }}
-                  size="small"
-                  edge="end"
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ) : null,
-          }}
-        />
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Button
-            aria-label="DownloadCsv"
-            onClick={handleExportData}
+        >
+          <TextField
+            value={globalFilter}
+            onChange={e => {
+              setGlobalFilter(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Search..."
             size="small"
-            sx={{ minWidth: '40px' }}
-          >
-            <FileDownloadIcon fontSize="medium" />
-          </Button>
+            variant="outlined"
+            color="primary"
+            sx={{ maxWidth: 300 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" sx={{ color: 'var(--color-secondary-400)' }} />
+                </InputAdornment>
+              ),
+              endAdornment: globalFilter ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => {
+                      setGlobalFilter('');
+                      setPage(0);
+                    }}
+                    size="small"
+                    edge="end"
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            }}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button
+              aria-label="DownloadCsv"
+              onClick={handleExportData}
+              size="small"
+              color="primary"
+              sx={{ minWidth: '40px', color: 'var(--color-secondary-500)', '&:hover': { color: 'var(--color-primary-600)' } }}
+            >
+              <FileDownloadIcon fontSize="medium" />
+            </Button>
+          </Box>
         </Box>
-      </Box>
+      </ThemeProvider>
 
       <DataTable
         columns={dataTableColumns}

@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 import useStore from '../../../stores/store';
 import Chart from '../../items/Chart';
 import { useInsightsData } from '../../../hooks/useInsightsData';
-import { useInputsData } from '../../../hooks/useInputsData';
 import { parseRefValue } from '../../../utils/refString';
+import { usePreviewInputDependencies } from './usePreviewInputDependencies';
+import PreviewInputControls from './PreviewInputControls';
 
 /**
  * ChartPreview — VIS-784 / N-1.
@@ -60,19 +60,17 @@ const ChartPreview = ({ activeObject, projectId }) => {
   );
 
   // Load each insight's data from the main run (the same hook the Dashboard
-  // drives) plus any inputs those insights depend on.
+  // drives).
   useInsightsData(projectId, insightNames);
-  const inputDeps = useStore(
-    useShallow(s => {
-      const names = new Set();
-      for (const n of insightNames) {
-        const job = s.insightJobs?.[n];
-        (job?.inputDependencies || []).forEach(dep => names.add(dep));
-      }
-      return Array.from(names).sort();
-    })
-  );
-  useInputsData(projectId, inputDeps);
+
+  // Resolve the UNION of input widgets across all parent insights (runtime
+  // inputDependencies + pendingInputs) with a config fallback across the
+  // chart's props/layout/interactions, and seed their defaults so the chart
+  // renders immediately (VIS-1003).
+  const { inputConfigs } = usePreviewInputDependencies(projectId, {
+    insightNames,
+    configForFallback: chart,
+  });
 
   if (!chart) {
     return (
@@ -88,9 +86,12 @@ const ChartPreview = ({ activeObject, projectId }) => {
   }
 
   return (
-    <div data-testid="chart-preview" className="flex flex-1 min-h-0 bg-white p-4">
-      <div className="relative h-full w-full" style={{ minWidth: 0 }}>
-        <Chart chart={chart} projectId={projectId} shouldLoad={true} hideToolbar={true} />
+    <div data-testid="chart-preview" className="flex flex-1 min-h-0 flex-col bg-white">
+      <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
+      <div className="relative flex-1 min-h-0 p-4">
+        <div className="relative h-full w-full" style={{ minWidth: 0 }}>
+          <Chart chart={chart} projectId={projectId} shouldLoad={true} hideToolbar={true} />
+        </div>
       </div>
     </div>
   );

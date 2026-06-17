@@ -255,11 +255,17 @@ const Table = ({ table, itemWidth, height, width, shouldLoad = true }) => {
     );
   }
 
+  // Brand-aligned MUI theme for the legacy material-react-table renderer (the
+  // non-pivot data path). Previously hand-rolled hex (a red-orange #fc4023 +
+  // gray) that diverged from the Visivo palette; now mirrors the design-system
+  // tokens (primary mauve #713b57 / secondary gray #4f494c) from src/index.css.
   const tableTheme = createTheme({
     palette: {
-      primary: { main: 'rgba(252, 64, 35, 1)' },
-      info: { main: 'rgb(79, 73, 76)' },
+      primary: { main: '#713b57' },
+      secondary: { main: '#4f494c' },
+      info: { main: '#4f494c' },
     },
+    shape: { borderRadius: 8 },
   });
 
   /* eslint-disable react/jsx-pascal-case */

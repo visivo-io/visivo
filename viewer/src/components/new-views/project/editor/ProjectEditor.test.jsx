@@ -266,4 +266,40 @@ describe('ProjectEditor', () => {
       screen.queryByTestId('level-group-header-__unassigned__-delete')
     ).not.toBeInTheDocument();
   });
+
+  // The project-page governance lists (Relations / Semantic Fields) were removed
+  // — that surface is superseded by the dedicated semantic-layer page. The
+  // Project Editor must no longer render the governance section.
+  test('no longer renders the project-page governance section', () => {
+    render(<ProjectEditor />);
+    expect(screen.queryByTestId('project-governance')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('project-relations-list')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('project-fields-list')).not.toBeInTheDocument();
+  });
+
+  test('the Semantic Layer CTA opens the semantic-layer page + telemetry', () => {
+    const openWorkspaceTab = jest.fn();
+    const events = [];
+    const unsub = setWorkspaceTelemetryListener(e => events.push(e));
+    try {
+      seed({ openWorkspaceTab });
+      render(<ProjectEditor />);
+      expect(screen.getByTestId('project-semantic-layer-cta')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('project-open-semantic-layer'));
+      expect(openWorkspaceTab).toHaveBeenCalledWith({
+        id: 'semantic-layer:semantic-layer',
+        type: 'semantic-layer',
+        name: 'semantic-layer',
+      });
+      expect(
+        events.some(
+          e =>
+            e.eventName === 'project_editor_action' &&
+            e.payload.kind === 'open_semantic_layer'
+        )
+      ).toBe(true);
+    } finally {
+      unsub();
+    }
+  });
 });

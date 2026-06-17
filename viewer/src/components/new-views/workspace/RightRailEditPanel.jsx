@@ -21,6 +21,7 @@ import RelationEditForm from '../common/RelationEditForm';
 import LevelEditForm from '../common/LevelEditForm';
 import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
+import { COLLECTION_KEY } from './collectionKeys';
 import { formatRef } from '../../../utils/refString';
 import { useObjectSave } from '../../../hooks/useObjectSave';
 import sanitizeDashboardConfig from './sanitizeDashboardConfig';
@@ -125,21 +126,9 @@ const EmptyState = () => (
  * Find the live object record (with `.config`) for an active Library-row object.
  * Each per-type store keeps its collection on a pluralised key.
  */
-const COLLECTION_KEY = {
-  chart: 'charts',
-  table: 'tables',
-  markdown: 'markdowns',
-  input: 'inputs',
-  source: 'sources',
-  model: 'models',
-  csvScriptModel: 'csvScriptModels',
-  localMergeModel: 'localMergeModels',
-  dimension: 'dimensions',
-  metric: 'metrics',
-  relation: 'relations',
-  insight: 'insights',
-  dashboard: 'dashboards',
-};
+// COLLECTION_KEY is the shared type→store-collection map (collectionKeys.js),
+// also consumed by useCanvasRecord so the right rail and the canvases can never
+// drift on which store collection a type's records live in.
 
 const RightRailEditPanel = () => {
   const activeObject = useStore(s => s.workspaceActiveObject);

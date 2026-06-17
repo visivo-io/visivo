@@ -1,24 +1,25 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import Chart from '../../items/Chart';
-import Input from '../../items/Input';
-import { useInsightPreviewData } from '../../../hooks/usePreviewData';
-import { useInputsData } from '../../../hooks/useInputsData';
-import { extractInputDependenciesFromProps } from '../../../models/Insight';
-import useStore from '../../../stores/store';
+import { usePreviewInsightData } from '../../../hooks/usePreviewData';
+import { usePreviewInputDependencies } from '../workspace/usePreviewInputDependencies';
+import PreviewInputControls from '../workspace/PreviewInputControls';
+import { MissingRelationCard, AmbiguousRelationCard } from './InsightPreviewRelationCards';
 import CircularProgress from '@mui/material/CircularProgress';
 
 /**
  * InsightPreview - A minimal dashboard for previewing a single insight
  *
  * This component creates a synthetic dashboard configuration with:
- * - Input controls for any inputs referenced in the insight
+ * - Input controls for any inputs referenced in the insight (props + layout +
+ *   interactions), always defaulted so the chart renders immediately
  * - A single chart displaying the insight
  *
- * The preview flow:
- * 1. User edits insight config in the editor
- * 2. useInsightPreviewData detects changes in query-affecting properties
- * 3. Only triggers preview run when necessary
- * 4. Displays loading/error states and chart when ready
+ * The preview flow (VIS-1002):
+ * 1. usePreviewInsightData picks MODE A (published, main-run data under the
+ *    un-prefixed key) or MODE B (unsaved/edited, preview-run under __preview__).
+ * 2. The synthetic chart points at the resolved key either way.
+ * 3. Input widgets render via the shared PreviewInputControls (VIS-1003),
+ *    outside the chart spinner gate so a value is always suppliable.
  *
  * Props:
  * - insightConfig: The insight configuration object
@@ -26,29 +27,20 @@ import CircularProgress from '@mui/material/CircularProgress';
  * - layoutValues: Optional layout configuration for the chart
  */
 const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
-  const { inputs: storeInputs, fetchInputs } = useStore();
+  const { isLoading, error, errorDetails, progress, progressMessage, chartInsightKey, resetPreview } =
+    usePreviewInsightData(insightConfig, { projectId });
 
-  const { isLoading, error, progress, progressMessage, previewInsightKey } =
-    useInsightPreviewData(insightConfig, { projectId });
-
-  useEffect(() => {
-    fetchInputs();
-  }, [fetchInputs]);
-
-  const allReferencedNames = useMemo(() => {
-    if (!insightConfig) return [];
-    return extractInputDependenciesFromProps(insightConfig);
-  }, [insightConfig]);
-
-  const inputs = useMemo(() => {
-    if (!storeInputs || storeInputs.length === 0) return [];
-
-    const inputConfigMap = new Map(storeInputs.map(ic => [ic.name, ic.config]));
-
-    return allReferencedNames
-      .filter(name => inputConfigMap.has(name))
-      .map(name => inputConfigMap.get(name));
-  }, [allReferencedNames, storeInputs]);
+  // Union of input widgets this insight depends on (runtime inputDependencies +
+  // pendingInputs, with a props/layout/interactions config fallback), defaults
+  // seeded so the chart renders without waiting.
+  const insightNames = useMemo(
+    () => (insightConfig?.name ? [insightConfig.name] : []),
+    [insightConfig]
+  );
+  const { inputConfigs } = usePreviewInputDependencies(projectId, {
+    insightNames,
+    configForFallback: insightConfig,
+  });
 
   const chart = useMemo(() => {
     const previewLayout = {
@@ -57,10 +49,10 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       ...layoutValues,
     };
 
-    if (previewInsightKey) {
+    if (chartInsightKey) {
       return {
         name: 'Preview Chart',
-        insights: [{ name: previewInsightKey }],
+        insights: [{ name: chartInsightKey }],
         traces: [],
         layout: previewLayout,
       };
@@ -72,11 +64,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
       traces: [],
       layout: previewLayout,
     };
-  }, [previewInsightKey, layoutValues]);
-
-  const inputNamesToLoad = useMemo(() => inputs.map(input => input.name), [inputs]);
-
-  useInputsData(projectId, inputNamesToLoad);
+  }, [chartInsightKey, layoutValues]);
 
   if (isLoading) {
     return (
@@ -98,6 +86,23 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
   }
 
   if (error) {
+    // Typed relation failures (VIS-1007) get an inline fix card instead of a
+    // dead-end red error. A successful save re-triggers the preview by
+    // resetting the run state, which re-fires the preview effect.
+    const errorType = errorDetails?.error_type;
+    const errorModels = errorDetails?.error_models || [];
+    const handleRelationSaved = () => {
+      if (typeof resetPreview === 'function') resetPreview();
+    };
+
+    if (errorType === 'missing_relation' && errorModels.length >= 2) {
+      return <MissingRelationCard models={errorModels} onRelationSaved={handleRelationSaved} />;
+    }
+
+    if (errorType === 'ambiguous_relation' && errorModels.length >= 2) {
+      return <AmbiguousRelationCard models={errorModels} onRelationSaved={handleRelationSaved} />;
+    }
+
     const errorMessage = typeof error === 'string' ? error : error?.message || String(error);
     return (
       <div
@@ -128,16 +133,7 @@ const InsightPreview = ({ insightConfig, projectId, layoutValues = {} }) => {
 
   return (
     <div className="flex flex-col h-full">
-      {inputs.length > 0 && (
-        <div
-          className="flex flex-wrap gap-2 p-3 border-b border-gray-200 bg-gray-50"
-          data-testid="input-controls-section"
-        >
-          {inputs.map(input => (
-            <Input key={input.name} input={input} projectId={projectId} itemWidth={1} />
-          ))}
-        </div>
-      )}
+      <PreviewInputControls inputConfigs={inputConfigs} projectId={projectId} />
 
       <div className="flex-1 min-h-0 p-4 overflow-hidden">
         <div className="w-full h-full relative" style={{ minWidth: 0 }}>

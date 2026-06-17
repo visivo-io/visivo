@@ -258,6 +258,50 @@ export const routeWorkspaceDragEnd = (
     return 'ref_accepted';
   }
 
+  // ── Branch 2a: Library model → Relation ERD canvas (VIS-1006b) ───────────
+  // A Library MODEL row dropped on the Relation ERD's canvas droppable (which
+  // carries `{ kind: 'erd-canvas', onAddModel }`) adds that model to the ERD so
+  // the user can author a new relation against it. Only models are accepted; any
+  // other library type is a no-op (the ERD relates models, not charts/etc.).
+  if (dragData.source === 'library' && dropData.kind === 'erd-canvas') {
+    const isModel =
+      dragData.type === 'model' ||
+      dragData.type === 'csvScriptModel' ||
+      dragData.type === 'localMergeModel';
+    emit &&
+      emit('relation_erd_add_model', {
+        type: dragData.type,
+        name: dragData.name,
+        accepted: isModel,
+      });
+    if (!isModel) return 'erd_add_model_rejected';
+    if (typeof dropData.onAddModel === 'function') {
+      dropData.onAddModel(dragData.name);
+    }
+    return 'erd_add_model';
+  }
+
+  // ── Branch 2b: Pivot field → pivot shelf (VIS-1008) ──────────────────────
+  // The Table `build` lens (PivotPlayground) registers its field pills + its
+  // Columns/Rows/Values shelves with this same shared context (dnd-kit contexts
+  // don't compose, so it can't mount its own). A pill drag carries
+  // `{ source: 'pivot-field', field }`; a shelf droppable carries
+  // `{ kind: 'pivot-field', shelf, onDropField }`. We hand the dropped field to
+  // the shelf's `onDropField` so the playground mutates its own local draft.
+  if (dragData.source === 'pivot-field' && dropData.kind === 'pivot-field') {
+    const field = dragData.field || null;
+    emit &&
+      emit('pivot_field_drop', {
+        shelf: dropData.shelf,
+        field: field?.name,
+      });
+    if (field && typeof dropData.onDropField === 'function') {
+      dropData.onDropField(field);
+      return 'pivot_field_accepted';
+    }
+    return 'noop';
+  }
+
   // ── Branch 3: Canvas drop zones (VIS-771 / D-3) ──────────────────────────
   // Canvas droppables carry `{ kind: 'canvas-drop', target, dashboardName,
   // config }`. `target` is the normalised insertion / reorder descriptor (see
@@ -439,6 +483,9 @@ export const mapDragStartData = data => {
   if (data.source === 'level') {
     return { kind: 'level', name: data.title || 'Level' };
   }
+  if (data.source === 'pivot-field') {
+    return { kind: 'pivot-field', name: data.field?.label || data.field?.name || 'Field' };
+  }
   if (data.source === 'canvas') {
     if (data.kind === 'row') {
       return { kind: 'canvas', canvasKind: 'row', name: data.label || data.name || 'Row' };
@@ -502,6 +549,26 @@ const CanvasLevelDragPreview = ({ name }) => (
     <span className="ml-1 inline-flex h-4 items-center rounded-sm bg-[#e2d7dd] px-1 text-[10px] font-bold uppercase tracking-wide text-[#5a2f45]">
       Level
     </span>
+  </div>
+);
+
+/**
+ * PivotFieldDragPreview — the DragOverlay pill for a pivot field drag
+ * (VIS-1008). A compact mulberry-ringed chip with the field's label, matching
+ * the field-list pill so "the drag preview IS the source pill".
+ */
+const PivotFieldDragPreview = ({ name }) => (
+  <div
+    data-testid="pivot-field-drag-preview"
+    className="pointer-events-none inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-900 shadow-lg ring-1 ring-[#713b57]"
+  >
+    <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" className="text-[#713b57]">
+      <g fill="currentColor">
+        <rect x="1" y="2" width="12" height="3" rx="1" />
+        <rect x="1" y="9" width="12" height="3" rx="1" />
+      </g>
+    </svg>
+    {name}
   </div>
 );
 
@@ -606,6 +673,8 @@ const WorkspaceDndContext = ({ children }) => {
         <DragOverlay dropAnimation={null}>
           {activeDrag?.kind === 'dashboard' ? (
             <DashboardTilePreview name={activeDrag.name} />
+          ) : activeDrag?.kind === 'pivot-field' ? (
+            <PivotFieldDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'level' ? (
             <CanvasLevelDragPreview name={activeDrag.name} />
           ) : activeDrag?.kind === 'canvas' && activeDrag.canvasKind === 'row' ? (

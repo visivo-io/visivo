@@ -207,6 +207,14 @@ describe('mapDragStartData — drag preview mapping (VIS-901 #5)', () => {
     const out = mapDragStartData({ source: 'canvas', kind: 'item', rowPath: 'row.0', itemIndex: 0 });
     expect(out.type).toBe('chart');
   });
+
+  test('pivot field drag maps to a pivot-field preview with the field label (VIS-1008)', () => {
+    const out = mapDragStartData({
+      source: 'pivot-field',
+      field: { name: 'revenue', label: 'Revenue', source: 's' },
+    });
+    expect(out).toEqual({ kind: 'pivot-field', name: 'Revenue' });
+  });
 });
 
 describe('routeWorkspaceDragEnd (VIS-802)', () => {
@@ -301,6 +309,100 @@ describe('routeWorkspaceDragEnd (VIS-802)', () => {
       {}
     );
     expect(result).toBe('noop');
+  });
+});
+
+describe('routeWorkspaceDragEnd — pivot field branch (VIS-1008)', () => {
+  test('pivot field drop on a pivot shelf invokes the shelf onDropField', () => {
+    const onDropField = jest.fn();
+    const emit = jest.fn();
+    const field = { name: 'revenue', source: 'sales-insight', label: 'Revenue' };
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field } } },
+        over: { data: { current: { kind: 'pivot-field', shelf: 'values', onDropField } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('pivot_field_accepted');
+    expect(onDropField).toHaveBeenCalledWith(field);
+    expect(emit).toHaveBeenCalledWith(
+      'pivot_field_drop',
+      expect.objectContaining({ shelf: 'values', field: 'revenue' })
+    );
+  });
+
+  test('pivot field drop with no field is a noop (no onDropField call)', () => {
+    const onDropField = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field: null } } },
+        over: { data: { current: { kind: 'pivot-field', shelf: 'rows', onDropField } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+    expect(onDropField).not.toHaveBeenCalled();
+  });
+
+  test('a pivot field dropped on a non-pivot target is a noop', () => {
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'pivot-field', field: { name: 'x' } } } },
+        over: { data: { current: { kind: 'ref-slot', allowedTypes: [] } } },
+      },
+      {}
+    );
+    expect(result).toBe('noop');
+  });
+});
+
+describe('routeWorkspaceDragEnd — relation ERD model-drop branch (VIS-1006b)', () => {
+  test('a Library model dropped on the ERD canvas adds the model', () => {
+    const onAddModel = jest.fn();
+    const emit = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'model', name: 'orders' } } },
+        over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+      },
+      { emit }
+    );
+    expect(result).toBe('erd_add_model');
+    expect(onAddModel).toHaveBeenCalledWith('orders');
+    expect(emit).toHaveBeenCalledWith(
+      'relation_erd_add_model',
+      expect.objectContaining({ name: 'orders', accepted: true })
+    );
+  });
+
+  test('csvScriptModel + localMergeModel are accepted as models too', () => {
+    const onAddModel = jest.fn();
+    ['csvScriptModel', 'localMergeModel'].forEach(type => {
+      onAddModel.mockClear();
+      const result = routeWorkspaceDragEnd(
+        {
+          active: { data: { current: { source: 'library', type, name: `m_${type}` } } },
+          over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+        },
+        {}
+      );
+      expect(result).toBe('erd_add_model');
+      expect(onAddModel).toHaveBeenCalledWith(`m_${type}`);
+    });
+  });
+
+  test('a non-model Library row dropped on the ERD is rejected (no add)', () => {
+    const onAddModel = jest.fn();
+    const result = routeWorkspaceDragEnd(
+      {
+        active: { data: { current: { source: 'library', type: 'chart', name: 'c1' } } },
+        over: { data: { current: { kind: 'erd-canvas', onAddModel } } },
+      },
+      {}
+    );
+    expect(result).toBe('erd_add_model_rejected');
+    expect(onAddModel).not.toHaveBeenCalled();
   });
 });
 
