@@ -206,37 +206,39 @@ const PivotPlayground = ({ activeObject, projectId, record }) => {
         onCancel={() => setSaveModalOpen(false)}
       />
 
+      {/* TOP — the three shelves in a single row, so the result below gets the
+          full width (more room to explore the table on laptop screens). */}
+      <div
+        data-testid="pivot-shelves"
+        className="flex shrink-0 gap-3 border-b border-gray-200 bg-gray-50 px-3 py-2"
+      >
+        <PivotShelf
+          shelf="columns"
+          chips={draft.columns}
+          onDropField={field => handleDropField('columns', field)}
+          onRemoveChip={index => handleRemoveChip('columns', index)}
+          className="flex-1 min-w-0"
+        />
+        <PivotShelf
+          shelf="rows"
+          chips={draft.rows}
+          onDropField={field => handleDropField('rows', field)}
+          onRemoveChip={index => handleRemoveChip('rows', index)}
+          className="flex-1 min-w-0"
+        />
+        <PivotShelf
+          shelf="values"
+          chips={draft.values}
+          onDropField={field => handleDropField('values', field)}
+          onRemoveChip={index => handleRemoveChip('values', index)}
+          onAggChange={handleAggChange}
+          className="flex-1 min-w-0"
+        />
+      </div>
+
+      {/* BELOW — field list (left) + the full-width live result. */}
       <div className="flex flex-1 min-h-0 min-w-0">
-        {/* LEFT — field list */}
         <PivotFieldList fields={fields} isLoading={fieldsLoading} />
-
-        {/* MIDDLE — the three shelves */}
-        <div
-          data-testid="pivot-shelves"
-          className="flex w-72 shrink-0 flex-col gap-3 overflow-auto border-r border-gray-200 bg-gray-50 p-3"
-        >
-          <PivotShelf
-            shelf="columns"
-            chips={draft.columns}
-            onDropField={field => handleDropField('columns', field)}
-            onRemoveChip={index => handleRemoveChip('columns', index)}
-          />
-          <PivotShelf
-            shelf="rows"
-            chips={draft.rows}
-            onDropField={field => handleDropField('rows', field)}
-            onRemoveChip={index => handleRemoveChip('rows', index)}
-          />
-          <PivotShelf
-            shelf="values"
-            chips={draft.values}
-            onDropField={field => handleDropField('values', field)}
-            onRemoveChip={index => handleRemoveChip('values', index)}
-            onAggChange={handleAggChange}
-          />
-        </div>
-
-        {/* RIGHT — live result */}
         <PivotResultPanel config={pivotConfig} sourceName={sourceName} />
       </div>
     </div>

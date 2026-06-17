@@ -81,7 +81,7 @@ const Chip = ({ shelf, chip, index, type, onRemove, onAggChange }) => (
   />
 );
 
-const PivotShelf = ({ shelf, chips = [], onDropField, onRemoveChip, onAggChange }) => {
+const PivotShelf = ({ shelf, chips = [], onDropField, onRemoveChip, onAggChange, className = '' }) => {
   const meta = SHELF_META[shelf] || { label: shelf, hint: '' };
   // Values are measures (metric-toned); Columns/Rows are dimensional fields.
   const chipType = shelf === 'values' ? 'metric' : 'dimension';
@@ -99,6 +99,7 @@ const PivotShelf = ({ shelf, chips = [], onDropField, onRemoveChip, onAggChange 
       className={[
         'flex min-h-[72px] flex-col gap-2 rounded-lg border-2 border-dashed p-3 transition-colors',
         isOver ? 'border-primary-400 bg-primary-50' : 'border-gray-200 bg-white',
+        className,
       ].join(' ')}
     >
       <div className="flex items-baseline gap-2">
