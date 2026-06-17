@@ -29,15 +29,17 @@ export const SubBar = ({ left, right, testId = 'workspace-subbar' }) => {
  * belongs next to the thing it's switching the view of (per the chat
  * transcript in `design/cofounder-mockups/chats/chat1.md`).
  *
- * `previewLabel` lets non-dashboard objects say "Preview" instead of
- * "Canvas". `previewDisabled` is the lineage-fallback case — object types
- * that don't have a preview component yet (e.g. Phase 0 models) stay parked
- * on Lineage and Preview reads as muted.
+ * The first lens is labelled "Canvas" for EVERY object type (dashboards and
+ * per-object surfaces alike) — a single consistent name avoids the cognitive
+ * load of the tab renaming itself per selection. `previewLabel` stays
+ * overridable but defaults to "Canvas". `previewDisabled` is the
+ * lineage-fallback case — object types that don't have a canvas component yet
+ * (e.g. Phase 0 models) stay parked on Lineage and the Canvas lens reads muted.
  */
 export const PreviewLensPicker = ({
   value,
   onChange,
-  previewLabel = 'Preview',
+  previewLabel = 'Canvas',
   previewDisabled = false,
   testId = 'workspace-lens-picker',
 }) => {
