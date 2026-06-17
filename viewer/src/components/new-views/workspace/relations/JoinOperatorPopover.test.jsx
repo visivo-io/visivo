@@ -1,6 +1,7 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import JoinOperatorPopover from './JoinOperatorPopover';
 import useStore from '../../../../stores/store';
 import { useModelColumns } from './useModelColumns';
@@ -54,30 +55,29 @@ describe('JoinOperatorPopover', () => {
 
   it('populates each column select from the hydrated model schema (not the record)', () => {
     renderPopover();
-    const optionsA = within(screen.getByTestId('join-endpoint-a-column-select'))
-      .getAllByRole('option')
-      .map(o => o.value);
-    // Placeholder + the hydrated columns for `orders`.
-    expect(optionsA).toEqual(expect.arrayContaining(['', 'id', 'user_id']));
-    const optionsB = within(screen.getByTestId('join-endpoint-b-column-select'))
-      .getAllByRole('option')
-      .map(o => o.value);
-    expect(optionsB).toEqual(expect.arrayContaining(['', 'id', 'email']));
+    // react-select renders options only when the menu is open; open it and read
+    // the real DOM options out of the listbox (not the singleValue display).
+    selectEvent.openMenu(
+      within(screen.getByTestId('join-endpoint-a-column-select')).getByRole('combobox')
+    );
+    const optionTexts = screen.getAllByRole('option').map(o => o.textContent);
+    // Placeholder + the hydrated columns for `orders` (id, user_id).
+    expect(optionTexts).toEqual(expect.arrayContaining(['Select column…', 'id', 'user_id']));
   });
 
   it('preselects the dragged columns when triggered by a column→column connect', () => {
     // initialA/B carry the dragged columns; the select must SHOW them (the bug was
     // the value being set but no matching option, so it reverted to placeholder).
     renderPopover();
-    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveValue('user_id');
-    expect(screen.getByTestId('join-endpoint-b-column-select')).toHaveValue('id');
+    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveTextContent('user_id');
+    expect(screen.getByTestId('join-endpoint-b-column-select')).toHaveTextContent('id');
   });
 
   it('still shows a pre-filled column that is not in the hydrated list (un-run model)', () => {
     useModelColumns.mockReturnValueOnce({ columnsByModel: {}, loading: false });
     renderPopover({ initialA: { model: 'orders', column: 'mystery_col' } });
     // The dragged column renders as its own option so the selection survives.
-    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveValue('mystery_col');
+    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveTextContent('mystery_col');
   });
 
   it('previews the ${ref()} condition from the pre-filled endpoints and default operator', () => {
@@ -100,7 +100,9 @@ describe('JoinOperatorPopover', () => {
     renderPopover({ onSaved });
 
     fireEvent.click(screen.getByTestId('join-operator-!='));
-    fireEvent.change(screen.getByTestId('join-type-select'), { target: { value: 'left' } });
+    // Open the join-type <Select> and pick "Left" (menu portals to document.body).
+    selectEvent.openMenu(within(screen.getByTestId('join-type-select')).getByRole('combobox'));
+    fireEvent.click(screen.getByText('Left'));
     fireEvent.click(screen.getByTestId('join-is-default'));
     fireEvent.click(screen.getByTestId('join-popover-save'));
 

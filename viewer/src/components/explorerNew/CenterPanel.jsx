@@ -11,6 +11,7 @@ import DraggableColumnHeader from './DraggableColumnHeader';
 import ModelTabBar from './ModelTabBar';
 import VerticalDivider from '../common/VerticalDivider';
 import Divider from '../common/Divider';
+import Select from '../common/Select';
 import useStore from '../../stores/store';
 import {
   selectActiveModelSql,
@@ -168,23 +169,17 @@ const CenterPanel = () => {
   const bottomFlex = 1 - topBottomRatio;
 
   const sourceSelector = (
-    <div className="relative" data-testid="source-selector-wrapper">
-      <select
-        value={sourceName || ''}
-        onChange={(e) => setSourceName(e.target.value || null)}
-        className="appearance-none pl-2 pr-5 py-0.5 text-xs border border-secondary-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
+    <div data-testid="source-selector-wrapper" className="min-w-[140px]">
+      <Select
         data-testid="source-selector"
-      >
-        <option value="">Select source</option>
-        {explorerSources.map((s) => (
-          <option key={s.source_name} value={s.source_name}>
-            {s.source_name}
-          </option>
-        ))}
-      </select>
-      <PiCaretDown
-        className="absolute right-1 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none"
-        size={10}
+        size="sm"
+        placeholder="Select source"
+        value={sourceName || ''}
+        options={explorerSources.map((s) => ({
+          value: s.source_name,
+          label: s.source_name,
+        }))}
+        onChange={(v) => setSourceName(v || null)}
       />
     </div>
   );

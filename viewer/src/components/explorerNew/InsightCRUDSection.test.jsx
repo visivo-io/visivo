@@ -1,9 +1,27 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import InsightCRUDSection from './InsightCRUDSection';
 import useStore from '../../stores/store';
+
+/**
+ * Render and fully flush the component's async schema effect before returning,
+ * so a later state update can't reset an opened react-select menu mid-assert.
+ * (The chart-type picker is now the brand <Select>; its options only exist in
+ * the DOM while the menu is open.)
+ */
+async function renderSettled(ui) {
+  // eslint-disable-next-line testing-library/no-unnecessary-act
+  await act(async () => {
+    render(ui);
+  });
+}
+
+/** Open a brand <Select>'s menu by its container test id. */
+function openSelectMenu(testId) {
+  fireEvent.mouseDown(within(screen.getByTestId(testId)).getByRole('combobox'));
+}
 
 jest.mock('../new-views/common/SchemaEditor/SchemaEditor', () => {
   const MockSchemaEditor = ({ schema, value, onChange, droppable }) => {
@@ -76,30 +94,31 @@ describe('InsightCRUDSection', () => {
   });
 
   it('renders type selector dropdown with CHART_TYPES', async () => {
-    render(
+    await renderSettled(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const select = await screen.findByTestId('insight-type-select-test_insight');
-    expect(select.value).toBe('scatter');
+    const select = screen.getByTestId('insight-type-select-test_insight');
+    // The current type shows as the selected value.
+    expect(select).toHaveTextContent('Scatter / Line');
 
-    const options = within(select).getAllByRole('option');
+    // Options render as real DOM when the menu opens (react-select, not native).
+    openSelectMenu('insight-type-select-test_insight');
+    const options = screen.getAllByRole('option');
     expect(options.length).toBe(3);
-    expect(options[0]).toHaveValue('scatter');
-    expect(options[1]).toHaveValue('bar');
-    expect(options[2]).toHaveValue('pie');
+    expect(options.map((o) => o.textContent)).toEqual(['Scatter / Line', 'Bar', 'Pie']);
   });
 
   it('changing type calls setInsightType', async () => {
     const setInsightType = jest.fn();
     useStore.setState({ setInsightType });
 
-    render(
+    await renderSettled(
       <InsightCRUDSection insightName="test_insight" isExpanded={true} onToggleExpand={jest.fn()} />
     );
 
-    const select = await screen.findByTestId('insight-type-select-test_insight');
-    fireEvent.change(select, { target: { value: 'bar' } });
+    openSelectMenu('insight-type-select-test_insight');
+    fireEvent.click(screen.getAllByRole('option').find((o) => o.textContent === 'Bar'));
 
     expect(setInsightType).toHaveBeenCalledWith('test_insight', 'bar');
   });

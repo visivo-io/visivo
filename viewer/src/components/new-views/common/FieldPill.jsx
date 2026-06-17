@@ -12,8 +12,8 @@ import { getTypeColors, getTypeIcon } from './objectTypeConfigs';
  *
  * Pass `as="button"` (or any tag) + a `ref`/dnd props through `...rest` to make
  * the pill draggable; the visual treatment stays the same. `extra` renders
- * trailing controls inside the pill (e.g. the Values aggregation `<select>` +
- * remove ✕ on a pivot chip).
+ * trailing controls inside the pill (e.g. the Values aggregation picker (brand
+ * Select) + remove ✕ on a pivot chip).
  */
 const FieldPill = React.forwardRef(
   (

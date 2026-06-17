@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import FieldPill from '../../common/FieldPill';
+import Select from '../../../common/Select';
 
 /**
  * PivotShelf — VIS-1008.
@@ -12,7 +13,7 @@ import FieldPill from '../../common/FieldPill';
  * router branch invokes `onDropField(field)` when a field pill lands here, and
  * the playground appends a chip to this shelf's draft array.
  *
- * Chips on the `values` shelf each carry an aggregation `<select>`
+ * Chips on the `values` shelf each carry an aggregation picker (brand `<Select>`)
  * (sum / avg / min / max / count / count_distinct); the playground re-serialises
  * the chosen aggregation into the value expression and re-runs the live result.
  */
@@ -36,7 +37,7 @@ const SHELF_META = {
 
 // A shelf chip is the SAME shared FieldPill the rest of the app renders (icon +
 // colors from objectTypeConfigs): dimensional for Columns/Rows, metric-toned for
-// Values. The aggregation `<select>` + remove ✕ ride in the pill's trailing
+// Values. The aggregation picker (brand Select) + remove ✕ ride in the pill's trailing
 // `extra` slot so the chip keeps its full Values behaviour.
 const Chip = ({ shelf, chip, index, type, onRemove, onAggChange }) => (
   <FieldPill
@@ -49,19 +50,15 @@ const Chip = ({ shelf, chip, index, type, onRemove, onAggChange }) => (
     extra={
       <>
         {shelf === 'values' && (
-          <select
+          <Select
             data-testid={`pivot-chip-${shelf}-${index}-agg`}
             aria-label={`Aggregation for ${chip.label}`}
+            size="sm"
+            className="min-w-[110px]"
             value={chip.agg}
-            onChange={e => onAggChange(index, e.target.value)}
-            className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[11px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-300"
-          >
-            {AGGREGATIONS.map(agg => (
-              <option key={agg} value={agg}>
-                {AGG_LABELS[agg]}
-              </option>
-            ))}
-          </select>
+            options={AGGREGATIONS.map(agg => ({ value: agg, label: AGG_LABELS[agg] }))}
+            onChange={agg => onAggChange(index, agg)}
+          />
         )}
         <button
           type="button"

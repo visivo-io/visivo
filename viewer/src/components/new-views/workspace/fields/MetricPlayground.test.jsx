@@ -8,7 +8,8 @@
  * the metric, its parent model, and a sibling dimension to split on.
  */
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import MetricPlayground from './MetricPlayground';
 import useStore from '../../../../stores/store';
 
@@ -83,7 +84,7 @@ describe('MetricPlayground (VIS-1009)', () => {
     expect(cfg.interactions[0].split).toContain('ref(daily).category');
   });
 
-  test('a date split engages the time-grain control and date_trunc-buckets x', () => {
+  test('a date split engages the time-grain control and date_trunc-buckets x', async () => {
     seed({
       metrics: [{ name: 'avg_value', parentModel: 'daily', config: { expression: 'AVG(value)' } }],
       dimensions: [
@@ -95,9 +96,11 @@ describe('MetricPlayground (VIS-1009)', () => {
 
     // formatted_date is the only (and default) split → date-like → grain enabled.
     const grain = screen.getByTestId('metric-playground-time-grain');
-    expect(grain).not.toBeDisabled();
+    const grainCombo = within(grain).getByRole('combobox');
+    expect(grainCombo).not.toBeDisabled();
 
-    fireEvent.change(grain, { target: { value: 'quarter' } });
+    selectEvent.openMenu(grainCombo);
+    fireEvent.click(screen.getAllByRole('option').find(o => o.textContent === 'Quarter'));
     const cfg = mockPreviewSpy.mock.calls.at(-1)[0].insightConfig;
     expect(cfg.props.x).toContain("date_trunc('quarter'");
     expect(cfg.props.x).toContain('ref(daily).formatted_date');

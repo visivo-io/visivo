@@ -5,6 +5,7 @@ import { formatRefExpression } from '../../../../utils/refString';
 import { getTypeColors } from '../../common/objectTypeConfigs';
 import ExplorerInsightPreview from '../../common/InsightPreview';
 import { useFieldParentModel } from './useFieldParentModel';
+import Select from '../../../common/Select';
 
 /**
  * MetricPlayground — the Field Lens body for a `metric` (VIS-1009).
@@ -191,38 +192,32 @@ const MetricPlayground = ({ activeObject, projectId, record: providedRecord }) =
       <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 px-4 py-2">
         <label className="flex items-center gap-1.5 text-[12px] text-gray-600">
           Split by
-          <select
+          <Select
             data-testid="metric-playground-split"
+            size="sm"
+            className="min-w-[140px]"
             value={splitField}
-            onChange={e => setSplitField(e.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-[12px] text-gray-800 focus:border-cyan-400 focus:outline-none"
-          >
-            <option value="">(none)</option>
-            {splitCandidates.map(c => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: '(none)' },
+              ...splitCandidates.map(c => ({ value: c.name, label: c.name })),
+            ]}
+            onChange={v => setSplitField(v || '')}
+          />
         </label>
 
         <label
           className={`flex items-center gap-1.5 text-[12px] ${showGrain ? 'text-gray-600' : 'text-gray-300'}`}
         >
           Time grain
-          <select
+          <Select
             data-testid="metric-playground-time-grain"
+            size="sm"
+            className="min-w-[140px]"
             value={grain}
             disabled={!showGrain}
-            onChange={e => setGrain(e.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-[12px] text-gray-800 focus:border-cyan-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
-          >
-            {TIME_GRAINS.map(g => (
-              <option key={g.value} value={g.value}>
-                {g.label}
-              </option>
-            ))}
-          </select>
+            options={TIME_GRAINS}
+            onChange={setGrain}
+          />
         </label>
       </div>
 

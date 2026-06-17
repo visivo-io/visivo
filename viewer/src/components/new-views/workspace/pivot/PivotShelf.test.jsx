@@ -10,6 +10,7 @@
  */
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import selectEvent from 'react-select-event';
 import PivotShelf, { AGGREGATIONS } from './PivotShelf';
 
 // Capture the data passed to each useDroppable call so we can assert + invoke it.
@@ -68,7 +69,7 @@ describe('PivotShelf', () => {
     expect(onRemoveChip).toHaveBeenCalledWith(0);
   });
 
-  test('a Values chip exposes an aggregation select and reports changes', () => {
+  test('a Values chip exposes an aggregation select and reports changes', async () => {
     const onAggChange = jest.fn();
     render(
       <PivotShelf
@@ -79,11 +80,16 @@ describe('PivotShelf', () => {
       />
     );
     const select = screen.getByTestId('pivot-chip-values-0-agg');
-    // All supported aggregations are offered.
-    expect(within(select).getAllByRole('option')).toHaveLength(AGGREGATIONS.length);
-    expect(select).toHaveValue('sum');
+    const combo = within(select).getByRole('combobox');
+    // The current aggregation shows as the selected value.
+    expect(select).toHaveTextContent('Sum');
+    // All supported aggregations are offered when the menu opens.
+    selectEvent.openMenu(combo);
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(AGGREGATIONS.length);
 
-    fireEvent.change(select, { target: { value: 'avg' } });
+    // Pick "Average" from the open (portaled) menu.
+    fireEvent.click(options.find(o => o.textContent === 'Average'));
     expect(onAggChange).toHaveBeenCalledWith(0, 'avg');
   });
 

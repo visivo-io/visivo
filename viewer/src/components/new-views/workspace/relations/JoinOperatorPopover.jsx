@@ -5,6 +5,7 @@ import useStore from '../../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../../utils/refString';
 import { useModelColumns } from './useModelColumns';
+import Select from '../../../common/Select';
 
 /**
  * JoinOperatorPopover — the authoring surface of the Relations ERD (VIS-1006).
@@ -66,6 +67,18 @@ const EndpointPicker = ({ side, models, columnsByModel = {}, value, onChange, te
     return cols.map(c => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
   }, [columnsByModel, value.model, selectedModel]);
 
+  const columnSelectOptions = useMemo(() => {
+    const opts = [{ value: '', label: 'Select column…' }];
+    // If the dragged column isn't in the hydrated list yet (un-run model), still
+    // offer it so the pre-filled selection shows rather than reverting to the
+    // placeholder.
+    if (value.column && !columnOptions.includes(value.column)) {
+      opts.push({ value: value.column, label: value.column });
+    }
+    columnOptions.forEach(col => opts.push({ value: col, label: col }));
+    return opts;
+  }, [columnOptions, value.column]);
+
   return (
     <div className="flex flex-col gap-1" data-testid={testId}>
       <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{side}</span>
@@ -104,26 +117,15 @@ const EndpointPicker = ({ side, models, columnsByModel = {}, value, onChange, te
           ))}
         </ul>
       )}
-      <select
+      <Select
         data-testid={`${testId}-column-select`}
+        size="sm"
+        placeholder="Select column…"
         value={value.column || ''}
-        onChange={e => onChange({ ...value, column: e.target.value })}
+        options={columnSelectOptions}
+        onChange={col => onChange({ ...value, column: col || '' })}
         disabled={!selectedModel}
-        className="rounded-md border border-gray-200 px-2 py-1 text-[12px] disabled:bg-gray-50 disabled:text-gray-300"
-      >
-        <option value="">Select column…</option>
-        {/* If the dragged column isn't in the hydrated list yet (un-run model),
-            still render it so the pre-filled selection shows rather than reverting
-            to the placeholder. */}
-        {value.column && !columnOptions.includes(value.column) && (
-          <option value={value.column}>{value.column}</option>
-        )}
-        {columnOptions.map(col => (
-          <option key={col} value={col}>
-            {col}
-          </option>
-        ))}
-      </select>
+      />
     </div>
   );
 };
@@ -160,10 +162,15 @@ const JoinOperatorPopover = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Portal dismiss contract (mirrors OpenObjectContextMenu).
+  // Portal dismiss contract (mirrors OpenObjectContextMenu). The brand <Select>
+  // portals its menu to document.body (outside this popover's ref) so it can
+  // escape the popover's overflow; treat clicks inside an open select menu as
+  // "inside" so opening a dropdown doesn't dismiss the popover.
   useEffect(() => {
+    const inSelectMenu = el => !!(el && el.closest && el.closest('.vis-select__menu'));
     const onDocPointer = e => {
       if (ref.current && ref.current.contains(e.target)) return;
+      if (inSelectMenu(e.target)) return;
       onClose && onClose();
     };
     const onKey = e => {
@@ -281,18 +288,13 @@ const JoinOperatorPopover = ({
         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
           Join type
         </span>
-        <select
+        <Select
           data-testid="join-type-select"
+          size="sm"
           value={joinType}
-          onChange={e => setJoinType(e.target.value)}
-          className="rounded-md border border-gray-200 px-2 py-1 text-[12px]"
-        >
-          {JOIN_TYPES.map(jt => (
-            <option key={jt.value} value={jt.value}>
-              {jt.label}
-            </option>
-          ))}
-        </select>
+          options={JOIN_TYPES}
+          onChange={setJoinType}
+        />
       </div>
 
       <label className="mt-2 flex items-center gap-1.5 text-[12px] text-gray-600">
