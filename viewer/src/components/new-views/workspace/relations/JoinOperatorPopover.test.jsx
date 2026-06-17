@@ -1,15 +1,23 @@
 /* eslint-disable no-template-curly-in-string */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import JoinOperatorPopover from './JoinOperatorPopover';
 import useStore from '../../../../stores/store';
+import { useModelColumns } from './useModelColumns';
 
 jest.mock('../../../../stores/store');
+// The popover hydrates column options for its two selected models from the model
+// schema artifact (useModelColumns). Drive it deterministically.
+jest.mock('./useModelColumns', () => ({
+  useModelColumns: jest.fn(() => ({
+    columnsByModel: { orders: ['id', 'user_id'], users: ['id', 'email'] },
+    loading: false,
+  })),
+}));
 
-const MODELS = [
-  { name: 'orders', columns: ['id', 'user_id'] },
-  { name: 'users', columns: ['id', 'email'] },
-];
+// The raw store models carry NO column list (the whole reason useModelColumns
+// exists); the popover must source options from the hydrated map, not the record.
+const MODELS = [{ name: 'orders' }, { name: 'users' }];
 
 const mockSaveRelation = jest.fn();
 
@@ -42,6 +50,34 @@ describe('JoinOperatorPopover', () => {
       expect(screen.getByTestId(`join-operator-${op}`)).toBeInTheDocument();
     });
     expect(screen.getByTestId('join-type-select')).toBeInTheDocument();
+  });
+
+  it('populates each column select from the hydrated model schema (not the record)', () => {
+    renderPopover();
+    const optionsA = within(screen.getByTestId('join-endpoint-a-column-select'))
+      .getAllByRole('option')
+      .map(o => o.value);
+    // Placeholder + the hydrated columns for `orders`.
+    expect(optionsA).toEqual(expect.arrayContaining(['', 'id', 'user_id']));
+    const optionsB = within(screen.getByTestId('join-endpoint-b-column-select'))
+      .getAllByRole('option')
+      .map(o => o.value);
+    expect(optionsB).toEqual(expect.arrayContaining(['', 'id', 'email']));
+  });
+
+  it('preselects the dragged columns when triggered by a column→column connect', () => {
+    // initialA/B carry the dragged columns; the select must SHOW them (the bug was
+    // the value being set but no matching option, so it reverted to placeholder).
+    renderPopover();
+    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveValue('user_id');
+    expect(screen.getByTestId('join-endpoint-b-column-select')).toHaveValue('id');
+  });
+
+  it('still shows a pre-filled column that is not in the hydrated list (un-run model)', () => {
+    useModelColumns.mockReturnValueOnce({ columnsByModel: {}, loading: false });
+    renderPopover({ initialA: { model: 'orders', column: 'mystery_col' } });
+    // The dragged column renders as its own option so the selection survives.
+    expect(screen.getByTestId('join-endpoint-a-column-select')).toHaveValue('mystery_col');
   });
 
   it('previews the ${ref()} condition from the pre-filled endpoints and default operator', () => {

@@ -4,6 +4,7 @@ import { PiLinkSimple } from 'react-icons/pi';
 import useStore from '../../../../stores/store';
 import { getTypeColors, getTypeIcon } from '../../common/objectTypeConfigs';
 import { formatRefExpression } from '../../../../utils/refString';
+import { useModelColumns } from './useModelColumns';
 
 /**
  * JoinOperatorPopover — the authoring surface of the Relations ERD (VIS-1006).
@@ -42,9 +43,11 @@ const defaultRelationName = (modelA, modelB) =>
 /**
  * EndpointPicker — an @-mention-style model picker plus a column select for one
  * side of the join. Typing filters the model list; selecting a model reveals
- * its columns. Columns come straight from the dragged/hydrated model record.
+ * its columns. Column options come from the HYDRATED `columnsByModel` (the model
+ * schema artifact, via useModelColumns) — the raw store model record never
+ * carries a column list — falling back to the record's own columns if present.
  */
-const EndpointPicker = ({ side, models, value, onChange, testId }) => {
+const EndpointPicker = ({ side, models, columnsByModel = {}, value, onChange, testId }) => {
   const [query, setQuery] = useState('');
   const colors = getTypeColors('model');
   const Icon = getTypeIcon('model');
@@ -55,6 +58,13 @@ const EndpointPicker = ({ side, models, value, onChange, testId }) => {
     if (!q) return models;
     return models.filter(m => m.name.toLowerCase().includes(q));
   }, [models, query]);
+
+  const columnOptions = useMemo(() => {
+    const hydrated = columnsByModel[value.model];
+    const fromRecord = selectedModel?.columns || selectedModel?.config?.columns || [];
+    const cols = Array.isArray(hydrated) && hydrated.length ? hydrated : fromRecord;
+    return cols.map(c => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
+  }, [columnsByModel, value.model, selectedModel]);
 
   return (
     <div className="flex flex-col gap-1" data-testid={testId}>
@@ -102,14 +112,17 @@ const EndpointPicker = ({ side, models, value, onChange, testId }) => {
         className="rounded-md border border-gray-200 px-2 py-1 text-[12px] disabled:bg-gray-50 disabled:text-gray-300"
       >
         <option value="">Select column…</option>
-        {(selectedModel?.columns || selectedModel?.config?.columns || [])
-          .map(c => (typeof c === 'string' ? c : c?.name))
-          .filter(Boolean)
-          .map(col => (
-            <option key={col} value={col}>
-              {col}
-            </option>
-          ))}
+        {/* If the dragged column isn't in the hydrated list yet (un-run model),
+            still render it so the pre-filled selection shows rather than reverting
+            to the placeholder. */}
+        {value.column && !columnOptions.includes(value.column) && (
+          <option value={value.column}>{value.column}</option>
+        )}
+        {columnOptions.map(col => (
+          <option key={col} value={col}>
+            {col}
+          </option>
+        ))}
       </select>
     </div>
   );
@@ -129,6 +142,16 @@ const JoinOperatorPopover = ({
 
   const [a, setA] = useState(initialA || { model: '', column: '' });
   const [b, setB] = useState(initialB || { model: '', column: '' });
+
+  // Hydrate the column options for whichever two models are selected (from the
+  // model schema artifact). Covers the column→column drag (models pre-filled) AND
+  // an @-mention pick of a model that isn't on the canvas.
+  const selectedModelNames = useMemo(
+    () => [a.model, b.model].filter(Boolean),
+    [a.model, b.model]
+  );
+  const { columnsByModel } = useModelColumns(selectedModelNames);
+
   const [operator, setOperator] = useState('=');
   const [joinType, setJoinType] = useState('inner');
   const [isDefault, setIsDefault] = useState(false);
@@ -211,6 +234,7 @@ const JoinOperatorPopover = ({
         <EndpointPicker
           side="From"
           models={models}
+          columnsByModel={columnsByModel}
           value={a}
           onChange={setA}
           testId="join-endpoint-a"
@@ -218,6 +242,7 @@ const JoinOperatorPopover = ({
         <EndpointPicker
           side="To"
           models={models}
+          columnsByModel={columnsByModel}
           value={b}
           onChange={setB}
           testId="join-endpoint-b"
