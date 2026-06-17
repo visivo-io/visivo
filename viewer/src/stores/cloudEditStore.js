@@ -79,10 +79,11 @@ const createCloudEditSlice = (set, get) => ({
     try {
       const changes = await cloudEditingApi.fetchChanges(projectId);
       const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
-      set({ cloudPendingChanges: pending });
+      // Cloud reuses the shared commit badge (hasUncommittedChanges).
+      set({ cloudPendingChanges: pending, hasUncommittedChanges: !!changes.has_changes });
       return changes;
     } catch (error) {
-      set({ cloudPendingChanges: [], cloudEditError: error.message });
+      set({ cloudPendingChanges: [], hasUncommittedChanges: false, cloudEditError: error.message });
       return { has_changes: false };
     }
   },

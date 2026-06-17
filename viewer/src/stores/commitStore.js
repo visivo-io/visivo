@@ -14,8 +14,14 @@ const createCommitSlice = (set, get) => ({
   commitError: null,
   commitModalOpen: false,
 
-  // Check if there are any uncommitted changes
+  // Check if there are any uncommitted changes. In the cloud (isCloud) the
+  // draft's /changes/ endpoint is the source of truth and also sets the badge;
+  // locally it's the Flask /api/commit/status/ endpoint.
   checkCommitStatus: async () => {
+    if (get().isCloud) {
+      await get().fetchCloudChanges?.();
+      return;
+    }
     try {
       const data = await commitApi.getCommitStatus();
       set({ hasUncommittedChanges: data.has_unpublished_changes });
@@ -58,9 +64,14 @@ const createCommitSlice = (set, get) => ({
     }
   },
 
-  // Open commit modal (fetches pending changes)
+  // Open commit modal (fetches pending changes). Cloud reads the draft's
+  // /changes/; local reads the Flask pending list.
   openCommitModal: async () => {
     set({ commitModalOpen: true, commitError: null });
+    if (get().isCloud) {
+      await get().fetchCloudChanges?.();
+      return;
+    }
     await get().fetchPendingChanges();
   },
 

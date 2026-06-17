@@ -41,10 +41,16 @@ const Home = () => {
     checkCommitStatus();
   }, [checkCommitStatus]);
 
-  // Probe cloud capabilities whenever the active project changes.
+  // Probe cloud capabilities whenever the active project changes, then refresh
+  // the commit badge — checkCommitStatus routes to the draft's /changes/
+  // endpoint once isCloud is known (no-op/Flask path locally).
   useEffect(() => {
-    if (projectId) fetchCapabilities();
-  }, [projectId, fetchCapabilities]);
+    if (!projectId) return;
+    (async () => {
+      await fetchCapabilities();
+      await checkCommitStatus();
+    })();
+  }, [projectId, fetchCapabilities, checkCommitStatus]);
 
   // A pure viewer in the cloud (no edit, no branch) sees Dashboards only;
   // everyone who can edit/branch keeps the full toolset. Undefined => TopNav

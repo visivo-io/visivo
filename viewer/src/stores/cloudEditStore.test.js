@@ -115,6 +115,8 @@ describe('cloudEditStore', () => {
         { name: 'a', type: 'chart', status: 'new' },
         { name: 'b', type: 'table', status: 'deleted' },
       ]);
+      // Cloud changes also drive the shared commit badge.
+      expect(store.get().hasUncommittedChanges).toBe(true);
     });
   });
 
