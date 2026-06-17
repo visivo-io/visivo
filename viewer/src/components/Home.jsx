@@ -9,6 +9,7 @@ import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import CommitModal from './commit/CommitModal';
+import CloudEditControls from './common/CloudEditControls';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
@@ -27,11 +28,32 @@ const Home = () => {
   const hasUncommittedChanges = useStore(state => state.hasUncommittedChanges);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
+  // Cloud-editing (core only): the capabilities probe drives the Edit/Branch
+  // entry and the viewer's tool gating. In local serve the probe 404s, so
+  // isCloud stays false and none of this engages.
+  const projectId = useStore(state => state.project?.id);
+  const isCloud = useStore(state => state.isCloud);
+  const capabilities = useStore(state => state.capabilities);
+  const fetchCapabilities = useStore(state => state.fetchCapabilities);
 
   // Check commit status on mount
   useEffect(() => {
     checkCommitStatus();
   }, [checkCommitStatus]);
+
+  // Probe cloud capabilities whenever the active project changes.
+  useEffect(() => {
+    if (projectId) fetchCapabilities();
+  }, [projectId, fetchCapabilities]);
+
+  // A pure viewer in the cloud (no edit, no branch) sees Dashboards only;
+  // everyone who can edit/branch keeps the full toolset. Undefined => TopNav
+  // uses its default tools (local serve, or any editor/maintainer).
+  const restrictedToDashboards =
+    isCloud && capabilities && !capabilities.can_edit && !capabilities.can_branch;
+  const tools = restrictedToDashboards
+    ? [{ id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate }]
+    : undefined;
 
   if (isNewProject === undefined) {
     return (
@@ -116,6 +138,8 @@ const Home = () => {
         onDeployClick={onDeployClick}
         onCommitClick={onCommitClick}
         hasUncommittedChanges={hasUncommittedChanges}
+        tools={tools}
+        editControls={<CloudEditControls />}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />
