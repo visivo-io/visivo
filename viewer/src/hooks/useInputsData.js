@@ -180,7 +180,7 @@ const loadExtractComputeInput = async (db, inputData) => {
  * @param {string[]} inputNames - Array of input names to load
  * @returns {Object} Loading state
  */
-export const useInputsData = (projectId, inputNames) => {
+export const useInputsData = (projectId, inputNames, { cacheKey = null } = {}) => {
   const db = useDuckDB();
   const fetchInputJobs = useFetchInputJobs();
   const setInputJobOptions = useStore(state => state.setInputJobOptions);
@@ -194,10 +194,14 @@ export const useInputsData = (projectId, inputNames) => {
     return [...new Set(inputNames)].sort(); // Dedupe and sort
   }, [inputNames]);
 
-  // Check which inputs are already loaded to skip redundant processing
+  // Check which inputs are already loaded to skip redundant processing. On a
+  // run refresh (cacheKey/runDataVersion changed) reprocess ALL of them so the
+  // rebuilt option data is picked up.
+  const refreshing = Boolean(cacheKey);
   const unloadedInputNames = useMemo(() => {
     return stableInputNames.filter(name => !storeInputOptions[name]);
   }, [stableInputNames, storeInputOptions]);
+  const namesToProcess = refreshing ? stableInputNames : unloadedInputNames;
 
   // Main query function
   const queryFn = useCallback(async () => {
@@ -205,12 +209,12 @@ export const useInputsData = (projectId, inputNames) => {
       return { processed: [] };
     }
 
-    if (!unloadedInputNames.length) {
+    if (!namesToProcess.length) {
       return { processed: [] }; // All inputs already loaded
     }
 
     // Step 1: Fetch input metadata from API (single batch call)
-    const inputs = await fetchInputJobs(projectId, unloadedInputNames);
+    const inputs = await fetchInputJobs(projectId, namesToProcess);
 
     if (!inputs?.length) {
       return { processed: [] };
@@ -222,7 +226,7 @@ export const useInputsData = (projectId, inputNames) => {
       .flatMap(i => i.files.filter(f => f.key === 'options'));
 
     if (parquetFiles.length > 0) {
-      await loadInsightParquetFiles(db, parquetFiles);
+      await loadInsightParquetFiles(db, parquetFiles, refreshing);
     }
 
     // Step 3: Process each input (options are already in DuckDB tables)
@@ -237,13 +241,13 @@ export const useInputsData = (projectId, inputNames) => {
     });
 
     return { processed };
-  }, [db, projectId, unloadedInputNames, fetchInputJobs]);
+  }, [db, projectId, namesToProcess, fetchInputJobs, refreshing]);
 
   // React Query for data fetching
   const { data, isLoading, error } = useQuery({
-    queryKey: ['inputs', projectId, unloadedInputNames.join(','), !!db],
+    queryKey: ['inputs', projectId, namesToProcess.join(','), !!db, cacheKey],
     queryFn,
-    enabled: !!projectId && unloadedInputNames.length > 0 && !!db,
+    enabled: !!projectId && namesToProcess.length > 0 && !!db,
     staleTime: Infinity,
     gcTime: Infinity,
     refetchOnWindowFocus: false,
