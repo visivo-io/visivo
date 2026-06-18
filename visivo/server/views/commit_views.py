@@ -224,6 +224,8 @@ def register_commit_views(app, flask_app, output_dir):
                 # always "on a draft", so the editor is unlocked directly (no
                 # Edit step) and you just edit + Commit.
                 "is_draft": True,
+                # No separate published project locally → no "Go to Draft".
+                "draft_id": None,
             }
         )
 

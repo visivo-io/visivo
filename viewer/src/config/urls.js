@@ -108,6 +108,8 @@ const URL_PATTERNS = {
     stageBranch: '/api/stages/branch/',
     projectChanges: '/api/projects/{projectId}/changes/',
     projectCommit: '/api/projects/{projectId}/commit/',
+    projectDiscard: '/api/projects/{projectId}/discard/',
+    projectRun: '/api/projects/{projectId}/run/',
 
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',

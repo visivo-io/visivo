@@ -67,6 +67,21 @@ export const createBranch = async ({ fromStage, projectName, newStageName }) => 
 };
 
 /**
+ * Discard (delete) a draft entirely — drop the working copy and return to the
+ * published project. DELETE /api/projects/<draftId>/discard/.
+ */
+export const discardDraft = async draftId => {
+  const response = await apiFetch(getUrl('projectDiscard', { projectId: draftId }), {
+    method: 'DELETE',
+  });
+  if (response.status === 204 || response.status === 200) {
+    return true;
+  }
+  const errorData = await response.json().catch(() => ({}));
+  throw new Error(errorData.detail || errorData.error || 'Failed to discard draft');
+};
+
+/**
  * The dirty set a commit would publish for a draft.
  * GET /api/projects/<id>/changes/ ->
  *   {to_publish:[{name,type,status}], to_remove:[{name,type,status}], has_changes}
@@ -77,6 +92,18 @@ export const fetchChanges = async projectId => {
     return await response.json();
   }
   throw new Error('Failed to fetch changes');
+};
+
+/**
+ * The draft's recent runs (status of each auto-run). GET /api/projects/<id>/run/
+ * -> [{id, state, created_at, dag_filter, execution_name, error_json, ...}].
+ */
+export const fetchRuns = async projectId => {
+  const response = await apiFetch(getUrl('projectRun', { projectId }));
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error('Failed to fetch runs');
 };
 
 /**
