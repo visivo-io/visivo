@@ -26,6 +26,9 @@ const createCommitSlice = (set, get) => ({
       const changes = await cloudEditingApi.fetchChanges(projectId);
       const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
       set({ hasUncommittedChanges: !!changes.has_changes, pendingChanges: pending });
+      // Called after each save — a debounced run is incoming, so open the run
+      // poll window (the poller stops on its own once it passes + no run runs).
+      if (changes.has_changes) get().noteDraftActivity?.();
     } catch (error) {
       // Endpoint may be unavailable (e.g. dist mode) — fail closed.
       set({ hasUncommittedChanges: false });
