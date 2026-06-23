@@ -741,6 +741,79 @@ describe('workspace store slice', () => {
     });
     expect(returned).toBe(false);
   });
+
+  test('updateRecordConfigOptimistic replaces a non-dashboard record config without saving (VIS-1018)', () => {
+    const saveChart = jest.fn();
+    act(() => {
+      useStore.setState({
+        charts: [{ name: 'c1', config: { name: 'c1', type: 'scatter' } }],
+        saveChart,
+      });
+    });
+
+    const nextConfig = { name: 'c1', type: 'bar' };
+    let returned;
+    act(() => {
+      returned = useStore.getState().updateRecordConfigOptimistic('chart', 'c1', nextConfig);
+    });
+
+    expect(returned).toBe(true);
+    const chart = useStore.getState().charts.find((c) => c.name === 'c1');
+    expect(chart.config.type).toBe('bar');
+    // It only mutates the in-memory list — never persists.
+    expect(saveChart).not.toHaveBeenCalled();
+  });
+
+  test('updateRecordConfigOptimistic handles bare (un-enveloped) entries (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({
+        markdowns: [{ name: 'md1', markdown: '# old' }],
+      });
+    });
+
+    let returned;
+    act(() => {
+      returned = useStore
+        .getState()
+        .updateRecordConfigOptimistic('markdown', 'md1', { name: 'md1', markdown: '# new' });
+    });
+
+    expect(returned).toBe(true);
+    const md = useStore.getState().markdowns.find((m) => m.name === 'md1');
+    expect(md.markdown).toBe('# new');
+  });
+
+  test('updateRecordConfigOptimistic delegates dashboards to updateDashboardConfigOptimistic (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({
+        dashboards: [{ name: 'd1', config: { name: 'd1', rows: [] } }],
+        saveDashboard: jest.fn(),
+      });
+    });
+
+    let returned;
+    act(() => {
+      returned = useStore
+        .getState()
+        .updateRecordConfigOptimistic('dashboard', 'd1', {
+          name: 'd1',
+          rows: [{ height: 'large', items: [] }],
+        });
+    });
+
+    expect(returned).toBe(true);
+    const dash = useStore.getState().dashboards.find((d) => d.name === 'd1');
+    expect(dash.config.rows[0].height).toBe('large');
+  });
+
+  test('updateRecordConfigOptimistic is a no-op for unknown type / name (VIS-1018)', () => {
+    act(() => {
+      useStore.setState({ charts: [] });
+    });
+    expect(useStore.getState().updateRecordConfigOptimistic('bogus', 'x', {})).toBe(false);
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', 'missing', {})).toBe(false);
+    expect(useStore.getState().updateRecordConfigOptimistic('chart', '', {})).toBe(false);
+  });
 });
 
 describe('workspace pivot draft actions (VIS-1008)', () => {

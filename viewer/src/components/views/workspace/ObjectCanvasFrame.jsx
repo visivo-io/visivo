@@ -9,7 +9,7 @@ import {
   PiLockSimple,
   PiCircleDuotone,
 } from 'react-icons/pi';
-import useStore from '../../../stores/store';
+import useStore, { ObjectStatus } from '../../../stores/store';
 import { isAvailable } from '../../../contexts/URLContext';
 import { getTypeColors, getTypeIcon, getTypeByValue } from '../common/objectTypeConfigs';
 import SubBar from './SubBar';
@@ -17,6 +17,7 @@ import Segmented from './Segmented';
 import LineageCanvas from '../lineage/LineageCanvas';
 import { getCanvasDescriptor } from './objectCanvasRegistry';
 import { useCanvasRecord } from './useCanvasRecord';
+import { COLLECTION_KEY } from './collectionKeys';
 
 /**
  * ObjectCanvasFrame — the shared shell for every per-object Workspace canvas
@@ -139,10 +140,25 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
   const lens = validKeys.includes(lensEffective) ? lensEffective : defaultLens;
   const activeLensMeta = lenses.find(l => l.key === lens) || LINEAGE_LENS;
 
-  // Editable-lens dirty seam (no body uses it yet in VIS-1001).
+  // Editable-lens dirty seam (an editable body may report a not-yet-persisted
+  // local draft up through ObjectCanvasDirtyContext).
   const [dirty, setDirty] = React.useState(false);
   const dirtyCtx = React.useMemo(() => ({ dirty, setDirty }), [dirty]);
   React.useEffect(() => setDirty(false), [objectKey, lens]); // reset on object/lens change
+
+  // The canonical dirty signal is the backend object status (VIS-1018 step 4):
+  // `ObjectStatus.MODIFIED` (computed by object_manager.get_status, polled via
+  // getProject) drives the chrome indicator, not a frontend-only boolean. The
+  // local `dirty` draft seam is OR'd in so an in-flight, not-yet-persisted edit
+  // still reads "Unsaved" before the next poll confirms MODIFIED.
+  const collectionKey = COLLECTION_KEY[type] || null;
+  const recordStatus = useStore(s => {
+    const list = collectionKey ? s[collectionKey] : null;
+    if (!Array.isArray(list)) return null;
+    const entry = list.find(r => r.name === activeObject?.name);
+    return entry?.status || null;
+  });
+  const showDirty = dirty || recordStatus === ObjectStatus.MODIFIED;
 
   const hasCanvasLens = Boolean(descriptor);
 
@@ -173,15 +189,15 @@ const ObjectCanvasFrame = ({ activeObject, projectId }) => {
         (activeLensMeta.kind === 'editable' ? (
         <span
           data-testid="canvas-dirty-indicator"
-          data-dirty={dirty ? 'true' : 'false'}
-          title={dirty ? 'Unsaved changes' : 'No unsaved changes'}
+          data-dirty={showDirty ? 'true' : 'false'}
+          title={showDirty ? 'Unsaved changes' : 'No unsaved changes'}
           className={[
             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
-            dirty ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-400',
+            showDirty ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-400',
           ].join(' ')}
         >
           <PiCircleDuotone className="h-3 w-3" aria-hidden="true" />
-          {dirty ? 'Unsaved' : 'Saved'}
+          {showDirty ? 'Unsaved' : 'Saved'}
         </span>
       ) : (
         <span

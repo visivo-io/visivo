@@ -28,7 +28,7 @@ import DefaultsEditForm from '../common/DefaultsEditForm';
 import { getTypeByValue } from '../common/objectTypeConfigs';
 import { COLLECTION_KEY } from './collectionKeys';
 import { formatRef } from '../../../utils/refString';
-import { useObjectSave } from '../../../hooks/useObjectSave';
+import useRecordSave from '../../../hooks/useRecordSave';
 import sanitizeDashboardConfig from './sanitizeDashboardConfig';
 import { emitWorkspaceEvent } from './telemetry';
 
@@ -589,13 +589,16 @@ const RightRailEditPanel = () => {
  * type's edit form" contract and matches the G-1 design artboard 03 (a chart
  * item selects → an inline ChartEditForm), per VIS-802 GAP-1/GAP-2.
  *
- * Saves go through the shared `useObjectSave` handler (the same one EditorNew /
- * Lineage use), so editing a chart/table/insight/etc. here persists to the
- * backend exactly as it does elsewhere. There is no modal to close in the rail,
- * so `onClose`/`onCancel`/embedded-nav are no-ops; the forms keep their own Save
- * footer. A handful of compound data-layer types (dashboard, csv/local-merge
- * models) still open in their own surface — they have no lightweight in-rail
- * form yet.
+ * Saves go through the unified `useRecordSave` backbone (one instance per open
+ * record, VIS-1018 step 3 — retiring `useObjectSave`'s 13-case switch). The
+ * form's `onSave(type, name, config)` flushes through `saveNow`, so every
+ * standalone leaf save writes the record optimistically into its store
+ * collection and persists through the same `saveX` action the rest of the app
+ * uses — converging with any concurrent canvas/rail edit on the last write.
+ * There is no modal to close in the rail, so `onClose`/`onCancel`/embedded-nav
+ * are no-ops; the forms keep their own Save footer. A handful of compound
+ * data-layer types (dashboard, csv/local-merge models) still open in their own
+ * surface — they have no lightweight in-rail form yet.
  */
 const INLINE_LEAF_FORMS = {
   chart: (record, common) => <ChartEditForm chart={record} {...common} />,
@@ -636,11 +639,25 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
   // the dashboard-structure forms.
   const [leafSaveStatus, setLeafSaveStatus] = useState(undefined);
 
-  // Standalone (non-embedded) save: the same unified handler EditorNew uses,
-  // routed to the right per-type store action. currentEdit=null keeps it on the
-  // standalone-save path (no edit stack in the rail).
+  // No modal to close in the rail, so the forms' close/cancel/embedded-nav
+  // callbacks are no-ops.
   const noop = useCallback(() => {}, []);
-  const handleObjectSave = useObjectSave(null, noop, undefined);
+
+  // Standalone (non-embedded) save through the unified optimistic + debounced
+  // backbone — one `useRecordSave` instance per open record (VIS-1018 step 3,
+  // retiring `useObjectSave`). The leaf forms call `onSave(type, name, config)`;
+  // `saveNow` writes the record optimistically into its store collection and
+  // persists via the type's `saveX` action, so the rail save converges with any
+  // concurrent canvas edit on the last write.
+  const { status: recordSaveStatus, saveNow } = useRecordSave(type, name);
+  const handleObjectSave = useCallback(
+    (_type, _name, config) => saveNow(config),
+    [saveNow]
+  );
+
+  // Prefer a leaf form's own auto-save status (Input reports its debounce via
+  // onSaveStatusChange) and otherwise surface this record's save status.
+  const saveStatus = leafSaveStatus !== undefined ? leafSaveStatus : recordSaveStatus;
 
   const renderForm = INLINE_LEAF_FORMS[type];
   if (renderForm) {
@@ -654,7 +671,7 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
     };
     return (
       <>
-        <SelectionChip type={type} name={name} subtitle={singular} saveStatus={leafSaveStatus} />
+        <SelectionChip type={type} name={name} subtitle={singular} saveStatus={saveStatus} />
         <div data-testid="right-rail-edit-leaf-form" className="flex-1 overflow-y-auto">
           {renderForm(record, common)}
         </div>
