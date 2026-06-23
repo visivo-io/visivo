@@ -31,8 +31,10 @@ export const fetchMarkdown = async name => {
 /**
  * Save a markdown configuration to cache (draft state)
  */
-export const saveMarkdown = async (name, config) => {
-  const response = await apiFetch(getUrl('markdownDetail', { name }), {
+export const saveMarkdown = async (name, config, projectId = null) => {
+  let url = getUrl('markdownDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveMarkdown = async (name, config) => {
 /**
  * Delete a markdown from cache (revert to published version)
  */
-export const deleteMarkdown = async name => {
-  const response = await apiFetch(getUrl('markdownDetail', { name }), {
+export const deleteMarkdown = async (name, projectId = null) => {
+  let url = getUrl('markdownDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

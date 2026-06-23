@@ -110,9 +110,9 @@ describe('defaultsStore', () => {
   it('saveDefaults persists, refreshes, and reports failures', async () => {
     defaultsApi.saveDefaults.mockResolvedValueOnce({ ok: true });
     defaultsApi.fetchDefaults.mockResolvedValue({ source: 'duckdb' });
-    const store = makeStore(createDefaultsSlice);
+    const store = makeStore(createDefaultsSlice, { project: { id: 'proj-1' } });
     await expect(store.get().saveDefaults({ a: 1 })).resolves.toMatchObject({ success: true });
-    expect(defaultsApi.saveDefaults).toHaveBeenCalledWith({ a: 1 });
+    expect(defaultsApi.saveDefaults).toHaveBeenCalledWith({ a: 1 }, 'proj-1');
     expect(defaultsApi.fetchDefaults).toHaveBeenCalled(); // refresh
 
     defaultsApi.saveDefaults.mockRejectedValueOnce(new Error('nope'));

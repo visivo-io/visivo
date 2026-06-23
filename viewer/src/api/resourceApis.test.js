@@ -26,18 +26,102 @@ const notFound = () => ({ status: 404, json: async () => ({}) });
 const fail = (status, data = {}) => ({ status, json: async () => data });
 
 const CASES = [
-  { name: 'charts', fetchAll: charts.fetchAllCharts, fetchOne: charts.fetchChart, save: charts.saveChart, del: charts.deleteChart, validate: charts.validateChart },
-  { name: 'sources', fetchAll: sources.fetchAllSources, fetchOne: sources.fetchSource, save: sources.saveSource, del: sources.deleteSource, validate: sources.validateSource },
-  { name: 'dimensions', fetchAll: dimensions.fetchAllDimensions, fetchOne: dimensions.fetchDimension, save: dimensions.saveDimension, del: dimensions.deleteDimension, validate: dimensions.validateDimension },
-  { name: 'metrics', fetchAll: metrics.fetchAllMetrics, fetchOne: metrics.fetchMetric, save: metrics.saveMetric, del: metrics.deleteMetric, validate: metrics.validateMetric },
-  { name: 'relations', fetchAll: relations.fetchAllRelations, fetchOne: relations.fetchRelation, save: relations.saveRelation, del: relations.deleteRelation, validate: relations.validateRelation },
-  { name: 'models', fetchAll: models.fetchAllModels, fetchOne: models.fetchModel, save: models.saveModel, del: models.deleteModel, validate: models.validateModel },
-  { name: 'csvScriptModels', fetchAll: csvScriptModels.fetchAllCsvScriptModels, fetchOne: null, save: csvScriptModels.saveCsvScriptModel, del: csvScriptModels.deleteCsvScriptModel, validate: csvScriptModels.validateCsvScriptModel },
-  { name: 'localMergeModels', fetchAll: localMergeModels.fetchAllLocalMergeModels, fetchOne: null, save: localMergeModels.saveLocalMergeModel, del: localMergeModels.deleteLocalMergeModel, validate: localMergeModels.validateLocalMergeModel },
-  { name: 'markdowns', fetchAll: markdowns.fetchAllMarkdowns, fetchOne: markdowns.fetchMarkdown, save: markdowns.saveMarkdown, del: markdowns.deleteMarkdown, validate: markdowns.validateMarkdown },
-  { name: 'inputs', fetchAll: inputs.fetchAllInputs, fetchOne: inputs.fetchInput, save: inputs.saveInput, del: inputs.deleteInput, validate: inputs.validateInput },
-  { name: 'insights', fetchAll: insights.fetchAllInsights, fetchOne: insights.fetchInsight, save: insights.saveInsight, del: insights.deleteInsight, validate: insights.validateInsight },
-  { name: 'tables', fetchAll: tables.fetchAllTables, fetchOne: tables.fetchTable, save: tables.saveTable, del: tables.deleteTable, validate: tables.validateTable },
+  {
+    name: 'charts',
+    fetchAll: charts.fetchAllCharts,
+    fetchOne: charts.fetchChart,
+    save: charts.saveChart,
+    del: charts.deleteChart,
+    validate: charts.validateChart,
+  },
+  {
+    name: 'sources',
+    fetchAll: sources.fetchAllSources,
+    fetchOne: sources.fetchSource,
+    save: sources.saveSource,
+    del: sources.deleteSource,
+    validate: sources.validateSource,
+  },
+  {
+    name: 'dimensions',
+    fetchAll: dimensions.fetchAllDimensions,
+    fetchOne: dimensions.fetchDimension,
+    save: dimensions.saveDimension,
+    del: dimensions.deleteDimension,
+    validate: dimensions.validateDimension,
+  },
+  {
+    name: 'metrics',
+    fetchAll: metrics.fetchAllMetrics,
+    fetchOne: metrics.fetchMetric,
+    save: metrics.saveMetric,
+    del: metrics.deleteMetric,
+    validate: metrics.validateMetric,
+  },
+  {
+    name: 'relations',
+    fetchAll: relations.fetchAllRelations,
+    fetchOne: relations.fetchRelation,
+    save: relations.saveRelation,
+    del: relations.deleteRelation,
+    validate: relations.validateRelation,
+  },
+  {
+    name: 'models',
+    fetchAll: models.fetchAllModels,
+    fetchOne: models.fetchModel,
+    save: models.saveModel,
+    del: models.deleteModel,
+    validate: models.validateModel,
+  },
+  {
+    name: 'csvScriptModels',
+    fetchAll: csvScriptModels.fetchAllCsvScriptModels,
+    fetchOne: null,
+    save: csvScriptModels.saveCsvScriptModel,
+    del: csvScriptModels.deleteCsvScriptModel,
+    validate: csvScriptModels.validateCsvScriptModel,
+  },
+  {
+    name: 'localMergeModels',
+    fetchAll: localMergeModels.fetchAllLocalMergeModels,
+    fetchOne: null,
+    save: localMergeModels.saveLocalMergeModel,
+    del: localMergeModels.deleteLocalMergeModel,
+    validate: localMergeModels.validateLocalMergeModel,
+  },
+  {
+    name: 'markdowns',
+    fetchAll: markdowns.fetchAllMarkdowns,
+    fetchOne: markdowns.fetchMarkdown,
+    save: markdowns.saveMarkdown,
+    del: markdowns.deleteMarkdown,
+    validate: markdowns.validateMarkdown,
+  },
+  {
+    name: 'inputs',
+    fetchAll: inputs.fetchAllInputs,
+    fetchOne: inputs.fetchInput,
+    save: inputs.saveInput,
+    del: inputs.deleteInput,
+    validate: inputs.validateInput,
+  },
+  {
+    name: 'insights',
+    fetchAll: insights.fetchAllInsights,
+    fetchOne: insights.fetchInsight,
+    save: insights.saveInsight,
+    del: insights.deleteInsight,
+    validate: insights.validateInsight,
+  },
+  {
+    name: 'tables',
+    fetchAll: tables.fetchAllTables,
+    fetchOne: tables.fetchTable,
+    save: tables.saveTable,
+    del: tables.deleteTable,
+    validate: tables.validateTable,
+  },
 ];
 
 describe('per-type resource API modules', () => {
@@ -80,6 +164,21 @@ describe('per-type resource API modules', () => {
       );
     });
 
+    it('save scopes by project_id when one is given, and omits it otherwise', async () => {
+      apiFetch.mockResolvedValueOnce(ok({ saved: true }));
+      await save('x', { a: 1 }, 'proj-1');
+      expect(apiFetch).toHaveBeenCalledWith(
+        expect.stringContaining('project_id=proj-1'),
+        expect.objectContaining({ method: 'POST' })
+      );
+      apiFetch.mockResolvedValueOnce(ok({ saved: true }));
+      await save('x', { a: 1 });
+      expect(apiFetch).toHaveBeenLastCalledWith(
+        expect.not.stringContaining('project_id'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
     it("save surfaces the server's error message on failure", async () => {
       apiFetch.mockResolvedValueOnce(fail(400, { error: 'bad config' }));
       await expect(save('x', {})).rejects.toThrow('bad config');
@@ -94,6 +193,15 @@ describe('per-type resource API modules', () => {
       );
       apiFetch.mockResolvedValueOnce(fail(500));
       await expect(del('x')).rejects.toThrow();
+    });
+
+    it('delete scopes by project_id when one is given', async () => {
+      apiFetch.mockResolvedValueOnce(ok({ deleted: true }));
+      await del('x', 'proj-1');
+      expect(apiFetch).toHaveBeenCalledWith(
+        expect.stringContaining('project_id=proj-1'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
     });
 
     it('validate returns the parsed body regardless of status', async () => {

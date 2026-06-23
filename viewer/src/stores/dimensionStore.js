@@ -29,7 +29,8 @@ const createDimensionSlice = (set, get) => ({
   // Save dimension to cache
   saveDimension: async (name, config) => {
     try {
-      const result = await dimensionsApi.saveDimension(name, config);
+      const projectId = get().project?.id;
+      const result = await dimensionsApi.saveDimension(name, config, projectId);
       // Refresh dimensions list to get updated status
       await get().fetchDimensions();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createDimensionSlice = (set, get) => ({
   // Mark dimension for deletion (will be removed from YAML on commit)
   deleteDimension: async name => {
     try {
-      await dimensionsApi.deleteDimension(name);
+      const projectId = get().project?.id;
+      await dimensionsApi.deleteDimension(name, projectId);
       await get().fetchDimensions();
       // Trigger commit status check
       if (get().checkCommitStatus) {

@@ -31,8 +31,10 @@ export const fetchDimension = async name => {
 /**
  * Save a dimension configuration to cache (draft state)
  */
-export const saveDimension = async (name, config) => {
-  const response = await apiFetch(getUrl('dimensionDetail', { name }), {
+export const saveDimension = async (name, config, projectId = null) => {
+  let url = getUrl('dimensionDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveDimension = async (name, config) => {
 /**
  * Delete a dimension from cache (revert to published version)
  */
-export const deleteDimension = async name => {
-  const response = await apiFetch(getUrl('dimensionDetail', { name }), {
+export const deleteDimension = async (name, projectId = null) => {
+  let url = getUrl('dimensionDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

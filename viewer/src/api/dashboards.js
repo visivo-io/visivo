@@ -17,8 +17,10 @@ export const fetchAllDashboards = async (projectId = null) => {
 /**
  * Save a dashboard configuration to cache (draft state)
  */
-export const saveDashboard = async (name, config) => {
-  const response = await apiFetch(getUrl('dashboardSave', { name }), {
+export const saveDashboard = async (name, config, projectId = null) => {
+  let url = getUrl('dashboardSave', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -35,8 +37,10 @@ export const saveDashboard = async (name, config) => {
 /**
  * Delete a dashboard (mark for deletion)
  */
-export const deleteDashboard = async name => {
-  const response = await apiFetch(getUrl('dashboardDelete', { name }), {
+export const deleteDashboard = async (name, projectId = null) => {
+  let url = getUrl('dashboardDelete', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {

@@ -17,8 +17,10 @@ export const fetchDefaults = async (projectId = null) => {
 /**
  * Save defaults configuration to cache (draft state)
  */
-export const saveDefaults = async config => {
-  const response = await apiFetch(getUrl('defaults'), {
+export const saveDefaults = async (config, projectId = null) => {
+  let url = getUrl('defaults');
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

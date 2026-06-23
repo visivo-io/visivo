@@ -70,8 +70,18 @@ const STORES = [
   { name: 'table', slice: createTableSlice, api: tablesApi },
   { name: 'markdown', slice: createMarkdownSlice, api: markdownsApi },
   // These two map a snake_case api payload key onto a camelCase state key.
-  { name: 'csvScriptModel', slice: createCsvScriptModelSlice, api: csvScriptModelsApi, dataKey: 'csv_script_models' },
-  { name: 'localMergeModel', slice: createLocalMergeModelSlice, api: localMergeModelsApi, dataKey: 'local_merge_models' },
+  {
+    name: 'csvScriptModel',
+    slice: createCsvScriptModelSlice,
+    api: csvScriptModelsApi,
+    dataKey: 'csv_script_models',
+  },
+  {
+    name: 'localMergeModel',
+    slice: createLocalMergeModelSlice,
+    api: localMergeModelsApi,
+    dataKey: 'local_merge_models',
+  },
 ];
 
 describe.each(STORES)('$name store slice', ({ slice, api, dataKey }) => {
@@ -123,9 +133,9 @@ describe.each(STORES)('$name store slice', ({ slice, api, dataKey }) => {
     expect(store.get()[loadingKey]).toBe(false);
   });
 
-  it('save calls the api and returns success', async () => {
+  it('save calls the project-scoped api and returns success', async () => {
     const res = await store.get()[saveFn]('x', { a: 1 });
-    expect(api[saveApiName]).toHaveBeenCalledWith('x', { a: 1 });
+    expect(api[saveApiName]).toHaveBeenCalledWith('x', { a: 1 }, 'proj-1');
     expect(res.success).toBe(true);
   });
 
@@ -135,9 +145,9 @@ describe.each(STORES)('$name store slice', ({ slice, api, dataKey }) => {
     expect(res).toEqual({ success: false, error: 'nope' });
   });
 
-  it('delete calls the api and returns success', async () => {
+  it('delete calls the project-scoped api and returns success', async () => {
     const res = await store.get()[deleteFn]('x');
-    expect(api[deleteApiName]).toHaveBeenCalledWith('x');
+    expect(api[deleteApiName]).toHaveBeenCalledWith('x', 'proj-1');
     expect(res.success).toBe(true);
   });
 

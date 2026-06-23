@@ -29,7 +29,8 @@ const createTableSlice = (set, get) => ({
   // Save table to cache
   saveTable: async (name, config) => {
     try {
-      const result = await tablesApi.saveTable(name, config);
+      const projectId = get().project?.id;
+      const result = await tablesApi.saveTable(name, config, projectId);
       // Refresh tables list to get updated status
       await get().fetchTables();
       // Trigger commit status check
@@ -45,7 +46,8 @@ const createTableSlice = (set, get) => ({
   // Mark table for deletion (will be removed from YAML on commit)
   deleteTable: async name => {
     try {
-      await tablesApi.deleteTable(name);
+      const projectId = get().project?.id;
+      await tablesApi.deleteTable(name, projectId);
       await get().fetchTables();
       // Trigger commit status check
       if (get().checkCommitStatus) {

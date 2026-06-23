@@ -31,8 +31,10 @@ export const fetchMetric = async name => {
 /**
  * Save a metric configuration to cache (draft state)
  */
-export const saveMetric = async (name, config) => {
-  const response = await apiFetch(getUrl('metricDetail', { name }), {
+export const saveMetric = async (name, config, projectId = null) => {
+  let url = getUrl('metricDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -49,8 +51,10 @@ export const saveMetric = async (name, config) => {
 /**
  * Delete a metric from cache (revert to published version)
  */
-export const deleteMetric = async name => {
-  const response = await apiFetch(getUrl('metricDetail', { name }), {
+export const deleteMetric = async (name, projectId = null) => {
+  let url = getUrl('metricDetail', { name });
+  if (projectId) url += `?project_id=${encodeURIComponent(projectId)}`;
+  const response = await apiFetch(url, {
     method: 'DELETE',
   });
   if (response.status === 200) {
