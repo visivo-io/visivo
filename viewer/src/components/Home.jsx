@@ -9,7 +9,7 @@ import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import CommitModal from './commit/CommitModal';
-import CloudEditControls from './common/CloudEditControls';
+import BranchingControls from './common/BranchingControls';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
@@ -143,7 +143,7 @@ const Home = () => {
         onCommitClick={onCommitClick}
         hasUncommittedChanges={hasUncommittedChanges}
         tools={tools}
-        branchControls={<CloudEditControls />}
+        branchControls={<BranchingControls />}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />

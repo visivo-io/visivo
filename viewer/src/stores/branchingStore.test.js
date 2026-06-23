@@ -1,4 +1,4 @@
-import createCloudEditSlice from './cloudEditStore';
+import createBranchingSlice from './branchingStore';
 import * as branchingApi from '../api/branching';
 
 jest.mock('../api/branching');
@@ -19,9 +19,9 @@ const makeStore = (slice, initial = {}) => {
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('cloudEditStore', () => {
+describe('branchingStore', () => {
   const build = (initial = { project: { id: 'proj-1' }, setProject: jest.fn() }) =>
-    makeStore(createCloudEditSlice, initial);
+    makeStore(createBranchingSlice, initial);
 
   describe('fetchCapabilities', () => {
     it('stores the capabilities the endpoint returns', async () => {
@@ -68,25 +68,20 @@ describe('cloudEditStore', () => {
       const result = await store.get().startEdit();
       expect(setProject).not.toHaveBeenCalled();
       expect(result).toEqual({ success: false, error: 'no draft' });
-      expect(store.get().cloudEditError).toBe('no draft');
+      expect(store.get().branchError).toBe('no draft');
     });
   });
 
   describe('startBranch', () => {
-    it('forks a new stage and retargets the active project to the branch', async () => {
+    it('branches a new stage and retargets the active project to the branch', async () => {
       const branch = { id: 'branch-3', name: 'p' };
       branchingApi.createBranch.mockResolvedValueOnce(branch);
       branchingApi.fetchCapabilities.mockResolvedValueOnce({ can_edit: true });
       const setProject = jest.fn();
       const store = build({ project: { id: 'proj-1' }, setProject });
-      const result = await store.get().startBranch({
-        fromStage: 'prod',
-        projectName: 'p',
-        newStageName: 'scratch',
-      });
+      const result = await store.get().startBranch({ newStageName: 'scratch' });
       expect(branchingApi.createBranch).toHaveBeenCalledWith({
-        fromStage: 'prod',
-        projectName: 'p',
+        projectId: 'proj-1',
         newStageName: 'scratch',
       });
       expect(setProject).toHaveBeenCalledWith({ id: 'branch-3', name: 'p' });

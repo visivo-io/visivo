@@ -45,19 +45,15 @@ export const createDraft = async projectId => {
 };
 
 /**
- * Branch: fork the live project onto a brand-new stage.
- * POST /api/stages/branch/ {from_stage, project_name, new_stage_name}
+ * Branch: branch this project onto a brand-new stage.
+ * POST /api/projects/<id>/branch/ {new_stage_name}
  *   -> the branch project envelope (a NEW id on the new stage).
  */
-export const createBranch = async ({ fromStage, projectName, newStageName }) => {
-  const response = await apiFetch(getUrl('stageBranch'), {
+export const createBranch = async ({ projectId, newStageName }) => {
+  const response = await apiFetch(getUrl('projectBranch', { projectId }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from_stage: fromStage,
-      project_name: projectName,
-      new_stage_name: newStageName,
-    }),
+    body: JSON.stringify({ new_stage_name: newStageName }),
   });
   if (response.status === 201) {
     return await response.json();

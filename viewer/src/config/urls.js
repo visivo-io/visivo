@@ -105,7 +105,7 @@ const URL_PATTERNS = {
     // Cloud-editing endpoints (core/Django only; 404 under local `visivo serve`)
     projectCapabilities: '/api/projects/{projectId}/capabilities/',
     projectDraft: '/api/projects/{projectId}/draft/',
-    stageBranch: '/api/stages/branch/',
+    projectBranch: '/api/projects/{projectId}/branch/',
     projectChanges: '/api/projects/{projectId}/changes/',
     projectCommit: '/api/projects/{projectId}/commit/',
     projectDiscard: '/api/projects/{projectId}/discard/',
@@ -233,7 +233,7 @@ const URL_PATTERNS = {
     // Cloud-editing endpoints (not available in dist)
     projectCapabilities: null,
     projectDraft: null,
-    stageBranch: null,
+    projectBranch: null,
     projectChanges: null,
     projectCommit: null,
 

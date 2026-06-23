@@ -23,10 +23,10 @@ const btnStyle = (bg, disabled) => ({
 });
 
 /**
- * Cloud-editing entry (core/Django only). Renders an Edit and/or Branch button
+ * Branching entry (core/Django only). Renders an Edit and/or Branch button
  * based on the user's capabilities for the active project's stage:
  *   - can_edit   → Edit  (resolve-or-create a draft on the same stage)
- *   - can_branch → Branch (fork onto a new stage)
+ *   - can_branch → Branch (branch onto a new stage)
  * An editor on the default stage gets Branch only (edit_action === 'branch_required').
  *
  * Backend-agnostic: rendered purely from the `capabilities` endpoint. Both
@@ -34,11 +34,10 @@ const btnStyle = (bg, disabled) => ({
  * reports the user's stage role). Renders null until capabilities load / when
  * the user can neither edit nor branch.
  */
-const CloudEditControls = () => {
+const BranchingControls = () => {
   const capabilities = useStore(state => state.capabilities);
   const startEdit = useStore(state => state.startEdit);
   const startBranch = useStore(state => state.startBranch);
-  const project = useStore(state => state.project);
   const [busy, setBusy] = useState(false);
 
   if (!capabilities) return null;
@@ -60,16 +59,12 @@ const CloudEditControls = () => {
 
   const onBranch = async () => {
     // First-pass UX: prompt for the new stage name. A dedicated dialog is a
-    // follow-up. fromStage falls back across the envelope shapes core may use.
+    // follow-up. The project to branch is the active one (startBranch reads it).
     const newStageName = window.prompt('Name the new branch stage:');
     if (!newStageName) return;
     setBusy(true);
     try {
-      await startBranch({
-        fromStage: project?.stage_name || project?.stage || project?.config?.stage,
-        projectName: project?.name,
-        newStageName,
-      });
+      await startBranch({ newStageName });
     } finally {
       setBusy(false);
     }
@@ -91,4 +86,4 @@ const CloudEditControls = () => {
   );
 };
 
-export default CloudEditControls;
+export default BranchingControls;
