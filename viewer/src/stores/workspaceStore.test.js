@@ -575,6 +575,49 @@ describe('workspace store slice', () => {
     expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2.item.0');
   });
 
+  // setWorkspaceSelection (VIS-994) — unified atomic selection routing -----------
+
+  describe('setWorkspaceSelection', () => {
+    test('sets both activeObject and outlineKey atomically', () => {
+      act(() => {
+        useStore.getState().setWorkspaceSelection({ type: 'chart', name: 'rev' }, 'row.0.item.0');
+      });
+      const s = useStore.getState();
+      expect(s.workspaceActiveObject).toEqual({ type: 'chart', name: 'rev' });
+      expect(s.workspaceOutlineSelectedKey).toBe('row.0.item.0');
+    });
+
+    test('clears activeObject when null passed', () => {
+      act(() => {
+        useStore.setState({ workspaceActiveObject: { type: 'chart', name: 'old' } });
+        useStore.getState().setWorkspaceSelection(null, null);
+      });
+      expect(useStore.getState().workspaceActiveObject).toBeNull();
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('dashboard');
+    });
+
+    test('keeps existing outlineKey when outlineKey is undefined', () => {
+      act(() => {
+        useStore.setState({ workspaceOutlineSelectedKey: 'row.1' });
+        useStore.getState().setWorkspaceSelection({ type: 'source', name: 'db' }, undefined);
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.1');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'source', name: 'db' });
+    });
+
+    test('does not update when both args are undefined', () => {
+      act(() => {
+        useStore.setState({
+          workspaceOutlineSelectedKey: 'row.2',
+          workspaceActiveObject: { type: 'chart', name: 'x' },
+        });
+        useStore.getState().setWorkspaceSelection(undefined, undefined);
+      });
+      expect(useStore.getState().workspaceOutlineSelectedKey).toBe('row.2');
+      expect(useStore.getState().workspaceActiveObject).toEqual({ type: 'chart', name: 'x' });
+    });
+  });
+
   // Source outline (VIS-1004) — disjoint selection key + per-source expand -----
 
   test('setWorkspaceSourceOutlineSelectedKey selects, toggles off, and stays disjoint', () => {

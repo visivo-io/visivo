@@ -1,0 +1,104 @@
+[
+  {
+    "path": "values",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the values of the sectors",
+    "keywords": [
+      "values",
+      "data",
+      "sector",
+      "size"
+    ],
+    "enumValues": null,
+    "example": [
+      10,
+      20,
+      30
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "labels",
+    "label": "Labels",
+    "tier": "A",
+    "description": "Sets the sector labels",
+    "keywords": [
+      "labels",
+      "categories",
+      "names"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "B",
+      "C"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "hole",
+    "label": "Hole Size (Donut)",
+    "tier": "B",
+    "description": "Sets the fraction of the radius to cut out of the pie (0–1); creates a donut chart",
+    "keywords": [
+      "hole",
+      "donut",
+      "inner"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Distribution",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "textposition",
+    "label": "Text Position",
+    "tier": "B",
+    "description": "Specifies the location of the text labels on each sector",
+    "keywords": [
+      "text",
+      "label",
+      "position"
+    ],
+    "enumValues": [
+      "inside",
+      "outside",
+      "auto",
+      "none"
+    ],
+    "example": "inside",
+    "schemaValType": "enumerated",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  }
+]

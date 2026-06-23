@@ -1,0 +1,119 @@
+[
+  {
+    "path": "a",
+    "label": "A Coordinates",
+    "tier": "A",
+    "description": "An array containing values of the first parameter value",
+    "keywords": [
+      "a",
+      "carpet",
+      "parameter",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "b",
+    "label": "B Coordinates",
+    "tier": "A",
+    "description": "An array containing values of the second parameter value",
+    "keywords": [
+      "b",
+      "carpet",
+      "parameter",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "carpet",
+    "label": "Carpet ID",
+    "tier": "B",
+    "description": "An identifier for this carpet trace, referenced by scatter and contour carpet traces",
+    "keywords": [
+      "carpet",
+      "id",
+      "reference"
+    ],
+    "enumValues": null,
+    "example": "carpet1",
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "B",
+    "description": "A 2D array of x coordinates at each carpet point",
+    "keywords": [
+      "x",
+      "coordinates",
+      "carpet"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "B",
+    "description": "A 2D array of y coordinates at each carpet point",
+    "keywords": [
+      "y",
+      "coordinates",
+      "carpet"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  }
+]

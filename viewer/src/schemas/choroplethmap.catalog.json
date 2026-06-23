@@ -1,0 +1,105 @@
+[
+  {
+    "path": "geojson",
+    "label": "GeoJSON",
+    "tier": "A",
+    "description": "Sets the GeoJSON data associated with the locations",
+    "keywords": [
+      "geojson",
+      "geometry",
+      "map",
+      "boundaries"
+    ],
+    "enumValues": null,
+    "example": {},
+    "schemaValType": "any",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "locations",
+    "label": "Locations",
+    "tier": "A",
+    "description": "Sets which features in the GeoJSON are matched to data points",
+    "keywords": [
+      "locations",
+      "features",
+      "ids",
+      "map"
+    ],
+    "enumValues": null,
+    "example": [
+      "region1",
+      "region2"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "z",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the color values associated with each location",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "color"
+    ],
+    "enumValues": null,
+    "example": [
+      100,
+      200
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Blues",
+      "Reds",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Region Map",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "featureidkey",
+    "label": "Feature ID Key",
+    "tier": "B",
+    "description": "Sets the key in GeoJSON features used for matching",
+    "keywords": [
+      "feature",
+      "id",
+      "key",
+      "geojson"
+    ],
+    "enumValues": null,
+    "example": "id",
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  }
+]

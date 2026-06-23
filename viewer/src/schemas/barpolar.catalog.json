@@ -1,0 +1,100 @@
+[
+  {
+    "path": "r",
+    "label": "R (Radius)",
+    "tier": "A",
+    "description": "Sets the radial coordinates",
+    "keywords": [
+      "r",
+      "radius",
+      "polar",
+      "bar"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "theta",
+    "label": "Theta (Angle)",
+    "tier": "A",
+    "description": "Sets the angular coordinates",
+    "keywords": [
+      "theta",
+      "angle",
+      "polar",
+      "bar"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      90,
+      180
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Polar Bar",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Bar Color",
+    "tier": "B",
+    "description": "Sets the bar color",
+    "keywords": [
+      "color",
+      "bar",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "width",
+    "label": "Bar Width",
+    "tier": "B",
+    "description": "Sets the bar angular width (in degrees)",
+    "keywords": [
+      "width",
+      "bar",
+      "angular"
+    ],
+    "enumValues": null,
+    "example": null,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  }
+]

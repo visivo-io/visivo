@@ -1,0 +1,103 @@
+[
+  {
+    "path": "values",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the values of each funnel area sector",
+    "keywords": [
+      "values",
+      "data",
+      "size"
+    ],
+    "enumValues": null,
+    "example": [
+      100,
+      80,
+      60
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "labels",
+    "label": "Labels",
+    "tier": "A",
+    "description": "Sets the sector labels",
+    "keywords": [
+      "labels",
+      "categories",
+      "names"
+    ],
+    "enumValues": null,
+    "example": [
+      "Step 1",
+      "Step 2",
+      "Step 3"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Funnel Area",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "textposition",
+    "label": "Text Position",
+    "tier": "B",
+    "description": "Specifies the location of the text labels",
+    "keywords": [
+      "text",
+      "label",
+      "position"
+    ],
+    "enumValues": [
+      "inside",
+      "outside",
+      "auto",
+      "none"
+    ],
+    "example": "inside",
+    "schemaValType": "enumerated",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "hole",
+    "label": "Hole Size",
+    "tier": "B",
+    "description": "Sets the fraction of the radius to cut out (0–1)",
+    "keywords": [
+      "hole",
+      "donut",
+      "inner"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": null,
+    "schemaEditType": null
+  }
+]

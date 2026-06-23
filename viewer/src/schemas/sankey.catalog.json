@@ -1,0 +1,104 @@
+[
+  {
+    "path": "node",
+    "label": "Nodes",
+    "tier": "A",
+    "description": "Configuration of the nodes in the Sankey diagram",
+    "keywords": [
+      "nodes",
+      "vertices",
+      "points"
+    ],
+    "enumValues": null,
+    "example": {
+      "label": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "schemaValType": null,
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "link",
+    "label": "Links",
+    "tier": "A",
+    "description": "Configuration of the links (flows) between nodes",
+    "keywords": [
+      "links",
+      "flows",
+      "connections"
+    ],
+    "enumValues": null,
+    "example": {
+      "source": [
+        0,
+        1
+      ],
+      "target": [
+        1,
+        2
+      ],
+      "value": [
+        5,
+        3
+      ]
+    },
+    "schemaValType": null,
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "orientation",
+    "label": "Orientation",
+    "tier": "B",
+    "description": "Sets the orientation of the Sankey diagram",
+    "keywords": [
+      "orientation",
+      "horizontal",
+      "vertical"
+    ],
+    "enumValues": [
+      "h",
+      "v"
+    ],
+    "example": "h",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Flow",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "arrangement",
+    "label": "Node Arrangement",
+    "tier": "B",
+    "description": "Sets how the nodes are arranged",
+    "keywords": [
+      "arrangement",
+      "layout",
+      "snap",
+      "freeform"
+    ],
+    "enumValues": [
+      "snap",
+      "perpendicular",
+      "freeform",
+      "fixed"
+    ],
+    "example": "snap",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "path": "a",
+    "label": "A Coordinates",
+    "tier": "A",
+    "description": "Sets the a-axis coordinates",
+    "keywords": [
+      "a",
+      "carpet",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "b",
+    "label": "B Coordinates",
+    "tier": "A",
+    "description": "Sets the b-axis coordinates",
+    "keywords": [
+      "b",
+      "carpet",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "z",
+    "label": "Z Values",
+    "tier": "A",
+    "description": "Sets the z contour values",
+    "keywords": [
+      "z",
+      "values",
+      "contour"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "carpet",
+    "label": "Carpet ID",
+    "tier": "B",
+    "description": "The `carpet` ID of the carpet trace this trace belongs to",
+    "keywords": [
+      "carpet",
+      "id",
+      "reference"
+    ],
+    "enumValues": null,
+    "example": "carpet1",
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "ncontours",
+    "label": "Number of Contours",
+    "tier": "B",
+    "description": "Sets the maximum number of contour levels",
+    "keywords": [
+      "contours",
+      "levels",
+      "count"
+    ],
+    "enumValues": null,
+    "example": 15,
+    "schemaValType": "integer",
+    "schemaEditType": "calc"
+  }
+]

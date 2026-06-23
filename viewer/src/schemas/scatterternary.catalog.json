@@ -1,0 +1,111 @@
+[
+  {
+    "path": "a",
+    "label": "A Coordinates",
+    "tier": "A",
+    "description": "Sets the a-axis coordinates",
+    "keywords": [
+      "a",
+      "ternary",
+      "coordinates",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "b",
+    "label": "B Coordinates",
+    "tier": "A",
+    "description": "Sets the b-axis coordinates",
+    "keywords": [
+      "b",
+      "ternary",
+      "coordinates",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      0.6,
+      0.5,
+      0.3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "c",
+    "label": "C Coordinates",
+    "tier": "A",
+    "description": "Sets the c-axis coordinates",
+    "keywords": [
+      "c",
+      "ternary",
+      "coordinates",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      0.3,
+      0.3,
+      0.4
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode",
+    "keywords": [
+      "mode",
+      "markers",
+      "lines"
+    ],
+    "enumValues": [
+      "lines",
+      "markers",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Ternary",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  }
+]

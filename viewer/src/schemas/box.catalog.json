@@ -1,0 +1,109 @@
+[
+  {
+    "path": "y",
+    "label": "Y Values",
+    "tier": "A",
+    "description": "Sets the y sample data",
+    "keywords": [
+      "y",
+      "values",
+      "data",
+      "sample"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "x",
+    "label": "X Categories",
+    "tier": "A",
+    "description": "Sets the x categories for grouping",
+    "keywords": [
+      "x",
+      "categories",
+      "group"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "A",
+      "B",
+      "B",
+      "B"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Group A",
+    "schemaValType": "string",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the color of the box marker",
+    "keywords": [
+      "color",
+      "marker",
+      "fill"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "boxpoints",
+    "label": "Show Data Points",
+    "tier": "B",
+    "description": "Determines which points are displayed alongside the box",
+    "keywords": [
+      "points",
+      "outliers",
+      "jitter"
+    ],
+    "enumValues": [
+      "all",
+      "outliers",
+      "suspectedoutliers",
+      "false"
+    ],
+    "example": "outliers",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "notched",
+    "label": "Notched",
+    "tier": "B",
+    "description": "If true, boxes are drawn with notches indicating confidence intervals",
+    "keywords": [
+      "notch",
+      "confidence",
+      "interval"
+    ],
+    "enumValues": null,
+    "example": false,
+    "schemaValType": "boolean",
+    "schemaEditType": "calc"
+  }
+]

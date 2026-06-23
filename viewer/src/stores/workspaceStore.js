@@ -366,6 +366,38 @@ const createWorkspaceSlice = (set, get) => ({
   },
 
   /**
+   * Atomically select both an active object (library/canvas) and an outline-tree
+   * key (dashboard structure). Either argument can be null to clear that half.
+   * Use this instead of separate `setWorkspaceOutlineSelectedKey` +
+   * `workspaceActiveObject` updates to avoid split-render glitches.
+   *
+   * @param {{ type: string, name: string }|null} activeObject - the object, or null to clear
+   * @param {string|null} outlineKey - outline key like 'dashboard', 'row.0', 'row.0.item.1', or null to keep existing
+   */
+  setWorkspaceSelection: (activeObject, outlineKey) => {
+    const update = {};
+
+    // Update active object if explicitly passed (including null to clear)
+    if (activeObject !== undefined) {
+      update.workspaceActiveObject = activeObject;
+    }
+
+    // Update outline key if provided and valid
+    if (outlineKey !== undefined && outlineKey !== null) {
+      if (typeof outlineKey === 'string' && outlineKey) {
+        update.workspaceOutlineSelectedKey = outlineKey;
+      }
+    } else if (outlineKey === null) {
+      // null explicitly clears / resets to 'dashboard'
+      update.workspaceOutlineSelectedKey = 'dashboard';
+    }
+
+    if (Object.keys(update).length > 0) {
+      set(update);
+    }
+  },
+
+  /**
    * Set the canvas hover key (or `null` to clear). Used only to reveal canvas
    * drag-grips on hover; never affects the Outline selection.
    */

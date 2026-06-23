@@ -1,0 +1,127 @@
+[
+  {
+    "path": "z",
+    "label": "Z Values",
+    "tier": "A",
+    "description": "Sets the z surface values (2D array)",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "surface"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates",
+    "keywords": [
+      "x",
+      "coordinates",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates",
+    "keywords": [
+      "y",
+      "coordinates",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "RdBu",
+      "Earth",
+      "Electric"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Surface",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the surface",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "showscale",
+    "label": "Show Color Bar",
+    "tier": "B",
+    "description": "Determines whether or not a colorbar is displayed",
+    "keywords": [
+      "colorbar",
+      "scale",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": true,
+    "schemaValType": "boolean",
+    "schemaEditType": "calc"
+  }
+]

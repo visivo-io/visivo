@@ -1,0 +1,106 @@
+[
+  {
+    "path": "labels",
+    "label": "Labels",
+    "tier": "A",
+    "description": "Sets the labels of each sector",
+    "keywords": [
+      "labels",
+      "names",
+      "categories"
+    ],
+    "enumValues": null,
+    "example": [
+      "Total",
+      "A",
+      "B"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "parents",
+    "label": "Parents",
+    "tier": "A",
+    "description": "Sets the parent sector for each sector",
+    "keywords": [
+      "parents",
+      "hierarchy",
+      "tree"
+    ],
+    "enumValues": null,
+    "example": [
+      "",
+      "Total",
+      "Total"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "values",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the values of each sector",
+    "keywords": [
+      "values",
+      "size",
+      "area"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      10,
+      20
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Sunburst",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "branchvalues",
+    "label": "Branch Values",
+    "tier": "B",
+    "description": "Determines how values in `values` are summed",
+    "keywords": [
+      "branch",
+      "values",
+      "total",
+      "remainder"
+    ],
+    "enumValues": [
+      "remainder",
+      "total"
+    ],
+    "example": "remainder",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the trace",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  }
+]

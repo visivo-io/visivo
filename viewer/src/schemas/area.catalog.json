@@ -1,0 +1,113 @@
+[
+  {
+    "path": "x",
+    "label": "X Axis",
+    "tier": "A",
+    "description": "Sets the x coordinates",
+    "keywords": [
+      "x",
+      "axis",
+      "data"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "y",
+    "label": "Y Axis",
+    "tier": "A",
+    "description": "Sets the y coordinates",
+    "keywords": [
+      "y",
+      "axis",
+      "data"
+    ],
+    "enumValues": null,
+    "example": [
+      4,
+      5,
+      6
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "fill",
+    "label": "Fill Mode",
+    "tier": "B",
+    "description": "Sets the area to fill with a solid color",
+    "keywords": [
+      "fill",
+      "area",
+      "shade"
+    ],
+    "enumValues": [
+      "none",
+      "tozeroy",
+      "tozerox",
+      "tonexty",
+      "tonextx",
+      "toself",
+      "tonext"
+    ],
+    "example": "tozeroy",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name shown in the legend",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Area Series",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "fillcolor",
+    "label": "Fill Color",
+    "tier": "B",
+    "description": "Sets the fill area color",
+    "keywords": [
+      "color",
+      "fill",
+      "area"
+    ],
+    "enumValues": null,
+    "example": "rgba(99,110,250,0.3)",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "line.dash",
+    "label": "Line Dash",
+    "tier": "B",
+    "description": "Sets the dash style of the line",
+    "keywords": [
+      "dash",
+      "line",
+      "style"
+    ],
+    "enumValues": [
+      "solid",
+      "dot",
+      "dash",
+      "longdash",
+      "longdashdot"
+    ],
+    "example": "solid",
+    "schemaValType": null,
+    "schemaEditType": null
+  }
+]
