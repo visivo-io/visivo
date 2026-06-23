@@ -5,6 +5,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { validateName } from './namedModel';
 import Select from '../../common/Select';
+import useRecordSave from '../../../hooks/useRecordSave';
 
 /**
  * MarkdownEditForm - Form component for editing/creating markdowns
@@ -16,6 +17,15 @@ import Select from '../../common/Select';
  * - isCreate: Whether in create mode
  * - onClose: Callback to close the panel
  * - onSave: Callback after successful save
+ *
+ * VIS-1018 step 2: in EDIT mode the footer save routes through the unified
+ * `useRecordSave('markdown', …)` backbone instead of calling `saveMarkdown`
+ * directly. That writes the form's config into the record's store collection
+ * OPTIMISTICALLY and persists the CURRENT store value at fire time, so this
+ * form, the markdown editor canvas, and the standalone rail-save all share one
+ * optimistic store + fire-time-read persist and can no longer clobber each
+ * other. CREATE mode keeps the direct `saveMarkdown` call — the record isn't in
+ * the collection yet, so there is nothing to optimistically update.
  */
 const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
   const { saveMarkdown, deleteMarkdown, checkCommitStatus } = useStore();
@@ -35,6 +45,12 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
 
   const isEditMode = !!markdown && !isCreate;
   const isNewObject = markdown?.status === ObjectStatus.NEW;
+
+  // Unified optimistic + debounced save backbone (VIS-1018 step 2). In edit mode
+  // the footer save flushes through this (writes the config optimistically into
+  // the markdown store, then persists the CURRENT store value), sharing the same
+  // backbone as the editor canvas so the two can't clobber each other.
+  const { saveNow } = useRecordSave('markdown', markdown?.name || null);
 
   // Initialize form when markdown changes
   useEffect(() => {
@@ -86,7 +102,18 @@ const MarkdownEditForm = ({ markdown, isCreate, onClose, onSave }) => {
         justify,
       };
 
-      const result = await saveMarkdown(name, config);
+      let result;
+      if (isEditMode) {
+        // EDIT mode: flush through the shared optimistic + fire-time-read
+        // backbone (writes `config` into the markdown store optimistically, then
+        // persists the current store value) so this form and the editor canvas
+        // converge on the last write instead of clobbering each other.
+        result = await saveNow(config);
+      } else {
+        // CREATE mode: the record isn't in the store collection yet, so there is
+        // nothing to optimistically update — persist directly.
+        result = await saveMarkdown(name, config);
+      }
 
       if (result?.success) {
         onSave && onSave(config);

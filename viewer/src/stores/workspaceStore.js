@@ -41,6 +41,8 @@
 
 import { emitWorkspaceEvent } from '../components/new-views/workspace/telemetry';
 import { generateUniqueName } from '../utils/uniqueName';
+import { COLLECTION_KEY } from '../components/new-views/workspace/collectionKeys';
+import { unwrapConfig, withConfig } from '../components/new-views/workspace/unwrapRecordConfig';
 
 const createWorkspaceSlice = (set, get) => ({
   // Tabs --------------------------------------------------------------------
@@ -488,10 +490,45 @@ const createWorkspaceSlice = (set, get) => ({
     const idx = list.findIndex((d) => d.name === dashboardName);
     if (idx === -1) return false;
     const entry = list[idx];
-    const nextEntry = entry.config ? { ...entry, config: nextConfig } : nextConfig;
+    const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
     set({ dashboards: nextList });
+    return true;
+  },
+
+  /**
+   * Generic, type-keyed sibling of `updateDashboardConfigOptimistic`
+   * (VIS-1018 step 1). Optimistically replace a record's draft config in its
+   * store collection WITHOUT persisting, for ANY object type. This is the
+   * in-memory half of the unified `useRecordSave` backbone: every open editing
+   * surface writes here immediately so the canvas, Outline, and the form's own
+   * widgets converge on the latest edit before the debounced persist fires.
+   *
+   * The collection for a type comes from the shared `COLLECTION_KEY` map, and
+   * the envelope-vs-bare entry shape is handled by `withConfig`, so this and
+   * the dashboard-specific action can never drift. `dashboard` delegates to
+   * `updateDashboardConfigOptimistic` so its row-selection side effects (and
+   * any future dashboard-only behaviour) stay in one place.
+   *
+   * @returns {boolean} `true` on a write, `false` for an unknown type/name or a
+   *          record that isn't in the collection.
+   */
+  updateRecordConfigOptimistic: (type, name, nextConfig) => {
+    if (!type || !name) return false;
+    if (type === 'dashboard') {
+      return get().updateDashboardConfigOptimistic(name, nextConfig);
+    }
+    const collectionKey = COLLECTION_KEY[type];
+    if (!collectionKey) return false;
+    const state = get();
+    const list = state[collectionKey] || [];
+    const idx = list.findIndex((r) => r.name === name);
+    if (idx === -1) return false;
+    const entry = list[idx];
+    const nextList = [...list];
+    nextList[idx] = withConfig(entry, nextConfig);
+    set({ [collectionKey]: nextList });
     return true;
   },
 
@@ -510,15 +547,13 @@ const createWorkspaceSlice = (set, get) => ({
     if (idx === -1) return null;
 
     const entry = list[idx];
-    const config = entry.config || entry;
+    const config = unwrapConfig(entry);
     const rows = Array.isArray(config.rows) ? config.rows : [];
     const newRow = { height: 'medium', items: [] };
     const nextRows = [...rows, newRow];
     const nextConfig = { ...config, rows: nextRows };
 
-    const nextEntry = entry.config
-      ? { ...entry, config: nextConfig }
-      : nextConfig;
+    const nextEntry = withConfig(entry, nextConfig);
     const nextList = [...list];
     nextList[idx] = nextEntry;
 

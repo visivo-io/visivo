@@ -6,7 +6,7 @@
  * auto-save (no Save button) through saveDashboard.
  */
 import React from 'react';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import selectEvent from 'react-select-event';
 import {
   createMemoryRouter,
@@ -41,7 +41,24 @@ const stubForm = (testid, prop) => ({
     <div data-testid={testid}>{`${testid}:${props?.[prop]?.name || 'none'}`}</div>
   ),
 });
-jest.mock('../common/ChartEditForm', () => stubForm('chart-edit-form-stub', 'chart'));
+// The chart stub also exposes a button that flushes its config through the
+// `onSave(type, name, config)` callback so we can assert the rail's standalone
+// save routes through the unified `useRecordSave` backbone (VIS-1018 step 3).
+jest.mock('../common/ChartEditForm', () => ({
+  __esModule: true,
+  default: ({ chart, onSave }) => (
+    <div data-testid="chart-edit-form-stub">
+      {`chart-edit-form-stub:${chart?.name || 'none'}`}
+      <button
+        type="button"
+        data-testid="chart-stub-save"
+        onClick={() => onSave?.('chart', chart?.name, { name: chart?.name, title: 'Edited' })}
+      >
+        save
+      </button>
+    </div>
+  ),
+}));
 jest.mock('../common/TableEditForm', () => stubForm('table-edit-form-stub', 'table'));
 jest.mock('../common/SourceEditForm', () => stubForm('source-edit-form-stub', 'source'));
 jest.mock('../common/InsightEditForm', () => stubForm('insight-edit-form-stub', 'insight'));
@@ -212,6 +229,33 @@ describe('RightRailEditPanel routing (VIS-802 / Q25)', () => {
     resetStore({ workspaceActiveObject: null });
     renderPanel();
     expect(screen.getByTestId('right-rail-edit-empty')).toBeInTheDocument();
+  });
+});
+
+describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
+  test('a Library-row leaf save routes through the unified useRecordSave backbone', async () => {
+    const saveChart = jest.fn(() => Promise.resolve({ success: true }));
+    resetStore({
+      workspaceActiveObject: { type: 'chart', name: 'rev_chart' },
+      charts: [{ name: 'rev_chart', config: { title: 'Old' } }],
+      saveChart,
+    });
+    renderPanel();
+
+    // The chart leaf form renders inline; trigger its onSave.
+    expect(screen.getByTestId('chart-edit-form-stub')).toHaveTextContent('rev_chart');
+    fireEvent.click(screen.getByTestId('chart-stub-save'));
+
+    // Persisted via the chart store action (the same saveX action the retired
+    // useObjectSave switch dispatched to), keyed by the open record name.
+    await waitFor(() => expect(saveChart).toHaveBeenCalledTimes(1));
+    const [name, config] = saveChart.mock.calls[0];
+    expect(name).toBe('rev_chart');
+    expect(config.title).toBe('Edited');
+
+    // And the store collection was updated OPTIMISTICALLY before the round-trip.
+    const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
+    expect((entry.config || entry).title).toBe('Edited');
   });
 });
 
