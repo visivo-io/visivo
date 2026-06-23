@@ -1,0 +1,129 @@
+[
+  {
+    "path": "z",
+    "label": "Z Values",
+    "tier": "A",
+    "description": "Sets the z values (2D array)",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "matrix"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates",
+    "keywords": [
+      "x",
+      "coordinates",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates",
+    "keywords": [
+      "y",
+      "coordinates",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Greys",
+      "YlGnBu",
+      "Greens",
+      "Viridis",
+      "Hot",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Contour",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "ncontours",
+    "label": "Number of Contours",
+    "tier": "B",
+    "description": "Sets the maximum number of contour levels",
+    "keywords": [
+      "contours",
+      "levels",
+      "count"
+    ],
+    "enumValues": null,
+    "example": 15,
+    "schemaValType": "integer",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "contours.showlabels",
+    "label": "Show Contour Labels",
+    "tier": "B",
+    "description": "Determines whether to label the contour lines with their values",
+    "keywords": [
+      "labels",
+      "contour",
+      "text"
+    ],
+    "enumValues": null,
+    "example": false,
+    "schemaValType": "boolean",
+    "schemaEditType": "plot"
+  }
+]

@@ -1,0 +1,126 @@
+[
+  {
+    "path": "z",
+    "label": "Z Values",
+    "tier": "A",
+    "description": "Sets the z values (2D array)",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "matrix"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "x",
+    "label": "X Labels",
+    "tier": "A",
+    "description": "Sets the x axis labels",
+    "keywords": [
+      "x",
+      "labels"
+    ],
+    "enumValues": null,
+    "example": [
+      "Mon",
+      "Tue"
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "y",
+    "label": "Y Labels",
+    "tier": "A",
+    "description": "Sets the y axis labels",
+    "keywords": [
+      "y",
+      "labels"
+    ],
+    "enumValues": null,
+    "example": [
+      "A",
+      "B"
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Greys",
+      "YlGnBu",
+      "Greens",
+      "Viridis",
+      "Cividis",
+      "Hot",
+      "RdBu"
+    ],
+    "example": "Viridis",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "HeatmapGL",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity",
+    "keywords": [
+      "opacity"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "zmin",
+    "label": "Z Min",
+    "tier": "B",
+    "description": "Sets the minimum color value",
+    "keywords": [
+      "zmin",
+      "min",
+      "scale"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": null,
+    "schemaEditType": null
+  }
+]

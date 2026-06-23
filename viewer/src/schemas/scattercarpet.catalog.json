@@ -1,0 +1,104 @@
+[
+  {
+    "path": "a",
+    "label": "A Coordinates",
+    "tier": "A",
+    "description": "Sets the a-axis coordinates",
+    "keywords": [
+      "a",
+      "carpet",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "b",
+    "label": "B Coordinates",
+    "tier": "A",
+    "description": "Sets the b-axis coordinates",
+    "keywords": [
+      "b",
+      "carpet",
+      "coordinates"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "carpet",
+    "label": "Carpet ID",
+    "tier": "B",
+    "description": "The `carpet` ID of the carpet trace this trace belongs to",
+    "keywords": [
+      "carpet",
+      "id",
+      "reference"
+    ],
+    "enumValues": null,
+    "example": "carpet1",
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "mode",
+    "label": "Display Mode",
+    "tier": "B",
+    "description": "Determines the drawing mode",
+    "keywords": [
+      "mode",
+      "markers",
+      "lines"
+    ],
+    "enumValues": [
+      "lines",
+      "markers",
+      "lines+markers",
+      "text",
+      "none"
+    ],
+    "example": "markers",
+    "schemaValType": "flaglist",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Carpet Scatter",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  }
+]

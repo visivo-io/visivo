@@ -1,0 +1,139 @@
+[
+  {
+    "path": "x",
+    "label": "X Axis (Time)",
+    "tier": "A",
+    "description": "Sets the x coordinates (typically date/time)",
+    "keywords": [
+      "x",
+      "time",
+      "date",
+      "axis"
+    ],
+    "enumValues": null,
+    "example": [
+      "2023-01-01",
+      "2023-01-02"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "open",
+    "label": "Open",
+    "tier": "A",
+    "description": "Sets the open values",
+    "keywords": [
+      "open",
+      "price",
+      "ohlc"
+    ],
+    "enumValues": null,
+    "example": [
+      100,
+      105
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "high",
+    "label": "High",
+    "tier": "A",
+    "description": "Sets the high values",
+    "keywords": [
+      "high",
+      "price",
+      "ohlc"
+    ],
+    "enumValues": null,
+    "example": [
+      110,
+      115
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "low",
+    "label": "Low",
+    "tier": "A",
+    "description": "Sets the low values",
+    "keywords": [
+      "low",
+      "price",
+      "ohlc"
+    ],
+    "enumValues": null,
+    "example": [
+      95,
+      100
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "close",
+    "label": "Close",
+    "tier": "A",
+    "description": "Sets the close values",
+    "keywords": [
+      "close",
+      "price",
+      "ohlc"
+    ],
+    "enumValues": null,
+    "example": [
+      108,
+      112
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "AAPL",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "increasing.line.color",
+    "label": "Increasing Color",
+    "tier": "B",
+    "description": "Sets the color of increasing candles",
+    "keywords": [
+      "color",
+      "increasing",
+      "up",
+      "bullish"
+    ],
+    "enumValues": null,
+    "example": "#00cc96",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "decreasing.line.color",
+    "label": "Decreasing Color",
+    "tier": "B",
+    "description": "Sets the color of decreasing candles",
+    "keywords": [
+      "color",
+      "decreasing",
+      "down",
+      "bearish"
+    ],
+    "enumValues": null,
+    "example": "#ef553b",
+    "schemaValType": "color",
+    "schemaEditType": "style"
+  }
+]

@@ -1,0 +1,99 @@
+[
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates of the point cloud",
+    "keywords": [
+      "x",
+      "coordinates",
+      "points",
+      "cloud"
+    ],
+    "enumValues": null,
+    "example": [
+      1,
+      2,
+      3
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates of the point cloud",
+    "keywords": [
+      "y",
+      "coordinates",
+      "points",
+      "cloud"
+    ],
+    "enumValues": null,
+    "example": [
+      4,
+      5,
+      6
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Point Cloud",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "marker.color",
+    "label": "Marker Color",
+    "tier": "B",
+    "description": "Sets the marker color",
+    "keywords": [
+      "color",
+      "marker"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "marker.sizemin",
+    "label": "Min Point Size",
+    "tier": "B",
+    "description": "Sets the minimum size of each point",
+    "keywords": [
+      "size",
+      "marker",
+      "min"
+    ],
+    "enumValues": null,
+    "example": 0.5,
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": null,
+    "schemaEditType": null
+  }
+]

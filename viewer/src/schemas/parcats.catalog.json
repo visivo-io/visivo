@@ -1,0 +1,89 @@
+[
+  {
+    "path": "dimensions",
+    "label": "Dimensions",
+    "tier": "A",
+    "description": "The list of dimensions that define the parallel categories",
+    "keywords": [
+      "dimensions",
+      "categories",
+      "axes",
+      "parallel"
+    ],
+    "enumValues": null,
+    "example": [
+      {
+        "label": "Cat",
+        "values": [
+          "A",
+          "B"
+        ]
+      }
+    ],
+    "schemaValType": null,
+    "schemaEditType": null
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Categories",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "line.color",
+    "label": "Line Color",
+    "tier": "B",
+    "description": "Sets the line color (can be a colorscale array)",
+    "keywords": [
+      "color",
+      "line",
+      "flow"
+    ],
+    "enumValues": null,
+    "example": "#636efa",
+    "schemaValType": "color",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "arrangement",
+    "label": "Category Arrangement",
+    "tier": "B",
+    "description": "Sets the drag interaction mode for categories",
+    "keywords": [
+      "arrangement",
+      "drag",
+      "sort"
+    ],
+    "enumValues": [
+      "perpendicular",
+      "freeform",
+      "fixed"
+    ],
+    "example": "perpendicular",
+    "schemaValType": "enumerated",
+    "schemaEditType": "plot"
+  },
+  {
+    "path": "bundlecolors",
+    "label": "Bundle Colors",
+    "tier": "B",
+    "description": "Sort paths so that like colors are bundled together",
+    "keywords": [
+      "bundle",
+      "color",
+      "group"
+    ],
+    "enumValues": null,
+    "example": true,
+    "schemaValType": "boolean",
+    "schemaEditType": "plot"
+  }
+]

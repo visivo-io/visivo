@@ -1,0 +1,110 @@
+[
+  {
+    "path": "z",
+    "label": "Image Data",
+    "tier": "A",
+    "description": "A 2D array of uint8 RGBA/RGB/YCbCr values or a 3D array for the pixel image",
+    "keywords": [
+      "z",
+      "image",
+      "pixels",
+      "data"
+    ],
+    "enumValues": null,
+    "example": [
+      [
+        [
+          255,
+          0,
+          0
+        ]
+      ]
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "source",
+    "label": "Image Source",
+    "tier": "A",
+    "description": "Specifies the data URI of the image to be visualized",
+    "keywords": [
+      "source",
+      "url",
+      "uri",
+      "image"
+    ],
+    "enumValues": null,
+    "example": "data:image/png;base64,...",
+    "schemaValType": "string",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Image",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the image",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "colormodel",
+    "label": "Color Model",
+    "tier": "B",
+    "description": "Color model used to map the numerical color components",
+    "keywords": [
+      "color",
+      "model",
+      "rgb",
+      "rgba"
+    ],
+    "enumValues": [
+      "rgb",
+      "rgba",
+      "hsl",
+      "hsla"
+    ],
+    "example": "rgb",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "zsmooth",
+    "label": "Z Smooth",
+    "tier": "B",
+    "description": "Picks a smoothing algorithm for image z values",
+    "keywords": [
+      "smooth",
+      "interpolation",
+      "zoom"
+    ],
+    "enumValues": [
+      "fast",
+      "best",
+      "false"
+    ],
+    "example": "fast",
+    "schemaValType": "enumerated",
+    "schemaEditType": "plot"
+  }
+]

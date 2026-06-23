@@ -1,0 +1,115 @@
+[
+  {
+    "path": "locations",
+    "label": "Locations",
+    "tier": "A",
+    "description": "Sets the location codes (country codes, state codes, etc.)",
+    "keywords": [
+      "locations",
+      "countries",
+      "regions",
+      "codes"
+    ],
+    "enumValues": null,
+    "example": [
+      "USA",
+      "CAN",
+      "MEX"
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "z",
+    "label": "Values",
+    "tier": "A",
+    "description": "Sets the color values associated with each location",
+    "keywords": [
+      "z",
+      "values",
+      "data",
+      "color"
+    ],
+    "enumValues": null,
+    "example": [
+      100,
+      200,
+      150
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "colorscale",
+    "label": "Color Scale",
+    "tier": "B",
+    "description": "Sets the colorscale",
+    "keywords": [
+      "colorscale",
+      "colors",
+      "palette"
+    ],
+    "enumValues": [
+      "Viridis",
+      "Hot",
+      "Blues",
+      "Reds",
+      "RdBu",
+      "YlOrRd"
+    ],
+    "example": "Viridis",
+    "schemaValType": "colorscale",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Choropleth",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "locationmode",
+    "label": "Location Mode",
+    "tier": "B",
+    "description": "Determines the set of locations used to match entries in `locations`",
+    "keywords": [
+      "location",
+      "mode",
+      "iso",
+      "country",
+      "state"
+    ],
+    "enumValues": [
+      "ISO-3",
+      "USA-states",
+      "country names",
+      "geojson-id"
+    ],
+    "example": "ISO-3",
+    "schemaValType": "enumerated",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "zmin",
+    "label": "Z Min",
+    "tier": "B",
+    "description": "Sets the minimum color value",
+    "keywords": [
+      "zmin",
+      "min",
+      "scale"
+    ],
+    "enumValues": null,
+    "example": 0,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  }
+]

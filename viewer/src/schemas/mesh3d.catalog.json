@@ -1,0 +1,124 @@
+[
+  {
+    "path": "x",
+    "label": "X Coordinates",
+    "tier": "A",
+    "description": "Sets the x coordinates of the mesh vertices",
+    "keywords": [
+      "x",
+      "coordinates",
+      "vertices",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      2
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "y",
+    "label": "Y Coordinates",
+    "tier": "A",
+    "description": "Sets the y coordinates of the mesh vertices",
+    "keywords": [
+      "y",
+      "coordinates",
+      "vertices",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      1,
+      0
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "z",
+    "label": "Z Coordinates",
+    "tier": "A",
+    "description": "Sets the z coordinates of the mesh vertices",
+    "keywords": [
+      "z",
+      "coordinates",
+      "vertices",
+      "3d"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      0,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc+clearAxisTypes"
+  },
+  {
+    "path": "name",
+    "label": "Trace Name",
+    "tier": "B",
+    "description": "Sets the trace name",
+    "keywords": [
+      "name",
+      "legend"
+    ],
+    "enumValues": null,
+    "example": "Mesh",
+    "schemaValType": "string",
+    "schemaEditType": "style"
+  },
+  {
+    "path": "color",
+    "label": "Color",
+    "tier": "B",
+    "description": "Sets the color of the whole mesh",
+    "keywords": [
+      "color",
+      "fill",
+      "surface"
+    ],
+    "enumValues": null,
+    "example": "#7fc97f",
+    "schemaValType": "color",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "opacity",
+    "label": "Opacity",
+    "tier": "B",
+    "description": "Sets the opacity of the surface",
+    "keywords": [
+      "opacity",
+      "transparency"
+    ],
+    "enumValues": null,
+    "example": 1,
+    "schemaValType": "number",
+    "schemaEditType": "calc"
+  },
+  {
+    "path": "intensity",
+    "label": "Intensity",
+    "tier": "B",
+    "description": "Sets the vertex intensity values, used for coloring the mesh",
+    "keywords": [
+      "intensity",
+      "color",
+      "value"
+    ],
+    "enumValues": null,
+    "example": [
+      0,
+      0.5,
+      1
+    ],
+    "schemaValType": "data_array",
+    "schemaEditType": "calc"
+  }
+]
