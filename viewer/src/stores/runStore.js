@@ -1,4 +1,4 @@
-import * as cloudEditingApi from '../api/cloudEditing';
+import * as branchingApi from '../api/branching';
 
 export const ACTIVE_RUN_STATES = ['queued', 'running'];
 
@@ -34,7 +34,7 @@ const createRunSlice = (set, get) => ({
     if (!projectId) return null;
     let runs;
     try {
-      runs = await cloudEditingApi.fetchRuns(projectId);
+      runs = await branchingApi.fetchRuns(projectId);
     } catch (e) {
       return null; // no run endpoint here (local serve / dist) — nothing to poll
     }

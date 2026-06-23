@@ -143,7 +143,7 @@ const Home = () => {
         onCommitClick={onCommitClick}
         hasUncommittedChanges={hasUncommittedChanges}
         tools={tools}
-        editControls={<CloudEditControls />}
+        branchControls={<CloudEditControls />}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />

@@ -435,7 +435,7 @@ const TopNav = ({
   onDeployClick,
   // cloud-only: Edit/Branch entry node, rendered in the action cluster at
   // project depth. Absent locally ⇒ nothing extra renders.
-  editControls = null,
+  branchControls = null,
   // Deploy is only meaningful where deploy exists (local CLI). Cloud has no
   // deploy yet, so it passes showDeploy=false to hide the button entirely.
   showDeploy = true,
@@ -516,7 +516,7 @@ const TopNav = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} compact />}
-            {showProject && editControls}
+            {showProject && branchControls}
             {showProject && action}
             <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />
           </div>
@@ -541,7 +541,7 @@ const TopNav = ({
         {showProject && <ToolSwitch tools={tools} activeTool={resolvedActive} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {showVersions && <VersionPill versions={versions} currentVersion={currentVersion} onVersionChange={onVersionChange} />}
-          {showProject && editControls}
+          {showProject && branchControls}
           {showProject && action}
           <div style={{ width: 1, height: 22, background: HAIR }} />
           <UserMenu user={user} onSignOut={onSignOut} items={userMenuItems} />

@@ -8,13 +8,13 @@ import createProjectSlice from './projectStore';
 import createSourceSlice from './sourceStore';
 import createInsightJobsSlice from './insightJobsStore';
 import createModelJobsSlice from './modelJobsStore';
-import * as cloudEditingApi from '../api/cloudEditing';
+import * as branchingApi from '../api/branching';
 import * as defaultsApi from '../api/defaults';
 import * as dashboardsApi from '../api/dashboards';
 import * as sourcesApi from '../api/sources';
 import { recordOnboardingAction } from '../components/onboarding/onboardingState';
 
-jest.mock('../api/cloudEditing');
+jest.mock('../api/branching');
 jest.mock('../api/defaults');
 jest.mock('../api/dashboards');
 jest.mock('../api/sources');
@@ -45,24 +45,24 @@ describe('commitStore', () => {
   const build = () => makeStore(createCommitSlice, { project: { id: 'proj-1' } });
 
   it('checkCommitStatus reflects /changes/ and fails closed', async () => {
-    cloudEditingApi.fetchChanges.mockResolvedValueOnce({
+    branchingApi.fetchChanges.mockResolvedValueOnce({
       to_publish: [{ name: 'a', type: 'chart', status: 'new' }],
       to_remove: [],
       has_changes: true,
     });
     const store = build();
     await store.get().checkCommitStatus();
-    expect(cloudEditingApi.fetchChanges).toHaveBeenCalledWith('proj-1');
+    expect(branchingApi.fetchChanges).toHaveBeenCalledWith('proj-1');
     expect(store.get().hasUncommittedChanges).toBe(true);
     expect(store.get().pendingChanges).toEqual([{ name: 'a', type: 'chart', status: 'new' }]);
 
-    cloudEditingApi.fetchChanges.mockRejectedValueOnce(new Error('offline'));
+    branchingApi.fetchChanges.mockRejectedValueOnce(new Error('offline'));
     await store.get().checkCommitStatus();
     expect(store.get().hasUncommittedChanges).toBe(false);
   });
 
   it('fetchPendingChanges returns the dirty list from /changes/', async () => {
-    cloudEditingApi.fetchChanges.mockResolvedValueOnce({
+    branchingApi.fetchChanges.mockResolvedValueOnce({
       to_publish: [{ name: 'a' }],
       to_remove: [{ name: 'b' }],
       has_changes: true,
@@ -76,7 +76,7 @@ describe('commitStore', () => {
 
   it('commitChanges publishes on success (201/200) and surfaces gate actions', async () => {
     // 201 = cloud publish (+ next_draft).
-    cloudEditingApi.commitDraft.mockResolvedValueOnce({
+    branchingApi.commitDraft.mockResolvedValueOnce({
       status: 201,
       body: { commit_id: 'c1', next_draft: { id: 'draft-2' } },
     });
@@ -87,7 +87,7 @@ describe('commitStore', () => {
     expect(store.get().commitModalOpen).toBe(false);
 
     // 409 = run/role gate.
-    cloudEditingApi.commitDraft.mockResolvedValueOnce({
+    branchingApi.commitDraft.mockResolvedValueOnce({
       status: 409,
       body: { action: 'run_required', detail: 'Run the draft before committing.' },
     });
@@ -101,11 +101,11 @@ describe('commitStore', () => {
   });
 
   it('openCommitModal opens and loads the dirty set; close/clear reset state', async () => {
-    cloudEditingApi.fetchChanges.mockResolvedValueOnce({ to_publish: [], to_remove: [], has_changes: false });
+    branchingApi.fetchChanges.mockResolvedValueOnce({ to_publish: [], to_remove: [], has_changes: false });
     const store = build();
     await store.get().openCommitModal();
     expect(store.get().commitModalOpen).toBe(true);
-    expect(cloudEditingApi.fetchChanges).toHaveBeenCalled();
+    expect(branchingApi.fetchChanges).toHaveBeenCalled();
 
     store.get().clearCommitError();
     store.get().closeCommitModal();

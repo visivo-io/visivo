@@ -1,4 +1,4 @@
-import * as cloudEditingApi from '../api/cloudEditing';
+import * as branchingApi from '../api/branching';
 
 /**
  * Editing slice — backend-agnostic.
@@ -22,7 +22,7 @@ const createCloudEditSlice = (set, get) => ({
     const projectId = get().project?.id;
     if (!projectId) return null;
     try {
-      const capabilities = await cloudEditingApi.fetchCapabilities(projectId);
+      const capabilities = await branchingApi.fetchCapabilities(projectId);
       set({ capabilities });
       return capabilities;
     } catch (error) {
@@ -37,7 +37,7 @@ const createCloudEditSlice = (set, get) => ({
     if (!projectId) return { success: false, error: 'No active project' };
     set({ cloudEditError: null });
     try {
-      const draft = await cloudEditingApi.createDraft(projectId);
+      const draft = await branchingApi.createDraft(projectId);
       get().setProject?.({ ...get().project, ...draft });
       await get().fetchCapabilities?.();
       return { success: true, project: draft };
@@ -51,7 +51,7 @@ const createCloudEditSlice = (set, get) => ({
   startBranch: async ({ fromStage, projectName, newStageName }) => {
     set({ cloudEditError: null });
     try {
-      const branch = await cloudEditingApi.createBranch({ fromStage, projectName, newStageName });
+      const branch = await branchingApi.createBranch({ fromStage, projectName, newStageName });
       get().setProject?.({ ...get().project, ...branch });
       await get().fetchCapabilities?.();
       return { success: true, project: branch };

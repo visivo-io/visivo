@@ -1,7 +1,7 @@
 import createRunSlice from './runStore';
-import * as cloudEditingApi from '../api/cloudEditing';
+import * as branchingApi from '../api/branching';
 
-jest.mock('../api/cloudEditing');
+jest.mock('../api/branching');
 
 const makeStore = (slice, initial = {}) => {
   let state = { ...initial };
@@ -20,12 +20,12 @@ describe('runStore', () => {
   const build = () => makeStore(createRunSlice, { project: { id: 'draft-1' } });
 
   it('sets latestRun and adopts the first succeeded run as baseline (no bump)', async () => {
-    cloudEditingApi.fetchRuns.mockResolvedValueOnce([
+    branchingApi.fetchRuns.mockResolvedValueOnce([
       { id: 'r1', state: 'succeeded' },
     ]);
     const store = build();
     await store.get().pollRuns();
-    expect(cloudEditingApi.fetchRuns).toHaveBeenCalledWith('draft-1');
+    expect(branchingApi.fetchRuns).toHaveBeenCalledWith('draft-1');
     expect(store.get().latestRun).toEqual({ id: 'r1', state: 'succeeded' });
     expect(store.get().lastSucceededRunId).toBe('r1');
     expect(store.get().runDataVersion).toBe(0); // baseline, no refresh
@@ -33,13 +33,13 @@ describe('runStore', () => {
 
   it('bumps runDataVersion when a NEW run succeeds', async () => {
     const store = build();
-    cloudEditingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r1', state: 'succeeded' }]);
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r1', state: 'succeeded' }]);
     await store.get().pollRuns(); // baseline
-    cloudEditingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r2', state: 'running' }]);
+    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r2', state: 'running' }]);
     await store.get().pollRuns();
     expect(store.get().latestRun.state).toBe('running');
     expect(store.get().runDataVersion).toBe(0); // not succeeded yet
-    cloudEditingApi.fetchRuns.mockResolvedValueOnce([
+    branchingApi.fetchRuns.mockResolvedValueOnce([
       { id: 'r2', state: 'succeeded' },
       { id: 'r1', state: 'succeeded' },
     ]);
@@ -56,7 +56,7 @@ describe('runStore', () => {
   });
 
   it('no-ops when the run endpoint is unavailable (local serve / dist)', async () => {
-    cloudEditingApi.fetchRuns.mockRejectedValueOnce(new Error('404'));
+    branchingApi.fetchRuns.mockRejectedValueOnce(new Error('404'));
     const store = build();
     const result = await store.get().pollRuns();
     expect(result).toBeNull();

@@ -2,13 +2,13 @@ import { getUrl } from '../contexts/URLContext';
 import { apiFetch } from './utils';
 
 /**
- * Cloud-editing API (core/Django only).
+ * Branching API (core/Django only) — draft / branch / commit / run endpoints.
  *
  * These endpoints exist only in the cloud (core) backend, not in local
  * `visivo serve` (Flask). `fetchCapabilities` is the mode probe: a 200 means
- * we're in the cloud and the Edit/Branch/commit flow applies; a 404 means
- * local serve, where the legacy always-editable Flask commit flow stays in
- * charge (see api/commit.js + commitStore).
+ * the Edit/Branch/commit flow applies; a 404 means local serve, where the
+ * legacy always-editable Flask commit flow stays in charge (see api/commit.js
+ * + commitStore).
  */
 
 /**

@@ -1,4 +1,4 @@
-import * as cloudEditingApi from '../api/cloudEditing';
+import * as branchingApi from '../api/branching';
 
 /**
  * Commit Store Slice — backend-agnostic.
@@ -23,7 +23,7 @@ const createCommitSlice = (set, get) => ({
       return;
     }
     try {
-      const changes = await cloudEditingApi.fetchChanges(projectId);
+      const changes = await branchingApi.fetchChanges(projectId);
       const pending = [...(changes.to_publish || []), ...(changes.to_remove || [])];
       set({ hasUncommittedChanges: !!changes.has_changes, pendingChanges: pending });
       // Called after each save — a debounced run is incoming, so open the run
@@ -46,7 +46,7 @@ const createCommitSlice = (set, get) => ({
     const projectId = get().project?.id;
     if (!projectId) return { success: false, error: 'No active project' };
     set({ commitLoading: true, commitError: null });
-    const { status, body } = await cloudEditingApi.commitDraft(projectId);
+    const { status, body } = await branchingApi.commitDraft(projectId);
     // Cloud: 201 publishes (+next_draft); 200 {committed:false} is a no-op.
     // Local: 200 is success. So success = 201, or 200 unless committed===false.
     const isSuccess = status === 201 || (status === 200 && body.committed !== false);
