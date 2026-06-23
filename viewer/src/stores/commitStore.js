@@ -47,12 +47,11 @@ const createCommitSlice = (set, get) => ({
     if (!projectId) return { success: false, error: 'No active project' };
     set({ commitLoading: true, commitError: null });
     const { status, body } = await branchingApi.commitDraft(projectId);
-    // Cloud: 201 publishes (+next_draft); 200 {committed:false} is a no-op.
-    // Local: 200 is success. So success = 201, or 200 unless committed===false.
+    // Cloud: 201 publishes (terminal — the draft is now the live project); 200
+    // {committed:false} is a no-op. Local: 200 is success. So success = 201, or
+    // 200 unless committed===false.
     const isSuccess = status === 201 || (status === 200 && body.committed !== false);
     if (isSuccess) {
-      // Cloud hands back a fresh draft to keep editing; merge to retarget the id.
-      if (body.next_draft) get().setProject?.({ ...get().project, ...body.next_draft });
       set({
         commitLoading: false,
         hasUncommittedChanges: false,
