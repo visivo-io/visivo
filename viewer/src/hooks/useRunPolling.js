@@ -30,12 +30,16 @@ export const useRunPolling = () => {
       if (cancelled) return;
       await pollRuns();
       if (cancelled) return;
-      const { latestRun, pollWindowUntil: until } = useStore.getState();
-      const active = ACTIVE_RUN_STATES.includes(latestRun?.state);
-      const withinWindow = Date.now() < (until || 0);
-      // Keep polling only while a run is in flight or we're still watching for
-      // one to start; otherwise stop until the next edit re-arms us.
-      if (active || withinWindow) {
+      const s = useStore.getState();
+      const active = ACTIVE_RUN_STATES.includes(s.latestRun?.state);
+      // Keep polling while a run is in flight OR one is pending (we edited and
+      // are waiting through the cold start for it to appear), bounded by the
+      // window so a stuck/missing run doesn't poll forever.
+      let pending = s.pendingRun && Date.now() < (s.pollWindowUntil || 0);
+      if (s.pendingRun && !pending) {
+        s.clearPendingRun(); // window elapsed without the run finishing — give up
+      }
+      if (active || pending) {
         timer = setTimeout(tick, active ? 2000 : 4000);
       }
     };
