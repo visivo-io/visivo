@@ -316,10 +316,12 @@ export const useInsightsData = (
     // Get FRESH inputs from store (not closure value) to avoid race condition
     const freshInputs = useStore.getState().inputJobs || {};
 
+    // forceReload on a run refresh (cacheKey/runDataVersion changed): the parquet
+    // tables are keyed by name_hash, so a new run's output reuses the same table
+    // name and would be served stale unless we drop+reload it.
+    const forceReload = isPreviewMode || Boolean(cacheKey);
     const results = await Promise.allSettled(
-      insights.map(insight =>
-        processInsight(db, insight, freshInputs, { forceReload: isPreviewMode })
-      )
+      insights.map(insight => processInsight(db, insight, freshInputs, { forceReload }))
     );
 
     const mergedData = {};
@@ -337,7 +339,7 @@ export const useInsightsData = (
     });
 
     return mergedData;
-  }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode]);
+  }, [db, projectId, stableInsightNames, fetchInsights, runId, isPreviewMode, cacheKey]);
 
   // React Query for data fetching
   // The queryKey includes stableRelevantInputs to trigger refetch when relevant inputs change

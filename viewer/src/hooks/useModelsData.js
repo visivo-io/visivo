@@ -15,7 +15,7 @@ import { DEFAULT_RUN_ID } from '../constants';
  * @param {string} runId - Run ID for file path
  * @returns {Promise<Object>} Processed model data keyed by model name
  */
-const processModel = async (db, modelName, runId) => {
+const processModel = async (db, modelName, runId, force = false) => {
   try {
     // ``name_hash`` is the DuckDB table identifier (clean, valid SQL
     // identifier — model names may contain whitespace/punctuation).
@@ -29,7 +29,7 @@ const processModel = async (db, modelName, runId) => {
       },
     ];
 
-    await loadInsightParquetFiles(db, files);
+    await loadInsightParquetFiles(db, files, force);
 
     const sql = `SELECT * FROM "${nameHash}"`;
     const result = await runDuckDBQuery(db, sql, 3, 1000);
@@ -67,7 +67,12 @@ const processModel = async (db, modelName, runId) => {
  * @param {string[]} modelNames - Array of model names to load
  * @param {string} runId - Run ID (default: "main")
  */
-export const useModelsData = (projectId, modelNames, runId = DEFAULT_RUN_ID) => {
+export const useModelsData = (
+  projectId,
+  modelNames,
+  runId = DEFAULT_RUN_ID,
+  { cacheKey = null } = {}
+) => {
   const db = useDuckDB();
   const setModelJobs = useStore(state => state.setModelJobs);
 
@@ -80,7 +85,7 @@ export const useModelsData = (projectId, modelNames, runId = DEFAULT_RUN_ID) => 
     if (!db || !stableModelNames.length) return {};
 
     const results = await Promise.allSettled(
-      stableModelNames.map(name => processModel(db, name, runId))
+      stableModelNames.map(name => processModel(db, name, runId, Boolean(cacheKey)))
     );
 
     const mergedData = {};
@@ -98,12 +103,12 @@ export const useModelsData = (projectId, modelNames, runId = DEFAULT_RUN_ID) => 
     });
 
     return mergedData;
-  }, [db, stableModelNames, runId]);
+  }, [db, stableModelNames, runId, cacheKey]);
 
   const queryEnabled = !!projectId && stableModelNames.length > 0 && !!db && !!runId;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['models', projectId, runId, stableModelNames, !!db],
+    queryKey: ['models', projectId, runId, stableModelNames, !!db, cacheKey],
     queryFn,
     enabled: queryEnabled,
     staleTime: Infinity,

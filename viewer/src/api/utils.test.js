@@ -1,4 +1,4 @@
-import { apiFetch, authHeaders, setAuthHeaderProvider } from './utils';
+import { apiFetch, authHeaders, setAuthHeaderProvider, setUnauthorizedHandler } from './utils';
 
 global.fetch = jest.fn();
 
@@ -19,8 +19,9 @@ describe('viewer/api/utils', () => {
   beforeEach(() => {
     fetch.mockReset();
     fetch.mockResolvedValue({ ok: true, status: 200 });
-    // Restore the module-level default no-op provider between tests.
+    // Restore the module-level default no-op provider + handler between tests.
     setAuthHeaderProvider(() => ({}));
+    setUnauthorizedHandler(null);
   });
 
   describe('setAuthHeaderProvider / authHeaders', () => {
@@ -139,6 +140,50 @@ describe('viewer/api/utils', () => {
       const headers = getRequestHeaders(fetch.mock.calls[0]);
       expect(headers.authorization).toBeUndefined();
       expect(headers.Authorization).toBeUndefined();
+    });
+  });
+
+  describe('apiFetch — 401 refresh-and-retry', () => {
+    test('refreshes the token and retries once on 401', async () => {
+      let token = 'expired';
+      setAuthHeaderProvider(() => ({ Authorization: `JWT ${token}` }));
+      const handler = jest.fn().mockImplementation(async () => {
+        token = 'fresh';
+        return true;
+      });
+      setUnauthorizedHandler(handler);
+      fetch
+        .mockResolvedValueOnce({ status: 401 })
+        .mockResolvedValueOnce({ status: 200, ok: true });
+
+      const res = await apiFetch('/api/charts/');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const retryHeaders = getRequestHeaders(fetch.mock.calls[1]);
+      expect(retryHeaders.authorization || retryHeaders.Authorization).toBe('JWT fresh');
+      expect(res.status).toBe(200);
+    });
+
+    test('does not retry when the handler reports no refresh', async () => {
+      setAuthHeaderProvider(() => ({ Authorization: 'JWT x' }));
+      setUnauthorizedHandler(async () => false);
+      fetch.mockResolvedValue({ status: 401 });
+
+      const res = await apiFetch('/api/charts/');
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(res.status).toBe(401);
+    });
+
+    test('passes a 401 through unchanged when no handler is registered', async () => {
+      setAuthHeaderProvider(() => ({ Authorization: 'JWT x' }));
+      fetch.mockResolvedValue({ status: 401 });
+
+      const res = await apiFetch('/api/charts/');
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(res.status).toBe(401);
     });
   });
 });

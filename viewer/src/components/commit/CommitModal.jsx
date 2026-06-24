@@ -50,6 +50,9 @@ const CommitModal = () => {
 
   if (!commitModalOpen) return null;
 
+  // commitChanges handles every backend: it publishes (closing the modal on
+  // success), no-ops when there's nothing to commit, and surfaces run/role
+  // gate actions as commitError otherwise.
   const handleCommit = async () => {
     await commitChanges();
   };

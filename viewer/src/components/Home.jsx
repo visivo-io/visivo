@@ -9,6 +9,7 @@ import useStore from '../stores/store';
 import Loading from './common/Loading';
 import DeployModal from './deploy/DeployModal';
 import CommitModal from './commit/CommitModal';
+import BranchingControls from './common/BranchingControls';
 import OnboardingChecklist from './onboarding/OnboardingChecklist';
 import OnboardingCoach from './onboarding/OnboardingCoach';
 import ProjectVisitTracker from './onboarding/ProjectVisitTracker';
@@ -27,11 +28,36 @@ const Home = () => {
   const hasUncommittedChanges = useStore(state => state.hasUncommittedChanges);
   const checkCommitStatus = useStore(state => state.checkCommitStatus);
   const openCommitModal = useStore(state => state.openCommitModal);
+  // The capabilities endpoint drives the Edit/Branch entry and the viewer's
+  // tool gating. Both servers answer it (Flask local + Django cloud), so the
+  // viewer needs no local-vs-cloud branching.
+  const projectId = useStore(state => state.project?.id);
+  const capabilities = useStore(state => state.capabilities);
+  const fetchCapabilities = useStore(state => state.fetchCapabilities);
 
   // Check commit status on mount
   useEffect(() => {
     checkCommitStatus();
   }, [checkCommitStatus]);
+
+  // Probe capabilities whenever the active project changes, then refresh the
+  // commit badge — both come from the project's endpoints (Flask + Django).
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      await fetchCapabilities();
+      await checkCommitStatus();
+    })();
+  }, [projectId, fetchCapabilities, checkCommitStatus]);
+
+  // The full editor (Explorer/Lineage/Editor) only unlocks when you're on an
+  // editable draft. A published project — or any non-draft view — is
+  // Dashboards-only; you click Edit/Branch to enter a draft first. Undefined
+  // capabilities => TopNav uses its default tools (no gating).
+  const restrictedToDashboards = capabilities && !capabilities.is_draft;
+  const tools = restrictedToDashboards
+    ? [{ id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate }]
+    : undefined;
 
   if (isNewProject === undefined) {
     return (
@@ -116,6 +142,8 @@ const Home = () => {
         onDeployClick={onDeployClick}
         onCommitClick={onCommitClick}
         hasUncommittedChanges={hasUncommittedChanges}
+        tools={tools}
+        branchControls={<BranchingControls />}
       />
       <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <CommitModal />
