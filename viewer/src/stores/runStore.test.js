@@ -48,39 +48,11 @@ describe('runStore', () => {
     expect(store.get().runDataVersion).toBe(1); // refresh!
   });
 
-  it('noteDraftActivity opens a future poll window + marks a run pending', () => {
+  it('noteDraftActivity opens a future poll window', () => {
     const store = build();
     expect(store.get().pollWindowUntil).toBe(0);
-    expect(store.get().pendingRun).toBe(false);
     store.get().noteDraftActivity();
     expect(store.get().pollWindowUntil).toBeGreaterThan(Date.now());
-    expect(store.get().pendingRun).toBe(true);
-  });
-
-  it('keeps pendingRun while the edit\'s run is still active', async () => {
-    const store = build();
-    store.get().noteDraftActivity(); // preEditRunId = null (no prior run)
-    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r1', state: 'running' }]);
-    await store.get().pollRuns();
-    expect(store.get().pendingRun).toBe(true); // the new run is in flight
-  });
-
-  it('clears pendingRun once the edit\'s new run finishes', async () => {
-    const store = build();
-    store.get().noteDraftActivity();
-    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'r1', state: 'succeeded' }]);
-    await store.get().pollRuns();
-    expect(store.get().pendingRun).toBe(false);
-  });
-
-  it('keeps pendingRun while only the pre-edit run is present (new run not created yet)', async () => {
-    const store = build();
-    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'old', state: 'succeeded' }]);
-    await store.get().pollRuns(); // establish the pre-edit run as latest
-    store.get().noteDraftActivity(); // preEditRunId = 'old', pendingRun = true
-    branchingApi.fetchRuns.mockResolvedValueOnce([{ id: 'old', state: 'succeeded' }]);
-    await store.get().pollRuns(); // only the old run -> this edit's run not created
-    expect(store.get().pendingRun).toBe(true); // still waiting for the new run
   });
 
   it('no-ops when the run endpoint is unavailable (local serve / dist)', async () => {
