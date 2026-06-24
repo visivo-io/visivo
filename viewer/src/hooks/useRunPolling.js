@@ -7,14 +7,17 @@ import { ACTIVE_RUN_STATES } from '../stores/runStore';
  * refreshes when a run finishes (runStore bumps runDataVersion → data hooks
  * refetch) and the UI can show a live run indicator.
  *
- * Only polls a draft (project.deploy_finished_at === null). It self-stops when
- * idle — it runs while a run is in flight OR within the post-edit window
- * (pollWindowUntil, set on each save) — so a dirty draft isn't polled forever.
- * Re-arms whenever a new edit moves pollWindowUntil.
+ * Only polls a draft (project.status === 'draft'). It self-stops when idle — it
+ * runs while a run is in flight OR within the post-edit window (pollWindowUntil,
+ * set on each save) — so a dirty draft isn't polled forever. Re-arms whenever a
+ * new edit moves pollWindowUntil.
  */
 export const useRunPolling = () => {
   const projectId = useStore(state => state.project?.id);
-  const isDraft = useStore(state => state.project?.deploy_finished_at === null);
+  // A draft is the explicit status — not "deploy_finished_at is null", which is
+  // also true of a deploy that never finished. (Local serve has no status, so
+  // this is falsy there and the poller stays off — correct, serve has no runs.)
+  const isDraft = useStore(state => state.project?.status === 'draft');
   const pollWindowUntil = useStore(state => state.pollWindowUntil);
   const pollRuns = useStore(state => state.pollRuns);
 
