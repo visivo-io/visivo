@@ -12,6 +12,7 @@ import { ArrayField } from './ArrayField';
 import { PatternMultiSelectField } from './PatternMultiSelectField';
 import { RefSlotField } from './RefSlotField';
 import { ExpressionField } from './ExpressionField';
+import { ObjectField } from './ObjectField';
 
 export { StringField } from './StringField';
 export { NumberField } from './NumberField';
@@ -22,6 +23,7 @@ export { ArrayField } from './ArrayField';
 export { PatternMultiSelectField } from './PatternMultiSelectField';
 export { RefSlotField } from './RefSlotField';
 export { ExpressionField } from './ExpressionField';
+export { ObjectField } from './ObjectField';
 
 /**
  * Registry mapping field type names to components
@@ -36,6 +38,7 @@ export const FIELD_COMPONENTS = {
   PatternMultiSelectField,
   RefSlotField,
   ExpressionField,
+  ObjectField,
 };
 
 /**
@@ -52,10 +55,10 @@ export function getFieldComponent(fieldType) {
     color: ColorField,
     colorscale: ArrayField, // Colorscales are arrays of colors
     array: ArrayField,
+    object: ObjectField, // Read-only — nested objects are edited in dedicated editors
     patternMultiselect: PatternMultiSelectField,
     ref: RefSlotField,
     'query-string': ExpressionField,
-    expression: ExpressionField,
     unknown: StringField, // Fallback
   };
 

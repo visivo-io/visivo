@@ -81,6 +81,13 @@ if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
+// Synthetic trace types that legitimately have NO node in the Plotly schema
+// (so a missing schema for them is expected, not a retired/typo'd type):
+//   - area: scatter + fill='tozeroy', no standalone "area" trace in Plotly.
+// Retired types (heatmapgl, pointcloud — removed in Plotly 3) are intentionally
+// NOT allowlisted so they get flagged below.
+const SYNTHETIC_TYPES = new Set(['area']);
+
 let totalTypes = 0;
 let totalEntries = 0;
 
@@ -92,10 +99,42 @@ Object.entries(tracePropCatalog).forEach(([type, entries]) => {
 
   // Get this trace type's attributes from the plotly schema.
   // Plotly schema stores trace schemas under plotSchema.traces[type].attributes
-  const typeAttrs = traceSchemas[type]?.attributes || {};
+  const traceSchema = traceSchemas[type];
+  if (!traceSchema && !SYNTHETIC_TYPES.has(type)) {
+    console.warn(
+      `  ⚠ "${type}" is absent from the Plotly schema — emitting all-null schema ` +
+        `metadata. If this type was retired (e.g. heatmapgl/pointcloud removed in ` +
+        `Plotly 3), drop it from tracePropCatalog.js; otherwise check for a typo.`
+    );
+  }
+  const typeAttrs = traceSchema?.attributes || {};
 
   const enriched = entries.map(entry => {
     const schemaProp = getSchemaProp(typeAttrs, entry.path);
+
+    // Populate enumValues from the schema when the catalog left it null and the
+    // schema provides one. NEVER overwrite a curated enumValues — just warn if
+    // the curated list disagrees with the schema's `values` (the coverage gate
+    // enforces set-equality, so a warning here surfaces the drift earlier).
+    let enumValues = entry.enumValues;
+    const schemaValues = Array.isArray(schemaProp?.values) ? schemaProp.values : null;
+    if (schemaValues) {
+      if (enumValues == null) {
+        enumValues = schemaValues;
+      } else {
+        const curated = new Set(enumValues.map(String));
+        const fromSchema = new Set(schemaValues.map(String));
+        const setEqual =
+          curated.size === fromSchema.size && [...curated].every(v => fromSchema.has(v));
+        if (!setEqual) {
+          console.warn(
+            `  ⚠ ${type}.${entry.path} curated enumValues ` +
+              `${JSON.stringify(entry.enumValues)} differ from schema values ` +
+              `${JSON.stringify(schemaValues)} (keeping curated).`
+          );
+        }
+      }
+    }
 
     return {
       path: entry.path,
@@ -103,7 +142,7 @@ Object.entries(tracePropCatalog).forEach(([type, entries]) => {
       tier: entry.tier,
       description: entry.description,
       keywords: entry.keywords,
-      enumValues: entry.enumValues,
+      enumValues,
       example: entry.example,
       schemaValType: schemaProp?.valType || null,
       schemaEditType: schemaProp?.editType || null,

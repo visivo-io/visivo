@@ -374,7 +374,7 @@ const createWorkspaceSlice = (set, get) => ({
    * `workspaceActiveObject` updates to avoid split-render glitches.
    *
    * @param {{ type: string, name: string }|null} activeObject - the object, or null to clear
-   * @param {string|null} outlineKey - outline key like 'dashboard', 'row.0', 'row.0.item.1', or null to keep existing
+   * @param {string|null} outlineKey - outline key (e.g. 'dashboard', 'row.0', 'row.0.item.1'); null resets to the 'dashboard' default, undefined keeps the existing key.
    */
   setWorkspaceSelection: (activeObject, outlineKey) => {
     const update = {};

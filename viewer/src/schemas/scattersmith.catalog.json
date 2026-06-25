@@ -103,6 +103,7 @@
       "dot",
       "dash",
       "longdash",
+      "dashdot",
       "longdashdot"
     ],
     "example": "solid",
