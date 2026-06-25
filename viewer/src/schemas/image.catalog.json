@@ -81,6 +81,7 @@
     "enumValues": [
       "rgb",
       "rgba",
+      "rgba256",
       "hsl",
       "hsla"
     ],
@@ -100,8 +101,7 @@
     ],
     "enumValues": [
       "fast",
-      "best",
-      "false"
+      false
     ],
     "example": "fast",
     "schemaValType": "enumerated",

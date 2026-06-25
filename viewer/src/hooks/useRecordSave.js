@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useStore from '../stores/store';
-import { COLLECTION_KEY, SAVE_ACTION } from '../components/new-views/workspace/collectionKeys';
-import { unwrapConfig } from '../components/new-views/workspace/unwrapRecordConfig';
+import { COLLECTION_KEY, SAVE_ACTION } from '../components/views/workspace/collectionKeys';
+import { unwrapConfig } from '../components/views/workspace/unwrapRecordConfig';
 
 /**
  * useRecordSave(type, name, opts) — the unified optimistic + debounced save

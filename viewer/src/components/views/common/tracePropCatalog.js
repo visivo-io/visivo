@@ -6,8 +6,11 @@
  * Tier-A seeds come from insightRequiredFields.js REQUIRED_FIELDS.
  * Tier-B covers 2-5 key visual/style props per type.
  *
- * IMPORTANT: line.dash legal values live only in schema description text,
- * not in the JSON enum — enumValues is set manually here.
+ * enumValues are curated here for clarity (a hand-picked subset/order that reads
+ * well in the editor). When the underlying Plotly schema provides a `values`
+ * array for a prop, the curated enumValues MUST set-equal that schema array —
+ * this is enforced by tracePropCatalog.coverage.test.js so the catalog can never
+ * drift from (or invent values absent from) the real Plotly enum.
  */
 
 /** @type {Record<string, Array<{path:string, label:string, tier:'A'|'B', description:string, keywords:string[], enumValues:string[]|null, example:any}>>} */
@@ -21,7 +24,7 @@ export const tracePropCatalog = {
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name shown in the legend', keywords: ['name', 'legend', 'label'], enumValues: null, example: 'Series A' },
     { path: 'marker.color', label: 'Marker Color', tier: 'B', description: 'Sets the marker color', keywords: ['color', 'marker', 'fill'], enumValues: null, example: '#636efa' },
     { path: 'opacity', label: 'Opacity', tier: 'B', description: 'Sets the opacity of the trace (0–1)', keywords: ['opacity', 'transparency', 'alpha'], enumValues: null, example: 0.8 },
-    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of lines', keywords: ['dash', 'line', 'style', 'dashed'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'longdashdot'], example: 'solid' },
+    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of lines', keywords: ['dash', 'line', 'style', 'dashed'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot'], example: 'solid' },
   ],
 
   bar: [
@@ -41,7 +44,7 @@ export const tracePropCatalog = {
     { path: 'fill', label: 'Fill Mode', tier: 'B', description: 'Sets the area to fill with a solid color', keywords: ['fill', 'area', 'shade'], enumValues: ['none', 'tozeroy', 'tozerox', 'tonexty', 'tonextx', 'toself', 'tonext'], example: 'tozeroy' },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name shown in the legend', keywords: ['name', 'legend'], enumValues: null, example: 'Area Series' },
     { path: 'fillcolor', label: 'Fill Color', tier: 'B', description: 'Sets the fill area color', keywords: ['color', 'fill', 'area'], enumValues: null, example: 'rgba(99,110,250,0.3)' },
-    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of the line', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'longdashdot'], example: 'solid' },
+    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of the line', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot'], example: 'solid' },
   ],
 
   pie: [
@@ -192,7 +195,7 @@ export const tracePropCatalog = {
     { path: 'close', label: 'Close', tier: 'A', description: 'Sets the close values', keywords: ['close', 'price', 'ohlc'], enumValues: null, example: [108, 112] },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: 'AAPL' },
     { path: 'increasing.line.color', label: 'Increasing Color', tier: 'B', description: 'Sets the color of increasing ticks', keywords: ['color', 'increasing', 'up'], enumValues: null, example: '#00cc96' },
-    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of the tick lines', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'longdashdot'], example: 'solid' },
+    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of the tick lines', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot'], example: 'solid' },
   ],
 
   // ─── 3D Charts ───────────────────────────────────────────────────────────────
@@ -205,7 +208,7 @@ export const tracePropCatalog = {
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: '3D Scatter' },
     { path: 'marker.color', label: 'Marker Color', tier: 'B', description: 'Sets the marker color', keywords: ['color', 'marker'], enumValues: null, example: '#636efa' },
     { path: 'opacity', label: 'Opacity', tier: 'B', description: 'Sets the opacity of the trace', keywords: ['opacity', 'transparency'], enumValues: null, example: 0.8 },
-    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'longdashdot'], example: 'solid' },
+    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot'], example: 'solid' },
   ],
 
   surface: [
@@ -236,7 +239,7 @@ export const tracePropCatalog = {
     { path: 'v', label: 'V (Y Component)', tier: 'A', description: 'Sets the y components of the vector field', keywords: ['v', 'vector', 'y', 'direction'], enumValues: null, example: [0, 1] },
     { path: 'w', label: 'W (Z Component)', tier: 'A', description: 'Sets the z components of the vector field', keywords: ['w', 'vector', 'z', 'direction'], enumValues: null, example: [0, 0] },
     { path: 'colorscale', label: 'Color Scale', tier: 'B', description: 'Sets the colorscale', keywords: ['colorscale', 'colors'], enumValues: ['Viridis', 'Hot', 'RdBu'], example: 'Viridis' },
-    { path: 'sizemode', label: 'Size Mode', tier: 'B', description: 'Determines whether sizeref is set as absolute or scaled', keywords: ['size', 'scale', 'mode'], enumValues: ['scaled', 'absolute'], example: 'scaled' },
+    { path: 'sizemode', label: 'Size Mode', tier: 'B', description: 'Determines whether sizeref is set as absolute or scaled', keywords: ['size', 'scale', 'mode'], enumValues: ['scaled', 'absolute', 'raw'], example: 'scaled' },
     { path: 'opacity', label: 'Opacity', tier: 'B', description: 'Sets the opacity', keywords: ['opacity', 'transparency'], enumValues: null, example: 1 },
   ],
 
@@ -403,7 +406,7 @@ export const tracePropCatalog = {
     { path: 'mode', label: 'Display Mode', tier: 'B', description: 'Determines the drawing mode', keywords: ['mode', 'markers', 'lines'], enumValues: ['lines', 'markers', 'lines+markers', 'text', 'none'], example: 'markers' },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: 'Smith' },
     { path: 'marker.color', label: 'Marker Color', tier: 'B', description: 'Sets the marker color', keywords: ['color', 'marker'], enumValues: null, example: '#636efa' },
-    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of lines', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'longdashdot'], example: 'solid' },
+    { path: 'line.dash', label: 'Line Dash', tier: 'B', description: 'Sets the dash style of lines', keywords: ['dash', 'line', 'style'], enumValues: ['solid', 'dot', 'dash', 'longdash', 'dashdot', 'longdashdot'], example: 'solid' },
   ],
 
   // ─── Carpet Charts ───────────────────────────────────────────────────────────
@@ -476,9 +479,9 @@ export const tracePropCatalog = {
     { path: 'values', label: 'Values', tier: 'A', description: 'Sets the values of each funnel area sector', keywords: ['values', 'data', 'size'], enumValues: null, example: [100, 80, 60] },
     { path: 'labels', label: 'Labels', tier: 'A', description: 'Sets the sector labels', keywords: ['labels', 'categories', 'names'], enumValues: null, example: ['Step 1', 'Step 2', 'Step 3'] },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: 'Funnel Area' },
-    { path: 'textposition', label: 'Text Position', tier: 'B', description: 'Specifies the location of the text labels', keywords: ['text', 'label', 'position'], enumValues: ['inside', 'outside', 'auto', 'none'], example: 'inside' },
+    { path: 'textposition', label: 'Text Position', tier: 'B', description: 'Specifies the location of the text labels', keywords: ['text', 'label', 'position'], enumValues: ['inside', 'none'], example: 'inside' },
     { path: 'opacity', label: 'Opacity', tier: 'B', description: 'Sets the opacity of the trace', keywords: ['opacity', 'transparency'], enumValues: null, example: 1 },
-    { path: 'hole', label: 'Hole Size', tier: 'B', description: 'Sets the fraction of the radius to cut out (0–1)', keywords: ['hole', 'donut', 'inner'], enumValues: null, example: 0 },
+    { path: 'baseratio', label: 'Base Ratio', tier: 'B', description: 'Sets the ratio between bottom length and maximum top length', keywords: ['ratio', 'base', 'shape'], enumValues: null, example: 0.333 },
   ],
 
   // ─── Image ────────────────────────────────────────────────────────────────────
@@ -488,8 +491,8 @@ export const tracePropCatalog = {
     { path: 'source', label: 'Image Source', tier: 'A', description: 'Specifies the data URI of the image to be visualized', keywords: ['source', 'url', 'uri', 'image'], enumValues: null, example: 'data:image/png;base64,...' },
     { path: 'name', label: 'Trace Name', tier: 'B', description: 'Sets the trace name', keywords: ['name', 'legend'], enumValues: null, example: 'Image' },
     { path: 'opacity', label: 'Opacity', tier: 'B', description: 'Sets the opacity of the image', keywords: ['opacity', 'transparency'], enumValues: null, example: 1 },
-    { path: 'colormodel', label: 'Color Model', tier: 'B', description: 'Color model used to map the numerical color components', keywords: ['color', 'model', 'rgb', 'rgba'], enumValues: ['rgb', 'rgba', 'hsl', 'hsla'], example: 'rgb' },
-    { path: 'zsmooth', label: 'Z Smooth', tier: 'B', description: 'Picks a smoothing algorithm for image z values', keywords: ['smooth', 'interpolation', 'zoom'], enumValues: ['fast', 'best', 'false'], example: 'fast' },
+    { path: 'colormodel', label: 'Color Model', tier: 'B', description: 'Color model used to map the numerical color components', keywords: ['color', 'model', 'rgb', 'rgba'], enumValues: ['rgb', 'rgba', 'rgba256', 'hsl', 'hsla'], example: 'rgb' },
+    { path: 'zsmooth', label: 'Z Smooth', tier: 'B', description: 'Picks a smoothing algorithm for image z values', keywords: ['smooth', 'interpolation', 'zoom'], enumValues: ['fast', false], example: 'fast' },
   ],
 
   // ─── GL (WebGL-accelerated) ───────────────────────────────────────────────────
