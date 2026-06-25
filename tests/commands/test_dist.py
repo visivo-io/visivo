@@ -65,7 +65,10 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
     assert run_result.exit_code == 0
 
-    result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
+    result = runner.invoke(
+        dist,
+        ["-w", working_dir, "-s", "source", "--output-dir", output_dir, "--dist-dir", dist_dir],
+    )
     assert result.exit_code == 0
     assert "Created dist folder" in result.output
 

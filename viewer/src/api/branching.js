@@ -92,7 +92,7 @@ export const fetchChanges = async projectId => {
 
 /**
  * The draft's recent runs (status of each auto-run). GET /api/projects/<id>/run/
- * -> [{id, state, created_at, dag_filter, execution_name, error_json, ...}].
+ * -> [{id, state, created_at, dag_filter, error_json, is_superseded, ...}].
  */
 export const fetchRuns = async projectId => {
   const response = await apiFetch(getUrl('projectRun', { projectId }));
@@ -100,6 +100,19 @@ export const fetchRuns = async projectId => {
     return await response.json();
   }
   throw new Error('Failed to fetch runs');
+};
+
+/**
+ * A single run's captured log. GET /api/runs/<id>/logs/ -> {state, logs,
+ * error_json}. The runner streams the log live while the run executes (the
+ * editor tail-polls this), then it settles into the final static log.
+ */
+export const fetchRunLog = async runId => {
+  const response = await apiFetch(getUrl('runLogs', { runId }));
+  if (response.status === 200) {
+    return await response.json();
+  }
+  throw new Error('Failed to fetch run log');
 };
 
 /**

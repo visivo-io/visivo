@@ -188,8 +188,10 @@ tasks:
         echo "visivo serve failed with exit code $exit_code"
         exit 1
       fi
-      # Verify that the project compiled successfully
-      test -f target/project.json || (echo "project.json not found" && exit 1)
+      # Verify that the project compiled successfully. (project.json is no longer
+      # a compile artifact — it's generated only by `visivo dist` now — so check
+      # error.json, which compile still writes.)
+      test -f target/error.json || (echo "error.json not found" && exit 1)
       echo "visivo serve started successfully"
     env:
       STACKTRACE: true

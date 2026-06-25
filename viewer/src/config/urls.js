@@ -7,7 +7,6 @@
 const URL_PATTERNS = {
   server: {
     project: '/api/project/',
-    explorer: '/api/explorer/',
     error: '/api/error/',
     insightJobsQuery: '/api/insight-jobs/',
     inputJobsQuery: '/api/input-jobs/',
@@ -110,6 +109,7 @@ const URL_PATTERNS = {
     projectCommit: '/api/projects/{projectId}/commit/',
     projectDiscard: '/api/projects/{projectId}/discard/',
     projectRun: '/api/projects/{projectId}/run/',
+    runLogs: '/api/runs/{runId}/logs/',
 
     // Source schema jobs endpoints
     sourceSchemaJobsList: '/api/source-schema-jobs/',
@@ -137,7 +137,6 @@ const URL_PATTERNS = {
   dist: {
     // Static data endpoints only in dist mode
     project: '/data/project.json',
-    explorer: '/data/explorer.json',
     error: '/data/error.json',
     insightJobsQuery: '/data/insights.json',
     inputJobsQuery: '/data/inputs.json',

@@ -18,7 +18,7 @@ from visivo.commands.options import (
 @no_deprecation_warnings
 def compile(working_dir, output_dir, source, dbt_profile, dbt_target, no_deprecation_warnings):
     """
-    Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the insight queries and a project.json file in your output directory. Queries are not run on compile, just written.
+    Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the insight queries in your output directory. Queries are not run on compile, just written.
     """
     from visivo.logger.logger import Logger
 

@@ -26,51 +26,6 @@ class Serializer:
             self._dag = self.project.dag()
         return self._dag
 
-    def create_flattened_project(self) -> dict:
-        """
-        Creates a flattened version of the project where all objects are at the top level
-        and nested objects are replaced with references.
-        """
-        project = self.project
-        dag = project.dag()
-
-        all_sources = []
-        all_models = []
-        all_insights = []
-        all_charts = []
-        all_tables = []
-        all_inputs = []
-
-        for node in dag.nodes():
-            if isinstance(node, Source):
-                all_sources.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Model):
-                all_models.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Insight):
-                all_insights.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Chart):
-                all_charts.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Table):
-                all_tables.append(node.model_dump(exclude_none=True, mode="json"))
-            elif isinstance(node, Input):
-                all_inputs.append(node.model_dump(exclude_none=True, mode="json"))
-
-        flattened = {
-            "name": project.name,
-            "cli_version": project.cli_version,
-            "sources": all_sources,
-            "models": all_models,
-            "insights": all_insights,
-            "charts": all_charts,
-            "tables": all_tables,
-            "inputs": all_inputs,
-        }
-
-        if project.defaults and project.defaults.source_name:
-            flattened["default_source"] = project.defaults.source_name
-
-        return flattened
-
     def dereference_to_dict(self) -> dict:
         """
         Creates a dereferenced version of the project as a dict without deep copying.
