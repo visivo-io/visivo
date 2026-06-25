@@ -215,6 +215,57 @@ describe('useRecordSave (VIS-1018)', () => {
     expect(saveFn).not.toHaveBeenCalled();
   });
 
+  test('recovers an edit typed during an in-flight save from a refetch revert (VIS-1018 review)', async () => {
+    // saveX actions refetch their collection after the write and blind-replace it
+    // with the server value. Model that: resolving the save first stomps the store
+    // back to the server-stale value, then resolves.
+    let resolveSave;
+    const saveFn = jest.fn(
+      () =>
+        new Promise(resolve => {
+          resolveSave = () => {
+            useStore.setState({ markdowns: [{ name: 'md1', config: { name: 'md1', content: 'R' } }] });
+            resolve({ success: true });
+          };
+        })
+    );
+    useStore.setState({
+      markdowns: [{ name: 'md1', config: { name: 'md1', content: 'R' } }],
+      saveMarkdown: saveFn,
+      saveActivityCount: 0,
+      lastSaveFailed: false,
+    });
+
+    const { result } = renderHook(() => useRecordSave('markdown', 'md1', { delay: 300 }));
+
+    // Edit R, let the debounce fire → save R goes in flight.
+    act(() => result.current.scheduleSave({ name: 'md1', content: 'R' }));
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(saveFn).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('saving');
+
+    // While R's save is in flight, the user types C (optimistic store → C).
+    act(() => result.current.scheduleSave({ name: 'md1', content: 'C' }));
+    expect(useStore.getState().markdowns[0].config.content).toBe('C');
+
+    // R's save resolves; its refetch reverts the store to server-stale 'R'.
+    await act(async () => {
+      resolveSave();
+    });
+
+    // The fix re-applies the latest optimistic edit 'C' rather than leaving the
+    // store reverted to 'R' (which the next fire-time read would then persist).
+    expect(useStore.getState().markdowns[0].config.content).toBe('C');
+
+    // And the pending debounce for 'C' then persists 'C', not the stale 'R'.
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(saveFn).toHaveBeenLastCalledWith('md1', { name: 'md1', content: 'C' });
+  });
+
   test('reports into the global save-activity counter while a save is in flight', async () => {
     let resolveSave;
     useStore.setState({

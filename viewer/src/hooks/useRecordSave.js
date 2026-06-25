@@ -46,6 +46,12 @@ export default function useRecordSave(type, name, opts = {}) {
   const typeRef = useRef(type);
   const nameRef = useRef(name);
   const mountedRef = useRef(true);
+  // The most recent config handed to scheduleSave/saveNow, plus a monotonic
+  // sequence number bumped on every edit. Together they let runSave detect that
+  // a NEWER edit landed while a save was in flight (see the re-apply guard in
+  // runSave) and recover the user's latest keystroke from a refetch revert.
+  const latestConfigRef = useRef(undefined);
+  const seqRef = useRef(0);
 
   useEffect(() => {
     typeRef.current = type;
@@ -79,6 +85,9 @@ export default function useRecordSave(type, name, opts = {}) {
   const runSave = useCallback(async () => {
     const t = typeRef.current;
     const n = nameRef.current;
+    // Snapshot the edit sequence at fire time. If it advances while saveFn is in
+    // flight, a newer edit arrived during the round-trip.
+    const seqAtFire = seqRef.current;
     const saveActionName = SAVE_ACTION[t];
     const state = useStore.getState();
     const saveFn = saveActionName ? state[saveActionName] : null;
@@ -109,6 +118,16 @@ export default function useRecordSave(type, name, opts = {}) {
         return result;
       }
       setStatus('saved');
+      // Refetch-revert recovery (VIS-1018 adversarial-review fix): the type's
+      // `saveX` action refetches its collection after the write and blind-replaces
+      // it with the server value. If the user typed a newer edit WHILE this save
+      // was in flight, that optimistic write was just stomped back to server-stale
+      // data — and the pending debounced persist would then read the reverted
+      // value. Detect the newer edit (seq advanced) and re-apply the latest
+      // optimistic config so the next fire-time read sees the user's newest edit.
+      if (seqRef.current !== seqAtFire && latestConfigRef.current !== undefined) {
+        useStore.getState().updateRecordConfigOptimistic?.(t, n, latestConfigRef.current);
+      }
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => {
         if (mountedRef.current) setStatus('idle');
@@ -124,6 +143,9 @@ export default function useRecordSave(type, name, opts = {}) {
 
   const scheduleSave = useCallback(
     nextConfig => {
+      // Record this as the latest edit (used by runSave's refetch-revert guard).
+      latestConfigRef.current = nextConfig;
+      seqRef.current += 1;
       // Optimistic write first so every bound surface reflects the edit now.
       useStore.getState().updateRecordConfigOptimistic?.(typeRef.current, nameRef.current, nextConfig);
 
@@ -143,6 +165,8 @@ export default function useRecordSave(type, name, opts = {}) {
       // When called with a config, apply it optimistically first so the persist
       // reads it; called bare, it just flushes the current optimistic value.
       if (nextConfig !== undefined) {
+        latestConfigRef.current = nextConfig;
+        seqRef.current += 1;
         useStore
           .getState()
           .updateRecordConfigOptimistic?.(typeRef.current, nameRef.current, nextConfig);
