@@ -15,8 +15,17 @@ import { FieldGroup } from './FieldGroup';
  * @param {function} props.onChange - (nextValue) => void
  * @param {object} props.defs - schema `$defs` for ref resolution in PropertyRow
  * @param {boolean} props.disabled
+ * @param {Record<string,string>} props.errors - optional dot-path → inline error
+ *   message map (AJV) threaded to each FieldGroup/PropertyRow.
  */
-export function FieldGroupList({ groupSpec = [], value = {}, onChange, defs = {}, disabled = false }) {
+export function FieldGroupList({
+  groupSpec = [],
+  value = {},
+  onChange,
+  defs = {},
+  disabled = false,
+  errors = {},
+}) {
   if (!Array.isArray(groupSpec) || groupSpec.length === 0) {
     return (
       <div className="p-4 text-center bg-gray-50 rounded-md border border-dashed border-gray-300">
@@ -35,6 +44,7 @@ export function FieldGroupList({ groupSpec = [], value = {}, onChange, defs = {}
           onChange={onChange}
           defs={defs}
           disabled={disabled}
+          errors={errors}
         />
       ))}
     </div>

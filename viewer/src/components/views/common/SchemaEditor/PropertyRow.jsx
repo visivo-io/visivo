@@ -33,6 +33,7 @@ import { SliceBanner } from './SliceBanner';
  * @param {string} props.description - Property description
  * @param {boolean} props.disabled - Whether the field is disabled
  * @param {boolean} props.droppable - Whether this row is a DnD drop target
+ * @param {string} props.error - Optional inline validation message (AJV) for this path
  */
 export function PropertyRow({
   path,
@@ -44,6 +45,7 @@ export function PropertyRow({
   description,
   disabled = false,
   droppable = false,
+  error,
 }) {
   const queryStringSupported = useMemo(() => supportsQueryString(schema), [schema]);
   const slotShape = useMemo(() => getSlotShape(schema, defs), [schema, defs]);
@@ -288,6 +290,15 @@ export function PropertyRow({
             onPickCustom={handleBannerPickCustom}
             onDismiss={() => setBannerActive(false)}
           />
+        )}
+
+        {error && (
+          <p
+            className="mt-1 text-xs font-medium text-highlight-600"
+            data-testid={`property-error-${path}`}
+          >
+            {error}
+          </p>
         )}
       </div>
     </div>

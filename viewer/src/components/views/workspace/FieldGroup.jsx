@@ -17,6 +17,9 @@ import useFieldGroupCollapseStore, { isGroupCollapsed } from './fieldGroupCollap
 
 /**
  * Map a group `icon` key (from buildGroupSpec's GROUP_DEFS) to a phosphor icon.
+ * Keys cover both the VIS-991 semantic-field groups (star/database/…) and the
+ * VIS-1020 trace-prop groups (essentials/key/encoding/…); unknown keys fall back
+ * to PiSliders.
  */
 const GROUP_ICONS = {
   star: PiStar,
@@ -26,6 +29,13 @@ const GROUP_ICONS = {
   layout: PiSquaresFour,
   gear: PiGear,
   sliders: PiSliders,
+  // VIS-1020 trace-prop group icon keys.
+  essentials: PiStar,
+  key: PiStar,
+  encoding: PiDatabase,
+  style: PiPalette,
+  animation: PiGear,
+  other: PiSliders,
 };
 
 /**
@@ -45,8 +55,10 @@ const GROUP_ICONS = {
  * @param {function} props.onChange - (nextValue) => void
  * @param {object} props.defs - schema `$defs` for ref resolution in PropertyRow
  * @param {boolean} props.disabled
+ * @param {Record<string,string>} props.errors - optional dot-path → inline error
+ *   message map (AJV); surfaced next to the offending PropertyRow.
  */
-export function FieldGroup({ group, value = {}, onChange, defs = {}, disabled = false }) {
+export function FieldGroup({ group, value = {}, onChange, defs = {}, disabled = false, errors = {} }) {
   const { id, label, icon, objectType, alwaysOpen, fields = [] } = group || {};
 
   const collapsedMap = useFieldGroupCollapseStore(s => s.collapsed);
@@ -117,6 +129,7 @@ export function FieldGroup({ group, value = {}, onChange, defs = {}, disabled = 
               defs={defs}
               description={field.schema?.description || ''}
               disabled={disabled}
+              error={errors[field.name]}
             />
           ))}
 
