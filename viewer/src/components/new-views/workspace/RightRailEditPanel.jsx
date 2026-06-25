@@ -626,13 +626,22 @@ const LeafObjectForm = ({ type, name, onSelectRef }) => {
 
   // Standalone (non-embedded) save through the unified optimistic + debounced
   // backbone — one `useRecordSave` instance per open record (VIS-1018 step 3,
-  // retiring `useObjectSave`). The leaf forms call `onSave(type, name, config)`;
-  // `saveNow` writes the record optimistically into its store collection and
-  // persists via the type's `saveX` action, so the rail save converges with any
-  // concurrent canvas edit on the last write.
+  // retiring `useObjectSave`). `saveNow` writes the record optimistically into
+  // its store collection and persists via the type's `saveX` action, so the rail
+  // save converges with any concurrent canvas edit on the last write.
+  //
+  // Two `onSave` conventions exist across the leaf forms:
+  //   - DELEGATING (chart/source/table/model/insight/input): call
+  //     `onSave(type, name, config)` and rely on the rail to persist → saveNow.
+  //   - SELF-SAVING (relation/dimension/metric/markdown): persist via their own
+  //     store action / `useRecordSave` FIRST, then call `onSave(config)` purely
+  //     as a post-save NOTIFICATION. Re-persisting that here double-fired `saveX`
+  //     (VIS-1018 adversarial-review fix), so the single-arg notification is a
+  //     no-op — the form already wrote the record.
   const { status: recordSaveStatus, saveNow } = useRecordSave(type, name);
   const handleObjectSave = useCallback(
-    (_type, _name, config) => saveNow(config),
+    (typeOrConfig, _name, config) =>
+      typeof typeOrConfig === 'string' && config !== undefined ? saveNow(config) : undefined,
     [saveNow]
   );
 

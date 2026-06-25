@@ -22,8 +22,19 @@ import { formatRefExpression } from '../../../utils/refString';
 // Stub the heavy leaf forms so routing assertions stay focused.
 jest.mock('../common/MarkdownEditForm', () => ({
   __esModule: true,
-  default: ({ markdown }) => (
-    <div data-testid="markdown-edit-form-stub">md:{markdown?.name || 'none'}</div>
+  // MarkdownEditForm self-persists via its own useRecordSave, then calls
+  // onSave(config) only as a notification — model that single-arg convention.
+  default: ({ markdown, onSave }) => (
+    <div data-testid="markdown-edit-form-stub">
+      md:{markdown?.name || 'none'}
+      <button
+        type="button"
+        data-testid="markdown-edit-form-stub-self-save"
+        onClick={() => onSave?.({ name: markdown?.name, content: 'Edited' })}
+      >
+        self-save
+      </button>
+    </div>
   ),
 }));
 jest.mock('../common/InputEditForm', () => ({
@@ -38,7 +49,19 @@ jest.mock('../common/InputEditForm', () => ({
 const stubForm = (testid, prop) => ({
   __esModule: true,
   default: props => (
-    <div data-testid={testid}>{`${testid}:${props?.[prop]?.name || 'none'}`}</div>
+    <div data-testid={testid}>
+      {`${testid}:${props?.[prop]?.name || 'none'}`}
+      {/* relation/dimension/metric forms self-persist then call onSave(config)
+          as a single-arg notification — model that convention so the rail's
+          no-double-save guard is exercised (VIS-1018 review). */}
+      <button
+        type="button"
+        data-testid={`${testid}-self-save`}
+        onClick={() => props.onSave?.({ name: props?.[prop]?.name, edited: true })}
+      >
+        self-save
+      </button>
+    </div>
   ),
 });
 // The chart stub also exposes a button that flushes its config through the
@@ -257,6 +280,40 @@ describe('RightRailEditPanel standalone leaf save (VIS-1018 step 3)', () => {
     const entry = useStore.getState().charts.find(c => c.name === 'rev_chart');
     expect((entry.config || entry).title).toBe('Edited');
   });
+});
+
+describe('RightRailEditPanel self-saving leaf forms do not double-persist (VIS-1018 review)', () => {
+  // relation/dimension/metric/markdown forms persist via their own store action /
+  // useRecordSave FIRST, then call onSave(config) purely as a notification. The
+  // rail's handleObjectSave must NOT re-persist that single-arg call (which had
+  // double-fired saveX before the fix).
+  const cases = [
+    ['relation', 'relations', 'saveRelation', 'relation-edit-form-stub-self-save'],
+    ['dimension', 'dimensions', 'saveDimension', 'dimension-edit-form-stub-self-save'],
+    ['metric', 'metrics', 'saveMetric', 'metric-edit-form-stub-self-save'],
+    ['markdown', 'markdowns', 'saveMarkdown', 'markdown-edit-form-stub-self-save'],
+  ];
+
+  test.each(cases)(
+    '%s: a single-arg onSave(config) notification does NOT re-fire %s through the rail',
+    async (type, collectionKey, saveActionName, saveButtonTestId) => {
+      const saveFn = jest.fn(() => Promise.resolve({ success: true }));
+      resetStore({
+        workspaceActiveObject: { type, name: 'obj1' },
+        [collectionKey]: [{ name: 'obj1', config: { name: 'obj1' } }],
+        [saveActionName]: saveFn,
+      });
+      renderPanel();
+
+      fireEvent.click(screen.getByTestId(saveButtonTestId));
+
+      // Let any erroneous async re-persist flush, then assert it never happened.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(saveFn).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('RightRailEditPanel auto-save (VIS-802)', () => {
