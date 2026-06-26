@@ -13,10 +13,12 @@ export const ACTIVE_RUN_STATES = ['queued', 'running'];
  * Endpoint-driven: `fetchRuns` 404s where there is no run model (local serve /
  * dist), so `pollRuns` simply no-ops there.
  */
-// How long after an edit to keep watching for the debounced run to start /
-// finish. Once a run is in flight the poller stays on regardless; this only
-// bridges the save -> run-start gap so we don't poll forever on a dirty draft.
-const POLL_WINDOW_MS = 20000;
+// How long after an edit to keep polling for the run to appear. The backend
+// creates the run (queued) synchronously on edit, so the first poll already sees
+// it and the poller then stays on via ACTIVE_RUN_STATES — through the runner's
+// cold start, since the run sits `queued` the whole time — until it finishes.
+// This window only bridges the brief edit -> first-poll gap.
+const POLL_WINDOW_MS = 30000;
 
 const createRunSlice = (set, get) => ({
   latestRun: null, // {id, state, created_at, dag_filter, error_json} | null
@@ -24,9 +26,9 @@ const createRunSlice = (set, get) => ({
   runDataVersion: 0,
   pollWindowUntil: 0, // poll while now < this (set on each edit)
 
-  // Called after an edit (a save) — a debounced run is incoming, so open the
-  // polling window. The poller stops on its own once the window passes and no
-  // run is in flight.
+  // Called after an edit (a save) — the backend has created a queued run, so
+  // open the polling window to pick it up. The poller stays on while the run is
+  // active and stops once it finishes and the window passes.
   noteDraftActivity: () => set({ pollWindowUntil: Date.now() + POLL_WINDOW_MS }),
 
   pollRuns: async () => {

@@ -33,8 +33,9 @@ export const useRunPolling = () => {
       const { latestRun, pollWindowUntil: until } = useStore.getState();
       const active = ACTIVE_RUN_STATES.includes(latestRun?.state);
       const withinWindow = Date.now() < (until || 0);
-      // Keep polling only while a run is in flight or we're still watching for
-      // one to start; otherwise stop until the next edit re-arms us.
+      // Keep polling while a run is in flight (it sits queued through the cold
+      // start, then running) or we're still bridging to the first poll;
+      // otherwise stop until the next edit re-arms us.
       if (active || withinWindow) {
         timer = setTimeout(tick, active ? 2000 : 4000);
       }
