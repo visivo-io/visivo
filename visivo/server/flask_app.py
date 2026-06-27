@@ -20,6 +20,7 @@ from visivo.server.managers.dashboard_manager import DashboardManager
 from visivo.server.managers.csv_script_model_manager import CsvScriptModelManager
 from visivo.server.managers.local_merge_model_manager import LocalMergeModelManager
 from visivo.server.managers.project_manager import ProjectManager
+from visivo.server.managers.run_manager import RunManager
 
 
 class FlaskApp:
@@ -33,8 +34,12 @@ class FlaskApp:
         self._project = project
 
         self._working_dir = working_dir
+        self.output_dir = output_dir
         self.hot_reload_server = None  # Will be set by serve_phase
         self._cached_defaults = None
+        # In-memory run registry for the run-on-save loop (mirrors the cloud Run
+        # model so the viewer's run-poller / Runs view work locally).
+        self.run_manager = RunManager()
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 

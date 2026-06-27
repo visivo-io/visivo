@@ -35,6 +35,11 @@ def register_data_views(app, flask_app, output_dir):
             "project_json": project_data,
             "config": project_data.get("defaults", {}),
             "created_at": datetime.datetime.now().isoformat(),
+            # Local serve is always an editable draft. This is the one signal
+            # the viewer's run-poller (useRunPolling) gates on, so reporting it
+            # turns on run-on-save polling + the Runs view locally. (Other
+            # "draft" UI keys on capabilities.is_draft, not project.status.)
+            "status": "draft",
         }
 
     @app.route("/api/project_history/")
