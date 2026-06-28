@@ -11,6 +11,7 @@ import LineageNew from './components/new-views/lineage/LineageNew';
 import Editor from './components/editor/Editor';
 import Project from './components/project/Project';
 import ExplorerNewPage from './components/explorerNew/ExplorerNewPage';
+import RunsView from './components/RunsView';
 import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
 // Set global URL config early for router loaders
@@ -58,6 +59,14 @@ const LocalRouter = createBrowserRouter(
           element={<ExplorerNewPage />}
           handle={{
             crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="runs"
+          path="/runs"
+          element={<RunsView />}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/runs">Runs</BreadcrumbLink>,
           }}
         />
         <Route

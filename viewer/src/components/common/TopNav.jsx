@@ -8,7 +8,7 @@ import { FaStar, FaRocket } from 'react-icons/fa';
 import { VscGitCommit } from 'react-icons/vsc';
 import { SiGithub } from 'react-icons/si';
 import { MdMenuBook } from 'react-icons/md';
-import { PiMagnifyingGlass, PiTreeStructure, PiPencil } from 'react-icons/pi';
+import { PiMagnifyingGlass, PiTreeStructure, PiPencil, PiPlayCircle } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { useMediaQuery, useTheme } from '@mui/material';
 
@@ -35,6 +35,7 @@ const DEFAULT_TOOLS = [
   { id: 'explorer', label: 'Explorer', to: '/explorer', icon: PiMagnifyingGlass },
   { id: 'lineage', label: 'Lineage', to: '/lineage', icon: PiTreeStructure },
   { id: 'editor', label: 'Editor', to: '/editor', icon: PiPencil },
+  { id: 'runs', label: 'Runs', to: '/runs', icon: PiPlayCircle },
   { id: 'project', label: 'Dashboards', to: '/project', icon: HiTemplate },
 ];
 

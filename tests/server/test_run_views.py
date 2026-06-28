@@ -120,6 +120,7 @@ class TestRunOnSave:
         # Mock the actual build so the test doesn't depend on the factory project
         # being fully buildable — assert the run is created, scoped, and reaches a
         # terminal succeeded state, targeting the "main" run id.
+        integration_app._working_dir = "/proj/root"
         with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
             inst = MockRunner.return_value
             inst.failed_job_results = []
@@ -138,9 +139,12 @@ class TestRunOnSave:
         assert len(runs) == 1
         assert runs[0]["state"] == "succeeded"
         assert runs[0]["dag_filter"] == "+widget+"
-        # Rebuilt into the canonical run id the viewer reads.
+        # Rebuilt into the canonical run id the viewer reads, against the serve
+        # working dir (so CsvScriptModel / relative-path commands resolve) — NOT
+        # project.path.
         _, kwargs = MockRunner.call_args
         assert kwargs["run_id"] == "main"
+        assert kwargs["working_dir"] == "/proj/root"
 
     def test_request_run_coalesces_rapid_saves(self, integration_app):
         with patch.object(save_run_executor, "FilteredRunner") as MockRunner:
