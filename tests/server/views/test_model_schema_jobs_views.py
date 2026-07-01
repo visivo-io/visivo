@@ -9,7 +9,7 @@ from flask import Flask
 
 from visivo.constants import DEFAULT_RUN_ID
 from visivo.query.model_schema_aggregator import ModelSchemaAggregator
-from visivo.server.views.model_schema_views import register_model_schema_views
+from visivo.server.views.model_schema_jobs_views import register_model_schema_jobs_views
 
 
 def _write_model_schema(output_dir, model_name, columns, run_id=DEFAULT_RUN_ID):
@@ -38,7 +38,7 @@ class TestModelSchemaViews:
         app = Flask(__name__)
         app.config["TESTING"] = True
         flask_app = Mock()
-        register_model_schema_views(app, flask_app, output_dir)
+        register_model_schema_jobs_views(app, flask_app, output_dir)
         return app
 
     @pytest.fixture
@@ -54,7 +54,7 @@ class TestGetModelSchema(TestModelSchemaViews):
             {"id": "INT", "name": "VARCHAR", "total": "DOUBLE"},
         )
 
-        response = client.get("/api/models/orders/schema/")
+        response = client.get("/api/model-schema-jobs/orders/")
         assert response.status_code == 200
         data = response.get_json()
         assert data["model_name"] == "orders"
@@ -64,7 +64,7 @@ class TestGetModelSchema(TestModelSchemaViews):
         assert data["mhash"] == {"id": "INT", "name": "VARCHAR", "total": "DOUBLE"}
 
     def test_404_for_unwritten_model(self, client):
-        response = client.get("/api/models/never_run/schema/")
+        response = client.get("/api/model-schema-jobs/never_run/")
         assert response.status_code == 404
         data = response.get_json()
         assert "message" in data
@@ -74,10 +74,10 @@ class TestGetModelSchema(TestModelSchemaViews):
         _write_model_schema(output_dir, "orders", {"id": "INT"}, run_id="preview-orders")
 
         # Default fallback would miss (no main), but explicit run_id hits.
-        miss = client.get("/api/models/orders/schema/?run_id=main")
+        miss = client.get("/api/model-schema-jobs/orders/?run_id=main")
         assert miss.status_code == 404
 
-        hit = client.get("/api/models/orders/schema/?run_id=preview-orders")
+        hit = client.get("/api/model-schema-jobs/orders/?run_id=preview-orders")
         assert hit.status_code == 200
         assert hit.get_json()["model_name"] == "orders"
 
@@ -85,7 +85,7 @@ class TestGetModelSchema(TestModelSchemaViews):
         # No main artifact; only a preview-<name> one exists.
         _write_model_schema(output_dir, "orders", {"id": "INT"}, run_id="preview-orders")
 
-        response = client.get("/api/models/orders/schema/")
+        response = client.get("/api/model-schema-jobs/orders/")
         assert response.status_code == 200
         assert response.get_json()["model_name"] == "orders"
 
@@ -98,7 +98,7 @@ class TestListModelSchemaColumns(TestModelSchemaViews):
             {"total": "DOUBLE", "id": "INT", "name": "VARCHAR"},
         )
 
-        response = client.get("/api/models/orders/schema/columns/")
+        response = client.get("/api/model-schema-jobs/orders/columns/")
         assert response.status_code == 200
         data = response.get_json()
         assert [c["name"] for c in data] == ["id", "name", "total"]
@@ -111,14 +111,14 @@ class TestListModelSchemaColumns(TestModelSchemaViews):
             {"id": "INT", "user_id": "INT", "name": "VARCHAR"},
         )
 
-        response = client.get("/api/models/orders/schema/columns/?search=id")
+        response = client.get("/api/model-schema-jobs/orders/columns/?search=id")
         assert response.status_code == 200
         names = [c["name"] for c in response.get_json()]
         assert names == ["id", "user_id"]
         assert "name" not in names
 
     def test_404_for_unwritten_model(self, client):
-        response = client.get("/api/models/never_run/schema/columns/")
+        response = client.get("/api/model-schema-jobs/never_run/columns/")
         assert response.status_code == 404
         assert "never_run" in response.get_json()["message"]
 
@@ -132,7 +132,7 @@ class TestListModelSchemaColumns(TestModelSchemaViews):
             },
         )
 
-        response = client.get("/api/models/csv_model/schema/columns/")
+        response = client.get("/api/model-schema-jobs/csv_model/columns/")
         assert response.status_code == 200
         rows = {c["name"]: c for c in response.get_json()}
         assert rows["id"]["nullable"] is False

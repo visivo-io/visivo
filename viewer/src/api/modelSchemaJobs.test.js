@@ -1,7 +1,7 @@
 // Coverage for the model-schema API module: availability gating (dist mode has
 // no server / no static artifact yet), 200-body parsing, and the
 // column-names convenience that flattens the schema's `columns` block.
-import { fetchModelSchema, fetchModelColumnNames } from './modelSchema';
+import { fetchModelSchema, fetchModelColumnNames } from './modelSchemaJobs';
 import { apiFetch } from './utils';
 import { isAvailable } from '../contexts/URLContext';
 

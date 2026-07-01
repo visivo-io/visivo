@@ -1,9 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useModelColumns } from './useModelColumns';
-import { fetchModelColumnNames } from '../../../../api/modelSchema';
+import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
 import { fetchModelData } from '../../../../api/modelData';
 
-jest.mock('../../../../api/modelSchema');
+jest.mock('../../../../api/modelSchemaJobs');
 jest.mock('../../../../api/modelData');
 
 describe('useModelColumns', () => {

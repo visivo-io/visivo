@@ -8,8 +8,8 @@ POST/generate/poll surface. The schema is the cheap, cloud-shippable sibling of
 the ``/api/models/<name>/data/`` endpoint.
 
 Routes:
-- GET /api/models/<model_name>/schema/          → the full schema envelope
-- GET /api/models/<model_name>/schema/columns/  → [{name, type, nullable}, ...]
+- GET /api/model-schema-jobs/<model_name>/          → the full schema envelope
+- GET /api/model-schema-jobs/<model_name>/columns/  → [{name, type, nullable}, ...]
 """
 
 from flask import jsonify, request
@@ -51,10 +51,10 @@ def _load_model_schema_with_fallback(model_name: str, output_dir: str, run_id: s
     return None, None
 
 
-def register_model_schema_views(app, flask_app, output_dir):
+def register_model_schema_jobs_views(app, flask_app, output_dir):
     """Register read-only model schema endpoints."""
 
-    @app.route("/api/models/<model_name>/schema/", methods=["GET"])
+    @app.route("/api/model-schema-jobs/<model_name>/", methods=["GET"])
     def get_model_schema(model_name):
         """Return the stored model schema envelope.
 
@@ -87,7 +87,7 @@ def register_model_schema_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting schema for model {model_name}: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/models/<model_name>/schema/columns/", methods=["GET"])
+    @app.route("/api/model-schema-jobs/<model_name>/columns/", methods=["GET"])
     def list_model_schema_columns(model_name):
         """List columns for a model's output schema.
 

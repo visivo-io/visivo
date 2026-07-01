@@ -13,11 +13,11 @@ import { apiFetch } from './utils';
  * @returns {Promise<{available: boolean, columns?: object, model_name?: string, model_type?: string}>}
  */
 export const fetchModelSchema = async modelName => {
-  if (!isAvailable('modelSchema')) {
+  if (!isAvailable('modelSchemaJob')) {
     return { available: false };
   }
 
-  const res = await apiFetch(getUrl('modelSchema', { name: modelName }));
+  const res = await apiFetch(getUrl('modelSchemaJob', { name: modelName }));
 
   if (res.status === 200) {
     return { available: true, ...(await res.json()) };

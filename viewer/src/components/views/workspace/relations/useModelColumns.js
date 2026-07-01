@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchModelColumnNames } from '../../../../api/modelSchema';
+import { fetchModelColumnNames } from '../../../../api/modelSchemaJobs';
 import { fetchModelData } from '../../../../api/modelData';
 
 /**
@@ -10,7 +10,7 @@ import { fetchModelData } from '../../../../api/modelData';
  * result's columns). So cards rendered "No columns loaded".
  *
  * This hook closes that gap by reading each model's run-phase SCHEMA artifact
- * (`/api/models/{name}/schema/`, exposed via `fetchModelColumnNames`) — the
+ * (`/api/model-schema-jobs/{name}/`, exposed via `fetchModelColumnNames`) — the
  * cheap, cloud-safe column+type metadata written during `visivo run`. It
  * reflects the model's actual output schema (post-SQL, post-join) without
  * re-running the query or guessing a table name from the SQL. When the schema
